@@ -6,3 +6,8 @@ export {
 } from './flangeData';
 
 export { ArcCurve, SaddleCurve } from './curves';
+
+export {
+  asOrbitControls,
+  type OrbitControlsLike,
+} from './types';

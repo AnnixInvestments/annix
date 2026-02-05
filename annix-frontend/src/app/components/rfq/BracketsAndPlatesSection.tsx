@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { generateUniqueId } from '@/app/lib/datetime';
 import { BracketEntry, CompensationPlateEntry, defaultBracketDimensions, defaultPlateDimensions } from '@/app/lib/config/rfq/bracketsAndPlates';
 import { STEEL_MATERIALS } from '@/app/lib/config/rfq/steelMaterials';
 import {
@@ -76,7 +77,7 @@ export default function BracketsAndPlatesSection({
     (entry: BracketEntry) => {
       const newEntry: BracketEntry = {
         ...entry,
-        id: `bracket-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        id: `bracket-${generateUniqueId()}`,
       };
       const newBrackets = [...brackets, newEntry];
       setBrackets(newBrackets);
@@ -122,7 +123,7 @@ export default function BracketsAndPlatesSection({
     (entry: CompensationPlateEntry) => {
       const newEntry: CompensationPlateEntry = {
         ...entry,
-        id: `plate-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        id: `plate-${generateUniqueId()}`,
       };
       const newPlates = [...plates, newEntry];
       setPlates(newPlates);

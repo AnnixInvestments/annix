@@ -31,7 +31,7 @@ import {
   SuspendSupplierDto,
   ReviewDocumentDto,
 } from './dto';
-import { SupplierOnboardingStatus } from './entities';
+import { SupplierAccountStatus } from './entities';
 
 @ApiTags('Admin - Supplier Management')
 @Controller('admin/suppliers')
@@ -50,12 +50,12 @@ export class SupplierAdminController {
   @ApiOperation({ summary: 'Get all suppliers with pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'status', required: false, enum: SupplierOnboardingStatus })
+  @ApiQuery({ name: 'status', required: false, enum: SupplierAccountStatus })
   @ApiResponse({ status: 200, description: 'Suppliers list retrieved' })
   async getAllSuppliers(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
-    @Query('status') status?: SupplierOnboardingStatus,
+    @Query('status') status?: SupplierAccountStatus,
   ) {
     return this.supplierAdminService.getAllSuppliers(
       page || 1,
@@ -220,6 +220,17 @@ export class SupplierAdminController {
     @Param('docId', ParseIntPipe) documentId: number,
   ) {
     return this.supplierAdminService.getDocumentReviewData(supplierId, documentId);
+  }
+
+  @Get(':id/documents/:docId/preview-images')
+  @ApiOperation({ summary: 'Get document preview as images (converts PDF to images)' })
+  @ApiResponse({ status: 200, description: 'Document preview images' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async getDocumentPreviewImages(
+    @Param('id', ParseIntPipe) supplierId: number,
+    @Param('docId', ParseIntPipe) documentId: number,
+  ) {
+    return this.supplierAdminService.getDocumentPreviewImages(supplierId, documentId);
   }
 
   @Post(':id/documents/:docId/re-verify')

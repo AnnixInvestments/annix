@@ -15,6 +15,15 @@ const mockUserRoleRepo = {
   remove: jest.fn(),
 };
 
+const createMockRole = (overrides: Partial<UserRole> = {}): UserRole => ({
+  id: 1,
+  name: 'admin',
+  users: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+});
+
 describe('UserRolesService', () => {
   let service: UserRolesService;
   let repo: jest.Mocked<Repository<UserRole>>;
@@ -39,7 +48,7 @@ describe('UserRolesService', () => {
     it('should create a new role', async () => {
       const dto = { name: 'admin' };
       mockUserRoleRepo.findOne.mockResolvedValue(null);
-      const roleEntity = { id: 1, name: 'admin' } as UserRole;
+      const roleEntity = createMockRole();
       mockUserRoleRepo.create.mockReturnValue(roleEntity);
       mockUserRoleRepo.save.mockResolvedValue(roleEntity);
 
@@ -53,11 +62,7 @@ describe('UserRolesService', () => {
     it('should throw ConflictException if role exists', async () => {
       const dto: CreateUserRoleDto = { name: 'admin' };
 
-      (repo.findOne as jest.Mock).mockResolvedValue({
-        id: 1,
-        name: 'admin',
-        users: [],
-      });
+      (repo.findOne as jest.Mock).mockResolvedValue(createMockRole());
 
       await expect(service.create(dto)).rejects.toThrow(ConflictException);
     });
@@ -65,7 +70,7 @@ describe('UserRolesService', () => {
 
   describe('findAll', () => {
     it('should return all roles', async () => {
-      const roles: UserRole[] = [{ id: 1, name: 'admin', users: [] }];
+      const roles: UserRole[] = [createMockRole()];
       (repo.find as jest.Mock).mockResolvedValue(roles);
 
       const result = await service.findAll();
@@ -77,7 +82,7 @@ describe('UserRolesService', () => {
 
   describe('findOne', () => {
     it('should return a role by ID', async () => {
-      const role: UserRole = { id: 1, name: 'admin', users: [] };
+      const role = createMockRole();
       (repo.findOne as jest.Mock).mockResolvedValue(role);
 
       const result = await service.findOne(1);
@@ -95,9 +100,9 @@ describe('UserRolesService', () => {
 
   describe('update', () => {
     it('should update a role', async () => {
-      const role: UserRole = { id: 1, name: 'admin', users: [] };
+      const role = createMockRole();
       const dto: UpdateUserRoleDto = { name: 'superadmin' };
-      const updated: UserRole = { id: 1, name: 'superadmin', users: [] };
+      const updated = createMockRole({ name: 'superadmin' });
 
       (repo.findOne as jest.Mock)
         .mockResolvedValueOnce(role)
@@ -111,9 +116,9 @@ describe('UserRolesService', () => {
     });
 
     it('should throw ConflictException if new name already exists', async () => {
-      const role: UserRole = { id: 1, name: 'admin', users: [] };
+      const role = createMockRole();
       const dto: UpdateUserRoleDto = { name: 'manager' };
-      const existing: UserRole = { id: 2, name: 'manager', users: [] };
+      const existing = createMockRole({ id: 2, name: 'manager' });
 
       (repo.findOne as jest.Mock)
         .mockResolvedValueOnce(role)
@@ -125,7 +130,7 @@ describe('UserRolesService', () => {
 
   describe('remove', () => {
     it('should delete a role', async () => {
-      const role: UserRole = { id: 1, name: 'admin', users: [] };
+      const role = createMockRole();
       (repo.findOne as jest.Mock).mockResolvedValue(role);
       (repo.remove as jest.Mock).mockResolvedValue(role);
 

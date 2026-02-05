@@ -9,6 +9,7 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFiles,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
@@ -109,9 +110,14 @@ export class SupplierAuthController {
     const userAgent = req.headers['user-agent'] || '';
 
     // Parse JSON strings from form data
-    const company = JSON.parse(body.company);
-    const profile = JSON.parse(body.profile);
-    const security = JSON.parse(body.security);
+    let company, profile, security;
+    try {
+      company = JSON.parse(body.company);
+      profile = JSON.parse(body.profile);
+      security = JSON.parse(body.security);
+    } catch {
+      throw new BadRequestException('Invalid JSON in form data');
+    }
 
     // Extract files
     const vatDocument = files.vatDocument?.[0];

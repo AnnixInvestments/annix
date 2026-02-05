@@ -8,6 +8,26 @@ export class SessionExpiredError extends Error {
   }
 }
 
+function authToken(): string | null {
+  if (typeof window === 'undefined') return null;
+
+  const customerToken = localStorage.getItem('customerAccessToken');
+  if (customerToken) return customerToken;
+
+  const supplierToken = localStorage.getItem('supplierAccessToken');
+  if (supplierToken) return supplierToken;
+
+  const adminToken = localStorage.getItem('adminAccessToken');
+  if (adminToken) return adminToken;
+
+  return localStorage.getItem('authToken') || localStorage.getItem('token');
+}
+
+function authHeaders(): Record<string, string> {
+  const token = authToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 // Types based on our backend DTOs
 export interface CreateRfqDto {
   projectName: string;
@@ -464,24 +484,8 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
-  // Get the current auth token - checks customer, supplier, and admin tokens
   private getAuthToken(): string | null {
-    if (typeof window === 'undefined') return null;
-
-    // Check for customer token first (most common for RFQ)
-    const customerToken = localStorage.getItem('customerAccessToken');
-    if (customerToken) return customerToken;
-
-    // Check for supplier token
-    const supplierToken = localStorage.getItem('supplierAccessToken');
-    if (supplierToken) return supplierToken;
-
-    // Check for admin token
-    const adminToken = localStorage.getItem('adminAccessToken');
-    if (adminToken) return adminToken;
-
-    // Fallback to generic auth token
-    return localStorage.getItem('authToken');
+    return authToken();
   }
 
   setToken(token: string) {
@@ -1492,12 +1496,11 @@ export const draftsApi = {
   getByNumber: (draftNumber: string) => apiClient.getDraftByNumber(draftNumber),
   delete: (id: number) => apiClient.deleteDraft(id),
   markAsConverted: async (draftId: number, rfqId: number): Promise<void> => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const response = await fetch(`${API_BASE_URL}/rfq/drafts/${draftId}/convert`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...authHeaders(),
       },
       body: JSON.stringify({ rfqId }),
     });
@@ -1674,12 +1677,11 @@ export interface BoqResponse {
 
 export const boqApi = {
   create: async (dto: CreateBoqDto): Promise<BoqResponse> => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const response = await fetch(`${API_BASE_URL}/boq`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...authHeaders(),
       },
       body: JSON.stringify(dto),
     });
@@ -1693,12 +1695,11 @@ export const boqApi = {
   },
 
   submitForQuotation: async (boqId: number, dto: SubmitBoqDto): Promise<SubmitBoqResponseDto> => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const response = await fetch(`${API_BASE_URL}/boq/${boqId}/submit`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...authHeaders(),
       },
       body: JSON.stringify(dto),
     });
@@ -1712,12 +1713,11 @@ export const boqApi = {
   },
 
   updateSubmittedBoq: async (boqId: number, dto: SubmitBoqDto): Promise<SubmitBoqResponseDto> => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const response = await fetch(`${API_BASE_URL}/boq/${boqId}/update-submitted`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...authHeaders(),
       },
       body: JSON.stringify(dto),
     });
@@ -1731,12 +1731,11 @@ export const boqApi = {
   },
 
   getByRfqId: async (rfqId: number): Promise<BoqResponse | null> => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const response = await fetch(`${API_BASE_URL}/boq?rfqId=${rfqId}&limit=1`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...authHeaders(),
       },
     });
 

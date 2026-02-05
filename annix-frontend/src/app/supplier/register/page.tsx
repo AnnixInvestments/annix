@@ -19,6 +19,23 @@ import {
   RegistrationBottomToolbar,
   StepConfig,
 } from '@/app/components/RegistrationToolbar';
+import {
+  COMPANY_SIZE_OPTIONS,
+  SOUTH_AFRICAN_PROVINCES,
+  SUPPLIER_INDUSTRY_OPTIONS,
+  BEE_LEVELS,
+} from '@/app/lib/config/registration/constants';
+import { validatePassword } from '@/app/lib/utils/passwordValidation';
+import {
+  PasswordInput,
+  ConfirmPasswordInput,
+  DeviceInfoDisplay,
+  SecurityNotice,
+  TermsAndConditions,
+  AcceptanceCheckbox,
+  ErrorDisplay,
+  InfoBanner,
+} from '@/app/components/registration';
 
 type Step = 'company' | 'bee' | 'documents' | 'profile' | 'security' | 'complete';
 
@@ -30,50 +47,7 @@ const REGISTRATION_STEPS: StepConfig[] = [
   { id: 'security', label: 'Security' },
 ];
 
-const COMPANY_SIZE_OPTIONS = [
-  { value: 'micro', label: 'Micro (1-9 employees)' },
-  { value: 'small', label: 'Small (10-49 employees)' },
-  { value: 'medium', label: 'Medium (50-249 employees)' },
-  { value: 'large', label: 'Large (250-999 employees)' },
-  { value: 'enterprise', label: 'Enterprise (1000+ employees)' },
-];
-
-const INDUSTRY_OPTIONS = [
-  'Piping & Valves',
-  'Steel Manufacturing',
-  'Industrial Equipment',
-  'Fabrication',
-  'Coating & Surface Treatment',
-  'Inspection Services',
-  'Logistics & Transport',
-  'Mining Supplies',
-  'Oil & Gas',
-  'Water Treatment',
-  'Other',
-];
-
-const SOUTH_AFRICAN_PROVINCES = [
-  'Eastern Cape',
-  'Free State',
-  'Gauteng',
-  'KwaZulu-Natal',
-  'Limpopo',
-  'Mpumalanga',
-  'Northern Cape',
-  'North West',
-  'Western Cape',
-];
-
-const BEE_LEVELS = [
-  { value: 1, label: 'Level 1 (135% recognition)' },
-  { value: 2, label: 'Level 2 (125% recognition)' },
-  { value: 3, label: 'Level 3 (110% recognition)' },
-  { value: 4, label: 'Level 4 (100% recognition)' },
-  { value: 5, label: 'Level 5 (80% recognition)' },
-  { value: 6, label: 'Level 6 (60% recognition)' },
-  { value: 7, label: 'Level 7 (50% recognition)' },
-  { value: 8, label: 'Level 8 (10% recognition)' },
-];
+const INDUSTRY_OPTIONS = SUPPLIER_INDUSTRY_OPTIONS;
 
 export default function SupplierRegistrationPage() {
   const router = useRouter();
@@ -119,8 +93,6 @@ export default function SupplierRegistrationPage() {
   });
 
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [nixVerification, setNixVerification] = useState<{
     isVisible: boolean;
@@ -153,27 +125,6 @@ export default function SupplierRegistrationPage() {
     registration: false,
     bee: false,
   });
-
-  // Validate password requirements
-  const validatePassword = (password: string): string[] => {
-    const errors: string[] = [];
-    if (password.length < 10) {
-      errors.push('Password must be at least 10 characters');
-    }
-    if (!/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter');
-    }
-    if (!/[a-z]/.test(password)) {
-      errors.push('Password must contain at least one lowercase letter');
-    }
-    if (!/[0-9]/.test(password)) {
-      errors.push('Password must contain at least one number');
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push('Password must contain at least one special character');
-    }
-    return errors;
-  };
 
   useEffect(() => {
     if (security.password) {
@@ -1034,20 +985,7 @@ export default function SupplierRegistrationPage() {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">Account Security</h2>
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <div className="flex">
-          <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div>
-            <h3 className="text-sm font-medium text-yellow-800">Important Security Notice</h3>
-            <p className="mt-1 text-sm text-yellow-700">
-              Your account will be bound to this device. You will only be able to access your account from this device.
-              If you need to change devices, please contact support.
-            </p>
-          </div>
-        </div>
-      </div>
+      <SecurityNotice />
 
       <div className="space-y-4">
         <div>
@@ -1063,140 +1001,49 @@ export default function SupplierRegistrationPage() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Password <span className="text-red-500">*</span>
-          </label>
-          <div className="relative mt-1">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={security.password}
-              onChange={(e) => handleSecurityChange('password', e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                </svg>
-              )}
-            </button>
-          </div>
-          {passwordErrors.length > 0 && (
-            <ul className="mt-2 text-sm text-red-600 list-disc list-inside">
-              {passwordErrors.map((err, i) => (
-                <li key={i}>{err}</li>
-              ))}
-            </ul>
-          )}
-          {security.password && passwordErrors.length === 0 && (
-            <p className="mt-2 text-sm text-green-600">Password meets all requirements</p>
-          )}
-        </div>
+        <PasswordInput
+          id="password"
+          label="Password"
+          value={security.password}
+          onChange={(value) => handleSecurityChange('password', value)}
+          required
+          showToggle
+          errors={passwordErrors}
+          showSuccessMessage
+        />
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Confirm Password <span className="text-red-500">*</span>
-          </label>
-          <div className="relative mt-1">
-            <input
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={security.confirmPassword}
-              onChange={(e) => handleSecurityChange('confirmPassword', e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-            >
-              {showConfirmPassword ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                </svg>
-              )}
-            </button>
-          </div>
-          {security.confirmPassword && security.password !== security.confirmPassword && (
-            <p className="mt-2 text-sm text-red-600">Passwords do not match</p>
-          )}
-        </div>
+        <ConfirmPasswordInput
+          id="confirmPassword"
+          label="Confirm Password"
+          value={security.confirmPassword}
+          password={security.password}
+          onChange={(value) => handleSecurityChange('confirmPassword', value)}
+          required
+          showToggle
+        />
 
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Device Information</h4>
-          {isFingerprintLoading ? (
-            <p className="text-sm text-gray-500">Generating device fingerprint...</p>
-          ) : fingerprint ? (
-            <div className="text-sm text-gray-600">
-              <p><span className="font-medium">Device ID:</span> {fingerprint.substring(0, 16)}...</p>
-              <p className="mt-1 text-xs text-gray-500">This device will be registered for secure access.</p>
-            </div>
-          ) : (
-            <p className="text-sm text-red-600">Unable to generate device fingerprint. Please refresh the page.</p>
-          )}
-        </div>
+        <DeviceInfoDisplay fingerprint={fingerprint} isLoading={isFingerprintLoading} />
 
-        <div className="border border-gray-200 rounded-lg p-4 max-h-48 overflow-y-auto">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Terms and Conditions</h4>
-          <div className="text-xs text-gray-600 space-y-2">
-            <p>By registering for an account, you agree to the following:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>You are authorized to represent the company specified in this registration.</li>
-              <li>You will not share your login credentials with any other person.</li>
-              <li>Your account is bound to a single device for security purposes.</li>
-              <li>You will maintain the confidentiality of any pricing or technical information provided.</li>
-              <li>You will use the portal only for legitimate business purposes.</li>
-              <li>Annix reserves the right to suspend or terminate accounts for any violation of these terms.</li>
-            </ul>
-          </div>
-        </div>
+        <TermsAndConditions />
 
-        <div className="flex items-start">
-          <input
-            type="checkbox"
-            id="terms"
-            checked={security.termsAccepted}
-            onChange={(e) => handleSecurityChange('termsAccepted', e.target.checked)}
-            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="terms" className="ml-2 text-sm text-gray-700">
-            I have read and agree to the Terms and Conditions <span className="text-red-500">*</span>
-          </label>
-        </div>
+        <AcceptanceCheckbox
+          id="terms"
+          checked={security.termsAccepted}
+          onChange={(checked) => handleSecurityChange('termsAccepted', checked)}
+          label="I have read and agree to the Terms and Conditions"
+          required
+        />
 
-        <div className="flex items-start">
-          <input
-            type="checkbox"
-            id="securityPolicy"
-            checked={security.securityPolicyAccepted}
-            onChange={(e) => handleSecurityChange('securityPolicyAccepted', e.target.checked)}
-            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="securityPolicy" className="ml-2 text-sm text-gray-700">
-            I understand and accept that my account will be locked to this device for security purposes <span className="text-red-500">*</span>
-          </label>
-        </div>
+        <AcceptanceCheckbox
+          id="securityPolicy"
+          checked={security.securityPolicyAccepted}
+          onChange={(checked) => handleSecurityChange('securityPolicyAccepted', checked)}
+          label="I understand and accept that my account will be locked to this device for security purposes"
+          required
+        />
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
+      <ErrorDisplay error={error} />
 
       <div className="flex justify-between mt-8">
         <button

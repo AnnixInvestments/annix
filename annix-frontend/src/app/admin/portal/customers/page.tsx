@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { adminApiClient, CustomerAccountStatus, CustomerListItem, CustomerListResponse } from '@/app/lib/api/adminApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 export default function AdminCustomersPage() {
   const router = useRouter();
@@ -51,7 +52,7 @@ export default function AdminCustomersPage() {
       setStats({ active: activeCount, pending: pendingCount, suspended: suspendedCount });
     } catch (err: any) {
       setError(err.message || 'Failed to fetch customers');
-      console.error('Error fetching customers:', err);
+      log.error('Error fetching customers:', err);
     } finally {
       setIsLoading(false);
     }

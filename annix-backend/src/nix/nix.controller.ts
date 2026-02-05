@@ -10,6 +10,7 @@ import {
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  ForbiddenException,
   UseGuards,
   Inject,
   Req,
@@ -57,6 +58,7 @@ import { DocumentAnnotationService } from './services/document-annotation.servic
 import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { AnyUserAuthGuard, AuthenticatedUser } from '../auth/guards/any-user-auth.guard';
 import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -121,12 +123,21 @@ export class NixController {
       throw new BadRequestException('No file uploaded');
     }
 
+    let parsedProductTypes;
+    if (productTypes) {
+      try {
+        parsedProductTypes = JSON.parse(productTypes);
+      } catch {
+        throw new BadRequestException('Invalid productTypes JSON');
+      }
+    }
+
     const dto: ProcessDocumentDto = {
       documentPath: file.path,
       documentName: file.originalname,
       userId: userId ? parseInt(userId, 10) : undefined,
       rfqId: rfqId ? parseInt(rfqId, 10) : undefined,
-      productTypes: productTypes ? JSON.parse(productTypes) : undefined,
+      productTypes: parsedProductTypes,
     };
 
     return this.nixService.processDocument(dto);
@@ -146,6 +157,8 @@ export class NixController {
   }
 
   @Get('extraction/:id/clarifications')
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get pending clarifications for an extraction' })
   @ApiResponse({
     status: 200,
@@ -154,7 +167,24 @@ export class NixController {
   })
   async pendingClarifications(
     @Param('id', ParseIntPipe) extractionId: number,
+    @Req() req: Request,
   ): Promise<NixClarification[]> {
+    const authUser = req['authUser'] as AuthenticatedUser;
+
+    const extraction = await this.nixService.extraction(extractionId);
+    if (!extraction) {
+      throw new BadRequestException('Extraction not found');
+    }
+
+    const isOwner = extraction.userId === authUser.userId;
+    const isAdmin = authUser.type === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException(
+        'You do not have permission to access this extraction',
+      );
+    }
+
     return this.nixService.pendingClarifications(extractionId);
   }
 
@@ -172,6 +202,8 @@ export class NixController {
   }
 
   @Get('user/:userId/extractions')
+  @UseGuards(AnyUserAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get extractions for a user' })
   @ApiResponse({
     status: 200,
@@ -180,11 +212,26 @@ export class NixController {
   })
   async userExtractions(
     @Param('userId', ParseIntPipe) userId: number,
+    @Req() req: Request,
   ): Promise<NixExtraction[]> {
+    const authUser = req['authUser'] as AuthenticatedUser;
+
+    const isOwner = authUser.userId === userId;
+    const isAdmin = authUser.type === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException(
+        'You do not have permission to access this user\'s extractions',
+      );
+    }
+
     return this.nixService.userExtractions(userId);
   }
 
   @Post('admin/seed-rule')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Seed an admin learning rule' })
   @ApiResponse({ status: 201, description: 'Rule created', type: NixLearning })
   async seedAdminRule(
@@ -205,6 +252,9 @@ export class NixController {
   }
 
   @Get('admin/learning-rules')
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all admin-seeded learning rules' })
   @ApiResponse({
     status: 200,

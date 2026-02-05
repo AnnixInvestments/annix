@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { generateUniqueId } from '@/app/lib/datetime';
 import {
   CompensationPlateEntry,
   defaultPlateDimensions,
@@ -23,7 +24,7 @@ interface CompensationPlateFormProps {
   onDuplicateEntry: (entry: CompensationPlateEntry) => void;
 }
 
-const generateId = (): string => `plate-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+const generateId = (): string => `plate-${generateUniqueId()}`;
 
 export default function CompensationPlateForm({
   entries,

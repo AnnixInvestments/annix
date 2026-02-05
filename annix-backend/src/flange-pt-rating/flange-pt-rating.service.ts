@@ -32,25 +32,25 @@ export class FlangePtRatingService {
 
   constructor(
     @InjectRepository(FlangePtRating)
-    private readonly ptRatingRepository: Repository<FlangePtRating>,
+    private readonly ptRatingRepo: Repository<FlangePtRating>,
   ) {}
 
   async create(dto: CreateFlangePtRatingDto): Promise<FlangePtRating> {
-    const entity = this.ptRatingRepository.create({
+    const entity = this.ptRatingRepo.create({
       pressureClassId: dto.pressureClassId,
       materialGroup: dto.materialGroup,
       temperatureCelsius: dto.temperatureCelsius,
       maxPressureBar: dto.maxPressureBar,
       maxPressurePsi: dto.maxPressurePsi,
     });
-    return this.ptRatingRepository.save(entity);
+    return this.ptRatingRepo.save(entity);
   }
 
   async bulkCreate(
     dto: BulkCreateFlangePtRatingDto,
   ): Promise<FlangePtRating[]> {
     const entities = dto.ratings.map((rating) =>
-      this.ptRatingRepository.create({
+      this.ptRatingRepo.create({
         pressureClassId: dto.pressureClassId,
         materialGroup: dto.materialGroup,
         temperatureCelsius: rating.temperatureCelsius,
@@ -58,11 +58,11 @@ export class FlangePtRatingService {
         maxPressurePsi: rating.maxPressurePsi,
       }),
     );
-    return this.ptRatingRepository.save(entities);
+    return this.ptRatingRepo.save(entities);
   }
 
   async findAll(): Promise<FlangePtRating[]> {
-    return this.ptRatingRepository.find({
+    return this.ptRatingRepo.find({
       relations: ['pressureClass', 'pressureClass.standard'],
       order: { pressureClassId: 'ASC', temperatureCelsius: 'ASC' },
     });
@@ -71,7 +71,7 @@ export class FlangePtRatingService {
   async findByPressureClass(
     pressureClassId: number,
   ): Promise<FlangePtRating[]> {
-    return this.ptRatingRepository.find({
+    return this.ptRatingRepo.find({
       where: { pressureClassId },
       order: { temperatureCelsius: 'ASC' },
     });
@@ -83,7 +83,7 @@ export class FlangePtRatingService {
   async getAvailableMaterialGroups(): Promise<
     { name: string; description: string }[]
   > {
-    const distinctGroups = await this.ptRatingRepository
+    const distinctGroups = await this.ptRatingRepo
       .createQueryBuilder('rating')
       .select('DISTINCT rating.material_group', 'materialGroup')
       .getRawMany();
@@ -106,7 +106,7 @@ export class FlangePtRatingService {
     standardId: number,
     materialGroup: string,
   ): Promise<FlangePtRating[]> {
-    return this.ptRatingRepository.find({
+    return this.ptRatingRepo.find({
       where: {
         pressureClass: { standard: { id: standardId } },
         materialGroup,
@@ -125,7 +125,7 @@ export class FlangePtRatingService {
     temperatureCelsius: number,
     materialGroup: string = 'Carbon Steel A105',
   ): Promise<number | null> {
-    const ratings = await this.ptRatingRepository.find({
+    const ratings = await this.ptRatingRepo.find({
       where: { pressureClassId, materialGroup },
       order: { temperatureCelsius: 'ASC' },
     });
@@ -177,7 +177,7 @@ export class FlangePtRatingService {
     temperatureCelsius: number,
     materialGroup: string = 'Carbon Steel A105',
   ): Promise<number | null> {
-    const ratings = await this.ptRatingRepository.find({
+    const ratings = await this.ptRatingRepo.find({
       where: {
         pressureClass: { standard: { id: standardId } },
         materialGroup,
@@ -248,7 +248,7 @@ export class FlangePtRatingService {
     materialGroup: string = 'Carbon Steel A105 (Group 1.1)',
     currentPressureClassId?: number,
   ): Promise<PtRecommendationResult> {
-    const ratings = await this.ptRatingRepository.find({
+    const ratings = await this.ptRatingRepo.find({
       where: {
         pressureClass: { standard: { id: standardId } },
         materialGroup,

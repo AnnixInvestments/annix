@@ -7,15 +7,10 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, MoreThan } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
+import { Repository, DataSource } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { now, nowMillis } from '../lib/datetime';
+import { now } from '../lib/datetime';
 
-import * as path from 'path';
-import * as fs from 'fs';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
 import {
@@ -41,12 +36,17 @@ import {
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { EmailService } from '../email/email.service';
-
-// Constants
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOGIN_LOCKOUT_MINUTES = 15;
-const SESSION_EXPIRY_HOURS = 1;
-const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
+import { S3StorageService } from '../storage/s3-storage.service';
+import {
+  AUTH_CONSTANTS,
+  PasswordService,
+  TokenService,
+  RateLimitingService,
+  SessionService,
+  DeviceBindingService,
+  AuthConfigService,
+  JwtTokenPayload,
+} from '../shared/auth';
 
 @Injectable()
 export class SupplierAuthService {
@@ -72,25 +72,24 @@ export class SupplierAuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserRole)
     private readonly userRoleRepo: Repository<UserRole>,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
+    private readonly storageService: S3StorageService,
+    private readonly passwordService: PasswordService,
+    private readonly tokenService: TokenService,
+    private readonly rateLimitingService: RateLimitingService,
+    private readonly sessionService: SessionService,
+    private readonly deviceBindingService: DeviceBindingService,
+    private readonly authConfigService: AuthConfigService,
   ) {
-    this.uploadDir =
-      this.configService.get<string>('UPLOAD_DIR') || './uploads';
+    this.uploadDir = this.authConfigService.uploadDir();
   }
 
-  /**
-   * Register a new supplier with email + password only
-   * Returns auth tokens for immediate login (email verification disabled for development)
-   */
   async register(
     dto: CreateSupplierRegistrationDto,
     clientIp: string,
   ): Promise<SupplierLoginResponseDto> {
-    // Check if email already exists
     const existingUser = await this.userRepo.findOne({
       where: { email: dto.email },
     });
@@ -98,17 +97,15 @@ export class SupplierAuthService {
       throw new ConflictException('An account with this email already exists');
     }
 
-    // Use transaction to ensure atomicity
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. Create the user with 'supplier' role
-      const salt = await bcrypt.genSalt();
-      const hashedPassword = await bcrypt.hash(dto.password, salt);
+      const { hash: hashedPassword, salt } = await this.passwordService.hash(
+        dto.password,
+      );
 
-      // Get or create supplier role
       let supplierRole = await this.userRoleRepo.findOne({
         where: { name: 'supplier' },
       });
@@ -126,19 +123,18 @@ export class SupplierAuthService {
       });
       const savedUser = await queryRunner.manager.save(user);
 
-      const verificationToken = this.jwtService.sign(
+      const verificationToken = this.tokenService.generateVerificationToken(
         {
           userId: savedUser.id,
           email: dto.email,
           type: 'supplier_verification',
         },
-        { expiresIn: `${EMAIL_VERIFICATION_EXPIRY_HOURS}h` },
+        AUTH_CONSTANTS.EMAIL_VERIFICATION_EXPIRY_HOURS,
       );
       const verificationExpires = now()
-        .plus({ hours: EMAIL_VERIFICATION_EXPIRY_HOURS })
+        .plus({ hours: AUTH_CONSTANTS.EMAIL_VERIFICATION_EXPIRY_HOURS })
         .toJSDate();
 
-      // 3. Create the supplier profile (minimal info, awaiting email verification)
       const profile = this.profileRepo.create({
         userId: savedUser.id,
         accountStatus: SupplierAccountStatus.PENDING,
@@ -148,7 +144,6 @@ export class SupplierAuthService {
       });
       const savedProfile = await queryRunner.manager.save(profile);
 
-      // 4. Create onboarding record in DRAFT status
       const onboarding = this.onboardingRepo.create({
         supplierId: savedProfile.id,
         status: SupplierOnboardingStatus.DRAFT,
@@ -159,11 +154,6 @@ export class SupplierAuthService {
 
       await queryRunner.commitTransaction();
 
-      // DEVELOPMENT MODE: Skip email verification - auto-login the user
-      // TODO: Re-enable email verification for production
-      // await this.emailService.sendSupplierVerificationEmail(dto.email, verificationToken);
-
-      // Log the registration
       await this.auditService.log({
         entityType: 'supplier_profile',
         entityId: savedProfile.id,
@@ -175,9 +165,16 @@ export class SupplierAuthService {
         ipAddress: clientIp,
       });
 
-      const sessionToken = uuidv4();
-      const refreshTokenValue = uuidv4();
-      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
+      const { session, sessionToken } = this.sessionService.createSession(
+        this.sessionRepo,
+        {
+          profileId: savedProfile.id,
+          profileIdField: 'supplierProfileId',
+          deviceFingerprint: 'registration-device',
+          ipAddress: clientIp,
+          userAgent: 'registration',
+        },
+      );
 
       const deviceBinding = this.deviceBindingRepo.create({
         supplierProfileId: savedProfile.id,
@@ -187,22 +184,9 @@ export class SupplierAuthService {
         isActive: true,
       });
       await this.deviceBindingRepo.save(deviceBinding);
-
-      const session = this.sessionRepo.create({
-        supplierProfileId: savedProfile.id,
-        sessionToken,
-        refreshToken: refreshTokenValue,
-        deviceFingerprint: 'registration-device',
-        ipAddress: clientIp,
-        userAgent: 'registration',
-        isActive: true,
-        expiresAt,
-        lastActivity: now().toJSDate(),
-      });
       await this.sessionRepo.save(session);
 
-      // Generate JWT tokens
-      const payload = {
+      const payload: JwtTokenPayload = {
         sub: savedUser.id,
         supplierId: savedProfile.id,
         email: savedUser.email,
@@ -210,14 +194,12 @@ export class SupplierAuthService {
         sessionToken,
       };
 
-      const [accessToken, jwtRefreshToken] = await Promise.all([
-        this.jwtService.signAsync(payload, { expiresIn: '1h' }),
-        this.jwtService.signAsync(payload, { expiresIn: '7d' }),
-      ]);
+      const { accessToken, refreshToken } =
+        await this.tokenService.generateTokenPair(payload);
 
       return {
         accessToken,
-        refreshToken: jwtRefreshToken,
+        refreshToken,
         expiresIn: 3600,
         supplier: {
           id: savedProfile.id,
@@ -237,10 +219,6 @@ export class SupplierAuthService {
     }
   }
 
-  /**
-   * Register a new supplier with full company details, profile, and documents
-   * Returns auth tokens for immediate login (email verification disabled for development)
-   */
   async registerFull(
     dto: {
       email: string;
@@ -256,7 +234,6 @@ export class SupplierAuthService {
     companyRegDocument?: Express.Multer.File,
     beeDocument?: Express.Multer.File,
   ): Promise<SupplierLoginResponseDto> {
-    // Check if email already exists
     const existingUser = await this.userRepo.findOne({
       where: { email: dto.email },
     });
@@ -264,7 +241,6 @@ export class SupplierAuthService {
       throw new ConflictException('An account with this email already exists');
     }
 
-    // Check if company registration number already exists
     if (dto.company?.registrationNumber) {
       const existingCompany = await this.companyRepo.findOne({
         where: { registrationNumber: dto.company.registrationNumber },
@@ -276,13 +252,11 @@ export class SupplierAuthService {
       }
     }
 
-    // Use transaction to ensure atomicity
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. Create the company
       const company = this.companyRepo.create({
         legalName: dto.company.legalName,
         tradingName: dto.company.tradingName,
@@ -311,9 +285,9 @@ export class SupplierAuthService {
       });
       const savedCompany = await queryRunner.manager.save(company);
 
-      // 2. Create the user with 'supplier' role
-      const salt = await bcrypt.genSalt();
-      const hashedPassword = await bcrypt.hash(dto.password, salt);
+      const { hash: hashedPassword, salt } = await this.passwordService.hash(
+        dto.password,
+      );
 
       let supplierRole = await this.userRoleRepo.findOne({
         where: { name: 'supplier' },
@@ -332,7 +306,6 @@ export class SupplierAuthService {
       });
       const savedUser = await queryRunner.manager.save(user);
 
-      // 3. Create the supplier profile with company link
       const profile = this.profileRepo.create({
         userId: savedUser.id,
         companyId: savedCompany.id,
@@ -342,11 +315,10 @@ export class SupplierAuthService {
         directPhone: dto.profile?.directPhone,
         mobilePhone: dto.profile?.mobilePhone,
         accountStatus: SupplierAccountStatus.PENDING,
-        emailVerified: true, // Skip verification for development
+        emailVerified: true,
       });
       const savedProfile = await queryRunner.manager.save(profile);
 
-      // 4. Create onboarding record
       const documentsComplete = !!(vatDocument && companyRegDocument);
       const onboarding = this.onboardingRepo.create({
         supplierId: savedProfile.id,
@@ -356,7 +328,6 @@ export class SupplierAuthService {
       });
       await queryRunner.manager.save(onboarding);
 
-      // 5. Save uploaded documents
       if (vatDocument || companyRegDocument || beeDocument) {
         await this.saveRegistrationDocuments(
           queryRunner.manager,
@@ -367,7 +338,6 @@ export class SupplierAuthService {
         );
       }
 
-      // 6. Create device binding
       const deviceBinding = this.deviceBindingRepo.create({
         supplierProfileId: savedProfile.id,
         deviceFingerprint: dto.deviceFingerprint,
@@ -380,7 +350,6 @@ export class SupplierAuthService {
 
       await queryRunner.commitTransaction();
 
-      // Log the registration
       await this.auditService.log({
         entityType: 'supplier_profile',
         entityId: savedProfile.id,
@@ -394,25 +363,19 @@ export class SupplierAuthService {
         userAgent,
       });
 
-      const sessionToken = uuidv4();
-      const refreshTokenValue = uuidv4();
-      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
-
-      const session = this.sessionRepo.create({
-        supplierProfileId: savedProfile.id,
-        sessionToken,
-        refreshToken: refreshTokenValue,
-        deviceFingerprint: dto.deviceFingerprint,
-        ipAddress: clientIp,
-        userAgent,
-        isActive: true,
-        expiresAt,
-        lastActivity: now().toJSDate(),
-      });
+      const { session, sessionToken } = this.sessionService.createSession(
+        this.sessionRepo,
+        {
+          profileId: savedProfile.id,
+          profileIdField: 'supplierProfileId',
+          deviceFingerprint: dto.deviceFingerprint,
+          ipAddress: clientIp,
+          userAgent,
+        },
+      );
       await this.sessionRepo.save(session);
 
-      // Generate JWT tokens
-      const payload = {
+      const payload: JwtTokenPayload = {
         sub: savedUser.id,
         supplierId: savedProfile.id,
         email: savedUser.email,
@@ -420,14 +383,12 @@ export class SupplierAuthService {
         sessionToken,
       };
 
-      const [accessToken, jwtRefreshToken] = await Promise.all([
-        this.jwtService.signAsync(payload, { expiresIn: '1h' }),
-        this.jwtService.signAsync(payload, { expiresIn: '7d' }),
-      ]);
+      const { accessToken, refreshToken } =
+        await this.tokenService.generateTokenPair(payload);
 
       return {
         accessToken,
-        refreshToken: jwtRefreshToken,
+        refreshToken,
         expiresIn: 3600,
         supplier: {
           id: savedProfile.id,
@@ -447,9 +408,6 @@ export class SupplierAuthService {
     }
   }
 
-  /**
-   * Save registration documents (VAT, Company Registration, BEE)
-   */
   private async saveRegistrationDocuments(
     manager: any,
     supplierId: number,
@@ -457,28 +415,19 @@ export class SupplierAuthService {
     companyRegDocument?: Express.Multer.File,
     beeDocument?: Express.Multer.File,
   ): Promise<void> {
-    const supplierDir = path.join(
-      this.uploadDir,
-      'suppliers',
-      supplierId.toString(),
-    );
-
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(supplierDir)) {
-      fs.mkdirSync(supplierDir, { recursive: true });
-    }
+    const subPath = `suppliers/${supplierId}/documents`;
 
     if (vatDocument) {
-      const fileName = `vat_${nowMillis()}_${vatDocument.originalname}`;
-      const filePath = path.join(supplierDir, fileName);
-
-      fs.writeFileSync(filePath, vatDocument.buffer);
+      const storageResult = await this.storageService.upload(
+        vatDocument,
+        subPath,
+      );
 
       const vatDocEntity = this.documentRepo.create({
         supplierId,
         documentType: SupplierDocumentType.VAT_CERT,
         fileName: vatDocument.originalname,
-        filePath,
+        filePath: storageResult.path,
         fileSize: vatDocument.size,
         mimeType: vatDocument.mimetype,
         validationStatus: SupplierDocumentValidationStatus.PENDING,
@@ -489,16 +438,16 @@ export class SupplierAuthService {
     }
 
     if (companyRegDocument) {
-      const fileName = `company_reg_${nowMillis()}_${companyRegDocument.originalname}`;
-      const filePath = path.join(supplierDir, fileName);
-
-      fs.writeFileSync(filePath, companyRegDocument.buffer);
+      const storageResult = await this.storageService.upload(
+        companyRegDocument,
+        subPath,
+      );
 
       const companyRegEntity = this.documentRepo.create({
         supplierId,
         documentType: SupplierDocumentType.REGISTRATION_CERT,
         fileName: companyRegDocument.originalname,
-        filePath,
+        filePath: storageResult.path,
         fileSize: companyRegDocument.size,
         mimeType: companyRegDocument.mimetype,
         validationStatus: SupplierDocumentValidationStatus.PENDING,
@@ -509,35 +458,36 @@ export class SupplierAuthService {
     }
 
     if (beeDocument) {
-      const fileName = `bee_${nowMillis()}_${beeDocument.originalname}`;
-      const filePath = path.join(supplierDir, fileName);
-
-      fs.writeFileSync(filePath, beeDocument.buffer);
+      const storageResult = await this.storageService.upload(
+        beeDocument,
+        subPath,
+      );
 
       const beeDocEntity = this.documentRepo.create({
         supplierId,
         documentType: SupplierDocumentType.BEE_CERT,
         fileName: beeDocument.originalname,
-        filePath,
+        filePath: storageResult.path,
         fileSize: beeDocument.size,
         mimeType: beeDocument.mimetype,
         validationStatus: SupplierDocumentValidationStatus.PENDING,
-        isRequired: false, // BEE is not always required
+        isRequired: false,
       });
 
       await manager.save(beeDocEntity);
     }
   }
 
-  /**
-   * Verify email address
-   */
   async verifyEmail(
     token: string,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
     try {
-      const payload = await this.jwtService.verifyAsync(token);
+      const payload = await this.tokenService.verifyToken<{
+        userId: number;
+        email: string;
+        type: string;
+      }>(token);
 
       if (payload.type !== 'supplier_verification') {
         throw new BadRequestException('Invalid verification token');
@@ -570,7 +520,6 @@ export class SupplierAuthService {
         );
       }
 
-      // Mark email as verified
       profile.emailVerified = true;
       profile.emailVerificationToken = null;
       profile.emailVerificationExpires = null;
@@ -597,16 +546,12 @@ export class SupplierAuthService {
     }
   }
 
-  /**
-   * Resend verification email
-   */
   async resendVerificationEmail(
     email: string,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
     const user = await this.userRepo.findOne({ where: { email } });
     if (!user) {
-      // Don't reveal if email exists
       return {
         success: true,
         message:
@@ -629,12 +574,12 @@ export class SupplierAuthService {
       throw new BadRequestException('Email is already verified');
     }
 
-    const verificationToken = this.jwtService.sign(
+    const verificationToken = this.tokenService.generateVerificationToken(
       { userId: user.id, email, type: 'supplier_verification' },
-      { expiresIn: `${EMAIL_VERIFICATION_EXPIRY_HOURS}h` },
+      AUTH_CONSTANTS.EMAIL_VERIFICATION_EXPIRY_HOURS,
     );
     const verificationExpires = now()
-      .plus({ hours: EMAIL_VERIFICATION_EXPIRY_HOURS })
+      .plus({ hours: AUTH_CONSTANTS.EMAIL_VERIFICATION_EXPIRY_HOURS })
       .toJSDate();
 
     profile.emailVerificationToken = verificationToken;
@@ -652,18 +597,16 @@ export class SupplierAuthService {
     };
   }
 
-  /**
-   * Login with email, password, and device fingerprint verification
-   */
   async login(
     dto: SupplierLoginDto,
     clientIp: string,
     userAgent: string,
   ): Promise<SupplierLoginResponseDto> {
-    // Check for too many failed attempts (rate limiting)
-    await this.checkLoginAttempts(dto.email, clientIp);
+    await this.rateLimitingService.checkLoginAttempts(
+      this.loginAttemptRepo,
+      dto.email,
+    );
 
-    // Find user by email
     const user = await this.userRepo.findOne({
       where: { email: dto.email },
       relations: ['roles'],
@@ -682,22 +625,31 @@ export class SupplierAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // DEVELOPMENT MODE: Skip password verification
-    // TODO: Re-enable password verification for production
-    // const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    // if (!isPasswordValid) {
-    //   await this.logLoginAttempt(null, dto.email, false, SupplierLoginFailureReason.INVALID_CREDENTIALS, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new UnauthorizedException('Invalid credentials');
-    // }
+    if (!this.authConfigService.isPasswordVerificationDisabled()) {
+      const isPasswordValid = await this.passwordService.verify(
+        dto.password,
+        user.password,
+      );
+      if (!isPasswordValid) {
+        await this.logLoginAttempt(
+          null,
+          dto.email,
+          false,
+          SupplierLoginFailureReason.INVALID_CREDENTIALS,
+          dto.deviceFingerprint,
+          clientIp,
+          userAgent,
+        );
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    }
 
-    // Get supplier profile
     const profile = await this.profileRepo.findOne({
       where: { userId: user.id },
       relations: ['company', 'deviceBindings', 'onboarding'],
     });
 
     if (!profile) {
-      // Check if user has a different role (customer or admin)
       const userRoles = user.roles?.map((r) => r.name) || [];
       this.logger.warn(
         `Supplier login failed: User ${dto.email} (ID: ${user.id}) has no supplier profile. Roles: ${userRoles.join(', ')}`,
@@ -719,92 +671,126 @@ export class SupplierAuthService {
       );
     }
 
-    // DEVELOPMENT MODE: Skip email verification
-    // TODO: Re-enable email verification for production
-    // if (!profile.emailVerified) {
-    //   await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.EMAIL_NOT_VERIFIED, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new ForbiddenException('Please verify your email before logging in');
-    // }
+    if (
+      !this.authConfigService.isEmailVerificationDisabled() &&
+      !profile.emailVerified
+    ) {
+      await this.logLoginAttempt(
+        profile.id,
+        dto.email,
+        false,
+        SupplierLoginFailureReason.EMAIL_NOT_VERIFIED,
+        dto.deviceFingerprint,
+        clientIp,
+        userAgent,
+      );
+      throw new ForbiddenException('Please verify your email before logging in');
+    }
 
-    // DEVELOPMENT MODE: Skip account status checks
-    // TODO: Re-enable account status checks for production
-    // if (profile.accountStatus === SupplierAccountStatus.SUSPENDED) {
-    //   await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.ACCOUNT_SUSPENDED, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new ForbiddenException('Account has been suspended. Please contact support.');
-    // }
-    //
-    // if (profile.accountStatus === SupplierAccountStatus.DEACTIVATED) {
-    //   await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.ACCOUNT_DEACTIVATED, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new ForbiddenException('Account has been deactivated');
-    // }
+    if (!this.authConfigService.isAccountStatusCheckDisabled()) {
+      if (profile.accountStatus === SupplierAccountStatus.SUSPENDED) {
+        await this.logLoginAttempt(
+          profile.id,
+          dto.email,
+          false,
+          SupplierLoginFailureReason.ACCOUNT_SUSPENDED,
+          dto.deviceFingerprint,
+          clientIp,
+          userAgent,
+        );
+        throw new ForbiddenException(
+          'Account has been suspended. Please contact support.',
+        );
+      }
 
-    // DEVELOPMENT MODE: Skip device binding verification
-    // TODO: Re-enable device binding for production
-    // let activeBinding = profile.deviceBindings?.find((b) => b.isActive && b.isPrimary);
-    //
-    // if (!activeBinding) {
-    //   // First login - create device binding
-    //   const deviceBinding = this.deviceBindingRepo.create({
-    //     supplierProfileId: profile.id,
-    //     deviceFingerprint: dto.deviceFingerprint,
-    //     registeredIp: clientIp,
-    //     browserInfo: dto.browserInfo,
-    //     isPrimary: true,
-    //     isActive: true,
-    //   });
-    //   activeBinding = await this.deviceBindingRepo.save(deviceBinding);
-    //   this.logger.log(`Created device binding for supplier ${profile.id}`);
-    // } else if (activeBinding.deviceFingerprint !== dto.deviceFingerprint) {
-    //   // Device mismatch
-    //   await this.logLoginAttempt(profile.id, dto.email, false, SupplierLoginFailureReason.DEVICE_MISMATCH, dto.deviceFingerprint, clientIp, userAgent);
-    //
-    //   await this.auditService.log({
-    //     entityType: 'supplier_profile',
-    //     entityId: profile.id,
-    //     action: AuditAction.REJECT,
-    //     newValues: {
-    //       reason: 'device_mismatch',
-    //       attemptedFingerprint: dto.deviceFingerprint.substring(0, 20) + '...',
-    //     },
-    //     ipAddress: clientIp,
-    //     userAgent,
-    //   });
-    //
-    //   throw new UnauthorizedException(
-    //     'Device not recognized. This account is locked to a specific device. Please contact support if you need to change devices.',
-    //   );
-    // }
+      if (profile.accountStatus === SupplierAccountStatus.DEACTIVATED) {
+        await this.logLoginAttempt(
+          profile.id,
+          dto.email,
+          false,
+          SupplierLoginFailureReason.ACCOUNT_DEACTIVATED,
+          dto.deviceFingerprint,
+          clientIp,
+          userAgent,
+        );
+        throw new ForbiddenException('Account has been deactivated');
+      }
+    }
 
-    // DEVELOPMENT MODE: Skip IP mismatch check
-    // TODO: Re-enable IP mismatch check for production
-    // const ipMismatchWarning = activeBinding.registeredIp !== clientIp;
-    const ipMismatchWarning = false;
+    let ipMismatchWarning = false;
+    let activeBinding = this.deviceBindingService.findPrimaryActiveBinding(
+      profile.deviceBindings,
+    );
 
-    // Invalidate any existing active sessions (single session enforcement)
-    await this.invalidateAllSessions(
+    if (!this.authConfigService.isDeviceFingerprintDisabled()) {
+      if (!activeBinding) {
+        const deviceBinding = this.deviceBindingRepo.create({
+          supplierProfileId: profile.id,
+          deviceFingerprint: dto.deviceFingerprint,
+          registeredIp: clientIp,
+          browserInfo: dto.browserInfo,
+          isPrimary: true,
+          isActive: true,
+        });
+        activeBinding = await this.deviceBindingRepo.save(deviceBinding);
+        this.logger.log(`Created device binding for supplier ${profile.id}`);
+      } else if (activeBinding.deviceFingerprint !== dto.deviceFingerprint) {
+        await this.logLoginAttempt(
+          profile.id,
+          dto.email,
+          false,
+          SupplierLoginFailureReason.DEVICE_MISMATCH,
+          dto.deviceFingerprint,
+          clientIp,
+          userAgent,
+        );
+
+        await this.auditService.log({
+          entityType: 'supplier_profile',
+          entityId: profile.id,
+          action: AuditAction.REJECT,
+          newValues: {
+            reason: 'device_mismatch',
+            attemptedFingerprint: dto.deviceFingerprint.substring(0, 20) + '...',
+          },
+          ipAddress: clientIp,
+          userAgent,
+        });
+
+        throw new UnauthorizedException(
+          'Device not recognized. This account is locked to a specific device. Please contact support if you need to change devices.',
+        );
+      }
+    }
+
+    if (
+      !this.authConfigService.isIpMismatchCheckDisabled() &&
+      activeBinding &&
+      activeBinding.registeredIp !== clientIp
+    ) {
+      ipMismatchWarning = true;
+    }
+
+    await this.sessionService.invalidateAllSessions(
+      this.sessionRepo,
       profile.id,
+      'supplierProfileId',
       SupplierSessionInvalidationReason.NEW_LOGIN,
     );
 
-    const sessionToken = uuidv4();
-    const refreshToken = uuidv4();
-    const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
-
-    const session = this.sessionRepo.create({
-      supplierProfileId: profile.id,
-      sessionToken,
-      refreshToken,
-      deviceFingerprint: dto.deviceFingerprint,
-      ipAddress: clientIp,
-      userAgent,
-      isActive: true,
-      expiresAt,
-      lastActivity: now().toJSDate(),
-    });
+    const { session, sessionToken } = this.sessionService.createSession(
+      this.sessionRepo,
+      {
+        profileId: profile.id,
+        profileIdField: 'supplierProfileId',
+        deviceFingerprint: dto.deviceFingerprint,
+        ipAddress: clientIp,
+        userAgent,
+      },
+    );
     await this.sessionRepo.save(session);
 
-    // Generate JWT tokens
-    const payload = {
+    const payload: JwtTokenPayload = {
       sub: user.id,
       supplierId: profile.id,
       email: user.email,
@@ -812,12 +798,9 @@ export class SupplierAuthService {
       sessionToken,
     };
 
-    const [accessToken, jwtRefreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, { expiresIn: '1h' }),
-      this.jwtService.signAsync(payload, { expiresIn: '7d' }),
-    ]);
+    const { accessToken, refreshToken } =
+      await this.tokenService.generateTokenPair(payload);
 
-    // Log successful login
     await this.logLoginAttempt(
       profile.id,
       dto.email,
@@ -829,7 +812,6 @@ export class SupplierAuthService {
       ipMismatchWarning,
     );
 
-    // Log audit
     await this.auditService.log({
       entityType: 'supplier_profile',
       entityId: profile.id,
@@ -844,7 +826,7 @@ export class SupplierAuthService {
 
     return {
       accessToken,
-      refreshToken: jwtRefreshToken,
+      refreshToken,
       expiresIn: 3600,
       supplier: {
         id: profile.id,
@@ -859,20 +841,14 @@ export class SupplierAuthService {
     };
   }
 
-  /**
-   * Logout - invalidate current session
-   */
   async logout(sessionToken: string, clientIp: string): Promise<void> {
-    const session = await this.sessionRepo.findOne({
-      where: { sessionToken, isActive: true },
-    });
+    const session = await this.sessionService.invalidateSession(
+      this.sessionRepo,
+      sessionToken,
+      SupplierSessionInvalidationReason.LOGOUT,
+    );
 
     if (session) {
-      session.isActive = false;
-      session.invalidatedAt = now().toJSDate();
-      session.invalidationReason = SupplierSessionInvalidationReason.LOGOUT;
-      await this.sessionRepo.save(session);
-
       await this.auditService.log({
         entityType: 'supplier_profile',
         entityId: session.supplierProfileId,
@@ -883,16 +859,14 @@ export class SupplierAuthService {
     }
   }
 
-  /**
-   * Refresh session token
-   */
   async refreshSession(
     refreshToken: string,
     deviceFingerprint: string,
     clientIp: string,
   ): Promise<SupplierLoginResponseDto> {
     try {
-      const payload = await this.jwtService.verifyAsync(refreshToken);
+      const payload =
+        await this.tokenService.verifyToken<JwtTokenPayload>(refreshToken);
 
       const profile = await this.profileRepo.findOne({
         where: { id: payload.supplierId },
@@ -903,11 +877,9 @@ export class SupplierAuthService {
         throw new UnauthorizedException('Supplier not found');
       }
 
-      const deviceBindingDisabled =
-        this.configService.get('DISABLE_DEVICE_FINGERPRINT') === 'true';
-      if (!deviceBindingDisabled) {
-        const activeBinding = profile.deviceBindings.find(
-          (b) => b.isActive && b.isPrimary,
+      if (!this.authConfigService.isDeviceFingerprintDisabled()) {
+        const activeBinding = this.deviceBindingService.findPrimaryActiveBinding(
+          profile.deviceBindings,
         );
         if (
           !activeBinding ||
@@ -924,9 +896,8 @@ export class SupplierAuthService {
         throw new ForbiddenException('Account is not active');
       }
 
-      // Generate new tokens
       const sessionToken = uuidv4();
-      const newPayload = {
+      const newPayload: JwtTokenPayload = {
         sub: profile.userId,
         supplierId: profile.id,
         email: profile.user.email,
@@ -934,16 +905,14 @@ export class SupplierAuthService {
         sessionToken,
       };
 
-      const [accessToken, newRefreshToken] = await Promise.all([
-        this.jwtService.signAsync(newPayload, { expiresIn: '1h' }),
-        this.jwtService.signAsync(newPayload, { expiresIn: '7d' }),
-      ]);
+      const { accessToken, refreshToken: newRefreshToken } =
+        await this.tokenService.generateTokenPair(newPayload);
 
-      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
-
-      await this.sessionRepo.update(
-        { supplierProfileId: profile.id, isActive: true },
-        { sessionToken, lastActivity: now().toJSDate(), expiresAt },
+      await this.sessionService.updateSessionToken(
+        this.sessionRepo,
+        profile.id,
+        'supplierProfileId',
+        sessionToken,
       );
 
       return {
@@ -967,64 +936,19 @@ export class SupplierAuthService {
     }
   }
 
-  /**
-   * Verify session is valid
-   */
   async verifySession(sessionToken: string): Promise<SupplierSession | null> {
-    const session = await this.sessionRepo.findOne({
-      where: { sessionToken, isActive: true },
-      relations: ['supplierProfile'],
-    });
-
-    if (!session) return null;
-
-    if (now().toJSDate() > session.expiresAt) {
-      session.isActive = false;
-      session.invalidatedAt = now().toJSDate();
-      session.invalidationReason = SupplierSessionInvalidationReason.EXPIRED;
-      await this.sessionRepo.save(session);
-      return null;
-    }
-
-    session.lastActivity = now().toJSDate();
-    await this.sessionRepo.save(session);
-
-    return session;
+    return this.sessionService.validateSession(
+      this.sessionRepo,
+      sessionToken,
+      ['supplierProfile'],
+    );
   }
 
-  /**
-   * Get supplier profile by ID
-   */
-  async getProfileById(supplierId: number): Promise<SupplierProfile | null> {
+  async profileById(supplierId: number): Promise<SupplierProfile | null> {
     return this.profileRepo.findOne({
       where: { id: supplierId },
       relations: ['company', 'onboarding', 'documents', 'user'],
     });
-  }
-
-  // Private helper methods
-
-  private async checkLoginAttempts(
-    email: string,
-    ipAddress: string,
-  ): Promise<void> {
-    const lockoutTime = now()
-      .minus({ minutes: LOGIN_LOCKOUT_MINUTES })
-      .toJSDate();
-
-    const recentAttempts = await this.loginAttemptRepo.count({
-      where: {
-        email,
-        success: false,
-        attemptTime: MoreThan(lockoutTime),
-      },
-    });
-
-    if (recentAttempts >= MAX_LOGIN_ATTEMPTS) {
-      throw new UnauthorizedException(
-        `Too many failed login attempts. Please try again in ${LOGIN_LOCKOUT_MINUTES} minutes.`,
-      );
-    }
   }
 
   private async logLoginAttempt(
@@ -1037,8 +961,9 @@ export class SupplierAuthService {
     userAgent: string,
     ipMismatchWarning: boolean = false,
   ): Promise<void> {
-    const attempt = this.loginAttemptRepo.create({
-      supplierProfileId,
+    await this.rateLimitingService.logLoginAttempt(this.loginAttemptRepo, {
+      profileId: supplierProfileId,
+      profileIdField: 'supplierProfileId',
       email,
       success,
       failureReason,
@@ -1047,20 +972,5 @@ export class SupplierAuthService {
       userAgent,
       ipMismatchWarning,
     });
-    await this.loginAttemptRepo.save(attempt);
-  }
-
-  private async invalidateAllSessions(
-    supplierProfileId: number,
-    reason: SupplierSessionInvalidationReason,
-  ): Promise<void> {
-    await this.sessionRepo.update(
-      { supplierProfileId, isActive: true },
-      {
-        isActive: false,
-        invalidatedAt: now().toJSDate(),
-        invalidationReason: reason,
-      },
-    );
   }
 }

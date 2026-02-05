@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { AngleRangeService } from './angle-range.service';
 import { CreateAngleRangeDto } from './dto/create-angle-range.dto';
@@ -43,8 +44,8 @@ export class AngleRangeController {
   })
   @ApiResponse({ status: 404, description: 'Angle range not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
-  findOne(@Param('id') id: string) {
-    return this.angleRangeService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.angleRangeService.findOne(id);
   }
 
   @Patch(':id')
@@ -56,10 +57,10 @@ export class AngleRangeController {
   })
   @ApiResponse({ status: 404, description: 'Angle range not found' })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateAngleRangeDto: UpdateAngleRangeDto,
   ) {
-    return this.angleRangeService.update(+id, updateAngleRangeDto);
+    return this.angleRangeService.update(id, updateAngleRangeDto);
   }
 
   @Delete(':id')
@@ -67,7 +68,7 @@ export class AngleRangeController {
   @ApiResponse({ status: 200, description: 'Angle range deleted successfully' })
   @ApiResponse({ status: 404, description: 'Angle range not found' })
   @ApiResponse({ status: 400, description: 'Invalid ID parameter' })
-  remove(@Param('id') id: string) {
-    return this.angleRangeService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.angleRangeService.remove(id);
   }
 }

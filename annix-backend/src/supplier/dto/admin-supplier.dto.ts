@@ -85,7 +85,7 @@ export class SupplierDetailDto extends SupplierListItemDto {
     status: string;
     companyDetailsComplete: boolean;
     documentsComplete: boolean;
-    submittedAt?: Date;
+    submittedAt?: Date | null;
     rejectionReason?: string;
     remediationSteps?: string;
     resubmissionCount: number;

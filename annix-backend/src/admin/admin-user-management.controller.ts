@@ -28,6 +28,7 @@ import {
   AdminUserListResponseDto,
   AdminUserDetailDto,
 } from './dto/admin-user-management.dto';
+import { ApiMessageResponse, messageResponse } from '../shared/dto';
 import { User } from '../user/entities/user.entity';
 
 @ApiTags('Admin User Management')
@@ -109,14 +110,14 @@ export class AdminUserManagementController {
     @Param('id', ParseIntPipe) id: number,
     @Body() deactivateDto: DeactivateAdminUserDto,
     @Request() req,
-  ): Promise<{ message: string }> {
+  ): Promise<ApiMessageResponse> {
     const deactivatedBy = req.user.sub || req.user.userId;
     await this.userManagementService.deactivateAdminUser(
       id,
       deactivateDto,
       deactivatedBy,
     );
-    return { message: 'User deactivated successfully' };
+    return messageResponse('User deactivated successfully');
   }
 
   @Post(':id/reactivate')

@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsZAPhone } from '../../shared/validators';
 
 export class CompanyDetailsDto {
   @ApiProperty({
@@ -118,6 +119,7 @@ export class CompanyDetailsDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(30)
+  @IsZAPhone()
   primaryPhone: string;
 
   @ApiPropertyOptional({
@@ -200,6 +202,7 @@ export class UserDetailsDto {
   @IsString()
   @IsOptional()
   @MaxLength(30)
+  @IsZAPhone()
   directPhone?: string;
 
   @ApiPropertyOptional({
@@ -209,6 +212,7 @@ export class UserDetailsDto {
   @IsString()
   @IsOptional()
   @MaxLength(30)
+  @IsZAPhone()
   mobilePhone?: string;
 }
 

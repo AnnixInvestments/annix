@@ -10,7 +10,6 @@ import { log } from '@/app/lib/logger';
 import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
 import {
   PIPE_END_OPTIONS,
-  BEND_END_OPTIONS,
   getScheduleListForSpec,
   weldCountPerPipe as getWeldCountPerPipe,
   flangeWeldCountPerPipe as getFlangeWeldCountPerPipe,
@@ -1176,7 +1175,7 @@ function StraightPipeFormComponent({
                               id={`pipe-config-${entry.id}`}
                               value={entry.specs.pipeEndConfiguration || (entry.specs?.pipeType === 'puddle' ? 'FOE' : 'PE')}
                               onChange={async (value) => {
-                                const newConfig = value as any;
+                                const newConfig = value;
                                 let weldDetails = null;
                                 try {
                                   weldDetails = await getPipeEndConfigurationDetails(newConfig);
@@ -1894,8 +1893,7 @@ function StraightPipeFormComponent({
                               : 0;
                             const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
-                            const bendEndOption = BEND_END_OPTIONS.find(o => o.value === entry.specs.pipeEndConfiguration);
-                            const tackWeldEnds = (bendEndOption as any)?.tackWeldEnds || 0;
+                            const tackWeldEnds = getTackWeldEndsPerPipe(entry.specs?.pipeEndConfiguration || 'PE');
                             const tackWeldTotalWeight = nominalBore && tackWeldEnds > 0
                               ? getTackWeldWeight(nominalBore, tackWeldEnds) * (entry.calculation?.calculatedPipeCount || 0)
                               : 0;

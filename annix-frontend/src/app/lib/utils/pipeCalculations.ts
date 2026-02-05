@@ -220,7 +220,7 @@ export const TEMPERATURE_DERATING: Record<number, number> = {
 /**
  * Get temperature derating factor with interpolation
  */
-export function getTemperatureDerating(temperatureC: number): number {
+export function temperatureDerating(temperatureC: number): number {
   const temps = Object.keys(TEMPERATURE_DERATING).map(Number).sort((a, b) => a - b);
 
   if (temperatureC <= temps[0]) return TEMPERATURE_DERATING[temps[0]];
@@ -271,7 +271,7 @@ export function calculateMaxAllowablePressure(
   corrosionAllowanceMm: number = 0
 ): number {
   const material = MATERIAL_ALLOWABLE_STRESS[materialCode] || MATERIAL_ALLOWABLE_STRESS['ASTM_A106_Grade_B'];
-  const tempDerating = getTemperatureDerating(temperatureC);
+  const tempDerating = temperatureDerating(temperatureC);
 
   // Effective wall thickness after corrosion allowance
   const effectiveWT = wallThicknessMm - corrosionAllowanceMm;
@@ -315,7 +315,7 @@ export function calculateMinWallThickness(
   safetyFactor: number = 1.0
 ): number {
   const material = MATERIAL_ALLOWABLE_STRESS[materialCode] || MATERIAL_ALLOWABLE_STRESS['ASTM_A106_Grade_B'];
-  const tempDerating = getTemperatureDerating(temperatureC);
+  const tempDerating = temperatureDerating(temperatureC);
 
   // Derated allowable stress
   const allowableStress = material.stressMPa * tempDerating;

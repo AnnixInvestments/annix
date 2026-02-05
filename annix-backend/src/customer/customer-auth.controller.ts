@@ -9,6 +9,8 @@ import {
   Get,
   UseInterceptors,
   UploadedFiles,
+  UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import {
@@ -18,10 +20,12 @@ import {
   ApiBody,
   ApiParam,
   ApiConsumes,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { CustomerAuthService } from './customer-auth.service';
+import { CustomerAuthGuard } from './guards/customer-auth.guard';
 import {
   CreateCustomerRegistrationDto,
   CustomerLoginDto,
@@ -84,11 +88,16 @@ export class CustomerAuthController {
     const clientIp = this.getClientIp(req);
 
     // Parse JSON strings from form data
-    const dto: CreateCustomerRegistrationDto = {
-      company: JSON.parse(body.company),
-      user: JSON.parse(body.user),
-      security: JSON.parse(body.security),
-    };
+    let dto: CreateCustomerRegistrationDto;
+    try {
+      dto = {
+        company: JSON.parse(body.company),
+        user: JSON.parse(body.user),
+        security: JSON.parse(body.security),
+      };
+    } catch {
+      throw new BadRequestException('Invalid JSON in form data');
+    }
 
     // Extract files
     const vatDocument = files.vatDocument?.[0];
@@ -148,7 +157,12 @@ export class CustomerAuthController {
     }
 
     const documentType = body.documentType as 'vat' | 'registration';
-    const expectedData = JSON.parse(body.expectedData);
+    let expectedData;
+    try {
+      expectedData = JSON.parse(body.expectedData);
+    } catch {
+      throw new BadRequestException('Invalid expectedData JSON');
+    }
 
     return this.customerAuthService.validateUploadedDocument(
       document,
@@ -246,14 +260,21 @@ export class CustomerAuthController {
   }
 
   @Post('auth/verify-device')
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify device fingerprint is registered' })
+  @ApiBody({
+    schema: { properties: { deviceFingerprint: { type: 'string' } } },
+  })
   @ApiResponse({ status: 200, description: 'Device verification result' })
   async verifyDevice(
-    @Body() body: { customerId: number; deviceFingerprint: string },
+    @Body() body: { deviceFingerprint: string },
+    @Req() req: Request,
   ) {
+    const customerId = req['customer'].customerId;
     const binding = await this.customerAuthService.verifyDeviceBinding(
-      body.customerId,
+      customerId,
       body.deviceFingerprint,
     );
 

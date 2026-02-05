@@ -8,6 +8,7 @@ import {
   IsNumber,
 } from 'class-validator';
 import { RfqStatus } from '../entities/rfq.entity';
+import { IsZAPhone, IsFutureOrTodayDate } from '../../shared/validators';
 
 export class CreateRfqDto {
   @ApiProperty({
@@ -35,11 +36,13 @@ export class CreateRfqDto {
   @ApiProperty({ description: 'Customer phone number', required: false })
   @IsOptional()
   @IsString()
+  @IsZAPhone()
   customerPhone?: string;
 
   @ApiProperty({ description: 'Required delivery date', required: false })
   @IsOptional()
   @IsDateString()
+  @IsFutureOrTodayDate()
   requiredDate?: string;
 
   @ApiProperty({ description: 'RFQ status', enum: RfqStatus, required: false })

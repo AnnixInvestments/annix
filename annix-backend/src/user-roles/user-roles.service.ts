@@ -13,11 +13,11 @@ import { Repository } from 'typeorm';
 export class UserRolesService {
   constructor(
     @InjectRepository(UserRole)
-    private readonly userRoleRepository: Repository<UserRole>,
+    private readonly userRoleRepo: Repository<UserRole>,
   ) {}
 
   async create(createUserRoleDto: CreateUserRoleDto): Promise<UserRole> {
-    const existing = await this.userRoleRepository.findOne({
+    const existing = await this.userRoleRepo.findOne({
       where: { name: createUserRoleDto.name },
     });
 
@@ -25,16 +25,16 @@ export class UserRolesService {
       throw new ConflictException('Role already exists');
     }
 
-    const role = this.userRoleRepository.create(createUserRoleDto);
-    return this.userRoleRepository.save(role);
+    const role = this.userRoleRepo.create(createUserRoleDto);
+    return this.userRoleRepo.save(role);
   }
 
   findAll() {
-    return this.userRoleRepository.find();
+    return this.userRoleRepo.find();
   }
 
   async findOne(id: number): Promise<UserRole> {
-    const role = await this.userRoleRepository.findOne({ where: { id } });
+    const role = await this.userRoleRepo.findOne({ where: { id } });
     if (!role) {
       throw new NotFoundException(`Role with ID ${id} not found`);
     }
@@ -48,7 +48,7 @@ export class UserRolesService {
     const role = await this.findOne(id);
 
     if (updateUserRoleDto.name) {
-      const existing = await this.userRoleRepository.findOne({
+      const existing = await this.userRoleRepo.findOne({
         where: { name: updateUserRoleDto.name },
       });
       if (existing && existing.id !== id) {
@@ -57,11 +57,11 @@ export class UserRolesService {
     }
 
     Object.assign(role, updateUserRoleDto);
-    return this.userRoleRepository.save(role);
+    return this.userRoleRepo.save(role);
   }
 
   async remove(id: number): Promise<void> {
     const role = await this.findOne(id);
-    await this.userRoleRepository.remove(role);
+    await this.userRoleRepo.remove(role);
   }
 }

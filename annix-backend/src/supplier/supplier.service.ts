@@ -552,7 +552,7 @@ export class SupplierService {
       status: SupplierOnboardingStatus;
       companyDetailsComplete: boolean;
       documentsComplete: boolean;
-      submittedAt?: Date;
+      submittedAt?: Date | null;
     };
     documents: {
       total: number;

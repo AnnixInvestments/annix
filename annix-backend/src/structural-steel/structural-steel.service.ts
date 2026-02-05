@@ -27,36 +27,36 @@ const STEEL_DENSITY_KG_M3 = 7850;
 export class StructuralSteelService {
   constructor(
     @InjectRepository(StructuralSteelType)
-    private readonly typeRepository: Repository<StructuralSteelType>,
+    private readonly typeRepo: Repository<StructuralSteelType>,
     @InjectRepository(StructuralSteelSection)
-    private readonly sectionRepository: Repository<StructuralSteelSection>,
+    private readonly sectionRepo: Repository<StructuralSteelSection>,
     @InjectRepository(StructuralSteelGrade)
-    private readonly gradeRepository: Repository<StructuralSteelGrade>,
+    private readonly gradeRepo: Repository<StructuralSteelGrade>,
     @InjectRepository(FabricationOperation)
-    private readonly operationRepository: Repository<FabricationOperation>,
+    private readonly operationRepo: Repository<FabricationOperation>,
     @InjectRepository(FabricationComplexity)
-    private readonly complexityRepository: Repository<FabricationComplexity>,
+    private readonly complexityRepo: Repository<FabricationComplexity>,
     @InjectRepository(ShopLaborRate)
-    private readonly laborRateRepository: Repository<ShopLaborRate>,
+    private readonly laborRateRepo: Repository<ShopLaborRate>,
   ) {}
 
   // ==================== Type Methods ====================
 
   async getAllTypes(): Promise<StructuralSteelType[]> {
-    return this.typeRepository.find({
+    return this.typeRepo.find({
       where: { isActive: true },
       order: { displayOrder: 'ASC', name: 'ASC' },
     });
   }
 
   async getTypeByCode(code: string): Promise<StructuralSteelType | null> {
-    return this.typeRepository.findOne({ where: { code, isActive: true } });
+    return this.typeRepo.findOne({ where: { code, isActive: true } });
   }
 
   async getTypeWithSections(
     typeId: number,
   ): Promise<StructuralSteelType | null> {
-    return this.typeRepository.findOne({
+    return this.typeRepo.findOne({
       where: { id: typeId, isActive: true },
       relations: ['sections'],
     });
@@ -65,7 +65,7 @@ export class StructuralSteelService {
   // ==================== Section Methods ====================
 
   async getAllSections(): Promise<StructuralSteelSection[]> {
-    return this.sectionRepository.find({
+    return this.sectionRepo.find({
       where: { isActive: true },
       relations: ['steelType'],
       order: { typeId: 'ASC', displayOrder: 'ASC' },
@@ -73,26 +73,26 @@ export class StructuralSteelService {
   }
 
   async getSectionsByType(typeCode: string): Promise<StructuralSteelSection[]> {
-    const type = await this.typeRepository.findOne({
+    const type = await this.typeRepo.findOne({
       where: { code: typeCode, isActive: true },
     });
     if (!type) return [];
 
-    return this.sectionRepository.find({
+    return this.sectionRepo.find({
       where: { typeId: type.id, isActive: true },
       order: { displayOrder: 'ASC', designation: 'ASC' },
     });
   }
 
   async getSectionById(id: number): Promise<StructuralSteelSection | null> {
-    return this.sectionRepository.findOne({
+    return this.sectionRepo.findOne({
       where: { id, isActive: true },
       relations: ['steelType'],
     });
   }
 
   async searchSections(query: string): Promise<StructuralSteelSection[]> {
-    return this.sectionRepository
+    return this.sectionRepo
       .createQueryBuilder('section')
       .leftJoinAndSelect('section.steelType', 'type')
       .where('section.is_active = :active', { active: true })
@@ -108,14 +108,14 @@ export class StructuralSteelService {
   // ==================== Grade Methods ====================
 
   async getAllGrades(): Promise<StructuralSteelGrade[]> {
-    return this.gradeRepository.find({
+    return this.gradeRepo.find({
       where: { isActive: true },
       order: { displayOrder: 'ASC', code: 'ASC' },
     });
   }
 
   async getGradesForType(typeCode: string): Promise<StructuralSteelGrade[]> {
-    return this.gradeRepository
+    return this.gradeRepo
       .createQueryBuilder('grade')
       .where('grade.is_active = :active', { active: true })
       .andWhere(':typeCode = ANY(grade.compatible_types)', { typeCode })
@@ -124,7 +124,7 @@ export class StructuralSteelService {
   }
 
   async getGradeByCode(code: string): Promise<StructuralSteelGrade | null> {
-    return this.gradeRepository.findOne({ where: { code, isActive: true } });
+    return this.gradeRepo.findOne({ where: { code, isActive: true } });
   }
 
   // ==================== Calculation Methods ====================
@@ -329,14 +329,14 @@ export class StructuralSteelService {
   // ==================== Fabrication Operation Methods ====================
 
   async getAllOperations(): Promise<FabricationOperation[]> {
-    return this.operationRepository.find({
+    return this.operationRepo.find({
       where: { isActive: true },
       order: { displayOrder: 'ASC', name: 'ASC' },
     });
   }
 
   async getOperationByCode(code: string): Promise<FabricationOperation | null> {
-    return this.operationRepository.findOne({
+    return this.operationRepo.findOne({
       where: { code, isActive: true },
     });
   }
@@ -344,7 +344,7 @@ export class StructuralSteelService {
   // ==================== Fabrication Complexity Methods ====================
 
   async getAllComplexityLevels(): Promise<FabricationComplexity[]> {
-    return this.complexityRepository.find({
+    return this.complexityRepo.find({
       where: { isActive: true },
       order: { displayOrder: 'ASC' },
     });
@@ -353,7 +353,7 @@ export class StructuralSteelService {
   async getComplexityByLevel(
     level: string,
   ): Promise<FabricationComplexity | null> {
-    return this.complexityRepository.findOne({
+    return this.complexityRepo.findOne({
       where: { level, isActive: true },
     });
   }
@@ -361,14 +361,14 @@ export class StructuralSteelService {
   // ==================== Labor Rate Methods ====================
 
   async getAllLaborRates(): Promise<ShopLaborRate[]> {
-    return this.laborRateRepository.find({
+    return this.laborRateRepo.find({
       where: { isActive: true },
       order: { code: 'ASC' },
     });
   }
 
   async getLaborRateByCode(code: string): Promise<ShopLaborRate | null> {
-    return this.laborRateRepository.findOne({
+    return this.laborRateRepo.findOne({
       where: { code, isActive: true },
     });
   }
@@ -377,7 +377,7 @@ export class StructuralSteelService {
     code: string,
     dto: UpdateLaborRateDto,
   ): Promise<ShopLaborRate> {
-    const rate = await this.laborRateRepository.findOne({ where: { code } });
+    const rate = await this.laborRateRepo.findOne({ where: { code } });
     if (!rate) {
       throw new NotFoundException(`Labor rate with code ${code} not found`);
     }
@@ -385,7 +385,7 @@ export class StructuralSteelService {
     if (dto.currency) {
       rate.currency = dto.currency;
     }
-    return this.laborRateRepository.save(rate);
+    return this.laborRateRepo.save(rate);
   }
 
   // ==================== Fabrication Cost Calculation ====================

@@ -56,7 +56,7 @@ export class SupplierAdminService {
   async getAllSuppliers(
     page: number = 1,
     limit: number = 20,
-    status?: SupplierOnboardingStatus,
+    accountStatus?: SupplierAccountStatus,
   ): Promise<{
     items: SupplierListItemDto[];
     total: number;
@@ -70,8 +70,8 @@ export class SupplierAdminService {
       .leftJoinAndSelect('profile.onboarding', 'onboarding')
       .orderBy('profile.createdAt', 'DESC');
 
-    if (status) {
-      queryBuilder.andWhere('onboarding.status = :status', { status });
+    if (accountStatus) {
+      queryBuilder.andWhere('profile.accountStatus = :accountStatus', { accountStatus });
     }
 
     const total = await queryBuilder.getCount();
@@ -568,5 +568,84 @@ export class SupplierAdminService {
     if (expected === null || expected === undefined) return true;
     if (extracted === null || extracted === undefined) return false;
     return String(expected).toUpperCase().trim() === String(extracted).toUpperCase().trim();
+  }
+
+  async getDocumentPreviewImages(
+    supplierId: number,
+    documentId: number,
+  ): Promise<{ pages: string[]; totalPages: number }> {
+    const document = await this.documentRepo.findOne({
+      where: { id: documentId, supplierId },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    if (document.mimeType !== 'application/pdf') {
+      const url = await this.storageService.getPresignedUrl(document.filePath);
+      return {
+        pages: [url],
+        totalPages: 1,
+      };
+    }
+
+    const buffer = await this.storageService.download(document.filePath);
+    const pages = await this.convertPdfToImages(buffer);
+
+    return {
+      pages,
+      totalPages: pages.length,
+    };
+  }
+
+  private async convertPdfToImages(pdfBuffer: Buffer): Promise<string[]> {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const os = await import('os');
+
+    const execAsync = promisify(exec);
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pdf-preview-'));
+    const inputPath = path.join(tempDir, 'input.pdf');
+    const outputPattern = path.join(tempDir, 'page-%d.png');
+
+    this.logger.log('[PDF Preview] Starting conversion');
+
+    try {
+      await fs.writeFile(inputPath, pdfBuffer);
+
+      const gsCommand = process.platform === 'win32'
+        ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
+        : 'gs';
+      const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r150 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "-sOutputFile=${outputPattern}" "${inputPath}"`;
+
+      await execAsync(command, { timeout: 60000 });
+
+      const files = await fs.readdir(tempDir);
+      const pngFiles = files
+        .filter((f: string) => f.startsWith('page-') && f.endsWith('.png'))
+        .sort((a: string, b: string) => {
+          const numA = parseInt(a.match(/page-(\d+)/)?.[1] || '0', 10);
+          const numB = parseInt(b.match(/page-(\d+)/)?.[1] || '0', 10);
+          return numA - numB;
+        });
+
+      const base64Images: string[] = [];
+      for (const file of pngFiles) {
+        const filePath = path.join(tempDir, file);
+        const imageBuffer = await fs.readFile(filePath);
+        base64Images.push(`data:image/png;base64,${imageBuffer.toString('base64')}`);
+      }
+
+      await fs.rm(tempDir, { recursive: true, force: true });
+
+      return base64Images;
+    } catch (error: any) {
+      this.logger.error('[PDF Preview] Error:', error.message);
+      await import('fs/promises').then(fs => fs.rm(tempDir, { recursive: true, force: true }).catch(() => {}));
+      throw error;
+    }
   }
 }

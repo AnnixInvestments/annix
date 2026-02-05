@@ -1,3 +1,5 @@
+import { nowMillis } from '@/app/lib/datetime';
+
 type CacheKey = string | number;
 
 interface CacheEntry<T> {
@@ -14,7 +16,7 @@ const createMemoizedFunction = <TArgs extends unknown[], TResult>(
 
   return (...args: TArgs): TResult => {
     const key = keyFn(...args);
-    const now = Date.now();
+    const now = nowMillis();
     const cached = cache.get(key);
 
     if (cached && (now - cached.timestamp) < maxAge) {

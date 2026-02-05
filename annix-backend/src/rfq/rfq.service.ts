@@ -358,15 +358,11 @@ export class RfqService {
           }
         }
       } catch (error) {
-        // If flange weight calculation fails, log it but don't break the calculation
-        console.warn('Flange weight calculation failed:', error.message);
-        console.warn(
-          'Flange Standard ID:',
-          dto.flangeStandardId,
-          'Pressure Class ID:',
-          dto.flangePressureClassId,
-          'Nominal Bore:',
-          dto.nominalBoreMm,
+        this.logger.warn(
+          `Flange weight calculation failed: ${error.message}. ` +
+          `Flange Standard ID: ${dto.flangeStandardId}, ` +
+          `Pressure Class ID: ${dto.flangePressureClassId}, ` +
+          `Nominal Bore: ${dto.nominalBoreMm}`,
         );
       }
     }

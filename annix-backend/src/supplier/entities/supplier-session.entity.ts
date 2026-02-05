@@ -8,15 +8,10 @@ import {
   Index,
 } from 'typeorm';
 import { SupplierProfile } from './supplier-profile.entity';
+import { SessionInvalidationReason } from '../../shared/enums';
 
-export enum SupplierSessionInvalidationReason {
-  LOGOUT = 'logout',
-  NEW_LOGIN = 'new_login',
-  EXPIRED = 'expired',
-  ADMIN_RESET = 'admin_reset',
-  DEVICE_RESET = 'device_reset',
-  ACCOUNT_SUSPENDED = 'account_suspended',
-}
+export { SessionInvalidationReason };
+export { SessionInvalidationReason as SupplierSessionInvalidationReason };
 
 @Entity('supplier_sessions')
 @Index(['sessionToken'], { unique: true })
@@ -65,8 +60,8 @@ export class SupplierSession {
   @Column({
     name: 'invalidation_reason',
     type: 'enum',
-    enum: SupplierSessionInvalidationReason,
+    enum: SessionInvalidationReason,
     nullable: true,
   })
-  invalidationReason: SupplierSessionInvalidationReason;
+  invalidationReason: SessionInvalidationReason;
 }

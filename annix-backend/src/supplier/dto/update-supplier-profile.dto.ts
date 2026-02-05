@@ -1,5 +1,6 @@
 import { IsString, IsOptional, IsBoolean, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsZAPhone } from '../../shared/validators';
 
 export class UpdateSupplierProfileDto {
   @ApiPropertyOptional({ description: 'First name', example: 'John' })
@@ -30,6 +31,7 @@ export class UpdateSupplierProfileDto {
   @IsString()
   @IsOptional()
   @MaxLength(30)
+  @IsZAPhone()
   directPhone?: string;
 
   @ApiPropertyOptional({
@@ -39,6 +41,7 @@ export class UpdateSupplierProfileDto {
   @IsString()
   @IsOptional()
   @MaxLength(30)
+  @IsZAPhone()
   mobilePhone?: string;
 
   @ApiPropertyOptional({ description: 'Accept terms and conditions' })

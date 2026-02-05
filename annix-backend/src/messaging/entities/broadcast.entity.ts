@@ -6,6 +6,7 @@ import {
   OneToMany,
   JoinColumn,
   CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { BroadcastRecipient } from './broadcast-recipient.entity';
@@ -50,6 +51,9 @@ export class Broadcast {
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 
   @OneToMany(() => BroadcastRecipient, (r) => r.broadcast)
   recipients: BroadcastRecipient[];

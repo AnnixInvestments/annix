@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { DocumentReviewData, FieldComparisonResult, DocumentPreviewImages } from '@/app/lib/api/adminApi';
 import { NixTrainingModal } from './NixTrainingModal';
+import { formatDateTimeZA } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 interface DocumentReviewModalProps {
   isOpen: boolean;
@@ -34,7 +36,7 @@ function DownloadButton({ presignedUrl, fileName }: { presignedUrl: string; file
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Download failed:', error);
+      log.error('Download failed:', error);
       window.open(presignedUrl, '_blank');
     } finally {
       setDownloading(false);
@@ -84,7 +86,7 @@ function XfaWarningBanner({ presignedUrl, fileName }: { presignedUrl: string; fi
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Download failed:', error);
+      log.error('Download failed:', error);
       window.open(presignedUrl, '_blank');
     } finally {
       setDownloading(false);
@@ -333,22 +335,21 @@ export function DocumentReviewModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen && data && data.mimeType === 'application/pdf' && fetchPreviewImages && !previewImages && !loadingPreview) {
+    if (isOpen && data && data.mimeType === 'application/pdf' && fetchPreviewImages && !previewImages && !loadingPreview && !previewError) {
       setLoadingPreview(true);
-      setPreviewError(null);
       fetchPreviewImages(data.documentId)
         .then((result) => {
           setPreviewImages(result.pages);
         })
         .catch((err) => {
-          console.error('Failed to load preview images:', err);
+          log.error('Failed to load preview images:', err);
           setPreviewError('Failed to load document preview');
         })
         .finally(() => {
           setLoadingPreview(false);
         });
     }
-  }, [isOpen, data, fetchPreviewImages, previewImages, loadingPreview]);
+  }, [isOpen, data, fetchPreviewImages, previewImages, loadingPreview, previewError]);
 
   const handleReject = () => {
     if (rejectReason.trim()) {
@@ -619,7 +620,7 @@ export function DocumentReviewModal({
 
                     {data.reviewedBy && (
                       <div className="text-sm text-gray-500">
-                        Reviewed by {data.reviewedBy} on {data.reviewedAt ? new Date(data.reviewedAt).toLocaleString() : 'N/A'}
+                        Reviewed by {data.reviewedBy} on {data.reviewedAt ? formatDateTimeZA(data.reviewedAt) : 'N/A'}
                       </div>
                     )}
                   </div>

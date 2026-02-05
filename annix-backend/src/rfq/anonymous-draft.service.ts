@@ -24,7 +24,7 @@ export class AnonymousDraftService {
 
   constructor(
     @InjectRepository(AnonymousDraft)
-    private readonly anonymousDraftRepository: Repository<AnonymousDraft>,
+    private readonly anonymousDraftRepo: Repository<AnonymousDraft>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
   ) {}
@@ -48,7 +48,7 @@ export class AnonymousDraftService {
     let draft: AnonymousDraft | null = null;
 
     if (dto.customerEmail) {
-      draft = await this.anonymousDraftRepository.findOne({
+      draft = await this.anonymousDraftRepo.findOne({
         where: {
           customerEmail: dto.customerEmail,
           isClaimed: false,
@@ -70,10 +70,10 @@ export class AnonymousDraftService {
         draft.browserFingerprint = dto.browserFingerprint;
       }
 
-      await this.anonymousDraftRepository.save(draft);
+      await this.anonymousDraftRepo.save(draft);
       this.logger.log(`Updated anonymous draft ${draft.id} for ${dto.customerEmail}`);
     } else {
-      draft = this.anonymousDraftRepository.create({
+      draft = this.anonymousDraftRepo.create({
         recoveryToken: this.generateRecoveryToken(),
         customerEmail: dto.customerEmail,
         projectName: dto.projectName,
@@ -86,7 +86,7 @@ export class AnonymousDraftService {
         expiresAt: this.calculateExpiryDate(),
       });
 
-      await this.anonymousDraftRepository.save(draft);
+      await this.anonymousDraftRepo.save(draft);
       this.logger.log(`Created new anonymous draft ${draft.id} for ${dto.customerEmail || 'unknown email'}`);
     }
 
@@ -95,7 +95,7 @@ export class AnonymousDraftService {
 
   async getDraftByToken(token: string): Promise<AnonymousDraftFullResponseDto> {
     this.logger.log(`Getting draft by token: ${token.substring(0, 8)}...`);
-    const draft = await this.anonymousDraftRepository.findOne({
+    const draft = await this.anonymousDraftRepo.findOne({
       where: { recoveryToken: token },
     });
 
@@ -121,7 +121,7 @@ export class AnonymousDraftService {
   }
 
   async sendRecoveryEmail(customerEmail: string): Promise<RecoveryEmailResponseDto> {
-    const draft = await this.anonymousDraftRepository.findOne({
+    const draft = await this.anonymousDraftRepo.findOne({
       where: {
         customerEmail,
         isClaimed: false,
@@ -215,7 +215,7 @@ export class AnonymousDraftService {
 
     draft.recoveryEmailSent = true;
     draft.recoveryEmailSentAt = new Date();
-    await this.anonymousDraftRepository.save(draft);
+    await this.anonymousDraftRepo.save(draft);
 
     this.logger.log(`Sent recovery email to ${customerEmail} for draft ${draft.id}`);
 
@@ -226,7 +226,7 @@ export class AnonymousDraftService {
   }
 
   async claimDraft(token: string, userId: number): Promise<{ message: string; draftId: number }> {
-    const draft = await this.anonymousDraftRepository.findOne({
+    const draft = await this.anonymousDraftRepo.findOne({
       where: { recoveryToken: token },
     });
 
@@ -240,7 +240,7 @@ export class AnonymousDraftService {
 
     draft.isClaimed = true;
     draft.claimedByUserId = userId;
-    await this.anonymousDraftRepository.save(draft);
+    await this.anonymousDraftRepo.save(draft);
 
     this.logger.log(`Draft ${draft.id} claimed by user ${userId}`);
 
@@ -251,7 +251,7 @@ export class AnonymousDraftService {
   }
 
   async cleanupExpiredDrafts(): Promise<number> {
-    const result = await this.anonymousDraftRepository.delete({
+    const result = await this.anonymousDraftRepo.delete({
       expiresAt: LessThan(new Date()),
     });
 

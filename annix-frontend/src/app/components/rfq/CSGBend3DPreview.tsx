@@ -14,7 +14,7 @@ import {
   nbToOd,
   calculateVisualWallThickness,
 } from '@/app/lib/config/rfq/rendering3DStandards'
-import { resolveFlangeData } from '@/app/lib/3d/flangeData'
+import { resolveFlangeData, asOrbitControls } from '@/app/lib/3d'
 import { ArcCurve, SaddleCurve } from '@/app/lib/3d/curves'
 import {
   HollowStraightPipe,
@@ -160,8 +160,8 @@ const CameraTracker = ({
       }))
       camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2])
       if (savedTarget && typeof savedTarget[0] === 'number' && typeof savedTarget[1] === 'number' && typeof savedTarget[2] === 'number') {
-        const orbitControls = controls as any
-        if (orbitControls.target) {
+        const orbitControls = asOrbitControls(controls)
+        if (orbitControls) {
           orbitControls.target.set(savedTarget[0], savedTarget[1], savedTarget[2])
           orbitControls.update()
         }
@@ -194,19 +194,19 @@ const CameraTracker = ({
       }))
     }
 
-    if (onCameraChange && controls) {
-      const target = (controls as any).target
-      if (target) {
-        const currentKey = `${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}`
-        const needsNewSave = currentKey !== lastSavedRef.current && currentKey !== pendingSaveKeyRef.current
+    const orbitControls = asOrbitControls(controls)
+    if (onCameraChange && orbitControls) {
+      const target = orbitControls.target
+      const currentKey = `${camera.position.x.toFixed(2)},${camera.position.y.toFixed(2)},${camera.position.z.toFixed(2)}`
+      const needsNewSave = currentKey !== lastSavedRef.current && currentKey !== pendingSaveKeyRef.current
 
-        if (needsNewSave) {
-          if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current)
-          }
+      if (needsNewSave) {
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current)
+        }
 
-          const posToSave = [camera.position.x, camera.position.y, camera.position.z] as [number, number, number]
-          const targetToSave = [target.x, target.y, target.z] as [number, number, number]
+        const posToSave = [camera.position.x, camera.position.y, camera.position.z] as [number, number, number]
+        const targetToSave = [target.x, target.y, target.z] as [number, number, number]
           const keyToSave = currentKey
           pendingSaveKeyRef.current = keyToSave
 
@@ -224,7 +224,6 @@ const CameraTracker = ({
           }, 500)
         }
       }
-    }
   })
 
   return null

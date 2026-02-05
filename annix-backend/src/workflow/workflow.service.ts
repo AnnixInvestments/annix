@@ -23,14 +23,9 @@ import { DrawingsService } from '../drawings/drawings.service';
 import { DrawingStatus } from '../drawings/entities/drawing.entity';
 import { BoqService } from '../boq/boq.service';
 import { BoqStatus } from '../boq/entities/boq.entity';
+import { PaginatedResponse } from '../shared/dto';
 
-export interface PaginatedResult<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+export type PaginatedResult<T> = PaginatedResponse<T>;
 
 // State machine transition map
 const VALID_TRANSITIONS: Record<ReviewStatus, ReviewStatus[]> = {

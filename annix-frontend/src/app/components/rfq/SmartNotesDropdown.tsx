@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { generateUniqueId } from '@/app/lib/datetime';
 
 export interface SmartNote {
   id: string;
@@ -97,7 +98,7 @@ export function SmartNotesDropdown({
 
     if (!allNotes.some(n => n.text.toLowerCase() === trimmed.toLowerCase())) {
       const newNote: SmartNote = {
-        id: `custom-${Date.now()}`,
+        id: `custom-${generateUniqueId()}`,
         text: trimmed,
         category: 'custom',
         isCustom: true,

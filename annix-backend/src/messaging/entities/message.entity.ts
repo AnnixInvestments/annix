@@ -5,6 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Conversation } from './conversation.entity';
@@ -63,4 +64,7 @@ export class Message {
 
   @OneToMany(() => MessageReadReceipt, (r) => r.message)
   readReceipts: MessageReadReceipt[];
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

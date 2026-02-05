@@ -89,9 +89,9 @@ const NB_MM_TO_NPS: { [key: number]: string } = Object.entries(
 export class PipeScheduleService {
   constructor(
     @InjectRepository(PipeSchedule)
-    private readonly scheduleRepository: Repository<PipeSchedule>,
+    private readonly scheduleRepo: Repository<PipeSchedule>,
     @InjectRepository(MaterialAllowableStress)
-    private readonly stressRepository: Repository<MaterialAllowableStress>,
+    private readonly stressRepo: Repository<MaterialAllowableStress>,
   ) {}
 
   // Convert bar to psi
@@ -109,7 +109,7 @@ export class PipeScheduleService {
     materialCode: string,
     temperatureCelsius: number,
   ): Promise<number | null> {
-    const stresses = await this.stressRepository.find({
+    const stresses = await this.stressRepo.find({
       where: { materialCode },
       order: { temperatureCelsius: 'ASC' },
     });
@@ -151,7 +151,7 @@ export class PipeScheduleService {
 
   // Get schedules for a given NPS
   async getSchedulesByNps(nps: string): Promise<PipeSchedule[]> {
-    return this.scheduleRepository.find({
+    return this.scheduleRepo.find({
       where: { nps },
       order: { wallThicknessInch: 'ASC' },
     });
@@ -159,7 +159,7 @@ export class PipeScheduleService {
 
   // Get schedules by NB (mm)
   async getSchedulesByNbMm(nbMm: number): Promise<PipeSchedule[]> {
-    return this.scheduleRepository.find({
+    return this.scheduleRepo.find({
       where: { nbMm },
       order: { wallThicknessInch: 'ASC' },
     });
@@ -324,7 +324,7 @@ export class PipeScheduleService {
 
   // Get all available materials
   async getMaterials(): Promise<string[]> {
-    const materials = await this.stressRepository
+    const materials = await this.stressRepo
       .createQueryBuilder('stress')
       .select('DISTINCT stress.material_code', 'materialCode')
       .addSelect('stress.material_name', 'materialName')
@@ -335,7 +335,7 @@ export class PipeScheduleService {
 
   // Get all NPS values with schedule data
   async getAvailableNpsSizes(): Promise<string[]> {
-    const sizes = await this.scheduleRepository
+    const sizes = await this.scheduleRepo
       .createQueryBuilder('schedule')
       .select('DISTINCT schedule.nps', 'nps')
       .orderBy('schedule.nps', 'ASC')

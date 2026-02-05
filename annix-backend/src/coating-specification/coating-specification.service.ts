@@ -9,28 +9,28 @@ import { CoatingSpecification } from './entities/coating-specification.entity';
 export class CoatingSpecificationService {
   constructor(
     @InjectRepository(CoatingStandard)
-    private readonly standardRepository: Repository<CoatingStandard>,
+    private readonly standardRepo: Repository<CoatingStandard>,
     @InjectRepository(CoatingEnvironment)
-    private readonly environmentRepository: Repository<CoatingEnvironment>,
+    private readonly environmentRepo: Repository<CoatingEnvironment>,
     @InjectRepository(CoatingSpecification)
-    private readonly specificationRepository: Repository<CoatingSpecification>,
+    private readonly specificationRepo: Repository<CoatingSpecification>,
   ) {}
 
   async findAllStandards(): Promise<CoatingStandard[]> {
-    return this.standardRepository.find({
+    return this.standardRepo.find({
       order: { code: 'ASC' },
     });
   }
 
   async findStandardByCode(code: string): Promise<CoatingStandard | null> {
-    return this.standardRepository.findOne({
+    return this.standardRepo.findOne({
       where: { code },
       relations: ['environments', 'environments.specifications'],
     });
   }
 
   async findAllEnvironments(): Promise<CoatingEnvironment[]> {
-    return this.environmentRepository.find({
+    return this.environmentRepo.find({
       relations: ['standard'],
       order: { standardId: 'ASC', category: 'ASC' },
     });
@@ -39,7 +39,7 @@ export class CoatingSpecificationService {
   async findEnvironmentsByStandard(
     standardCode: string,
   ): Promise<CoatingEnvironment[]> {
-    return this.environmentRepository.find({
+    return this.environmentRepo.find({
       where: { standard: { code: standardCode } },
       relations: ['standard'],
       order: { category: 'ASC' },
@@ -50,7 +50,7 @@ export class CoatingSpecificationService {
     standardCode: string,
     category: string,
   ): Promise<CoatingEnvironment | null> {
-    return this.environmentRepository.findOne({
+    return this.environmentRepo.findOne({
       where: {
         standard: { code: standardCode },
         category,
@@ -62,7 +62,7 @@ export class CoatingSpecificationService {
   async findSpecificationsByEnvironment(
     environmentId: number,
   ): Promise<CoatingSpecification[]> {
-    return this.specificationRepository.find({
+    return this.specificationRepo.find({
       where: { environmentId },
       order: { coatingType: 'ASC', lifespan: 'ASC' },
     });
@@ -77,7 +77,7 @@ export class CoatingSpecificationService {
     coatingType: 'external' | 'internal',
     lifespan?: string,
   ): Promise<CoatingSpecification[]> {
-    const environment = await this.environmentRepository.findOne({
+    const environment = await this.environmentRepo.findOne({
       where: {
         standard: { code: standardCode },
         category,
@@ -98,7 +98,7 @@ export class CoatingSpecificationService {
       whereClause.lifespan = lifespan;
     }
 
-    return this.specificationRepository.find({
+    return this.specificationRepo.find({
       where: whereClause,
       relations: ['environment', 'environment.standard'],
       order: { lifespan: 'ASC' },
@@ -117,11 +117,11 @@ export class CoatingSpecificationService {
     externalSpecs: CoatingSpecification[];
     internalSpecs: CoatingSpecification[];
   }> {
-    const standard = await this.standardRepository.findOne({
+    const standard = await this.standardRepo.findOne({
       where: { code: standardCode },
     });
 
-    const environment = await this.environmentRepository.findOne({
+    const environment = await this.environmentRepo.findOne({
       where: {
         standard: { code: standardCode },
         category,
@@ -139,11 +139,11 @@ export class CoatingSpecificationService {
     }
 
     const [externalSpecs, internalSpecs] = await Promise.all([
-      this.specificationRepository.find({
+      this.specificationRepo.find({
         where: { environmentId: environment.id, coatingType: 'external' },
         order: { lifespan: 'ASC' },
       }),
-      this.specificationRepository.find({
+      this.specificationRepo.find({
         where: { environmentId: environment.id, coatingType: 'internal' },
         order: { lifespan: 'ASC' },
       }),
@@ -175,7 +175,7 @@ export class CoatingSpecificationService {
   async getCorrosivityCategories(): Promise<
     { category: string; description: string }[]
   > {
-    const environments = await this.environmentRepository.find({
+    const environments = await this.environmentRepo.find({
       where: { standard: { code: 'ISO 12944' } },
       order: { category: 'ASC' },
     });
@@ -198,7 +198,7 @@ export class CoatingSpecificationService {
     recommended: CoatingSpecification | null;
     alternatives: CoatingSpecification[];
   }> {
-    const environment = await this.environmentRepository.findOne({
+    const environment = await this.environmentRepo.findOne({
       where: {
         standard: { code: 'ISO 12944' },
         category,
@@ -209,7 +209,7 @@ export class CoatingSpecificationService {
       return { recommended: null, alternatives: [] };
     }
 
-    const allSpecs = await this.specificationRepository.find({
+    const allSpecs = await this.specificationRepo.find({
       where: {
         environmentId: environment.id,
         coatingType: 'external',
@@ -243,7 +243,7 @@ export class CoatingSpecificationService {
    * Get all paint systems for a category (ISO 12944-5:2018)
    */
   async systemsByCategory(category: string): Promise<CoatingSpecification[]> {
-    const environment = await this.environmentRepository.findOne({
+    const environment = await this.environmentRepo.findOne({
       where: {
         standard: { code: 'ISO 12944' },
         category,
@@ -254,7 +254,7 @@ export class CoatingSpecificationService {
       return [];
     }
 
-    return this.specificationRepository.find({
+    return this.specificationRepo.find({
       where: {
         environmentId: environment.id,
         coatingType: 'external',
@@ -301,7 +301,7 @@ export class CoatingSpecificationService {
    * Get a specific paint system by its ISO code
    */
   async systemByCode(systemCode: string): Promise<CoatingSpecification | null> {
-    return this.specificationRepository.findOne({
+    return this.specificationRepo.findOne({
       where: { systemCode },
       relations: ['environment', 'environment.standard'],
     });

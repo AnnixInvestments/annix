@@ -18,8 +18,11 @@ import { RegistrationDocumentVerifierService } from './services/registration-doc
 import { DocumentVerificationService } from './services/document-verification.service';
 import { AutoApprovalService } from './services/auto-approval.service';
 import { DocumentAnnotationService } from './services/document-annotation.service';
+import { AnyUserAuthGuard } from '../auth/guards/any-user-auth.guard';
 import { SecureDocumentsModule } from '../secure-documents/secure-documents.module';
 import { AdminModule } from '../admin/admin.module';
+import { CustomerModule } from '../customer/customer.module';
+import { SupplierModule } from '../supplier/supplier.module';
 import { StorageModule } from '../storage/storage.module';
 import { CustomerDocument } from '../customer/entities/customer-document.entity';
 import { CustomerProfile } from '../customer/entities/customer-profile.entity';
@@ -54,6 +57,8 @@ import { AuditModule } from '../audit/audit.module';
     }),
     forwardRef(() => SecureDocumentsModule),
     AdminModule,
+    forwardRef(() => CustomerModule),
+    forwardRef(() => SupplierModule),
     StorageModule,
     EmailModule,
     AuditModule,
@@ -70,6 +75,7 @@ import { AuditModule } from '../audit/audit.module';
     RegistrationDocumentVerifierService,
     DocumentVerificationService,
     AutoApprovalService,
+    AnyUserAuthGuard,
   ],
   exports: [
     NixService,

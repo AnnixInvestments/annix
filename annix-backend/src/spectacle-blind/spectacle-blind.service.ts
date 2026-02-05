@@ -7,17 +7,17 @@ import { SpectacleBlind } from './entities/spectacle-blind.entity';
 export class SpectacleBlindService {
   constructor(
     @InjectRepository(SpectacleBlind)
-    private readonly spectacleBlindRepository: Repository<SpectacleBlind>,
+    private readonly spectacleBlindRepo: Repository<SpectacleBlind>,
   ) {}
 
   findAll(): Promise<SpectacleBlind[]> {
-    return this.spectacleBlindRepository.find({
+    return this.spectacleBlindRepo.find({
       order: { pressureClass: 'ASC', nps: 'ASC' },
     });
   }
 
   findByPressureClass(pressureClass: string): Promise<SpectacleBlind[]> {
-    return this.spectacleBlindRepository.find({
+    return this.spectacleBlindRepo.find({
       where: { pressureClass },
       order: { nps: 'ASC' },
     });
@@ -27,7 +27,7 @@ export class SpectacleBlindService {
     nps: string,
     pressureClass: string,
   ): Promise<SpectacleBlind | null> {
-    return this.spectacleBlindRepository.findOne({
+    return this.spectacleBlindRepo.findOne({
       where: { nps, pressureClass },
     });
   }

@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { adminApiClient } from '@/app/lib/api/adminApi';
+import { adminApiClient, DocumentReviewData } from '@/app/lib/api/adminApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA } from '@/app/lib/datetime';
+import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
+import { DocumentReviewModal } from '@/app/admin/components/DocumentReviewModal';
 
 type TabType = 'overview' | 'onboarding' | 'documents';
 
@@ -25,6 +27,10 @@ export default function SupplierDetailPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [remediationSteps, setRemediationSteps] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [previewState, setPreviewState] = useState<PreviewModalState>(initialPreviewState);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [reviewData, setReviewData] = useState<DocumentReviewData | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   const fetchSupplierDetail = async () => {
     try {
@@ -122,6 +128,88 @@ export default function SupplierDetailPage() {
     }
   };
 
+  const handleViewDocument = async (doc: any) => {
+    setPreviewState({ ...initialPreviewState, isOpen: true, isLoading: true, filename: doc.fileName });
+    try {
+      const result = await adminApiClient.getSupplierDocumentReviewData(supplierId, doc.id);
+      setPreviewState({
+        isOpen: true,
+        url: result.presignedUrl,
+        mimeType: result.mimeType || 'application/pdf',
+        filename: result.fileName || doc.fileName,
+        isLoading: false,
+      });
+    } catch (err: any) {
+      showToast(`Failed to load document: ${err.message}`, 'error');
+      setPreviewState(initialPreviewState);
+    }
+  };
+
+  const handleReviewDocument = async (doc: any) => {
+    setReviewModalOpen(true);
+    setReviewLoading(true);
+    setReviewData(null);
+    try {
+      const data = await adminApiClient.getSupplierDocumentReviewData(supplierId, doc.id);
+      setReviewData(data);
+    } catch (err: any) {
+      showToast(`Failed to load document review data: ${err.message}`, 'error');
+      setReviewModalOpen(false);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const handleApproveDocument = async () => {
+    if (!reviewData) return;
+    try {
+      setIsSubmitting(true);
+      await adminApiClient.reviewSupplierDocument(supplierId, reviewData.documentId, 'valid', 'Approved by admin');
+      showToast('Document approved', 'success');
+      setReviewModalOpen(false);
+      fetchSupplierDetail();
+    } catch (err: any) {
+      showToast(`Failed to approve document: ${err.message}`, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectDocument = async (reason: string) => {
+    if (!reviewData) return;
+    try {
+      setIsSubmitting(true);
+      await adminApiClient.reviewSupplierDocument(supplierId, reviewData.documentId, 'invalid', reason);
+      showToast('Document rejected', 'success');
+      setReviewModalOpen(false);
+      fetchSupplierDetail();
+    } catch (err: any) {
+      showToast(`Failed to reject document: ${err.message}`, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReVerifyDocument = async () => {
+    if (!reviewData) return;
+    try {
+      setIsSubmitting(true);
+      const result = await adminApiClient.reVerifySupplierDocument(supplierId, reviewData.documentId);
+      if (result.success) {
+        showToast('Document re-verified successfully', 'success');
+        const updatedData = await adminApiClient.getSupplierDocumentReviewData(supplierId, reviewData.documentId);
+        setReviewData(updatedData);
+        fetchSupplierDetail();
+      } else {
+        showToast(result.errorMessage || 'Re-verification failed', 'error');
+      }
+    } catch (err: any) {
+      showToast(`Failed to re-verify document: ${err.message}`, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getStatusBadgeClass = (status: string): string => {
     switch (status?.toLowerCase()) {
       case 'active':
@@ -175,7 +263,18 @@ export default function SupplierDetailPage() {
     );
   }
 
-  const profile = supplier.profile || {};
+  const profile = {
+    firstName: supplier.firstName,
+    lastName: supplier.lastName,
+    email: supplier.email,
+    accountStatus: supplier.accountStatus,
+    createdAt: supplier.createdAt,
+    jobTitle: supplier.jobTitle,
+    directPhone: supplier.directPhone,
+    mobilePhone: supplier.mobilePhone,
+    suspendedAt: supplier.suspendedAt,
+    suspensionReason: supplier.suspensionReason,
+  };
   const company = supplier.company || {};
   const onboarding = supplier.onboarding || {};
   const documents = supplier.documents || [];
@@ -490,17 +589,28 @@ export default function SupplierDetailPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {documents.map((doc: any) => (
-                  <tr key={doc.id}>
+                  <tr key={doc.id} className={doc.validationStatus === 'manual_review' ? 'bg-yellow-50' : ''}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{doc.documentType}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.fileName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(doc.uploadedAt)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(doc.validationStatus)}`}>
-                        {doc.validationStatus || 'Pending'}
+                        {doc.validationStatus || 'pending'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button className="text-blue-600 hover:text-blue-900">View</button>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => handleViewDocument(doc)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
+                        View
+                      </button>
+                      <button
+                        onClick={() => handleReviewDocument(doc)}
+                        className="text-purple-600 hover:text-purple-900"
+                      >
+                        Review
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -601,6 +711,26 @@ export default function SupplierDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        state={previewState}
+        onClose={() => setPreviewState(initialPreviewState)}
+      />
+
+      {/* Document Review Modal with Nix AI */}
+      <DocumentReviewModal
+        isOpen={reviewModalOpen}
+        data={reviewData}
+        isLoading={reviewLoading}
+        onClose={() => setReviewModalOpen(false)}
+        onApprove={handleApproveDocument}
+        onReject={handleRejectDocument}
+        onReVerify={handleReVerifyDocument}
+        isSubmitting={isSubmitting}
+        fetchPreviewImages={(documentId) => adminApiClient.getSupplierDocumentPreviewImages(supplierId, documentId)}
+        entityType="supplier"
+      />
     </div>
   );
 }

@@ -23,14 +23,9 @@ import { User } from '../user/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
+import { PaginatedResponse } from '../shared/dto';
 
-export interface PaginatedResult<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+export type PaginatedResult<T> = PaginatedResponse<T>;
 
 const ALLOWED_MIME_TYPES: Record<string, DrawingFileType> = {
   'application/pdf': DrawingFileType.PDF,

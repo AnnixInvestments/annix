@@ -7,6 +7,7 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import { IsZAPhone } from '../../shared/validators';
 
 // Only allow updating specific fields
 export class UpdateCustomerProfileDto {
@@ -26,6 +27,7 @@ export class UpdateCustomerProfileDto {
   @IsString()
   @IsOptional()
   @MaxLength(30)
+  @IsZAPhone()
   directPhone?: string;
 
   @ApiPropertyOptional({
@@ -35,6 +37,7 @@ export class UpdateCustomerProfileDto {
   @IsString()
   @IsOptional()
   @MaxLength(30)
+  @IsZAPhone()
   mobilePhone?: string;
 }
 
@@ -75,6 +78,7 @@ export class UpdateCompanyAddressDto {
   @IsString()
   @IsOptional()
   @MaxLength(30)
+  @IsZAPhone()
   primaryPhone?: string;
 }
 

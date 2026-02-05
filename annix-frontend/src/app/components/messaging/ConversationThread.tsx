@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { Message, Attachment } from '@/app/lib/api/messagingApi';
 import { MessageBubble } from './MessageBubble';
+import { fromISO } from '@/app/lib/datetime';
 
 interface ConversationThreadProps {
   messages: Message[];
@@ -125,7 +126,7 @@ function groupMessagesByDate(
   const groups: Map<string, Message[]> = new Map();
 
   messages.forEach((message) => {
-    const date = new Date(message.sentAt).toLocaleDateString('en-ZA', {
+    const date = fromISO(message.sentAt).toLocaleString({
       weekday: 'long',
       year: 'numeric',
       month: 'long',

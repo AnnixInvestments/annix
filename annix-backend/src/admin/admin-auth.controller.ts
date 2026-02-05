@@ -15,6 +15,7 @@ import { AdminLoginDto, AdminRefreshTokenDto } from './dto/admin-auth.dto';
 import { AdminAuthGuard } from './guards/admin-auth.guard';
 import { EmailService } from '../email/email.service';
 import { nowISO } from '../lib/datetime';
+import { messageResponse, errorResponse } from '../shared/dto';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -49,7 +50,7 @@ export class AdminAuthController {
     const userId = req.user.id;
     const sessionToken = req.user.sessionToken;
     await this.adminAuthService.logout(userId, sessionToken, clientIp);
-    return { message: 'Logged out successfully' };
+    return messageResponse('Logged out successfully');
   }
 
   @Post('refresh')
@@ -59,14 +60,14 @@ export class AdminAuthController {
 
   @Get('me')
   @UseGuards(AdminAuthGuard)
-  async getCurrentUser(@Req() req: AuthenticatedRequest) {
-    return this.adminAuthService.getCurrentUser(req.user.id);
+  async currentUser(@Req() req: AuthenticatedRequest) {
+    return this.adminAuthService.currentUser(req.user.id);
   }
 
   @Get('test-email')
   async testEmail(@Query('to') to: string) {
     if (!to) {
-      return { success: false, message: 'Missing "to" query parameter' };
+      return errorResponse('Missing "to" query parameter');
     }
     const success = await this.emailService.sendEmail({
       to,
@@ -78,9 +79,8 @@ export class AdminAuthController {
       `,
       text: 'Test Email from Annix - SMTP configuration is working!',
     });
-    return {
-      success,
-      message: success ? 'Email sent successfully' : 'Failed to send email',
-    };
+    return success
+      ? messageResponse('Email sent successfully')
+      : errorResponse('Failed to send email');
   }
 }

@@ -77,7 +77,7 @@ describe('UserController', () => {
       };
       mockUserService.findOne.mockResolvedValue(user);
 
-      expect(await controller.findOne('1')).toEqual(user);
+      expect(await controller.findOne(1)).toEqual(user);
       expect(mockUserService.findOne).toHaveBeenCalledWith(1);
     });
   });
@@ -94,7 +94,7 @@ describe('UserController', () => {
 
       mockUserService.update.mockResolvedValue(updatedUser);
 
-      expect(await controller.update('1', dto)).toEqual(updatedUser);
+      expect(await controller.update(1, dto)).toEqual(updatedUser);
       expect(mockUserService.update).toHaveBeenCalledWith(1, dto);
     });
   });
@@ -103,7 +103,7 @@ describe('UserController', () => {
     it('should delete a user', async () => {
       mockUserService.remove.mockResolvedValue({ deleted: true });
 
-      expect(await controller.remove('1')).toEqual({ deleted: true });
+      expect(await controller.remove(1)).toEqual({ deleted: true });
       expect(mockUserService.remove).toHaveBeenCalledWith(1);
     });
   });

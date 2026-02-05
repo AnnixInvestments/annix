@@ -5,6 +5,8 @@ import {
   ManyToMany,
   OneToMany,
   JoinTable,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { UserRole } from '../../user-roles/entities/user-role.entity';
 import { Rfq } from '../../rfq/entities/rfq.entity';
@@ -65,4 +67,12 @@ export class User {
   @ApiProperty({ description: 'RFQs created by this user', type: () => [Rfq] })
   @OneToMany(() => Rfq, (rfq) => rfq.createdBy, { lazy: true })
   rfqs: Promise<Rfq[]>;
+
+  @ApiProperty({ description: 'Creation date' })
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @ApiProperty({ description: 'Last update date' })
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 }

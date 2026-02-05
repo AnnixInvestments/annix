@@ -26,7 +26,7 @@ export class DocumentAnnotationService {
 
   constructor(
     @InjectRepository(NixExtractionRegion)
-    private readonly regionRepository: Repository<NixExtractionRegion>,
+    private readonly regionRepo: Repository<NixExtractionRegion>,
   ) {}
 
   private normalizeDocumentCategory(category: string): string {
@@ -223,7 +223,7 @@ export class DocumentAnnotationService {
       `Saving extraction region for ${normalizedCategory}:${dto.fieldName}`,
     );
 
-    const existingRegion = await this.regionRepository.findOne({
+    const existingRegion = await this.regionRepo.findOne({
       where: {
         documentCategory: normalizedCategory,
         fieldName: dto.fieldName,
@@ -238,10 +238,10 @@ export class DocumentAnnotationService {
       existingRegion.extractionPattern = dto.extractionPattern || null;
       existingRegion.sampleValue = dto.sampleValue || null;
       existingRegion.isCustomField = dto.isCustomField ?? existingRegion.isCustomField;
-      return this.regionRepository.save(existingRegion);
+      return this.regionRepo.save(existingRegion);
     }
 
-    const region = this.regionRepository.create({
+    const region = this.regionRepo.create({
       documentCategory: normalizedCategory,
       fieldName: dto.fieldName,
       regionCoordinates: dto.regionCoordinates,
@@ -253,14 +253,14 @@ export class DocumentAnnotationService {
       createdByUserId: userId || null,
     });
 
-    return this.regionRepository.save(region);
+    return this.regionRepo.save(region);
   }
 
   async findRegionsForDocument(
     documentCategory: string,
   ): Promise<NixExtractionRegion[]> {
     const normalizedCategory = this.normalizeDocumentCategory(documentCategory);
-    return this.regionRepository.find({
+    return this.regionRepo.find({
       where: {
         documentCategory: normalizedCategory,
         isActive: true,
@@ -307,13 +307,13 @@ export class DocumentAnnotationService {
         results.set(region.fieldName, extracted);
         region.useCount += 1;
         region.successCount += 1;
-        await this.regionRepository.save(region);
+        await this.regionRepo.save(region);
       } else {
         this.logger.warn(
           `Region extraction failed for ${region.fieldName}: ${!extracted.text ? 'empty text' : `confidence ${extracted.confidence.toFixed(2)} below threshold ${region.confidenceThreshold}`}`,
         );
         region.useCount += 1;
-        await this.regionRepository.save(region);
+        await this.regionRepo.save(region);
       }
     }
 
@@ -321,11 +321,11 @@ export class DocumentAnnotationService {
   }
 
   async deleteRegion(id: number): Promise<void> {
-    await this.regionRepository.update(id, { isActive: false });
+    await this.regionRepo.update(id, { isActive: false });
   }
 
   async allRegions(): Promise<NixExtractionRegion[]> {
-    return this.regionRepository.find({
+    return this.regionRepo.find({
       where: { isActive: true },
       order: { documentCategory: 'ASC', fieldName: 'ASC' },
     });

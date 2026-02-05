@@ -13,6 +13,7 @@ import {
 import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
 import { currencyCodeForCountry } from '@/app/lib/currencies';
 import { log } from '@/app/lib/logger';
+import { nowISO } from '@/app/lib/datetime';
 import { nixApi, RegistrationBatchResult } from '@/app/lib/nix/api';
 import AmixLogo from '@/app/components/AmixLogo';
 import {
@@ -20,6 +21,19 @@ import {
   RegistrationBottomToolbar,
   StepConfig,
 } from '@/app/components/RegistrationToolbar';
+import {
+  COMPANY_SIZE_OPTIONS,
+  SOUTH_AFRICAN_PROVINCES,
+  CUSTOMER_INDUSTRY_OPTIONS,
+} from '@/app/lib/config/registration/constants';
+import { validatePassword } from '@/app/lib/utils/passwordValidation';
+import {
+  DeviceInfoDisplay,
+  SecurityNotice,
+  TermsAndConditions,
+  AcceptanceCheckbox,
+  ErrorDisplay,
+} from '@/app/components/registration';
 
 type Step = 'documents' | 'company' | 'profile' | 'security' | 'complete';
 
@@ -30,37 +44,7 @@ const REGISTRATION_STEPS: StepConfig[] = [
   { id: 'security', label: 'Security' },
 ];
 
-const COMPANY_SIZE_OPTIONS = [
-  { value: 'micro', label: 'Micro (1-9 employees)' },
-  { value: 'small', label: 'Small (10-49 employees)' },
-  { value: 'medium', label: 'Medium (50-249 employees)' },
-  { value: 'large', label: 'Large (250-999 employees)' },
-  { value: 'enterprise', label: 'Enterprise (1000+ employees)' },
-];
-
-const INDUSTRY_OPTIONS = [
-  'Mining',
-  'Oil & Gas',
-  'Power Generation',
-  'Water Treatment',
-  'Chemical Processing',
-  'Manufacturing',
-  'Construction',
-  'Agriculture',
-  'Other',
-];
-
-const SOUTH_AFRICAN_PROVINCES = [
-  'Eastern Cape',
-  'Free State',
-  'Gauteng',
-  'KwaZulu-Natal',
-  'Limpopo',
-  'Mpumalanga',
-  'Northern Cape',
-  'North West',
-  'Western Cape',
-];
+const INDUSTRY_OPTIONS = CUSTOMER_INDUSTRY_OPTIONS;
 
 export default function CustomerRegistrationPage() {
   const router = useRouter();
@@ -119,16 +103,6 @@ export default function CustomerRegistrationPage() {
   const [documentsSkipped, setDocumentsSkipped] = useState(false);
 
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
-
-  const validatePassword = (password: string): string[] => {
-    const errors: string[] = [];
-    if (password.length < 10) errors.push('Password must be at least 10 characters');
-    if (!/[A-Z]/.test(password)) errors.push('Password must contain at least one uppercase letter');
-    if (!/[a-z]/.test(password)) errors.push('Password must contain at least one lowercase letter');
-    if (!/[0-9]/.test(password)) errors.push('Password must contain at least one number');
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('Password must contain at least one special character');
-    return errors;
-  };
 
   useEffect(() => {
     if (user.password) {
@@ -300,7 +274,7 @@ export default function CustomerRegistrationPage() {
 
   const handleSkipDocuments = () => {
     log.info('User skipped document upload during registration', {
-      timestamp: new Date().toISOString(),
+      timestamp: nowISO(),
       userEmail: user.email || 'not yet provided',
       companyName: company.legalName || 'not yet provided',
     });
@@ -985,19 +959,7 @@ export default function CustomerRegistrationPage() {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">Account Security</h2>
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <div className="flex">
-          <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div>
-            <h3 className="text-sm font-medium text-yellow-800">Important Security Notice</h3>
-            <p className="mt-1 text-sm text-yellow-700">
-              Your account will be bound to this device. You will only be able to access your account from this device.
-            </p>
-          </div>
-        </div>
-      </div>
+      <SecurityNotice />
 
       <div className="space-y-4">
         <div>
@@ -1042,67 +1004,28 @@ export default function CustomerRegistrationPage() {
           )}
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Device Information</h4>
-          {isFingerprintLoading ? (
-            <p className="text-sm text-gray-500">Generating device fingerprint...</p>
-          ) : fingerprint ? (
-            <div className="text-sm text-gray-600">
-              <p><span className="font-medium">Device ID:</span> {fingerprint.substring(0, 16)}...</p>
-              <p className="mt-1 text-xs text-gray-500">This device will be registered for secure access.</p>
-            </div>
-          ) : (
-            <p className="text-sm text-red-600">Unable to generate device fingerprint. Please refresh the page.</p>
-          )}
-        </div>
+        <DeviceInfoDisplay fingerprint={fingerprint} isLoading={isFingerprintLoading} />
 
-        <div className="border border-gray-200 rounded-lg p-4 max-h-48 overflow-y-auto">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Terms and Conditions</h4>
-          <div className="text-xs text-gray-600 space-y-2">
-            <p>By registering for an account, you agree to the following:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>You are authorized to represent the company specified in this registration.</li>
-              <li>You will not share your login credentials with any other person.</li>
-              <li>Your account is bound to a single device for security purposes.</li>
-              <li>You will maintain the confidentiality of any pricing or technical information provided.</li>
-              <li>You will use the portal only for legitimate business purposes.</li>
-              <li>Annix reserves the right to suspend or terminate accounts for any violation of these terms.</li>
-            </ul>
-          </div>
-        </div>
+        <TermsAndConditions />
 
-        <div className="flex items-start">
-          <input
-            type="checkbox"
-            id="terms"
-            checked={security.termsAccepted}
-            onChange={(e) => handleSecurityChange('termsAccepted', e.target.checked)}
-            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="terms" className="ml-2 text-sm text-gray-700">
-            I have read and agree to the Terms and Conditions <span className="text-red-500">*</span>
-          </label>
-        </div>
+        <AcceptanceCheckbox
+          id="terms"
+          checked={security.termsAccepted}
+          onChange={(checked) => handleSecurityChange('termsAccepted', checked)}
+          label="I have read and agree to the Terms and Conditions"
+          required
+        />
 
-        <div className="flex items-start">
-          <input
-            type="checkbox"
-            id="securityPolicy"
-            checked={security.securityPolicyAccepted}
-            onChange={(e) => handleSecurityChange('securityPolicyAccepted', e.target.checked)}
-            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="securityPolicy" className="ml-2 text-sm text-gray-700">
-            I understand and accept that my account will be locked to this device <span className="text-red-500">*</span>
-          </label>
-        </div>
+        <AcceptanceCheckbox
+          id="securityPolicy"
+          checked={security.securityPolicyAccepted}
+          onChange={(checked) => handleSecurityChange('securityPolicyAccepted', checked)}
+          label="I understand and accept that my account will be locked to this device"
+          required
+        />
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
+      <ErrorDisplay error={error} />
 
       <div className="flex justify-between mt-8">
         <button

@@ -1401,7 +1401,7 @@ function FittingFormComponent({
                       <select
                         value={entry.specs?.pipeEndConfiguration || 'PE'}
                         onChange={async (e) => {
-                          const newConfig = e.target.value as any;
+                          const newConfig = e.target.value;
 
                           let weldDetails = null;
                           try {

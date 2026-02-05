@@ -8,6 +8,7 @@ import {
   IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsZAPhone } from '../../shared/validators';
 
 // Consolidated item from frontend
 export class ConsolidatedItemDto {
@@ -61,6 +62,7 @@ export class CustomerInfoDto {
   @ApiPropertyOptional({ description: 'Customer phone' })
   @IsOptional()
   @IsString()
+  @IsZAPhone()
   phone?: string;
 
   @ApiPropertyOptional({ description: 'Customer company' })

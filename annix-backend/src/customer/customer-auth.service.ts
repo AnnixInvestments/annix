@@ -5,15 +5,13 @@ import {
   ConflictException,
   BadRequestException,
   ForbiddenException,
-  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, MoreThan, MoreThanOrEqual } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
+import { Repository, DataSource, MoreThan } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { now, nowMillis } from '../lib/datetime';
+import * as path from 'path';
+import * as fs from 'fs';
 
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
@@ -35,8 +33,6 @@ import {
   CustomerDocumentType,
   CustomerDocumentValidationStatus,
 } from './entities/customer-document.entity';
-import * as path from 'path';
-import * as fs from 'fs';
 import {
   CreateCustomerRegistrationDto,
   CustomerLoginDto,
@@ -47,13 +43,16 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { EmailService } from '../email/email.service';
 import { DocumentOcrService } from './document-ocr.service';
-
-// Constants
-const MAX_LOGIN_ATTEMPTS = 5;
-const LOGIN_LOCKOUT_MINUTES = 15;
-const SESSION_EXPIRY_HOURS = 1;
-const REFRESH_TOKEN_EXPIRY_DAYS = 7;
-const EMAIL_VERIFICATION_EXPIRY_HOURS = 24;
+import {
+  AUTH_CONSTANTS,
+  PasswordService,
+  TokenService,
+  RateLimitingService,
+  SessionService,
+  DeviceBindingService,
+  AuthConfigService,
+  JwtTokenPayload,
+} from '../shared/auth';
 
 @Injectable()
 export class CustomerAuthService {
@@ -79,28 +78,26 @@ export class CustomerAuthService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserRole)
     private readonly userRoleRepo: Repository<UserRole>,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
     private readonly documentOcrService: DocumentOcrService,
+    private readonly passwordService: PasswordService,
+    private readonly tokenService: TokenService,
+    private readonly rateLimitingService: RateLimitingService,
+    private readonly sessionService: SessionService,
+    private readonly deviceBindingService: DeviceBindingService,
+    private readonly authConfigService: AuthConfigService,
   ) {
-    this.uploadDir =
-      this.configService.get<string>('UPLOAD_DIR') || './uploads';
+    this.uploadDir = this.authConfigService.uploadDir();
   }
 
-  /**
-   * Register a new customer (company + user + device binding + documents)
-   * Returns auth tokens for immediate login (email verification disabled for development)
-   */
   async register(
     dto: CreateCustomerRegistrationDto,
     clientIp: string,
     vatDocument?: Express.Multer.File,
     companyRegDocument?: Express.Multer.File,
   ): Promise<CustomerLoginResponseDto> {
-    // Validate acceptance of terms and security policy
     if (!dto.security.termsAccepted) {
       throw new BadRequestException('Terms and conditions must be accepted');
     }
@@ -110,7 +107,6 @@ export class CustomerAuthService {
       );
     }
 
-    // Check if email already exists
     const existingUser = await this.userRepo.findOne({
       where: { email: dto.user.email },
     });
@@ -118,7 +114,6 @@ export class CustomerAuthService {
       throw new ConflictException('An account with this email already exists');
     }
 
-    // Check if company registration number already exists
     const existingCompany = await this.companyRepo.findOne({
       where: { registrationNumber: dto.company.registrationNumber },
     });
@@ -128,24 +123,21 @@ export class CustomerAuthService {
       );
     }
 
-    // Use transaction to ensure atomicity
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. Create the company
       const company = this.companyRepo.create({
         ...dto.company,
         country: dto.company.country || 'South Africa',
       });
       const savedCompany = await queryRunner.manager.save(company);
 
-      // 2. Create the user with 'customer' role
-      const salt = await bcrypt.genSalt();
-      const hashedPassword = await bcrypt.hash(dto.user.password, salt);
+      const { hash: hashedPassword, salt } = await this.passwordService.hash(
+        dto.user.password,
+      );
 
-      // Get or create customer role
       let customerRole = await this.userRoleRepo.findOne({
         where: { name: 'customer' },
       });
@@ -155,7 +147,7 @@ export class CustomerAuthService {
       }
 
       const user = this.userRepo.create({
-        username: dto.user.email, // Use email as username
+        username: dto.user.email,
         email: dto.user.email,
         password: hashedPassword,
         salt: salt,
@@ -165,10 +157,9 @@ export class CustomerAuthService {
 
       const emailVerificationToken = uuidv4();
       const emailVerificationExpires = now()
-        .plus({ hours: EMAIL_VERIFICATION_EXPIRY_HOURS })
+        .plus({ hours: AUTH_CONSTANTS.EMAIL_VERIFICATION_EXPIRY_HOURS })
         .toJSDate();
 
-      // 4. Create the customer profile (PENDING until email verified)
       const profile = this.profileRepo.create({
         userId: savedUser.id,
         companyId: savedCompany.id,
@@ -187,17 +178,15 @@ export class CustomerAuthService {
       });
       const savedProfile = await queryRunner.manager.save(profile);
 
-      // 5. Create onboarding record
       const documentsComplete = !!(vatDocument && companyRegDocument);
       const onboarding = this.onboardingRepo.create({
         customerId: savedProfile.id,
         status: CustomerOnboardingStatus.DRAFT,
-        companyDetailsComplete: true, // Company details captured at registration
+        companyDetailsComplete: true,
         documentsComplete,
       });
       await queryRunner.manager.save(onboarding);
 
-      // 5a. Save uploaded documents
       if (vatDocument || companyRegDocument) {
         await this.saveRegistrationDocuments(
           queryRunner.manager,
@@ -207,7 +196,6 @@ export class CustomerAuthService {
         );
       }
 
-      // 6. Create the device binding
       const deviceBinding = this.deviceBindingRepo.create({
         customerProfileId: savedProfile.id,
         deviceFingerprint: dto.security.deviceFingerprint,
@@ -220,7 +208,6 @@ export class CustomerAuthService {
 
       await queryRunner.commitTransaction();
 
-      // Log the registration
       await this.auditService.log({
         entityType: 'customer_profile',
         entityId: savedProfile.id,
@@ -235,32 +222,19 @@ export class CustomerAuthService {
         userAgent: dto.security.browserInfo?.userAgent,
       });
 
-      // DEVELOPMENT MODE: Skip email verification - auto-login the user
-      // TODO: Re-enable email verification for production
-      // await this.emailService.sendCustomerVerificationEmail(
-      //   dto.user.email,
-      //   emailVerificationToken,
-      // );
-
-      const sessionToken = uuidv4();
-      const refreshTokenValue = uuidv4();
-      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
-
-      const session = this.sessionRepo.create({
-        customerProfileId: savedProfile.id,
-        sessionToken,
-        refreshToken: refreshTokenValue,
-        deviceFingerprint: dto.security.deviceFingerprint,
-        ipAddress: clientIp,
-        userAgent: dto.security.browserInfo?.userAgent || 'unknown',
-        isActive: true,
-        expiresAt,
-        lastActivity: now().toJSDate(),
-      });
+      const { session, sessionToken } = this.sessionService.createSession(
+        this.sessionRepo,
+        {
+          profileId: savedProfile.id,
+          profileIdField: 'customerProfileId',
+          deviceFingerprint: dto.security.deviceFingerprint,
+          ipAddress: clientIp,
+          userAgent: dto.security.browserInfo?.userAgent || 'unknown',
+        },
+      );
       await this.sessionRepo.save(session);
 
-      // Generate JWT tokens
-      const payload = {
+      const payload: JwtTokenPayload = {
         sub: savedUser.id,
         customerId: savedProfile.id,
         email: savedUser.email,
@@ -268,14 +242,12 @@ export class CustomerAuthService {
         sessionToken,
       };
 
-      const [accessToken, jwtRefreshToken] = await Promise.all([
-        this.jwtService.signAsync(payload, { expiresIn: '1h' }),
-        this.jwtService.signAsync(payload, { expiresIn: '7d' }),
-      ]);
+      const { accessToken, refreshToken } =
+        await this.tokenService.generateTokenPair(payload);
 
       return {
         accessToken,
-        refreshToken: jwtRefreshToken,
+        refreshToken,
         expiresIn: 3600,
         customerId: savedProfile.id,
         name: `${savedProfile.firstName} ${savedProfile.lastName}`,
@@ -289,9 +261,6 @@ export class CustomerAuthService {
     }
   }
 
-  /**
-   * Save registration documents (VAT and Company Registration)
-   */
   private async saveRegistrationDocuments(
     manager: any,
     customerId: number,
@@ -304,12 +273,10 @@ export class CustomerAuthService {
       customerId.toString(),
     );
 
-    // Create directory if it doesn't exist
     if (!fs.existsSync(customerDir)) {
       fs.mkdirSync(customerDir, { recursive: true });
     }
 
-    // Save VAT document
     if (vatDocument) {
       const fileName = `vat_${nowMillis()}_${vatDocument.originalname}`;
       const filePath = path.join(customerDir, fileName);
@@ -318,7 +285,7 @@ export class CustomerAuthService {
 
       const vatDocEntity = this.documentRepo.create({
         customerId,
-        documentType: CustomerDocumentType.TAX_CLEARANCE, // Using tax clearance as closest match
+        documentType: CustomerDocumentType.TAX_CLEARANCE,
         fileName: vatDocument.originalname,
         filePath,
         fileSize: vatDocument.size,
@@ -330,7 +297,6 @@ export class CustomerAuthService {
       await manager.save(vatDocEntity);
     }
 
-    // Save company registration document
     if (companyRegDocument) {
       const fileName = `company_reg_${nowMillis()}_${companyRegDocument.originalname}`;
       const filePath = path.join(customerDir, fileName);
@@ -352,18 +318,16 @@ export class CustomerAuthService {
     }
   }
 
-  /**
-   * Login with email, password, and device fingerprint verification
-   */
   async login(
     dto: CustomerLoginDto,
     clientIp: string,
     userAgent: string,
   ): Promise<CustomerLoginResponseDto> {
-    // Check for too many failed attempts (rate limiting)
-    await this.checkLoginAttempts(dto.email, clientIp);
+    await this.rateLimitingService.checkLoginAttempts(
+      this.loginAttemptRepo,
+      dto.email,
+    );
 
-    // Find user by email
     const user = await this.userRepo.findOne({
       where: { email: dto.email },
       relations: ['roles'],
@@ -382,22 +346,31 @@ export class CustomerAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // DEVELOPMENT MODE: Skip password verification
-    // TODO: Re-enable password verification for production
-    // const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    // if (!isPasswordValid) {
-    //   await this.logLoginAttempt(null, dto.email, false, LoginFailureReason.INVALID_CREDENTIALS, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new UnauthorizedException('Invalid credentials');
-    // }
+    if (!this.authConfigService.isPasswordVerificationDisabled()) {
+      const isPasswordValid = await this.passwordService.verify(
+        dto.password,
+        user.password,
+      );
+      if (!isPasswordValid) {
+        await this.logLoginAttempt(
+          null,
+          dto.email,
+          false,
+          LoginFailureReason.INVALID_CREDENTIALS,
+          dto.deviceFingerprint,
+          clientIp,
+          userAgent,
+        );
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    }
 
-    // Get customer profile
     const profile = await this.profileRepo.findOne({
       where: { userId: user.id },
       relations: ['company', 'deviceBindings'],
     });
 
     if (!profile) {
-      // Check if user has a different role (supplier or admin)
       const userRoles = user.roles?.map((r) => r.name) || [];
       this.logger.warn(
         `Customer login failed: User ${dto.email} (ID: ${user.id}) has no customer profile. Roles: ${userRoles.join(', ')}`,
@@ -419,95 +392,138 @@ export class CustomerAuthService {
       );
     }
 
-    // DEVELOPMENT MODE: Skip email verification check
-    // TODO: Re-enable email verification for production
-    // if (!profile.emailVerified) {
-    //   await this.logLoginAttempt(profile.id, dto.email, false, LoginFailureReason.EMAIL_NOT_VERIFIED, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new ForbiddenException('Email not verified. Please check your email for the verification link.');
-    // }
+    if (
+      !this.authConfigService.isEmailVerificationDisabled() &&
+      !profile.emailVerified
+    ) {
+      await this.logLoginAttempt(
+        profile.id,
+        dto.email,
+        false,
+        LoginFailureReason.EMAIL_NOT_VERIFIED,
+        dto.deviceFingerprint,
+        clientIp,
+        userAgent,
+      );
+      throw new ForbiddenException(
+        'Email not verified. Please check your email for the verification link.',
+      );
+    }
 
-    // DEVELOPMENT MODE: Skip account status check
-    // TODO: Re-enable account status check for production
-    // if (profile.accountStatus === CustomerAccountStatus.PENDING) {
-    //   await this.logLoginAttempt(profile.id, dto.email, false, LoginFailureReason.ACCOUNT_PENDING, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new ForbiddenException('Account is pending activation');
-    // }
-    //
-    // if (profile.accountStatus === CustomerAccountStatus.SUSPENDED) {
-    //   await this.logLoginAttempt(profile.id, dto.email, false, LoginFailureReason.ACCOUNT_SUSPENDED, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new ForbiddenException('Account has been suspended. Please contact support.');
-    // }
-    //
-    // if (profile.accountStatus === CustomerAccountStatus.DEACTIVATED) {
-    //   await this.logLoginAttempt(profile.id, dto.email, false, LoginFailureReason.ACCOUNT_DEACTIVATED, dto.deviceFingerprint, clientIp, userAgent);
-    //   throw new ForbiddenException('Account has been deactivated');
-    // }
+    if (!this.authConfigService.isAccountStatusCheckDisabled()) {
+      if (profile.accountStatus === CustomerAccountStatus.PENDING) {
+        await this.logLoginAttempt(
+          profile.id,
+          dto.email,
+          false,
+          LoginFailureReason.ACCOUNT_PENDING,
+          dto.deviceFingerprint,
+          clientIp,
+          userAgent,
+        );
+        throw new ForbiddenException('Account is pending activation');
+      }
 
-    // DEVELOPMENT MODE: Skip device fingerprint verification
-    // TODO: Re-enable device fingerprint verification for production
-    // const activeBinding = profile.deviceBindings.find(
-    //   (b) => b.isActive && b.isPrimary,
-    // );
-    //
-    // if (!activeBinding) {
-    //   throw new UnauthorizedException('No active device binding found. Please contact support.');
-    // }
-    //
-    // if (activeBinding.deviceFingerprint !== dto.deviceFingerprint) {
-    //   await this.logLoginAttempt(profile.id, dto.email, false, LoginFailureReason.DEVICE_MISMATCH, dto.deviceFingerprint, clientIp, userAgent);
-    //
-    //   // Log this as a security event
-    //   await this.auditService.log({
-    //     entityType: 'customer_profile',
-    //     entityId: profile.id,
-    //     action: AuditAction.REJECT,
-    //     newValues: {
-    //       reason: 'device_mismatch',
-    //       attemptedFingerprint: dto.deviceFingerprint.substring(0, 20) + '...',
-    //       registeredFingerprint: activeBinding.deviceFingerprint.substring(0, 20) + '...',
-    //     },
-    //     ipAddress: clientIp,
-    //     userAgent,
-    //   });
-    //
-    //   throw new UnauthorizedException(
-    //     'Device not recognized. This account is locked to a specific device. Please contact support if you need to change devices.',
-    //   );
-    // }
+      if (profile.accountStatus === CustomerAccountStatus.SUSPENDED) {
+        await this.logLoginAttempt(
+          profile.id,
+          dto.email,
+          false,
+          LoginFailureReason.ACCOUNT_SUSPENDED,
+          dto.deviceFingerprint,
+          clientIp,
+          userAgent,
+        );
+        throw new ForbiddenException(
+          'Account has been suspended. Please contact support.',
+        );
+      }
 
-    // DEVELOPMENT MODE: Skip IP mismatch check
-    // Check IP mismatch (WARNING ONLY - not blocking)
-    // DEVELOPMENT MODE: Set default values for commented-out checks
-    const activeBinding = profile.deviceBindings?.find(
-      (b) => b.isActive && b.isPrimary,
+      if (profile.accountStatus === CustomerAccountStatus.DEACTIVATED) {
+        await this.logLoginAttempt(
+          profile.id,
+          dto.email,
+          false,
+          LoginFailureReason.ACCOUNT_DEACTIVATED,
+          dto.deviceFingerprint,
+          clientIp,
+          userAgent,
+        );
+        throw new ForbiddenException('Account has been deactivated');
+      }
+    }
+
+    let ipMismatchWarning = false;
+    const activeBinding = this.deviceBindingService.findPrimaryActiveBinding(
+      profile.deviceBindings,
     );
-    const ipMismatchWarning = false; // Disabled in development mode
 
-    // Invalidate any existing active sessions (single session enforcement)
-    await this.invalidateAllSessions(
+    if (!this.authConfigService.isDeviceFingerprintDisabled()) {
+      if (!activeBinding) {
+        throw new UnauthorizedException(
+          'No active device binding found. Please contact support.',
+        );
+      }
+
+      if (activeBinding.deviceFingerprint !== dto.deviceFingerprint) {
+        await this.logLoginAttempt(
+          profile.id,
+          dto.email,
+          false,
+          LoginFailureReason.DEVICE_MISMATCH,
+          dto.deviceFingerprint,
+          clientIp,
+          userAgent,
+        );
+
+        await this.auditService.log({
+          entityType: 'customer_profile',
+          entityId: profile.id,
+          action: AuditAction.REJECT,
+          newValues: {
+            reason: 'device_mismatch',
+            attemptedFingerprint: dto.deviceFingerprint.substring(0, 20) + '...',
+            registeredFingerprint:
+              activeBinding.deviceFingerprint.substring(0, 20) + '...',
+          },
+          ipAddress: clientIp,
+          userAgent,
+        });
+
+        throw new UnauthorizedException(
+          'Device not recognized. This account is locked to a specific device. Please contact support if you need to change devices.',
+        );
+      }
+    }
+
+    if (
+      !this.authConfigService.isIpMismatchCheckDisabled() &&
+      activeBinding &&
+      activeBinding.registeredIp !== clientIp
+    ) {
+      ipMismatchWarning = true;
+    }
+
+    await this.sessionService.invalidateAllSessions(
+      this.sessionRepo,
       profile.id,
+      'customerProfileId',
       SessionInvalidationReason.NEW_LOGIN,
     );
 
-    const sessionToken = uuidv4();
-    const refreshToken = uuidv4();
-    const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
-
-    const session = this.sessionRepo.create({
-      customerProfileId: profile.id,
-      sessionToken,
-      refreshToken,
-      deviceFingerprint: dto.deviceFingerprint,
-      ipAddress: clientIp,
-      userAgent,
-      isActive: true,
-      expiresAt,
-      lastActivity: now().toJSDate(),
-    });
+    const { session, sessionToken } = this.sessionService.createSession(
+      this.sessionRepo,
+      {
+        profileId: profile.id,
+        profileIdField: 'customerProfileId',
+        deviceFingerprint: dto.deviceFingerprint,
+        ipAddress: clientIp,
+        userAgent,
+      },
+    );
     await this.sessionRepo.save(session);
 
-    // Generate JWT tokens
-    const payload = {
+    const payload: JwtTokenPayload = {
       sub: user.id,
       customerId: profile.id,
       email: user.email,
@@ -515,12 +531,9 @@ export class CustomerAuthService {
       sessionToken,
     };
 
-    const [accessToken, jwtRefreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, { expiresIn: '1h' }),
-      this.jwtService.signAsync(payload, { expiresIn: '7d' }),
-    ]);
+    const { accessToken, refreshToken } =
+      await this.tokenService.generateTokenPair(payload);
 
-    // Log successful login
     await this.logLoginAttempt(
       profile.id,
       dto.email,
@@ -532,7 +545,6 @@ export class CustomerAuthService {
       ipMismatchWarning,
     );
 
-    // Log audit
     await this.auditService.log({
       entityType: 'customer_profile',
       entityId: profile.id,
@@ -548,30 +560,24 @@ export class CustomerAuthService {
 
     return {
       accessToken,
-      refreshToken: jwtRefreshToken,
+      refreshToken,
       expiresIn: 3600,
       customerId: profile.id,
       name: `${profile.firstName} ${profile.lastName}`,
       companyName: profile.company.tradingName || profile.company.legalName,
       ipMismatchWarning,
-      registeredIp: undefined, // Disabled in development mode
+      registeredIp: undefined,
     };
   }
 
-  /**
-   * Logout - invalidate current session
-   */
   async logout(sessionToken: string, clientIp: string): Promise<void> {
-    const session = await this.sessionRepo.findOne({
-      where: { sessionToken, isActive: true },
-    });
+    const session = await this.sessionService.invalidateSession(
+      this.sessionRepo,
+      sessionToken,
+      SessionInvalidationReason.LOGOUT,
+    );
 
     if (session) {
-      session.isActive = false;
-      session.invalidatedAt = now().toJSDate();
-      session.invalidationReason = SessionInvalidationReason.LOGOUT;
-      await this.sessionRepo.save(session);
-
       await this.auditService.log({
         entityType: 'customer_profile',
         entityId: session.customerProfileId,
@@ -582,17 +588,15 @@ export class CustomerAuthService {
     }
   }
 
-  /**
-   * Refresh session token
-   */
   async refreshSession(
     dto: CustomerRefreshTokenDto,
     clientIp: string,
   ): Promise<CustomerLoginResponseDto> {
     try {
-      const payload = await this.jwtService.verifyAsync(dto.refreshToken);
+      const payload = await this.tokenService.verifyToken<JwtTokenPayload>(
+        dto.refreshToken,
+      );
 
-      // Verify device fingerprint
       const profile = await this.profileRepo.findOne({
         where: { id: payload.customerId },
         relations: ['company', 'deviceBindings', 'user'],
@@ -602,11 +606,9 @@ export class CustomerAuthService {
         throw new UnauthorizedException('Customer not found');
       }
 
-      const deviceBindingDisabled =
-        this.configService.get('DISABLE_DEVICE_FINGERPRINT') === 'true';
-      if (!deviceBindingDisabled) {
-        const activeBinding = profile.deviceBindings.find(
-          (b) => b.isActive && b.isPrimary,
+      if (!this.authConfigService.isDeviceFingerprintDisabled()) {
+        const activeBinding = this.deviceBindingService.findPrimaryActiveBinding(
+          profile.deviceBindings,
         );
         if (
           !activeBinding ||
@@ -616,14 +618,12 @@ export class CustomerAuthService {
         }
       }
 
-      // Check account status
       if (profile.accountStatus !== CustomerAccountStatus.ACTIVE) {
         throw new ForbiddenException('Account is not active');
       }
 
-      // Generate new tokens
       const sessionToken = uuidv4();
-      const newPayload = {
+      const newPayload: JwtTokenPayload = {
         sub: profile.userId,
         customerId: profile.id,
         email: profile.user.email,
@@ -631,16 +631,14 @@ export class CustomerAuthService {
         sessionToken,
       };
 
-      const [accessToken, refreshToken] = await Promise.all([
-        this.jwtService.signAsync(newPayload, { expiresIn: '1h' }),
-        this.jwtService.signAsync(newPayload, { expiresIn: '7d' }),
-      ]);
+      const { accessToken, refreshToken } =
+        await this.tokenService.generateTokenPair(newPayload);
 
-      const expiresAt = now().plus({ hours: SESSION_EXPIRY_HOURS }).toJSDate();
-
-      await this.sessionRepo.update(
-        { customerProfileId: profile.id, isActive: true },
-        { sessionToken, lastActivity: now().toJSDate(), expiresAt },
+      await this.sessionService.updateSessionToken(
+        this.sessionRepo,
+        profile.id,
+        'customerProfileId',
+        sessionToken,
       );
 
       return {
@@ -656,83 +654,24 @@ export class CustomerAuthService {
     }
   }
 
-  /**
-   * Verify device binding for a customer
-   */
   async verifyDeviceBinding(
     customerId: number,
     deviceFingerprint: string,
   ): Promise<CustomerDeviceBinding | null> {
-    return this.deviceBindingRepo.findOne({
-      where: {
-        customerProfileId: customerId,
-        deviceFingerprint,
-        isActive: true,
-        isPrimary: true,
-      },
-    });
+    return this.deviceBindingService.findBinding(
+      this.deviceBindingRepo,
+      customerId,
+      'customerProfileId',
+      deviceFingerprint,
+    );
   }
 
-  /**
-   * Verify session is valid
-   */
   async verifySession(sessionToken: string): Promise<CustomerSession | null> {
-    const session = await this.sessionRepo.findOne({
-      where: { sessionToken, isActive: true },
-      relations: ['customerProfile'],
-    });
-
-    if (!session) return null;
-
-    if (now().toJSDate() > session.expiresAt) {
-      session.isActive = false;
-      session.invalidatedAt = now().toJSDate();
-      session.invalidationReason = SessionInvalidationReason.EXPIRED;
-      await this.sessionRepo.save(session);
-      return null;
-    }
-
-    session.lastActivity = now().toJSDate();
-    await this.sessionRepo.save(session);
-
-    return session;
-  }
-
-  // Private helper methods
-
-  private async checkLoginAttempts(
-    email: string,
-    ipAddress: string,
-  ): Promise<void> {
-    try {
-      const lockoutTime = now()
-        .minus({ minutes: LOGIN_LOCKOUT_MINUTES })
-        .toJSDate();
-
-      const recentAttempts = await this.loginAttemptRepo.count({
-        where: {
-          email,
-          success: false,
-          attemptTime: MoreThanOrEqual(lockoutTime),
-        },
-      });
-
-      if (recentAttempts >= MAX_LOGIN_ATTEMPTS) {
-        throw new UnauthorizedException(
-          `Too many failed login attempts. Please try again in ${LOGIN_LOCKOUT_MINUTES} minutes.`,
-        );
-      }
-    } catch (error) {
-      // Silently skip rate limiting if table doesn't exist (development mode)
-      if (!error.message.includes('Too many failed login attempts')) {
-        this.logger.warn(
-          'Failed to check login attempts (table may not exist): ' +
-            error.message,
-        );
-      } else {
-        throw error; // Re-throw if it's the actual lockout error
-      }
-    }
+    return this.sessionService.validateSession(
+      this.sessionRepo,
+      sessionToken,
+      ['customerProfile'],
+    );
   }
 
   private async logLoginAttempt(
@@ -745,46 +684,19 @@ export class CustomerAuthService {
     userAgent: string,
     ipMismatchWarning: boolean = false,
   ): Promise<void> {
-    try {
-      const attempt = new CustomerLoginAttempt();
-      if (customerProfileId) {
-        attempt.customerProfileId = customerProfileId;
-      }
-      attempt.email = email;
-      attempt.success = success;
-      if (failureReason) {
-        attempt.failureReason = failureReason;
-      }
-      attempt.deviceFingerprint = deviceFingerprint;
-      attempt.ipAddress = ipAddress;
-      attempt.userAgent = userAgent;
-      attempt.ipMismatchWarning = ipMismatchWarning;
-      await this.loginAttemptRepo.save(attempt);
-    } catch (error) {
-      // Silently fail if login attempts table doesn't exist (development mode)
-      this.logger.warn(
-        'Failed to log login attempt (table may not exist): ' + error.message,
-      );
-    }
+    await this.rateLimitingService.logLoginAttempt(this.loginAttemptRepo, {
+      profileId: customerProfileId,
+      profileIdField: 'customerProfileId',
+      email,
+      success,
+      failureReason,
+      deviceFingerprint,
+      ipAddress,
+      userAgent,
+      ipMismatchWarning,
+    });
   }
 
-  private async invalidateAllSessions(
-    customerProfileId: number,
-    reason: SessionInvalidationReason,
-  ): Promise<void> {
-    await this.sessionRepo.update(
-      { customerProfileId, isActive: true },
-      {
-        isActive: false,
-        invalidatedAt: now().toJSDate(),
-        invalidationReason: reason,
-      },
-    );
-  }
-
-  /**
-   * Verify email with token
-   */
   async verifyEmail(
     token: string,
     clientIp: string,
@@ -808,14 +720,12 @@ export class CustomerAuthService {
       };
     }
 
-    // Update profile
     profile.emailVerified = true;
     profile.emailVerificationToken = null;
     profile.emailVerificationExpires = null;
     profile.accountStatus = CustomerAccountStatus.ACTIVE;
     await this.profileRepo.save(profile);
 
-    // Log the verification
     await this.auditService.log({
       entityType: 'customer_profile',
       entityId: profile.id,
@@ -833,16 +743,12 @@ export class CustomerAuthService {
     };
   }
 
-  /**
-   * Resend verification email
-   */
   async resendVerificationEmail(
     email: string,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
     const user = await this.userRepo.findOne({ where: { email } });
     if (!user) {
-      // Don't reveal if email exists
       return {
         success: true,
         message:
@@ -870,20 +776,18 @@ export class CustomerAuthService {
 
     const emailVerificationToken = uuidv4();
     const emailVerificationExpires = now()
-      .plus({ hours: EMAIL_VERIFICATION_EXPIRY_HOURS })
+      .plus({ hours: AUTH_CONSTANTS.EMAIL_VERIFICATION_EXPIRY_HOURS })
       .toJSDate();
 
     profile.emailVerificationToken = emailVerificationToken;
     profile.emailVerificationExpires = emailVerificationExpires;
     await this.profileRepo.save(profile);
 
-    // Send verification email
     await this.emailService.sendCustomerVerificationEmail(
       email,
       emailVerificationToken,
     );
 
-    // Log the resend
     await this.auditService.log({
       entityType: 'customer_profile',
       entityId: profile.id,
@@ -901,9 +805,6 @@ export class CustomerAuthService {
     };
   }
 
-  /**
-   * Validate uploaded document against user input using OCR
-   */
   async validateUploadedDocument(
     file: Express.Multer.File,
     documentType: 'vat' | 'registration',
@@ -936,13 +837,11 @@ export class CustomerAuthService {
         `Validating ${documentType} document for company: ${expectedData.companyName}`,
       );
 
-      // Extract data using OCR service
       const extractedData = await this.documentOcrService.extractDocumentData(
         file,
         documentType,
       );
 
-      // Validate against expected data
       const validationResult = this.documentOcrService.validateDocument(
         extractedData,
         expectedData,
@@ -969,7 +868,7 @@ export class CustomerAuthService {
         },
         ocrFailed: validationResult.ocrFailed,
         requiresManualReview: validationResult.requiresManualReview,
-        allowedToProceed: true, // Always allow to proceed per requirements
+        allowedToProceed: true,
       };
 
       this.logger.log('=== VALIDATION RESPONSE ===');
@@ -983,7 +882,6 @@ export class CustomerAuthService {
         error.stack,
       );
 
-      // OCR failed - allow to proceed but mark for manual review
       return {
         success: true,
         isValid: false,

@@ -21,6 +21,7 @@ import {
   fittingFlangeConfig as getFittingFlangeConfig,
   hasLooseFlange,
   getScheduleListForSpec,
+  tackWeldEndsPerBend,
   tackWeldWeight as getTackWeldWeight,
   closureWeight as getClosureWeight,
   closureLengthLimits,
@@ -2999,8 +3000,7 @@ function BendFormComponent({
                             : 0;
                           const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
-                          const bendEndOption = BEND_END_OPTIONS.find(o => o.value === entry.specs.bendEndConfiguration);
-                          const tackWeldEnds = (bendEndOption as any)?.tackWeldEnds || 0;
+                          const tackWeldEnds = tackWeldEndsPerBend(entry.specs?.bendEndConfiguration || 'PE');
                           const tackWeldTotalWeight = dn && tackWeldEnds > 0
                             ? getTackWeldWeight(dn, tackWeldEnds) * bendQuantity
                             : 0;

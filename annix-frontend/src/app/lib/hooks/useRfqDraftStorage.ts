@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { log } from '@/app/lib/logger';
+import { now, nowISO, fromISO } from '@/app/lib/datetime';
 
 const DRAFT_STORAGE_KEY = 'annix_rfq_draft';
 const DRAFT_TIMESTAMP_KEY = 'annix_rfq_draft_timestamp';
@@ -30,9 +31,9 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isExpired = useCallback((timestamp: string): boolean => {
-    const savedDate = new Date(timestamp);
-    const expiryDate = new Date(savedDate.getTime() + DRAFT_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
-    return new Date() > expiryDate;
+    const savedDate = fromISO(timestamp);
+    const expiryDate = savedDate.plus({ days: DRAFT_EXPIRY_DAYS });
+    return now() > expiryDate;
   }, []);
 
   const loadDraft = useCallback((): RfqDraftData | null => {
@@ -75,22 +76,22 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
     saveTimeoutRef.current = setTimeout(() => {
       try {
         const existingDraft = loadDraft();
-        const now = new Date().toISOString();
+        const currentTime = nowISO();
 
         const draftToSave: RfqDraftData = {
           rfqData: data.rfqData ?? existingDraft?.rfqData ?? {},
           globalSpecs: data.globalSpecs ?? existingDraft?.globalSpecs ?? {},
           currentStep: data.currentStep ?? existingDraft?.currentStep ?? 0,
           entries: data.entries ?? existingDraft?.entries ?? [],
-          lastSaved: now,
+          lastSaved: currentTime,
           customerEmail: data.rfqData?.customerEmail || data.customerEmail || existingDraft?.customerEmail,
         };
 
         localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftToSave));
-        localStorage.setItem(DRAFT_TIMESTAMP_KEY, now);
+        localStorage.setItem(DRAFT_TIMESTAMP_KEY, currentTime);
 
         setHasDraft(true);
-        setLastSaved(new Date(now));
+        setLastSaved(fromISO(currentTime).toJSDate());
         setDraftEmail(draftToSave.customerEmail || null);
 
         log.debug('Draft saved to localStorage:', {
@@ -123,7 +124,7 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
     const draft = loadDraft();
     if (draft) {
       setHasDraft(true);
-      setLastSaved(draft.lastSaved ? new Date(draft.lastSaved) : null);
+      setLastSaved(draft.lastSaved ? fromISO(draft.lastSaved).toJSDate() : null);
       setDraftEmail(draft.customerEmail || null);
     }
 
@@ -147,14 +148,14 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
 export function formatLastSaved(date: Date | null): string {
   if (!date) return '';
 
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
+  const savedDt = fromISO(date.toISOString());
+  const diff = now().diff(savedDt, ['days', 'hours', 'minutes']);
+  const diffMins = Math.floor(diff.minutes);
+  const diffHours = Math.floor(diff.hours);
+  const diffDays = Math.floor(diff.days);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+  if (diffMins < 1 && diffHours < 1 && diffDays < 1) return 'Just now';
+  if (diffHours < 1 && diffDays < 1) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+  if (diffDays < 1) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
   return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
 }

@@ -127,15 +127,15 @@ export class PipeSteelWorkService {
 
   constructor(
     @InjectRepository(PipeSupportSpacing)
-    private readonly supportSpacingRepository: Repository<PipeSupportSpacing>,
+    private readonly supportSpacingRepo: Repository<PipeSupportSpacing>,
     @InjectRepository(BracketTypeEntity)
-    private readonly bracketTypeRepository: Repository<BracketTypeEntity>,
+    private readonly bracketTypeRepo: Repository<BracketTypeEntity>,
     @InjectRepository(ReinforcementPadStandardEntity)
-    private readonly padStandardRepository: Repository<ReinforcementPadStandardEntity>,
+    private readonly padStandardRepo: Repository<ReinforcementPadStandardEntity>,
     @InjectRepository(BracketDimensionBySizeEntity)
-    private readonly bracketDimensionRepository: Repository<BracketDimensionBySizeEntity>,
+    private readonly bracketDimensionRepo: Repository<BracketDimensionBySizeEntity>,
     @InjectRepository(PipeSteelWorkConfigEntity)
-    private readonly configRepository: Repository<PipeSteelWorkConfigEntity>,
+    private readonly configRepo: Repository<PipeSteelWorkConfigEntity>,
   ) {}
 
   async configValue(
@@ -146,7 +146,7 @@ export class PipeSteelWorkService {
       return this.configCache.get(key) || defaultValue || null;
     }
 
-    const config = await this.configRepository.findOne({
+    const config = await this.configRepo.findOne({
       where: { configKey: key },
     });
     if (config) {
@@ -168,12 +168,12 @@ export class PipeSteelWorkService {
 
   async allConfigs(category?: string): Promise<PipeSteelWorkConfigEntity[]> {
     if (category) {
-      return this.configRepository.find({
+      return this.configRepo.find({
         where: { category },
         order: { configKey: 'ASC' },
       });
     }
-    return this.configRepository.find({
+    return this.configRepo.find({
       order: { category: 'ASC', configKey: 'ASC' },
     });
   }
@@ -182,7 +182,7 @@ export class PipeSteelWorkService {
     key: string,
     value: string,
   ): Promise<PipeSteelWorkConfigEntity | null> {
-    const config = await this.configRepository.findOne({
+    const config = await this.configRepo.findOne({
       where: { configKey: key },
     });
     if (!config) {
@@ -190,14 +190,14 @@ export class PipeSteelWorkService {
     }
     config.configValue = value;
     this.configCache.delete(key);
-    return this.configRepository.save(config);
+    return this.configRepo.save(config);
   }
 
   async padStandard(
     branchNbMm: number,
     headerNbMm: number,
   ): Promise<ReinforcementPadStandardEntity | null> {
-    return this.padStandardRepository.findOne({
+    return this.padStandardRepo.findOne({
       where: { branchNbMm, headerNbMm },
     });
   }
@@ -206,7 +206,7 @@ export class PipeSteelWorkService {
     bracketTypeCode: string,
     nbMm: number,
   ): Promise<BracketDimensionBySizeEntity | null> {
-    return this.bracketDimensionRepository.findOne({
+    return this.bracketDimensionRepo.findOne({
       where: { bracketTypeCode, nbMm },
     });
   }
@@ -214,7 +214,7 @@ export class PipeSteelWorkService {
   async bracketDimensionsForType(
     bracketTypeCode: string,
   ): Promise<BracketDimensionBySizeEntity[]> {
-    return this.bracketDimensionRepository.find({
+    return this.bracketDimensionRepo.find({
       where: { bracketTypeCode },
       order: { nbMm: 'ASC' },
     });

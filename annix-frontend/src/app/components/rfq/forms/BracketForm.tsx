@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { generateUniqueId } from '@/app/lib/datetime';
 import {
   BracketEntry,
   BracketType,
@@ -23,7 +24,7 @@ interface BracketFormProps {
   onDuplicateEntry: (entry: BracketEntry) => void;
 }
 
-const generateId = (): string => `bracket-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+const generateId = (): string => `bracket-${generateUniqueId()}`;
 
 export default function BracketForm({
   entries,

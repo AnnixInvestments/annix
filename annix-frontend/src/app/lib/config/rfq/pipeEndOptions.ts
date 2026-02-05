@@ -29,6 +29,10 @@ export const FITTING_END_OPTIONS = [
 
 export type FlangeType = 'fixed' | 'loose' | 'rotating' | null;
 
+export type PipeEndOption = typeof PIPE_END_OPTIONS[number];
+export type BendEndOption = typeof BEND_END_OPTIONS[number];
+export type FittingEndOption = typeof FITTING_END_OPTIONS[number];
+
 export const weldCountPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find(opt => opt.value === bendEndConfig);
   return config?.weldCount ?? 0;

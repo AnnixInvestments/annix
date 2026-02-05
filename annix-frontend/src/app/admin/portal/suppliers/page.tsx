@@ -34,12 +34,12 @@ export default function AdminSuppliersPage() {
         status: statusFilter || undefined,
       });
 
-      setSuppliers(response.suppliers || []);
+      const supplierList = response.items || response.suppliers || [];
+      setSuppliers(supplierList);
       setTotal(response.total || 0);
       setTotalPages(response.totalPages || 0);
 
-      // Calculate stats
-      const allSuppliers = response.suppliers || [];
+      const allSuppliers = supplierList;
       const activeCount = allSuppliers.filter((s: any) => s.accountStatus === 'active').length;
       const pendingCount = allSuppliers.filter((s: any) => s.accountStatus === 'pending').length;
       const suspendedCount = allSuppliers.filter((s: any) => s.accountStatus === 'suspended').length;
@@ -150,7 +150,10 @@ export default function AdminSuppliersPage() {
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-4">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <button
+          onClick={() => setStatusFilter('')}
+          className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-blue-500 transition-all ${statusFilter === '' ? 'ring-2 ring-blue-500' : ''}`}
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -168,9 +171,12 @@ export default function AdminSuppliersPage() {
               </div>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <button
+          onClick={() => setStatusFilter('active')}
+          className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-green-500 transition-all ${statusFilter === 'active' ? 'ring-2 ring-green-500' : ''}`}
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -188,9 +194,12 @@ export default function AdminSuppliersPage() {
               </div>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <button
+          onClick={() => setStatusFilter('pending')}
+          className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-orange-500 transition-all ${statusFilter === 'pending' ? 'ring-2 ring-orange-500' : ''}`}
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -208,9 +217,12 @@ export default function AdminSuppliersPage() {
               </div>
             </div>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <button
+          onClick={() => setStatusFilter('suspended')}
+          className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-red-500 transition-all ${statusFilter === 'suspended' ? 'ring-2 ring-red-500' : ''}`}
+        >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -228,7 +240,7 @@ export default function AdminSuppliersPage() {
               </div>
             </div>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Filters */}

@@ -13,6 +13,7 @@ import {
   IsDateString,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsZAPhone } from '../../shared/validators';
 
 export class SupplierCompanyDto {
   @ApiProperty({
@@ -129,6 +130,7 @@ export class SupplierCompanyDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(30)
+  @IsZAPhone()
   primaryContactPhone: string;
 
   @ApiPropertyOptional({
@@ -138,6 +140,7 @@ export class SupplierCompanyDto {
   @IsString()
   @IsOptional()
   @MaxLength(30)
+  @IsZAPhone()
   primaryPhone?: string;
 
   @ApiPropertyOptional({

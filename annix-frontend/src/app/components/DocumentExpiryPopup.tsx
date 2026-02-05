@@ -43,7 +43,7 @@ export function DocumentExpiryPopup({ userType, onUploadDocument }: DocumentExpi
 
   const renderDocument = (doc: ExpiringDocument, isExpired: boolean) => {
     const label = documentTypeLabels[doc.documentType] || doc.documentType;
-    const expiryDate = formatDateZA(new Date(doc.expiryDate));
+    const expiryDate = formatDateZA(doc.expiryDate);
 
     return (
       <div

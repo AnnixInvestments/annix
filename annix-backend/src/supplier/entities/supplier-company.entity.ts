@@ -85,10 +85,10 @@ export class SupplierCompany {
 
   // BEE (Broad-Based Black Economic Empowerment) Rating
   @Column({ name: 'bee_level', type: 'int', nullable: true })
-  beeLevel: number; // 1-8, or null if not applicable
+  beeLevel: number | null;
 
   @Column({ name: 'bee_certificate_expiry', type: 'date', nullable: true })
-  beeCertificateExpiry: Date;
+  beeCertificateExpiry: Date | null;
 
   @Column({ name: 'bee_verification_agency', length: 255, nullable: true })
   beeVerificationAgency: string;

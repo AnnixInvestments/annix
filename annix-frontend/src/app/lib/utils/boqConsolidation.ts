@@ -40,7 +40,7 @@ interface ConsolidatedItem {
   extAreaM2?: number;
 }
 
-function getFlangeSpec(
+function flangeSpec(
   entry: any,
   globalSpecs?: ConsolidationInput['globalSpecs'],
   masterData?: ConsolidationInput['masterData']
@@ -116,7 +116,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
   entries.forEach((entry, index) => {
     const itemNumber = index + 1;
     const qty = entry.specs?.quantityValue || entry.calculation?.calculatedPipeCount || 1;
-    const { spec: flangeSpec, standard: flangeStandard, pressureClass, flangeTypeCode } = getFlangeSpec(entry, globalSpecs, masterData);
+    const { spec: flangeSpecStr, standard: flangeStandard, pressureClass, flangeTypeCode } = flangeSpec(entry, globalSpecs, masterData);
 
     if (entry.itemType === 'bend') {
       const nb = entry.specs?.nominalBoreMm || 100;
@@ -125,7 +125,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
       const flangeTypeName = getFlangeTypeName(bendEndConfig);
 
       if (flangeCount.main > 0) {
-        const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
+        const flangeKey = `FLANGE_${nb}_${flangeSpecStr}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
         const flangeWeight = getFlangeWeight(nb, pressureClass, flangeStandard, flangeTypeCode);
@@ -136,7 +136,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           existingFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(flangeKey, {
-            description: `${nb}NB ${flangeTypeName} Flange ${flangeSpec}`,
+            description: `${nb}NB ${flangeTypeName} Flange ${flangeSpecStr}`,
             qty: flangeQty,
             unit: 'Each',
             weight: flangeWeight * flangeQty,
@@ -145,7 +145,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         }
 
         const bnwInfo = getBnwSetInfo(nb, pressureClass);
-        const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
+        const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpecStr}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
         const boltSetQty = boltSetCountPerBend(bendEndConfig) * qty;
@@ -157,7 +157,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             existingBnw.entries.push(itemNumber);
           } else {
             consolidatedBnwSets.set(bnwKey, {
-              description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
+              description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpecStr}`,
               qty: boltSetQty,
               unit: 'sets',
               weight: bnwWeight * boltSetQty,
@@ -167,7 +167,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         }
 
         if (globalSpecs?.gasketType) {
-          const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpec}`;
+          const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpecStr}`;
           const existingGasket = consolidatedGaskets.get(gasketKey);
           const gasketWeight = getGasketWeight(globalSpecs.gasketType, nb);
           const gasketQty = boltSetQty;
@@ -179,7 +179,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
               existingGasket.entries.push(itemNumber);
             } else {
               consolidatedGaskets.set(gasketKey, {
-                description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
+                description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpecStr}`,
                 qty: gasketQty,
                 unit: 'Each',
                 weight: gasketWeight * gasketQty,
@@ -192,7 +192,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
 
       if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
         const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
-        const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
+        const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpecStr}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
         const blankWeight = getBlankFlangeWeight(blankNb, pressureClass, flangeStandard);
@@ -204,7 +204,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           existingBlank.entries.push(itemNumber);
         } else {
           consolidatedBlankFlanges.set(blankFlangeKey, {
-            description: `${blankNb}NB Blank Flange ${flangeSpec}`,
+            description: `${blankNb}NB Blank Flange ${flangeSpecStr}`,
             qty: blankQty,
             unit: 'Each',
             weight: blankWeight * blankQty,
@@ -224,7 +224,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
       const fittingBoltSets = boltSetCountPerFitting(fittingEndConfig, isEqualBranch);
 
       if (flangeCount.main > 0) {
-        const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
+        const flangeKey = `FLANGE_${nb}_${flangeSpecStr}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
         const flangeWeight = getFlangeWeight(nb, pressureClass, flangeStandard, flangeTypeCode);
@@ -235,7 +235,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           existingFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(flangeKey, {
-            description: `${nb}NB ${flangeTypeName} Flange ${flangeSpec}`,
+            description: `${nb}NB ${flangeTypeName} Flange ${flangeSpecStr}`,
             qty: flangeQty,
             unit: 'Each',
             weight: flangeWeight * flangeQty,
@@ -244,7 +244,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         }
 
         const bnwInfo = getBnwSetInfo(nb, pressureClass);
-        const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
+        const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpecStr}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
         const mainBoltSetQty = fittingBoltSets.mainBoltSets * qty;
@@ -256,7 +256,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             existingBnw.entries.push(itemNumber);
           } else {
             consolidatedBnwSets.set(bnwKey, {
-              description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
+              description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpecStr}`,
               qty: mainBoltSetQty,
               unit: 'sets',
               weight: bnwWeight * mainBoltSetQty,
@@ -266,7 +266,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         }
 
         if (globalSpecs?.gasketType && mainBoltSetQty > 0) {
-          const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpec}`;
+          const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpecStr}`;
           const existingGasket = consolidatedGaskets.get(gasketKey);
           const gasketWeight = getGasketWeight(globalSpecs.gasketType, nb);
 
@@ -276,7 +276,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             existingGasket.entries.push(itemNumber);
           } else {
             consolidatedGaskets.set(gasketKey, {
-              description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
+              description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpecStr}`,
               qty: mainBoltSetQty,
               unit: 'Each',
               weight: gasketWeight * mainBoltSetQty,
@@ -287,7 +287,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
       }
 
       if (flangeCount.branch > 0 && branchNb !== nb) {
-        const branchFlangeKey = `FLANGE_${branchNb}_${flangeSpec}_${flangeTypeName}`;
+        const branchFlangeKey = `FLANGE_${branchNb}_${flangeSpecStr}_${flangeTypeName}`;
         const existingBranchFlange = consolidatedFlanges.get(branchFlangeKey);
         const branchFlangeQty = flangeCount.branch * qty;
         const branchFlangeWeight = getFlangeWeight(branchNb, pressureClass, flangeStandard, flangeTypeCode);
@@ -298,7 +298,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           existingBranchFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(branchFlangeKey, {
-            description: `${branchNb}NB ${flangeTypeName} Flange ${flangeSpec}`,
+            description: `${branchNb}NB ${flangeTypeName} Flange ${flangeSpecStr}`,
             qty: branchFlangeQty,
             unit: 'Each',
             weight: branchFlangeWeight * branchFlangeQty,
@@ -307,7 +307,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         }
 
         const branchBnwInfo = getBnwSetInfo(branchNb, pressureClass);
-        const branchBnwKey = `BNW_${branchBnwInfo.boltSize}_x${branchBnwInfo.holesPerFlange}_${branchNb}NB_${flangeSpec}`;
+        const branchBnwKey = `BNW_${branchBnwInfo.boltSize}_x${branchBnwInfo.holesPerFlange}_${branchNb}NB_${flangeSpecStr}`;
         const existingBranchBnw = consolidatedBnwSets.get(branchBnwKey);
         const branchBnwWeight = branchBnwInfo.weightPerHole * branchBnwInfo.holesPerFlange;
         const branchBoltSetQty = fittingBoltSets.branchBoltSets * qty;
@@ -319,7 +319,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             existingBranchBnw.entries.push(itemNumber);
           } else {
             consolidatedBnwSets.set(branchBnwKey, {
-              description: `${branchBnwInfo.boltSize} BNW Set x${branchBnwInfo.holesPerFlange} for ${branchNb}NB ${flangeSpec}`,
+              description: `${branchBnwInfo.boltSize} BNW Set x${branchBnwInfo.holesPerFlange} for ${branchNb}NB ${flangeSpecStr}`,
               qty: branchBoltSetQty,
               unit: 'sets',
               weight: branchBnwWeight * branchBoltSetQty,
@@ -329,7 +329,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         }
 
         if (globalSpecs?.gasketType && branchBoltSetQty > 0) {
-          const branchGasketKey = `GASKET_${globalSpecs.gasketType}_${branchNb}NB_${flangeSpec}`;
+          const branchGasketKey = `GASKET_${globalSpecs.gasketType}_${branchNb}NB_${flangeSpecStr}`;
           const existingBranchGasket = consolidatedGaskets.get(branchGasketKey);
           const branchGasketWeight = getGasketWeight(globalSpecs.gasketType, branchNb);
 
@@ -339,7 +339,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             existingBranchGasket.entries.push(itemNumber);
           } else {
             consolidatedGaskets.set(branchGasketKey, {
-              description: `${globalSpecs.gasketType} Gasket ${branchNb}NB ${flangeSpec}`,
+              description: `${globalSpecs.gasketType} Gasket ${branchNb}NB ${flangeSpecStr}`,
               qty: branchBoltSetQty,
               unit: 'Each',
               weight: branchGasketWeight * branchBoltSetQty,
@@ -351,7 +351,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
 
       if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
         const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
-        const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
+        const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpecStr}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
         const blankWeight = getBlankFlangeWeight(blankNb, pressureClass, flangeStandard);
@@ -363,7 +363,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           existingBlank.entries.push(itemNumber);
         } else {
           consolidatedBlankFlanges.set(blankFlangeKey, {
-            description: `${blankNb}NB Blank Flange ${flangeSpec}`,
+            description: `${blankNb}NB Blank Flange ${flangeSpecStr}`,
             qty: blankQty,
             unit: 'Each',
             weight: blankWeight * blankQty,
@@ -381,7 +381,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
       const pipeQty = entry.calculation?.calculatedPipeCount || qty;
 
       if (flangeCount.main > 0) {
-        const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
+        const flangeKey = `FLANGE_${nb}_${flangeSpecStr}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * pipeQty;
         const flangeWeight = getFlangeWeight(nb, pressureClass, flangeStandard, flangeTypeCode);
@@ -392,7 +392,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           existingFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(flangeKey, {
-            description: `${nb}NB ${flangeTypeName} Flange ${flangeSpec}`,
+            description: `${nb}NB ${flangeTypeName} Flange ${flangeSpecStr}`,
             qty: flangeQty,
             unit: 'Each',
             weight: flangeWeight * flangeQty,
@@ -401,7 +401,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         }
 
         const bnwInfo = getBnwSetInfo(nb, pressureClass);
-        const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
+        const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpecStr}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
         const pipeBoltSetQty = boltSetCountPerPipe(pipeEndConfig) * pipeQty;
@@ -413,7 +413,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             existingBnw.entries.push(itemNumber);
           } else {
             consolidatedBnwSets.set(bnwKey, {
-              description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
+              description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpecStr}`,
               qty: pipeBoltSetQty,
               unit: 'sets',
               weight: bnwWeight * pipeBoltSetQty,
@@ -423,7 +423,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         }
 
         if (globalSpecs?.gasketType && pipeBoltSetQty > 0) {
-          const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpec}`;
+          const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpecStr}`;
           const existingGasket = consolidatedGaskets.get(gasketKey);
           const gasketWeight = getGasketWeight(globalSpecs.gasketType, nb);
 
@@ -433,7 +433,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             existingGasket.entries.push(itemNumber);
           } else {
             consolidatedGaskets.set(gasketKey, {
-              description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
+              description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpecStr}`,
               qty: pipeBoltSetQty,
               unit: 'Each',
               weight: gasketWeight * pipeBoltSetQty,
@@ -445,7 +445,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
 
       if (entry.specs?.addBlankFlange && entry.specs?.blankFlangeCount > 0) {
         const blankNb = entry.specs?.blankFlangeNominalBoreMm || nb;
-        const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
+        const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpecStr}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * pipeQty;
         const blankWeight = getBlankFlangeWeight(blankNb, pressureClass, flangeStandard);
@@ -457,7 +457,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           existingBlank.entries.push(itemNumber);
         } else {
           consolidatedBlankFlanges.set(blankFlangeKey, {
-            description: `${blankNb}NB Blank Flange ${flangeSpec}`,
+            description: `${blankNb}NB Blank Flange ${flangeSpecStr}`,
             qty: blankQty,
             unit: 'Each',
             weight: blankWeight * blankQty,

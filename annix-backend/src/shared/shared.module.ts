@@ -4,11 +4,15 @@ import { DocumentCompressionService } from './services/document-compression.serv
 import { DocumentExpiryService } from './services/document-expiry.service';
 import { CustomerDocument } from '../customer/entities/customer-document.entity';
 import { SupplierDocument } from '../supplier/entities/supplier-document.entity';
+import { AuthSharedModule } from './auth/auth-shared.module';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([CustomerDocument, SupplierDocument])],
+  imports: [
+    TypeOrmModule.forFeature([CustomerDocument, SupplierDocument]),
+    AuthSharedModule,
+  ],
   providers: [DocumentCompressionService, DocumentExpiryService],
-  exports: [DocumentCompressionService, DocumentExpiryService],
+  exports: [DocumentCompressionService, DocumentExpiryService, AuthSharedModule],
 })
 export class SharedModule {}

@@ -46,10 +46,10 @@ export class SupplierOnboarding {
   documentsComplete: boolean;
 
   @Column({ name: 'submitted_at', type: 'timestamp', nullable: true })
-  submittedAt: Date;
+  submittedAt: Date | null;
 
   @Column({ name: 'reviewed_at', type: 'timestamp', nullable: true })
-  reviewedAt: Date;
+  reviewedAt: Date | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'reviewed_by' })

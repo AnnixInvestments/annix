@@ -511,7 +511,7 @@ export const SABS62_COMMON_ANGLES: Record<SABS62BendType, number[]> = {
  * @param nb - Nominal bore in mm
  * @returns C/F dimension in mm, or undefined if not available
  */
-export function getSabs62CF(
+export function sabs62CF(
   bendType: SABS62BendType,
   angle: number,
   nb: number
@@ -525,7 +525,7 @@ export function getSabs62CF(
  * Get interpolated C/F for angles not in the table
  * Linear interpolation between nearest available angles
  */
-export function getSabs62CFInterpolated(
+export function sabs62CFInterpolated(
   bendType: SABS62BendType,
   angle: number,
   nb: number
@@ -534,7 +534,7 @@ export function getSabs62CFInterpolated(
   if (!bendData) return undefined;
 
   // Check if exact angle exists
-  const exactCF = getSabs62CF(bendType, angle, nb);
+  const exactCF = sabs62CF(bendType, angle, nb);
   if (exactCF !== undefined) return exactCF;
 
   // Get all available angles for this bend type
@@ -554,11 +554,11 @@ export function getSabs62CFInterpolated(
   }
 
   if (lowerAngle === upperAngle) {
-    return getSabs62CF(bendType, lowerAngle, nb);
+    return sabs62CF(bendType, lowerAngle, nb);
   }
 
-  const lowerCF = getSabs62CF(bendType, lowerAngle, nb);
-  const upperCF = getSabs62CF(bendType, upperAngle, nb);
+  const lowerCF = sabs62CF(bendType, lowerAngle, nb);
+  const upperCF = sabs62CF(bendType, upperAngle, nb);
 
   if (lowerCF === undefined || upperCF === undefined) {
     return undefined;
@@ -572,7 +572,7 @@ export function getSabs62CFInterpolated(
 /**
  * Get bend radius for SABS 62 bend
  */
-export function getSabs62BendRadius(
+export function sabs62BendRadius(
   bendType: SABS62BendType,
   nb: number
 ): number | undefined {
@@ -600,7 +600,7 @@ export function calculateSabs62BendRadius(
 /**
  * Get available angles for a specific bend type and NB
  */
-export function getSabs62AvailableAngles(
+export function sabs62AvailableAngles(
   bendType: SABS62BendType,
   nb: number
 ): number[] {
@@ -621,13 +621,13 @@ export function isSabs62CombinationAvailable(
   angle: number,
   nb: number
 ): boolean {
-  return getSabs62CF(bendType, angle, nb) !== undefined;
+  return sabs62CF(bendType, angle, nb) !== undefined;
 }
 
 /**
  * Get multiplier value for bend type
  */
-export function getSabs62Multiplier(bendType: SABS62BendType): number {
+export function sabs62Multiplier(bendType: SABS62BendType): number {
   const multiplierMap: Record<SABS62BendType, number> = {
     '1D': 1,
     '1.5D': 1.5,
@@ -641,7 +641,7 @@ export function getSabs62Multiplier(bendType: SABS62BendType): number {
 /**
  * Get all bend types
  */
-export function getSabs62BendTypes(): SABS62BendType[] {
+export function sabs62BendTypes(): SABS62BendType[] {
   return ['1D', '1.5D', '2D', '3D', '5D'];
 }
 

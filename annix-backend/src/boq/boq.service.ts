@@ -19,14 +19,9 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { Rfq } from '../rfq/entities/rfq.entity';
 import { RfqItem } from '../rfq/entities/rfq-item.entity';
+import { PaginatedResponse } from '../shared/dto';
 
-export interface PaginatedResult<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+export type PaginatedResult<T> = PaginatedResponse<T>;
 
 @Injectable()
 export class BoqService {

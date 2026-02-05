@@ -366,10 +366,10 @@ export function estimateFloodRisk(
 }
 
 /**
- * Get marine influence classification for a location
+ * Marine influence classification for a location
  * Convenience function combining distance calculation and classification
  */
-export function getMarineInfluence(
+export function marineInfluence(
   lat: number,
   lng: number
 ): {

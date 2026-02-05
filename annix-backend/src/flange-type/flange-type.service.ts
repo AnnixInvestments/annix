@@ -7,20 +7,20 @@ import { FlangeType } from './entities/flange-type.entity';
 export class FlangeTypeService {
   constructor(
     @InjectRepository(FlangeType)
-    private readonly flangeTypeRepository: Repository<FlangeType>,
+    private readonly flangeTypeRepo: Repository<FlangeType>,
   ) {}
 
   findAll(): Promise<FlangeType[]> {
-    return this.flangeTypeRepository.find({
+    return this.flangeTypeRepo.find({
       order: { code: 'ASC' },
     });
   }
 
   findByCode(code: string): Promise<FlangeType | null> {
-    return this.flangeTypeRepository.findOne({ where: { code } });
+    return this.flangeTypeRepo.findOne({ where: { code } });
   }
 
   findByAbbreviation(abbreviation: string): Promise<FlangeType | null> {
-    return this.flangeTypeRepository.findOne({ where: { abbreviation } });
+    return this.flangeTypeRepo.findOne({ where: { abbreviation } });
   }
 }

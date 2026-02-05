@@ -18,13 +18,13 @@ import {
 export class PipeSizingService {
   constructor(
     @InjectRepository(PipeSteelGrade)
-    private readonly gradeRepository: Repository<PipeSteelGrade>,
+    private readonly gradeRepo: Repository<PipeSteelGrade>,
     @InjectRepository(PipeAllowableStress)
-    private readonly stressRepository: Repository<PipeAllowableStress>,
+    private readonly stressRepo: Repository<PipeAllowableStress>,
     @InjectRepository(PipeScheduleWall)
-    private readonly scheduleWallRepository: Repository<PipeScheduleWall>,
+    private readonly scheduleWallRepo: Repository<PipeScheduleWall>,
     @InjectRepository(PipeNpsOd)
-    private readonly npsOdRepository: Repository<PipeNpsOd>,
+    private readonly npsOdRepo: Repository<PipeNpsOd>,
   ) {}
 
   // Unit conversions
@@ -38,26 +38,26 @@ export class PipeSizingService {
 
   // Get all steel grades
   async getAllSteelGrades(): Promise<PipeSteelGrade[]> {
-    return this.gradeRepository.find({
+    return this.gradeRepo.find({
       order: { code: 'ASC' },
     });
   }
 
   // Get steel grade by code
   async getSteelGradeByCode(code: string): Promise<PipeSteelGrade | null> {
-    return this.gradeRepository.findOne({ where: { code } });
+    return this.gradeRepo.findOne({ where: { code } });
   }
 
   // Get all NPS values with OD
   async getAllNpsOd(): Promise<PipeNpsOd[]> {
-    return this.npsOdRepository.find({
+    return this.npsOdRepo.find({
       order: { odInch: 'ASC' },
     });
   }
 
   // Get schedules available for a given NPS
   async getSchedulesForNps(nps: string): Promise<PipeScheduleWall[]> {
-    return this.scheduleWallRepository.find({
+    return this.scheduleWallRepo.find({
       where: { nps },
       order: { wallThicknessInch: 'ASC' },
     });
@@ -69,14 +69,14 @@ export class PipeSizingService {
     tempF: number,
   ): Promise<number | null> {
     // First, check if this grade has an equivalent
-    const grade = await this.gradeRepository.findOne({
+    const grade = await this.gradeRepo.findOne({
       where: { code: materialCode },
     });
     if (!grade) return null;
 
     const actualCode = grade.equivalentGrade || materialCode;
     const actualGrade = grade.equivalentGrade
-      ? await this.gradeRepository.findOne({
+      ? await this.gradeRepo.findOne({
           where: { code: grade.equivalentGrade },
         })
       : grade;
@@ -84,7 +84,7 @@ export class PipeSizingService {
     if (!actualGrade) return null;
 
     // Get stress data for this grade
-    const stressData = await this.stressRepository.find({
+    const stressData = await this.stressRepo.find({
       where: { gradeId: actualGrade.id },
       order: { temperatureF: 'ASC' },
     });
@@ -127,7 +127,7 @@ export class PipeSizingService {
     requiredThicknessInch: number,
     marginInch: number = 0,
   ): Promise<{ schedule: string; wallInch: number; warning?: string } | null> {
-    const schedules = await this.scheduleWallRepository.find({
+    const schedules = await this.scheduleWallRepo.find({
       where: { nps },
       order: { wallThicknessInch: 'ASC' },
     });
@@ -171,7 +171,7 @@ export class PipeSizingService {
     } = dto;
 
     // Get OD for NPS
-    const npsOd = await this.npsOdRepository.findOne({ where: { nps } });
+    const npsOd = await this.npsOdRepo.findOne({ where: { nps } });
     if (!npsOd) {
       throw new Error(`Invalid NPS: ${nps}`);
     }
@@ -207,7 +207,7 @@ export class PipeSizingService {
 
     // Check selected schedule
     if (selectedSchedule) {
-      const scheduleData = await this.scheduleWallRepository.findOne({
+      const scheduleData = await this.scheduleWallRepo.findOne({
         where: { nps, schedule: selectedSchedule },
       });
 
@@ -249,21 +249,21 @@ export class PipeSizingService {
   async getStressTableForMaterial(
     materialCode: string,
   ): Promise<PipeAllowableStress[]> {
-    const grade = await this.gradeRepository.findOne({
+    const grade = await this.gradeRepo.findOne({
       where: { code: materialCode },
     });
     if (!grade) return [];
 
     const actualCode = grade.equivalentGrade || materialCode;
     const actualGrade = grade.equivalentGrade
-      ? await this.gradeRepository.findOne({
+      ? await this.gradeRepo.findOne({
           where: { code: grade.equivalentGrade },
         })
       : grade;
 
     if (!actualGrade) return [];
 
-    return this.stressRepository.find({
+    return this.stressRepo.find({
       where: { gradeId: actualGrade.id },
       order: { temperatureF: 'ASC' },
     });

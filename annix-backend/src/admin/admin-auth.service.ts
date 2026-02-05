@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
-import { JwtService } from '@nestjs/jwt';
 import { v4 as uuidv4 } from 'uuid';
 import { AdminSession } from './entities/admin-session.entity';
 import { User } from '../user/entities/user.entity';
@@ -17,16 +16,25 @@ import {
   TokenResponseDto,
 } from './dto/admin-auth.dto';
 import { now, fromJSDate } from '../lib/datetime';
+import {
+  AUTH_CONSTANTS,
+  PasswordService,
+  TokenService,
+  AuthConfigService,
+  JwtTokenPayload,
+} from '../shared/auth';
 
 @Injectable()
 export class AdminAuthService {
   constructor(
     @InjectRepository(AdminSession)
-    private readonly adminSessionRepository: Repository<AdminSession>,
+    private readonly adminSessionRepo: Repository<AdminSession>,
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    private readonly jwtService: JwtService,
+    private readonly userRepo: Repository<User>,
     private readonly auditService: AuditService,
+    private readonly passwordService: PasswordService,
+    private readonly tokenService: TokenService,
+    private readonly authConfigService: AuthConfigService,
   ) {}
 
   async login(
@@ -34,8 +42,7 @@ export class AdminAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<AdminLoginResponseDto> {
-    // Find user by email
-    const user = await this.userRepository.findOne({
+    const user = await this.userRepo.findOne({
       where: { email: loginDto.email },
       relations: ['roles'],
     });
@@ -52,23 +59,25 @@ export class AdminAuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // DEVELOPMENT MODE: Skip password verification
-    // TODO: Re-enable password verification for production
-    // const isPasswordValid = await bcrypt.compare(loginDto.password, user.password || '');
-    // if (!isPasswordValid) {
-    //   await this.auditService.log({
-    //     userId: user.id,
-    //     userType: 'admin',
-    //     action: 'admin_login_failed',
-    //     entityType: 'auth',
-    //     entityId: user.id,
-    //     metadata: { email: loginDto.email, reason: 'invalid_password' },
-    //     ipAddress: clientIp,
-    //   });
-    //   throw new UnauthorizedException('Invalid credentials');
-    // }
+    if (!this.authConfigService.isPasswordVerificationDisabled()) {
+      const isPasswordValid = await this.passwordService.verify(
+        loginDto.password,
+        user.password || '',
+      );
+      if (!isPasswordValid) {
+        await this.auditService.log({
+          action: AuditAction.ADMIN_LOGIN_FAILED,
+          entityType: 'auth',
+          entityId: user.id,
+          performedBy: user,
+          newValues: { email: loginDto.email, reason: 'invalid_password' },
+          ipAddress: clientIp,
+          userAgent,
+        });
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    }
 
-    // Check if user has admin or employee role
     const roleNames = user.roles?.map((r) => r.name) || [];
     const hasAdminAccess =
       roleNames.includes('admin') || roleNames.includes('employee');
@@ -91,26 +100,34 @@ export class AdminAuthService {
       );
     }
 
-    // DEVELOPMENT MODE: Skip status check
-    // TODO: Re-enable status check for production
-    // if (user.status !== 'active') {
-    //   await this.auditService.log({
-    //     userId: user.id,
-    //     userType: 'admin',
-    //     action: 'admin_login_failed',
-    //     entityType: 'auth',
-    //     entityId: user.id,
-    //     metadata: { email: loginDto.email, reason: 'account_inactive', status: user.status },
-    //     ipAddress: clientIp,
-    //   });
-    //   throw new ForbiddenException(`Your account is ${user.status}. Please contact your administrator.`);
-    // }
+    if (
+      !this.authConfigService.isAccountStatusCheckDisabled() &&
+      user.status !== 'active'
+    ) {
+      await this.auditService.log({
+        action: AuditAction.ADMIN_LOGIN_FAILED,
+        entityType: 'auth',
+        entityId: user.id,
+        performedBy: user,
+        newValues: {
+          email: loginDto.email,
+          reason: 'account_inactive',
+          status: user.status,
+        },
+        ipAddress: clientIp,
+        userAgent,
+      });
+      throw new ForbiddenException(
+        `Your account is ${user.status}. Please contact your administrator.`,
+      );
+    }
 
     const sessionToken = uuidv4();
-    const expiresAt = now().plus({ days: 7 }).toJSDate();
+    const expiresAt = now()
+      .plus({ days: AUTH_CONSTANTS.ADMIN_SESSION_EXPIRY_DAYS })
+      .toJSDate();
 
-    // Save session
-    const session = this.adminSessionRepository.create({
+    const session = this.adminSessionRepo.create({
       userId: user.id,
       sessionToken,
       clientIp,
@@ -118,10 +135,9 @@ export class AdminAuthService {
       expiresAt,
       isRevoked: false,
     });
-    await this.adminSessionRepository.save(session);
+    await this.adminSessionRepo.save(session);
 
-    // Generate JWT tokens
-    const payload = {
+    const payload: JwtTokenPayload = {
       sub: user.id,
       email: user.email,
       roles: roleNames,
@@ -129,13 +145,12 @@ export class AdminAuthService {
       sessionToken,
     };
 
-    const accessToken = this.jwtService.sign(payload, { expiresIn: '4h' });
-    const refreshToken = this.jwtService.sign(
-      { sub: user.id, sessionToken, type: 'admin_refresh' },
-      { expiresIn: '7d' },
-    );
+    const { accessToken, refreshToken } =
+      await this.tokenService.generateTokenPair(payload, {
+        accessTokenExpiry: AUTH_CONSTANTS.ADMIN_ACCESS_TOKEN_EXPIRY,
+        refreshTokenExpiry: AUTH_CONSTANTS.REFRESH_TOKEN_EXPIRY,
+      });
 
-    // Log successful login
     await this.auditService.log({
       action: AuditAction.ADMIN_LOGIN_SUCCESS,
       entityType: 'auth',
@@ -147,7 +162,7 @@ export class AdminAuthService {
     });
 
     user.lastLoginAt = now().toJSDate();
-    await this.userRepository.save(user);
+    await this.userRepo.save(user);
 
     return {
       accessToken,
@@ -168,16 +183,16 @@ export class AdminAuthService {
     clientIp: string,
     userAgent?: string,
   ): Promise<void> {
-    const session = await this.adminSessionRepository.findOne({
+    const session = await this.adminSessionRepo.findOne({
       where: { userId, sessionToken, isRevoked: false },
     });
 
     if (session) {
       session.isRevoked = true;
       session.revokedAt = now().toJSDate();
-      await this.adminSessionRepository.save(session);
+      await this.adminSessionRepo.save(session);
 
-      const user = await this.userRepository.findOne({ where: { id: userId } });
+      const user = await this.userRepo.findOne({ where: { id: userId } });
 
       await this.auditService.log({
         action: AuditAction.ADMIN_LOGOUT,
@@ -192,7 +207,7 @@ export class AdminAuthService {
   }
 
   async validateSession(sessionToken: string): Promise<User> {
-    const session = await this.adminSessionRepository.findOne({
+    const session = await this.adminSessionRepo.findOne({
       where: {
         sessionToken,
         isRevoked: false,
@@ -211,7 +226,7 @@ export class AdminAuthService {
 
     if (lastActive > 1) {
       session.lastActiveAt = now().toJSDate();
-      await this.adminSessionRepository.save(session);
+      await this.adminSessionRepo.save(session);
     }
 
     return session.user;
@@ -219,19 +234,18 @@ export class AdminAuthService {
 
   async refreshToken(refreshToken: string): Promise<TokenResponseDto> {
     try {
-      const payload = this.jwtService.verify(refreshToken);
+      const payload =
+        await this.tokenService.verifyToken<JwtTokenPayload>(refreshToken);
 
-      if (payload.type !== 'admin_refresh') {
+      if (payload.type !== 'admin') {
         throw new UnauthorizedException('Invalid token type');
       }
 
-      // Validate session still exists and is valid
       const user = await this.validateSession(payload.sessionToken);
 
       const roleNames = user.roles?.map((r) => r.name) || [];
 
-      // Generate new access token
-      const newPayload = {
+      const newPayload: JwtTokenPayload = {
         sub: user.id,
         email: user.email,
         roles: roleNames,
@@ -239,7 +253,13 @@ export class AdminAuthService {
         sessionToken: payload.sessionToken,
       };
 
-      const accessToken = this.jwtService.sign(newPayload, { expiresIn: '4h' });
+      const { accessToken } = await this.tokenService.generateTokenPair(
+        newPayload,
+        {
+          accessTokenExpiry: AUTH_CONSTANTS.ADMIN_ACCESS_TOKEN_EXPIRY,
+          refreshTokenExpiry: AUTH_CONSTANTS.REFRESH_TOKEN_EXPIRY,
+        },
+      );
 
       return { accessToken };
     } catch (error) {
@@ -247,8 +267,8 @@ export class AdminAuthService {
     }
   }
 
-  async getCurrentUser(userId: number): Promise<any> {
-    const user = await this.userRepository.findOne({
+  async currentUser(userId: number): Promise<any> {
+    const user = await this.userRepo.findOne({
       where: { id: userId },
       relations: ['roles'],
     });

@@ -721,6 +721,10 @@ class AdminApiClient {
     });
   }
 
+  async getSupplierDocumentPreviewImages(supplierId: number, documentId: number): Promise<DocumentPreviewImages> {
+    return this.request<DocumentPreviewImages>(`/admin/suppliers/${supplierId}/documents/${documentId}/preview-images`);
+  }
+
   // Secure Documents endpoints
 
   async listSecureDocuments(): Promise<SecureDocument[]> {
