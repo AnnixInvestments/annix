@@ -136,12 +136,19 @@ export class SupplierProfile {
   updatedAt: Date;
 
   @Column({ name: 'terms_accepted_at', type: 'timestamp', nullable: true })
-  termsAcceptedAt: Date;
+  termsAcceptedAt: Date | null;
 
   @Column({
     name: 'security_policy_accepted_at',
     type: 'timestamp',
     nullable: true,
   })
-  securityPolicyAcceptedAt: Date;
+  securityPolicyAcceptedAt: Date | null;
+
+  @Column({
+    name: 'document_storage_accepted_at',
+    type: 'timestamp',
+    nullable: true,
+  })
+  documentStorageAcceptedAt: Date | null;
 }

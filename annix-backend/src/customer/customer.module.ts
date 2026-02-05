@@ -51,6 +51,7 @@ import { StorageModule } from '../storage/storage.module';
 import { AdminModule } from '../admin/admin.module';
 import { NixModule } from '../nix/nix.module';
 import { MessagingModule } from '../messaging/messaging.module';
+import { SecureDocumentsModule } from '../secure-documents/secure-documents.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { MessagingModule } from '../messaging/messaging.module';
     AdminModule,
     NixModule,
     MessagingModule,
+    SecureDocumentsModule,
   ],
   controllers: [
     CustomerAuthController,

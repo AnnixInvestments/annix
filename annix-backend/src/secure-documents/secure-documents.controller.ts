@@ -23,6 +23,7 @@ import {
 import { CreateSecureDocumentDto } from './dto/create-secure-document.dto';
 import { UpdateSecureDocumentDto } from './dto/update-secure-document.dto';
 import { SecureDocument } from './secure-document.entity';
+import { SecureEntityFolder, EntityType } from './secure-entity-folder.entity';
 import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -158,6 +159,33 @@ export class SecureDocumentsController {
   ): Promise<{ url: string; filename: string }> {
     const id = await this.resolveId(idOrSlug);
     return this.service.attachmentDownloadUrl(id);
+  }
+
+  @Get('entity-folders/list')
+  @ApiOperation({ summary: 'List all entity folders (customers/suppliers)' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of entity folders',
+    type: [SecureEntityFolder],
+  })
+  async listEntityFolders(): Promise<SecureEntityFolder[]> {
+    return this.service.listAllEntityFolders();
+  }
+
+  @Get('entity-folders/:entityType/:entityId')
+  @ApiOperation({ summary: 'Get entity folder and its documents' })
+  @ApiResponse({
+    status: 200,
+    description: 'Entity folder with documents',
+  })
+  async entityFolderDocuments(
+    @Param('entityType') entityType: EntityType,
+    @Param('entityId') entityId: string,
+  ): Promise<{ folder: SecureEntityFolder | null; documents: SecureDocument[] }> {
+    const id = parseInt(entityId, 10);
+    const folder = await this.service.entityFolder(entityType, id);
+    const documents = await this.service.listEntityFolderDocuments(entityType, id);
+    return { folder, documents };
   }
 
   private async resolveId(idOrSlug: string): Promise<string> {

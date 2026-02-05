@@ -517,12 +517,32 @@ class SupplierApiClient {
     return this.request<SupplierDocumentDto[]>('/supplier/onboarding/documents');
   }
 
-  async uploadDocument(file: File, documentType: string, expiryDate?: string): Promise<SupplierDocumentDto> {
+  async uploadDocument(
+    file: File,
+    documentType: string,
+    expiryDate?: string,
+    verificationResult?: {
+      success: boolean;
+      overallConfidence: number;
+      allFieldsMatch: boolean;
+      extractedData?: Record<string, unknown>;
+      fieldResults?: Array<{
+        field: string;
+        expected?: string | number | null;
+        extracted?: string | number | null;
+        match: boolean;
+        similarity?: number;
+      }>;
+    },
+  ): Promise<SupplierDocumentDto> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('documentType', documentType);
     if (expiryDate) {
       formData.append('expiryDate', expiryDate);
+    }
+    if (verificationResult) {
+      formData.append('verificationResult', JSON.stringify(verificationResult));
     }
 
     const headers: Record<string, string> = {};
@@ -696,8 +716,24 @@ export const supplierPortalApi = {
   getOnboardingStatus: () => supplierApiClient.getOnboardingStatus(),
   saveCompanyDetails: (data: SupplierCompanyDto) => supplierApiClient.saveCompanyDetails(data),
   getDocuments: () => supplierApiClient.getDocuments(),
-  uploadDocument: (file: File, documentType: string, expiryDate?: string) =>
-    supplierApiClient.uploadDocument(file, documentType, expiryDate),
+  uploadDocument: (
+    file: File,
+    documentType: string,
+    expiryDate?: string,
+    verificationResult?: {
+      success: boolean;
+      overallConfidence: number;
+      allFieldsMatch: boolean;
+      extractedData?: Record<string, unknown>;
+      fieldResults?: Array<{
+        field: string;
+        expected?: string | number | null;
+        extracted?: string | number | null;
+        match: boolean;
+        similarity?: number;
+      }>;
+    },
+  ) => supplierApiClient.uploadDocument(file, documentType, expiryDate, verificationResult),
   deleteDocument: (documentId: number) => supplierApiClient.deleteDocument(documentId),
   downloadDocument: (documentId: number) => supplierApiClient.downloadDocument(documentId),
   previewDocument: (documentId: number) => supplierApiClient.previewDocument(documentId),

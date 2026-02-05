@@ -34,6 +34,7 @@ import { AuditAction } from '../audit/entities/audit-log.entity';
 import { User } from '../user/entities/user.entity';
 import { EmailService } from '../email/email.service';
 import { S3StorageService } from '../storage/s3-storage.service';
+import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
 
 @Injectable()
 export class CustomerAdminService {
@@ -57,6 +58,7 @@ export class CustomerAdminService {
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
     private readonly storageService: S3StorageService,
+    private readonly secureDocumentsService: SecureDocumentsService,
   ) {}
 
   /**
@@ -288,6 +290,12 @@ export class CustomerAdminService {
       ipAddress: clientIp,
     });
 
+    await this.secureDocumentsService.deactivateEntityFolder(
+      'customer',
+      customerId,
+      `Account suspended: ${dto.reason}`,
+    );
+
     return {
       success: true,
       message: 'Customer account suspended successfully',
@@ -340,6 +348,8 @@ export class CustomerAdminService {
       },
       ipAddress: clientIp,
     });
+
+    await this.secureDocumentsService.reactivateEntityFolder('customer', customerId);
 
     return {
       success: true,

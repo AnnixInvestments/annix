@@ -53,6 +53,7 @@ import {
   AuthConfigService,
   JwtTokenPayload,
 } from '../shared/auth';
+import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
 
 @Injectable()
 export class CustomerAuthService {
@@ -88,6 +89,7 @@ export class CustomerAuthService {
     private readonly sessionService: SessionService,
     private readonly deviceBindingService: DeviceBindingService,
     private readonly authConfigService: AuthConfigService,
+    private readonly secureDocumentsService: SecureDocumentsService,
   ) {
     this.uploadDir = this.authConfigService.uploadDir();
   }
@@ -175,6 +177,7 @@ export class CustomerAuthService {
         emailVerificationExpires,
         termsAcceptedAt: now().toJSDate(),
         securityPolicyAcceptedAt: now().toJSDate(),
+        documentStorageAcceptedAt: now().toJSDate(),
       });
       const savedProfile = await queryRunner.manager.save(profile);
 
@@ -221,6 +224,12 @@ export class CustomerAuthService {
         ipAddress: clientIp,
         userAgent: dto.security.browserInfo?.userAgent,
       });
+
+      await this.secureDocumentsService.createEntityFolder(
+        'customer',
+        savedProfile.id,
+        savedCompany.tradingName || savedCompany.legalName,
+      );
 
       const { session, sessionToken } = this.sessionService.createSession(
         this.sessionRepo,

@@ -240,6 +240,13 @@ export class DeviceBindingDto {
   })
   @IsBoolean()
   securityPolicyAccepted: boolean;
+
+  @ApiProperty({
+    description: 'Document storage policy accepted (secure encrypted storage)',
+    example: true,
+  })
+  @IsBoolean()
+  documentStorageAccepted: boolean;
 }
 
 export class CreateCustomerRegistrationDto {

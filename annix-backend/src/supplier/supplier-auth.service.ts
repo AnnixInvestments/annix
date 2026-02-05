@@ -37,6 +37,7 @@ import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { EmailService } from '../email/email.service';
 import { S3StorageService } from '../storage/s3-storage.service';
+import { DocumentVerificationService } from '../nix/services/document-verification.service';
 import {
   AUTH_CONSTANTS,
   PasswordService,
@@ -47,6 +48,7 @@ import {
   AuthConfigService,
   JwtTokenPayload,
 } from '../shared/auth';
+import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
 
 @Injectable()
 export class SupplierAuthService {
@@ -82,8 +84,28 @@ export class SupplierAuthService {
     private readonly sessionService: SessionService,
     private readonly deviceBindingService: DeviceBindingService,
     private readonly authConfigService: AuthConfigService,
+    private readonly documentVerificationService: DocumentVerificationService,
+    private readonly secureDocumentsService: SecureDocumentsService,
   ) {
     this.uploadDir = this.authConfigService.uploadDir();
+  }
+
+  private triggerDocumentVerifications(supplierId: number, documentIds: number[]): void {
+    for (const documentId of documentIds) {
+      setImmediate(async () => {
+        try {
+          this.logger.log(`Triggering verification for registration document ${documentId}`);
+          await this.documentVerificationService.verifyDocument({
+            entityType: 'supplier',
+            entityId: supplierId,
+            documentId,
+          });
+          this.logger.log(`Verification completed for registration document ${documentId}`);
+        } catch (error: any) {
+          this.logger.error(`Verification failed for registration document ${documentId}: ${error.message}`);
+        }
+      });
+    }
   }
 
   async register(
@@ -225,6 +247,9 @@ export class SupplierAuthService {
       password: string;
       deviceFingerprint: string;
       browserInfo?: Record<string, any>;
+      termsAccepted?: boolean;
+      securityPolicyAccepted?: boolean;
+      documentStorageAccepted?: boolean;
       company: any;
       profile: any;
     },
@@ -316,6 +341,9 @@ export class SupplierAuthService {
         mobilePhone: dto.profile?.mobilePhone,
         accountStatus: SupplierAccountStatus.PENDING,
         emailVerified: true,
+        termsAcceptedAt: dto.termsAccepted ? now().toJSDate() : null,
+        securityPolicyAcceptedAt: dto.securityPolicyAccepted ? now().toJSDate() : null,
+        documentStorageAcceptedAt: dto.documentStorageAccepted ? now().toJSDate() : null,
       });
       const savedProfile = await queryRunner.manager.save(profile);
 
@@ -328,8 +356,9 @@ export class SupplierAuthService {
       });
       await queryRunner.manager.save(onboarding);
 
+      let savedDocumentIds: number[] = [];
       if (vatDocument || companyRegDocument || beeDocument) {
-        await this.saveRegistrationDocuments(
+        savedDocumentIds = await this.saveRegistrationDocuments(
           queryRunner.manager,
           savedProfile.id,
           vatDocument,
@@ -362,6 +391,14 @@ export class SupplierAuthService {
         ipAddress: clientIp,
         userAgent,
       });
+
+      await this.secureDocumentsService.createEntityFolder(
+        'supplier',
+        savedProfile.id,
+        savedCompany.tradingName || savedCompany.legalName,
+      );
+
+      this.triggerDocumentVerifications(savedProfile.id, savedDocumentIds);
 
       const { session, sessionToken } = this.sessionService.createSession(
         this.sessionRepo,
@@ -414,8 +451,9 @@ export class SupplierAuthService {
     vatDocument?: Express.Multer.File,
     companyRegDocument?: Express.Multer.File,
     beeDocument?: Express.Multer.File,
-  ): Promise<void> {
+  ): Promise<number[]> {
     const subPath = `suppliers/${supplierId}/documents`;
+    const savedDocumentIds: number[] = [];
 
     if (vatDocument) {
       const storageResult = await this.storageService.upload(
@@ -434,7 +472,8 @@ export class SupplierAuthService {
         isRequired: true,
       });
 
-      await manager.save(vatDocEntity);
+      const saved = await manager.save(vatDocEntity);
+      savedDocumentIds.push(saved.id);
     }
 
     if (companyRegDocument) {
@@ -454,7 +493,8 @@ export class SupplierAuthService {
         isRequired: true,
       });
 
-      await manager.save(companyRegEntity);
+      const saved = await manager.save(companyRegEntity);
+      savedDocumentIds.push(saved.id);
     }
 
     if (beeDocument) {
@@ -474,8 +514,11 @@ export class SupplierAuthService {
         isRequired: false,
       });
 
-      await manager.save(beeDocEntity);
+      const saved = await manager.save(beeDocEntity);
+      savedDocumentIds.push(saved.id);
     }
+
+    return savedDocumentIds;
   }
 
   async verifyEmail(

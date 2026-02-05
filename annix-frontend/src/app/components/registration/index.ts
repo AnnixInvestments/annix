@@ -4,6 +4,7 @@ export { ProfileFormFields } from './ProfileFormFields';
 export {
   DeviceInfoDisplay,
   SecurityNotice,
+  DocumentStorageNotice,
   TermsAndConditions,
   AcceptanceCheckbox,
   ErrorDisplay,

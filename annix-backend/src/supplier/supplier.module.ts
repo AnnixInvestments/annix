@@ -41,6 +41,7 @@ import { BoqModule } from '../boq/boq.module';
 import { NixModule } from '../nix/nix.module';
 import { StorageModule } from '../storage/storage.module';
 import { MessagingModule } from '../messaging/messaging.module';
+import { SecureDocumentsModule } from '../secure-documents/secure-documents.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { MessagingModule } from '../messaging/messaging.module';
     forwardRef(() => NixModule),
     StorageModule,
     MessagingModule,
+    SecureDocumentsModule,
   ],
   controllers: [
     SupplierAuthController,

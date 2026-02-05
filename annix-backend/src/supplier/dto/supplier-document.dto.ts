@@ -4,12 +4,99 @@ import {
   IsOptional,
   IsEnum,
   IsDateString,
+  IsNumber,
+  IsBoolean,
+  IsObject,
+  ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
 } from '../entities/supplier-document.entity';
+
+export class VerificationExtractedDataDto {
+  @IsOptional()
+  @IsString()
+  vatNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  registrationNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  companyName?: string;
+
+  @IsOptional()
+  @IsString()
+  streetAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  provinceState?: string;
+
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
+  @IsOptional()
+  @IsNumber()
+  beeLevel?: number;
+
+  @IsOptional()
+  @IsString()
+  beeExpiryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  verificationAgency?: string;
+
+  @IsOptional()
+  @IsNumber()
+  confidence?: number;
+}
+
+export class VerificationFieldResultDto {
+  @IsString()
+  field: string;
+
+  @IsOptional()
+  expected?: string | number | null;
+
+  @IsOptional()
+  extracted?: string | number | null;
+
+  @IsBoolean()
+  match: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  similarity?: number;
+}
+
+export class VerificationResultDto {
+  @IsBoolean()
+  success: boolean;
+
+  @IsNumber()
+  overallConfidence: number;
+
+  @IsBoolean()
+  allFieldsMatch: boolean;
+
+  @IsOptional()
+  @IsObject()
+  extractedData?: VerificationExtractedDataDto;
+
+  @IsOptional()
+  fieldResults?: VerificationFieldResultDto[];
+}
 
 export class UploadSupplierDocumentDto {
   @ApiProperty({
@@ -28,6 +115,14 @@ export class UploadSupplierDocumentDto {
   @IsDateString()
   @IsOptional()
   expiryDate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Pre-verified document verification result from frontend Nix verification',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => VerificationResultDto)
+  verificationResult?: VerificationResultDto;
 }
 
 export class ReviewDocumentDto {

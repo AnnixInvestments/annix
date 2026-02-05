@@ -30,6 +30,7 @@ import { validatePassword } from '@/app/lib/utils/passwordValidation';
 import {
   DeviceInfoDisplay,
   SecurityNotice,
+  DocumentStorageNotice,
   TermsAndConditions,
   AcceptanceCheckbox,
   ErrorDisplay,
@@ -65,10 +66,12 @@ export default function CustomerRegistrationPage() {
     confirmPassword: string;
     termsAccepted: boolean;
     securityPolicyAccepted: boolean;
+    documentStorageAccepted: boolean;
   }>({
     confirmPassword: '',
     termsAccepted: false,
     securityPolicyAccepted: false,
+    documentStorageAccepted: false,
   });
 
   const [documents, setDocuments] = useState<{
@@ -311,6 +314,7 @@ export default function CustomerRegistrationPage() {
       user.password === security.confirmPassword &&
       security.termsAccepted &&
       security.securityPolicyAccepted &&
+      security.documentStorageAccepted &&
       passwordErrors.length === 0 &&
       fingerprint
     );
@@ -360,6 +364,7 @@ export default function CustomerRegistrationPage() {
         browserInfo,
         termsAccepted: security.termsAccepted,
         securityPolicyAccepted: security.securityPolicyAccepted,
+        documentStorageAccepted: security.documentStorageAccepted,
         documentsSkipped,
       }));
 
@@ -1021,6 +1026,16 @@ export default function CustomerRegistrationPage() {
           checked={security.securityPolicyAccepted}
           onChange={(checked) => handleSecurityChange('securityPolicyAccepted', checked)}
           label="I understand and accept that my account will be locked to this device"
+          required
+        />
+
+        <DocumentStorageNotice />
+
+        <AcceptanceCheckbox
+          id="documentStorage"
+          checked={security.documentStorageAccepted}
+          onChange={(checked) => handleSecurityChange('documentStorageAccepted', checked)}
+          label="I agree to the secure storage of my documents as described above"
           required
         />
       </div>

@@ -277,6 +277,18 @@ export interface UpdateSecureDocumentDto {
   folder?: string;
 }
 
+export interface SecureEntityFolder {
+  id: number;
+  entityType: 'customer' | 'supplier';
+  entityId: number;
+  folderName: string;
+  secureFolderPath: string;
+  isActive: boolean;
+  createdAt: string;
+  deletedAt: string | null;
+  deletionReason: string | null;
+}
+
 export interface LocalDocument {
   slug: string;
   title: string;
@@ -769,6 +781,19 @@ class AdminApiClient {
       `/admin/secure-documents/local/${encodedPath}`
     );
     return { ...response.document, content: response.content };
+  }
+
+  async listEntityFolders(): Promise<SecureEntityFolder[]> {
+    return this.request<SecureEntityFolder[]>('/admin/secure-documents/entity-folders/list');
+  }
+
+  async getEntityFolderDocuments(
+    entityType: 'customer' | 'supplier',
+    entityId: number
+  ): Promise<{ folder: SecureEntityFolder | null; documents: SecureDocument[] }> {
+    return this.request<{ folder: SecureEntityFolder | null; documents: SecureDocument[] }>(
+      `/admin/secure-documents/entity-folders/${entityType}/${entityId}`
+    );
   }
 
   // Admin RFQ Management - view all RFQs across all customers

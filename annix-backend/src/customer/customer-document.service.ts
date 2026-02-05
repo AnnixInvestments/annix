@@ -27,6 +27,7 @@ import { AuditAction } from '../audit/entities/audit-log.entity';
 import { EmailService } from '../email/email.service';
 import { S3StorageService } from '../storage/s3-storage.service';
 import { DocumentVerificationService } from '../nix/services/document-verification.service';
+import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
 
 // File constraints
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -53,6 +54,7 @@ export class CustomerDocumentService {
     private readonly emailService: EmailService,
     @Inject(forwardRef(() => DocumentVerificationService))
     private readonly documentVerificationService: DocumentVerificationService,
+    private readonly secureDocumentsService: SecureDocumentsService,
   ) {}
 
   async getDocuments(customerId: number) {
@@ -190,6 +192,7 @@ export class CustomerDocumentService {
       });
 
       this.triggerVerification(customerId, savedDoc.id);
+      this.copyToSecureStorage(customerId, file, documentType);
 
       return {
         id: savedDoc.id,
@@ -229,6 +232,7 @@ export class CustomerDocumentService {
     });
 
     this.triggerVerification(customerId, savedDoc.id);
+    this.copyToSecureStorage(customerId, file, documentType);
 
     return {
       id: savedDoc.id,
@@ -238,6 +242,40 @@ export class CustomerDocumentService {
       validationStatus: savedDoc.validationStatus,
       uploadedAt: savedDoc.uploadedAt,
     };
+  }
+
+  private copyToSecureStorage(
+    customerId: number,
+    file: Express.Multer.File,
+    documentType: CustomerDocumentType,
+  ): void {
+    setImmediate(async () => {
+      try {
+        const profile = await this.profileRepo.findOne({
+          where: { id: customerId },
+          relations: ['user'],
+        });
+        if (!profile) {
+          this.logger.warn(`Profile not found for customer ${customerId} - skipping secure copy`);
+          return;
+        }
+
+        await this.secureDocumentsService.createFromEntityDocument(
+          'customer',
+          customerId,
+          documentType,
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          profile.user.id,
+        );
+        this.logger.log(`Copied document to secure storage for customer ${customerId}`);
+      } catch (error: any) {
+        this.logger.error(
+          `Failed to copy document to secure storage for customer ${customerId}: ${error.message}`,
+        );
+      }
+    });
   }
 
   private triggerVerification(customerId: number, documentId: number): void {

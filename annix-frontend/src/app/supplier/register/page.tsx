@@ -31,6 +31,7 @@ import {
   ConfirmPasswordInput,
   DeviceInfoDisplay,
   SecurityNotice,
+  DocumentStorageNotice,
   TermsAndConditions,
   AcceptanceCheckbox,
   ErrorDisplay,
@@ -73,12 +74,14 @@ export default function SupplierRegistrationPage() {
     confirmPassword: string;
     termsAccepted: boolean;
     securityPolicyAccepted: boolean;
+    documentStorageAccepted: boolean;
   }>({
     email: '',
     password: '',
     confirmPassword: '',
     termsAccepted: false,
     securityPolicyAccepted: false,
+    documentStorageAccepted: false,
   });
 
   // Document upload state
@@ -313,6 +316,7 @@ export default function SupplierRegistrationPage() {
       security.password === security.confirmPassword &&
       security.termsAccepted &&
       security.securityPolicyAccepted &&
+      security.documentStorageAccepted &&
       passwordErrors.length === 0 &&
       fingerprint
     );
@@ -385,6 +389,7 @@ export default function SupplierRegistrationPage() {
         browserInfo,
         termsAccepted: security.termsAccepted,
         securityPolicyAccepted: security.securityPolicyAccepted,
+        documentStorageAccepted: security.documentStorageAccepted,
       }));
 
       // Add document files
@@ -1039,6 +1044,16 @@ export default function SupplierRegistrationPage() {
           checked={security.securityPolicyAccepted}
           onChange={(checked) => handleSecurityChange('securityPolicyAccepted', checked)}
           label="I understand and accept that my account will be locked to this device for security purposes"
+          required
+        />
+
+        <DocumentStorageNotice />
+
+        <AcceptanceCheckbox
+          id="documentStorage"
+          checked={security.documentStorageAccepted}
+          onChange={(checked) => handleSecurityChange('documentStorageAccepted', checked)}
+          label="I agree to the secure storage of my documents as described above"
           required
         />
       </div>

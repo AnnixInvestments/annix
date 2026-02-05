@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   UploadedFile,
   ParseIntPipe,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -37,6 +38,8 @@ import {
 @UseGuards(SupplierAuthGuard)
 @ApiBearerAuth()
 export class SupplierController {
+  private readonly logger = new Logger(SupplierController.name);
+
   constructor(private readonly supplierService: SupplierService) {}
 
   @Get('profile')
@@ -116,6 +119,7 @@ export class SupplierController {
           ],
         },
         expiryDate: { type: 'string', format: 'date' },
+        verificationResult: { type: 'string', description: 'JSON string of pre-verified result from frontend Nix verification' },
       },
       required: ['file', 'documentType'],
     },
@@ -124,10 +128,20 @@ export class SupplierController {
   async uploadDocument(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadSupplierDocumentDto,
+    @Body('verificationResult') verificationResultJson: string,
     @Req() req: Request,
   ) {
     const supplierId = req['supplier'].supplierId;
     const clientIp = this.getClientIp(req);
+
+    if (verificationResultJson && typeof verificationResultJson === 'string') {
+      try {
+        dto.verificationResult = JSON.parse(verificationResultJson);
+      } catch {
+        this.logger.warn('Failed to parse verificationResult JSON');
+      }
+    }
+
     return this.supplierService.uploadDocument(supplierId, file, dto, clientIp);
   }
 

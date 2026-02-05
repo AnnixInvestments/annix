@@ -32,6 +32,7 @@ import { AuditAction } from '../audit/entities/audit-log.entity';
 import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
 import { BoqDistributionService } from '../boq/boq-distribution.service';
 import { DocumentVerificationService } from '../nix/services/document-verification.service';
+import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
 
 // Required documents for onboarding
 const REQUIRED_DOCUMENT_TYPES = [
@@ -63,6 +64,7 @@ export class SupplierService {
     private readonly boqDistributionService: BoqDistributionService,
     @Inject(forwardRef(() => DocumentVerificationService))
     private readonly documentVerificationService: DocumentVerificationService,
+    private readonly secureDocumentsService: SecureDocumentsService,
   ) {}
 
   /**
@@ -323,6 +325,54 @@ export class SupplierService {
     const storagePath = `suppliers/${supplierId}/documents`;
     const storageResult = await this.storageService.upload(file, storagePath);
 
+    // Determine validation status and prepare document data
+    const hasPreVerification = dto.verificationResult?.success === true;
+    let validationStatus = SupplierDocumentValidationStatus.PENDING;
+    let ocrExtractedData: SupplierDocument['ocrExtractedData'] = null;
+    let fieldResults: SupplierDocument['fieldResults'] = null;
+    let verificationConfidence: number | null = null;
+    let allFieldsMatch: boolean | null = null;
+    let validationNotes: string | null = null;
+    let ocrProcessedAt: Date | null = null;
+
+    if (hasPreVerification && dto.verificationResult) {
+      const vr = dto.verificationResult;
+      ocrExtractedData = vr.extractedData ? {
+        vatNumber: vr.extractedData.vatNumber,
+        registrationNumber: vr.extractedData.registrationNumber,
+        companyName: vr.extractedData.companyName,
+        streetAddress: vr.extractedData.streetAddress,
+        city: vr.extractedData.city,
+        provinceState: vr.extractedData.provinceState,
+        postalCode: vr.extractedData.postalCode,
+        beeLevel: vr.extractedData.beeLevel,
+        beeExpiryDate: vr.extractedData.beeExpiryDate,
+        confidence: vr.extractedData.confidence ? String(vr.extractedData.confidence) : undefined,
+      } : null;
+
+      fieldResults = vr.fieldResults?.map((fr) => ({
+        fieldName: fr.field,
+        expected: String(fr.expected ?? ''),
+        extracted: String(fr.extracted ?? ''),
+        matches: fr.match,
+        similarity: fr.similarity ?? (fr.match ? 100 : 0),
+      })) ?? null;
+
+      verificationConfidence = vr.overallConfidence ?? null;
+      allFieldsMatch = vr.allFieldsMatch ?? null;
+      ocrProcessedAt = now().toJSDate();
+
+      if (vr.allFieldsMatch && vr.overallConfidence >= 0.7) {
+        validationStatus = SupplierDocumentValidationStatus.VALID;
+        validationNotes = 'Automatic validation passed';
+      } else {
+        validationStatus = SupplierDocumentValidationStatus.MANUAL_REVIEW;
+        validationNotes = 'Document requires manual review';
+      }
+
+      this.logger.log(`Using pre-verified data for document upload (confidence: ${vr.overallConfidence}, allMatch: ${vr.allFieldsMatch})`);
+    }
+
     // Create document record
     const document = this.documentRepo.create({
       supplierId,
@@ -331,9 +381,15 @@ export class SupplierService {
       filePath: storageResult.path,
       fileSize: file.size,
       mimeType: file.mimetype,
-      validationStatus: SupplierDocumentValidationStatus.PENDING,
+      validationStatus,
       expiryDate: dto.expiryDate ? fromISO(dto.expiryDate).toJSDate() : null,
       isRequired: REQUIRED_DOCUMENT_TYPES.includes(dto.documentType),
+      ocrExtractedData,
+      fieldResults,
+      verificationConfidence,
+      allFieldsMatch,
+      validationNotes,
+      ocrProcessedAt,
     });
 
     const savedDocument = await this.documentRepo.save(document);
@@ -349,11 +405,17 @@ export class SupplierService {
         documentType: dto.documentType,
         fileName: file.originalname,
         fileSize: file.size,
+        hasPreVerification,
       },
       ipAddress: clientIp,
     });
 
-    this.triggerVerification(supplierId, savedDocument.id);
+    // Only trigger async verification if no pre-verified data was provided
+    if (!hasPreVerification) {
+      this.triggerVerification(supplierId, savedDocument.id);
+    }
+
+    this.copyToSecureStorage(supplierId, file, dto.documentType);
 
     return {
       id: savedDocument.id,
@@ -380,6 +442,40 @@ export class SupplierService {
         this.logger.log(`Verification completed for supplier document ${documentId}`);
       } catch (error: any) {
         this.logger.error(`Verification failed for supplier document ${documentId}: ${error.message}`);
+      }
+    });
+  }
+
+  private copyToSecureStorage(
+    supplierId: number,
+    file: Express.Multer.File,
+    documentType: SupplierDocumentType,
+  ): void {
+    setImmediate(async () => {
+      try {
+        const profile = await this.profileRepo.findOne({
+          where: { id: supplierId },
+          relations: ['user'],
+        });
+        if (!profile) {
+          this.logger.warn(`Profile not found for supplier ${supplierId} - skipping secure copy`);
+          return;
+        }
+
+        await this.secureDocumentsService.createFromEntityDocument(
+          'supplier',
+          supplierId,
+          documentType,
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          profile.user.id,
+        );
+        this.logger.log(`Copied document to secure storage for supplier ${supplierId}`);
+      } catch (error: any) {
+        this.logger.error(
+          `Failed to copy document to secure storage for supplier ${supplierId}: ${error.message}`,
+        );
       }
     });
   }

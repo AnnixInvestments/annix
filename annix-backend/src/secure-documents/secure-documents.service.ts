@@ -17,11 +17,12 @@ import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SecureDocument } from './secure-document.entity';
+import { SecureEntityFolder, EntityType } from './secure-entity-folder.entity';
 import { CreateSecureDocumentDto } from './dto/create-secure-document.dto';
 import { UpdateSecureDocumentDto } from './dto/update-secure-document.dto';
 import { encrypt, decrypt } from './crypto.util';
 import { User } from '../user/entities/user.entity';
-import { nowISO } from '../lib/datetime';
+import { now, nowISO } from '../lib/datetime';
 import { S3StorageService } from '../storage/s3-storage.service';
 
 export interface LocalDocument {
@@ -56,6 +57,8 @@ export class SecureDocumentsService {
   constructor(
     @InjectRepository(SecureDocument)
     private readonly documentRepo: Repository<SecureDocument>,
+    @InjectRepository(SecureEntityFolder)
+    private readonly entityFolderRepo: Repository<SecureEntityFolder>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly configService: ConfigService,
@@ -450,5 +453,247 @@ export class SecureDocumentsService {
       url,
       filename: document.originalFilename || 'download',
     };
+  }
+
+  async createEntityFolder(
+    entityType: EntityType,
+    entityId: number,
+    companyName: string,
+  ): Promise<SecureEntityFolder> {
+    const existingFolder = await this.entityFolderRepo.findOne({
+      where: { entityType, entityId },
+    });
+
+    if (existingFolder) {
+      this.logger.log(
+        `Entity folder already exists for ${entityType} ${entityId}`,
+      );
+      return existingFolder;
+    }
+
+    const sanitizedName = companyName.replace(/[^a-zA-Z0-9\s-]/g, '').trim();
+    const folderName = `${sanitizedName} (ID: ${entityId})`;
+    const parentFolder = entityType === 'customer' ? 'Customers' : 'Suppliers';
+    const secureFolderPath = `${parentFolder}/${folderName}`;
+
+    const folder = this.entityFolderRepo.create({
+      entityType,
+      entityId,
+      folderName,
+      secureFolderPath,
+      isActive: true,
+    });
+
+    const savedFolder = await this.entityFolderRepo.save(folder);
+    this.logger.log(
+      `Created entity folder: ${secureFolderPath} for ${entityType} ${entityId}`,
+    );
+    return savedFolder;
+  }
+
+  async entityFolder(
+    entityType: EntityType,
+    entityId: number,
+  ): Promise<SecureEntityFolder | null> {
+    return this.entityFolderRepo.findOne({
+      where: { entityType, entityId },
+    });
+  }
+
+  async deactivateEntityFolder(
+    entityType: EntityType,
+    entityId: number,
+    reason: string,
+  ): Promise<void> {
+    const folder = await this.entityFolderRepo.findOne({
+      where: { entityType, entityId },
+    });
+
+    if (!folder) {
+      this.logger.warn(
+        `No entity folder found for ${entityType} ${entityId} to deactivate`,
+      );
+      return;
+    }
+
+    folder.isActive = false;
+    folder.deletedAt = now().toJSDate();
+    folder.deletionReason = reason;
+
+    await this.entityFolderRepo.save(folder);
+    this.logger.log(
+      `Deactivated entity folder for ${entityType} ${entityId}: ${reason}`,
+    );
+  }
+
+  async reactivateEntityFolder(
+    entityType: EntityType,
+    entityId: number,
+  ): Promise<void> {
+    const folder = await this.entityFolderRepo.findOne({
+      where: { entityType, entityId },
+    });
+
+    if (!folder) {
+      this.logger.warn(
+        `No entity folder found for ${entityType} ${entityId} to reactivate`,
+      );
+      return;
+    }
+
+    folder.isActive = true;
+    folder.deletedAt = null;
+    folder.deletionReason = null;
+
+    await this.entityFolderRepo.save(folder);
+    this.logger.log(`Reactivated entity folder for ${entityType} ${entityId}`);
+  }
+
+  async listEntityFolderDocuments(
+    entityType: EntityType,
+    entityId: number,
+  ): Promise<SecureDocument[]> {
+    const folder = await this.entityFolderRepo.findOne({
+      where: { entityType, entityId },
+    });
+
+    if (!folder) {
+      return [];
+    }
+
+    return this.documentRepo.find({
+      where: { folder: folder.secureFolderPath },
+      relations: ['createdBy'],
+      order: { updatedAt: 'DESC' },
+    });
+  }
+
+  async listAllEntityFolders(
+    entityType?: EntityType,
+    activeOnly: boolean = true,
+  ): Promise<SecureEntityFolder[]> {
+    const whereClause: any = {};
+    if (entityType) {
+      whereClause.entityType = entityType;
+    }
+    if (activeOnly) {
+      whereClause.isActive = true;
+    }
+
+    return this.entityFolderRepo.find({
+      where: whereClause,
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async createFromEntityDocument(
+    entityType: EntityType,
+    entityId: number,
+    documentType: string,
+    fileBuffer: Buffer,
+    originalFilename: string,
+    mimeType: string,
+    userId: number,
+  ): Promise<SecureDocument> {
+    const folder = await this.entityFolder(entityType, entityId);
+    if (!folder) {
+      throw new NotFoundException(
+        `Secure folder not found for ${entityType} ${entityId}`,
+      );
+    }
+
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User #${userId} not found`);
+    }
+
+    const title = this.documentTypeToTitle(documentType);
+    const baseSlug = slugify(`${folder.folderName}-${documentType}`);
+    const slug = await this.generateUniqueSlug(baseSlug);
+
+    const storagePath = await this.encryptAndUploadBuffer(fileBuffer);
+    const fileType = this.mimeToFileType(mimeType);
+
+    const document = this.documentRepo.create({
+      title,
+      slug,
+      description: `${title} for ${folder.folderName}`,
+      folder: folder.secureFolderPath,
+      storagePath,
+      fileType,
+      originalFilename,
+      createdBy: user,
+    });
+
+    const saved = await this.documentRepo.save(document);
+    this.logger.log(
+      `Created secure document from ${entityType} upload: ${saved.id} (${slug})`,
+    );
+    return saved;
+  }
+
+  private async encryptAndUploadBuffer(buffer: Buffer): Promise<string> {
+    if (!this.encryptionKey) {
+      throw new InternalServerErrorException('Encryption key not configured');
+    }
+
+    const content = buffer.toString('base64');
+    const encrypted = encrypt(content, this.encryptionKey);
+    const key = `secure-documents/${uuidv4()}.enc`;
+
+    if (this.useLocalStorage) {
+      const filePath = path.join(this.localStoragePath, `${uuidv4()}.enc`);
+      await fs.promises.writeFile(filePath, encrypted);
+      this.logger.log(`Saved encrypted document locally: ${filePath}`);
+      return `local:${path.basename(filePath)}`;
+    }
+
+    if (!this.s3Client) {
+      throw new InternalServerErrorException('S3 client not configured');
+    }
+
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: encrypted,
+        ContentType: 'application/octet-stream',
+        Metadata: {
+          uploadedAt: nowISO(),
+        },
+      }),
+    );
+
+    this.logger.log(`Uploaded encrypted document to S3: ${key}`);
+    return key;
+  }
+
+  private documentTypeToTitle(documentType: string): string {
+    const typeMap: Record<string, string> = {
+      registration_cert: 'Company Registration Certificate',
+      vat_cert: 'VAT Registration Certificate',
+      bee_cert: 'BEE Certificate',
+      tax_clearance: 'Tax Clearance Certificate',
+      iso_cert: 'ISO Certificate',
+      insurance: 'Insurance Certificate',
+      other: 'Other Document',
+    };
+    return typeMap[documentType] || documentType.replace(/_/g, ' ');
+  }
+
+  private mimeToFileType(mimeType: string): string {
+    const mimeMap: Record<string, string> = {
+      'application/pdf': 'pdf',
+      'image/jpeg': 'image',
+      'image/jpg': 'image',
+      'image/png': 'image',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+        'excel',
+      'application/vnd.ms-excel': 'excel',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        'word',
+      'application/msword': 'word',
+    };
+    return mimeMap[mimeType] || 'other';
   }
 }

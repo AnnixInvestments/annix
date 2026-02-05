@@ -140,6 +140,13 @@ export class CustomerProfile {
   })
   securityPolicyAcceptedAt: Date;
 
+  @Column({
+    name: 'document_storage_accepted_at',
+    type: 'timestamp',
+    nullable: true,
+  })
+  documentStorageAcceptedAt: Date | null;
+
   // Onboarding
   @OneToOne(() => CustomerOnboarding, (onboarding) => onboarding.customer)
   onboarding: CustomerOnboarding;
