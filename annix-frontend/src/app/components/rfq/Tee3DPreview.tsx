@@ -658,6 +658,324 @@ function TeeScene(props: Tee3DPreviewProps) {
     return new THREE.ExtrudeGeometry(shape, extrudeSettings);
   };
 
+  // Create saddle-cut branch pipe geometry
+  // The bottom of the branch pipe is cut to follow the curve of the run pipe (Steinmetz intersection)
+  const createSaddleCutBranchGeometry = (
+    branchOuterR: number,
+    branchInnerR: number,
+    runOuterR: number,
+    totalHeight: number
+  ) => {
+    const radialSegments = 48;
+    const heightSegments = 24;
+    const geometry = new THREE.BufferGeometry();
+
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    const normals: number[] = [];
+
+    // Calculate saddle cut depth at each angle
+    // For a branch meeting a run at 90°, the bottom follows: y = sqrt(R² - z²) where R is run radius
+    const saddleBottomY = (angle: number): number => {
+      const z = branchOuterR * Math.sin(angle);
+      // The bottom of the saddle where branch meets run surface
+      return Math.sqrt(Math.max(0, runOuterR * runOuterR - z * z));
+    };
+
+    // Generate outer surface vertices
+    for (let h = 0; h <= heightSegments; h++) {
+      for (let r = 0; r <= radialSegments; r++) {
+        const angle = (r / radialSegments) * Math.PI * 2;
+        const x = branchOuterR * Math.cos(angle);
+        const z = branchOuterR * Math.sin(angle);
+
+        // Bottom varies with saddle curve, top is flat at totalHeight
+        const bottomY = saddleBottomY(angle);
+        const y = bottomY + (h / heightSegments) * (totalHeight - bottomY);
+
+        vertices.push(x, y, z);
+
+        // Normal points outward radially
+        const nx = Math.cos(angle);
+        const nz = Math.sin(angle);
+        normals.push(nx, 0, nz);
+      }
+    }
+
+    // Store outer vertex count for indexing inner surface
+    const outerVertexCount = vertices.length / 3;
+
+    // Generate inner surface vertices (same pattern but with inner radius)
+    const saddleBottomYInner = (angle: number): number => {
+      const z = branchInnerR * Math.sin(angle);
+      // Inner surface follows a slightly different curve
+      const innerRunR = runOuterR - (branchOuterR - branchInnerR);
+      return Math.sqrt(Math.max(0, innerRunR * innerRunR - z * z));
+    };
+
+    for (let h = 0; h <= heightSegments; h++) {
+      for (let r = 0; r <= radialSegments; r++) {
+        const angle = (r / radialSegments) * Math.PI * 2;
+        const x = branchInnerR * Math.cos(angle);
+        const z = branchInnerR * Math.sin(angle);
+
+        const bottomY = saddleBottomYInner(angle);
+        const y = bottomY + (h / heightSegments) * (totalHeight - bottomY);
+
+        vertices.push(x, y, z);
+
+        // Normal points inward
+        const nx = -Math.cos(angle);
+        const nz = -Math.sin(angle);
+        normals.push(nx, 0, nz);
+      }
+    }
+
+    // Generate indices for outer surface
+    for (let h = 0; h < heightSegments; h++) {
+      for (let r = 0; r < radialSegments; r++) {
+        const a = h * (radialSegments + 1) + r;
+        const b = a + radialSegments + 1;
+        const c = a + 1;
+        const d = b + 1;
+
+        indices.push(a, b, c);
+        indices.push(c, b, d);
+      }
+    }
+
+    // Generate indices for inner surface (reversed winding for correct normals)
+    for (let h = 0; h < heightSegments; h++) {
+      for (let r = 0; r < radialSegments; r++) {
+        const a = outerVertexCount + h * (radialSegments + 1) + r;
+        const b = a + radialSegments + 1;
+        const c = a + 1;
+        const d = b + 1;
+
+        indices.push(a, c, b);
+        indices.push(c, d, b);
+      }
+    }
+
+    // Add top cap (annular ring at top of pipe)
+    const topCapStartIdx = vertices.length / 3;
+    for (let r = 0; r <= radialSegments; r++) {
+      const angle = (r / radialSegments) * Math.PI * 2;
+      // Outer edge at top
+      vertices.push(branchOuterR * Math.cos(angle), totalHeight, branchOuterR * Math.sin(angle));
+      normals.push(0, 1, 0);
+      // Inner edge at top
+      vertices.push(branchInnerR * Math.cos(angle), totalHeight, branchInnerR * Math.sin(angle));
+      normals.push(0, 1, 0);
+    }
+
+    // Top cap indices
+    for (let r = 0; r < radialSegments; r++) {
+      const outer1 = topCapStartIdx + r * 2;
+      const inner1 = outer1 + 1;
+      const outer2 = outer1 + 2;
+      const inner2 = inner1 + 2;
+
+      indices.push(outer1, inner1, outer2);
+      indices.push(inner1, inner2, outer2);
+    }
+
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+
+    return geometry;
+  };
+
+  // Create run pipe with hole cut where branch enters
+  // This creates a realistic pipe with proper inner/outer surfaces and end caps
+  const createRunPipeWithHoleGeometry = (
+    runOuterR: number,
+    runInnerR: number,
+    runLength: number,
+    branchOuterR: number,
+    branchInnerR: number,
+    branchOffsetXVal: number
+  ) => {
+    const geometry = new THREE.BufferGeometry();
+    const vertices: number[] = [];
+    const indices: number[] = [];
+    const normals: number[] = [];
+
+    const lengthSegments = 64;
+    const radialSegments = 64;
+    const halfLength = runLength / 2;
+
+    // Helper: check if a point on the run pipe surface is inside the branch hole
+    const isInBranchHole = (x: number, angle: number, radius: number): boolean => {
+      // Point on run pipe surface at position x along length, angle around circumference
+      const y = radius * Math.cos(angle);
+      const z = radius * Math.sin(angle);
+      // Check if this point is inside the branch cylinder
+      const dx = x - branchOffsetXVal;
+      const distFromBranchAxis = Math.sqrt(dx * dx + z * z);
+      // Only check top half of pipe (where branch is)
+      return y > 0 && distFromBranchAxis < branchOuterR;
+    };
+
+    // Helper: check if inner surface point is inside branch inner hole
+    const isInBranchInnerHole = (x: number, angle: number): boolean => {
+      const y = runInnerR * Math.cos(angle);
+      const z = runInnerR * Math.sin(angle);
+      const dx = x - branchOffsetXVal;
+      const distFromBranchAxis = Math.sqrt(dx * dx + z * z);
+      return y > 0 && distFromBranchAxis < branchInnerR;
+    };
+
+    // Generate outer surface with hole
+    const outerVertices: Map<string, number> = new Map();
+    const getOuterVertexIndex = (li: number, ri: number): number => {
+      const key = `o_${li}_${ri}`;
+      if (outerVertices.has(key)) return outerVertices.get(key)!;
+
+      const x = -halfLength + (li / lengthSegments) * runLength;
+      const angle = (ri / radialSegments) * Math.PI * 2;
+
+      if (isInBranchHole(x, angle, runOuterR)) return -1; // Skip vertices in hole
+
+      const y = runOuterR * Math.cos(angle);
+      const z = runOuterR * Math.sin(angle);
+
+      const idx = vertices.length / 3;
+      vertices.push(x, y, z);
+      normals.push(0, Math.cos(angle), Math.sin(angle));
+      outerVertices.set(key, idx);
+      return idx;
+    };
+
+    // Generate inner surface with hole
+    const innerVertices: Map<string, number> = new Map();
+    const getInnerVertexIndex = (li: number, ri: number): number => {
+      const key = `i_${li}_${ri}`;
+      if (innerVertices.has(key)) return innerVertices.get(key)!;
+
+      const x = -halfLength + (li / lengthSegments) * runLength;
+      const angle = (ri / radialSegments) * Math.PI * 2;
+
+      if (isInBranchInnerHole(x, angle)) return -1;
+
+      const y = runInnerR * Math.cos(angle);
+      const z = runInnerR * Math.sin(angle);
+
+      const idx = vertices.length / 3;
+      vertices.push(x, y, z);
+      normals.push(0, -Math.cos(angle), -Math.sin(angle));
+      innerVertices.set(key, idx);
+      return idx;
+    };
+
+    // Build outer surface triangles
+    for (let li = 0; li < lengthSegments; li++) {
+      for (let ri = 0; ri < radialSegments; ri++) {
+        const a = getOuterVertexIndex(li, ri);
+        const b = getOuterVertexIndex(li + 1, ri);
+        const c = getOuterVertexIndex(li, ri + 1);
+        const d = getOuterVertexIndex(li + 1, ri + 1);
+
+        if (a >= 0 && b >= 0 && c >= 0) indices.push(a, c, b);
+        if (b >= 0 && c >= 0 && d >= 0) indices.push(b, c, d);
+      }
+    }
+
+    // Build inner surface triangles (reversed winding)
+    for (let li = 0; li < lengthSegments; li++) {
+      for (let ri = 0; ri < radialSegments; ri++) {
+        const a = getInnerVertexIndex(li, ri);
+        const b = getInnerVertexIndex(li + 1, ri);
+        const c = getInnerVertexIndex(li, ri + 1);
+        const d = getInnerVertexIndex(li + 1, ri + 1);
+
+        if (a >= 0 && b >= 0 && c >= 0) indices.push(a, b, c);
+        if (b >= 0 && c >= 0 && d >= 0) indices.push(b, d, c);
+      }
+    }
+
+    // Add end caps (annular rings at both ends)
+    const addEndCap = (xPos: number, normalX: number) => {
+      const capStart = vertices.length / 3;
+      for (let ri = 0; ri <= radialSegments; ri++) {
+        const angle = (ri / radialSegments) * Math.PI * 2;
+        const y = Math.cos(angle);
+        const z = Math.sin(angle);
+
+        // Outer edge
+        vertices.push(xPos, runOuterR * y, runOuterR * z);
+        normals.push(normalX, 0, 0);
+        // Inner edge
+        vertices.push(xPos, runInnerR * y, runInnerR * z);
+        normals.push(normalX, 0, 0);
+      }
+
+      for (let ri = 0; ri < radialSegments; ri++) {
+        const o1 = capStart + ri * 2;
+        const i1 = o1 + 1;
+        const o2 = o1 + 2;
+        const i2 = i1 + 2;
+
+        if (normalX < 0) {
+          indices.push(o1, o2, i1);
+          indices.push(i1, o2, i2);
+        } else {
+          indices.push(o1, i1, o2);
+          indices.push(i1, i2, o2);
+        }
+      }
+    };
+
+    addEndCap(-halfLength, -1); // Left end
+    addEndCap(halfLength, 1);   // Right end
+
+    // Add hole edge surface (the cut edge where branch meets run)
+    // This creates the visible edge around the hole
+    const holeEdgeStart = vertices.length / 3;
+    const holeSegments = 48;
+    for (let hi = 0; hi <= holeSegments; hi++) {
+      const angle = (hi / holeSegments) * Math.PI * 2;
+      const localX = branchOuterR * Math.cos(angle);
+      const localZ = branchOuterR * Math.sin(angle);
+
+      // Position on run pipe where branch hole edge is
+      const x = branchOffsetXVal + localX;
+      const outerY = Math.sqrt(Math.max(0, runOuterR * runOuterR - localZ * localZ));
+      const innerY = Math.sqrt(Math.max(0, runInnerR * runInnerR - localZ * localZ));
+
+      // Outer edge of hole
+      vertices.push(x, outerY, localZ);
+      // Normal points into the hole (toward branch center)
+      const nx = -localX / branchOuterR;
+      const nz = -localZ / branchOuterR;
+      normals.push(nx, 0, nz);
+
+      // Inner edge of hole
+      vertices.push(x, innerY, localZ);
+      normals.push(nx, 0, nz);
+    }
+
+    // Hole edge triangles
+    for (let hi = 0; hi < holeSegments; hi++) {
+      const o1 = holeEdgeStart + hi * 2;
+      const i1 = o1 + 1;
+      const o2 = o1 + 2;
+      const i2 = i1 + 2;
+
+      indices.push(o1, i1, o2);
+      indices.push(i1, i2, o2);
+    }
+
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+
+    return geometry;
+  };
+
   // Flange specs
   const { specs: runFlangeSpecs } = getFlangeSpecs(nominalBore, props.flangeSpecs);
   const { specs: branchFlangeSpecs } = getFlangeSpecs(branchNominalBore || nominalBore, props.flangeSpecs);
@@ -668,33 +986,33 @@ function TeeScene(props: Tee3DPreviewProps) {
   return (
     <Center>
       <group>
-        {/* Run pipe (horizontal) */}
+        {/* Run pipe (horizontal) with hole cut where branch enters */}
         <mesh
-          position={[-halfRunLength, 0, 0]}
-          rotation={[0, Math.PI / 2, 0]}
+          position={[0, 0, 0]}
           castShadow
           receiveShadow
         >
-          <primitive object={createPipeGeometry(outerRadius, innerRadius, halfRunLength * 2)} attach="geometry" />
+          <primitive object={createRunPipeWithHoleGeometry(outerRadius, innerRadius, halfRunLength * 2, branchOuterRadius, branchInnerRadius, branchOffsetX)} attach="geometry" />
           <meshStandardMaterial {...gussetColor} />
         </mesh>
 
-        {/* Branch pipe (vertical, going up) - positioned based on branchPositionMm */}
+        {/* Branch pipe (vertical) - saddle-cut bottom fits into run pipe curve */}
         <mesh
-          position={[branchOffsetX, outerRadius, 0]}
-          rotation={[-Math.PI / 2, 0, 0]}
+          position={[branchOffsetX, 0, 0]}
           castShadow
           receiveShadow
         >
-          <primitive object={createPipeGeometry(branchOuterRadius, branchInnerRadius, height - outerRadius)} attach="geometry" />
+          <primitive object={createSaddleCutBranchGeometry(branchOuterRadius, branchInnerRadius, outerRadius, height)} attach="geometry" />
           <meshStandardMaterial {...gussetColor} />
         </mesh>
 
-        {/* Reinforcement collar at branch junction */}
-        <mesh position={[branchOffsetX, outerRadius - 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
-          <torusGeometry args={[branchOuterRadius + 0.02, 0.05, 16, 32]} />
-          <meshStandardMaterial {...gussetColor} />
-        </mesh>
+        {/* V-groove saddle weld at branch junction - follows Steinmetz curve */}
+        <SaddleWeld
+          runRadius={outerRadius}
+          branchRadius={branchOuterRadius}
+          branchOffsetX={branchOffsetX}
+          weldThickness={0.04}
+        />
 
         {/* Gusset plates for Gusset Tees - curved reinforcement plates on both sides of branch */}
         {teeType === 'gusset' && gussetSize > 0 && (

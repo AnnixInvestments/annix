@@ -1768,28 +1768,35 @@ function FittingFormComponent({
                             </div>
 
                             {/* Weld Summary with Volume - Combined */}
-                            <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
-                              <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400 font-medium">Weld Summary</p>
-                              {fittingWeldVolume && (
-                                <>
-                                  <p className="text-lg font-bold text-fuchsia-900 dark:text-fuchsia-100">{(fittingWeldVolume.totalVolumeCm3 * quantity).toFixed(1)}</p>
-                                  <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400">cm³ total</p>
-                                </>
-                              )}
-                              <div className="mt-1 text-xs text-fuchsia-500 dark:text-fuchsia-400">
-                                <p>Tee Junction: 1 @ {branchWeldThickness?.toFixed(1)}mm</p>
-                                {numFlanges > 0 && (() => {
-                                  const mainCircMm = Math.PI * mainOdMm;
-                                  const totalFlangeWeldMm = numFlanges * 2 * mainCircMm;
-                                  return (
+                            {(() => {
+                              // Tee junction weld length calculation (Steinmetz curve)
+                              // For a branch pipe meeting a run pipe at 90°, the saddle weld follows
+                              // the intersection curve. Length ≈ 2.7 × branch OD (Steinmetz factor)
+                              const STEINMETZ_FACTOR = 2.7;
+                              const teeJunctionWeldMm = branchOdMm > 0 ? STEINMETZ_FACTOR * branchOdMm : 0;
+                              const mainCircMm = Math.PI * mainOdMm;
+                              const totalFlangeWeldMm = numFlanges * 2 * mainCircMm;
+                              const totalWeldLinearMm = teeJunctionWeldMm + totalFlangeWeldMm;
+
+                              return (
+                                <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
+                                  <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400 font-medium">Weld Summary</p>
+                                  {fittingWeldVolume && (
                                     <>
-                                      <p>{numFlanges} × Flange (2×{mainCircMm.toFixed(0)}mm) @ {fittingWeldThickness?.toFixed(1)}mm</p>
-                                      <p className="font-medium">{(totalFlangeWeldMm / 1000).toFixed(2)} l/m</p>
+                                      <p className="text-lg font-bold text-fuchsia-900 dark:text-fuchsia-100">{(fittingWeldVolume.totalVolumeCm3 * quantity).toFixed(1)}</p>
+                                      <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400">cm³ total</p>
                                     </>
-                                  );
-                                })()}
-                              </div>
-                            </div>
+                                  )}
+                                  <div className="mt-1 text-xs text-fuchsia-500 dark:text-fuchsia-400">
+                                    <p>Tee Junction: {teeJunctionWeldMm.toFixed(0)}mm @ {branchWeldThickness?.toFixed(1)}mm</p>
+                                    {numFlanges > 0 && (
+                                      <p>{numFlanges} × Flange (2×{mainCircMm.toFixed(0)}mm) @ {fittingWeldThickness?.toFixed(1)}mm</p>
+                                    )}
+                                    <p className="font-medium mt-1">{(totalWeldLinearMm / 1000).toFixed(2)} l/m total</p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
 
                             {/* Surface Area - Indigo/Cyan */}
                             {mainOdMm && pipeWallThickness && (() => {
