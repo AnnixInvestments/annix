@@ -2,29 +2,27 @@
 
 import React, { useState, useEffect } from 'react';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { customerPortalApi, CustomerProfileResponse } from '@/app/lib/api/customerApi';
+import { customerPortalApi, type CustomerProfileResponse } from '@/app/lib/api/customerApi';
 import { formatDateTimeZA } from '@/app/lib/datetime';
+import { useCustomerProfile } from '@/app/lib/query/hooks';
 
 export default function CustomerProfilePage() {
   const { refreshProfile } = useCustomerAuth();
-  const [profile, setProfile] = useState<CustomerProfileResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const profileQuery = useCustomerProfile();
+  const profile = profileQuery.data ?? null;
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Edit states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Profile form data
   const [profileForm, setProfileForm] = useState({
     jobTitle: '',
     directPhone: '',
     mobilePhone: '',
   });
 
-  // Password form data
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -33,24 +31,14 @@ export default function CustomerProfilePage() {
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
-    try {
-      const data = await customerPortalApi.getProfile();
-      setProfile(data);
+    if (profile) {
       setProfileForm({
-        jobTitle: data.jobTitle || '',
-        directPhone: data.directPhone || '',
-        mobilePhone: data.mobilePhone || '',
+        jobTitle: profile.jobTitle || '',
+        directPhone: profile.directPhone || '',
+        mobilePhone: profile.mobilePhone || '',
       });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load profile');
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [profile]);
 
   const validatePassword = (password: string): string[] => {
     const errors: string[] = [];
@@ -86,8 +74,8 @@ export default function CustomerProfilePage() {
     setSuccessMessage(null);
 
     try {
-      const updatedProfile = await customerPortalApi.updateProfile(profileForm);
-      setProfile(updatedProfile);
+      await customerPortalApi.updateProfile(profileForm);
+      await profileQuery.refetch();
       setIsEditingProfile(false);
       setSuccessMessage('Profile updated successfully');
       await refreshProfile();
@@ -128,7 +116,7 @@ export default function CustomerProfilePage() {
     }
   };
 
-  if (isLoading) {
+  if (profileQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

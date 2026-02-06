@@ -24,6 +24,7 @@ export {
   useDeleteDraft,
 } from './customer/useCustomerRfqs'
 export { useCustomerProfile } from './customer/useCustomerProfile'
+export { useCustomerCompany } from './customer/useCustomerCompany'
 export {
   useCustomerPreferredSuppliers,
   useCustomerInvitations,

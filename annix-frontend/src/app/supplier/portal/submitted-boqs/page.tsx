@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { supplierPortalApi, SupplierBoqListItem } from '@/app/lib/api/supplierApi';
+import { type SupplierBoqListItem } from '@/app/lib/api/supplierApi';
 import { formatDateZA, fromISO, now } from '@/app/lib/datetime';
+import { useSupplierBoqs } from '@/app/lib/query/hooks';
 
 const isRfqOpen = (boq: SupplierBoqListItem): boolean => {
   if (boq.projectInfo?.requiredDate) {
@@ -22,27 +23,9 @@ const getDaysUntilDeadline = (dateString?: string): number | null => {
 };
 
 export default function SubmittedBoqsPage() {
-  const [boqs, setBoqs] = useState<SupplierBoqListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const boqsQuery = useSupplierBoqs('quoted');
+  const boqs = boqsQuery.data ?? [];
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    loadBoqs();
-  }, []);
-
-  const loadBoqs = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await supplierPortalApi.getMyBoqs('quoted');
-      setBoqs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load submitted BOQs');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredBoqs = boqs.filter((boq) => {
     if (!searchTerm) return true;
@@ -86,16 +69,16 @@ export default function SubmittedBoqsPage() {
 
       {/* Content */}
       <div className="p-6">
-        {loading ? (
+        {boqsQuery.isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <span className="ml-3 text-gray-600 dark:text-gray-400">Loading submitted BOQs...</span>
           </div>
-        ) : error ? (
+        ) : boqsQuery.error ? (
           <div className="text-center py-12">
-            <div className="text-red-600 dark:text-red-400 mb-4">{error}</div>
+            <div className="text-red-600 dark:text-red-400 mb-4">{boqsQuery.error instanceof Error ? boqsQuery.error.message : 'Failed to load submitted BOQs'}</div>
             <button
-              onClick={loadBoqs}
+              onClick={() => boqsQuery.refetch()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Retry

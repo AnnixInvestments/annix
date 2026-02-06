@@ -25,4 +25,8 @@ export const customerKeys = {
     invitations: () =>
       [...customerKeys.suppliers.all, 'invitations'] as const,
   },
+  company: {
+    all: ['customer', 'company'] as const,
+    data: () => [...customerKeys.company.all, 'data'] as const,
+  },
 } as const

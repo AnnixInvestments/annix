@@ -1,46 +1,26 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { customerPortalApi, CustomerCompanyDto } from '@/app/lib/api/customerApi';
+import React, { useState } from 'react';
+import { customerPortalApi, type CustomerCompanyDto } from '@/app/lib/api/customerApi';
+import { useCustomerCompany } from '@/app/lib/query/hooks';
 
 export default function CustomerCompanyPage() {
-  const [company, setCompany] = useState<CustomerCompanyDto | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const companyQuery = useCustomerCompany();
+  const company = companyQuery.data ?? null;
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [addressForm, setAddressForm] = useState({
-    streetAddress: '',
-    city: '',
-    provinceState: '',
-    postalCode: '',
-    primaryPhone: '',
-  });
-
-  useEffect(() => {
-    fetchCompany();
-  }, []);
-
-  const fetchCompany = async () => {
-    try {
-      const data = await customerPortalApi.getCompany();
-      setCompany(data);
-      setAddressForm({
-        streetAddress: data.streetAddress || '',
-        city: data.city || '',
-        provinceState: data.provinceState || '',
-        postalCode: data.postalCode || '',
-        primaryPhone: data.primaryPhone || '',
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load company details');
-    } finally {
-      setIsLoading(false);
-    }
+  const addressForm = {
+    streetAddress: company?.streetAddress || '',
+    city: company?.city || '',
+    provinceState: company?.provinceState || '',
+    postalCode: company?.postalCode || '',
+    primaryPhone: company?.primaryPhone || '',
   };
+  const [editAddressForm, setEditAddressForm] = useState(addressForm);
 
   const handleSaveAddress = async () => {
     setIsSaving(true);
@@ -48,8 +28,8 @@ export default function CustomerCompanyPage() {
     setSuccessMessage(null);
 
     try {
-      const updatedCompany = await customerPortalApi.updateCompanyAddress(addressForm);
-      setCompany(updatedCompany as any);
+      await customerPortalApi.updateCompanyAddress(editAddressForm);
+      await companyQuery.refetch();
       setIsEditingAddress(false);
       setSuccessMessage('Address updated successfully');
     } catch (e) {
@@ -59,7 +39,7 @@ export default function CustomerCompanyPage() {
     }
   };
 
-  if (isLoading) {
+  if (companyQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -145,7 +125,16 @@ export default function CustomerCompanyPage() {
           <h2 className="text-lg font-semibold text-gray-900">Address & Contact</h2>
           {!isEditingAddress && (
             <button
-              onClick={() => setIsEditingAddress(true)}
+              onClick={() => {
+                setEditAddressForm({
+                  streetAddress: company?.streetAddress || '',
+                  city: company?.city || '',
+                  provinceState: company?.provinceState || '',
+                  postalCode: company?.postalCode || '',
+                  primaryPhone: company?.primaryPhone || '',
+                });
+                setIsEditingAddress(true);
+              }}
               className="text-sm text-blue-600 hover:text-blue-700"
             >
               Edit
@@ -160,8 +149,8 @@ export default function CustomerCompanyPage() {
                   <label className="block text-sm font-medium text-gray-700">Street Address</label>
                   <input
                     type="text"
-                    value={addressForm.streetAddress}
-                    onChange={(e) => setAddressForm({ ...addressForm, streetAddress: e.target.value })}
+                    value={editAddressForm.streetAddress}
+                    onChange={(e) => setEditAddressForm({ ...editAddressForm, streetAddress: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -169,8 +158,8 @@ export default function CustomerCompanyPage() {
                   <label className="block text-sm font-medium text-gray-700">City</label>
                   <input
                     type="text"
-                    value={addressForm.city}
-                    onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                    value={editAddressForm.city}
+                    onChange={(e) => setEditAddressForm({ ...editAddressForm, city: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -178,8 +167,8 @@ export default function CustomerCompanyPage() {
                   <label className="block text-sm font-medium text-gray-700">Province/State</label>
                   <input
                     type="text"
-                    value={addressForm.provinceState}
-                    onChange={(e) => setAddressForm({ ...addressForm, provinceState: e.target.value })}
+                    value={editAddressForm.provinceState}
+                    onChange={(e) => setEditAddressForm({ ...editAddressForm, provinceState: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -187,8 +176,8 @@ export default function CustomerCompanyPage() {
                   <label className="block text-sm font-medium text-gray-700">Postal Code</label>
                   <input
                     type="text"
-                    value={addressForm.postalCode}
-                    onChange={(e) => setAddressForm({ ...addressForm, postalCode: e.target.value })}
+                    value={editAddressForm.postalCode}
+                    onChange={(e) => setEditAddressForm({ ...editAddressForm, postalCode: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -196,8 +185,8 @@ export default function CustomerCompanyPage() {
                   <label className="block text-sm font-medium text-gray-700">Primary Phone</label>
                   <input
                     type="tel"
-                    value={addressForm.primaryPhone}
-                    onChange={(e) => setAddressForm({ ...addressForm, primaryPhone: e.target.value })}
+                    value={editAddressForm.primaryPhone}
+                    onChange={(e) => setEditAddressForm({ ...editAddressForm, primaryPhone: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -216,7 +205,7 @@ export default function CustomerCompanyPage() {
                 <button
                   onClick={() => {
                     setIsEditingAddress(false);
-                    setAddressForm({
+                    setEditAddressForm({
                       streetAddress: company?.streetAddress || '',
                       city: company?.city || '',
                       provinceState: company?.provinceState || '',
