@@ -14,6 +14,9 @@ import { BendRfq } from './bend-rfq.entity';
 import { FittingRfq } from './fitting-rfq.entity';
 import { PipeSteelWorkRfq } from './pipe-steel-work-rfq.entity';
 import { ExpansionJointRfq } from './expansion-joint-rfq.entity';
+import { ValveRfq } from './valve-rfq.entity';
+import { InstrumentRfq } from './instrument-rfq.entity';
+import { PumpRfq } from './pump-rfq.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum RfqItemType {
@@ -24,6 +27,9 @@ export enum RfqItemType {
   CUSTOM = 'custom',
   PIPE_STEEL_WORK = 'pipe_steel_work',
   EXPANSION_JOINT = 'expansion_joint',
+  VALVE = 'valve',
+  INSTRUMENT = 'instrument',
+  PUMP = 'pump',
 }
 
 @Entity('rfq_items')
@@ -161,6 +167,39 @@ export class RfqItem {
     },
   )
   expansionJointDetails?: ExpansionJointRfq;
+
+  @ApiProperty({
+    description: 'Valve details (if item type is valve)',
+    required: false,
+    type: () => ValveRfq,
+  })
+  @OneToOne(() => ValveRfq, (valve) => valve.rfqItem, {
+    cascade: true,
+    nullable: true,
+  })
+  valveDetails?: ValveRfq;
+
+  @ApiProperty({
+    description: 'Instrument details (if item type is instrument)',
+    required: false,
+    type: () => InstrumentRfq,
+  })
+  @OneToOne(() => InstrumentRfq, (instrument) => instrument.rfqItem, {
+    cascade: true,
+    nullable: true,
+  })
+  instrumentDetails?: InstrumentRfq;
+
+  @ApiProperty({
+    description: 'Pump details (if item type is pump)',
+    required: false,
+    type: () => PumpRfq,
+  })
+  @OneToOne(() => PumpRfq, (pump) => pump.rfqItem, {
+    cascade: true,
+    nullable: true,
+  })
+  pumpDetails?: PumpRfq;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

@@ -1615,6 +1615,16 @@ export interface ConsolidatedBoqDataDto {
   bnwSets?: ConsolidatedItemDto[];
   gaskets?: ConsolidatedItemDto[];
   surfaceProtection?: ConsolidatedItemDto[];
+  hdpePipes?: ConsolidatedItemDto[];
+  pvcPipes?: ConsolidatedItemDto[];
+  structuralSteel?: ConsolidatedItemDto[];
+  valves?: ConsolidatedItemDto[];
+  instruments?: ConsolidatedItemDto[];
+  actuators?: ConsolidatedItemDto[];
+  flowMeters?: ConsolidatedItemDto[];
+  pressureInstruments?: ConsolidatedItemDto[];
+  levelInstruments?: ConsolidatedItemDto[];
+  temperatureInstruments?: ConsolidatedItemDto[];
 }
 
 export interface ConsolidatedItemDto {

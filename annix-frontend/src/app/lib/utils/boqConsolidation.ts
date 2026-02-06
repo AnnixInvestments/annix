@@ -112,6 +112,8 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
   const consolidatedBnwSets: Map<string, ConsolidatedItem> = new Map();
   const consolidatedGaskets: Map<string, ConsolidatedItem> = new Map();
   const consolidatedBlankFlanges: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedValves: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedInstruments: Map<string, ConsolidatedItem> = new Map();
 
   entries.forEach((entry, index) => {
     const itemNumber = index + 1;
@@ -373,6 +375,53 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           });
         }
       }
+    } else if (entry.itemType === 'valve') {
+      const valveType = entry.specs?.valveType || 'valve';
+      const size = entry.specs?.size || 'DN100';
+      const pressureClass = entry.specs?.pressureClass || 'Class 150';
+      const bodyMaterial = entry.specs?.bodyMaterial || 'CF8M';
+      const actuatorType = entry.specs?.actuatorType || 'manual';
+
+      const valveKey = `VALVE_${valveType}_${size}_${pressureClass}_${bodyMaterial}_${actuatorType}`;
+      const existingValve = consolidatedValves.get(valveKey);
+
+      const description = `${size} ${valveType.replace(/_/g, ' ')} ${pressureClass} ${bodyMaterial}${actuatorType !== 'manual' ? ` (${actuatorType})` : ''}`;
+
+      if (existingValve) {
+        existingValve.qty += qty;
+        existingValve.entries.push(itemNumber);
+      } else {
+        consolidatedValves.set(valveKey, {
+          description,
+          qty,
+          unit: 'Each',
+          weight: 0,
+          entries: [itemNumber],
+        });
+      }
+    } else if (entry.itemType === 'instrument') {
+      const instrumentType = entry.specs?.instrumentType || 'instrument';
+      const instrumentCategory = entry.specs?.instrumentCategory || 'flow';
+      const size = entry.specs?.size || '';
+      const processConnection = entry.specs?.processConnection || '';
+
+      const instrumentKey = `INSTRUMENT_${instrumentCategory}_${instrumentType}_${size}_${processConnection}`;
+      const existingInstrument = consolidatedInstruments.get(instrumentKey);
+
+      const description = `${instrumentType.replace(/_/g, ' ')}${size ? ` ${size}` : ''}${processConnection ? ` ${processConnection}` : ''}`;
+
+      if (existingInstrument) {
+        existingInstrument.qty += qty;
+        existingInstrument.entries.push(itemNumber);
+      } else {
+        consolidatedInstruments.set(instrumentKey, {
+          description,
+          qty,
+          unit: 'Each',
+          weight: 0,
+          entries: [itemNumber],
+        });
+      }
     } else {
       const nb = entry.specs?.nominalBoreMm || 100;
       const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
@@ -495,5 +544,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
     blankFlanges: consolidatedBlankFlanges.size > 0 ? mapToDto(consolidatedBlankFlanges) : undefined,
     bnwSets: consolidatedBnwSets.size > 0 ? mapToDto(consolidatedBnwSets) : undefined,
     gaskets: consolidatedGaskets.size > 0 ? mapToDto(consolidatedGaskets) : undefined,
+    valves: consolidatedValves.size > 0 ? mapToDto(consolidatedValves) : undefined,
+    instruments: consolidatedInstruments.size > 0 ? mapToDto(consolidatedInstruments) : undefined,
   };
 }

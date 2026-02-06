@@ -114,6 +114,7 @@ import { SecureDocumentsModule } from '../secure-documents/secure-documents.modu
     CustomerAuthService,
     CustomerService,
     CustomerOnboardingService,
+    CustomerSupplierService,
     CustomerAuthGuard,
     JwtModule,
   ],

@@ -38,6 +38,22 @@ export const BOQ_SECTION_TO_CAPABILITY: Record<string, string> = {
   // Structural Steel
   structural_steel: 'structural_steel',
   steel_structures: 'structural_steel',
+
+  // Valves & Instruments
+  valves: 'valves_instruments',
+  instruments: 'valves_instruments',
+  actuators: 'valves_instruments',
+  flow_meters: 'valves_instruments',
+  pressure_instruments: 'valves_instruments',
+  level_instruments: 'valves_instruments',
+  temperature_instruments: 'valves_instruments',
+
+  // Pumps & Pump Parts
+  pumps: 'pumps',
+  pump_parts: 'pumps',
+  pump_spares: 'pumps',
+  pump_repairs: 'pumps',
+  pump_rental: 'pumps',
 };
 
 // Reverse mapping: Capability Key -> BOQ Section Types
@@ -57,6 +73,16 @@ export const CAPABILITY_TO_SECTIONS: Record<string, string[]> = {
   hdpe: ['hdpe_pipes', 'hdpe_fittings'],
   pvc: ['pvc_pipes', 'pvc_fittings'],
   structural_steel: ['structural_steel', 'steel_structures'],
+  valves_instruments: [
+    'valves',
+    'instruments',
+    'actuators',
+    'flow_meters',
+    'pressure_instruments',
+    'level_instruments',
+    'temperature_instruments',
+  ],
+  pumps: ['pumps', 'pump_parts', 'pump_spares', 'pump_repairs', 'pump_rental'],
   // transport_install doesn't have BOQ sections - it's a service
 };
 
@@ -80,6 +106,18 @@ export const SECTION_TITLES: Record<string, string> = {
   pvc_fittings: 'PVC Fittings',
   structural_steel: 'Structural Steel',
   steel_structures: 'Steel Structures',
+  valves: 'Valves',
+  instruments: 'Instruments',
+  actuators: 'Actuators',
+  flow_meters: 'Flow Meters',
+  pressure_instruments: 'Pressure Instruments',
+  level_instruments: 'Level Instruments',
+  temperature_instruments: 'Temperature Instruments',
+  pumps: 'Pumps',
+  pump_parts: 'Pump Parts',
+  pump_spares: 'Pump Spare Parts',
+  pump_repairs: 'Pump Repair Services',
+  pump_rental: 'Pump Rental',
 };
 
 // All valid capability keys (matches PRODUCTS_AND_SERVICES values)
@@ -91,6 +129,8 @@ export const VALID_CAPABILITIES = [
   'pvc',
   'structural_steel',
   'transport_install',
+  'valves_instruments',
+  'pumps',
 ] as const;
 
 export type CapabilityKey = (typeof VALID_CAPABILITIES)[number];

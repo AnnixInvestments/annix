@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
 import { supplierPortalApi } from '@/app/lib/api/supplierApi';
 import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
@@ -8,6 +9,7 @@ import { corpId } from '@/app/lib/corpId';
 import { useSupplierCapabilities } from '@/app/lib/query/hooks';
 
 export default function ProductsServicesPage() {
+  const router = useRouter();
   const { supplier } = useSupplierAuth();
   const capabilitiesQuery = useSupplierCapabilities();
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([]);
@@ -37,11 +39,10 @@ export default function ProductsServicesPage() {
     setMessage(null);
     try {
       await supplierPortalApi.saveCapabilities(selectedCapabilities);
-      setMessage({ type: 'success', text: 'Your products and services have been saved successfully.' });
+      router.push('/supplier/portal/dashboard');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save. Please try again.';
       setMessage({ type: 'error', text: errorMessage });
-    } finally {
       setIsSaving(false);
     }
   };

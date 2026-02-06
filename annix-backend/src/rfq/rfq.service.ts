@@ -26,6 +26,9 @@ import {
   BellowsMaterial,
   FabricatedLoopType,
 } from './entities/expansion-joint-rfq.entity';
+import { ValveRfq, ValveActuatorType, ValveFailPosition, ValveCategory } from './entities/valve-rfq.entity';
+import { InstrumentRfq, InstrumentCategory } from './entities/instrument-rfq.entity';
+import { PumpRfq, PumpCategory, PumpServiceType, PumpMotorType, PumpSealType } from './entities/pump-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
 import { RfqSequence } from './entities/rfq-sequence.entity';
@@ -82,6 +85,12 @@ export class RfqService {
     private fittingRfqRepository: Repository<FittingRfq>,
     @InjectRepository(ExpansionJointRfq)
     private expansionJointRfqRepository: Repository<ExpansionJointRfq>,
+    @InjectRepository(ValveRfq)
+    private valveRfqRepository: Repository<ValveRfq>,
+    @InjectRepository(InstrumentRfq)
+    private instrumentRfqRepository: Repository<InstrumentRfq>,
+    @InjectRepository(PumpRfq)
+    private pumpRfqRepository: Repository<PumpRfq>,
     @InjectRepository(RfqDocument)
     private rfqDocumentRepository: Repository<RfqDocument>,
     @InjectRepository(RfqDraft)
@@ -689,6 +698,167 @@ export class RfqService {
         this.logger.log(
           `Created expansion joint item #${lineNumber}: ${item.description}`,
         );
+      } else if (item.itemType === 'valve' && item.valve) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.VALVE,
+          quantity: item.valve.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const valveRfq = this.valveRfqRepository.create({
+          valveType: item.valve.valveType,
+          valveCategory: item.valve.valveCategory as ValveCategory,
+          size: item.valve.size,
+          pressureClass: item.valve.pressureClass,
+          connectionType: item.valve.connectionType,
+          bodyMaterial: item.valve.bodyMaterial,
+          trimMaterial: item.valve.trimMaterial,
+          seatMaterial: item.valve.seatMaterial,
+          portType: item.valve.portType,
+          actuatorType: item.valve.actuatorType as ValveActuatorType,
+          airSupply: item.valve.airSupply,
+          voltage: item.valve.voltage,
+          failPosition: item.valve.failPosition as ValveFailPosition,
+          positioner: item.valve.positioner,
+          limitSwitches: item.valve.limitSwitches || false,
+          solenoidValve: item.valve.solenoidValve || false,
+          media: item.valve.media,
+          operatingPressure: item.valve.operatingPressure,
+          operatingTemp: item.valve.operatingTemp,
+          hazardousArea: item.valve.hazardousArea,
+          cv: item.valve.cv,
+          flowRate: item.valve.flowRate,
+          seatLeakageClass: item.valve.seatLeakageClass,
+          fireSafeStandard: item.valve.fireSafeStandard,
+          cryogenicService: item.valve.cryogenicService,
+          fugitiveEmissions: item.valve.fugitiveEmissions,
+          extendedBonnet: item.valve.extendedBonnet,
+          certifications: item.valve.certifications || [],
+          quantityValue: item.valve.quantityValue || 1,
+          supplierReference: item.valve.supplierReference,
+          unitCostFromSupplier: item.valve.unitCostFromSupplier,
+          markupPercentage: item.valve.markupPercentage || 15,
+          calculationData: item.valve.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.valveRfqRepository.save(valveRfq);
+        this.logger.log(`Created valve item #${lineNumber}: ${item.description}`);
+      } else if (item.itemType === 'instrument' && item.instrument) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.INSTRUMENT,
+          quantity: item.instrument.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const instrumentRfq = this.instrumentRfqRepository.create({
+          instrumentType: item.instrument.instrumentType,
+          instrumentCategory: item.instrument.instrumentCategory as InstrumentCategory,
+          size: item.instrument.size,
+          processConnection: item.instrument.processConnection,
+          wettedMaterial: item.instrument.wettedMaterial,
+          rangeMin: item.instrument.rangeMin,
+          rangeMax: item.instrument.rangeMax,
+          rangeUnit: item.instrument.rangeUnit,
+          outputSignal: item.instrument.outputSignal,
+          communicationProtocol: item.instrument.communicationProtocol,
+          displayType: item.instrument.displayType,
+          powerSupply: item.instrument.powerSupply,
+          cableEntry: item.instrument.cableEntry,
+          explosionProof: item.instrument.explosionProof,
+          ipRating: item.instrument.ipRating,
+          accuracyClass: item.instrument.accuracyClass,
+          calibration: item.instrument.calibration,
+          processMedia: item.instrument.processMedia,
+          operatingPressure: item.instrument.operatingPressure,
+          operatingTemp: item.instrument.operatingTemp,
+          quantityValue: item.instrument.quantityValue || 1,
+          supplierReference: item.instrument.supplierReference,
+          modelNumber: item.instrument.modelNumber,
+          unitCostFromSupplier: item.instrument.unitCostFromSupplier,
+          markupPercentage: item.instrument.markupPercentage || 15,
+          calculationData: item.instrument.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.instrumentRfqRepository.save(instrumentRfq);
+        this.logger.log(
+          `Created instrument item #${lineNumber}: ${item.description}`,
+        );
+      } else if (item.itemType === 'pump' && item.pump) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.PUMP,
+          quantity: item.pump.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const pumpRfq = this.pumpRfqRepository.create({
+          serviceType: item.pump.serviceType as PumpServiceType,
+          pumpType: item.pump.pumpType,
+          pumpCategory: item.pump.pumpCategory as PumpCategory,
+          flowRate: item.pump.flowRate,
+          totalHead: item.pump.totalHead,
+          suctionHead: item.pump.suctionHead,
+          npshAvailable: item.pump.npshAvailable,
+          dischargePressure: item.pump.dischargePressure,
+          operatingTemp: item.pump.operatingTemp,
+          fluidType: item.pump.fluidType,
+          specificGravity: item.pump.specificGravity,
+          viscosity: item.pump.viscosity,
+          solidsContent: item.pump.solidsContent,
+          solidsSize: item.pump.solidsSize,
+          ph: item.pump.ph,
+          isAbrasive: item.pump.isAbrasive || false,
+          isCorrosive: item.pump.isCorrosive || false,
+          casingMaterial: item.pump.casingMaterial,
+          impellerMaterial: item.pump.impellerMaterial,
+          shaftMaterial: item.pump.shaftMaterial,
+          sealType: item.pump.sealType as PumpSealType,
+          sealPlan: item.pump.sealPlan,
+          suctionSize: item.pump.suctionSize,
+          dischargeSize: item.pump.dischargeSize,
+          connectionType: item.pump.connectionType,
+          motorType: item.pump.motorType as PumpMotorType,
+          motorPower: item.pump.motorPower,
+          voltage: item.pump.voltage,
+          frequency: item.pump.frequency,
+          motorEfficiency: item.pump.motorEfficiency,
+          enclosure: item.pump.enclosure,
+          hazardousArea: item.pump.hazardousArea || 'none',
+          certifications: item.pump.certifications || [],
+          sparePartCategory: item.pump.sparePartCategory,
+          spareParts: item.pump.spareParts,
+          existingPumpModel: item.pump.existingPumpModel,
+          existingPumpSerial: item.pump.existingPumpSerial,
+          rentalDurationDays: item.pump.rentalDurationDays,
+          quantityValue: item.pump.quantityValue || 1,
+          supplierReference: item.pump.supplierReference,
+          unitCostFromSupplier: item.pump.unitCostFromSupplier,
+          markupPercentage: item.pump.markupPercentage || 15,
+          calculationData: item.pump.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.pumpRfqRepository.save(pumpRfq);
+        this.logger.log(`Created pump item #${lineNumber}: ${item.description}`);
       }
     }
 
@@ -700,6 +870,9 @@ export class RfqService {
         'items.bendDetails',
         'items.fittingDetails',
         'items.expansionJointDetails',
+        'items.valveDetails',
+        'items.instrumentDetails',
+        'items.pumpDetails',
       ],
     });
 
@@ -928,6 +1101,162 @@ export class RfqService {
         });
 
         await this.expansionJointRfqRepository.save(expansionJointRfq);
+      } else if (item.itemType === 'valve' && item.valve) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.VALVE,
+          quantity: item.valve.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const valveRfq = this.valveRfqRepository.create({
+          valveType: item.valve.valveType,
+          valveCategory: item.valve.valveCategory as ValveCategory,
+          size: item.valve.size,
+          pressureClass: item.valve.pressureClass,
+          connectionType: item.valve.connectionType,
+          bodyMaterial: item.valve.bodyMaterial,
+          trimMaterial: item.valve.trimMaterial,
+          seatMaterial: item.valve.seatMaterial,
+          portType: item.valve.portType,
+          actuatorType: item.valve.actuatorType as ValveActuatorType,
+          airSupply: item.valve.airSupply,
+          voltage: item.valve.voltage,
+          failPosition: item.valve.failPosition as ValveFailPosition,
+          positioner: item.valve.positioner,
+          limitSwitches: item.valve.limitSwitches || false,
+          solenoidValve: item.valve.solenoidValve || false,
+          media: item.valve.media,
+          operatingPressure: item.valve.operatingPressure,
+          operatingTemp: item.valve.operatingTemp,
+          hazardousArea: item.valve.hazardousArea,
+          cv: item.valve.cv,
+          flowRate: item.valve.flowRate,
+          seatLeakageClass: item.valve.seatLeakageClass,
+          fireSafeStandard: item.valve.fireSafeStandard,
+          cryogenicService: item.valve.cryogenicService,
+          fugitiveEmissions: item.valve.fugitiveEmissions,
+          extendedBonnet: item.valve.extendedBonnet,
+          certifications: item.valve.certifications || [],
+          quantityValue: item.valve.quantityValue || 1,
+          supplierReference: item.valve.supplierReference,
+          unitCostFromSupplier: item.valve.unitCostFromSupplier,
+          markupPercentage: item.valve.markupPercentage || 15,
+          calculationData: item.valve.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.valveRfqRepository.save(valveRfq);
+      } else if (item.itemType === 'instrument' && item.instrument) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.INSTRUMENT,
+          quantity: item.instrument.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const instrumentRfq = this.instrumentRfqRepository.create({
+          instrumentType: item.instrument.instrumentType,
+          instrumentCategory: item.instrument.instrumentCategory as InstrumentCategory,
+          size: item.instrument.size,
+          processConnection: item.instrument.processConnection,
+          wettedMaterial: item.instrument.wettedMaterial,
+          rangeMin: item.instrument.rangeMin,
+          rangeMax: item.instrument.rangeMax,
+          rangeUnit: item.instrument.rangeUnit,
+          outputSignal: item.instrument.outputSignal,
+          communicationProtocol: item.instrument.communicationProtocol,
+          displayType: item.instrument.displayType,
+          powerSupply: item.instrument.powerSupply,
+          cableEntry: item.instrument.cableEntry,
+          explosionProof: item.instrument.explosionProof,
+          ipRating: item.instrument.ipRating,
+          accuracyClass: item.instrument.accuracyClass,
+          calibration: item.instrument.calibration,
+          processMedia: item.instrument.processMedia,
+          operatingPressure: item.instrument.operatingPressure,
+          operatingTemp: item.instrument.operatingTemp,
+          quantityValue: item.instrument.quantityValue || 1,
+          supplierReference: item.instrument.supplierReference,
+          modelNumber: item.instrument.modelNumber,
+          unitCostFromSupplier: item.instrument.unitCostFromSupplier,
+          markupPercentage: item.instrument.markupPercentage || 15,
+          calculationData: item.instrument.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.instrumentRfqRepository.save(instrumentRfq);
+      } else if (item.itemType === 'pump' && item.pump) {
+        const rfqItem = this.rfqItemRepository.create({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.PUMP,
+          quantity: item.pump.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
+
+        const pumpRfq = this.pumpRfqRepository.create({
+          serviceType: item.pump.serviceType as PumpServiceType,
+          pumpType: item.pump.pumpType,
+          pumpCategory: item.pump.pumpCategory as PumpCategory,
+          flowRate: item.pump.flowRate,
+          totalHead: item.pump.totalHead,
+          suctionHead: item.pump.suctionHead,
+          npshAvailable: item.pump.npshAvailable,
+          dischargePressure: item.pump.dischargePressure,
+          operatingTemp: item.pump.operatingTemp,
+          fluidType: item.pump.fluidType,
+          specificGravity: item.pump.specificGravity,
+          viscosity: item.pump.viscosity,
+          solidsContent: item.pump.solidsContent,
+          solidsSize: item.pump.solidsSize,
+          ph: item.pump.ph,
+          isAbrasive: item.pump.isAbrasive || false,
+          isCorrosive: item.pump.isCorrosive || false,
+          casingMaterial: item.pump.casingMaterial,
+          impellerMaterial: item.pump.impellerMaterial,
+          shaftMaterial: item.pump.shaftMaterial,
+          sealType: item.pump.sealType as PumpSealType,
+          sealPlan: item.pump.sealPlan,
+          suctionSize: item.pump.suctionSize,
+          dischargeSize: item.pump.dischargeSize,
+          connectionType: item.pump.connectionType,
+          motorType: item.pump.motorType as PumpMotorType,
+          motorPower: item.pump.motorPower,
+          voltage: item.pump.voltage,
+          frequency: item.pump.frequency,
+          motorEfficiency: item.pump.motorEfficiency,
+          enclosure: item.pump.enclosure,
+          hazardousArea: item.pump.hazardousArea || 'none',
+          certifications: item.pump.certifications || [],
+          sparePartCategory: item.pump.sparePartCategory,
+          spareParts: item.pump.spareParts,
+          existingPumpModel: item.pump.existingPumpModel,
+          existingPumpSerial: item.pump.existingPumpSerial,
+          rentalDurationDays: item.pump.rentalDurationDays,
+          quantityValue: item.pump.quantityValue || 1,
+          supplierReference: item.pump.supplierReference,
+          unitCostFromSupplier: item.pump.unitCostFromSupplier,
+          markupPercentage: item.pump.markupPercentage || 15,
+          calculationData: item.pump.calculationData,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.pumpRfqRepository.save(pumpRfq);
       }
     }
 
@@ -939,6 +1268,9 @@ export class RfqService {
         'items.bendDetails',
         'items.fittingDetails',
         'items.expansionJointDetails',
+        'items.valveDetails',
+        'items.instrumentDetails',
+        'items.pumpDetails',
       ],
     });
 
@@ -981,6 +1313,9 @@ export class RfqService {
         'items.bendDetails',
         'items.fittingDetails',
         'items.expansionJointDetails',
+        'items.valveDetails',
+        'items.instrumentDetails',
+        'items.pumpDetails',
         'drawings',
         'boqs',
       ],

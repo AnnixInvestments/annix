@@ -9,7 +9,7 @@ interface SplitPaneLayoutProps {
   previewContent: React.ReactNode;
   calcResultsContent?: React.ReactNode;
   showSplitToggle: boolean;
-  itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work' | 'expansion_joint';
+  itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work' | 'expansion_joint' | 'valve' | 'instrument' | 'pump';
 }
 
 export default function SplitPaneLayout({
@@ -173,6 +173,27 @@ export default function SplitPaneLayout({
       hoverFrom: 'hover:from-purple-600',
       hoverTo: 'hover:to-purple-700',
       divider: 'hover:bg-purple-500'
+    },
+    valve: {
+      from: 'from-teal-500',
+      to: 'to-teal-600',
+      hoverFrom: 'hover:from-teal-600',
+      hoverTo: 'hover:to-teal-700',
+      divider: 'hover:bg-teal-500'
+    },
+    instrument: {
+      from: 'from-cyan-500',
+      to: 'to-cyan-600',
+      hoverFrom: 'hover:from-cyan-600',
+      hoverTo: 'hover:to-cyan-700',
+      divider: 'hover:bg-cyan-500'
+    },
+    pump: {
+      from: 'from-indigo-500',
+      to: 'to-indigo-600',
+      hoverFrom: 'hover:from-indigo-600',
+      hoverTo: 'hover:to-indigo-700',
+      divider: 'hover:bg-indigo-500'
     }
   }[itemType];
 

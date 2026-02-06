@@ -11,6 +11,9 @@ import { StraightPipeRfq } from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
 import { FittingRfq } from './entities/fitting-rfq.entity';
 import { ExpansionJointRfq } from './entities/expansion-joint-rfq.entity';
+import { ValveRfq } from './entities/valve-rfq.entity';
+import { InstrumentRfq } from './entities/instrument-rfq.entity';
+import { PumpRfq } from './entities/pump-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
 import { AnonymousDraft } from './entities/anonymous-draft.entity';
@@ -41,6 +44,9 @@ import { EmailModule } from '../email/email.module';
       BendRfq,
       FittingRfq,
       ExpansionJointRfq,
+      ValveRfq,
+      InstrumentRfq,
+      PumpRfq,
       RfqDocument,
       RfqDraft,
       AnonymousDraft,

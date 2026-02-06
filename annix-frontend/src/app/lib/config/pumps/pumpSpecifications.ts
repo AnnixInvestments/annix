@@ -234,6 +234,61 @@ export const CONSTRUCTION_SPECS: SpecificationField[] = [
   },
 ];
 
+// Motor Frame Sizes - IEC Standard
+export const IEC_FRAME_SIZES = [
+  { value: 'iec_56', label: 'IEC 56' },
+  { value: 'iec_63', label: 'IEC 63' },
+  { value: 'iec_71', label: 'IEC 71' },
+  { value: 'iec_80', label: 'IEC 80' },
+  { value: 'iec_90s', label: 'IEC 90S' },
+  { value: 'iec_90l', label: 'IEC 90L' },
+  { value: 'iec_100l', label: 'IEC 100L' },
+  { value: 'iec_112m', label: 'IEC 112M' },
+  { value: 'iec_132s', label: 'IEC 132S' },
+  { value: 'iec_132m', label: 'IEC 132M' },
+  { value: 'iec_160m', label: 'IEC 160M' },
+  { value: 'iec_160l', label: 'IEC 160L' },
+  { value: 'iec_180m', label: 'IEC 180M' },
+  { value: 'iec_180l', label: 'IEC 180L' },
+  { value: 'iec_200l', label: 'IEC 200L' },
+  { value: 'iec_225s', label: 'IEC 225S' },
+  { value: 'iec_225m', label: 'IEC 225M' },
+  { value: 'iec_250m', label: 'IEC 250M' },
+  { value: 'iec_280s', label: 'IEC 280S' },
+  { value: 'iec_280m', label: 'IEC 280M' },
+  { value: 'iec_315s', label: 'IEC 315S' },
+  { value: 'iec_315m', label: 'IEC 315M' },
+  { value: 'iec_315l', label: 'IEC 315L' },
+  { value: 'iec_355m', label: 'IEC 355M' },
+  { value: 'iec_355l', label: 'IEC 355L' },
+];
+
+// Motor Frame Sizes - NEMA Standard
+export const NEMA_FRAME_SIZES = [
+  { value: 'nema_42', label: 'NEMA 42' },
+  { value: 'nema_48', label: 'NEMA 48' },
+  { value: 'nema_56', label: 'NEMA 56' },
+  { value: 'nema_56h', label: 'NEMA 56H' },
+  { value: 'nema_143t', label: 'NEMA 143T' },
+  { value: 'nema_145t', label: 'NEMA 145T' },
+  { value: 'nema_182t', label: 'NEMA 182T' },
+  { value: 'nema_184t', label: 'NEMA 184T' },
+  { value: 'nema_213t', label: 'NEMA 213T' },
+  { value: 'nema_215t', label: 'NEMA 215T' },
+  { value: 'nema_254t', label: 'NEMA 254T' },
+  { value: 'nema_256t', label: 'NEMA 256T' },
+  { value: 'nema_284t', label: 'NEMA 284T' },
+  { value: 'nema_286t', label: 'NEMA 286T' },
+  { value: 'nema_324t', label: 'NEMA 324T' },
+  { value: 'nema_326t', label: 'NEMA 326T' },
+  { value: 'nema_364t', label: 'NEMA 364T' },
+  { value: 'nema_365t', label: 'NEMA 365T' },
+  { value: 'nema_404t', label: 'NEMA 404T' },
+  { value: 'nema_405t', label: 'NEMA 405T' },
+  { value: 'nema_444t', label: 'NEMA 444T' },
+  { value: 'nema_445t', label: 'NEMA 445T' },
+];
+
 // Motor Specifications
 export const MOTOR_SPECS: SpecificationField[] = [
   {
@@ -314,6 +369,194 @@ export const MOTOR_SPECS: SpecificationField[] = [
       { value: 'zone_22', label: 'Zone 22 (Dust)' },
     ],
     category: 'motor',
+  },
+  {
+    name: 'frameStandard',
+    label: 'Frame Standard',
+    type: 'select',
+    options: [
+      { value: 'iec', label: 'IEC (International)' },
+      { value: 'nema', label: 'NEMA (North America)' },
+    ],
+    helpText: 'Motor frame dimension standard',
+    category: 'motor',
+  },
+  {
+    name: 'frameSize',
+    label: 'Frame Size',
+    type: 'select',
+    options: [...IEC_FRAME_SIZES, ...NEMA_FRAME_SIZES],
+    helpText: 'Motor frame size designation',
+    category: 'motor',
+  },
+];
+
+// Coupling Options
+export const COUPLING_OPTIONS = [
+  { value: 'flexible_jaw', label: 'Flexible Jaw Coupling' },
+  { value: 'flexible_disc', label: 'Flexible Disc Coupling' },
+  { value: 'flexible_gear', label: 'Flexible Gear Coupling' },
+  { value: 'flexible_grid', label: 'Flexible Grid Coupling' },
+  { value: 'flexible_elastomeric', label: 'Flexible Elastomeric' },
+  { value: 'rigid', label: 'Rigid Coupling' },
+  { value: 'spacer_flexible', label: 'Spacer Coupling - Flexible' },
+  { value: 'spacer_disc', label: 'Spacer Coupling - Disc' },
+  { value: 'spacer_gear', label: 'Spacer Coupling - Gear' },
+  { value: 'magnetic', label: 'Magnetic Coupling' },
+  { value: 'belt_drive', label: 'Belt Drive' },
+  { value: 'direct_coupled', label: 'Direct Coupled (Close Coupled)' },
+];
+
+export const COUPLING_SPECS: SpecificationField[] = [
+  {
+    name: 'couplingType',
+    label: 'Coupling Type',
+    type: 'select',
+    options: COUPLING_OPTIONS,
+    helpText: 'Power transmission coupling between pump and driver',
+    category: 'construction',
+  },
+  {
+    name: 'couplingGuard',
+    label: 'Coupling Guard',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'None' },
+      { value: 'standard', label: 'Standard Guard' },
+      { value: 'full_enclosure', label: 'Full Enclosure' },
+      { value: 'mesh', label: 'Mesh Guard' },
+    ],
+    category: 'construction',
+  },
+];
+
+// Baseplate & Mounting Options
+export const BASEPLATE_OPTIONS = [
+  { value: 'none', label: 'No Baseplate (Pump Only)' },
+  { value: 'cast_iron', label: 'Cast Iron Baseplate' },
+  { value: 'fabricated_steel', label: 'Fabricated Steel Baseplate' },
+  { value: 'stainless_steel', label: 'Stainless Steel Baseplate' },
+  { value: 'concrete_filled', label: 'Concrete Filled Baseplate' },
+  { value: 'skid_steel', label: 'Steel Skid Mounted' },
+  { value: 'skid_portable', label: 'Portable Skid with Lifting Points' },
+  { value: 'skid_trailer', label: 'Trailer Mounted' },
+  { value: 'vertical_inline', label: 'Vertical Inline (No Baseplate)' },
+];
+
+export const BASEPLATE_SPECS: SpecificationField[] = [
+  {
+    name: 'baseplateType',
+    label: 'Baseplate / Mounting',
+    type: 'select',
+    options: BASEPLATE_OPTIONS,
+    helpText: 'Pump and motor mounting arrangement',
+    category: 'construction',
+  },
+  {
+    name: 'drainConnection',
+    label: 'Baseplate Drain',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'No Drain' },
+      { value: 'open_drain', label: 'Open Drain' },
+      { value: 'plugged_drain', label: 'Plugged Drain Connection' },
+      { value: 'piped_drain', label: 'Piped to Collection' },
+    ],
+    category: 'construction',
+  },
+  {
+    name: 'groutType',
+    label: 'Grouting',
+    type: 'select',
+    options: [
+      { value: 'none', label: 'No Grout' },
+      { value: 'cement', label: 'Cement Grout' },
+      { value: 'epoxy', label: 'Epoxy Grout' },
+      { value: 'non_shrink', label: 'Non-Shrink Grout' },
+    ],
+    category: 'construction',
+  },
+];
+
+// Instrumentation Options
+export const INSTRUMENTATION_OPTIONS = {
+  pressure: [
+    { value: 'pg_suction', label: 'Pressure Gauge - Suction' },
+    { value: 'pg_discharge', label: 'Pressure Gauge - Discharge' },
+    { value: 'pg_seal', label: 'Pressure Gauge - Seal Chamber' },
+    { value: 'pt_suction', label: 'Pressure Transmitter - Suction' },
+    { value: 'pt_discharge', label: 'Pressure Transmitter - Discharge' },
+    { value: 'ps_low', label: 'Pressure Switch - Low Pressure' },
+    { value: 'ps_high', label: 'Pressure Switch - High Pressure' },
+  ],
+  flow: [
+    { value: 'flow_indicator', label: 'Flow Indicator' },
+    { value: 'flow_transmitter', label: 'Flow Transmitter' },
+    { value: 'flow_switch', label: 'Flow Switch' },
+    { value: 'flow_meter_mag', label: 'Magnetic Flow Meter' },
+    { value: 'flow_meter_ultrasonic', label: 'Ultrasonic Flow Meter' },
+  ],
+  temperature: [
+    { value: 'tg_bearing', label: 'Temperature Gauge - Bearing' },
+    { value: 'tg_motor', label: 'Temperature Gauge - Motor' },
+    { value: 'tt_bearing', label: 'Temperature Transmitter - Bearing' },
+    { value: 'tt_motor', label: 'Temperature Transmitter - Motor Winding' },
+    { value: 'ts_high', label: 'Temperature Switch - High Temp' },
+    { value: 'rtd_bearing', label: 'RTD - Bearing' },
+    { value: 'rtd_motor', label: 'RTD - Motor Winding' },
+  ],
+  level: [
+    { value: 'ls_seal_pot', label: 'Level Switch - Seal Pot' },
+    { value: 'lg_seal_pot', label: 'Level Gauge - Seal Pot' },
+    { value: 'ls_sump', label: 'Level Switch - Sump' },
+  ],
+  vibration: [
+    { value: 'vib_switch', label: 'Vibration Switch' },
+    { value: 'vib_transmitter', label: 'Vibration Transmitter' },
+    { value: 'vib_probe', label: 'Proximity Probe (API 670)' },
+  ],
+};
+
+export const INSTRUMENTATION_SPECS: SpecificationField[] = [
+  {
+    name: 'pressureInstruments',
+    label: 'Pressure Instrumentation',
+    type: 'multiselect',
+    options: INSTRUMENTATION_OPTIONS.pressure,
+    helpText: 'Pressure monitoring devices',
+    category: 'construction',
+  },
+  {
+    name: 'flowInstruments',
+    label: 'Flow Instrumentation',
+    type: 'multiselect',
+    options: INSTRUMENTATION_OPTIONS.flow,
+    helpText: 'Flow monitoring devices',
+    category: 'construction',
+  },
+  {
+    name: 'temperatureInstruments',
+    label: 'Temperature Instrumentation',
+    type: 'multiselect',
+    options: INSTRUMENTATION_OPTIONS.temperature,
+    helpText: 'Temperature monitoring devices',
+    category: 'construction',
+  },
+  {
+    name: 'levelInstruments',
+    label: 'Level Instrumentation',
+    type: 'multiselect',
+    options: INSTRUMENTATION_OPTIONS.level,
+    helpText: 'Level monitoring devices',
+    category: 'construction',
+  },
+  {
+    name: 'vibrationInstruments',
+    label: 'Vibration Monitoring',
+    type: 'multiselect',
+    options: INSTRUMENTATION_OPTIONS.vibration,
+    helpText: 'Vibration monitoring devices',
+    category: 'construction',
   },
 ];
 

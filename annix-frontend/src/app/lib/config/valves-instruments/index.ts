@@ -4,13 +4,17 @@
 export * from './valveTypes';
 export * from './valveSpecifications';
 export * from './instrumentTypes';
+export * from './instrumentSpecifications';
+export * from './calculations';
+export * from './selectionGuides';
+export * from './pricing';
 export * from './references';
 
 // Module metadata
 export const VALVES_INSTRUMENTS_MODULE = {
   name: 'Valves, Meters & Instruments',
   value: 'valves_meters_instruments',
-  version: '1.0.0',
+  version: '1.1.0',
   description: 'Industrial valves, flow meters, pressure gauges, and instrumentation',
   icon: '🎛️',
   categories: [

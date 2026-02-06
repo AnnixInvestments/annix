@@ -27,6 +27,7 @@ export default function SupplierDetailPage() {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [remediationSteps, setRemediationSteps] = useState('');
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewState, setPreviewState] = useState<PreviewModalState>(initialPreviewState);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -71,13 +72,10 @@ export default function SupplierDetailPage() {
   };
 
   const handleApprove = async () => {
-    if (!confirm('Are you sure you want to approve this supplier onboarding?')) {
-      return;
-    }
-
     try {
       setIsSubmitting(true);
       await adminApiClient.approveSupplierOnboarding(supplierId);
+      setApproveDialogOpen(false);
       showToast('Supplier onboarding approved', 'success');
       supplierQuery.refetch();
     } catch (err: any) {
@@ -293,7 +291,7 @@ export default function SupplierDetailPage() {
           {onboarding.status === 'submitted' || onboarding.status === 'under_review' ? (
             <>
               <button
-                onClick={handleApprove}
+                onClick={() => setApproveDialogOpen(true)}
                 disabled={isSubmitting}
                 className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-white hover:bg-green-50 disabled:opacity-50"
               >
@@ -687,6 +685,83 @@ export default function SupplierDetailPage() {
               >
                 {isSubmitting ? 'Rejecting...' : 'Reject Onboarding'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve Onboarding Dialog */}
+      {approveDialogOpen && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white">Approve Supplier Onboarding</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                You are about to approve <strong>{profile.firstName} {profile.lastName}</strong> from <strong>{company.name}</strong>.
+              </p>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <h4 className="text-sm font-medium text-green-800 mb-2">This action will:</h4>
+                <ul className="text-sm text-green-700 space-y-1">
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Activate the supplier account
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Send a confirmation email
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Record your approval with timestamp
+                  </li>
+                </ul>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setApproveDialogOpen(false)}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleApprove}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Approving...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Approve Supplier
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

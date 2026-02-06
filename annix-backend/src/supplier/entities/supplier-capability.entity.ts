@@ -28,6 +28,10 @@ export enum ProductCategory {
   PVC = 'pvc',
   STRUCTURAL_STEEL = 'structural_steel',
   TRANSPORT_INSTALL = 'transport_install',
+  // Valves & Instruments
+  VALVES_INSTRUMENTS = 'valves_instruments',
+  // Pumps & Pump Parts
+  PUMPS = 'pumps',
 }
 
 export enum MaterialSpecialization {

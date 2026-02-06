@@ -30,6 +30,13 @@ import { EmailService } from '../email/email.service';
 import { User } from '../user/entities/user.entity';
 import { S3StorageService } from '../storage/s3-storage.service';
 import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
+import { MessagingService } from '../messaging/messaging.service';
+import { ConversationType, RelatedEntityType } from '../messaging/entities';
+import {
+  SupplierInvitation,
+  SupplierInvitationStatus,
+  CustomerPreferredSupplier,
+} from '../customer/entities';
 
 @Injectable()
 export class SupplierAdminService {
@@ -50,6 +57,11 @@ export class SupplierAdminService {
     private readonly emailService: EmailService,
     private readonly storageService: S3StorageService,
     private readonly secureDocumentsService: SecureDocumentsService,
+    private readonly messagingService: MessagingService,
+    @InjectRepository(SupplierInvitation)
+    private readonly invitationRepo: Repository<SupplierInvitation>,
+    @InjectRepository(CustomerPreferredSupplier)
+    private readonly preferredSupplierRepo: Repository<CustomerPreferredSupplier>,
   ) {}
 
   /**
@@ -275,6 +287,53 @@ export class SupplierAdminService {
           profile.company?.legalName ||
           'Your Company',
       );
+    }
+
+    // Send welcome message via messaging service
+    if (profile.userId) {
+      try {
+        const companyName =
+          profile.company?.tradingName ||
+          profile.company?.legalName ||
+          'your company';
+        await this.messagingService.createConversation(adminUserId, {
+          subject: 'Welcome to Annix - Your Account is Approved',
+          participantIds: [profile.userId],
+          conversationType: ConversationType.DIRECT,
+          relatedEntityType: RelatedEntityType.GENERAL,
+          initialMessage:
+            `Congratulations! Your supplier account for ${companyName} has been fully approved.\n\n` +
+            `You now have full access to the Annix platform and can:\n` +
+            `• View and respond to RFQ opportunities\n` +
+            `• Submit quotes and manage your BOQs\n` +
+            `• Update your company profile and capabilities\n\n` +
+            `If you have any questions, feel free to reply to this message.\n\n` +
+            `Welcome aboard!`,
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Failed to send welcome message to supplier ${supplierId}: ${err.message}`,
+        );
+      }
+    }
+
+    // Auto-accept any pending customer invitations for this supplier's email
+    if (profile.user?.email) {
+      try {
+        const acceptedCount = await this.acceptPendingInvitationsByEmail(
+          profile.user.email,
+          supplierId,
+        );
+        if (acceptedCount > 0) {
+          this.logger.log(
+            `Auto-accepted ${acceptedCount} pending invitation(s) for supplier ${supplierId}`,
+          );
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Failed to auto-accept invitations for supplier ${supplierId}: ${err.message}`,
+        );
+      }
     }
 
     await this.auditService.log({
@@ -578,6 +637,53 @@ export class SupplierAdminService {
     if (expected === null || expected === undefined) return true;
     if (extracted === null || extracted === undefined) return false;
     return String(expected).toUpperCase().trim() === String(extracted).toUpperCase().trim();
+  }
+
+  private async acceptPendingInvitationsByEmail(
+    supplierEmail: string,
+    supplierProfileId: number,
+  ): Promise<number> {
+    const pendingInvitations = await this.invitationRepo.find({
+      where: {
+        email: supplierEmail.toLowerCase(),
+        status: SupplierInvitationStatus.PENDING,
+      },
+    });
+
+    let acceptedCount = 0;
+
+    for (const invitation of pendingInvitations) {
+      const existingRelation = await this.preferredSupplierRepo.findOne({
+        where: {
+          customerCompanyId: invitation.customerCompanyId,
+          supplierProfileId,
+        },
+      });
+
+      if (!existingRelation) {
+        invitation.status = SupplierInvitationStatus.ACCEPTED;
+        invitation.acceptedAt = now().toJSDate();
+        invitation.supplierProfileId = supplierProfileId;
+        await this.invitationRepo.save(invitation);
+
+        const preferredSupplier = this.preferredSupplierRepo.create({
+          customerCompanyId: invitation.customerCompanyId,
+          supplierProfileId,
+          addedById: invitation.invitedById,
+          isActive: true,
+        });
+        await this.preferredSupplierRepo.save(preferredSupplier);
+
+        acceptedCount++;
+      } else {
+        invitation.status = SupplierInvitationStatus.ACCEPTED;
+        invitation.acceptedAt = now().toJSDate();
+        invitation.supplierProfileId = supplierProfileId;
+        await this.invitationRepo.save(invitation);
+      }
+    }
+
+    return acceptedCount;
   }
 
   async getDocumentPreviewImages(

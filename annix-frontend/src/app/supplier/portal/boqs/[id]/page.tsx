@@ -29,6 +29,8 @@ interface PricingInputs {
   weldTypes: Record<string, number>;
   flangeTypes: Record<string, number>;
   bnwTypes: Record<string, number>;
+  valveTypes: Record<string, number>;
+  instrumentTypes: Record<string, number>;
   labourExtrasPercent: number;
   contingenciesPercent: number;
 }
@@ -47,6 +49,8 @@ interface ExtractedSpecs {
     blank: boolean;
   };
   bnwGrade: string | null;
+  valveTypes: string[];
+  instrumentTypes: string[];
 }
 
 interface WeldTotals {
@@ -183,6 +187,8 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
     weldTypes: { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false },
     flangeTypes,
     bnwGrade: null,
+    valveTypes: [],
+    instrumentTypes: [],
   };
 };
 
@@ -409,6 +415,8 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     weldTypes: { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false },
     flangeTypes: { slipOn: false, rotating: false, blank: false },
     bnwGrade: null,
+    valveTypes: [],
+    instrumentTypes: [],
   });
   const [weldTotals, setWeldTotals] = useState<WeldTotals>({
     flangeWeld: 0,
@@ -426,6 +434,8 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           weldTypes: parsed.weldTypes || {},
           flangeTypes: parsed.flangeTypes || {},
           bnwTypes: parsed.bnwTypes || {},
+          valveTypes: parsed.valveTypes || {},
+          instrumentTypes: parsed.instrumentTypes || {},
           labourExtrasPercent: parsed.labourExtrasPercent || 0,
           contingenciesPercent: parsed.contingenciesPercent ?? 5,
         };
@@ -436,6 +446,8 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       weldTypes: {},
       flangeTypes: {},
       bnwTypes: {},
+      valveTypes: {},
+      instrumentTypes: {},
       labourExtrasPercent: 0,
       contingenciesPercent: 5,
     };
@@ -490,6 +502,14 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         (section) => section.sectionType === 'bnw_sets' && section.items.length > 0
       );
 
+      const valveSection = boqDetail.sections.find(
+        (section) => section.sectionType === 'valves' && section.items.length > 0
+      );
+
+      const instrumentSections = boqDetail.sections.filter(
+        (section) => ['instruments', 'flow_meters', 'pressure_instruments', 'level_instruments', 'temperature_instruments'].includes(section.sectionType) && section.items.length > 0
+      );
+
       setExtractedSpecs((prev) => {
         let bnwGrade: string | null = null;
         if (bnwSection && bnwSection.items.length > 0) {
@@ -498,10 +518,61 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           bnwGrade = gradeMatch ? `Grade ${gradeMatch[1]}` : 'Standard';
         }
 
+        const valveTypes: string[] = [];
+        if (valveSection) {
+          valveSection.items.forEach(item => {
+            const desc = item.description.toUpperCase();
+            if (desc.includes('BALL') && !valveTypes.includes('ball_valve')) valveTypes.push('ball_valve');
+            if (desc.includes('GATE') && !valveTypes.includes('gate_valve')) valveTypes.push('gate_valve');
+            if (desc.includes('GLOBE') && !valveTypes.includes('globe_valve')) valveTypes.push('globe_valve');
+            if (desc.includes('BUTTERFLY') && !valveTypes.includes('butterfly_valve')) valveTypes.push('butterfly_valve');
+            if (desc.includes('CHECK') && !valveTypes.includes('check_valve')) valveTypes.push('check_valve');
+            if ((desc.includes('CONTROL') || desc.includes('ACTUATOR')) && !valveTypes.includes('control_valve')) valveTypes.push('control_valve');
+            if ((desc.includes('SAFETY') || desc.includes('RELIEF') || desc.includes('PSV')) && !valveTypes.includes('safety_valve')) valveTypes.push('safety_valve');
+            if (desc.includes('PLUG') && !valveTypes.includes('plug_valve')) valveTypes.push('plug_valve');
+            if (desc.includes('NEEDLE') && !valveTypes.includes('needle_valve')) valveTypes.push('needle_valve');
+            if (desc.includes('DIAPHRAGM') && !valveTypes.includes('diaphragm_valve')) valveTypes.push('diaphragm_valve');
+          });
+          if (valveTypes.length === 0) {
+            valveTypes.push('general_valve');
+          }
+        }
+
+        const instrumentTypes: string[] = [];
+        instrumentSections.forEach(section => {
+          if (section.sectionType === 'flow_meters' && !instrumentTypes.includes('flow_meter')) {
+            instrumentTypes.push('flow_meter');
+          }
+          if (section.sectionType === 'pressure_instruments' && !instrumentTypes.includes('pressure_instrument')) {
+            instrumentTypes.push('pressure_instrument');
+          }
+          if (section.sectionType === 'level_instruments' && !instrumentTypes.includes('level_instrument')) {
+            instrumentTypes.push('level_instrument');
+          }
+          if (section.sectionType === 'temperature_instruments' && !instrumentTypes.includes('temperature_instrument')) {
+            instrumentTypes.push('temperature_instrument');
+          }
+          if (section.sectionType === 'instruments') {
+            section.items.forEach(item => {
+              const desc = item.description.toUpperCase();
+              if ((desc.includes('FLOW') || desc.includes('METER')) && !instrumentTypes.includes('flow_meter')) instrumentTypes.push('flow_meter');
+              if ((desc.includes('PRESSURE') || desc.includes('PSI') || desc.includes('BAR')) && !instrumentTypes.includes('pressure_instrument')) instrumentTypes.push('pressure_instrument');
+              if ((desc.includes('LEVEL') || desc.includes('RADAR') || desc.includes('ULTRASONIC')) && !instrumentTypes.includes('level_instrument')) instrumentTypes.push('level_instrument');
+              if ((desc.includes('TEMPERATURE') || desc.includes('RTD') || desc.includes('THERMOCOUPLE')) && !instrumentTypes.includes('temperature_instrument')) instrumentTypes.push('temperature_instrument');
+              if ((desc.includes('PH') || desc.includes('CONDUCTIVITY') || desc.includes('ANALYZER')) && !instrumentTypes.includes('analytical_instrument')) instrumentTypes.push('analytical_instrument');
+            });
+            if (instrumentTypes.length === 0 && section.items.length > 0) {
+              instrumentTypes.push('general_instrument');
+            }
+          }
+        });
+
         return {
           ...prev,
           flangeTypes: hasBlankFlangesSection ? { ...prev.flangeTypes, blank: true } : prev.flangeTypes,
           bnwGrade,
+          valveTypes,
+          instrumentTypes,
         };
       });
     }
@@ -546,7 +617,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   };
 
   const handlePricingInputChange = (
-    category: 'steelSpecs' | 'weldTypes' | 'flangeTypes' | 'bnwTypes',
+    category: 'steelSpecs' | 'weldTypes' | 'flangeTypes' | 'bnwTypes' | 'valveTypes' | 'instrumentTypes',
     key: string,
     value: number
   ) => {
@@ -1041,7 +1112,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 interface PricingInputsSectionProps {
   extractedSpecs: ExtractedSpecs;
   pricingInputs: PricingInputs;
-  onPricingInputChange: (category: 'steelSpecs' | 'weldTypes' | 'flangeTypes' | 'bnwTypes', key: string, value: number) => void;
+  onPricingInputChange: (category: 'steelSpecs' | 'weldTypes' | 'flangeTypes' | 'bnwTypes' | 'valveTypes' | 'instrumentTypes', key: string, value: number) => void;
   onPercentageChange: (field: 'labourExtrasPercent' | 'contingenciesPercent', value: number) => void;
   currencyCode: string;
 }
@@ -1307,6 +1378,81 @@ function PricingInputsSection({
             </div>
           </div>
         )}
+
+        {/* Valve Pricing - only show if valve sections exist */}
+        {extractedSpecs.valveTypes.length > 0 && (
+          <div className="space-y-3 min-w-0">
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Valve Pricing (Price/unit)</h3>
+            {extractedSpecs.valveTypes.map((valveType) => {
+              const labels: Record<string, string> = {
+                ball_valve: 'Ball Valve',
+                gate_valve: 'Gate Valve',
+                globe_valve: 'Globe Valve',
+                butterfly_valve: 'Butterfly Valve',
+                check_valve: 'Check Valve',
+                control_valve: 'Control Valve',
+                safety_valve: 'Safety/Relief Valve',
+                plug_valve: 'Plug Valve',
+                needle_valve: 'Needle Valve',
+                diaphragm_valve: 'Diaphragm Valve',
+                general_valve: 'Valve (General)',
+              };
+              return (
+                <div key={valveType} className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 flex-1">{labels[valveType] || valveType}</label>
+                  <div className="flex items-center">
+                    <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={pricingInputs.valveTypes[valveType] || ''}
+                      onChange={(e) => onPricingInputChange('valveTypes', valveType, parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-xs text-gray-500 ml-1">/ea</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Instrument Pricing - only show if instrument sections exist */}
+        {extractedSpecs.instrumentTypes.length > 0 && (
+          <div className="space-y-3 min-w-0">
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Instrument Pricing (Price/unit)</h3>
+            {extractedSpecs.instrumentTypes.map((instType) => {
+              const labels: Record<string, string> = {
+                flow_meter: 'Flow Meter',
+                pressure_instrument: 'Pressure Instrument',
+                level_instrument: 'Level Instrument',
+                temperature_instrument: 'Temperature Instrument',
+                analytical_instrument: 'Analytical Instrument',
+                general_instrument: 'Instrument (General)',
+              };
+              return (
+                <div key={instType} className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 flex-1">{labels[instType] || instType}</label>
+                  <div className="flex items-center">
+                    <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={pricingInputs.instrumentTypes[instType] || ''}
+                      onChange={(e) => onPricingInputChange('instrumentTypes', instType, parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <span className="text-xs text-gray-500 ml-1">/ea</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Labour & Extras and Contingencies */}
@@ -1408,6 +1554,56 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode,
       }
       const labourExtras = flangePrice * (pricingInputs.labourExtrasPercent / 100);
       return flangePrice + labourExtras;
+    }
+
+    const isValveSectionFirst = sectionType === 'valves';
+    if (isValveSectionFirst) {
+      let valvePrice = 0;
+      if (description.includes('BALL')) {
+        valvePrice = pricingInputs.valveTypes['ball_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('GATE')) {
+        valvePrice = pricingInputs.valveTypes['gate_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('GLOBE')) {
+        valvePrice = pricingInputs.valveTypes['globe_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('BUTTERFLY')) {
+        valvePrice = pricingInputs.valveTypes['butterfly_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('CHECK')) {
+        valvePrice = pricingInputs.valveTypes['check_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('CONTROL') || description.includes('ACTUATOR')) {
+        valvePrice = pricingInputs.valveTypes['control_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('SAFETY') || description.includes('RELIEF') || description.includes('PSV')) {
+        valvePrice = pricingInputs.valveTypes['safety_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('PLUG')) {
+        valvePrice = pricingInputs.valveTypes['plug_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('NEEDLE')) {
+        valvePrice = pricingInputs.valveTypes['needle_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('DIAPHRAGM')) {
+        valvePrice = pricingInputs.valveTypes['diaphragm_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else {
+        valvePrice = pricingInputs.valveTypes['general_valve'] || Object.values(pricingInputs.valveTypes)[0] || 0;
+      }
+      const labourExtrasValve = valvePrice * (pricingInputs.labourExtrasPercent / 100);
+      return valvePrice + labourExtrasValve;
+    }
+
+    const isInstrumentSectionFirst = ['instruments', 'flow_meters', 'pressure_instruments', 'level_instruments', 'temperature_instruments'].includes(sectionType);
+    if (isInstrumentSectionFirst) {
+      let instrumentPrice = 0;
+      if (sectionType === 'flow_meters' || description.includes('FLOW') || description.includes('METER')) {
+        instrumentPrice = pricingInputs.instrumentTypes['flow_meter'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else if (sectionType === 'pressure_instruments' || description.includes('PRESSURE') || description.includes('PSI') || description.includes('BAR')) {
+        instrumentPrice = pricingInputs.instrumentTypes['pressure_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else if (sectionType === 'level_instruments' || description.includes('LEVEL') || description.includes('RADAR') || description.includes('ULTRASONIC')) {
+        instrumentPrice = pricingInputs.instrumentTypes['level_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else if (sectionType === 'temperature_instruments' || description.includes('TEMPERATURE') || description.includes('RTD') || description.includes('THERMOCOUPLE')) {
+        instrumentPrice = pricingInputs.instrumentTypes['temperature_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else if (description.includes('PH') || description.includes('CONDUCTIVITY') || description.includes('ANALYZER')) {
+        instrumentPrice = pricingInputs.instrumentTypes['analytical_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else {
+        instrumentPrice = pricingInputs.instrumentTypes['general_instrument'] || Object.values(pricingInputs.instrumentTypes)[0] || 0;
+      }
+      const labourExtrasInst = instrumentPrice * (pricingInputs.labourExtrasPercent / 100);
+      return instrumentPrice + labourExtrasInst;
     }
 
     if (!isFabricatedSection) return 0;
@@ -1733,6 +1929,56 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
       }
       const labourExtras = flangePrice * (pricingInputs.labourExtrasPercent / 100);
       return flangePrice + labourExtras;
+    }
+
+    const isValveSectionSecond = section.sectionType === 'valves';
+    if (isValveSectionSecond) {
+      let valvePrice = 0;
+      if (description.includes('BALL')) {
+        valvePrice = pricingInputs.valveTypes['ball_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('GATE')) {
+        valvePrice = pricingInputs.valveTypes['gate_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('GLOBE')) {
+        valvePrice = pricingInputs.valveTypes['globe_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('BUTTERFLY')) {
+        valvePrice = pricingInputs.valveTypes['butterfly_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('CHECK')) {
+        valvePrice = pricingInputs.valveTypes['check_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('CONTROL') || description.includes('ACTUATOR')) {
+        valvePrice = pricingInputs.valveTypes['control_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('SAFETY') || description.includes('RELIEF') || description.includes('PSV')) {
+        valvePrice = pricingInputs.valveTypes['safety_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('PLUG')) {
+        valvePrice = pricingInputs.valveTypes['plug_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('NEEDLE')) {
+        valvePrice = pricingInputs.valveTypes['needle_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else if (description.includes('DIAPHRAGM')) {
+        valvePrice = pricingInputs.valveTypes['diaphragm_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      } else {
+        valvePrice = pricingInputs.valveTypes['general_valve'] || Object.values(pricingInputs.valveTypes)[0] || 0;
+      }
+      const labourExtrasValve = valvePrice * (pricingInputs.labourExtrasPercent / 100);
+      return valvePrice + labourExtrasValve;
+    }
+
+    const isInstrumentSectionSecond = ['instruments', 'flow_meters', 'pressure_instruments', 'level_instruments', 'temperature_instruments'].includes(section.sectionType);
+    if (isInstrumentSectionSecond) {
+      let instrumentPrice = 0;
+      if (section.sectionType === 'flow_meters' || description.includes('FLOW') || description.includes('METER')) {
+        instrumentPrice = pricingInputs.instrumentTypes['flow_meter'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else if (section.sectionType === 'pressure_instruments' || description.includes('PRESSURE') || description.includes('PSI') || description.includes('BAR')) {
+        instrumentPrice = pricingInputs.instrumentTypes['pressure_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else if (section.sectionType === 'level_instruments' || description.includes('LEVEL') || description.includes('RADAR') || description.includes('ULTRASONIC')) {
+        instrumentPrice = pricingInputs.instrumentTypes['level_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else if (section.sectionType === 'temperature_instruments' || description.includes('TEMPERATURE') || description.includes('RTD') || description.includes('THERMOCOUPLE')) {
+        instrumentPrice = pricingInputs.instrumentTypes['temperature_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else if (description.includes('PH') || description.includes('CONDUCTIVITY') || description.includes('ANALYZER')) {
+        instrumentPrice = pricingInputs.instrumentTypes['analytical_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      } else {
+        instrumentPrice = pricingInputs.instrumentTypes['general_instrument'] || Object.values(pricingInputs.instrumentTypes)[0] || 0;
+      }
+      const labourExtrasInst = instrumentPrice * (pricingInputs.labourExtrasPercent / 100);
+      return instrumentPrice + labourExtrasInst;
     }
 
     if (!isFabricatedSection) return 0;

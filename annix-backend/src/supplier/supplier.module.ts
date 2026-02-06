@@ -16,6 +16,10 @@ import {
 } from './entities';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
+import {
+  SupplierInvitation,
+  CustomerPreferredSupplier,
+} from '../customer/entities';
 
 // Services
 import { SupplierAuthService } from './supplier-auth.service';
@@ -56,6 +60,8 @@ import { SecureDocumentsModule } from '../secure-documents/secure-documents.modu
       SupplierCapability,
       User,
       UserRole,
+      SupplierInvitation,
+      CustomerPreferredSupplier,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],

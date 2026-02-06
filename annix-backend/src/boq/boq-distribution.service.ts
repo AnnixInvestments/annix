@@ -63,6 +63,13 @@ export interface ConsolidatedBoqData {
   hdpePipes?: ConsolidatedItem[];
   pvcPipes?: ConsolidatedItem[];
   structuralSteel?: ConsolidatedItem[];
+  valves?: ConsolidatedItem[];
+  instruments?: ConsolidatedItem[];
+  actuators?: ConsolidatedItem[];
+  flowMeters?: ConsolidatedItem[];
+  pressureInstruments?: ConsolidatedItem[];
+  levelInstruments?: ConsolidatedItem[];
+  temperatureInstruments?: ConsolidatedItem[];
 }
 
 export interface SubmitBoqResult {
@@ -91,6 +98,13 @@ const DATA_KEY_TO_SECTION: Record<string, string> = {
   hdpePipes: 'hdpe_pipes',
   pvcPipes: 'pvc_pipes',
   structuralSteel: 'structural_steel',
+  valves: 'valves',
+  instruments: 'instruments',
+  actuators: 'actuators',
+  flowMeters: 'flow_meters',
+  pressureInstruments: 'pressure_instruments',
+  levelInstruments: 'level_instruments',
+  temperatureInstruments: 'temperature_instruments',
 };
 
 // Mapping from ProductCategory enum to capability keys
@@ -113,7 +127,7 @@ const PRODUCT_CATEGORY_TO_CAPABILITY: Record<ProductCategory, string> = {
   [ProductCategory.PVC]: 'pvc',
   [ProductCategory.STRUCTURAL_STEEL]: 'structural_steel',
   [ProductCategory.TRANSPORT_INSTALL]: 'transport_install',
-  [ProductCategory.VALVES_INSTRUMENTS]: 'valves_meters_instruments',
+  [ProductCategory.VALVES_INSTRUMENTS]: 'valves_instruments',
 };
 
 @Injectable()

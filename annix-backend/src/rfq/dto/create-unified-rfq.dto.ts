@@ -390,10 +390,505 @@ export class UnifiedFittingDto {
   calculationData?: Record<string, any>;
 }
 
+export class UnifiedPumpDto {
+  @ApiProperty({ description: 'Service type', example: 'new_pump' })
+  @IsString()
+  serviceType: string;
+
+  @ApiProperty({ description: 'Pump type', example: 'centrifugal_end_suction' })
+  @IsString()
+  pumpType: string;
+
+  @ApiProperty({ description: 'Pump category', required: false })
+  @IsOptional()
+  @IsString()
+  pumpCategory?: string;
+
+  @ApiProperty({ description: 'Flow rate in m³/h', required: false })
+  @IsOptional()
+  @IsNumber()
+  flowRate?: number;
+
+  @ApiProperty({ description: 'Total head in meters', required: false })
+  @IsOptional()
+  @IsNumber()
+  totalHead?: number;
+
+  @ApiProperty({ description: 'Suction head in meters', required: false })
+  @IsOptional()
+  @IsNumber()
+  suctionHead?: number;
+
+  @ApiProperty({ description: 'NPSHa in meters', required: false })
+  @IsOptional()
+  @IsNumber()
+  npshAvailable?: number;
+
+  @ApiProperty({ description: 'Discharge pressure in bar', required: false })
+  @IsOptional()
+  @IsNumber()
+  dischargePressure?: number;
+
+  @ApiProperty({ description: 'Operating temperature in Celsius', required: false })
+  @IsOptional()
+  @IsNumber()
+  operatingTemp?: number;
+
+  @ApiProperty({ description: 'Fluid type', example: 'water' })
+  @IsString()
+  fluidType: string;
+
+  @ApiProperty({ description: 'Specific gravity', required: false })
+  @IsOptional()
+  @IsNumber()
+  specificGravity?: number;
+
+  @ApiProperty({ description: 'Viscosity in cP', required: false })
+  @IsOptional()
+  @IsNumber()
+  viscosity?: number;
+
+  @ApiProperty({ description: 'Solids content percentage', required: false })
+  @IsOptional()
+  @IsNumber()
+  solidsContent?: number;
+
+  @ApiProperty({ description: 'Max solids size in mm', required: false })
+  @IsOptional()
+  @IsNumber()
+  solidsSize?: number;
+
+  @ApiProperty({ description: 'pH level', required: false })
+  @IsOptional()
+  @IsNumber()
+  ph?: number;
+
+  @ApiProperty({ description: 'Is fluid abrasive', required: false })
+  @IsOptional()
+  @IsBoolean()
+  isAbrasive?: boolean;
+
+  @ApiProperty({ description: 'Is fluid corrosive', required: false })
+  @IsOptional()
+  @IsBoolean()
+  isCorrosive?: boolean;
+
+  @ApiProperty({ description: 'Casing material', example: 'cast_iron' })
+  @IsString()
+  casingMaterial: string;
+
+  @ApiProperty({ description: 'Impeller material', example: 'bronze' })
+  @IsString()
+  impellerMaterial: string;
+
+  @ApiProperty({ description: 'Shaft material', required: false })
+  @IsOptional()
+  @IsString()
+  shaftMaterial?: string;
+
+  @ApiProperty({ description: 'Seal type', required: false })
+  @IsOptional()
+  @IsString()
+  sealType?: string;
+
+  @ApiProperty({ description: 'Seal flush plan', required: false })
+  @IsOptional()
+  @IsString()
+  sealPlan?: string;
+
+  @ApiProperty({ description: 'Suction size DN', required: false })
+  @IsOptional()
+  @IsString()
+  suctionSize?: string;
+
+  @ApiProperty({ description: 'Discharge size DN', required: false })
+  @IsOptional()
+  @IsString()
+  dischargeSize?: string;
+
+  @ApiProperty({ description: 'Connection type', required: false })
+  @IsOptional()
+  @IsString()
+  connectionType?: string;
+
+  @ApiProperty({ description: 'Motor type', required: false })
+  @IsOptional()
+  @IsString()
+  motorType?: string;
+
+  @ApiProperty({ description: 'Motor power in kW', required: false })
+  @IsOptional()
+  @IsNumber()
+  motorPower?: number;
+
+  @ApiProperty({ description: 'Voltage', required: false })
+  @IsOptional()
+  @IsString()
+  voltage?: string;
+
+  @ApiProperty({ description: 'Frequency', required: false })
+  @IsOptional()
+  @IsString()
+  frequency?: string;
+
+  @ApiProperty({ description: 'Motor efficiency class', required: false })
+  @IsOptional()
+  @IsString()
+  motorEfficiency?: string;
+
+  @ApiProperty({ description: 'Motor enclosure', required: false })
+  @IsOptional()
+  @IsString()
+  enclosure?: string;
+
+  @ApiProperty({ description: 'Hazardous area classification', required: false })
+  @IsOptional()
+  @IsString()
+  hazardousArea?: string;
+
+  @ApiProperty({ description: 'Certifications array', required: false })
+  @IsOptional()
+  @IsArray()
+  certifications?: string[];
+
+  @ApiProperty({ description: 'Spare part category (for spare parts)', required: false })
+  @IsOptional()
+  @IsString()
+  sparePartCategory?: string;
+
+  @ApiProperty({ description: 'Spare parts list', required: false })
+  @IsOptional()
+  spareParts?: Record<string, any>[];
+
+  @ApiProperty({ description: 'Existing pump model', required: false })
+  @IsOptional()
+  @IsString()
+  existingPumpModel?: string;
+
+  @ApiProperty({ description: 'Existing pump serial', required: false })
+  @IsOptional()
+  @IsString()
+  existingPumpSerial?: string;
+
+  @ApiProperty({ description: 'Rental duration in days', required: false })
+  @IsOptional()
+  @IsNumber()
+  rentalDurationDays?: number;
+
+  @ApiProperty({ description: 'Quantity', example: 1 })
+  @IsOptional()
+  @IsNumber()
+  quantityValue?: number;
+
+  @ApiProperty({ description: 'Supplier reference', required: false })
+  @IsOptional()
+  @IsString()
+  supplierReference?: string;
+
+  @ApiProperty({ description: 'Unit cost from supplier', required: false })
+  @IsOptional()
+  @IsNumber()
+  unitCostFromSupplier?: number;
+
+  @ApiProperty({ description: 'Markup percentage', required: false })
+  @IsOptional()
+  @IsNumber()
+  markupPercentage?: number;
+
+  @ApiProperty({ description: 'Calculation data', required: false })
+  @IsOptional()
+  calculationData?: Record<string, any>;
+}
+
+export class UnifiedValveDto {
+  @ApiProperty({ description: 'Valve type', example: 'ball_valve' })
+  @IsString()
+  valveType: string;
+
+  @ApiProperty({ description: 'Valve category', required: false })
+  @IsOptional()
+  @IsString()
+  valveCategory?: string;
+
+  @ApiProperty({ description: 'Valve size in DN', example: '100' })
+  @IsString()
+  size: string;
+
+  @ApiProperty({ description: 'Pressure class', example: 'class_150' })
+  @IsString()
+  pressureClass: string;
+
+  @ApiProperty({ description: 'End connection type', example: 'flanged_rf' })
+  @IsString()
+  connectionType: string;
+
+  @ApiProperty({ description: 'Body material', example: 'cf8m' })
+  @IsString()
+  bodyMaterial: string;
+
+  @ApiProperty({ description: 'Trim material', required: false })
+  @IsOptional()
+  @IsString()
+  trimMaterial?: string;
+
+  @ApiProperty({ description: 'Seat/seal material', example: 'ptfe' })
+  @IsString()
+  seatMaterial: string;
+
+  @ApiProperty({ description: 'Port type', required: false })
+  @IsOptional()
+  @IsString()
+  portType?: string;
+
+  @ApiProperty({ description: 'Actuator type', example: 'pneumatic_sr' })
+  @IsString()
+  actuatorType: string;
+
+  @ApiProperty({ description: 'Air supply pressure in bar', required: false })
+  @IsOptional()
+  @IsNumber()
+  airSupply?: number;
+
+  @ApiProperty({ description: 'Voltage for electric actuators', required: false })
+  @IsOptional()
+  @IsString()
+  voltage?: string;
+
+  @ApiProperty({ description: 'Fail position', required: false })
+  @IsOptional()
+  @IsString()
+  failPosition?: string;
+
+  @ApiProperty({ description: 'Positioner type', required: false })
+  @IsOptional()
+  @IsString()
+  positioner?: string;
+
+  @ApiProperty({ description: 'Has limit switches', required: false })
+  @IsOptional()
+  @IsBoolean()
+  limitSwitches?: boolean;
+
+  @ApiProperty({ description: 'Has solenoid valve', required: false })
+  @IsOptional()
+  @IsBoolean()
+  solenoidValve?: boolean;
+
+  @ApiProperty({ description: 'Process media' })
+  @IsString()
+  media: string;
+
+  @ApiProperty({ description: 'Operating pressure in bar', required: false })
+  @IsOptional()
+  @IsNumber()
+  operatingPressure?: number;
+
+  @ApiProperty({ description: 'Operating temperature in Celsius', required: false })
+  @IsOptional()
+  @IsNumber()
+  operatingTemp?: number;
+
+  @ApiProperty({ description: 'Hazardous area classification', required: false })
+  @IsOptional()
+  @IsString()
+  hazardousArea?: string;
+
+  @ApiProperty({ description: 'Flow coefficient Cv', required: false })
+  @IsOptional()
+  @IsNumber()
+  cv?: number;
+
+  @ApiProperty({ description: 'Flow rate in m3/h', required: false })
+  @IsOptional()
+  @IsNumber()
+  flowRate?: number;
+
+  @ApiProperty({ description: 'Seat leakage class', required: false })
+  @IsOptional()
+  @IsString()
+  seatLeakageClass?: string;
+
+  @ApiProperty({ description: 'Fire safe standard', required: false })
+  @IsOptional()
+  @IsString()
+  fireSafeStandard?: string;
+
+  @ApiProperty({ description: 'Cryogenic service type', required: false })
+  @IsOptional()
+  @IsString()
+  cryogenicService?: string;
+
+  @ApiProperty({ description: 'Fugitive emissions standard', required: false })
+  @IsOptional()
+  @IsString()
+  fugitiveEmissions?: string;
+
+  @ApiProperty({ description: 'Extended bonnet type', required: false })
+  @IsOptional()
+  @IsString()
+  extendedBonnet?: string;
+
+  @ApiProperty({ description: 'Certifications', required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  certifications?: string[];
+
+  @ApiProperty({ description: 'Quantity', example: 1 })
+  @IsOptional()
+  @IsNumber()
+  quantityValue?: number;
+
+  @ApiProperty({ description: 'Supplier reference', required: false })
+  @IsOptional()
+  @IsString()
+  supplierReference?: string;
+
+  @ApiProperty({ description: 'Unit cost from supplier', required: false })
+  @IsOptional()
+  @IsNumber()
+  unitCostFromSupplier?: number;
+
+  @ApiProperty({ description: 'Markup percentage', required: false })
+  @IsOptional()
+  @IsNumber()
+  markupPercentage?: number;
+
+  @ApiProperty({ description: 'Calculation data', required: false })
+  @IsOptional()
+  calculationData?: Record<string, any>;
+}
+
+export class UnifiedInstrumentDto {
+  @ApiProperty({ description: 'Instrument type', example: 'mag_flowmeter' })
+  @IsString()
+  instrumentType: string;
+
+  @ApiProperty({ description: 'Instrument category', example: 'flow' })
+  @IsString()
+  instrumentCategory: string;
+
+  @ApiProperty({ description: 'Size in DN', required: false })
+  @IsOptional()
+  @IsString()
+  size?: string;
+
+  @ApiProperty({ description: 'Process connection type' })
+  @IsString()
+  processConnection: string;
+
+  @ApiProperty({ description: 'Wetted parts material' })
+  @IsString()
+  wettedMaterial: string;
+
+  @ApiProperty({ description: 'Measurement range minimum', required: false })
+  @IsOptional()
+  @IsNumber()
+  rangeMin?: number;
+
+  @ApiProperty({ description: 'Measurement range maximum', required: false })
+  @IsOptional()
+  @IsNumber()
+  rangeMax?: number;
+
+  @ApiProperty({ description: 'Range unit', required: false })
+  @IsOptional()
+  @IsString()
+  rangeUnit?: string;
+
+  @ApiProperty({ description: 'Output signal type', required: false })
+  @IsOptional()
+  @IsString()
+  outputSignal?: string;
+
+  @ApiProperty({ description: 'Communication protocol', required: false })
+  @IsOptional()
+  @IsString()
+  communicationProtocol?: string;
+
+  @ApiProperty({ description: 'Display type', required: false })
+  @IsOptional()
+  @IsString()
+  displayType?: string;
+
+  @ApiProperty({ description: 'Power supply type', required: false })
+  @IsOptional()
+  @IsString()
+  powerSupply?: string;
+
+  @ApiProperty({ description: 'Cable entry type', required: false })
+  @IsOptional()
+  @IsString()
+  cableEntry?: string;
+
+  @ApiProperty({ description: 'Explosion proof classification', required: false })
+  @IsOptional()
+  @IsString()
+  explosionProof?: string;
+
+  @ApiProperty({ description: 'IP rating', required: false })
+  @IsOptional()
+  @IsString()
+  ipRating?: string;
+
+  @ApiProperty({ description: 'Accuracy class', required: false })
+  @IsOptional()
+  @IsString()
+  accuracyClass?: string;
+
+  @ApiProperty({ description: 'Calibration type', required: false })
+  @IsOptional()
+  @IsString()
+  calibration?: string;
+
+  @ApiProperty({ description: 'Process media' })
+  @IsString()
+  processMedia: string;
+
+  @ApiProperty({ description: 'Operating pressure in bar', required: false })
+  @IsOptional()
+  @IsNumber()
+  operatingPressure?: number;
+
+  @ApiProperty({ description: 'Operating temperature in Celsius', required: false })
+  @IsOptional()
+  @IsNumber()
+  operatingTemp?: number;
+
+  @ApiProperty({ description: 'Quantity', example: 1 })
+  @IsOptional()
+  @IsNumber()
+  quantityValue?: number;
+
+  @ApiProperty({ description: 'Supplier reference', required: false })
+  @IsOptional()
+  @IsString()
+  supplierReference?: string;
+
+  @ApiProperty({ description: 'Model number', required: false })
+  @IsOptional()
+  @IsString()
+  modelNumber?: string;
+
+  @ApiProperty({ description: 'Unit cost from supplier', required: false })
+  @IsOptional()
+  @IsNumber()
+  unitCostFromSupplier?: number;
+
+  @ApiProperty({ description: 'Markup percentage', required: false })
+  @IsOptional()
+  @IsNumber()
+  markupPercentage?: number;
+
+  @ApiProperty({ description: 'Calculation data', required: false })
+  @IsOptional()
+  calculationData?: Record<string, any>;
+}
+
 export class UnifiedRfqItemDto {
   @ApiProperty({ description: 'Item type', example: 'straight_pipe' })
   @IsString()
-  itemType: 'straight_pipe' | 'bend' | 'fitting' | 'expansion_joint';
+  itemType: 'straight_pipe' | 'bend' | 'fitting' | 'expansion_joint' | 'pump' | 'valve' | 'instrument';
 
   @ApiProperty({ description: 'Item description' })
   @IsString()
@@ -447,6 +942,33 @@ export class UnifiedRfqItemDto {
   @ValidateNested()
   @Type(() => UnifiedExpansionJointDto)
   expansionJoint?: UnifiedExpansionJointDto;
+
+  @ApiProperty({
+    description: 'Pump specs (if itemType is pump)',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UnifiedPumpDto)
+  pump?: UnifiedPumpDto;
+
+  @ApiProperty({
+    description: 'Valve specs (if itemType is valve)',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UnifiedValveDto)
+  valve?: UnifiedValveDto;
+
+  @ApiProperty({
+    description: 'Instrument specs (if itemType is instrument)',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UnifiedInstrumentDto)
+  instrument?: UnifiedInstrumentDto;
 }
 
 export class CreateUnifiedRfqDto {

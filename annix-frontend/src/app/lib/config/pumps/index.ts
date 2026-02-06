@@ -5,6 +5,8 @@ export * from './pumpTypes';
 export * from './pumpSpecifications';
 export * from './pumpSpareParts';
 export * from './references';
+export * from './pricing';
+export * from './calculations';
 
 // Module metadata
 export const PUMPS_MODULE = {

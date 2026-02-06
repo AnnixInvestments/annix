@@ -521,4 +521,56 @@ export class CustomerSupplierService {
     });
     await this.preferredSupplierRepo.save(preferredSupplier);
   }
+
+  // Auto-accept all pending invitations for a supplier email when they are approved
+  async acceptPendingInvitationsByEmail(
+    supplierEmail: string,
+    supplierProfileId: number,
+  ): Promise<number> {
+    const pendingInvitations = await this.invitationRepo.find({
+      where: {
+        email: supplierEmail.toLowerCase(),
+        status: SupplierInvitationStatus.PENDING,
+      },
+    });
+
+    let acceptedCount = 0;
+
+    for (const invitation of pendingInvitations) {
+      // Check if preferred supplier relationship already exists
+      const existingRelation = await this.preferredSupplierRepo.findOne({
+        where: {
+          customerCompanyId: invitation.customerCompanyId,
+          supplierProfileId,
+        },
+      });
+
+      if (!existingRelation) {
+        // Mark invitation as accepted
+        invitation.status = SupplierInvitationStatus.ACCEPTED;
+        invitation.acceptedAt = now().toJSDate();
+        invitation.supplierProfileId = supplierProfileId;
+        await this.invitationRepo.save(invitation);
+
+        // Auto-add to preferred suppliers
+        const preferredSupplier = this.preferredSupplierRepo.create({
+          customerCompanyId: invitation.customerCompanyId,
+          supplierProfileId,
+          addedById: invitation.invitedById,
+          isActive: true,
+        });
+        await this.preferredSupplierRepo.save(preferredSupplier);
+
+        acceptedCount++;
+      } else {
+        // Just mark the invitation as accepted since relationship exists
+        invitation.status = SupplierInvitationStatus.ACCEPTED;
+        invitation.acceptedAt = now().toJSDate();
+        invitation.supplierProfileId = supplierProfileId;
+        await this.invitationRepo.save(invitation);
+      }
+    }
+
+    return acceptedCount;
+  }
 }

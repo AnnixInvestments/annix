@@ -171,6 +171,55 @@ export class ConsolidatedBoqDataDto {
   @ValidateNested({ each: true })
   @Type(() => ConsolidatedItemDto)
   structuralSteel?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  valves?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  instruments?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  actuators?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  flowMeters?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  pressureInstruments?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  levelInstruments?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  temperatureInstruments?: ConsolidatedItemDto[];
 }
 
 export class SubmitBoqDto {

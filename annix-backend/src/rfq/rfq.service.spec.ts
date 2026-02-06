@@ -7,6 +7,9 @@ import { StraightPipeRfq } from './entities/straight-pipe-rfq.entity';
 import { BendRfq } from './entities/bend-rfq.entity';
 import { FittingRfq } from './entities/fitting-rfq.entity';
 import { ExpansionJointRfq } from './entities/expansion-joint-rfq.entity';
+import { ValveRfq } from './entities/valve-rfq.entity';
+import { InstrumentRfq } from './entities/instrument-rfq.entity';
+import { PumpRfq } from './entities/pump-rfq.entity';
 import { RfqDocument } from './entities/rfq-document.entity';
 import { RfqDraft } from './entities/rfq-draft.entity';
 import { RfqSequence } from './entities/rfq-sequence.entity';
@@ -215,6 +218,36 @@ describe('RfqService', () => {
           },
         },
         {
+          provide: getRepositoryToken(ValveRfq),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn(),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(InstrumentRfq),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn(),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(PumpRfq),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn(),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(RfqDocument),
           useValue: mockRfqDocumentRepo,
         },
@@ -297,6 +330,9 @@ describe('RfqService', () => {
           'items.bendDetails',
           'items.fittingDetails',
           'items.expansionJointDetails',
+          'items.valveDetails',
+          'items.instrumentDetails',
+          'items.pumpDetails',
           'drawings',
           'boqs',
         ],
