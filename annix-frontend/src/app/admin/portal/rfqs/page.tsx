@@ -14,6 +14,7 @@ import {
   SearchBar,
   Icons,
 } from '@/app/admin/components';
+import { log } from '@/app/lib/logger';
 
 interface RfqStats {
   total: number;
@@ -69,7 +70,7 @@ export default function AdminRfqsPage() {
       });
     } catch (err: any) {
       setError(err.message || 'Failed to fetch RFQs');
-      console.error('Error fetching RFQs:', err);
+      log.error('Error fetching RFQs:', err);
     } finally {
       setIsLoading(false);
     }

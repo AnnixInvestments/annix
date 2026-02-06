@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   CallOff,
@@ -13,8 +13,83 @@ import {
 import { useToast } from '@/app/components/Toast';
 import { nowMillis, formatDateTimeZA, formatDateZA, fromMillis } from '@/app/lib/datetime';
 import { statusColor, statusLabel } from '@/app/lib/config/rubber/orderStatus';
+import { calloffStatusColor, calloffStatusLabel, CALLOFF_STATUS, CALLOFF_STATUS_OPTIONS, CalloffStatus } from '@/app/lib/config/rubber/calloffStatus';
 import { THICKNESS_OPTIONS, WIDTH_OPTIONS, LENGTH_OPTIONS } from '@/app/lib/config/rubber/dimensions';
 import { CalloffInput } from '../components/CalloffInput';
+import { Breadcrumb } from '../../components/Breadcrumb';
+
+function CalloffStatusUpdate({
+  currentStatus,
+  onUpdate,
+}: {
+  currentStatus?: CalloffStatus;
+  onUpdate: (status: CalloffStatus, notes: string) => void;
+}) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [status, setStatus] = React.useState<CalloffStatus>(CALLOFF_STATUS.APPROVED);
+  const [notes, setNotes] = React.useState('');
+
+  const handleSubmit = () => {
+    onUpdate(status, notes);
+    setIsOpen(false);
+    setNotes('');
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="text-blue-600 hover:text-blue-800"
+        title="Update status"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="absolute right-0 top-6 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-64">
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-gray-700">
+              Current: {currentStatus ? calloffStatusLabel(currentStatus) : 'None'}
+            </div>
+            <select
+              value={status}
+              onChange={(e) => setStatus(Number(e.target.value) as CalloffStatus)}
+              className="w-full rounded-md border-gray-300 shadow-sm text-sm border p-1"
+            >
+              {CALLOFF_STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Notes (optional)"
+              className="w-full rounded-md border-gray-300 shadow-sm text-sm border p-1"
+            />
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Update
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface EditableItem {
   id?: number;
@@ -24,10 +99,19 @@ interface EditableItem {
   length?: number;
   quantity?: number;
   callOffs: CallOff[];
+  kgPerRoll?: number | null;
+}
+
+interface OriginalState {
+  status: number;
+  companyId: number | undefined;
+  companyOrderNumber: string;
+  items: string;
 }
 
 export default function RubberOrderDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const orderId = Number(params.id);
   const { showToast } = useToast();
 
@@ -44,6 +128,7 @@ export default function RubberOrderDetailPage() {
   const [editCompanyOrderNumber, setEditCompanyOrderNumber] = useState('');
   const [editItems, setEditItems] = useState<EditableItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const [originalState, setOriginalState] = useState<OriginalState | null>(null);
 
   const fetchData = async () => {
     try {
@@ -63,8 +148,7 @@ export default function RubberOrderDetailPage() {
       setEditStatus(orderData.status);
       setEditCompanyId(orderData.companyId || undefined);
       setEditCompanyOrderNumber(orderData.companyOrderNumber || '');
-      setEditItems(
-        orderData.items.map((item) => ({
+      const mappedItems = orderData.items.map((item) => ({
           id: item.id,
           productId: item.productId || undefined,
           thickness: item.thickness || undefined,
@@ -72,8 +156,15 @@ export default function RubberOrderDetailPage() {
           length: item.length || undefined,
           quantity: item.quantity || undefined,
           callOffs: item.callOffs || [],
-        }))
-      );
+          kgPerRoll: item.kgPerRoll,
+        }));
+      setEditItems(mappedItems);
+      setOriginalState({
+        status: orderData.status,
+        companyId: orderData.companyId || undefined,
+        companyOrderNumber: orderData.companyOrderNumber || '',
+        items: JSON.stringify(mappedItems),
+      });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load order';
       setError(errorMessage);
@@ -88,7 +179,78 @@ export default function RubberOrderDetailPage() {
     }
   }, [orderId]);
 
+  const hasUnsavedChanges = useMemo(() => {
+    if (!originalState) return false;
+    return (
+      editStatus !== originalState.status ||
+      editCompanyId !== originalState.companyId ||
+      editCompanyOrderNumber !== originalState.companyOrderNumber ||
+      JSON.stringify(editItems) !== originalState.items
+    );
+  }, [editStatus, editCompanyId, editCompanyOrderNumber, editItems, originalState]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  const handleBackClick = useCallback((e: React.MouseEvent) => {
+    if (hasUnsavedChanges) {
+      e.preventDefault();
+      if (confirm('You have unsaved changes. Are you sure you want to leave?')) {
+        router.push('/admin/portal/rubber/orders');
+      }
+    }
+  }, [hasUnsavedChanges, router]);
+
+  const validateItems = () => {
+    const issues: string[] = [];
+    const itemsWithoutProduct = editItems.filter((item) => !item.productId);
+    const itemsWithoutDimensions = editItems.filter((item) => item.productId && (!item.thickness || !item.width || !item.length));
+    const itemsWithoutQuantity = editItems.filter((item) => item.productId && !item.quantity);
+
+    const duplicateKeys = new Set<string>();
+    const seenKeys = new Set<string>();
+    editItems.forEach((item) => {
+      if (item.productId && item.thickness && item.width && item.length) {
+        const key = `${item.productId}-${item.thickness}-${item.width}-${item.length}`;
+        if (seenKeys.has(key)) {
+          duplicateKeys.add(key);
+        }
+        seenKeys.add(key);
+      }
+    });
+
+    if (itemsWithoutProduct.length > 0) {
+      issues.push(`${itemsWithoutProduct.length} item(s) have no product selected and will be removed`);
+    }
+    if (itemsWithoutDimensions.length > 0) {
+      issues.push(`${itemsWithoutDimensions.length} item(s) are missing dimensions`);
+    }
+    if (itemsWithoutQuantity.length > 0) {
+      issues.push(`${itemsWithoutQuantity.length} item(s) have no quantity`);
+    }
+    if (duplicateKeys.size > 0) {
+      issues.push(`${duplicateKeys.size} product/dimension combination(s) appear multiple times - consider combining quantities`);
+    }
+    return issues;
+  };
+
   const handleSave = async () => {
+    const validationIssues = validateItems();
+    if (validationIssues.length > 0) {
+      const message = `Warning:\n- ${validationIssues.join('\n- ')}\n\nDo you want to continue saving?`;
+      if (!confirm(message)) {
+        return;
+      }
+    }
+
     try {
       setIsSaving(true);
       await rubberPortalApi.updateOrder(orderId, {
@@ -122,9 +284,37 @@ export default function RubberOrderDetailPage() {
     setEditItems(editItems.filter((_, i) => i !== index));
   };
 
+  const duplicateItem = (index: number) => {
+    const item = editItems[index];
+    const newItem: EditableItem = {
+      productId: item.productId,
+      thickness: item.thickness,
+      width: item.width,
+      length: item.length,
+      quantity: item.quantity,
+      callOffs: [],
+      kgPerRoll: item.kgPerRoll,
+    };
+    const newItems = [...editItems];
+    newItems.splice(index + 1, 0, newItem);
+    setEditItems(newItems);
+  };
+
+  const computeKgPerRoll = (item: EditableItem): number | null => {
+    const product = productById(item.productId);
+    if (!product?.specificGravity || !item.thickness || !item.width || !item.length) return null;
+    return item.thickness * (item.width / 1000) * item.length * product.specificGravity;
+  };
+
   const updateItem = (index: number, updates: Partial<EditableItem>) => {
     const newItems = [...editItems];
-    newItems[index] = {...newItems[index], ...updates};
+    const updatedItem = {...newItems[index], ...updates};
+    const dimensionFields = ['productId', 'thickness', 'width', 'length'];
+    const dimensionChanged = dimensionFields.some((field) => field in updates);
+    if (dimensionChanged) {
+      updatedItem.kgPerRoll = computeKgPerRoll(updatedItem);
+    }
+    newItems[index] = updatedItem;
     setEditItems(newItems);
   };
 
@@ -140,27 +330,15 @@ export default function RubberOrderDetailPage() {
 
   const productById = (id: number | undefined) => products.find((p) => p.id === id);
 
-  const calculateKgPerRoll = (item: EditableItem) => {
-    const product = productById(item.productId);
-    if (!product?.specificGravity || !item.thickness || !item.width || !item.length) return null;
-    const thicknessMm = item.thickness;
-    const widthMm = item.width;
-    const lengthM = item.length;
-    const volumeCm3 = (thicknessMm / 10) * (widthMm / 10) * (lengthM * 100);
-    return (volumeCm3 * product.specificGravity) / 1000;
-  };
-
   const calculateTotalKg = (item: EditableItem) => {
-    const kgPerRoll = calculateKgPerRoll(item);
-    if (kgPerRoll === null || !item.quantity) return null;
-    return kgPerRoll * item.quantity;
+    if (item.kgPerRoll === null || item.kgPerRoll === undefined || !item.quantity) return null;
+    return item.kgPerRoll * item.quantity;
   };
 
   const calculatePricePerRoll = (item: EditableItem) => {
-    const kgPerRoll = calculateKgPerRoll(item);
     const product = productById(item.productId);
-    if (kgPerRoll === null || !product?.pricePerKg) return null;
-    return kgPerRoll * product.pricePerKg;
+    if (item.kgPerRoll === null || item.kgPerRoll === undefined || !product?.pricePerKg) return null;
+    return item.kgPerRoll * product.pricePerKg;
   };
 
   const calculateTotalPrice = (item: EditableItem) => {
@@ -175,19 +353,57 @@ export default function RubberOrderDetailPage() {
     return {called: totalCalled, total: qty, remaining: qty - totalCalled};
   };
 
-  const addCalloff = (itemIndex: number, quantity: number) => {
+  const duplicateItemKeys = useMemo(() => {
+    const keyCounts = new Map<string, number>();
+    editItems.forEach((item) => {
+      if (item.productId && item.thickness && item.width && item.length) {
+        const key = `${item.productId}-${item.thickness}-${item.width}-${item.length}`;
+        keyCounts.set(key, (keyCounts.get(key) || 0) + 1);
+      }
+    });
+    const duplicates = new Set<string>();
+    keyCounts.forEach((count, key) => {
+      if (count > 1) duplicates.add(key);
+    });
+    return duplicates;
+  }, [editItems]);
+
+  const isItemDuplicate = (item: EditableItem) => {
+    if (!item.productId || !item.thickness || !item.width || !item.length) return false;
+    const key = `${item.productId}-${item.thickness}-${item.width}-${item.length}`;
+    return duplicateItemKeys.has(key);
+  };
+
+  const addCalloff = (itemIndex: number, quantity: number, status: CalloffStatus, notes: string) => {
     const item = editItems[itemIndex];
     const summary = calloffSummary(item);
     if (quantity > summary.remaining) {
       showToast('Cannot call off more than remaining quantity', 'error');
       return;
     }
+    const timestamp = nowMillis();
     const newCalloff: CallOff = {
       quantity,
       quantityRemaining: summary.remaining - quantity,
-      events: [{timestamp: nowMillis(), status: 3}],
+      events: [{timestamp, status, notes: notes || undefined}],
+      notes: notes || undefined,
+      createdAt: timestamp,
     };
     updateItem(itemIndex, {callOffs: [...item.callOffs, newCalloff]});
+  };
+
+  const addCalloffEvent = (itemIndex: number, calloffIndex: number, status: CalloffStatus, notes: string) => {
+    const item = editItems[itemIndex];
+    const calloff = item.callOffs[calloffIndex];
+    const newEvent = {
+      timestamp: nowMillis(),
+      status,
+      notes: notes || undefined,
+    };
+    const updatedCalloff = {...calloff, events: [...calloff.events, newEvent]};
+    const newCalloffs = [...item.callOffs];
+    newCalloffs[calloffIndex] = updatedCalloff;
+    updateItem(itemIndex, {callOffs: newCalloffs});
   };
 
   const removeCalloff = (itemIndex: number, calloffIndex: number) => {
@@ -241,30 +457,34 @@ export default function RubberOrderDetailPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb items={[{ label: 'Orders', href: '/admin/portal/rubber/orders' }, { label: order.orderNumber }]} />
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center space-x-2">
-            <Link href="/admin/portal/rubber/orders" className="text-gray-500 hover:text-gray-700">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
             <h1 className="text-2xl font-bold text-gray-900">Order {order.orderNumber}</h1>
             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColor(order.status)}`}>
               {order.statusLabel}
             </span>
           </div>
-          <p className="mt-1 text-sm text-gray-600">
-            Created {formatDateTimeZA(order.createdAt)}
-          </p>
+          <div className="mt-1 text-sm text-gray-600 space-y-0.5">
+            <p>Created {formatDateTimeZA(order.createdAt)}{order.createdBy && <span className="text-gray-400"> by {order.createdBy}</span>}</p>
+            {order.updatedAt !== order.createdAt && (
+              <p>Updated {formatDateTimeZA(order.updatedAt)}{order.updatedBy && <span className="text-gray-400"> by {order.updatedBy}</span>}</p>
+            )}
+          </div>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-        >
-          {isSaving ? 'Saving...' : 'Save Changes'}
-        </button>
+        <div className="flex items-center space-x-3">
+          {hasUnsavedChanges && (
+            <span className="text-sm text-orange-600 font-medium">Unsaved changes</span>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg p-6">
@@ -369,15 +589,15 @@ export default function RubberOrderDetailPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                 {editItems.map((item, index) => {
                   const product = productById(item.productId);
-                  const kgPerRoll = calculateKgPerRoll(item);
                   const pricePerRoll = calculatePricePerRoll(item);
                   const totalPrice = calculateTotalPrice(item);
                   const summary = calloffSummary(item);
                   const isExpanded = expandedItems.has(index);
+                  const isDuplicate = isItemDuplicate(item);
 
                   return (
                       <React.Fragment key={index}>
-                        <tr className="hover:bg-gray-50">
+                        <tr className={`hover:bg-gray-50 ${isDuplicate ? 'bg-amber-50' : ''}`} title={isDuplicate ? 'Duplicate product/dimensions - consider combining quantities' : ''}>
                           <td className="px-3 py-3">
                             <button
                                 onClick={() => toggleExpand(index)}
@@ -393,7 +613,18 @@ export default function RubberOrderDetailPage() {
                               </svg>
                             </button>
                           </td>
-                          <td className="px-3 py-3 text-sm text-gray-900">{index + 1}</td>
+                          <td className="px-3 py-3 text-sm text-gray-900">
+                            <div className="flex items-center space-x-1">
+                              <span>{index + 1}</span>
+                              {isDuplicate && (
+                                <span className="text-amber-600" title="Duplicate">
+                                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-3 py-3">
                             <select
                                 value={item.productId ?? ''}
@@ -455,7 +686,7 @@ export default function RubberOrderDetailPage() {
                             </select>
                           </td>
                           <td className="px-3 py-3 text-center text-sm text-gray-900">
-                            {kgPerRoll !== null ? `${kgPerRoll.toFixed(1)} Kg` : '-'}
+                            {item.kgPerRoll != null ? `${item.kgPerRoll.toFixed(1)} Kg` : '-'}
                           </td>
                           <td className="px-3 py-3 text-center text-sm text-gray-900">
                             {product?.pricePerKg ? formatCurrency(product.pricePerKg) : '-'}
@@ -507,6 +738,16 @@ export default function RubberOrderDetailPage() {
                                 </svg>
                               </button>
                               <button
+                                  onClick={() => duplicateItem(index)}
+                                  className="text-gray-600 hover:text-gray-800"
+                                  title="Duplicate"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                                </svg>
+                              </button>
+                              <button
                                   onClick={() => removeItem(index)}
                                   className="text-red-600 hover:text-red-800"
                                   title="Delete"
@@ -534,41 +775,70 @@ export default function RubberOrderDetailPage() {
                                       <table className="min-w-full divide-y divide-gray-200">
                                         <thead>
                                         <tr>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Calloff</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
                                           <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Remaining
-                                            After
-                                          </th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Events</th>
+                                          <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Remaining</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status History</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
                                           <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
                                         </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
                                         {item.callOffs.map((calloff, cIndex) => (
                                             <tr key={cIndex}>
-                                              <td className="px-3 py-2 text-sm text-gray-900">
-                                                {calloff.quantity} of {summary.total} rolls
+                                              <td className="px-3 py-2 text-sm text-gray-900 font-medium">
+                                                <div>{cIndex + 1}</div>
+                                                {calloff.createdAt && (
+                                                  <div className="text-xs text-gray-400">
+                                                    {formatDateZA(fromMillis(calloff.createdAt).toISO())}
+                                                  </div>
+                                                )}
                                               </td>
-                                              <td className="px-3 py-2 text-center text-sm text-gray-900">{calloff.quantity}</td>
+                                              <td className="px-3 py-2 text-center text-sm text-gray-900">{calloff.quantity} rolls</td>
                                               <td className="px-3 py-2 text-center text-sm text-gray-900">{calloff.quantityRemaining}</td>
-                                              <td className="px-3 py-2 text-sm text-gray-500">
-                                                {calloff.events.map((event, eIndex) => (
-                                                    <div key={eIndex}>
-                                                      {formatDateZA(fromMillis(event.timestamp).toISO())} - {statusLabel(event.status)}
+                                              <td className="px-3 py-2 text-sm">
+                                                <div className="space-y-1">
+                                                  {calloff.events.map((event, eIndex) => (
+                                                    <div key={eIndex} className="flex flex-col">
+                                                      <div className="flex items-center space-x-2">
+                                                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${calloffStatusColor(event.status)}`}>
+                                                          {calloffStatusLabel(event.status)}
+                                                        </span>
+                                                        <span className="text-gray-500 text-xs">
+                                                          {formatDateTimeZA(fromMillis(event.timestamp).toISO())}
+                                                        </span>
+                                                        {event.createdBy && (
+                                                          <span className="text-gray-400 text-xs">by {event.createdBy}</span>
+                                                        )}
+                                                      </div>
+                                                      {event.notes && (
+                                                        <div className="text-xs text-gray-500 ml-2 mt-0.5 italic">{event.notes}</div>
+                                                      )}
                                                     </div>
-                                                ))}
+                                                  ))}
+                                                </div>
+                                              </td>
+                                              <td className="px-3 py-2 text-sm text-gray-500 max-w-[200px]">
+                                                {calloff.notes && <div className="truncate">{calloff.notes}</div>}
                                               </td>
                                               <td className="px-3 py-2 text-center">
-                                                <button
-                                                    onClick={() => removeCalloff(index, cIndex)}
-                                                    className="text-red-600 hover:text-red-800"
-                                                >
-                                                  <svg className="w-4 h-4" fill="none" stroke="currentColor"
-                                                       viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                                  </svg>
-                                                </button>
+                                                <div className="flex items-center justify-center space-x-2">
+                                                  <CalloffStatusUpdate
+                                                    currentStatus={calloff.events[calloff.events.length - 1]?.status}
+                                                    onUpdate={(status, notes) => addCalloffEvent(index, cIndex, status, notes)}
+                                                  />
+                                                  <button
+                                                      onClick={() => removeCalloff(index, cIndex)}
+                                                      className="text-red-600 hover:text-red-800"
+                                                      title="Remove calloff"
+                                                  >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor"
+                                                         viewBox="0 0 24 24">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                                    </svg>
+                                                  </button>
+                                                </div>
                                               </td>
                                             </tr>
                                         ))}
@@ -577,12 +847,13 @@ export default function RubberOrderDetailPage() {
                                   )}
 
                                   {summary.remaining > 0 && (
-                                      <div className="flex items-center space-x-4 pt-2 border-t">
-                                        <span
-                                            className="text-sm text-gray-600">Remaining {summary.remaining} rolls</span>
+                                      <div className="pt-2 border-t">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-sm text-gray-600">Remaining {summary.remaining} rolls</span>
+                                        </div>
                                         <CalloffInput
                                             maxQuantity={summary.remaining}
-                                            onAdd={(qty) => addCalloff(index, qty)}
+                                            onAdd={(qty, status, notes) => addCalloff(index, qty, status, notes)}
                                         />
                                       </div>
                                   )}
@@ -613,18 +884,24 @@ export default function RubberOrderDetailPage() {
                 </div>
                 <div className="text-sm">
                   <span className="text-gray-500">Total Quantity:</span>{' '}
-                  <span className="font-medium">{editItems.reduce((sum, item) => sum + (item.quantity || 0), 0)}</span>
+                  <span className="font-medium">{editItems.reduce((sum, item) => sum + (item.quantity || 0), 0)} rolls</span>
+                </div>
+                <div className="text-sm">
+                  <span className="text-gray-500">Total Weight:</span>{' '}
+                  <span className="font-medium">
+                    {editItems.reduce((sum, item) => sum + (calculateTotalKg(item) || 0), 0).toLocaleString('en-ZA', {minimumFractionDigits: 1, maximumFractionDigits: 1})} Kg
+                  </span>
                 </div>
                 <div className="text-sm">
                   <span className="text-gray-500">Total:</span>{' '}
                   <span className="font-medium text-lg">
-                  {formatCurrency(
-                      editItems.reduce((sum, item) => sum + (calculateTotalPrice(item) || 0), 0)
-                  )}
-                </span>
+                    {formatCurrency(
+                        editItems.reduce((sum, item) => sum + (calculateTotalPrice(item) || 0), 0)
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
         )}
       </div>
     </div>

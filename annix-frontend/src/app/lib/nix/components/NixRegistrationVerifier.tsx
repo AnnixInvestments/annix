@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import AmixLogo from '@/app/components/AmixLogo';
+import NixDocumentAnnotator from './NixDocumentAnnotator';
 
 export type RegistrationDocumentType = 'vat' | 'registration' | 'bee';
 
@@ -54,10 +55,12 @@ interface NixRegistrationVerifierProps {
   isProcessing: boolean;
   verificationResult: VerificationResult | null;
   documentType: RegistrationDocumentType;
+  file?: File | null;
   onApplyCorrections: (corrections: AutoCorrection[]) => void;
   onProceedWithMismatch: () => void;
   onRetryUpload: () => void;
   onClose: () => void;
+  onFieldLearned?: (fieldName: string, value: string) => void;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -84,13 +87,18 @@ export default function NixRegistrationVerifier({
   isProcessing,
   verificationResult,
   documentType,
+  file,
   onApplyCorrections,
   onProceedWithMismatch,
   onRetryUpload,
   onClose,
+  onFieldLearned,
 }: NixRegistrationVerifierProps) {
   const [dots, setDots] = useState('');
   const [selectedCorrections, setSelectedCorrections] = useState<Set<string>>(new Set());
+  const [showAnnotator, setShowAnnotator] = useState(false);
+  const [annotatingField, setAnnotatingField] = useState<{ fieldName: string; label: string } | null>(null);
+  const [learnedValues, setLearnedValues] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isVisible || !isProcessing) return;
@@ -126,6 +134,26 @@ export default function NixRegistrationVerifier({
     if (!verificationResult) return;
     const corrections = verificationResult.autoCorrections.filter(c => selectedCorrections.has(c.field));
     onApplyCorrections(corrections);
+  };
+
+  const handleHelpFindField = (fieldName: string, label: string) => {
+    setAnnotatingField({ fieldName, label });
+    setShowAnnotator(true);
+  };
+
+  const handleFieldExtracted = (fieldName: string, value: string) => {
+    setLearnedValues(prev => ({ ...prev, [fieldName]: value }));
+    onFieldLearned?.(fieldName, value);
+  };
+
+  const handleAnnotatorComplete = () => {
+    setShowAnnotator(false);
+    setAnnotatingField(null);
+  };
+
+  const handleAnnotatorClose = () => {
+    setShowAnnotator(false);
+    setAnnotatingField(null);
   };
 
   const renderProcessing = () => (
@@ -317,7 +345,9 @@ export default function NixRegistrationVerifier({
                       </div>
                       <div>
                         <span className="text-xs text-gray-500">Document shows:</span>
-                        <p className="font-medium text-orange-700">{String(field.extracted) || 'Not found'}</p>
+                        <p className="font-medium text-orange-700">
+                          {learnedValues[field.field] || String(field.extracted) || 'Not found'}
+                        </p>
                       </div>
                     </div>
                     {hasAutoCorrect && (
@@ -332,6 +362,17 @@ export default function NixRegistrationVerifier({
                           Update my form with document value
                         </span>
                       </label>
+                    )}
+                    {(field.extracted === null || field.extracted === undefined || field.extracted === 'null') && !learnedValues[field.field] && file && (
+                      <button
+                        onClick={() => handleHelpFindField(field.field, FIELD_LABELS[field.field] || field.field)}
+                        className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors text-sm font-medium"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                        </svg>
+                        Help Nix find this on the document
+                      </button>
                     )}
                   </div>
                 );
@@ -425,6 +466,20 @@ export default function NixRegistrationVerifier({
     if (verificationResult.allFieldsMatch) return renderSuccess();
     return renderMismatch();
   };
+
+  if (showAnnotator && annotatingField && file) {
+    return (
+      <NixDocumentAnnotator
+        isVisible={true}
+        file={file}
+        documentType={documentType}
+        missingFields={[annotatingField]}
+        onFieldExtracted={handleFieldExtracted}
+        onComplete={handleAnnotatorComplete}
+        onClose={handleAnnotatorClose}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">

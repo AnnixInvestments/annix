@@ -224,7 +224,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
       } catch (error) {
         // Silently handle - user can still fill in manually
         if (error instanceof Error && error.message !== 'Backend unavailable') {
-          console.error('Failed to fetch environmental data:', error);
+          log.error('Failed to fetch environmental data:', error);
         }
       }
     }
@@ -297,7 +297,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
       } catch (error) {
         // Silently use fallback mines when backend is unavailable
         if (error instanceof Error && error.message !== 'Backend unavailable') {
-          console.error('Failed to fetch mines:', error);
+          log.error('Failed to fetch mines:', error);
         }
         setMines(fallbackMines);
       } finally {
@@ -521,7 +521,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
           } catch (error) {
             // Silently handle - user can still fill in manually
             if (error instanceof Error && error.message !== 'Backend unavailable') {
-              console.error('[Mine Selection] Failed to fetch environmental data:', error);
+              log.error('[Mine Selection] Failed to fetch environmental data:', error);
             }
           }
         }
@@ -546,7 +546,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
         } catch (error) {
           // Silently handle - user can still fill in manually
           if (error instanceof Error && error.message !== 'Backend unavailable') {
-            console.error('[Mine Selection] Failed to fetch environmental data:', error);
+            log.error('[Mine Selection] Failed to fetch environmental data:', error);
           }
         }
       }
@@ -669,7 +669,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
           log.debug('[Mine Selection] Auto-filled with fallback data for:', fallbackMine.mineName);
         }
       } else if (error instanceof Error && error.message !== 'Backend unavailable') {
-        console.error('Failed to fetch mine environmental data:', error);
+        log.error('Failed to fetch mine environmental data:', error);
       }
     } finally {
       setMineDataLoading(false);

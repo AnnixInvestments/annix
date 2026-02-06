@@ -574,12 +574,32 @@ class CustomerDocumentApi {
     return this.client['request']<CustomerDocument[]>('/customer/documents');
   }
 
-  async uploadDocument(file: File, documentType: string, expiryDate?: string): Promise<{ id: number; message: string }> {
+  async uploadDocument(
+    file: File,
+    documentType: string,
+    expiryDate?: string,
+    verificationResult?: {
+      success: boolean;
+      overallConfidence: number;
+      allFieldsMatch: boolean;
+      extractedData?: Record<string, unknown>;
+      fieldResults?: Array<{
+        field: string;
+        expected?: string | number | null;
+        extracted?: string | number | null;
+        match: boolean;
+        similarity?: number;
+      }>;
+    },
+  ): Promise<{ id: number; message: string }> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('documentType', documentType);
     if (expiryDate) {
       formData.append('expiryDate', expiryDate);
+    }
+    if (verificationResult) {
+      formData.append('verificationResult', JSON.stringify(verificationResult));
     }
 
     const response = await fetch(`${this.client['baseURL']}/customer/documents`, {

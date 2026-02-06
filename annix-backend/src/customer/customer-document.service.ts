@@ -83,6 +83,19 @@ export class CustomerDocumentService {
     documentType: CustomerDocumentType,
     expiryDate: Date | null,
     clientIp: string,
+    verificationResult?: {
+      success: boolean;
+      overallConfidence: number;
+      allFieldsMatch: boolean;
+      extractedData?: any;
+      fieldResults?: Array<{
+        field: string;
+        expected?: string | number | null;
+        extracted?: string | number | null;
+        match: boolean;
+        similarity?: number;
+      }>;
+    },
   ) {
     // Validate onboarding status
     const onboarding = await this.onboardingRepo.findOne({
@@ -171,11 +184,25 @@ export class CustomerDocumentService {
       existingDoc.fileSize = file.size;
       existingDoc.mimeType = file.mimetype;
       existingDoc.uploadedAt = now().toJSDate();
-      existingDoc.validationStatus = CustomerDocumentValidationStatus.PENDING;
-      existingDoc.validationNotes = null;
       existingDoc.expiryDate = expiryDate;
       existingDoc.reviewedAt = null;
       existingDoc.reviewedById = null;
+
+      // Apply pre-verification results if provided
+      if (verificationResult?.success) {
+        existingDoc.validationStatus = this.determineValidationStatus(verificationResult);
+        existingDoc.validationNotes = verificationResult.allFieldsMatch && verificationResult.overallConfidence >= 0.7
+          ? 'Automatic validation passed'
+          : 'Requires manual verification';
+        existingDoc.ocrExtractedData = this.extractOcrData(verificationResult.extractedData);
+        existingDoc.fieldResults = this.extractFieldResults(verificationResult.fieldResults);
+        existingDoc.verificationConfidence = verificationResult.overallConfidence;
+        existingDoc.allFieldsMatch = verificationResult.allFieldsMatch;
+        existingDoc.ocrProcessedAt = now().toJSDate();
+      } else {
+        existingDoc.validationStatus = CustomerDocumentValidationStatus.PENDING;
+        existingDoc.validationNotes = null;
+      }
 
       const savedDoc = await this.documentRepo.save(existingDoc);
 
@@ -191,7 +218,9 @@ export class CustomerDocumentService {
         ipAddress: clientIp,
       });
 
-      this.triggerVerification(customerId, savedDoc.id);
+      if (!verificationResult) {
+        this.triggerVerification(customerId, savedDoc.id);
+      }
       this.copyToSecureStorage(customerId, file, documentType);
 
       return {
@@ -204,8 +233,8 @@ export class CustomerDocumentService {
       };
     }
 
-    // Create new document record
-    const document = this.documentRepo.create({
+    // Create new document record with verification results if provided
+    const documentData: Partial<CustomerDocument> = {
       customerId,
       documentType,
       fileName: file.originalname,
@@ -213,10 +242,24 @@ export class CustomerDocumentService {
       fileSize: file.size,
       mimeType: file.mimetype,
       expiryDate,
-      validationStatus: CustomerDocumentValidationStatus.PENDING,
       isRequired: true,
-    });
+    };
 
+    if (verificationResult?.success) {
+      documentData.validationStatus = this.determineValidationStatus(verificationResult);
+      documentData.validationNotes = verificationResult.allFieldsMatch && verificationResult.overallConfidence >= 0.7
+        ? 'Automatic validation passed'
+        : 'Requires manual verification';
+      documentData.ocrExtractedData = this.extractOcrData(verificationResult.extractedData);
+      documentData.fieldResults = this.extractFieldResults(verificationResult.fieldResults);
+      documentData.verificationConfidence = verificationResult.overallConfidence;
+      documentData.allFieldsMatch = verificationResult.allFieldsMatch;
+      documentData.ocrProcessedAt = now().toJSDate();
+    } else {
+      documentData.validationStatus = CustomerDocumentValidationStatus.PENDING;
+    }
+
+    const document = this.documentRepo.create(documentData);
     const savedDoc = await this.documentRepo.save(document);
 
     await this.auditService.log({
@@ -231,7 +274,9 @@ export class CustomerDocumentService {
       ipAddress: clientIp,
     });
 
-    this.triggerVerification(customerId, savedDoc.id);
+    if (!verificationResult) {
+      this.triggerVerification(customerId, savedDoc.id);
+    }
     this.copyToSecureStorage(customerId, file, documentType);
 
     return {
@@ -292,6 +337,52 @@ export class CustomerDocumentService {
         this.logger.error(`Verification failed for document ${documentId}: ${error.message}`);
       }
     });
+  }
+
+  private determineValidationStatus(
+    verificationResult: { allFieldsMatch: boolean; overallConfidence: number },
+  ): CustomerDocumentValidationStatus {
+    if (verificationResult.allFieldsMatch && verificationResult.overallConfidence >= 0.7) {
+      return CustomerDocumentValidationStatus.VALID;
+    }
+    return CustomerDocumentValidationStatus.MANUAL_REVIEW;
+  }
+
+  private extractOcrData(extractedData: any): CustomerDocument['ocrExtractedData'] {
+    if (!extractedData) {
+      return null;
+    }
+    return {
+      vatNumber: extractedData.vatNumber,
+      registrationNumber: extractedData.registrationNumber,
+      companyName: extractedData.companyName,
+      streetAddress: extractedData.streetAddress,
+      city: extractedData.city,
+      provinceState: extractedData.provinceState,
+      postalCode: extractedData.postalCode,
+      confidence: extractedData.confidence ? String(extractedData.confidence) : undefined,
+    };
+  }
+
+  private extractFieldResults(
+    fieldResults?: Array<{
+      field: string;
+      expected?: string | number | null;
+      extracted?: string | number | null;
+      match: boolean;
+      similarity?: number;
+    }>,
+  ): CustomerDocument['fieldResults'] {
+    if (!fieldResults) {
+      return null;
+    }
+    return fieldResults.map((fr) => ({
+      fieldName: fr.field,
+      expected: String(fr.expected ?? ''),
+      extracted: String(fr.extracted ?? ''),
+      matches: fr.match,
+      similarity: fr.similarity ?? (fr.match ? 100 : 0),
+    }));
   }
 
   async deleteDocument(

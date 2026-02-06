@@ -6,6 +6,7 @@ import {
   type AccessStatusResponse,
   type RemoteAccessDocumentType,
 } from '@/app/lib/api/remoteAccessApi';
+import { log } from '@/app/lib/logger';
 
 interface RemoteAccessPendingStatusProps {
   documentType: RemoteAccessDocumentType;
@@ -38,7 +39,7 @@ export default function RemoteAccessPendingStatus({
         setIsPolling(false);
       }
     } catch (err) {
-      console.error('Failed to check access status:', err);
+      log.error('Failed to check access status:', err);
     }
   }, [documentType, documentId, onAccessGranted, onAccessDenied]);
 

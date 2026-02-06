@@ -22,6 +22,7 @@ import {
   sansBlankFlangeWeightSync as sansBlankFlangeWeight,
 } from '@/app/lib/hooks/useFlangeWeights';
 import { weldCountPerPipe, weldCountPerBend, weldCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
+import { log } from '@/app/lib/logger';
 
 interface PricingInputs {
   steelSpecs: Record<string, number>;
@@ -513,7 +514,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         setSupplierCurrency(profile.company.currencyCode);
       }
     } catch (err) {
-      console.error('Failed to load supplier currency:', err);
+      log.error('Failed to load supplier currency:', err);
     }
   };
 
@@ -538,7 +539,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         bnwGrade: prev.bnwGrade,
       }));
     } catch (err) {
-      console.error('Failed to load RFQ items:', err);
+      log.error('Failed to load RFQ items:', err);
     } finally {
       setRfqLoading(false);
     }

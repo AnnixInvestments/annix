@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { minesApi, Commodity, CreateSaMineDto, SaMine } from '@/app/lib/api/client';
 import GoogleMapLocationPicker from '@/app/components/GoogleMapLocationPicker';
+import { log } from '@/app/lib/logger';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -62,7 +63,7 @@ export default function AddMineModal({ isOpen, onClose, onMineCreated }: AddMine
       const data = await minesApi.getCommodities();
       setCommodities(data);
     } catch (err) {
-      console.error('Failed to fetch commodities:', err);
+      log.error('Failed to fetch commodities:', err);
       setError('Failed to load commodity options');
     } finally {
       setIsLoadingCommodities(false);
@@ -151,7 +152,7 @@ export default function AddMineModal({ isOpen, onClose, onMineCreated }: AddMine
       });
       setAutoFilledFields(new Set());
     } catch (err) {
-      console.error('Failed to create mine:', err);
+      log.error('Failed to create mine:', err);
       setError('Failed to create mine. Please try again.');
     } finally {
       setIsSubmitting(false);

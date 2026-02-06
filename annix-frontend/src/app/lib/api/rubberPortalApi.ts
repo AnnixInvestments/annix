@@ -1,7 +1,9 @@
 import { API_BASE_URL } from '@/lib/api-config';
+import type { CalloffStatus } from '@/app/lib/config/rubber/calloffStatus';
 
 export interface RubberProductCodingDto {
   id: number;
+  firebaseUid: string;
   codingType: 'COLOUR' | 'COMPOUND' | 'CURING_METHOD' | 'GRADE' | 'HARDNESS' | 'TYPE';
   code: string;
   name: string;
@@ -15,6 +17,7 @@ export interface RubberPricingTierDto {
 
 export interface RubberCompanyDto {
   id: number;
+  firebaseUid: string;
   name: string;
   code: string | null;
   pricingTierId: number | null;
@@ -30,25 +33,58 @@ export interface RubberCompanyDto {
 
 export interface RubberProductDto {
   id: number;
+  firebaseUid: string;
   title: string | null;
   description: string | null;
   specificGravity: number | null;
   compoundOwnerName: string | null;
+  compoundOwnerFirebaseUid: string | null;
   compoundName: string | null;
+  compoundFirebaseUid: string | null;
   typeName: string | null;
+  typeFirebaseUid: string | null;
   costPerKg: number | null;
   colourName: string | null;
+  colourFirebaseUid: string | null;
   hardnessName: string | null;
+  hardnessFirebaseUid: string | null;
   curingMethodName: string | null;
+  curingMethodFirebaseUid: string | null;
   gradeName: string | null;
+  gradeFirebaseUid: string | null;
   markup: number | null;
   pricePerKg: number | null;
+}
+
+export interface CreateRubberProductDto {
+  title?: string;
+  description?: string;
+  specificGravity?: number;
+  compoundOwnerFirebaseUid?: string;
+  compoundFirebaseUid?: string;
+  typeFirebaseUid?: string;
+  costPerKg?: number;
+  colourFirebaseUid?: string;
+  hardnessFirebaseUid?: string;
+  curingMethodFirebaseUid?: string;
+  gradeFirebaseUid?: string;
+  markup?: number;
+}
+
+export interface CallOffEvent {
+  timestamp: number;
+  status: CalloffStatus;
+  createdBy?: string;
+  notes?: string;
 }
 
 export interface CallOff {
   quantity: number;
   quantityRemaining: number;
-  events: { timestamp: number; status: number }[];
+  events: CallOffEvent[];
+  notes?: string;
+  createdBy?: string;
+  createdAt?: number;
 }
 
 export interface RubberOrderItemDto {
@@ -75,6 +111,8 @@ export interface RubberOrderDto {
   items: RubberOrderItemDto[];
   createdAt: string;
   updatedAt: string;
+  createdBy: string | null;
+  updatedBy: string | null;
 }
 
 export interface RubberPriceCalculationDto {
@@ -133,7 +171,7 @@ export const rubberPortalApi = {
     return request(`/rubber-lining/portal/product-codings/${id}`);
   },
 
-  createProductCoding: async (data: Omit<RubberProductCodingDto, 'id'>): Promise<RubberProductCodingDto> => {
+  createProductCoding: async (data: Omit<RubberProductCodingDto, 'id' | 'firebaseUid'>): Promise<RubberProductCodingDto> => {
     return request('/rubber-lining/portal/product-codings', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -237,14 +275,14 @@ export const rubberPortalApi = {
     return request(`/rubber-lining/portal/products/${id}`);
   },
 
-  createProduct: async (data: Record<string, unknown>): Promise<RubberProductDto> => {
+  createProduct: async (data: CreateRubberProductDto): Promise<RubberProductDto> => {
     return request('/rubber-lining/portal/products', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
-  updateProduct: async (id: number, data: Record<string, unknown>): Promise<RubberProductDto> => {
+  updateProduct: async (id: number, data: Partial<CreateRubberProductDto>): Promise<RubberProductDto> => {
     return request(`/rubber-lining/portal/products/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

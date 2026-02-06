@@ -7,6 +7,7 @@
  */
 
 import { STEEL_DENSITY_KG_CM3 } from '@/app/lib/config/rfq/constants';
+import { log } from '@/app/lib/logger';
 
 /**
  * Calculate weight per meter for carbon steel pipes and fittings
@@ -761,7 +762,7 @@ export function getAllowableStressKsi(
   const material = ASME_MATERIAL_STRESS_TABLES[normalizedCode];
 
   if (!material) {
-    console.warn(`Material ${materialCode} not found, using ASTM A106 Gr B defaults`);
+    log.warn(`Material ${materialCode} not found, using ASTM A106 Gr B defaults`);
     return getAllowableStressKsi('ASTM_A106_Gr_B', temperatureF);
   }
 

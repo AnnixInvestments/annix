@@ -7,6 +7,7 @@ import {
   checkMaterialSuitability,
 } from '@/app/lib/config/rfq';
 import { materialValidationApi, type ValidPressureClassInfo } from '@/app/lib/api/client';
+import { log } from '@/app/lib/logger';
 import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
 import {
   SABS_1123_FLANGE_TYPES,
@@ -215,7 +216,7 @@ export function MaterialSpecificationsSection({
         }
       }
     } catch (error) {
-      console.warn('Material validation API unavailable, proceeding with selection:', error);
+      log.warn('Material validation API unavailable, proceeding with selection:', error);
     }
 
     try {
@@ -226,7 +227,7 @@ export function MaterialSpecificationsSection({
         );
       }
     } catch (error) {
-      console.warn('Pressure class API unavailable:', error);
+      log.warn('Pressure class API unavailable:', error);
     }
 
     onUpdateGlobalSpecs({
@@ -261,7 +262,7 @@ export function MaterialSpecificationsSection({
         await fetchAndSelectPressureClass(standardId);
       }
     } catch (error) {
-      console.warn('Pressure class fetch failed:', error);
+      log.warn('Pressure class fetch failed:', error);
     }
 
     const newPressureClassId = standardChanged

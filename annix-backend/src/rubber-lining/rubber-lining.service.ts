@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { generateUniqueId } from '../lib/datetime';
@@ -653,7 +653,65 @@ export class RubberLiningService {
     return this.mapProductToDto(product, codings, companies);
   }
 
+  private async validateProductCodingRelationships(
+    dto: CreateRubberProductDto | UpdateRubberProductDto,
+  ): Promise<void> {
+    const errors: string[] = [];
+
+    const codingValidations: Array<{
+      uid: string | undefined;
+      field: string;
+      expectedType: ProductCodingType;
+    }> = [
+      { uid: dto.compoundFirebaseUid, field: 'compound', expectedType: ProductCodingType.COMPOUND },
+      { uid: dto.typeFirebaseUid, field: 'type', expectedType: ProductCodingType.TYPE },
+      { uid: dto.colourFirebaseUid, field: 'colour', expectedType: ProductCodingType.COLOUR },
+      { uid: dto.hardnessFirebaseUid, field: 'hardness', expectedType: ProductCodingType.HARDNESS },
+      { uid: dto.curingMethodFirebaseUid, field: 'curingMethod', expectedType: ProductCodingType.CURING_METHOD },
+      { uid: dto.gradeFirebaseUid, field: 'grade', expectedType: ProductCodingType.GRADE },
+    ];
+
+    const codingUidsToValidate = codingValidations
+      .filter((v) => v.uid)
+      .map((v) => v.uid!);
+
+    if (codingUidsToValidate.length > 0) {
+      const codings = await this.productCodingRepository.find({
+        where: { firebaseUid: In(codingUidsToValidate) },
+      });
+
+      codingValidations.forEach((validation) => {
+        if (validation.uid) {
+          const coding = codings.find((c) => c.firebaseUid === validation.uid);
+          if (!coding) {
+            errors.push(`Invalid ${validation.field}: coding with UID '${validation.uid}' not found`);
+          } else if (coding.codingType !== validation.expectedType) {
+            errors.push(
+              `Invalid ${validation.field}: coding '${validation.uid}' is type '${coding.codingType}', expected '${validation.expectedType}'`,
+            );
+          }
+        }
+      });
+    }
+
+    if (dto.compoundOwnerFirebaseUid) {
+      const company = await this.companyRepository.findOne({
+        where: { firebaseUid: dto.compoundOwnerFirebaseUid },
+      });
+      if (!company) {
+        errors.push(`Invalid compoundOwner: company with UID '${dto.compoundOwnerFirebaseUid}' not found`);
+      } else if (!company.isCompoundOwner) {
+        errors.push(`Invalid compoundOwner: company '${company.name}' is not marked as a compound owner`);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new BadRequestException(errors.join('; '));
+    }
+  }
+
   async createProduct(dto: CreateRubberProductDto): Promise<RubberProductDto> {
+    await this.validateProductCodingRelationships(dto);
     const product = this.productRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       title: dto.title || null,
@@ -681,6 +739,8 @@ export class RubberLiningService {
   ): Promise<RubberProductDto | null> {
     const product = await this.productRepository.findOne({ where: { id } });
     if (!product) return null;
+
+    await this.validateProductCodingRelationships(dto);
 
     if (dto.title !== undefined) product.title = dto.title || null;
     if (dto.description !== undefined)
@@ -814,6 +874,28 @@ export class RubberLiningService {
     return (result.affected || 0) > 0;
   }
 
+  /**
+   * Calculates the price for a rubber roll order based on product, company, and dimensions.
+   *
+   * Price Calculation Formula:
+   * 1. pricePerKg = costPerKg × (markup / 100)
+   *    - costPerKg: Base cost from product definition
+   *    - markup: Product markup percentage (default 100% = no markup)
+   *
+   * 2. salePricePerKg = pricePerKg × (pricingFactor / 100)
+   *    - pricingFactor: Company-specific pricing tier (e.g., 90% for preferred customers)
+   *
+   * 3. kgPerRoll = thickness(mm) × (width(mm) / 1000) × length(m) × specificGravity
+   *    - Converts dimensions to calculate volume in cubic meters, then weight
+   *    - specificGravity: Product density relative to water (default 1.0)
+   *
+   * 4. totalKg = kgPerRoll × quantity
+   *
+   * 5. totalPrice = totalKg × salePricePerKg
+   *
+   * @param request - Contains productId, companyId, thickness (mm), width (mm), length (m), quantity
+   * @returns Price calculation breakdown or null if product/company not found
+   */
   async calculatePrice(
     request: RubberPriceCalculationRequestDto,
   ): Promise<RubberPriceCalculationDto | null> {
@@ -859,6 +941,7 @@ export class RubberLiningService {
   ): RubberProductCodingDto {
     return {
       id: coding.id,
+      firebaseUid: coding.firebaseUid,
       codingType: coding.codingType,
       code: coding.code,
       name: coding.name,
@@ -876,6 +959,7 @@ export class RubberLiningService {
   private mapCompanyToDto(company: RubberCompany): RubberCompanyDto {
     return {
       id: company.id,
+      firebaseUid: company.firebaseUid,
       name: company.name,
       code: company.code,
       pricingTierId: company.pricingTierId,
@@ -915,19 +999,27 @@ export class RubberLiningService {
 
     return {
       id: product.id,
+      firebaseUid: product.firebaseUid,
       title: product.title,
       description: product.description,
       specificGravity: product.specificGravity
         ? Number(product.specificGravity)
         : null,
       compoundOwnerName: companyName(product.compoundOwnerFirebaseUid),
+      compoundOwnerFirebaseUid: product.compoundOwnerFirebaseUid,
       compoundName: codingName(product.compoundFirebaseUid),
+      compoundFirebaseUid: product.compoundFirebaseUid,
       typeName: codingName(product.typeFirebaseUid),
+      typeFirebaseUid: product.typeFirebaseUid,
       costPerKg: costPerKg || null,
       colourName: codingName(product.colourFirebaseUid),
+      colourFirebaseUid: product.colourFirebaseUid,
       hardnessName: codingName(product.hardnessFirebaseUid),
+      hardnessFirebaseUid: product.hardnessFirebaseUid,
       curingMethodName: codingName(product.curingMethodFirebaseUid),
+      curingMethodFirebaseUid: product.curingMethodFirebaseUid,
       gradeName: codingName(product.gradeFirebaseUid),
+      gradeFirebaseUid: product.gradeFirebaseUid,
       markup: markup !== 100 ? markup : null,
       pricePerKg: pricePerKg || null,
     };
@@ -956,9 +1048,21 @@ export class RubberLiningService {
       items: (order.items || []).map((item) => this.mapOrderItemToDto(item)),
       createdAt: order.createdAt.toISOString(),
       updatedAt: order.updatedAt.toISOString(),
+      createdBy: order.createdByFirebaseUid,
+      updatedBy: order.updatedByFirebaseUid,
     };
   }
 
+  /**
+   * Maps an order item entity to DTO, calculating weight values.
+   *
+   * Weight Calculation:
+   * - kgPerRoll = thickness(mm) × (width(mm) / 1000) × length(m) × specificGravity
+   * - totalKg = kgPerRoll × quantity
+   *
+   * @param item - Order item entity with optional product relation
+   * @returns DTO with calculated kgPerRoll and totalKg
+   */
   private mapOrderItemToDto(item: RubberOrderItem): RubberOrderItemDto {
     const thickness = Number(item.thickness) || 0;
     const width = Number(item.width) || 0;

@@ -5,6 +5,8 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
+import { log } from '@/app/lib/logger';
+
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PDFViewerProps {
@@ -25,7 +27,7 @@ export function PDFViewer({ url, className = '' }: PDFViewerProps) {
   };
 
   const onDocumentLoadError = (err: Error) => {
-    console.error('Error loading PDF:', err);
+    log.error('Error loading PDF:', err);
     setError('Failed to load PDF. The document may be corrupted or in an unsupported format.');
   };
 

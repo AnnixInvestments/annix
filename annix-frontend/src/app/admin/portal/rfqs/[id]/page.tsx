@@ -6,6 +6,7 @@ import { adminApiClient, RfqFullDraftResponse } from '@/app/lib/api/adminApi';
 import { formatDateZA } from '@/app/lib/datetime';
 import { StatusBadge, LoadingSpinner, ErrorDisplay } from '@/app/admin/components';
 import { NB_TO_OD_LOOKUP } from '@/app/lib/hooks/useFlangeWeights';
+import { log } from '@/app/lib/logger';
 
 interface RfqDetail {
   id: number;
@@ -52,7 +53,7 @@ export default function AdminRfqDetailPage() {
       setFullDraft(draft);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch RFQ details');
-      console.error('Error fetching RFQ:', err);
+      log.error('Error fetching RFQ:', err);
     } finally {
       setIsLoading(false);
     }

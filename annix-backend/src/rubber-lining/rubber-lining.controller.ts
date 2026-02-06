@@ -10,7 +10,7 @@ import {
   NotFoundException,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -49,6 +49,7 @@ import {
   RubberPriceCalculationDto,
 } from './dto/rubber-portal.dto';
 
+@ApiTags('Rubber Lining')
 @Controller('rubber-lining')
 export class RubberLiningController {
   constructor(private readonly rubberLiningService: RubberLiningService) {}
@@ -260,6 +261,8 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/product-codings')
+  @ApiOperation({ summary: 'List product codings', description: 'Retrieve all product codings, optionally filtered by type (COLOUR, COMPOUND, CURING_METHOD, GRADE, HARDNESS, TYPE)' })
+  @ApiQuery({ name: 'codingType', required: false, enum: ['COLOUR', 'COMPOUND', 'CURING_METHOD', 'GRADE', 'HARDNESS', 'TYPE'] })
   async productCodings(
     @Query('codingType') codingType?: ProductCodingType,
   ): Promise<RubberProductCodingDto[]> {
@@ -270,6 +273,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/product-codings/:id')
+  @ApiOperation({ summary: 'Get product coding by ID' })
+  @ApiParam({ name: 'id', description: 'Product coding ID' })
+  @ApiResponse({ status: 404, description: 'Product coding not found' })
   async productCodingById(
     @Param('id') id: string,
   ): Promise<RubberProductCodingDto> {
@@ -282,6 +288,7 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Post('portal/product-codings')
+  @ApiOperation({ summary: 'Create product coding', description: 'Create a new product coding (e.g., a new colour or compound code)' })
   async createProductCoding(
     @Body() dto: CreateRubberProductCodingDto,
   ): Promise<RubberProductCodingDto> {
@@ -292,6 +299,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Put('portal/product-codings/:id')
+  @ApiOperation({ summary: 'Update product coding' })
+  @ApiParam({ name: 'id', description: 'Product coding ID' })
+  @ApiResponse({ status: 404, description: 'Product coding not found' })
   async updateProductCoding(
     @Param('id') id: string,
     @Body() dto: UpdateRubberProductCodingDto,
@@ -308,6 +318,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Delete('portal/product-codings/:id')
+  @ApiOperation({ summary: 'Delete product coding' })
+  @ApiParam({ name: 'id', description: 'Product coding ID' })
+  @ApiResponse({ status: 404, description: 'Product coding not found' })
   async deleteProductCoding(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteProductCoding(
       Number(id),
@@ -319,6 +332,7 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/pricing-tiers')
+  @ApiOperation({ summary: 'List pricing tiers', description: 'Retrieve all pricing tiers. Tiers define pricing multipliers for different customer categories.' })
   async pricingTiers(): Promise<RubberPricingTierDto[]> {
     return this.rubberLiningService.allPricingTiers();
   }
@@ -327,6 +341,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/pricing-tiers/:id')
+  @ApiOperation({ summary: 'Get pricing tier by ID' })
+  @ApiParam({ name: 'id', description: 'Pricing tier ID' })
+  @ApiResponse({ status: 404, description: 'Pricing tier not found' })
   async pricingTierById(
     @Param('id') id: string,
   ): Promise<RubberPricingTierDto> {
@@ -339,6 +356,7 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Post('portal/pricing-tiers')
+  @ApiOperation({ summary: 'Create pricing tier', description: 'Create a new pricing tier with name and pricing factor (percentage)' })
   async createPricingTier(
     @Body() dto: CreateRubberPricingTierDto,
   ): Promise<RubberPricingTierDto> {
@@ -349,6 +367,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Put('portal/pricing-tiers/:id')
+  @ApiOperation({ summary: 'Update pricing tier' })
+  @ApiParam({ name: 'id', description: 'Pricing tier ID' })
+  @ApiResponse({ status: 404, description: 'Pricing tier not found' })
   async updatePricingTier(
     @Param('id') id: string,
     @Body() dto: UpdateRubberPricingTierDto,
@@ -365,6 +386,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Delete('portal/pricing-tiers/:id')
+  @ApiOperation({ summary: 'Delete pricing tier' })
+  @ApiParam({ name: 'id', description: 'Pricing tier ID' })
+  @ApiResponse({ status: 404, description: 'Pricing tier not found' })
   async deletePricingTier(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deletePricingTier(Number(id));
     if (!deleted) throw new NotFoundException('Pricing tier not found');
@@ -374,6 +398,7 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/companies')
+  @ApiOperation({ summary: 'List companies', description: 'Retrieve all rubber lining companies with their pricing tier information' })
   async companies(): Promise<RubberCompanyDto[]> {
     return this.rubberLiningService.allCompanies();
   }
@@ -382,6 +407,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/companies/:id')
+  @ApiOperation({ summary: 'Get company by ID' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  @ApiResponse({ status: 404, description: 'Company not found' })
   async companyById(@Param('id') id: string): Promise<RubberCompanyDto> {
     const company = await this.rubberLiningService.companyById(Number(id));
     if (!company) throw new NotFoundException('Company not found');
@@ -392,6 +420,7 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Post('portal/companies')
+  @ApiOperation({ summary: 'Create company', description: 'Create a new rubber lining company. Set isCompoundOwner=true for compound manufacturers.' })
   async createCompany(
     @Body() dto: CreateRubberCompanyDto,
   ): Promise<RubberCompanyDto> {
@@ -402,6 +431,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Put('portal/companies/:id')
+  @ApiOperation({ summary: 'Update company' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  @ApiResponse({ status: 404, description: 'Company not found' })
   async updateCompany(
     @Param('id') id: string,
     @Body() dto: UpdateRubberCompanyDto,
@@ -418,6 +450,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Delete('portal/companies/:id')
+  @ApiOperation({ summary: 'Delete company' })
+  @ApiParam({ name: 'id', description: 'Company ID' })
+  @ApiResponse({ status: 404, description: 'Company not found' })
   async deleteCompany(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteCompany(Number(id));
     if (!deleted) throw new NotFoundException('Company not found');
@@ -427,6 +462,7 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/products')
+  @ApiOperation({ summary: 'List products', description: 'Retrieve all rubber products with resolved coding names and calculated prices' })
   async products(): Promise<RubberProductDto[]> {
     return this.rubberLiningService.allProducts();
   }
@@ -435,6 +471,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/products/:id')
+  @ApiOperation({ summary: 'Get product by ID' })
+  @ApiParam({ name: 'id', description: 'Product ID' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
   async productById(@Param('id') id: string): Promise<RubberProductDto> {
     const product = await this.rubberLiningService.productById(Number(id));
     if (!product) throw new NotFoundException('Product not found');
@@ -445,6 +484,8 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Post('portal/products')
+  @ApiOperation({ summary: 'Create product', description: 'Create a new rubber product. References to codings (compound, type, colour, etc.) use Firebase UIDs and are validated.' })
+  @ApiResponse({ status: 400, description: 'Invalid coding reference - coding not found or wrong type' })
   async createProduct(
     @Body() dto: CreateRubberProductDto,
   ): Promise<RubberProductDto> {
@@ -455,6 +496,10 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Put('portal/products/:id')
+  @ApiOperation({ summary: 'Update product' })
+  @ApiParam({ name: 'id', description: 'Product ID' })
+  @ApiResponse({ status: 400, description: 'Invalid coding reference - coding not found or wrong type' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
   async updateProduct(
     @Param('id') id: string,
     @Body() dto: UpdateRubberProductDto,
@@ -471,6 +516,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Delete('portal/products/:id')
+  @ApiOperation({ summary: 'Delete product' })
+  @ApiParam({ name: 'id', description: 'Product ID' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
   async deleteProduct(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteProduct(Number(id));
     if (!deleted) throw new NotFoundException('Product not found');
@@ -480,6 +528,8 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/orders')
+  @ApiOperation({ summary: 'List orders', description: 'Retrieve all orders, optionally filtered by status. Orders contain line items with calloff schedules.' })
+  @ApiQuery({ name: 'status', required: false, description: 'Filter by order status (-1=New, 0=Draft, 1=Cancelled, 2=Partial, 3=Submitted, 4=Manufacturing, 5=Delivering, 6=Complete)' })
   async orders(@Query('status') status?: string): Promise<RubberOrderDto[]> {
     const orderStatus =
       status !== undefined ? (Number(status) as RubberOrderStatus) : undefined;
@@ -490,6 +540,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/orders/:id')
+  @ApiOperation({ summary: 'Get order by ID', description: 'Retrieve order with all line items and calloff schedules' })
+  @ApiParam({ name: 'id', description: 'Order ID' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
   async orderById(@Param('id') id: string): Promise<RubberOrderDto> {
     const order = await this.rubberLiningService.orderById(Number(id));
     if (!order) throw new NotFoundException('Order not found');
@@ -500,6 +553,7 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Post('portal/orders')
+  @ApiOperation({ summary: 'Create order', description: 'Create a new rubber lining order. Auto-generates order number if not provided.' })
   async createOrder(@Body() dto: CreateRubberOrderDto): Promise<RubberOrderDto> {
     return this.rubberLiningService.createOrder(dto);
   }
@@ -508,6 +562,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Put('portal/orders/:id')
+  @ApiOperation({ summary: 'Update order', description: 'Update order details, status, and line items. Replaces all items if items array is provided.' })
+  @ApiParam({ name: 'id', description: 'Order ID' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
   async updateOrder(
     @Param('id') id: string,
     @Body() dto: UpdateRubberOrderDto,
@@ -521,6 +578,9 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Delete('portal/orders/:id')
+  @ApiOperation({ summary: 'Delete order' })
+  @ApiParam({ name: 'id', description: 'Order ID' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
   async deleteOrder(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteOrder(Number(id));
     if (!deleted) throw new NotFoundException('Order not found');
@@ -530,6 +590,7 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/order-statuses')
+  @ApiOperation({ summary: 'List order statuses', description: 'Get all possible order status values and labels' })
   async orderStatuses(): Promise<{ value: number; label: string }[]> {
     return [
       { value: -1, label: 'New' },
@@ -547,6 +608,7 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Get('portal/coding-types')
+  @ApiOperation({ summary: 'List coding types', description: 'Get all product coding type values for filtering' })
   async codingTypes(): Promise<{ value: string; label: string }[]> {
     return [
       { value: 'COLOUR', label: 'Colour' },
@@ -562,6 +624,17 @@ export class RubberLiningController {
   @Roles('admin', 'employee')
   @ApiBearerAuth()
   @Post('portal/calculate-price')
+  @ApiOperation({
+    summary: 'Calculate roll price',
+    description: `Calculate the price for rubber rolls based on product, company, and dimensions.
+
+Formula: totalPrice = totalKg × salePricePerKg
+- kgPerRoll = thickness(mm) × (width(mm)/1000) × length(m) × specificGravity
+- totalKg = kgPerRoll × quantity
+- pricePerKg = costPerKg × (markup/100)
+- salePricePerKg = pricePerKg × (pricingFactor/100)`,
+  })
+  @ApiResponse({ status: 404, description: 'Product or company not found' })
   async calculatePrice(
     @Body() request: RubberPriceCalculationRequestDto,
   ): Promise<RubberPriceCalculationDto> {

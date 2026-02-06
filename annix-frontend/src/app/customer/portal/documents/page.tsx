@@ -5,25 +5,31 @@ import Link from 'next/link';
 import {
   customerDocumentApi,
   customerOnboardingApi,
+  customerPortalApi,
   CustomerDocument,
   OnboardingStatus,
+  CustomerCompanyDto,
 } from '@/app/lib/api/customerApi';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
 import { formatDateZA } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
+import { nixApi, RegistrationDocumentType, RegistrationVerificationResult } from '@/app/lib/nix/api';
+import NixRegistrationVerifier from '@/app/lib/nix/components/NixRegistrationVerifier';
 
 const DOCUMENT_TYPES = [
-  { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)' },
-  { value: 'tax_clearance', label: 'Tax Clearance Certificate (SARS)' },
-  { value: 'bee_cert', label: 'BEE/B-BBEE Certificate' },
-  { value: 'insurance', label: 'Insurance Certificate' },
-  { value: 'proof_of_address', label: 'Proof of Address' },
-  { value: 'other', label: 'Other' },
+  { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', nixType: 'registration' as RegistrationDocumentType },
+  { value: 'tax_clearance', label: 'Tax Clearance Certificate (SARS)', nixType: 'vat' as RegistrationDocumentType },
+  { value: 'bee_cert', label: 'BEE/B-BBEE Certificate', nixType: 'bee' as RegistrationDocumentType },
+  { value: 'insurance', label: 'Insurance Certificate', nixType: null },
+  { value: 'proof_of_address', label: 'Proof of Address', nixType: null },
+  { value: 'other', label: 'Other', nixType: null },
 ];
 
 export default function CustomerDocumentsPage() {
   const [documents, setDocuments] = useState<CustomerDocument[]>([]);
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
+  const [companyDetails, setCompanyDetails] = useState<CustomerCompanyDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -34,6 +40,10 @@ export default function CustomerDocumentsPage() {
   const [expiryDate, setExpiryDate] = useState('');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewModal, setPreviewModal] = useState<PreviewModalState>(initialPreviewState);
+
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationResult, setVerificationResult] = useState<RegistrationVerificationResult | null>(null);
+  const [showNixVerifier, setShowNixVerifier] = useState(false);
 
   const hasRejectedDocuments = documents.some(d => d.validationStatus === 'invalid');
   const canUpload = onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected' || hasRejectedDocuments;
@@ -48,12 +58,14 @@ export default function CustomerDocumentsPage() {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [docs, status] = await Promise.all([
+      const [docs, status, company] = await Promise.all([
         customerDocumentApi.getDocuments(),
         customerOnboardingApi.getStatus(),
+        customerPortalApi.getCompany(),
       ]);
       setDocuments(docs);
       setOnboardingStatus(status);
+      setCompanyDetails(company);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load documents');
     } finally {
@@ -61,7 +73,7 @@ export default function CustomerDocumentsPage() {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -80,6 +92,36 @@ export default function CustomerDocumentsPage() {
 
     setSelectedFile(file);
     setUploadError(null);
+
+    const docTypeConfig = DOCUMENT_TYPES.find(dt => dt.value === selectedType);
+    const nixType = docTypeConfig?.nixType;
+
+    if (nixType && companyDetails) {
+      setIsVerifying(true);
+      setShowNixVerifier(true);
+      setVerificationResult(null);
+
+      try {
+        const expectedData = {
+          companyName: companyDetails.legalName || '',
+          registrationNumber: companyDetails.registrationNumber || '',
+          vatNumber: companyDetails.vatNumber || '',
+          streetAddress: companyDetails.streetAddress || '',
+          city: companyDetails.city || '',
+          provinceState: companyDetails.provinceState || '',
+          postalCode: companyDetails.postalCode || '',
+          beeLevel: companyDetails.beeLevel ?? undefined,
+        };
+
+        const result = await nixApi.verifyRegistrationDocument(file, nixType, expectedData);
+        setVerificationResult(result);
+        setIsVerifying(false);
+      } catch (err) {
+        log.error('Nix verification failed:', err);
+        setIsVerifying(false);
+        setVerificationResult(null);
+      }
+    }
   };
 
   const handleUpload = async () => {
@@ -91,7 +133,17 @@ export default function CustomerDocumentsPage() {
     try {
       setUploadingDoc(true);
       setUploadError(null);
-      await customerDocumentApi.uploadDocument(selectedFile, selectedType, expiryDate || undefined);
+      setShowNixVerifier(false);
+
+      const verificationData = verificationResult ? {
+        success: verificationResult.success,
+        overallConfidence: verificationResult.overallConfidence,
+        allFieldsMatch: verificationResult.allFieldsMatch,
+        extractedData: verificationResult.extractedData as unknown as Record<string, unknown>,
+        fieldResults: verificationResult.fieldResults,
+      } : undefined;
+
+      await customerDocumentApi.uploadDocument(selectedFile, selectedType, expiryDate || undefined, verificationData);
       await loadData();
       setShowUploadModal(false);
       resetUploadForm();
@@ -147,6 +199,22 @@ export default function CustomerDocumentsPage() {
     setExpiryDate('');
     setUploadError(null);
     setReuploadDocType(null);
+    setVerificationResult(null);
+    setShowNixVerifier(false);
+  };
+
+  const handleNixProceed = () => {
+    handleUpload();
+  };
+
+  const handleNixCancel = () => {
+    setShowNixVerifier(false);
+    setVerificationResult(null);
+    setSelectedFile(null);
+  };
+
+  const handleNixApplyCorrections = () => {
+    log.info('Applying corrections is not supported in document upload - corrections should be made to company profile');
   };
 
   const getDocumentTypeLabel = (type: string) => {
@@ -432,15 +500,31 @@ export default function CustomerDocumentsPage() {
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={handleFileSelect}
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    disabled={isVerifying || !selectedType}
+                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
                   />
                   <p className="mt-1 text-xs text-gray-500">PDF, JPG, or PNG. Max 10MB.</p>
-                  {selectedFile && (
+                  {selectedFile && !showNixVerifier && (
                     <p className="mt-1 text-sm text-gray-700">
                       Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
                     </p>
                   )}
                 </div>
+
+                {showNixVerifier && (
+                  <div className="border border-gray-200 rounded-lg p-4">
+                    <NixRegistrationVerifier
+                      isVisible={showNixVerifier}
+                      isProcessing={isVerifying}
+                      verificationResult={verificationResult}
+                      documentType={DOCUMENT_TYPES.find(dt => dt.value === selectedType)?.nixType || 'registration'}
+                      onApplyCorrections={handleNixApplyCorrections}
+                      onProceedWithMismatch={handleNixProceed}
+                      onRetryUpload={handleNixCancel}
+                      onClose={handleNixCancel}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -450,6 +534,8 @@ export default function CustomerDocumentsPage() {
                     type="date"
                     value={expiryDate}
                     onChange={(e) => setExpiryDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    max="2099-12-31"
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -473,10 +559,10 @@ export default function CustomerDocumentsPage() {
                 </button>
                 <button
                   onClick={handleUpload}
-                  disabled={uploadingDoc || !selectedFile || !selectedType}
+                  disabled={uploadingDoc || !selectedFile || !selectedType || isVerifying}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {uploadingDoc ? 'Uploading...' : 'Upload'}
+                  {uploadingDoc ? 'Uploading...' : isVerifying ? 'Verifying...' : 'Upload'}
                 </button>
               </div>
             </div>

@@ -1156,7 +1156,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                           }
                         }
                       } catch (error) {
-                        console.warn('Material validation API unavailable, proceeding with selection:', error);
+                        log.warn('Material validation API unavailable, proceeding with selection:', error);
                       }
 
                       try {
@@ -1167,7 +1167,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                           );
                         }
                       } catch (error) {
-                        console.warn('Pressure class API unavailable:', error);
+                        log.warn('Pressure class API unavailable:', error);
                       }
 
                       onUpdateGlobalSpecs({
@@ -1334,7 +1334,7 @@ export default function SpecificationsStep({ globalSpecs, onUpdateGlobalSpecs, m
                           await fetchAndSelectPressureClass(standardId);
                         }
                       } catch (error) {
-                        console.warn('Pressure class fetch failed:', error);
+                        log.warn('Pressure class fetch failed:', error);
                       }
 
                       const newPressureClassId = standardChanged

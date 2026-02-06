@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, ILike, In } from 'typeorm';
@@ -38,6 +39,8 @@ import { SecureDocumentsService } from '../secure-documents/secure-documents.ser
 
 @Injectable()
 export class CustomerAdminService {
+  private readonly logger = new Logger(CustomerAdminService.name);
+
   constructor(
     @InjectRepository(CustomerCompany)
     private readonly companyRepo: Repository<CustomerCompany>,
@@ -1047,29 +1050,29 @@ export class CustomerAdminService {
     const inputPath = path.join(tempDir, 'input.pdf');
     const outputPattern = path.join(tempDir, 'page-%d.png');
 
-    console.log('[PDF Preview] Starting conversion');
-    console.log('[PDF Preview] Temp dir:', tempDir);
-    console.log('[PDF Preview] PDF buffer size:', pdfBuffer.length);
+    this.logger.debug('[PDF Preview] Starting conversion');
+    this.logger.debug('[PDF Preview] Temp dir:', tempDir);
+    this.logger.debug('[PDF Preview] PDF buffer size:', pdfBuffer.length);
 
     try {
       await fs.writeFile(inputPath, pdfBuffer);
-      console.log('[PDF Preview] Wrote input PDF to:', inputPath);
+      this.logger.debug('[PDF Preview] Wrote input PDF to:', inputPath);
 
       const gsCommand = process.platform === 'win32'
         ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
         : 'gs';
       const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r150 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "-sOutputFile=${outputPattern}" "${inputPath}"`;
 
-      console.log('[PDF Preview] Running command:', command);
+      this.logger.debug('[PDF Preview] Running command:', command);
 
       const { stdout, stderr } = await execAsync(command, { timeout: 60000 });
-      console.log('[PDF Preview] GS stdout:', stdout);
+      this.logger.debug('[PDF Preview] GS stdout:', stdout);
       if (stderr) {
-        console.log('[PDF Preview] GS stderr:', stderr);
+        this.logger.debug('[PDF Preview] GS stderr:', stderr);
       }
 
       const files = await fs.readdir(tempDir);
-      console.log('[PDF Preview] Files in temp dir:', files);
+      this.logger.debug('[PDF Preview] Files in temp dir:', files);
 
       const pngFiles = files
         .filter((f) => f.startsWith('page-') && f.endsWith('.png'))
@@ -1079,7 +1082,7 @@ export class CustomerAdminService {
           return numA - numB;
         });
 
-      console.log('[PDF Preview] PNG files found:', pngFiles);
+      this.logger.debug('[PDF Preview] PNG files found:', pngFiles);
 
       const pages: string[] = [];
       for (const file of pngFiles) {
@@ -1087,13 +1090,13 @@ export class CustomerAdminService {
         const imageBuffer = await fs.readFile(filePath);
         const base64 = imageBuffer.toString('base64');
         pages.push(`data:image/png;base64,${base64}`);
-        console.log('[PDF Preview] Converted', file, 'size:', imageBuffer.length);
+        this.logger.debug('[PDF Preview] Converted', file, 'size:', imageBuffer.length);
       }
 
-      console.log('[PDF Preview] Total pages converted:', pages.length);
+      this.logger.debug('[PDF Preview] Total pages converted:', pages.length);
       return pages;
     } catch (error) {
-      console.error('[PDF Preview] Error during conversion:', error);
+      this.logger.error('[PDF Preview] Error during conversion:', error);
       throw error;
     } finally {
       try {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supplierPortalApi, SupplierProfileDto } from '@/app/lib/api/supplierApi';
 import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
+import { log } from '@/app/lib/logger';
 
 interface ProfileData extends SupplierProfileDto {
   email?: string;
@@ -31,7 +32,7 @@ export default function SupplierProfilePage() {
           mobilePhone: data.mobilePhone || '',
         });
       } catch (err) {
-        console.error('Failed to fetch profile:', err);
+        log.error('Failed to fetch profile:', err);
       } finally {
         setIsLoading(false);
       }

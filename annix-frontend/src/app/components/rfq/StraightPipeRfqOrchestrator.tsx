@@ -422,7 +422,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       setPressureClassesByStandard(prev => ({ ...prev, [standardId]: classes }));
       return classes;
     } catch (error) {
-      console.error('Error fetching pressure classes for standard', standardId, error);
+      log.error('Error fetching pressure classes for standard', standardId, error);
       return [];
     }
   }, [pressureClassesByStandard]);
@@ -452,7 +452,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       } catch (error) {
         // Silently handle backend unavailable - use fallback data
         if (error instanceof Error && error.message !== 'Backend unavailable') {
-          console.error('Error loading master data:', error);
+          log.error('Error loading master data:', error);
         }
         // Fallback steel specifications
         const fallbackSteelSpecs = [
@@ -595,7 +595,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
         log.debug(`✅ Loaded RFQ ${draft.draftNumber} for editing`);
       } catch (error) {
-        console.error('Failed to load RFQ for editing:', error);
+        log.error('Failed to load RFQ for editing:', error);
         showToast('Failed to load the RFQ. Please try again.', 'error');
       } finally {
         setIsLoadingDraft(false);
@@ -687,7 +687,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         hasCheckedLocalDraftRef.current = true;
         showToast(`Draft restored from ${draftSource}`, 'success');
       } catch (error) {
-        console.error('Failed to load draft from recovery token:', error);
+        log.error('Failed to load draft from recovery token:', error);
         const localDraft = loadLocalDraft();
         if (localDraft && localDraft.rfqData) {
           log.debug('Server draft failed, falling back to localStorage');
@@ -1194,7 +1194,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       setPressureClassesByStandard(prev => ({ ...prev, [standardId]: fallbackClasses }));
 
       if (error instanceof Error && error.message !== 'Backend unavailable') {
-        console.error('Error fetching pressure classes:', error);
+        log.error('Error fetching pressure classes:', error);
       }
 
       // Auto-select recommended from fallback classes with temperature derating
@@ -1250,7 +1250,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       });
 
       if (!nominalBore) {
-        console.warn(`[fetchAvailableSchedules] No nominal bore found for ${nominalBoreMm}mm in masterData`);
+        log.warn(`[fetchAvailableSchedules] No nominal bore found for ${nominalBoreMm}mm in masterData`);
         return [];
       }
 
@@ -1271,7 +1271,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       return [];
     } catch (error) {
       if (error instanceof Error && error.message !== 'Backend unavailable') {
-        console.error('[fetchAvailableSchedules] Error:', error);
+        log.error('[fetchAvailableSchedules] Error:', error);
       }
       return [];
     }
@@ -1297,7 +1297,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       return options;
     } catch (error) {
       if (error instanceof Error && error.message !== 'Backend unavailable') {
-        console.error(`Error fetching bend options for ${bendType}:`, error);
+        log.error(`Error fetching bend options for ${bendType}:`, error);
       }
       return { nominalBores: [], degrees: [] };
     }
@@ -1335,7 +1335,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       return null;
     } catch (error) {
       if (error instanceof Error && error.message !== 'Backend unavailable') {
-        console.error(`[CenterToFace] Error fetching for ${bendType} ${nominalBoreMm}NB @ ${degrees}°:`, error);
+        log.error(`[CenterToFace] Error fetching for ${bendType} ${nominalBoreMm}NB @ ${degrees}°:`, error);
       }
       return null;
     }
@@ -1403,7 +1403,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         }
       }
     } catch (error) {
-      console.error('Error auto-selecting flange specs:', error);
+      log.error('Error auto-selecting flange specs:', error);
     }
   }, []);
 
@@ -1916,7 +1916,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             } as any);
           }
         } catch (error: any) {
-          console.error(`Calculation error for entry ${entry.id}:`, error);
+          log.error(`Calculation error for entry ${entry.id}:`, error);
           const errorMessage = error.message || String(error);
 
           // If API returns 404, use local calculation fallback
@@ -1963,7 +1963,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     } catch (error: any) {
       const isNotFoundError = error?.message?.includes('404') || error?.message?.toLowerCase().includes('not found');
       if (!isNotFoundError) {
-        console.error('Calculation error:', error);
+        log.error('Calculation error:', error);
       }
     }
   }, [masterData.pressureClasses, masterData.flangeStandards, masterData.flangeTypes, updateEntryCalculation, updateStraightPipeEntry]);
@@ -2083,7 +2083,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       if (isNotFoundError) {
         log.debug('Bend not found (expected):', error?.message);
       } else {
-        console.error('Bend calculation failed:', error);
+        log.error('Bend calculation failed:', error);
       }
       const bendEntry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'bend') as BendEntry | undefined;
       const nb = bendEntry?.specs?.nominalBoreMm;
@@ -2212,7 +2212,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       if (isNotFoundError) {
         log.debug('Fitting not found (expected):', error?.message);
       } else {
-        console.error('Fitting calculation failed:', error);
+        log.error('Fitting calculation failed:', error);
       }
       const fittingEntry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'fitting') as FittingEntry | undefined;
       const nb = fittingEntry?.specs?.nominalDiameterMm;
@@ -2416,12 +2416,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           setTimeout(() => setShowSaveConfirmation(false), 3000);
           log.debug('✅ RFQ progress saved to localStorage (not authenticated)');
         } catch (e) {
-          console.error('Failed to save to localStorage:', e);
+          log.error('Failed to save to localStorage:', e);
         }
         return;
       }
 
-      console.error('Failed to save progress:', error);
+      log.error('Failed to save progress:', error);
 
       try {
         localStorage.setItem('annix_rfq_draft', JSON.stringify({
@@ -2599,12 +2599,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             log.debug(`✅ Uploaded: ${doc.file.name}`);
           } catch (uploadError) {
             failedCount++;
-            console.error(`❌ Failed to upload ${doc.file.name}:`, uploadError);
+            log.error(`❌ Failed to upload ${doc.file.name}:`, uploadError);
           }
         }
 
         if (failedCount > 0) {
-          console.warn(`⚠️ ${failedCount} document(s) failed to upload`);
+          log.warn(`⚠️ ${failedCount} document(s) failed to upload`);
         }
 
         setPendingDocuments([]);
@@ -2656,7 +2656,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
           log.debug(`✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`);
         } catch (boqError) {
-          console.error('Failed to create/submit BOQ:', boqError);
+          log.error('Failed to create/submit BOQ:', boqError);
         }
       }
 
@@ -2665,7 +2665,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           await draftsApi.markAsConverted(currentDraftId, result.rfq.id);
           log.debug(`✅ Draft ${currentDraftId} marked as converted to RFQ ${result.rfq.id}`);
         } catch (convertError) {
-          console.error('Failed to mark draft as converted:', convertError);
+          log.error('Failed to mark draft as converted:', convertError);
         }
       }
 
@@ -2673,7 +2673,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       onSuccess(result.rfq?.id || 'success');
 
     } catch (error: any) {
-      console.error('Submission error:', error);
+      log.error('Submission error:', error);
 
       let errorMessage = 'Failed to submit RFQ. Please try again.';
       if (error.message) {
@@ -2917,7 +2917,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       onSuccess(result.rfq?.id?.toString() || 'success');
 
     } catch (error: any) {
-      console.error('Re-submission error:', error);
+      log.error('Re-submission error:', error);
 
       let errorMessage = 'Failed to re-submit RFQ. Please try again.';
       if (error.message) {

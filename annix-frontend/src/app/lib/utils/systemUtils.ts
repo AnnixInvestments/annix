@@ -153,7 +153,7 @@ export async function calculateScheduleFromPressureAndNB(
     
     return result.schedule || `${result.wallThickness}mm WT`;
   } catch (error) {
-    console.error('Error calculating schedule from API:', error);
+    log.error('Error calculating schedule from API:', error);
     // Fallback to simplified logic
     if (workingPressure <= 10) return 'Sch10';
     if (workingPressure <= 25) return 'Sch20';
@@ -191,7 +191,7 @@ export async function calculateWallThicknessFromPressureAndNB(
     
     return result.wallThickness;
   } catch (error) {
-    console.error('Error calculating wall thickness from API:', error);
+    log.error('Error calculating wall thickness from API:', error);
     // Fallback to simplified logic
     const baseFactor = nominalBore / 1000;
     
@@ -286,7 +286,7 @@ export async function getSteelSpecFromConditions(
       name: result.pipeDimension.steelSpecification.steelSpecName
     };
   } catch (error) {
-    console.error('Error getting steel spec from API:', error);
+    log.error('Error getting steel spec from API:', error);
     // Fallback logic
     let specName = 'ASTM A53 Gr B';
     if (workingTemp > 400) {
@@ -316,7 +316,7 @@ export async function getAvailableFlangeClasses(flangeStandardId: number): Promi
     // Filter classes by standard if needed (check if standard property exists and matches)
     return classes.filter(cls => !cls.standard || cls.standard.id === flangeStandardId);
   } catch (error) {
-    console.error('Error getting flange classes from API:', error);
+    log.error('Error getting flange classes from API:', error);
     // Fallback mapping
     const flangeClassMap: Record<number, Array<{ id: number; designation: string }>> = {
       1: [ // SABS 1123
@@ -361,7 +361,7 @@ export async function getWallThicknessForSchedule(nominalBoreMm: number, schedul
     
     return dimension?.wallThicknessMm || null;
   } catch (error) {
-    console.error('Error getting wall thickness from API:', error);
+    log.error('Error getting wall thickness from API:', error);
     return null;
   }
 }
@@ -383,7 +383,7 @@ export async function getPipeEndConfigurationDetails(configCode: string): Promis
       description: response.description || ''
     };
   } catch (error) {
-    console.error('Error getting pipe end configuration:', error);
+    log.error('Error getting pipe end configuration:', error);
     
     // Fallback mapping based on requirements
     const configMap: Record<string, { weldCount: number; description: string }> = {

@@ -1,5 +1,6 @@
 import { API_BASE_URL, browserBaseUrl } from '@/lib/api-config';
 import { sessionExpiredEvent } from '@/app/components/SessionExpiredModal';
+import { log } from '@/app/lib/logger';
 
 export class SessionExpiredError extends Error {
   constructor() {
@@ -596,7 +597,7 @@ class ApiClient {
       try {
         return JSON.parse(text) as T;
       } catch (parseError) {
-        console.warn('Failed to parse JSON response:', text.substring(0, 100));
+        log.warn('Failed to parse JSON response:', text.substring(0, 100));
         return {} as T;
       }
     } catch (error) {
@@ -738,7 +739,7 @@ class ApiClient {
     try {
       return JSON.parse(text) as RfqDocument;
     } catch {
-      console.warn('Failed to parse JSON response:', text.substring(0, 100));
+      log.warn('Failed to parse JSON response:', text.substring(0, 100));
       return {} as RfqDocument;
     }
   }

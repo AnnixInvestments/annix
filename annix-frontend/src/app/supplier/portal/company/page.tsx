@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supplierPortalApi, SupplierCompanyDto } from '@/app/lib/api/supplierApi';
+import { log } from '@/app/lib/logger';
 
 export default function SupplierCompanyPage() {
   const [company, setCompany] = useState<SupplierCompanyDto | null>(null);
@@ -20,7 +21,7 @@ export default function SupplierCompanyPage() {
           setCompany(profile.company);
         }
       } catch (err) {
-        console.error('Failed to fetch company:', err);
+        log.error('Failed to fetch company:', err);
       } finally {
         setIsLoading(false);
       }

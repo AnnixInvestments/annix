@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { apiClient, draftsApi, RfqResponse, RfqDraftResponse, RfqDraftStatus } from '@/app/lib/api/client';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA, formatDateTimeZA } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 export default function CustomerRfqsPage() {
   const { showToast } = useToast();
@@ -37,7 +38,7 @@ export default function CustomerRfqsPage() {
       const data = await draftsApi.getAll();
       setAllRfqs(data);
     } catch (e) {
-      console.error('Failed to load RFQs:', e);
+      log.error('Failed to load RFQs:', e);
     } finally {
       setIsAllRfqsLoading(false);
     }

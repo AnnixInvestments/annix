@@ -7,6 +7,7 @@ import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
 import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
 import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
 import { currencyCodeForCountry } from '@/app/lib/currencies';
+import { log } from '@/app/lib/logger';
 
 const initialCompanyData: SupplierCompanyDto = {
   legalName: '',
@@ -102,7 +103,7 @@ export default function SupplierOnboardingPage() {
           setSelectedCapabilities(capabilitiesData.capabilities);
         }
       } catch (err) {
-        console.error('Failed to fetch data:', err);
+        log.error('Failed to fetch data:', err);
       } finally {
         setIsLoading(false);
       }

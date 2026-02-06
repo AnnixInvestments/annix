@@ -7,6 +7,7 @@ import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA } from '@/app/lib/datetime';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentReviewModal } from '@/app/admin/components/DocumentReviewModal';
+import { log } from '@/app/lib/logger';
 
 type TabType = 'overview' | 'onboarding' | 'documents';
 
@@ -41,7 +42,7 @@ export default function SupplierDetailPage() {
       setSupplier(data);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch supplier details');
-      console.error('Error fetching supplier:', err);
+      log.error('Error fetching supplier:', err);
     } finally {
       setIsLoading(false);
     }

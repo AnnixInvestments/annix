@@ -5,6 +5,7 @@ import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
 import { supplierPortalApi } from '@/app/lib/api/supplierApi';
 import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
 import { corpId } from '@/app/lib/corpId';
+import { log } from '@/app/lib/logger';
 
 export default function ProductsServicesPage() {
   const { supplier } = useSupplierAuth();
@@ -19,7 +20,7 @@ export default function ProductsServicesPage() {
         const data = await supplierPortalApi.getCapabilities();
         setSelectedCapabilities(data.capabilities || []);
       } catch (error) {
-        console.error('Failed to load capabilities:', error);
+        log.error('Failed to load capabilities:', error);
       } finally {
         setIsLoading(false);
       }

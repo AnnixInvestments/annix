@@ -1,6 +1,7 @@
 'use client';
 
 import { browserBaseUrl } from '@/lib/api-config';
+import { log } from '@/app/lib/logger';
 
 export interface NixExtractedItem {
   rowNumber: number;
@@ -201,7 +202,7 @@ export const nixApi = {
     if (rfqId) formData.append('rfqId', rfqId.toString());
 
     const uploadUrl = '/api/nix/upload';
-    console.log('[Nix] Uploading via API route:', uploadUrl, 'File:', file.name, 'Size:', file.size);
+    log.debug('[Nix] Uploading via API route:', uploadUrl, 'File:', file.name, 'Size:', file.size);
 
     const response = await fetch(uploadUrl, {
       method: 'POST',
@@ -321,7 +322,7 @@ export const nixApi = {
     });
 
     if (!response.ok) {
-      console.warn('[Nix] Failed to submit correction:', await response.text());
+      log.warn('[Nix] Failed to submit correction:', await response.text());
       return { success: false };
     }
 
@@ -355,7 +356,7 @@ export const nixApi = {
     const baseUrl = browserBaseUrl();
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-    console.log('[Nix] Verifying registration document:', file.name, documentType);
+    log.debug('[Nix] Verifying registration document:', file.name, documentType);
 
     const response = await fetch(`${baseUrl}/nix/verify-registration-document`, {
       method: 'POST',
@@ -405,7 +406,7 @@ export const nixApi = {
     const baseUrl = browserBaseUrl();
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-    console.log('[Nix] Verifying registration batch:', files.length, 'documents');
+    log.debug('[Nix] Verifying registration batch:', files.length, 'documents');
 
     const response = await fetch(`${baseUrl}/nix/verify-registration-batch`, {
       method: 'POST',
@@ -521,7 +522,7 @@ export const nixApi = {
     });
 
     if (!response.ok) {
-      console.warn('[Nix] Failed to save extraction region:', await response.text());
+      log.warn('[Nix] Failed to save extraction region:', await response.text());
       return { success: false };
     }
 

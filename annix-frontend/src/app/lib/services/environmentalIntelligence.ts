@@ -468,7 +468,7 @@ export async function fetchEnvironmentalData(
       }
     }
   } catch (error) {
-    console.error('Soil moisture fetch error:', error);
+    log.error('Soil moisture fetch error:', error);
     errors.push('Soil moisture data unavailable');
   }
 
@@ -564,7 +564,7 @@ export async function fetchEnvironmentalData(
       log.debug('[Environmental] Step 5 - OpenWeatherMap data fetched successfully');
     }
   } catch (error) {
-    console.warn('[Environmental] OpenWeatherMap API error, will try Open-Meteo fallback:', error);
+    log.warn('[Environmental] OpenWeatherMap API error, will try Open-Meteo fallback:', error);
   }
 
   // Fallback to Open-Meteo if OpenWeatherMap failed or returned no data
@@ -577,7 +577,7 @@ export async function fetchEnvironmentalData(
         log.debug('[Environmental] Step 5 - Open-Meteo data fetched successfully');
       }
     } catch (error) {
-      console.error('[Environmental] Open-Meteo API error:', error);
+      log.error('[Environmental] Open-Meteo API error:', error);
     }
   }
 
@@ -675,7 +675,7 @@ export async function fetchEnvironmentalData(
       dataSources.push('OpenWeather Air Pollution API');
     }
   } catch (error) {
-    console.error('Air Pollution API error:', error);
+    log.error('Air Pollution API error:', error);
     // Keep the heuristic-based industrial pollution value if API fails
   }
 

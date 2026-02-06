@@ -11,6 +11,7 @@
  */
 
 import { nowMillis, generateUniqueId } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 // API Base URLs
 const SOILGRIDS_BASE = 'https://rest.isric.org/soilgrids/v2.0';
@@ -100,13 +101,13 @@ export async function fetchSoilGridsTexture(lat: number, lng: number): Promise<S
     );
 
     if (!response.ok) {
-      console.warn(`SoilGrids API error: ${response.status} - Service may be temporarily unavailable`);
+      log.warn(`SoilGrids API error: ${response.status} - Service may be temporarily unavailable`);
       return null;
     }
 
     return await response.json();
   } catch (error) {
-    console.warn('SoilGrids Texture API error:', error);
+    log.warn('SoilGrids Texture API error:', error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -129,13 +130,13 @@ export async function fetchSoilGridsClassification(lat: number, lng: number): Pr
     );
 
     if (!response.ok) {
-      console.warn(`SoilGrids Classification API error: ${response.status} - Service may be temporarily unavailable`);
+      log.warn(`SoilGrids Classification API error: ${response.status} - Service may be temporarily unavailable`);
       return null;
     }
 
     return await response.json();
   } catch (error) {
-    console.warn('SoilGrids Classification API error:', error);
+    log.warn('SoilGrids Classification API error:', error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -276,7 +277,7 @@ export interface ISDAsoilTextureData {
  */
 async function getISDAsoilToken(): Promise<string | null> {
   if (!ISDASOIL_USERNAME || !ISDASOIL_PASSWORD) {
-    console.warn('iSDAsoil credentials not configured');
+    log.warn('iSDAsoil credentials not configured');
     return null;
   }
 
@@ -303,7 +304,7 @@ async function getISDAsoilToken(): Promise<string | null> {
     });
 
     if (!response.ok) {
-      console.warn(`iSDAsoil login failed: ${response.status}`);
+      log.warn(`iSDAsoil login failed: ${response.status}`);
       return null;
     }
 
@@ -318,7 +319,7 @@ async function getISDAsoilToken(): Promise<string | null> {
 
     return token;
   } catch (error) {
-    console.warn('iSDAsoil login error:', error);
+    log.warn('iSDAsoil login error:', error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -367,14 +368,14 @@ export async function fetchISDAsoilTexture(
       if (response.status === 401) {
         iSDAsoilToken = null;
       }
-      console.warn(`iSDAsoil API error: ${response.status}`);
+      log.warn(`iSDAsoil API error: ${response.status}`);
       return null;
     }
 
     const data: ISDAsoilPropertyResponse = await response.json();
     return extractISDAsoilTexture(data);
   } catch (error) {
-    console.warn('iSDAsoil API error:', error);
+    log.warn('iSDAsoil API error:', error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -476,7 +477,7 @@ export async function fetchAgromonitoringSoilMoisture(
   lng: number
 ): Promise<AgromonitoringSoilResponse | null> {
   if (!AGROMONITORING_API_KEY) {
-    console.warn('Agromonitoring API key not configured');
+    log.warn('Agromonitoring API key not configured');
     return null;
   }
 
@@ -549,7 +550,7 @@ export async function fetchAgromonitoringSoilMoisture(
 
     return await soilResponse.json();
   } catch (error) {
-    console.error('Agromonitoring API error:', error);
+    log.error('Agromonitoring API error:', error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -634,7 +635,7 @@ export async function fetchSsurgoDrainage(lat: number, lng: number): Promise<str
 
     return null;
   } catch (error) {
-    console.error('SSURGO API error:', error);
+    log.error('SSURGO API error:', error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -1193,7 +1194,7 @@ export async function fetchOpenWeatherMapData(
   lng: number
 ): Promise<OpenWeatherOneCallResponse | null> {
   if (!OPENWEATHER_API_KEY) {
-    console.warn('OpenWeatherMap API key not configured');
+    log.warn('OpenWeatherMap API key not configured');
     return null;
   }
 
@@ -1213,13 +1214,13 @@ export async function fetchOpenWeatherMapData(
 
     if (!response.ok) {
       // Fall back to free tier API if One Call fails
-      console.warn('OpenWeatherMap One Call API failed, trying standard API');
+      log.warn('OpenWeatherMap One Call API failed, trying standard API');
       return await fetchOpenWeatherMapFallback(lat, lng);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('OpenWeatherMap API error:', error);
+    log.error('OpenWeatherMap API error:', error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -1293,7 +1294,7 @@ async function fetchOpenWeatherMapFallback(
       }],
     };
   } catch (error) {
-    console.error('OpenWeatherMap fallback API error:', error);
+    log.error('OpenWeatherMap fallback API error:', error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -1469,7 +1470,7 @@ export async function fetchAirPollutionData(
   lng: number
 ): Promise<AirPollutionResponse | null> {
   if (!OPENWEATHER_API_KEY) {
-    console.warn('OpenWeatherMap API key not configured');
+    log.warn('OpenWeatherMap API key not configured');
     return null;
   }
 
@@ -1490,7 +1491,7 @@ export async function fetchAirPollutionData(
 
     return await response.json();
   } catch (error) {
-    console.error('Air Pollution API error:', error);
+    log.error('Air Pollution API error:', error);
     return null;
   } finally {
     clearTimeout(timeoutId);

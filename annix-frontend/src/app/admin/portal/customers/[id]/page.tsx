@@ -8,6 +8,7 @@ import { formatDateTimeZA, formatDateZA } from '@/app/lib/datetime';
 import { StatusBadge } from '@/app/admin/components';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentReviewModal } from '@/app/admin/components/DocumentReviewModal';
+import { log } from '@/app/lib/logger';
 
 type TabType = 'overview' | 'documents' | 'activity' | 'rfqs';
 
@@ -55,7 +56,7 @@ export default function CustomerDetailPage() {
       setCustomFields(customFieldsData.fields);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch customer details');
-      console.error('Error fetching customer:', err);
+      log.error('Error fetching customer:', err);
     } finally {
       setIsLoading(false);
     }

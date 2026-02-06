@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { generateUniqueId } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 export interface SmartNote {
   id: string;
@@ -67,7 +68,7 @@ export function SmartNotesDropdown({
         const parsed = JSON.parse(storedCustomNotes) as SmartNote[];
         setCustomNotes(parsed);
       } catch {
-        console.warn('Failed to parse stored custom notes');
+        log.warn('Failed to parse stored custom notes');
       }
     }
   }, []);

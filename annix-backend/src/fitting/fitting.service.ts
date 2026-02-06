@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,6 +22,8 @@ import {
 
 @Injectable()
 export class FittingService {
+  private readonly logger = new Logger(FittingService.name);
+
   constructor(
     @InjectRepository(Sabs62FittingDimension)
     private sabs62Repository: Repository<Sabs62FittingDimension>,
@@ -441,7 +444,7 @@ export class FittingService {
           }
         }
       } catch (error) {
-        console.warn('Flange weight calculation failed:', error.message);
+        this.logger.warn('Flange weight calculation failed:', error.message);
       }
     }
 
@@ -664,7 +667,7 @@ export class FittingService {
           }
         }
       } catch (error) {
-        console.warn('Flange weight calculation failed:', error.message);
+        this.logger.warn('Flange weight calculation failed:', error.message);
       }
     }
 

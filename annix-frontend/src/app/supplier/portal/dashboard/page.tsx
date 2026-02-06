@@ -6,6 +6,7 @@ import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
 import { supplierPortalApi, OnboardingStatusResponse, SupplierBoqListItem, SupplierBoqStatus } from '@/app/lib/api/supplierApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA, fromISO, now, nowMillis, formatIcsDate } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending Response' },
@@ -67,7 +68,7 @@ export default function SupplierDashboardPage() {
         setOnboardingStatus(status);
         setBoqs(boqData);
       } catch (err) {
-        console.error('Failed to fetch data:', err);
+        log.error('Failed to fetch data:', err);
       } finally {
         setIsLoadingStatus(false);
         setLoadingBoqs(false);

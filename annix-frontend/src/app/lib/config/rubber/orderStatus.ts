@@ -33,10 +33,27 @@ export const STATUS_COLORS: Record<RubberOrderStatus, string> = {
   [RUBBER_ORDER_STATUS.COMPLETE]: 'bg-green-100 text-green-800',
 };
 
+export const ORDER_STATUS_VALUES = Object.values(RUBBER_ORDER_STATUS) as readonly RubberOrderStatus[];
+
+export const isValidOrderStatus = (status: number): status is RubberOrderStatus => {
+  return ORDER_STATUS_VALUES.includes(status as RubberOrderStatus);
+};
+
 export const statusLabel = (status: number): string => {
-  return STATUS_LABELS[status as RubberOrderStatus] ?? 'Unknown';
+  if (isValidOrderStatus(status)) {
+    return STATUS_LABELS[status];
+  }
+  return 'Unknown';
 };
 
 export const statusColor = (status: number): string => {
-  return STATUS_COLORS[status as RubberOrderStatus] ?? 'bg-gray-100 text-gray-800';
+  if (isValidOrderStatus(status)) {
+    return STATUS_COLORS[status];
+  }
+  return 'bg-gray-100 text-gray-800';
 };
+
+export const ORDER_STATUS_OPTIONS = ORDER_STATUS_VALUES.map((value) => ({
+  value,
+  label: STATUS_LABELS[value],
+}));

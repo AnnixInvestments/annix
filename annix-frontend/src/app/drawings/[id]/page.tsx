@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
+import { log } from '@/app/lib/logger';
 
 interface DrawingVersion {
   id: number;
@@ -141,7 +142,7 @@ export default function DrawingDetailPage() {
         setComments(data);
       }
     } catch (err) {
-      console.error('Failed to fetch comments:', err);
+      log.error('Failed to fetch comments:', err);
     }
   };
 

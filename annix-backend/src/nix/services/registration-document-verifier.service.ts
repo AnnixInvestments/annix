@@ -792,12 +792,7 @@ export class RegistrationDocumentVerifierService {
     if (documentType === 'bee') {
       if (expected.beeLevel !== undefined) {
         results.push(
-          this.compareField(
-            'beeLevel',
-            expected.beeLevel,
-            extracted.beeLevel,
-            'exact',
-          ),
+          this.compareBeeLevelField(expected.beeLevel, extracted.beeLevel),
         );
       }
       if (expected.companyName) {
@@ -868,6 +863,58 @@ export class RegistrationDocumentVerifierService {
       match,
       similarity,
       autoCorrectValue: !match && similarity > 50 ? extracted : undefined,
+    };
+  }
+
+  private compareBeeLevelField(
+    expected: number | undefined,
+    extracted: number | string | undefined,
+  ): FieldVerificationResult {
+    if (expected === undefined) {
+      return {
+        field: 'beeLevel',
+        expected: null,
+        extracted: extracted ?? null,
+        match: true,
+        autoCorrectValue: extracted,
+      };
+    }
+
+    if (!extracted) {
+      return {
+        field: 'beeLevel',
+        expected,
+        extracted: null,
+        match: false,
+      };
+    }
+
+    const expectedNum = typeof expected === 'number' ? expected : parseInt(String(expected), 10);
+    let extractedNum: number | null = null;
+
+    if (typeof extracted === 'number') {
+      extractedNum = extracted;
+    } else if (typeof extracted === 'string') {
+      const levelMatch = extracted.match(/(?:level|lvl)\s*[:\s]?\s*([1-8])/i);
+      if (levelMatch) {
+        extractedNum = parseInt(levelMatch[1], 10);
+      } else {
+        const simpleMatch = extracted.match(/^([1-8])$/);
+        if (simpleMatch) {
+          extractedNum = parseInt(simpleMatch[1], 10);
+        }
+      }
+    }
+
+    const match = extractedNum !== null && expectedNum === extractedNum;
+
+    return {
+      field: 'beeLevel',
+      expected,
+      extracted,
+      match,
+      similarity: match ? 100 : 0,
+      autoCorrectValue: match ? extracted : undefined,
     };
   }
 

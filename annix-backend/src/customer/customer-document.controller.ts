@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   UploadedFile,
   ParseIntPipe,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -33,6 +34,8 @@ import { CustomerDocumentType } from './entities';
 @UseGuards(CustomerAuthGuard)
 @ApiBearerAuth()
 export class CustomerDocumentController {
+  private readonly logger = new Logger(CustomerDocumentController.name);
+
   constructor(private readonly documentService: CustomerDocumentService) {}
 
   @Get()
@@ -56,6 +59,10 @@ export class CustomerDocumentController {
           enum: Object.values(CustomerDocumentType),
         },
         expiryDate: { type: 'string', format: 'date', nullable: true },
+        verificationResult: {
+          type: 'string',
+          description: 'JSON string of pre-verified result from frontend Nix verification',
+        },
       },
     },
   })
@@ -64,7 +71,7 @@ export class CustomerDocumentController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadDocument(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { documentType: CustomerDocumentType; expiryDate?: string },
+    @Body() body: { documentType: CustomerDocumentType; expiryDate?: string; verificationResult?: string },
     @Req() req: Request,
   ) {
     const customerId = (req as any).customer.customerId;
@@ -73,12 +80,22 @@ export class CustomerDocumentController {
       ? fromISO(body.expiryDate).toJSDate()
       : null;
 
+    let verificationResult: any = null;
+    if (body.verificationResult && typeof body.verificationResult === 'string') {
+      try {
+        verificationResult = JSON.parse(body.verificationResult);
+      } catch {
+        this.logger.warn('Failed to parse verificationResult JSON');
+      }
+    }
+
     return this.documentService.uploadDocument(
       customerId,
       file,
       body.documentType,
       expiryDate,
       clientIp,
+      verificationResult,
     );
   }
 

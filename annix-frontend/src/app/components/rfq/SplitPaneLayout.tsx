@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { log } from '@/app/lib/logger';
 
 interface SplitPaneLayoutProps {
   entryId: string;
@@ -40,7 +41,7 @@ export default function SplitPaneLayout({
         try {
           setSplitPaneEnabledState(JSON.parse(savedEnabled));
         } catch (e) {
-          console.error('Failed to parse split pane enabled state from localStorage', e);
+          log.error('Failed to parse split pane enabled state from localStorage', e);
         }
       }
 
@@ -48,7 +49,7 @@ export default function SplitPaneLayout({
         try {
           setSplitPaneWidthState(JSON.parse(savedWidth));
         } catch (e) {
-          console.error('Failed to parse split pane width from localStorage', e);
+          log.error('Failed to parse split pane width from localStorage', e);
         }
       }
 
@@ -56,7 +57,7 @@ export default function SplitPaneLayout({
         try {
           setSplitPaneHeightState(JSON.parse(savedHeight));
         } catch (e) {
-          console.error('Failed to parse split pane height from localStorage', e);
+          log.error('Failed to parse split pane height from localStorage', e);
         }
       }
 
@@ -64,7 +65,7 @@ export default function SplitPaneLayout({
         try {
           setDefaultEnabled(JSON.parse(savedDefaultEnabled));
         } catch (e) {
-          console.error('Failed to parse split pane default enabled from localStorage', e);
+          log.error('Failed to parse split pane default enabled from localStorage', e);
         }
       }
 
@@ -72,7 +73,7 @@ export default function SplitPaneLayout({
         try {
           setDefaultWidth(JSON.parse(savedDefaultWidth));
         } catch (e) {
-          console.error('Failed to parse split pane default width from localStorage', e);
+          log.error('Failed to parse split pane default width from localStorage', e);
         }
       }
 
@@ -80,7 +81,7 @@ export default function SplitPaneLayout({
         try {
           setDefaultHeight(JSON.parse(savedDefaultHeight));
         } catch (e) {
-          console.error('Failed to parse split pane default height from localStorage', e);
+          log.error('Failed to parse split pane default height from localStorage', e);
         }
       }
     }

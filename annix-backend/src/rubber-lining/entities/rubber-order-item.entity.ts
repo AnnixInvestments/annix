@@ -13,12 +13,17 @@ import { RubberProduct } from './rubber-product.entity';
 export interface CallOffEvent {
   timestamp: number;
   status: number;
+  createdBy?: string;
+  notes?: string;
 }
 
 export interface CallOff {
   quantity: number;
   quantityRemaining: number;
   events: CallOffEvent[];
+  notes?: string;
+  createdBy?: string;
+  createdAt?: number;
 }
 
 @Entity('rubber_order_item')

@@ -135,7 +135,7 @@ export function useDraftManagement({
 
         log.debug(`Loaded draft ${draft.draftNumber}`);
       } catch (error) {
-        console.error('Failed to load draft:', error);
+        log.error('Failed to load draft:', error);
         showToast('Failed to load the saved draft. Starting with a new form.', 'error');
       } finally {
         setIsLoadingDraft(false);
@@ -213,7 +213,7 @@ export function useDraftManagement({
       setSaveProgressStep('success');
       log.debug('Progress saved and recovery email sent to:', rfqData.customerEmail);
     } catch (error) {
-      console.error('Failed to save progress:', error);
+      log.error('Failed to save progress:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       if (errorMessage === 'Backend unavailable') {

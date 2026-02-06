@@ -16,20 +16,29 @@ interface DashboardStats {
   ordersCount: number;
   companiesCount: number;
   productsCount: number;
-  recentOrders: RubberOrderDto[];
+  allOrders: RubberOrderDto[];
   ordersByStatus: StatusCount[];
 }
+
+const ORDERS_PER_PAGE = 5;
 
 export default function RubberLiningDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     ordersCount: 0,
     companiesCount: 0,
     productsCount: 0,
-    recentOrders: [],
+    allOrders: [],
     ordersByStatus: [],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const totalPages = Math.ceil(stats.allOrders.length / ORDERS_PER_PAGE);
+  const paginatedOrders = stats.allOrders.slice(
+    currentPage * ORDERS_PER_PAGE,
+    (currentPage + 1) * ORDERS_PER_PAGE
+  );
 
   useEffect(() => {
     async function fetchData() {
@@ -51,7 +60,7 @@ export default function RubberLiningDashboard() {
           ordersCount: orders.length,
           companiesCount: companies.length,
           productsCount: products.length,
-          recentOrders: orders.slice(0, 5),
+          allOrders: orders,
           ordersByStatus,
         });
       } catch (err: unknown) {
@@ -237,7 +246,7 @@ export default function RubberLiningDashboard() {
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Orders</h3>
         </div>
-        {stats.recentOrders.length === 0 ? (
+        {stats.allOrders.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -267,7 +276,7 @@ export default function RubberLiningDashboard() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {stats.recentOrders.map((order) => (
+              {paginatedOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link href={`/admin/portal/rubber/orders/${order.id}`} className="text-blue-600 hover:text-blue-800">
@@ -293,11 +302,36 @@ export default function RubberLiningDashboard() {
             </tbody>
           </table>
         )}
-        {stats.recentOrders.length > 0 && (
-          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
+        {stats.allOrders.length > 0 && (
+          <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
             <Link href="/admin/portal/rubber/orders" className="text-sm text-blue-600 hover:text-blue-800">
               View all orders &rarr;
             </Link>
+            {totalPages > 1 && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className="px-2 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {currentPage + 1} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage >= totalPages - 1}
+                  className="px-2 py-1 text-sm text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -376,7 +376,7 @@ export function useNixAssistant({
       log.debug('Clarification submitted:', result);
     } catch (error) {
       log.error('Failed to submit clarification:', error);
-      console.error('Clarification submit error:', error);
+      log.error('Clarification submit error:', error);
     }
 
     if (!isLastQuestion) {

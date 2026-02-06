@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { SecureDocumentWithContent, adminApiClient } from '@/app/lib/api/adminApi';
 import { formatDateZA } from '@/app/lib/datetime';
 import { useTheme } from '@/app/components/ThemeProvider';
+import { log } from '@/app/lib/logger';
 
 function authorName(doc: SecureDocumentWithContent): string {
   if (!doc.createdBy) return 'Unknown';
@@ -190,7 +191,7 @@ export default function SecureDocumentViewer({
       window.document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
     } catch (err) {
-      console.error('Download failed:', err);
+      log.error('Download failed:', err);
     } finally {
       setDownloading(false);
     }

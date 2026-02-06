@@ -15,6 +15,7 @@ import { CallOff } from '../entities/rubber-order-item.entity';
 
 export class RubberProductCodingDto {
   id: number;
+  firebaseUid: string;
   codingType: ProductCodingType;
   code: string;
   name: string;
@@ -73,6 +74,7 @@ export type CompanyAddressDto = Record<string, string>;
 
 export class RubberCompanyDto {
   id: number;
+  firebaseUid: string;
   name: string;
   code: string | null;
   pricingTierId: number | null;
@@ -165,17 +167,25 @@ export class UpdateRubberCompanyDto {
 
 export class RubberProductDto {
   id: number;
+  firebaseUid: string;
   title: string | null;
   description: string | null;
   specificGravity: number | null;
   compoundOwnerName: string | null;
+  compoundOwnerFirebaseUid: string | null;
   compoundName: string | null;
+  compoundFirebaseUid: string | null;
   typeName: string | null;
+  typeFirebaseUid: string | null;
   costPerKg: number | null;
   colourName: string | null;
+  colourFirebaseUid: string | null;
   hardnessName: string | null;
+  hardnessFirebaseUid: string | null;
   curingMethodName: string | null;
+  curingMethodFirebaseUid: string | null;
   gradeName: string | null;
+  gradeFirebaseUid: string | null;
   markup: number | null;
   pricePerKg: number | null;
 }
@@ -356,6 +366,8 @@ export class RubberOrderDto {
   items: RubberOrderItemDto[];
   createdAt: string;
   updatedAt: string;
+  createdBy: string | null;
+  updatedBy: string | null;
 }
 
 export class CreateRubberOrderDto {

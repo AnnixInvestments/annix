@@ -8,6 +8,7 @@ import type {
   BracketDimensionResponse,
   CalculationResponse,
 } from './types';
+import { log } from '@/app/lib/logger';
 
 interface UsePipeSteelWorkCalculationsProps {
   workType: string;
@@ -63,7 +64,7 @@ export function usePipeSteelWorkCalculations({
       const types = await pipeSteelWorkApi.bracketTypes(nominalDiameterMm || undefined);
       setBracketTypes(types);
     } catch (err) {
-      console.error('Failed to fetch bracket types:', err);
+      log.error('Failed to fetch bracket types:', err);
       setBracketTypes([
         { typeCode: 'clevis_hanger', displayName: 'Clevis Hanger', isSuitable: true, allowsExpansion: true, isAnchorType: false, baseCostPerUnit: 150 },
         { typeCode: 'three_bolt_clamp', displayName: 'Three-Bolt Clamp', isSuitable: true, allowsExpansion: false, isAnchorType: false, baseCostPerUnit: 250 },
@@ -91,7 +92,7 @@ export function usePipeSteelWorkCalculations({
       });
       setSupportSpacing(spacing);
     } catch (err) {
-      console.error('Failed to fetch support spacing:', err);
+      log.error('Failed to fetch support spacing:', err);
       setSupportSpacing(null);
     }
   }, [nominalDiameterMm]);
@@ -113,7 +114,7 @@ export function usePipeSteelWorkCalculations({
         setBracketDimensions(dimensions);
       }
     } catch (err) {
-      console.error('Failed to fetch bracket dimensions:', err);
+      log.error('Failed to fetch bracket dimensions:', err);
       setBracketDimensions(null);
     }
   }, [bracketType, nominalDiameterMm]);
@@ -159,7 +160,7 @@ export function usePipeSteelWorkCalculations({
         });
       }
     } catch (err) {
-      console.error('Failed to perform calculation:', err);
+      log.error('Failed to perform calculation:', err);
       setError(err instanceof Error ? err.message : 'Calculation failed');
     } finally {
       setIsLoading(false);

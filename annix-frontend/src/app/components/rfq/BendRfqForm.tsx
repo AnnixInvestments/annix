@@ -139,8 +139,8 @@ export default function BendItemsStep({
           isScheduleOverridden: false
         };
       } catch (error) {
-        console.error('❌ Error auto-calculating bend specs:', error);
-        
+        log.error('Error auto-calculating bend specs:', error);
+
         // Fallback calculation
         let fallbackSchedule = 'Sch40';
         let fallbackWallThickness = 3.6;
@@ -185,16 +185,16 @@ export default function BendItemsStep({
       try {
         await calculateBendEntry(entry);
       } catch (error) {
-        console.error(`Error calculating bend entry ${entry.id}:`, error);
+        log.error(`Error calculating bend entry ${entry.id}:`, error);
       }
     }
     setIsCalculating(false);
   };
 
   const calculateBendEntry = async (entry: BendEntry) => {
-    if (!entry.specs.nominalBoreMm || !entry.specs.wallThicknessMm || 
+    if (!entry.specs.nominalBoreMm || !entry.specs.wallThicknessMm ||
         !entry.specs.bendType || !entry.specs.bendDegrees) {
-      console.warn('Missing required specifications for bend calculation');
+      log.warn('Missing required specifications for bend calculation');
       return;
     }
 
@@ -230,8 +230,8 @@ export default function BendItemsStep({
       });
 
     } catch (error) {
-      console.error('❌ Error calculating bend specifications:', error);
-      
+      log.error('Error calculating bend specifications:', error);
+
       // Provide fallback calculation if API fails
       const fallbackCalculation = {
         centerToFaceDimension: entry.specs.nominalBoreMm ? entry.specs.nominalBoreMm * 1.5 : 150,
@@ -375,7 +375,7 @@ export default function BendItemsStep({
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
                         } catch (error) {
-                          console.error('Error auto-calculating bend specs:', error);
+                          log.error('Error auto-calculating bend specs:', error);
                         }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
@@ -415,7 +415,7 @@ export default function BendItemsStep({
                                 newSchedule
                               );
                             } catch (error) {
-                              console.warn('Could not auto-populate wall thickness:', error);
+                              log.warn('Could not auto-populate wall thickness:', error);
                             }
                           }
                           
