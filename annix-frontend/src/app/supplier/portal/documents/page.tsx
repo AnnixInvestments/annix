@@ -358,7 +358,7 @@ export default function SupplierDocumentsPage() {
             onApplyCorrections={handleNixApplyCorrections}
             onProceedWithMismatch={handleNixProceed}
             onRetryUpload={handleNixCancel}
-            onClose={handleNixCancel}
+            onClose={handleNixProceed}
             onFieldLearned={handleFieldLearned}
           />
           {verificationResult && !isVerifying && (

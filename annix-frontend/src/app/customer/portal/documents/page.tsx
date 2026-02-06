@@ -512,7 +512,7 @@ export default function CustomerDocumentsPage() {
                       onApplyCorrections={handleNixApplyCorrections}
                       onProceedWithMismatch={handleNixProceed}
                       onRetryUpload={handleNixCancel}
-                      onClose={handleNixCancel}
+                      onClose={handleNixProceed}
                     />
                   </div>
                 )}

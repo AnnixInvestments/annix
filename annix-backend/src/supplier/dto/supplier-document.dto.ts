@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsBoolean,
   IsObject,
+  IsArray,
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -60,6 +61,10 @@ export class VerificationExtractedDataDto {
   @IsOptional()
   @IsNumber()
   confidence?: number;
+
+  @IsOptional()
+  @IsString({ each: true })
+  fieldsExtracted?: string[];
 }
 
 export class VerificationFieldResultDto {
@@ -78,6 +83,9 @@ export class VerificationFieldResultDto {
   @IsOptional()
   @IsNumber()
   similarity?: number;
+
+  @IsOptional()
+  autoCorrectValue?: string | number;
 }
 
 export class VerificationResultDto {
@@ -91,10 +99,14 @@ export class VerificationResultDto {
   allFieldsMatch: boolean;
 
   @IsOptional()
-  @IsObject()
+  @ValidateNested()
+  @Type(() => VerificationExtractedDataDto)
   extractedData?: VerificationExtractedDataDto;
 
   @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => VerificationFieldResultDto)
   fieldResults?: VerificationFieldResultDto[];
 }
 
@@ -120,18 +132,6 @@ export class UploadSupplierDocumentDto {
     description: 'Pre-verified document verification result from frontend Nix verification',
   })
   @IsOptional()
-  @Transform(({ value }) => {
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value;
-      }
-    }
-    return value;
-  })
-  @ValidateNested()
-  @Type(() => VerificationResultDto)
   verificationResult?: VerificationResultDto;
 }
 
