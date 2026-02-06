@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminApiClient, AdminRfqListItem, RfqDraftStatus } from '@/app/lib/api/adminApi';
+import { type RfqDraftStatus } from '@/app/lib/api/adminApi';
 import { formatDateZA } from '@/app/lib/datetime';
 import {
   StatusBadge,
@@ -14,83 +14,48 @@ import {
   SearchBar,
   Icons,
 } from '@/app/admin/components';
-import { log } from '@/app/lib/logger';
-
-interface RfqStats {
-  total: number;
-  pending: number;
-  quoted: number;
-  accepted: number;
-}
+import { useAdminRfqs } from '@/app/lib/query/hooks';
 
 export default function AdminRfqsPage() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [rfqs, setRfqs] = useState<AdminRfqListItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
-  const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<RfqDraftStatus | ''>('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<RfqStats>({ total: 0, pending: 0, quoted: 0, accepted: 0 });
 
-  const fetchRfqs = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const rfqQuery = useAdminRfqs({
+    search: activeSearch || undefined,
+    status: statusFilter || undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+    page,
+    limit,
+    sortBy: 'createdAt',
+    sortOrder: 'DESC',
+  });
 
-      const response = await adminApiClient.listRfqs({
-        search: search || undefined,
-        status: statusFilter || undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-        page,
-        limit,
-        sortBy: 'createdAt',
-        sortOrder: 'DESC',
-      });
+  const rfqs = rfqQuery.data?.items ?? [];
+  const total = rfqQuery.data?.total ?? 0;
+  const totalPages = rfqQuery.data?.totalPages ?? 0;
 
-      setRfqs(response.items);
-      setTotal(response.total);
-      setTotalPages(response.totalPages);
-
-      // Calculate stats from the response
-      const pendingCount = response.items.filter(r => r.status.toLowerCase() === 'pending').length;
-      const quotedCount = response.items.filter(r => r.status.toLowerCase() === 'quoted').length;
-      const acceptedCount = response.items.filter(r => r.status.toLowerCase() === 'accepted').length;
-      setStats({
-        total: response.total,
-        pending: pendingCount,
-        quoted: quotedCount,
-        accepted: acceptedCount,
-      });
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch RFQs');
-      log.error('Error fetching RFQs:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [search, statusFilter, dateFrom, dateTo, page, limit]);
-
-  useEffect(() => {
-    fetchRfqs();
-  }, [fetchRfqs]);
+  const pendingCount = rfqs.filter(r => r.status.toLowerCase() === 'pending').length;
+  const quotedCount = rfqs.filter(r => r.status.toLowerCase() === 'quoted').length;
+  const acceptedCount = rfqs.filter(r => r.status.toLowerCase() === 'accepted').length;
 
   const handleSearch = () => {
+    setActiveSearch(search);
     setPage(1);
-    fetchRfqs();
   };
 
   const handleRowClick = (id: number) => {
     router.push(`/admin/portal/rfqs/${id}`);
   };
 
-  if (error) {
-    return <ErrorDisplay title="Error Loading RFQs" message={error} onRetry={fetchRfqs} />;
+  if (rfqQuery.error) {
+    return <ErrorDisplay title="Error Loading RFQs" message={rfqQuery.error.message} onRetry={() => rfqQuery.refetch()} />;
   }
 
   return (
@@ -111,25 +76,25 @@ export default function AdminRfqsPage() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-4">
         <StatCard
           title="Total RFQs"
-          value={stats.total}
+          value={total}
           icon={<Icons.Document />}
           colorClass="bg-gray-500"
         />
         <StatCard
           title="Pending"
-          value={stats.pending}
+          value={pendingCount}
           icon={<Icons.Clock />}
           colorClass="bg-orange-500"
         />
         <StatCard
           title="Quoted"
-          value={stats.quoted}
+          value={quotedCount}
           icon={<Icons.Clipboard />}
           colorClass="bg-blue-500"
         />
         <StatCard
           title="Accepted"
-          value={stats.accepted}
+          value={acceptedCount}
           icon={<Icons.CheckCircle />}
           colorClass="bg-green-500"
         />
@@ -195,7 +160,7 @@ export default function AdminRfqsPage() {
 
       {/* RFQ Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {isLoading ? (
+        {rfqQuery.isLoading ? (
           <LoadingSpinner message="Loading RFQs..." />
         ) : rfqs.length === 0 ? (
           <EmptyState

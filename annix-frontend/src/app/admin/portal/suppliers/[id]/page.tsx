@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { adminApiClient, DocumentReviewData } from '@/app/lib/api/adminApi';
+import { useAdminSupplierDetail } from '@/app/lib/query/hooks';
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA } from '@/app/lib/datetime';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentReviewModal } from '@/app/admin/components/DocumentReviewModal';
-import { log } from '@/app/lib/logger';
 
 type TabType = 'overview' | 'onboarding' | 'documents';
 
@@ -17,10 +17,10 @@ export default function SupplierDetailPage() {
   const { showToast } = useToast();
   const supplierId = parseInt(params?.id as string);
 
+  const supplierQuery = useAdminSupplierDetail(supplierId);
+  const supplier = supplierQuery.data;
+
   const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [isLoading, setIsLoading] = useState(true);
-  const [supplier, setSupplier] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [suspendReason, setSuspendReason] = useState('');
@@ -32,27 +32,6 @@ export default function SupplierDetailPage() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewData, setReviewData] = useState<DocumentReviewData | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
-
-  const fetchSupplierDetail = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const data = await adminApiClient.getSupplierDetail(supplierId);
-      setSupplier(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch supplier details');
-      log.error('Error fetching supplier:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (supplierId) {
-      fetchSupplierDetail();
-    }
-  }, [supplierId]);
 
   const handleSuspend = async () => {
     if (!suspendReason.trim()) {
@@ -66,7 +45,7 @@ export default function SupplierDetailPage() {
       setSuspendDialogOpen(false);
       setSuspendReason('');
       showToast('Supplier account suspended', 'success');
-      fetchSupplierDetail();
+      supplierQuery.refetch();
     } catch (err: any) {
       showToast(`Failed to suspend supplier: ${err.message}`, 'error');
     } finally {
@@ -83,7 +62,7 @@ export default function SupplierDetailPage() {
       setIsSubmitting(true);
       await adminApiClient.reactivateSupplier(supplierId);
       showToast('Supplier account reactivated', 'success');
-      fetchSupplierDetail();
+      supplierQuery.refetch();
     } catch (err: any) {
       showToast(`Failed to reactivate supplier: ${err.message}`, 'error');
     } finally {
@@ -100,7 +79,7 @@ export default function SupplierDetailPage() {
       setIsSubmitting(true);
       await adminApiClient.approveSupplierOnboarding(supplierId);
       showToast('Supplier onboarding approved', 'success');
-      fetchSupplierDetail();
+      supplierQuery.refetch();
     } catch (err: any) {
       showToast(`Failed to approve onboarding: ${err.message}`, 'error');
     } finally {
@@ -121,7 +100,7 @@ export default function SupplierDetailPage() {
       setRejectReason('');
       setRemediationSteps('');
       showToast('Supplier onboarding rejected', 'success');
-      fetchSupplierDetail();
+      supplierQuery.refetch();
     } catch (err: any) {
       showToast(`Failed to reject onboarding: ${err.message}`, 'error');
     } finally {
@@ -168,7 +147,7 @@ export default function SupplierDetailPage() {
       await adminApiClient.reviewSupplierDocument(supplierId, reviewData.documentId, 'valid', 'Approved by admin');
       showToast('Document approved', 'success');
       setReviewModalOpen(false);
-      fetchSupplierDetail();
+      supplierQuery.refetch();
     } catch (err: any) {
       showToast(`Failed to approve document: ${err.message}`, 'error');
     } finally {
@@ -183,7 +162,7 @@ export default function SupplierDetailPage() {
       await adminApiClient.reviewSupplierDocument(supplierId, reviewData.documentId, 'invalid', reason);
       showToast('Document rejected', 'success');
       setReviewModalOpen(false);
-      fetchSupplierDetail();
+      supplierQuery.refetch();
     } catch (err: any) {
       showToast(`Failed to reject document: ${err.message}`, 'error');
     } finally {
@@ -200,7 +179,7 @@ export default function SupplierDetailPage() {
         showToast('Document re-verified successfully', 'success');
         const updatedData = await adminApiClient.getSupplierDocumentReviewData(supplierId, reviewData.documentId);
         setReviewData(updatedData);
-        fetchSupplierDetail();
+        supplierQuery.refetch();
       } else {
         showToast(result.errorMessage || 'Re-verification failed', 'error');
       }
@@ -211,7 +190,7 @@ export default function SupplierDetailPage() {
     }
   };
 
-  const getStatusBadgeClass = (status: string): string => {
+  const statusBadgeClass = (status: string): string => {
     switch (status?.toLowerCase()) {
       case 'active':
       case 'approved':
@@ -236,7 +215,7 @@ export default function SupplierDetailPage() {
     return formatDateTimeZA(dateString);
   };
 
-  if (isLoading) {
+  if (supplierQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -247,12 +226,12 @@ export default function SupplierDetailPage() {
     );
   }
 
-  if (error || !supplier) {
+  if (supplierQuery.error || !supplier) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Supplier</div>
-          <p className="text-gray-600">{error || 'Supplier not found'}</p>
+          <p className="text-gray-600">{supplierQuery.error?.message || 'Supplier not found'}</p>
           <button
             onClick={() => router.push('/admin/portal/suppliers')}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -299,11 +278,11 @@ export default function SupplierDetailPage() {
             </h1>
             <p className="text-sm text-gray-600">{supplier.email || profile.email}</p>
           </div>
-          <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusBadgeClass(profile.accountStatus)}`}>
+          <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${statusBadgeClass(profile.accountStatus)}`}>
             {profile.accountStatus || 'Unknown'}
           </span>
           {onboarding.status && (
-            <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusBadgeClass(onboarding.status)}`}>
+            <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${statusBadgeClass(onboarding.status)}`}>
               Onboarding: {onboarding.status}
             </span>
           )}
@@ -478,7 +457,7 @@ export default function SupplierDetailPage() {
               <div>
                 <dt className="text-sm font-medium text-gray-500">Status</dt>
                 <dd className="mt-1">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(profile.accountStatus)}`}>
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(profile.accountStatus)}`}>
                     {profile.accountStatus || 'Unknown'}
                   </span>
                 </dd>
@@ -528,7 +507,7 @@ export default function SupplierDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Status</dt>
               <dd className="mt-1">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(onboarding.status)}`}>
+                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(onboarding.status)}`}>
                   {onboarding.status || 'Not Started'}
                 </span>
               </dd>
@@ -595,7 +574,7 @@ export default function SupplierDetailPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.fileName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(doc.uploadedAt)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(doc.validationStatus)}`}>
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(doc.validationStatus)}`}>
                         {doc.validationStatus || 'pending'}
                       </span>
                     </td>

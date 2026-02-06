@@ -1,34 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
-import { adminApiClient, DashboardStats, ActivityItem } from '@/app/lib/api/adminApi';
+import type { ActivityItem } from '@/app/lib/api/adminApi';
 import { fromISO, now } from '@/app/lib/datetime';
+import { useAdminDashboard } from '@/app/lib/query/hooks';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const dashboardQuery = useAdminDashboard();
 
-  useEffect(() => {
-    loadDashboardStats();
-  }, []);
-
-  const loadDashboardStats = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const data = await adminApiClient.getDashboardStats();
-      setStats(data);
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Failed to load dashboard';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const stats = dashboardQuery.data;
 
   const formatDate = (dateString: string) => {
     const date = fromISO(dateString);
@@ -48,7 +30,7 @@ export default function AdminDashboardPage() {
     return date.toLocaleString({ year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  if (isLoading) {
+  if (dashboardQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -59,7 +41,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (error) {
+  if (dashboardQuery.error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <div className="flex items-start">
@@ -68,9 +50,9 @@ export default function AdminDashboardPage() {
           </svg>
           <div>
             <h3 className="text-sm font-medium text-red-800">Error loading dashboard</h3>
-            <p className="mt-1 text-sm text-red-700">{error}</p>
+            <p className="mt-1 text-sm text-red-700">{dashboardQuery.error.message}</p>
             <button
-              onClick={loadDashboardStats}
+              onClick={() => dashboardQuery.refetch()}
               className="mt-3 text-sm font-medium text-red-800 hover:text-red-900 underline"
             >
               Try again
@@ -92,7 +74,7 @@ export default function AdminDashboardPage() {
           <p className="mt-1 text-sm text-gray-600">Monitor and manage the Annix platform</p>
         </div>
         <button
-          onClick={loadDashboardStats}
+          onClick={() => dashboardQuery.refetch()}
           className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,7 +235,7 @@ export default function AdminDashboardPage() {
           <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Recent Activity</h3>
           <div className="flow-root">
             <ul className="-mb-8">
-              {stats.recentActivity.slice(0, 10).map((activity, idx) => (
+              {stats.recentActivity.slice(0, 10).map((activity: ActivityItem, idx: number) => (
                 <li key={activity.id}>
                   <div className="relative pb-8">
                     {idx !== stats.recentActivity.slice(0, 10).length - 1 && (

@@ -1,78 +1,31 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { adminApiClient, RfqFullDraftResponse } from '@/app/lib/api/adminApi';
+import { useAdminRfqDetail } from '@/app/lib/query/hooks';
 import { formatDateZA } from '@/app/lib/datetime';
 import { StatusBadge, LoadingSpinner, ErrorDisplay } from '@/app/admin/components';
 import { NB_TO_OD_LOOKUP } from '@/app/lib/hooks/useFlangeWeights';
-import { log } from '@/app/lib/logger';
-
-interface RfqDetail {
-  id: number;
-  projectName: string;
-  description?: string;
-  requiredDate?: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone?: string;
-  status: string;
-  isUnregistered?: boolean;
-  createdAt: string;
-  updatedAt: string;
-  createdBy?: {
-    id: number;
-    email: string;
-    name: string;
-  };
-}
 
 export default function AdminRfqDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
 
-  const [rfq, setRfq] = useState<RfqDetail | null>(null);
-  const [fullDraft, setFullDraft] = useState<RfqFullDraftResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const rfqDetailQuery = useAdminRfqDetail(Number(id));
+  const rfq = rfqDetailQuery.data?.rfq;
+  const fullDraft = rfqDetailQuery.data?.fullDraft;
 
-  const fetchRfqDetail = useCallback(async () => {
-    if (!id) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const [detail, draft] = await Promise.all([
-        adminApiClient.getRfqDetail(parseInt(id)),
-        adminApiClient.getRfqFullDraft(parseInt(id)),
-      ]);
-
-      setRfq(detail);
-      setFullDraft(draft);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch RFQ details');
-      log.error('Error fetching RFQ:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    fetchRfqDetail();
-  }, [fetchRfqDetail]);
-
-  if (isLoading) {
+  if (rfqDetailQuery.isLoading) {
     return <LoadingSpinner message="Loading RFQ details..." />;
   }
 
-  if (error || !rfq) {
+  if (rfqDetailQuery.error || !rfq) {
     return (
       <ErrorDisplay
         title="Error Loading RFQ"
-        message={error || 'RFQ not found'}
-        onRetry={() => router.push('/admin/portal/rfqs')}
+        message={(rfqDetailQuery.error as Error)?.message || 'RFQ not found'}
+        onRetry={() => rfqDetailQuery.refetch()}
       />
     );
   }
@@ -166,10 +119,10 @@ export default function AdminRfqDetailPage() {
             <p className="text-sm text-gray-600">Contact Email</p>
             <p className="font-medium text-gray-900">{rfq.customerEmail || formData.customerEmail || 'N/A'}</p>
           </div>
-          {(rfq.customerPhone || formData.customerPhone) && (
+          {formData.customerPhone && (
             <div>
               <p className="text-sm text-gray-600">Phone</p>
-              <p className="font-medium text-gray-900">{rfq.customerPhone || formData.customerPhone}</p>
+              <p className="font-medium text-gray-900">{formData.customerPhone}</p>
             </div>
           )}
           <div>
@@ -187,10 +140,10 @@ export default function AdminRfqDetailPage() {
             <p className="font-medium text-gray-900">{formatDateZA(rfq.updatedAt)}</p>
           </div>
         </div>
-        {(rfq.description || formData.description) && (
+        {formData.description && (
           <div className="mt-4">
             <p className="text-sm text-gray-600">Description</p>
-            <p className="font-medium text-gray-900">{rfq.description || formData.description}</p>
+            <p className="font-medium text-gray-900">{formData.description}</p>
           </div>
         )}
       </div>
@@ -279,17 +232,17 @@ export default function AdminRfqDetailPage() {
       )}
 
       {/* Created By */}
-      {rfq.createdBy && (
+      {formData.createdBy && (
         <div className="bg-white border border-gray-200 rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Created By</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600">Name</p>
-              <p className="font-medium text-gray-900">{rfq.createdBy.name || 'N/A'}</p>
+              <p className="font-medium text-gray-900">{formData.createdBy.name || 'N/A'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Email</p>
-              <p className="font-medium text-gray-900">{rfq.createdBy.email}</p>
+              <p className="font-medium text-gray-900">{formData.createdBy.email}</p>
             </div>
           </div>
         </div>

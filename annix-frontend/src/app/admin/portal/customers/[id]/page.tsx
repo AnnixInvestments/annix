@@ -1,14 +1,20 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { adminApiClient, CustomerDetail, CustomerDocument, LoginHistoryItem, AdminRfqListItem, DocumentReviewData, CustomFieldValue } from '@/app/lib/api/adminApi';
+import { adminApiClient, CustomerDocument, DocumentReviewData } from '@/app/lib/api/adminApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA, formatDateZA } from '@/app/lib/datetime';
 import { StatusBadge } from '@/app/admin/components';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentReviewModal } from '@/app/admin/components/DocumentReviewModal';
-import { log } from '@/app/lib/logger';
+import {
+  useAdminCustomerDetail,
+  useAdminCustomerLoginHistory,
+  useAdminCustomerDocuments,
+  useAdminCustomerRfqs,
+  useAdminCustomerCustomFields,
+} from '@/app/lib/query/hooks';
 
 type TabType = 'overview' | 'documents' | 'activity' | 'rfqs';
 
@@ -18,14 +24,19 @@ export default function CustomerDetailPage() {
   const {showToast} = useToast();
   const customerId = parseInt(params?.id as string);
 
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [isLoading, setIsLoading] = useState(true);
-  const [customer, setCustomer] = useState<CustomerDetail | null>(null);
-  const [loginHistory, setLoginHistory] = useState<LoginHistoryItem[]>([]);
-  const [documents, setDocuments] = useState<CustomerDocument[]>([]);
-  const [customerRfqs, setCustomerRfqs] = useState<AdminRfqListItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const customerQuery = useAdminCustomerDetail(customerId);
+  const loginHistoryQuery = useAdminCustomerLoginHistory(customerId);
+  const documentsQuery = useAdminCustomerDocuments(customerId);
+  const rfqsQuery = useAdminCustomerRfqs(customerId);
+  const customFieldsQuery = useAdminCustomerCustomFields(customerId);
 
+  const customer = customerQuery.data ?? null;
+  const loginHistory = loginHistoryQuery.data ?? [];
+  const documents = documentsQuery.data ?? [];
+  const customerRfqs = rfqsQuery.data ?? [];
+  const customFields = customFieldsQuery.data?.fields ?? [];
+
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [suspendReason, setSuspendReason] = useState('');
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
@@ -34,39 +45,14 @@ export default function CustomerDetailPage() {
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewData, setReviewData] = useState<DocumentReviewData | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
-  const [customFields, setCustomFields] = useState<CustomFieldValue[]>([]);
 
-  const fetchCustomerDetail = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const [customerData, loginHistoryData, documentsData, rfqsData, customFieldsData] = await Promise.all([
-        adminApiClient.getCustomerDetail(customerId),
-        adminApiClient.getCustomerLoginHistory(customerId, 20),
-        adminApiClient.getCustomerDocuments(customerId),
-        adminApiClient.listRfqs({ customerId, limit: 100 }),
-        adminApiClient.customFieldValues('customer', customerId).catch(() => ({ fields: [] })),
-      ]);
-
-      setCustomer(customerData);
-      setLoginHistory(loginHistoryData);
-      setDocuments(documentsData);
-      setCustomerRfqs(rfqsData.items);
-      setCustomFields(customFieldsData.fields);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch customer details');
-      log.error('Error fetching customer:', err);
-    } finally {
-      setIsLoading(false);
-    }
+  const refetchAll = () => {
+    customerQuery.refetch();
+    loginHistoryQuery.refetch();
+    documentsQuery.refetch();
+    rfqsQuery.refetch();
+    customFieldsQuery.refetch();
   };
-
-  useEffect(() => {
-    if (customerId) {
-      fetchCustomerDetail();
-    }
-  }, [customerId]);
 
   const handleSuspend = async () => {
     if (!suspendReason.trim()) {
@@ -80,7 +66,7 @@ export default function CustomerDetailPage() {
       setSuspendDialogOpen(false);
       setSuspendReason('');
       showToast('Customer account suspended', 'success');
-      fetchCustomerDetail(); // Refresh data
+      refetchAll();
     } catch (err: any) {
       showToast(`Failed to suspend customer: ${err.message}`, 'error');
     } finally {
@@ -97,7 +83,7 @@ export default function CustomerDetailPage() {
       setIsSubmitting(true);
       await adminApiClient.reactivateCustomer(customerId, { note: 'Account reactivated by admin' });
       showToast('Customer account reactivated', 'success');
-      fetchCustomerDetail(); // Refresh data
+      refetchAll();
     } catch (err: any) {
       showToast(`Failed to reactivate customer: ${err.message}`, 'error');
     } finally {
@@ -113,7 +99,7 @@ export default function CustomerDetailPage() {
       setIsSubmitting(true);
       await adminApiClient.resetDeviceBinding(customerId, { reason });
       showToast('Device binding reset successfully', 'success');
-      fetchCustomerDetail(); // Refresh data
+      refetchAll();
     } catch (err: any) {
       showToast(`Failed to reset device binding: ${err.message}`, 'error');
     } finally {
@@ -160,7 +146,7 @@ export default function CustomerDetailPage() {
       await adminApiClient.reviewCustomerDocument(reviewData.documentId, 'valid', 'Approved by admin');
       showToast('Document approved', 'success');
       setReviewModalOpen(false);
-      fetchCustomerDetail();
+      refetchAll();
     } catch (err: any) {
       showToast(`Failed to approve document: ${err.message}`, 'error');
     } finally {
@@ -175,7 +161,7 @@ export default function CustomerDetailPage() {
       await adminApiClient.reviewCustomerDocument(reviewData.documentId, 'invalid', reason);
       showToast('Document rejected', 'success');
       setReviewModalOpen(false);
-      fetchCustomerDetail();
+      refetchAll();
     } catch (err: any) {
       showToast(`Failed to reject document: ${err.message}`, 'error');
     } finally {
@@ -192,7 +178,7 @@ export default function CustomerDetailPage() {
         showToast('Document re-verified successfully', 'success');
         const updatedData = await adminApiClient.getCustomerDocumentReviewData(reviewData.documentId);
         setReviewData(updatedData);
-        fetchCustomerDetail();
+        refetchAll();
       } else {
         showToast(result.errorMessage || 'Re-verification failed', 'error');
       }
@@ -214,7 +200,7 @@ export default function CustomerDetailPage() {
       await adminApiClient.approveCustomerOnboarding(customer.onboarding.id);
       setApproveDialogOpen(false);
       showToast('Customer approved successfully', 'success');
-      fetchCustomerDetail();
+      refetchAll();
     } catch (err: any) {
       showToast(`Failed to approve customer: ${err.message}`, 'error');
     } finally {
@@ -231,7 +217,7 @@ export default function CustomerDetailPage() {
     return allDocsValid;
   };
 
-  const getStatusBadgeClass = (status: string): string => {
+  const statusBadgeClass = (status: string): string => {
     switch (status) {
       case 'active':
         return 'bg-green-100 text-green-800';
@@ -250,7 +236,7 @@ export default function CustomerDetailPage() {
     return formatDateTimeZA(dateString);
   };
 
-  if (isLoading) {
+  if (customerQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -261,15 +247,21 @@ export default function CustomerDetailPage() {
     );
   }
 
-  if (error || !customer) {
+  if (customerQuery.error || !customer) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Customer</div>
-          <p className="text-gray-600">{error || 'Customer not found'}</p>
+          <p className="text-gray-600">{customerQuery.error?.message || 'Customer not found'}</p>
+          <button
+            onClick={() => customerQuery.refetch()}
+            className="mt-4 mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Retry
+          </button>
           <button
             onClick={() => router.push('/admin/portal/customers')}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="mt-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
           >
             Back to Customers
           </button>
@@ -297,7 +289,7 @@ export default function CustomerDetailPage() {
             </h1>
             <p className="text-sm text-gray-600">{customer.email}</p>
           </div>
-          <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${getStatusBadgeClass(customer.accountStatus)}`}>
+          <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${statusBadgeClass(customer.accountStatus)}`}>
             {customer.accountStatus}
           </span>
         </div>
@@ -480,7 +472,7 @@ export default function CustomerDetailPage() {
               <div>
                 <dt className="text-sm font-medium text-gray-500">Status</dt>
                 <dd className="mt-1">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(customer.accountStatus)}`}>
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(customer.accountStatus)}`}>
                     {customer.accountStatus}
                   </span>
                 </dd>
