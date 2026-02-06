@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   Req,
   UseGuards,
   ParseIntPipe,
@@ -16,11 +17,16 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { CustomerSupplierService } from './customer-supplier.service';
 import { CustomerAuthGuard } from './guards/customer-auth.guard';
+import {
+  DirectoryQueryDto,
+  BlockSupplierDto,
+} from './dto/supplier-directory.dto';
 
 @ApiTags('Customer Supplier Management')
 @Controller('customer/suppliers')
@@ -122,6 +128,55 @@ export class CustomerSupplierController {
       id,
       clientIp,
     );
+  }
+
+  // Supplier Directory
+
+  @Get('directory')
+  @ApiOperation({ summary: 'Get supplier directory with status' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search by company name' })
+  @ApiQuery({ name: 'province', required: false, description: 'Filter by province' })
+  @ApiQuery({ name: 'products', required: false, isArray: true, description: 'Filter by product categories' })
+  @ApiResponse({ status: 200, description: 'Directory suppliers retrieved' })
+  async supplierDirectory(
+    @Query() filters: DirectoryQueryDto,
+    @Req() req: Request,
+  ) {
+    const customerId = (req as any).customer.customerId;
+    return this.supplierService.supplierDirectory(customerId, filters);
+  }
+
+  @Post(':supplierId/block')
+  @ApiOperation({ summary: 'Block a supplier' })
+  @ApiResponse({ status: 201, description: 'Supplier blocked' })
+  @ApiResponse({ status: 403, description: 'Not authorized' })
+  @ApiResponse({ status: 409, description: 'Supplier already blocked' })
+  async blockSupplier(
+    @Param('supplierId', ParseIntPipe) supplierId: number,
+    @Body() data: BlockSupplierDto,
+    @Req() req: Request,
+  ) {
+    const customerId = (req as any).customer.customerId;
+    const clientIp = this.getClientIp(req);
+    return this.supplierService.blockSupplier(
+      customerId,
+      supplierId,
+      data.reason || null,
+      clientIp,
+    );
+  }
+
+  @Delete(':supplierId/block')
+  @ApiOperation({ summary: 'Unblock a supplier' })
+  @ApiResponse({ status: 200, description: 'Supplier unblocked' })
+  @ApiResponse({ status: 404, description: 'Blocked supplier not found' })
+  async unblockSupplier(
+    @Param('supplierId', ParseIntPipe) supplierId: number,
+    @Req() req: Request,
+  ) {
+    const customerId = (req as any).customer.customerId;
+    const clientIp = this.getClientIp(req);
+    return this.supplierService.unblockSupplier(customerId, supplierId, clientIp);
   }
 
   // Invitations

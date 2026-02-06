@@ -114,6 +114,9 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
   const consolidatedBlankFlanges: Map<string, ConsolidatedItem> = new Map();
   const consolidatedValves: Map<string, ConsolidatedItem> = new Map();
   const consolidatedInstruments: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedPumps: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedPumpParts: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedPumpSpares: Map<string, ConsolidatedItem> = new Map();
 
   entries.forEach((entry, index) => {
     const itemNumber = index + 1;
@@ -422,6 +425,112 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           entries: [itemNumber],
         });
       }
+    } else if (entry.itemType === 'pump') {
+      const pumpType = entry.specs?.pumpType || 'centrifugal';
+      const manufacturer = entry.specs?.manufacturer || '';
+      const model = entry.specs?.model || '';
+      const flowRate = entry.specs?.flowRateM3h || '';
+      const head = entry.specs?.headM || '';
+      const power = entry.specs?.motorPowerKw || '';
+      const material = entry.specs?.wetEndMaterial || '';
+      const sealType = entry.specs?.sealType || '';
+      const estimatedWeight = entry.specs?.estimatedWeightKg || 0;
+
+      const pumpKey = `PUMP_${pumpType}_${manufacturer}_${model}_${flowRate}_${head}_${material}`;
+      const existingPump = consolidatedPumps.get(pumpKey);
+
+      const descriptionParts = [
+        pumpType.replace(/_/g, ' '),
+        manufacturer,
+        model,
+        flowRate ? `${flowRate} m³/h` : '',
+        head ? `${head}m head` : '',
+        power ? `${power}kW` : '',
+        material,
+        sealType ? `${sealType} seal` : '',
+      ].filter(Boolean);
+
+      const description = descriptionParts.join(' ');
+
+      if (existingPump) {
+        existingPump.qty += qty;
+        existingPump.weight += estimatedWeight * qty;
+        existingPump.entries.push(itemNumber);
+      } else {
+        consolidatedPumps.set(pumpKey, {
+          description,
+          qty,
+          unit: 'Each',
+          weight: estimatedWeight * qty,
+          entries: [itemNumber],
+        });
+      }
+    } else if (entry.itemType === 'pump_part') {
+      const partType = entry.specs?.partType || 'part';
+      const partDescription = entry.specs?.partDescription || '';
+      const partNumber = entry.specs?.partNumber || '';
+      const material = entry.specs?.material || '';
+      const estimatedWeight = entry.specs?.estimatedWeightKg || 0;
+
+      const partKey = `PUMP_PART_${partType}_${partNumber}_${material}`;
+      const existingPart = consolidatedPumpParts.get(partKey);
+
+      const descriptionParts = [
+        partType.replace(/_/g, ' '),
+        partDescription,
+        partNumber ? `P/N: ${partNumber}` : '',
+        material,
+      ].filter(Boolean);
+
+      const description = descriptionParts.join(' ');
+
+      if (existingPart) {
+        existingPart.qty += qty;
+        existingPart.weight += estimatedWeight * qty;
+        existingPart.entries.push(itemNumber);
+      } else {
+        consolidatedPumpParts.set(partKey, {
+          description,
+          qty,
+          unit: 'Each',
+          weight: estimatedWeight * qty,
+          entries: [itemNumber],
+        });
+      }
+    } else if (entry.itemType === 'pump_spare') {
+      const spareType = entry.specs?.spareType || 'spare';
+      const spareDescription = entry.specs?.spareDescription || '';
+      const partNumber = entry.specs?.partNumber || '';
+      const oemPartNumber = entry.specs?.oemPartNumber || '';
+      const material = entry.specs?.material || '';
+      const estimatedWeight = entry.specs?.estimatedWeightKg || 0;
+
+      const spareKey = `PUMP_SPARE_${spareType}_${partNumber}_${oemPartNumber}_${material}`;
+      const existingSpare = consolidatedPumpSpares.get(spareKey);
+
+      const descriptionParts = [
+        spareType.replace(/_/g, ' '),
+        spareDescription,
+        partNumber ? `P/N: ${partNumber}` : '',
+        oemPartNumber ? `OEM: ${oemPartNumber}` : '',
+        material,
+      ].filter(Boolean);
+
+      const description = descriptionParts.join(' ');
+
+      if (existingSpare) {
+        existingSpare.qty += qty;
+        existingSpare.weight += estimatedWeight * qty;
+        existingSpare.entries.push(itemNumber);
+      } else {
+        consolidatedPumpSpares.set(spareKey, {
+          description,
+          qty,
+          unit: 'Each',
+          weight: estimatedWeight * qty,
+          entries: [itemNumber],
+        });
+      }
     } else {
       const nb = entry.specs?.nominalBoreMm || 100;
       const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
@@ -546,5 +655,8 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
     gaskets: consolidatedGaskets.size > 0 ? mapToDto(consolidatedGaskets) : undefined,
     valves: consolidatedValves.size > 0 ? mapToDto(consolidatedValves) : undefined,
     instruments: consolidatedInstruments.size > 0 ? mapToDto(consolidatedInstruments) : undefined,
+    pumps: consolidatedPumps.size > 0 ? mapToDto(consolidatedPumps) : undefined,
+    pumpParts: consolidatedPumpParts.size > 0 ? mapToDto(consolidatedPumpParts) : undefined,
+    pumpSpares: consolidatedPumpSpares.size > 0 ? mapToDto(consolidatedPumpSpares) : undefined,
   };
 }

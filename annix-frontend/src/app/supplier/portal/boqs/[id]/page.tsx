@@ -31,6 +31,7 @@ interface PricingInputs {
   bnwTypes: Record<string, number>;
   valveTypes: Record<string, number>;
   instrumentTypes: Record<string, number>;
+  pumpTypes: Record<string, number>;
   labourExtrasPercent: number;
   contingenciesPercent: number;
 }
@@ -51,6 +52,7 @@ interface ExtractedSpecs {
   bnwGrade: string | null;
   valveTypes: string[];
   instrumentTypes: string[];
+  pumpTypes: string[];
 }
 
 interface WeldTotals {
@@ -189,6 +191,7 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
     bnwGrade: null,
     valveTypes: [],
     instrumentTypes: [],
+    pumpTypes: [],
   };
 };
 
@@ -417,6 +420,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     bnwGrade: null,
     valveTypes: [],
     instrumentTypes: [],
+    pumpTypes: [],
   });
   const [weldTotals, setWeldTotals] = useState<WeldTotals>({
     flangeWeld: 0,
@@ -436,6 +440,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           bnwTypes: parsed.bnwTypes || {},
           valveTypes: parsed.valveTypes || {},
           instrumentTypes: parsed.instrumentTypes || {},
+          pumpTypes: parsed.pumpTypes || {},
           labourExtrasPercent: parsed.labourExtrasPercent || 0,
           contingenciesPercent: parsed.contingenciesPercent ?? 5,
         };
@@ -448,6 +453,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       bnwTypes: {},
       valveTypes: {},
       instrumentTypes: {},
+      pumpTypes: {},
       labourExtrasPercent: 0,
       contingenciesPercent: 5,
     };
@@ -510,6 +516,10 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         (section) => ['instruments', 'flow_meters', 'pressure_instruments', 'level_instruments', 'temperature_instruments'].includes(section.sectionType) && section.items.length > 0
       );
 
+      const pumpSections = boqDetail.sections.filter(
+        (section) => ['pumps', 'pump_parts', 'pump_spares', 'pump_repairs', 'pump_rental'].includes(section.sectionType) && section.items.length > 0
+      );
+
       setExtractedSpecs((prev) => {
         let bnwGrade: string | null = null;
         if (bnwSection && bnwSection.items.length > 0) {
@@ -567,12 +577,45 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           }
         });
 
+        const pumpTypes: string[] = [];
+        pumpSections.forEach(section => {
+          if (section.sectionType === 'pumps' && !pumpTypes.includes('new_pump')) {
+            pumpTypes.push('new_pump');
+          }
+          if (section.sectionType === 'pump_parts' && !pumpTypes.includes('pump_part')) {
+            pumpTypes.push('pump_part');
+          }
+          if (section.sectionType === 'pump_spares' && !pumpTypes.includes('pump_spare')) {
+            pumpTypes.push('pump_spare');
+          }
+          if (section.sectionType === 'pump_repairs' && !pumpTypes.includes('pump_repair')) {
+            pumpTypes.push('pump_repair');
+          }
+          if (section.sectionType === 'pump_rental' && !pumpTypes.includes('pump_rental')) {
+            pumpTypes.push('pump_rental');
+          }
+          section.items.forEach(item => {
+            const desc = item.description.toUpperCase();
+            if ((desc.includes('CENTRIFUGAL') || desc.includes('END SUCTION')) && !pumpTypes.includes('centrifugal_pump')) pumpTypes.push('centrifugal_pump');
+            if ((desc.includes('SUBMERSIBLE') || desc.includes('BOREHOLE')) && !pumpTypes.includes('submersible_pump')) pumpTypes.push('submersible_pump');
+            if ((desc.includes('PROGRESSIVE') || desc.includes('CAVITY') || desc.includes('MONO')) && !pumpTypes.includes('progressive_cavity_pump')) pumpTypes.push('progressive_cavity_pump');
+            if ((desc.includes('SLURRY') || desc.includes('WARMAN')) && !pumpTypes.includes('slurry_pump')) pumpTypes.push('slurry_pump');
+            if (desc.includes('DIAPHRAGM') && !pumpTypes.includes('diaphragm_pump')) pumpTypes.push('diaphragm_pump');
+            if (desc.includes('GEAR') && !pumpTypes.includes('gear_pump')) pumpTypes.push('gear_pump');
+            if (desc.includes('IMPELLER') && !pumpTypes.includes('impeller')) pumpTypes.push('impeller');
+            if (desc.includes('SEAL') && !pumpTypes.includes('mechanical_seal')) pumpTypes.push('mechanical_seal');
+            if (desc.includes('BEARING') && !pumpTypes.includes('bearing_kit')) pumpTypes.push('bearing_kit');
+            if (desc.includes('WEAR RING') && !pumpTypes.includes('wear_ring')) pumpTypes.push('wear_ring');
+          });
+        });
+
         return {
           ...prev,
           flangeTypes: hasBlankFlangesSection ? { ...prev.flangeTypes, blank: true } : prev.flangeTypes,
           bnwGrade,
           valveTypes,
           instrumentTypes,
+          pumpTypes,
         };
       });
     }
@@ -1606,6 +1649,72 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode,
       return instrumentPrice + labourExtrasInst;
     }
 
+    const isPumpSectionFirst = ['pumps', 'pump_parts', 'pump_spares', 'pump_repairs', 'pump_rental'].includes(sectionType);
+    if (isPumpSectionFirst) {
+      let pumpPrice = 0;
+      if (sectionType === 'pumps') {
+        if (description.includes('CENTRIFUGAL') || description.includes('END SUCTION')) {
+          pumpPrice = pricingInputs.pumpTypes['centrifugal_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('SUBMERSIBLE') || description.includes('BOREHOLE')) {
+          pumpPrice = pricingInputs.pumpTypes['submersible_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('PROGRESSIVE') || description.includes('CAVITY') || description.includes('MONO')) {
+          pumpPrice = pricingInputs.pumpTypes['progressive_cavity_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('SLURRY') || description.includes('WARMAN')) {
+          pumpPrice = pricingInputs.pumpTypes['slurry_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('DIAPHRAGM')) {
+          pumpPrice = pricingInputs.pumpTypes['diaphragm_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('GEAR')) {
+          pumpPrice = pricingInputs.pumpTypes['gear_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else {
+          pumpPrice = pricingInputs.pumpTypes['new_pump'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+        }
+      } else if (sectionType === 'pump_parts' || sectionType === 'pump_spares') {
+        if (description.includes('IMPELLER')) {
+          pumpPrice = pricingInputs.pumpTypes['impeller'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('SEAL')) {
+          pumpPrice = pricingInputs.pumpTypes['mechanical_seal'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('BEARING')) {
+          pumpPrice = pricingInputs.pumpTypes['bearing_kit'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('WEAR RING')) {
+          pumpPrice = pricingInputs.pumpTypes['wear_ring'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('COUPLING')) {
+          pumpPrice = pricingInputs.pumpTypes['coupling'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('SHAFT') || description.includes('SLEEVE')) {
+          pumpPrice = pricingInputs.pumpTypes['shaft_sleeve'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else {
+          pumpPrice = pricingInputs.pumpTypes['pump_part'] || pricingInputs.pumpTypes['pump_spare'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+        }
+      } else if (sectionType === 'pump_repairs') {
+        if (description.includes('MAJOR') || description.includes('OVERHAUL')) {
+          pumpPrice = pricingInputs.pumpTypes['major_overhaul'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else if (description.includes('MINOR')) {
+          pumpPrice = pricingInputs.pumpTypes['minor_overhaul'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else if (description.includes('SEAL') && description.includes('REPLACE')) {
+          pumpPrice = pricingInputs.pumpTypes['seal_replacement'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else if (description.includes('BEARING') && description.includes('REPLACE')) {
+          pumpPrice = pricingInputs.pumpTypes['bearing_replacement'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else if (description.includes('INSPECT')) {
+          pumpPrice = pricingInputs.pumpTypes['inspection'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else {
+          pumpPrice = pricingInputs.pumpTypes['pump_repair'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+        }
+      } else if (sectionType === 'pump_rental') {
+        if (description.includes('SLURRY')) {
+          pumpPrice = pricingInputs.pumpTypes['slurry_rental'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+        } else if (description.includes('LARGE') || description.includes('200')) {
+          pumpPrice = pricingInputs.pumpTypes['large_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+        } else if (description.includes('MEDIUM') || description.includes('100') || description.includes('150')) {
+          pumpPrice = pricingInputs.pumpTypes['medium_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+        } else if (description.includes('SMALL') || description.includes('50') || description.includes('75')) {
+          pumpPrice = pricingInputs.pumpTypes['small_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+        } else {
+          pumpPrice = pricingInputs.pumpTypes['pump_rental'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+        }
+      }
+      const labourExtrasPump = pumpPrice * (pricingInputs.labourExtrasPercent / 100);
+      return pumpPrice + labourExtrasPump;
+    }
+
     if (!isFabricatedSection) return 0;
 
     let basePrice = 0;
@@ -1979,6 +2088,72 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
       }
       const labourExtrasInst = instrumentPrice * (pricingInputs.labourExtrasPercent / 100);
       return instrumentPrice + labourExtrasInst;
+    }
+
+    const isPumpSectionSecond = ['pumps', 'pump_parts', 'pump_spares', 'pump_repairs', 'pump_rental'].includes(section.sectionType);
+    if (isPumpSectionSecond) {
+      let pumpPrice = 0;
+      if (section.sectionType === 'pumps') {
+        if (description.includes('CENTRIFUGAL') || description.includes('END SUCTION')) {
+          pumpPrice = pricingInputs.pumpTypes['centrifugal_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('SUBMERSIBLE') || description.includes('BOREHOLE')) {
+          pumpPrice = pricingInputs.pumpTypes['submersible_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('PROGRESSIVE') || description.includes('CAVITY') || description.includes('MONO')) {
+          pumpPrice = pricingInputs.pumpTypes['progressive_cavity_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('SLURRY') || description.includes('WARMAN')) {
+          pumpPrice = pricingInputs.pumpTypes['slurry_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('DIAPHRAGM')) {
+          pumpPrice = pricingInputs.pumpTypes['diaphragm_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else if (description.includes('GEAR')) {
+          pumpPrice = pricingInputs.pumpTypes['gear_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+        } else {
+          pumpPrice = pricingInputs.pumpTypes['new_pump'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+        }
+      } else if (section.sectionType === 'pump_parts' || section.sectionType === 'pump_spares') {
+        if (description.includes('IMPELLER')) {
+          pumpPrice = pricingInputs.pumpTypes['impeller'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('SEAL')) {
+          pumpPrice = pricingInputs.pumpTypes['mechanical_seal'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('BEARING')) {
+          pumpPrice = pricingInputs.pumpTypes['bearing_kit'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('WEAR RING')) {
+          pumpPrice = pricingInputs.pumpTypes['wear_ring'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('COUPLING')) {
+          pumpPrice = pricingInputs.pumpTypes['coupling'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else if (description.includes('SHAFT') || description.includes('SLEEVE')) {
+          pumpPrice = pricingInputs.pumpTypes['shaft_sleeve'] || pricingInputs.pumpTypes['pump_part'] || 0;
+        } else {
+          pumpPrice = pricingInputs.pumpTypes['pump_part'] || pricingInputs.pumpTypes['pump_spare'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+        }
+      } else if (section.sectionType === 'pump_repairs') {
+        if (description.includes('MAJOR') || description.includes('OVERHAUL')) {
+          pumpPrice = pricingInputs.pumpTypes['major_overhaul'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else if (description.includes('MINOR')) {
+          pumpPrice = pricingInputs.pumpTypes['minor_overhaul'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else if (description.includes('SEAL') && description.includes('REPLACE')) {
+          pumpPrice = pricingInputs.pumpTypes['seal_replacement'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else if (description.includes('BEARING') && description.includes('REPLACE')) {
+          pumpPrice = pricingInputs.pumpTypes['bearing_replacement'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else if (description.includes('INSPECT')) {
+          pumpPrice = pricingInputs.pumpTypes['inspection'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+        } else {
+          pumpPrice = pricingInputs.pumpTypes['pump_repair'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+        }
+      } else if (section.sectionType === 'pump_rental') {
+        if (description.includes('SLURRY')) {
+          pumpPrice = pricingInputs.pumpTypes['slurry_rental'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+        } else if (description.includes('LARGE') || description.includes('200')) {
+          pumpPrice = pricingInputs.pumpTypes['large_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+        } else if (description.includes('MEDIUM') || description.includes('100') || description.includes('150')) {
+          pumpPrice = pricingInputs.pumpTypes['medium_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+        } else if (description.includes('SMALL') || description.includes('50') || description.includes('75')) {
+          pumpPrice = pricingInputs.pumpTypes['small_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+        } else {
+          pumpPrice = pricingInputs.pumpTypes['pump_rental'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+        }
+      }
+      const labourExtrasPump = pumpPrice * (pricingInputs.labourExtrasPercent / 100);
+      return pumpPrice + labourExtrasPump;
     }
 
     if (!isFabricatedSection) return 0;

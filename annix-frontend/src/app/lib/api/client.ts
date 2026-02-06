@@ -1625,6 +1625,9 @@ export interface ConsolidatedBoqDataDto {
   pressureInstruments?: ConsolidatedItemDto[];
   levelInstruments?: ConsolidatedItemDto[];
   temperatureInstruments?: ConsolidatedItemDto[];
+  pumps?: ConsolidatedItemDto[];
+  pumpParts?: ConsolidatedItemDto[];
+  pumpSpares?: ConsolidatedItemDto[];
 }
 
 export interface ConsolidatedItemDto {

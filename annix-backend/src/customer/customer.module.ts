@@ -13,11 +13,14 @@ import {
   CustomerOnboarding,
   CustomerDocument,
   CustomerPreferredSupplier,
+  CustomerBlockedSupplier,
   SupplierInvitation,
 } from './entities';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../user-roles/entities/user-role.entity';
 import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
+import { SupplierCompany } from '../supplier/entities/supplier-company.entity';
+import { SupplierCapability } from '../supplier/entities/supplier-capability.entity';
 import { Rfq } from '../rfq/entities/rfq.entity';
 import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
 
@@ -64,8 +67,11 @@ import { SecureDocumentsModule } from '../secure-documents/secure-documents.modu
       CustomerOnboarding,
       CustomerDocument,
       CustomerPreferredSupplier,
+      CustomerBlockedSupplier,
       SupplierInvitation,
       SupplierProfile,
+      SupplierCompany,
+      SupplierCapability,
       User,
       UserRole,
       Rfq,

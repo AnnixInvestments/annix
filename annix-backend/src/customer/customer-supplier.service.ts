@@ -15,12 +15,22 @@ import {
   CustomerProfile,
   CustomerCompany,
   CustomerPreferredSupplier,
+  CustomerBlockedSupplier,
   SupplierInvitation,
   CustomerRole,
 } from './entities';
 import { SupplierInvitationStatus } from './entities/supplier-invitation.entity';
-import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
+import {
+  SupplierProfile,
+  SupplierAccountStatus,
+} from '../supplier/entities/supplier-profile.entity';
+import { SupplierCompany } from '../supplier/entities/supplier-company.entity';
+import { SupplierCapability } from '../supplier/entities/supplier-capability.entity';
 import { AuditService } from '../audit/audit.service';
+import {
+  DirectoryQueryDto,
+  DirectorySupplierDto,
+} from './dto/supplier-directory.dto';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { EmailService } from '../email/email.service';
 
@@ -31,6 +41,8 @@ export class CustomerSupplierService {
   constructor(
     @InjectRepository(CustomerPreferredSupplier)
     private readonly preferredSupplierRepo: Repository<CustomerPreferredSupplier>,
+    @InjectRepository(CustomerBlockedSupplier)
+    private readonly blockedSupplierRepo: Repository<CustomerBlockedSupplier>,
     @InjectRepository(SupplierInvitation)
     private readonly invitationRepo: Repository<SupplierInvitation>,
     @InjectRepository(CustomerProfile)
@@ -39,6 +51,10 @@ export class CustomerSupplierService {
     private readonly companyRepo: Repository<CustomerCompany>,
     @InjectRepository(SupplierProfile)
     private readonly supplierProfileRepo: Repository<SupplierProfile>,
+    @InjectRepository(SupplierCompany)
+    private readonly supplierCompanyRepo: Repository<SupplierCompany>,
+    @InjectRepository(SupplierCapability)
+    private readonly supplierCapabilityRepo: Repository<SupplierCapability>,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
   ) {}
@@ -572,5 +588,252 @@ export class CustomerSupplierService {
     }
 
     return acceptedCount;
+  }
+
+  // Supplier Directory
+
+  private readonly productLabelMap: Record<string, string> = {
+    fabricated_steel: 'Steel Pipes',
+    fasteners_gaskets: 'Nuts, Bolts, Washers & Gaskets',
+    surface_protection: 'Surface Protection',
+    hdpe: 'HDPE Pipes',
+    pvc: 'PVC Pipes',
+    structural_steel: 'Structural Steel',
+    pumps: 'Pumps & Pump Parts',
+    valves_meters_instruments: 'Valves, Meters & Instruments',
+    valves_instruments: 'Valves & Instruments',
+    transport_install: 'Transport/Install',
+    pipe_steel_work: 'Pipe Brackets & Steel Work',
+    straight_pipe: 'Straight Pipe',
+    bends: 'Bends',
+    flanges: 'Flanges',
+    fittings: 'Fittings',
+    valves: 'Valves',
+    fabrication: 'Fabrication',
+    coating: 'Coating',
+    inspection: 'Inspection',
+    other: 'Other',
+  };
+
+  async supplierDirectory(
+    customerId: number,
+    filters?: DirectoryQueryDto,
+  ): Promise<DirectorySupplierDto[]> {
+    const profile = await this.profileRepo.findOne({
+      where: { id: customerId },
+      relations: ['company'],
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Customer profile not found');
+    }
+
+    const queryBuilder = this.supplierProfileRepo
+      .createQueryBuilder('sp')
+      .leftJoinAndSelect('sp.company', 'company')
+      .leftJoinAndSelect('sp.capabilities', 'cap', 'cap.is_active = true')
+      .where('sp.account_status = :status', {
+        status: SupplierAccountStatus.ACTIVE,
+      })
+      .andWhere('company.id IS NOT NULL');
+
+    if (filters?.search) {
+      queryBuilder.andWhere(
+        '(LOWER(company.legal_name) LIKE :search OR LOWER(company.trading_name) LIKE :search)',
+        { search: `%${filters.search.toLowerCase()}%` },
+      );
+    }
+
+    if (filters?.province) {
+      queryBuilder.andWhere('LOWER(company.province_state) = :province', {
+        province: filters.province.toLowerCase(),
+      });
+    }
+
+    const suppliers = await queryBuilder.getMany();
+
+    const preferredSuppliers = await this.preferredSupplierRepo.find({
+      where: { customerCompanyId: profile.companyId, isActive: true },
+    });
+    const preferredMap = new Map(
+      preferredSuppliers.map((ps) => [ps.supplierProfileId, ps]),
+    );
+
+    const blockedSuppliers = await this.blockedSupplierRepo.find({
+      where: { customerCompanyId: profile.companyId, isActive: true },
+    });
+    const blockedMap = new Map(
+      blockedSuppliers.map((bs) => [bs.supplierProfileId, bs]),
+    );
+
+    const results: DirectorySupplierDto[] = suppliers
+      .map((supplier): DirectorySupplierDto | null => {
+        const products: string[] = supplier.capabilities
+          .filter((cap) => cap.isActive)
+          .map((cap) => cap.productCategory as string);
+
+        if (
+          filters?.products &&
+          filters.products.length > 0 &&
+          !products.some((p) => filters.products?.includes(p))
+        ) {
+          return null;
+        }
+
+        const preferred = preferredMap.get(supplier.id);
+        const blocked = blockedMap.get(supplier.id);
+
+        let status: 'preferred' | 'blocked' | 'none' = 'none';
+        if (blocked) {
+          status = 'blocked';
+        } else if (preferred) {
+          status = 'preferred';
+        }
+
+        return {
+          supplierProfileId: supplier.id,
+          companyName:
+            supplier.company?.tradingName || supplier.company?.legalName || '',
+          province: supplier.company?.provinceState || '',
+          products,
+          productLabels: products.map(
+            (p) => this.productLabelMap[p] || p,
+          ),
+          status,
+          preferredSupplierId: preferred?.id,
+          blockedSupplierId: blocked?.id,
+        };
+      })
+      .filter((s): s is DirectorySupplierDto => s !== null);
+
+    return results;
+  }
+
+  async blockSupplier(
+    customerId: number,
+    supplierProfileId: number,
+    reason: string | null,
+    clientIp: string,
+  ) {
+    const profile = await this.profileRepo.findOne({
+      where: { id: customerId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Customer profile not found');
+    }
+
+    if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
+      throw new ForbiddenException('Only customer admins can block suppliers');
+    }
+
+    const supplierProfile = await this.supplierProfileRepo.findOne({
+      where: { id: supplierProfileId },
+    });
+
+    if (!supplierProfile) {
+      throw new NotFoundException('Supplier not found');
+    }
+
+    const existingBlock = await this.blockedSupplierRepo.findOne({
+      where: {
+        customerCompanyId: profile.companyId,
+        supplierProfileId,
+        isActive: true,
+      },
+    });
+
+    if (existingBlock) {
+      throw new ConflictException('Supplier is already blocked');
+    }
+
+    const existingPreferred = await this.preferredSupplierRepo.findOne({
+      where: {
+        customerCompanyId: profile.companyId,
+        supplierProfileId,
+        isActive: true,
+      },
+    });
+
+    if (existingPreferred) {
+      existingPreferred.isActive = false;
+      await this.preferredSupplierRepo.save(existingPreferred);
+
+      await this.auditService.log({
+        entityType: 'customer_preferred_supplier',
+        entityId: existingPreferred.id,
+        action: AuditAction.DELETE,
+        newValues: { removedDueToBlock: true },
+        ipAddress: clientIp,
+      });
+    }
+
+    const blocked = this.blockedSupplierRepo.create({
+      customerCompanyId: profile.companyId,
+      supplierProfileId,
+      blockedById: customerId,
+      reason,
+      isActive: true,
+    });
+
+    const saved = await this.blockedSupplierRepo.save(blocked);
+
+    await this.auditService.log({
+      entityType: 'customer_blocked_supplier',
+      entityId: saved.id,
+      action: AuditAction.CREATE,
+      newValues: { supplierProfileId, reason },
+      ipAddress: clientIp,
+    });
+
+    return {
+      id: saved.id,
+      message: 'Supplier blocked successfully',
+    };
+  }
+
+  async unblockSupplier(
+    customerId: number,
+    supplierProfileId: number,
+    clientIp: string,
+  ) {
+    const profile = await this.profileRepo.findOne({
+      where: { id: customerId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Customer profile not found');
+    }
+
+    if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
+      throw new ForbiddenException(
+        'Only customer admins can unblock suppliers',
+      );
+    }
+
+    const blocked = await this.blockedSupplierRepo.findOne({
+      where: {
+        customerCompanyId: profile.companyId,
+        supplierProfileId,
+        isActive: true,
+      },
+    });
+
+    if (!blocked) {
+      throw new NotFoundException('Blocked supplier not found');
+    }
+
+    blocked.isActive = false;
+    await this.blockedSupplierRepo.save(blocked);
+
+    await this.auditService.log({
+      entityType: 'customer_blocked_supplier',
+      entityId: blocked.id,
+      action: AuditAction.DELETE,
+      newValues: { unblocked: true },
+      ipAddress: clientIp,
+    });
+
+    return { success: true, message: 'Supplier unblocked successfully' };
   }
 }

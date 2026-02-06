@@ -538,6 +538,23 @@ export interface SupplierInvitation {
   isExpired: boolean;
 }
 
+export interface DirectorySupplier {
+  supplierProfileId: number;
+  companyName: string;
+  province: string;
+  products: string[];
+  productLabels: string[];
+  status: 'preferred' | 'blocked' | 'none';
+  preferredSupplierId?: number;
+  blockedSupplierId?: number;
+}
+
+export interface DirectoryFilters {
+  search?: string;
+  province?: string;
+  products?: string[];
+}
+
 class CustomerOnboardingApi {
   private client: CustomerApiClient;
 
@@ -749,6 +766,36 @@ class CustomerSupplierApi {
   async resendInvitation(id: number): Promise<{ success: boolean; message: string; expiresAt: string }> {
     return this.client['request'](`/customer/suppliers/invitations/${id}/resend`, {
       method: 'POST',
+    });
+  }
+
+  async supplierDirectory(filters?: DirectoryFilters): Promise<DirectorySupplier[]> {
+    const params = new URLSearchParams();
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.province) params.append('province', filters.province);
+    if (filters?.products) {
+      filters.products.forEach((p) => params.append('products', p));
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `/customer/suppliers/directory?${queryString}`
+      : '/customer/suppliers/directory';
+    return this.client['request']<DirectorySupplier[]>(url);
+  }
+
+  async blockSupplier(
+    supplierProfileId: number,
+    reason?: string,
+  ): Promise<{ id: number; message: string }> {
+    return this.client['request'](`/customer/suppliers/${supplierProfileId}/block`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async unblockSupplier(supplierProfileId: number): Promise<{ success: boolean; message: string }> {
+    return this.client['request'](`/customer/suppliers/${supplierProfileId}/block`, {
+      method: 'DELETE',
     });
   }
 }

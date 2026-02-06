@@ -6,4 +6,5 @@ export * from './customer-session.entity';
 export * from './customer-onboarding.entity';
 export * from './customer-document.entity';
 export * from './customer-preferred-supplier.entity';
+export * from './customer-blocked-supplier.entity';
 export * from './supplier-invitation.entity';

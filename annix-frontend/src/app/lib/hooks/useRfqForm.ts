@@ -159,7 +159,113 @@ export interface ExpansionJointEntry {
   notes?: string;
 }
 
-export type PipeItem = StraightPipeEntry | BendEntry | FittingEntry | PipeSteelWorkEntry | ExpansionJointEntry;
+export interface ValveEntry {
+  id: string;
+  itemType: 'valve';
+  description: string;
+  clientItemNumber?: string;
+  useSequentialNumbering?: boolean;
+  specs: {
+    valveType?: string;
+    valveCategory?: string;
+    size?: number;
+    pressureClass?: string;
+    bodyMaterial?: string;
+    trimMaterial?: string;
+    seatMaterial?: string;
+    packingMaterial?: string;
+    actuatorType?: string;
+    actuatorFailPosition?: string;
+    endConnection?: string;
+    operatingMedia?: string;
+    operatingPressureBar?: number;
+    operatingTemperatureC?: number;
+    hazardousAreaClass?: string;
+    fireSafe?: boolean;
+    cryogenicService?: boolean;
+    fugitiveEmissions?: boolean;
+    quantityValue: number;
+    supplierReference?: string;
+    unitCostFromSupplier?: number;
+    markupPercentage?: number;
+  };
+  calculation?: any;
+  calculationError?: string | null;
+  notes?: string;
+}
+
+export interface InstrumentEntry {
+  id: string;
+  itemType: 'instrument';
+  description: string;
+  clientItemNumber?: string;
+  useSequentialNumbering?: boolean;
+  specs: {
+    instrumentType?: string;
+    category?: string;
+    size?: number;
+    rangeMin?: number;
+    rangeMax?: number;
+    rangeUnit?: string;
+    accuracy?: string;
+    outputSignal?: string;
+    communicationProtocol?: string;
+    powerSupply?: string;
+    processConnection?: string;
+    wettedPartsMaterial?: string;
+    displayType?: string;
+    enclosureRating?: string;
+    hazardousAreaClass?: string;
+    calibrationRequired?: boolean;
+    quantityValue: number;
+    supplierReference?: string;
+    unitCostFromSupplier?: number;
+    markupPercentage?: number;
+  };
+  calculation?: any;
+  calculationError?: string | null;
+  notes?: string;
+}
+
+export interface PumpEntry {
+  id: string;
+  itemType: 'pump';
+  description: string;
+  clientItemNumber?: string;
+  useSequentialNumbering?: boolean;
+  specs: {
+    pumpType?: string;
+    pumpCategory?: string;
+    flowRate?: number;
+    totalHead?: number;
+    suctionHead?: number;
+    npshAvailable?: number;
+    fluidType?: string;
+    specificGravity?: number;
+    viscosity?: number;
+    solidsContent?: number;
+    isAbrasive?: boolean;
+    isCorrosive?: boolean;
+    casingMaterial?: string;
+    impellerMaterial?: string;
+    shaftMaterial?: string;
+    sealType?: string;
+    motorType?: string;
+    motorPower?: number;
+    voltage?: string;
+    frequency?: string;
+    hazardousAreaClass?: string;
+    quantityValue: number;
+    supplierReference?: string;
+    unitCostFromSupplier?: number;
+    markupPercentage?: number;
+  };
+  calculation?: any;
+  calculationError?: string | null;
+  notes?: string;
+}
+
+export type PipeItem = StraightPipeEntry | BendEntry | FittingEntry | PipeSteelWorkEntry | ExpansionJointEntry | ValveEntry | InstrumentEntry | PumpEntry;
 
 export interface GlobalSpecs {
   // Core pipe specifications
@@ -500,7 +606,85 @@ export const useRfqForm = () => {
     return newEntry.id;
   }, [rfqData.globalSpecs?.workingPressureBar, rfqData.globalSpecs?.workingTemperatureC]);
 
-  const addItem = useCallback((itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work' | 'expansion_joint', description?: string, insertAtStart?: boolean) => {
+  const addValveEntry = useCallback((description?: string, insertAtStart?: boolean) => {
+    const newEntry: ValveEntry = {
+      id: generateUniqueId(),
+      itemType: 'valve',
+      description: description || 'New Valve',
+      specs: {
+        valveType: undefined,
+        valveCategory: undefined,
+        size: undefined,
+        pressureClass: undefined,
+        bodyMaterial: undefined,
+        actuatorType: 'manual',
+        quantityValue: 1,
+        markupPercentage: 15,
+      },
+      notes: '',
+    };
+
+    setRfqData(prev => ({
+      ...prev,
+      items: insertAtStart ? [newEntry, ...prev.items] : [...prev.items, newEntry],
+    }));
+
+    return newEntry.id;
+  }, []);
+
+  const addInstrumentEntry = useCallback((description?: string, insertAtStart?: boolean) => {
+    const newEntry: InstrumentEntry = {
+      id: generateUniqueId(),
+      itemType: 'instrument',
+      description: description || 'New Instrument',
+      specs: {
+        instrumentType: undefined,
+        category: undefined,
+        size: undefined,
+        outputSignal: '4-20mA',
+        quantityValue: 1,
+        markupPercentage: 15,
+      },
+      notes: '',
+    };
+
+    setRfqData(prev => ({
+      ...prev,
+      items: insertAtStart ? [newEntry, ...prev.items] : [...prev.items, newEntry],
+    }));
+
+    return newEntry.id;
+  }, []);
+
+  const addPumpEntry = useCallback((description?: string, insertAtStart?: boolean) => {
+    const newEntry: PumpEntry = {
+      id: generateUniqueId(),
+      itemType: 'pump',
+      description: description || 'New Pump',
+      specs: {
+        pumpType: undefined,
+        pumpCategory: undefined,
+        flowRate: undefined,
+        totalHead: undefined,
+        fluidType: 'water',
+        casingMaterial: undefined,
+        impellerMaterial: undefined,
+        motorType: 'electric_ac',
+        quantityValue: 1,
+        markupPercentage: 15,
+      },
+      notes: '',
+    };
+
+    setRfqData(prev => ({
+      ...prev,
+      items: insertAtStart ? [newEntry, ...prev.items] : [...prev.items, newEntry],
+    }));
+
+    return newEntry.id;
+  }, []);
+
+  const addItem = useCallback((itemType: 'straight_pipe' | 'bend' | 'fitting' | 'pipe_steel_work' | 'expansion_joint' | 'valve' | 'instrument' | 'pump', description?: string, insertAtStart?: boolean) => {
     if (itemType === 'straight_pipe') {
       return addStraightPipeEntry(description, insertAtStart);
     } else if (itemType === 'bend') {
@@ -509,10 +693,16 @@ export const useRfqForm = () => {
       return addFittingEntry(description, insertAtStart);
     } else if (itemType === 'pipe_steel_work') {
       return addPipeSteelWorkEntry(description, insertAtStart);
-    } else {
+    } else if (itemType === 'expansion_joint') {
       return addExpansionJointEntry(description, insertAtStart);
+    } else if (itemType === 'valve') {
+      return addValveEntry(description, insertAtStart);
+    } else if (itemType === 'instrument') {
+      return addInstrumentEntry(description, insertAtStart);
+    } else {
+      return addPumpEntry(description, insertAtStart);
     }
-  }, [addStraightPipeEntry, addBendEntry, addFittingEntry, addPipeSteelWorkEntry, addExpansionJointEntry]);
+  }, [addStraightPipeEntry, addBendEntry, addFittingEntry, addPipeSteelWorkEntry, addExpansionJointEntry, addValveEntry, addInstrumentEntry, addPumpEntry]);
 
   const updateStraightPipeEntry = useCallback((
     id: string,
@@ -763,6 +953,9 @@ export const useRfqForm = () => {
     addFittingEntry,
     addPipeSteelWorkEntry,
     addExpansionJointEntry,
+    addValveEntry,
+    addInstrumentEntry,
+    addPumpEntry,
     updateItem,
     removeItem,
     duplicateItem,

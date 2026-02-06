@@ -220,6 +220,41 @@ export class ConsolidatedBoqDataDto {
   @ValidateNested({ each: true })
   @Type(() => ConsolidatedItemDto)
   temperatureInstruments?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  pumps?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  pumpParts?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  pumpSpares?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  pumpRepairs?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  pumpRental?: ConsolidatedItemDto[];
 }
 
 export class SubmitBoqDto {

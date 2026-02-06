@@ -262,6 +262,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     addFittingEntry,
     addPipeSteelWorkEntry,
     addExpansionJointEntry,
+    addValveEntry,
+    addInstrumentEntry,
+    addPumpEntry,
     updateStraightPipeEntry,
     updateItem,
     removeStraightPipeEntry,
@@ -2984,6 +2987,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               onAddFittingEntry={addFittingEntry}
               onAddPipeSteelWorkEntry={addPipeSteelWorkEntry}
               onAddExpansionJointEntry={addExpansionJointEntry}
+              onAddValveEntry={addValveEntry}
+              onAddInstrumentEntry={addInstrumentEntry}
+              onAddPumpEntry={addPumpEntry}
               onUpdateEntry={handleUpdateEntry}
               onRemoveEntry={removeStraightPipeEntry}
               onDuplicateEntry={duplicateItem}
@@ -3081,6 +3087,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               onAddFittingEntry={addFittingEntry}
               onAddPipeSteelWorkEntry={addPipeSteelWorkEntry}
               onAddExpansionJointEntry={addExpansionJointEntry}
+              onAddValveEntry={addValveEntry}
+              onAddInstrumentEntry={addInstrumentEntry}
+              onAddPumpEntry={addPumpEntry}
               onUpdateEntry={handleUpdateEntry}
               onRemoveEntry={removeStraightPipeEntry}
               onDuplicateEntry={duplicateItem}

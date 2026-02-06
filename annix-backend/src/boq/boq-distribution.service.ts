@@ -70,6 +70,11 @@ export interface ConsolidatedBoqData {
   pressureInstruments?: ConsolidatedItem[];
   levelInstruments?: ConsolidatedItem[];
   temperatureInstruments?: ConsolidatedItem[];
+  pumps?: ConsolidatedItem[];
+  pumpParts?: ConsolidatedItem[];
+  pumpSpares?: ConsolidatedItem[];
+  pumpRepairs?: ConsolidatedItem[];
+  pumpRental?: ConsolidatedItem[];
 }
 
 export interface SubmitBoqResult {
@@ -105,6 +110,11 @@ const DATA_KEY_TO_SECTION: Record<string, string> = {
   pressureInstruments: 'pressure_instruments',
   levelInstruments: 'level_instruments',
   temperatureInstruments: 'temperature_instruments',
+  pumps: 'pumps',
+  pumpParts: 'pump_parts',
+  pumpSpares: 'pump_spares',
+  pumpRepairs: 'pump_repairs',
+  pumpRental: 'pump_rental',
 };
 
 // Mapping from ProductCategory enum to capability keys
@@ -128,6 +138,7 @@ const PRODUCT_CATEGORY_TO_CAPABILITY: Record<ProductCategory, string> = {
   [ProductCategory.STRUCTURAL_STEEL]: 'structural_steel',
   [ProductCategory.TRANSPORT_INSTALL]: 'transport_install',
   [ProductCategory.VALVES_INSTRUMENTS]: 'valves_instruments',
+  [ProductCategory.PUMPS]: 'pumps',
 };
 
 @Injectable()

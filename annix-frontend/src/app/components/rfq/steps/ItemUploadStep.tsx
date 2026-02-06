@@ -28,7 +28,7 @@ import { roundToWeldIncrement } from '@/app/lib/utils/weldThicknessLookup';
 const Pipe3DPreview = dynamic(() => import('@/app/components/rfq/Pipe3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 const Bend3DPreview = dynamic(() => import('@/app/components/rfq/CSGBend3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
 const Tee3DPreview = dynamic(() => import('@/app/components/rfq/Tee3DPreview'), { ssr: false, loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" /> });
-import { BendForm, FittingForm, StraightPipeForm, PipeSteelWorkForm, ExpansionJointForm } from '@/app/components/rfq/forms';
+import { BendForm, FittingForm, StraightPipeForm, PipeSteelWorkForm, ExpansionJointForm, ValveForm, InstrumentForm, PumpForm } from '@/app/components/rfq/forms';
 
 interface ItemWrapperProps {
   entry: any;
@@ -121,10 +121,16 @@ const ItemWrapper = memo(function ItemWrapper({
           <span className={`px-3 py-1 ${
             entry.itemType === 'bend' ? 'bg-purple-100 text-purple-800' :
             entry.itemType === 'fitting' ? 'bg-green-100 text-green-800' :
+            entry.itemType === 'valve' ? 'bg-teal-100 text-teal-800' :
+            entry.itemType === 'instrument' ? 'bg-cyan-100 text-cyan-800' :
+            entry.itemType === 'pump' ? 'bg-indigo-100 text-indigo-800' :
             'bg-blue-100 text-blue-800'
           } text-xs font-semibold rounded-full`}>
             {entry.itemType === 'bend' ? 'Bend Section' :
              entry.itemType === 'fitting' ? 'Fittings' :
+             entry.itemType === 'valve' ? 'Valve' :
+             entry.itemType === 'instrument' ? 'Instrument' :
+             entry.itemType === 'pump' ? 'Pump' :
              'Straight Pipe'}
           </span>
           {entry.specs?.quantityValue > 1 && (
@@ -207,6 +213,39 @@ const ItemWrapper = memo(function ItemWrapper({
           generateItemDescription={generateItemDescription}
           requiredProducts={requiredProducts}
         />
+      ) : entry.itemType === 'valve' ? (
+        <ValveForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          globalSpecs={globalSpecs}
+          masterData={masterData}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+          generateItemDescription={generateItemDescription}
+        />
+      ) : entry.itemType === 'instrument' ? (
+        <InstrumentForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          globalSpecs={globalSpecs}
+          masterData={masterData}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+          generateItemDescription={generateItemDescription}
+        />
+      ) : entry.itemType === 'pump' ? (
+        <PumpForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          globalSpecs={globalSpecs}
+          masterData={masterData}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+          generateItemDescription={generateItemDescription}
+        />
       ) : (
         <StraightPipeForm
           entry={entry}
@@ -239,7 +278,7 @@ const ItemWrapper = memo(function ItemWrapper({
 // Render counter for performance debugging
 let itemUploadStepRenderCount = 0;
 
-export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onAddPipeSteelWorkEntry, onAddExpansionJointEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses, hideDrawings = false, onReady }: any) {
+export default function ItemUploadStep({ entries, globalSpecs, masterData, onAddEntry, onAddBendEntry, onAddFittingEntry, onAddPipeSteelWorkEntry, onAddExpansionJointEntry, onAddValveEntry, onAddInstrumentEntry, onAddPumpEntry, onUpdateEntry, onRemoveEntry, onDuplicateEntry, onCalculate, onCalculateBend, onCalculateFitting, errors: _errors, loading: _loading, fetchAvailableSchedules, availableSchedulesMap, setAvailableSchedulesMap, fetchBendOptions: _fetchBendOptions, fetchCenterToFace: _fetchCenterToFace, bendOptionsCache: _bendOptionsCache, autoSelectFlangeSpecs: _autoSelectFlangeSpecs, requiredProducts = [], pressureClassesByStandard = {}, getFilteredPressureClasses, hideDrawings = false, onReady }: any) {
   itemUploadStepRenderCount++;
   log.info(`🔄 ItemUploadStep RENDER #${itemUploadStepRenderCount} - entries: ${entries?.length}`);
 
@@ -856,6 +895,83 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
       return fittingDesc;
     }
 
+    // Handle valve items
+    if (entry.itemType === 'valve') {
+      const valveType = entry.specs?.valveType || 'Valve';
+      const valveSize = entry.specs?.size || entry.specs?.nominalBoreMm || '';
+      const pressureClass = entry.specs?.pressureClass || '';
+      const bodyMaterial = entry.specs?.bodyMaterial || '';
+      const actuatorType = entry.specs?.actuatorType || '';
+
+      let valveDesc = valveSize ? `${valveSize}NB ` : '';
+      valveDesc += valveType.replace(/_/g, ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+      if (pressureClass) {
+        valveDesc += ` ${pressureClass}`;
+      }
+      if (bodyMaterial) {
+        valveDesc += ` ${bodyMaterial}`;
+      }
+      if (actuatorType && actuatorType !== 'manual' && actuatorType !== 'none') {
+        valveDesc += ` ${actuatorType.charAt(0).toUpperCase() + actuatorType.slice(1)} Actuated`;
+      }
+
+      return valveDesc;
+    }
+
+    // Handle instrument items
+    if (entry.itemType === 'instrument') {
+      const instrumentType = entry.specs?.instrumentType || 'Instrument';
+      const instrumentCategory = entry.specs?.category || '';
+      const size = entry.specs?.size || entry.specs?.nominalBoreMm || '';
+      const outputSignal = entry.specs?.outputSignal || '';
+      const processConnection = entry.specs?.processConnection || '';
+
+      let instrumentDesc = '';
+      if (instrumentCategory) {
+        instrumentDesc += instrumentCategory.charAt(0).toUpperCase() + instrumentCategory.slice(1).toLowerCase() + ' ';
+      }
+      instrumentDesc += instrumentType.replace(/_/g, ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+      if (size) {
+        instrumentDesc += ` ${size}NB`;
+      }
+      if (processConnection) {
+        instrumentDesc += ` ${processConnection}`;
+      }
+      if (outputSignal) {
+        instrumentDesc += ` ${outputSignal}`;
+      }
+
+      return instrumentDesc;
+    }
+
+    // Handle pump items
+    if (entry.itemType === 'pump') {
+      const pumpType = entry.specs?.pumpType || 'Pump';
+      const flowRate = entry.specs?.flowRate || '';
+      const head = entry.specs?.totalHead || '';
+      const motorPower = entry.specs?.motorPower || '';
+      const casingMaterial = entry.specs?.casingMaterial || '';
+
+      let pumpDesc = pumpType.replace(/_/g, ' ').split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+      if (flowRate) {
+        pumpDesc += ` ${flowRate}m³/h`;
+      }
+      if (head) {
+        pumpDesc += ` ${head}m Head`;
+      }
+      if (motorPower) {
+        pumpDesc += ` ${motorPower}kW`;
+      }
+      if (casingMaterial) {
+        pumpDesc += ` ${casingMaterial}`;
+      }
+
+      return pumpDesc;
+    }
+
     // Handle straight pipe items
     const nb = entry.specs.nominalBoreMm || 'XX';
     let schedule = entry.specs.scheduleNumber || (entry.specs.wallThicknessMm ? `${entry.specs.wallThicknessMm}WT` : 'XX');
@@ -1099,6 +1215,66 @@ export default function ItemUploadStep({ entries, globalSpecs, masterData, onAdd
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           <span className="text-xs font-semibold text-purple-700">Expansion Joint</span>
+        </button>
+      )}
+      {onAddValveEntry && (
+        <button
+          onClick={!canAddMoreItems ? showRestrictionPopup('itemLimit') : () => onAddValveEntry(undefined, insertAtStart)}
+          className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+            !canAddMoreItems
+              ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+              : 'bg-teal-100 hover:bg-teal-200 border-teal-300'
+          }`}
+        >
+          {!canAddMoreItems && (
+            <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+            </svg>
+          )}
+          <svg className={`w-4 h-4 ${!canAddMoreItems ? 'text-gray-400' : 'text-teal-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className={`text-xs font-semibold ${!canAddMoreItems ? 'text-gray-500' : 'text-teal-700'}`}>Valve</span>
+        </button>
+      )}
+      {onAddInstrumentEntry && (
+        <button
+          onClick={!canAddMoreItems ? showRestrictionPopup('itemLimit') : () => onAddInstrumentEntry(undefined, insertAtStart)}
+          className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+            !canAddMoreItems
+              ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+              : 'bg-cyan-100 hover:bg-cyan-200 border-cyan-300'
+          }`}
+        >
+          {!canAddMoreItems && (
+            <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+            </svg>
+          )}
+          <svg className={`w-4 h-4 ${!canAddMoreItems ? 'text-gray-400' : 'text-cyan-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className={`text-xs font-semibold ${!canAddMoreItems ? 'text-gray-500' : 'text-cyan-700'}`}>Instrument</span>
+        </button>
+      )}
+      {onAddPumpEntry && (
+        <button
+          onClick={!canAddMoreItems ? showRestrictionPopup('itemLimit') : () => onAddPumpEntry(undefined, insertAtStart)}
+          className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+            !canAddMoreItems
+              ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+              : 'bg-indigo-100 hover:bg-indigo-200 border-indigo-300'
+          }`}
+        >
+          {!canAddMoreItems && (
+            <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+            </svg>
+          )}
+          <svg className={`w-4 h-4 ${!canAddMoreItems ? 'text-gray-400' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className={`text-xs font-semibold ${!canAddMoreItems ? 'text-gray-500' : 'text-indigo-700'}`}>Pump</span>
         </button>
       )}
     </div>
