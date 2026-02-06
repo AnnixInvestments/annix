@@ -1,11 +1,19 @@
 // Shared Products & Services Configuration
 // Used by both RFQ form (page 1) and Supplier Onboarding
 
+import React from 'react';
+import { SteelPipeIcon, PvcPipeIcon, HdpePipeIcon } from './icons/PipeIcon';
+import { IndustrialPumpIcon } from './icons/PumpIcon';
+import { IndustrialValveIcon } from './icons/ValveIcon';
+import { StructuralSteelIcon } from './icons/StructuralSteelIcon';
+import { BoltNutIcon } from './icons/BoltNutIcon';
+import { SurfaceProtectionIcon } from './icons/SurfaceProtectionIcon';
+
 export interface ProductService {
   value: string;
   label: string;
   description: string;
-  icon: string;
+  icon: string | React.ReactNode;
   category: 'product' | 'service';
   hidden?: boolean;
 }
@@ -19,42 +27,42 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     value: 'fabricated_steel',
     label: 'Steel Pipes',
     description: 'Fabricated steel pipes, bends, flanges, and fittings',
-    icon: '🔩',
+    icon: React.createElement(SteelPipeIcon, { size: 20 }),
     category: 'product',
   },
   {
     value: 'fasteners_gaskets',
     label: 'Nuts, Bolts, Washers & Gaskets',
     description: 'Fasteners, bolts, nuts, washers, gaskets, and sealing materials',
-    icon: '⚙️',
+    icon: React.createElement(BoltNutIcon, { size: 20 }),
     category: 'product',
   },
   {
     value: 'surface_protection',
     label: 'Surface Protection',
     description: 'Coating, painting, galvanizing, and surface treatment services',
-    icon: '🛡️',
+    icon: React.createElement(SurfaceProtectionIcon, { size: 20 }),
     category: 'service',
   },
   {
     value: 'hdpe',
     label: 'HDPE Pipes',
     description: 'High-density polyethylene pipes and fittings',
-    icon: '🔵',
+    icon: React.createElement(HdpePipeIcon, { size: 20 }),
     category: 'product',
   },
   {
     value: 'pvc',
     label: 'PVC Pipes',
     description: 'PVC pipes, fittings, and accessories',
-    icon: '⚪',
+    icon: React.createElement(PvcPipeIcon, { size: 20 }),
     category: 'product',
   },
   {
     value: 'structural_steel',
     label: 'Structural Steel',
     description: 'Structural steel fabrication and supply',
-    icon: '🏗️',
+    icon: React.createElement(StructuralSteelIcon, { size: 20 }),
     category: 'product',
     hidden: true,
   },
@@ -62,14 +70,14 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     value: 'pumps',
     label: 'Pumps & Pump Parts',
     description: 'Industrial pumps, spare parts, seals, impellers, and pump accessories',
-    icon: '🔄',
+    icon: React.createElement(IndustrialPumpIcon, { size: 20 }),
     category: 'product',
   },
   {
     value: 'valves_meters_instruments',
     label: 'Valves, Meters & Instruments',
     description: 'Industrial valves, flow meters, pressure gauges, and instrumentation',
-    icon: '🎛️',
+    icon: React.createElement(IndustrialValveIcon, { size: 20 }),
     category: 'product',
   },
   {

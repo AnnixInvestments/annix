@@ -113,6 +113,7 @@ const PRODUCT_CATEGORY_TO_CAPABILITY: Record<ProductCategory, string> = {
   [ProductCategory.PVC]: 'pvc',
   [ProductCategory.STRUCTURAL_STEEL]: 'structural_steel',
   [ProductCategory.TRANSPORT_INSTALL]: 'transport_install',
+  [ProductCategory.VALVES_INSTRUMENTS]: 'valves_meters_instruments',
 };
 
 @Injectable()
