@@ -128,8 +128,22 @@ export class HdpeService {
     return weight;
   }
 
-  // Buttweld Prices
-  async getButtweldPrice(nominalBore: number): Promise<number> {
+  /**
+   * Retrieves the buttweld price for a given nominal bore size.
+   *
+   * Pricing lookup:
+   *   1. Searches for active price record matching the nominal bore
+   *   2. Falls back to default formula if not found: price = 10 + (nominalBore / 10)
+   *
+   * The fallback formula provides reasonable estimates:
+   *   - NB 50mm  → R15
+   *   - NB 100mm → R20
+   *   - NB 200mm → R30
+   *
+   * @param nominalBore - Pipe nominal bore in mm
+   * @returns Price per buttweld in Rands
+   */
+  async buttweldPrice(nominalBore: number): Promise<number> {
     const price = await this.buttweldPriceRepo.findOne({
       where: { nominalBore, isActive: true },
     });
@@ -140,8 +154,22 @@ export class HdpeService {
     return Number(price.pricePerWeld);
   }
 
-  // Stub Prices
-  async getStubPrice(nominalBore: number): Promise<number> {
+  /**
+   * Retrieves the stub flange price for a given nominal bore size.
+   *
+   * Pricing lookup:
+   *   1. Searches for active price record matching the nominal bore
+   *   2. Falls back to default formula if not found: price = 5 + (nominalBore / 20)
+   *
+   * The fallback formula provides reasonable estimates:
+   *   - NB 50mm  → R7.50
+   *   - NB 100mm → R10
+   *   - NB 200mm → R15
+   *
+   * @param nominalBore - Pipe nominal bore in mm
+   * @returns Price per stub flange in Rands
+   */
+  async stubPrice(nominalBore: number): Promise<number> {
     const price = await this.stubPriceRepo.findOne({
       where: { nominalBore, isActive: true },
     });
@@ -158,7 +186,7 @@ export class HdpeService {
   ): Promise<PipeCostResponseDto> {
     const spec = await this.getPipeSpecification(dto.nominalBore, dto.sdr);
     const buttweldPrice =
-      dto.buttweldPrice ?? (await this.getButtweldPrice(dto.nominalBore));
+      dto.buttweldPrice ?? (await this.buttweldPrice(dto.nominalBore));
 
     const totalWeight = Number(spec.weightKgPerM) * dto.length;
     const numButtwelds = 0; // Straight pipe has no welds
@@ -194,7 +222,7 @@ export class HdpeService {
       dto.nominalBore,
     );
     const buttweldPrice =
-      dto.buttweldPrice ?? (await this.getButtweldPrice(dto.nominalBore));
+      dto.buttweldPrice ?? (await this.buttweldPrice(dto.nominalBore));
 
     const weightKg = Number(weightData.weightKg);
     const numButtwelds = fittingType.numButtwelds;
@@ -203,7 +231,7 @@ export class HdpeService {
 
     let stubCost = 0;
     if (dto.fittingTypeCode === 'stub_end') {
-      stubCost = dto.stubPrice ?? (await this.getStubPrice(dto.nominalBore));
+      stubCost = dto.stubPrice ?? (await this.stubPrice(dto.nominalBore));
     }
 
     const totalCost = materialCost + buttweldCost + stubCost;

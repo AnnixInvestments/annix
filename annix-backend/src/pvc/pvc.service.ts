@@ -87,7 +87,23 @@ export class PvcService {
   ) {}
 
   /**
-   * Calculate pipe weight per meter using EN 1452 wall thickness
+   * Calculates PVC pipe weight per meter using EN 1452 wall thickness standards.
+   *
+   * Formula:
+   *   OD = DN (for PVC-U, outer diameter equals nominal diameter)
+   *   ID = OD - (2 × wallThickness)
+   *   crossSectionalArea = π/4 × (OD² - ID²) mm²
+   *   weightPerMeter = crossSectionalArea × density × 10⁻⁶ kg/m
+   *
+   * Where:
+   *   - DN: Nominal diameter in mm
+   *   - PN: Pressure rating (determines wall thickness from EN 1452 table)
+   *   - density: Material density (PVC-U = 1400 kg/m³, PVC-C = 1550 kg/m³)
+   *
+   * @param dn - Nominal diameter in mm
+   * @param pn - Pressure nominal (rating) in bar
+   * @param pvcType - PVC material type ('PVC-U' or 'PVC-C'), defaults to 'PVC-U'
+   * @returns Weight in kg per meter, rounded to 2 decimal places. Returns 0 if wall thickness not found.
    */
   private calculateWeightKgPerM(
     dn: number,

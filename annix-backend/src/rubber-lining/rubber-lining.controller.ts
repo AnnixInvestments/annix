@@ -55,16 +55,26 @@ export class RubberLiningController {
   constructor(private readonly rubberLiningService: RubberLiningService) {}
 
   @Get('types')
+  @ApiOperation({ summary: 'List all rubber types', description: 'Returns all rubber lining types per ISO 6529/SANS standards (NR, SBR, NBR, CR, EPDM, IIR, CSM, FKM)' })
+  @ApiResponse({ status: 200, description: 'List of rubber types', type: [RubberTypeDto] })
   async rubberTypes(): Promise<RubberTypeDto[]> {
     return this.rubberLiningService.allRubberTypes();
   }
 
   @Get('types/:id')
+  @ApiOperation({ summary: 'Get rubber type by ID', description: 'Returns a single rubber type by database ID' })
+  @ApiParam({ name: 'id', description: 'Rubber type database ID', type: Number })
+  @ApiResponse({ status: 200, description: 'Rubber type details', type: RubberTypeDto })
+  @ApiResponse({ status: 404, description: 'Rubber type not found' })
   async rubberTypeById(@Param('id') id: string): Promise<RubberTypeDto | null> {
     return this.rubberLiningService.rubberTypeById(Number(id));
   }
 
   @Get('types/number/:typeNumber')
+  @ApiOperation({ summary: 'Get rubber type by type number', description: 'Returns a rubber type by its standard type number (1-8)' })
+  @ApiParam({ name: 'typeNumber', description: 'Standard type number (1=NR, 2=SBR, 3=NBR, etc.)', type: Number })
+  @ApiResponse({ status: 200, description: 'Rubber type details', type: RubberTypeDto })
+  @ApiResponse({ status: 404, description: 'Rubber type not found' })
   async rubberTypeByNumber(
     @Param('typeNumber') typeNumber: string,
   ): Promise<RubberTypeDto | null> {
@@ -72,11 +82,16 @@ export class RubberLiningController {
   }
 
   @Get('specifications')
+  @ApiOperation({ summary: 'List all rubber specifications', description: 'Returns all rubber specifications with physical properties (tensile strength, elongation, hardness)' })
+  @ApiResponse({ status: 200, description: 'List of rubber specifications', type: [RubberSpecificationDto] })
   async specifications(): Promise<RubberSpecificationDto[]> {
     return this.rubberLiningService.allSpecifications();
   }
 
   @Get('specifications/type/:typeNumber')
+  @ApiOperation({ summary: 'Get specifications by rubber type', description: 'Returns all specifications for a given rubber type number' })
+  @ApiParam({ name: 'typeNumber', description: 'Standard type number (1-8)', type: Number })
+  @ApiResponse({ status: 200, description: 'List of specifications for the type', type: [RubberSpecificationDto] })
   async specificationsByType(
     @Param('typeNumber') typeNumber: string,
   ): Promise<RubberSpecificationDto[]> {
@@ -84,6 +99,12 @@ export class RubberLiningController {
   }
 
   @Get('specifications/callout/:typeNumber/:grade/:hardnessClass')
+  @ApiOperation({ summary: 'Get specification by line callout', description: 'Returns the specification matching a specific line callout (type/grade/hardness combination)' })
+  @ApiParam({ name: 'typeNumber', description: 'Standard type number (1-8)', type: Number })
+  @ApiParam({ name: 'grade', description: 'Grade letter (A, B, C, or D)', type: String })
+  @ApiParam({ name: 'hardnessClass', description: 'Hardness class in IRHD (40, 50, 60, 70)', type: Number })
+  @ApiResponse({ status: 200, description: 'Matching specification', type: RubberSpecificationDto })
+  @ApiResponse({ status: 404, description: 'Specification not found' })
   async specificationByCallout(
     @Param('typeNumber') typeNumber: string,
     @Param('grade') grade: string,
@@ -97,6 +118,10 @@ export class RubberLiningController {
   }
 
   @Get('application-ratings')
+  @ApiOperation({ summary: 'Get chemical application ratings', description: 'Returns chemical resistance ratings for rubber types. Filter by type or chemical category.' })
+  @ApiQuery({ name: 'typeNumber', description: 'Filter by rubber type number', required: false, type: Number })
+  @ApiQuery({ name: 'chemicalCategory', description: 'Filter by chemical category (e.g., acids_inorganic, alkalis)', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'List of application ratings', type: [RubberApplicationRatingDto] })
   async applicationRatings(
     @Query('typeNumber') typeNumber?: string,
     @Query('chemicalCategory') chemicalCategory?: string,
@@ -108,6 +133,8 @@ export class RubberLiningController {
   }
 
   @Get('thickness-recommendations')
+  @ApiOperation({ summary: 'Get thickness recommendations', description: 'Returns recommended rubber lining thicknesses based on application conditions' })
+  @ApiResponse({ status: 200, description: 'List of thickness recommendations', type: [RubberThicknessRecommendationDto] })
   async thicknessRecommendations(): Promise<
     RubberThicknessRecommendationDto[]
   > {
@@ -115,6 +142,9 @@ export class RubberLiningController {
   }
 
   @Get('adhesion-requirements')
+  @ApiOperation({ summary: 'Get adhesion requirements', description: 'Returns adhesion test requirements per ISO standards for rubber types' })
+  @ApiQuery({ name: 'typeNumber', description: 'Filter by rubber type number', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'List of adhesion requirements', type: [RubberAdhesionRequirementDto] })
   async adhesionRequirements(
     @Query('typeNumber') typeNumber?: string,
   ): Promise<RubberAdhesionRequirementDto[]> {
@@ -124,6 +154,8 @@ export class RubberLiningController {
   }
 
   @Post('recommend')
+  @ApiOperation({ summary: 'Get rubber lining recommendation', description: 'Recommends suitable rubber types and specifications based on application requirements (chemicals, temperature, abrasion)' })
+  @ApiResponse({ status: 201, description: 'Rubber lining recommendation', type: RubberRecommendationDto })
   async recommend(
     @Body() request: RubberRecommendationRequestDto,
   ): Promise<RubberRecommendationDto> {
@@ -131,6 +163,12 @@ export class RubberLiningController {
   }
 
   @Get('line-callout')
+  @ApiOperation({ summary: 'Generate line callout string', description: 'Generates a standard line callout string (e.g., "3A60-III") from component values' })
+  @ApiQuery({ name: 'type', description: 'Rubber type number (1-8)', required: true, type: Number })
+  @ApiQuery({ name: 'grade', description: 'Grade letter (A, B, C, D)', required: true, type: String })
+  @ApiQuery({ name: 'hardness', description: 'Hardness class in IRHD (40, 50, 60, 70)', required: true, type: Number })
+  @ApiQuery({ name: 'properties', description: 'Comma-separated special property codes (1-7)', required: false, type: String })
+  @ApiResponse({ status: 200, description: 'Generated line callout', type: LineCalloutDto })
   async lineCallout(
     @Query('type') type: string,
     @Query('grade') grade: string,
@@ -149,6 +187,8 @@ export class RubberLiningController {
   }
 
   @Get('chemical-categories')
+  @ApiOperation({ summary: 'List chemical categories', description: 'Returns all chemical categories for application rating lookups' })
+  @ApiResponse({ status: 200, description: 'List of chemical categories with value/label pairs' })
   async chemicalCategories(): Promise<{ value: string; label: string }[]> {
     return [
       { value: 'acids_inorganic', label: 'Inorganic Acids (H2SO4, HCl, HNO3)' },
@@ -167,6 +207,8 @@ export class RubberLiningController {
   }
 
   @Get('hardness-classes')
+  @ApiOperation({ summary: 'List hardness classes', description: 'Returns IRHD hardness classes with descriptions (40=Soft to 70=Hard)' })
+  @ApiResponse({ status: 200, description: 'List of hardness classes with value/label pairs' })
   async hardnessClasses(): Promise<{ value: number; label: string }[]> {
     return [
       {
@@ -180,6 +222,8 @@ export class RubberLiningController {
   }
 
   @Get('grades')
+  @ApiOperation({ summary: 'List rubber grades', description: 'Returns rubber grades (A-D) with minimum tensile strength requirements per ISO standards' })
+  @ApiResponse({ status: 200, description: 'List of grades with tensile strength requirements' })
   async grades(): Promise<
     { value: string; label: string; tensileMin: number }[]
   > {
@@ -200,6 +244,8 @@ export class RubberLiningController {
   }
 
   @Get('special-properties')
+  @ApiOperation({ summary: 'List special properties', description: 'Returns special property codes (I-VII) for rubber lining specifications' })
+  @ApiResponse({ status: 200, description: 'List of special properties with numeric value, label, and roman numeral code' })
   async specialProperties(): Promise<
     { value: number; label: string; code: string }[]
   > {
@@ -215,6 +261,8 @@ export class RubberLiningController {
   }
 
   @Get('vulcanization-methods')
+  @ApiOperation({ summary: 'List vulcanization methods', description: 'Returns available vulcanization methods with descriptions and hardness tolerances' })
+  @ApiResponse({ status: 200, description: 'List of vulcanization methods' })
   async vulcanizationMethods(): Promise<
     { value: string; label: string; description: string }[]
   > {
@@ -246,6 +294,8 @@ export class RubberLiningController {
   }
 
   @Get('application-environments')
+  @ApiOperation({ summary: 'List application environments', description: 'Returns common industrial application environments for rubber lining selection' })
+  @ApiResponse({ status: 200, description: 'List of application environments' })
   async applicationEnvironments(): Promise<{ value: string; label: string }[]> {
     return [
       { value: 'mining_slurry', label: 'Mining Slurry Pipelines' },

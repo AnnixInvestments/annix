@@ -988,6 +988,24 @@ export class RubberLiningService {
     };
   }
 
+  /**
+   * Maps a RubberProduct entity to its DTO representation.
+   *
+   * Price calculation formula:
+   *   pricePerKg = costPerKg × (markup / 100)
+   *
+   * Where:
+   *   - costPerKg: Base cost per kilogram from product definition
+   *   - markup: Percentage multiplier (default 100 = 1x, 150 = 1.5x)
+   *
+   * Note: This is the base price. Final sale price is calculated in calculatePrice()
+   * which applies the company's pricing factor.
+   *
+   * @param product - The product entity to map
+   * @param codings - All product codings for name resolution
+   * @param companies - All companies for compound owner name resolution
+   * @returns The mapped product DTO with resolved names and calculated price
+   */
   private mapProductToDto(
     product: RubberProduct,
     codings: RubberProductCoding[],
