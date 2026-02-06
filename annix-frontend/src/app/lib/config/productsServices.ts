@@ -7,6 +7,7 @@ export interface ProductService {
   description: string;
   icon: string;
   category: 'product' | 'service';
+  hidden?: boolean;
 }
 
 // Master list of all products and services
@@ -55,6 +56,21 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     description: 'Structural steel fabrication and supply',
     icon: '🏗️',
     category: 'product',
+    hidden: true,
+  },
+  {
+    value: 'pumps',
+    label: 'Pumps & Pump Parts',
+    description: 'Industrial pumps, spare parts, seals, impellers, and pump accessories',
+    icon: '🔄',
+    category: 'product',
+  },
+  {
+    value: 'valves_meters_instruments',
+    label: 'Valves, Meters & Instruments',
+    description: 'Industrial valves, flow meters, pressure gauges, and instrumentation',
+    icon: '🎛️',
+    category: 'product',
   },
   {
     value: 'transport_install',
@@ -72,13 +88,17 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
   },
 ];
 
-// Helper to get products only
+// Helper to get visible products only
 export const getProducts = (): ProductService[] =>
-  PRODUCTS_AND_SERVICES.filter(item => item.category === 'product');
+  PRODUCTS_AND_SERVICES.filter(item => item.category === 'product' && !item.hidden);
 
-// Helper to get services only
+// Helper to get visible services only
 export const getServices = (): ProductService[] =>
-  PRODUCTS_AND_SERVICES.filter(item => item.category === 'service');
+  PRODUCTS_AND_SERVICES.filter(item => item.category === 'service' && !item.hidden);
+
+// Helper to get all visible items
+export const getVisibleProductsAndServices = (): ProductService[] =>
+  PRODUCTS_AND_SERVICES.filter(item => !item.hidden);
 
 // Helper to get item by value
 export const getProductServiceByValue = (value: string): ProductService | undefined =>
