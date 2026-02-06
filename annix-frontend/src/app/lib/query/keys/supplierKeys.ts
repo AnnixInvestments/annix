@@ -20,4 +20,12 @@ export const supplierKeys = {
     all: ['supplier', 'profile'] as const,
     data: () => [...supplierKeys.profile.all, 'data'] as const,
   },
+  capabilities: {
+    all: ['supplier', 'capabilities'] as const,
+    data: () => [...supplierKeys.capabilities.all, 'data'] as const,
+  },
+  documents: {
+    all: ['supplier', 'documents'] as const,
+    list: () => [...supplierKeys.documents.all, 'list'] as const,
+  },
 } as const

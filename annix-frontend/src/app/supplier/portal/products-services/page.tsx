@@ -5,28 +5,20 @@ import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
 import { supplierPortalApi } from '@/app/lib/api/supplierApi';
 import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
 import { corpId } from '@/app/lib/corpId';
-import { log } from '@/app/lib/logger';
+import { useSupplierCapabilities } from '@/app/lib/query/hooks';
 
 export default function ProductsServicesPage() {
   const { supplier } = useSupplierAuth();
+  const capabilitiesQuery = useSupplierCapabilities();
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    async function loadCapabilities() {
-      try {
-        const data = await supplierPortalApi.getCapabilities();
-        setSelectedCapabilities(data.capabilities || []);
-      } catch (error) {
-        log.error('Failed to load capabilities:', error);
-      } finally {
-        setIsLoading(false);
-      }
+    if (capabilitiesQuery.data) {
+      setSelectedCapabilities(capabilitiesQuery.data.capabilities || []);
     }
-    loadCapabilities();
-  }, []);
+  }, [capabilitiesQuery.data]);
 
   const toggleCapability = (value: string) => {
     setSelectedCapabilities(prev =>
@@ -57,7 +49,7 @@ export default function ProductsServicesPage() {
   const products = PRODUCTS_AND_SERVICES.filter(item => item.category === 'product');
   const services = PRODUCTS_AND_SERVICES.filter(item => item.category === 'service');
 
-  if (isLoading) {
+  if (capabilitiesQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

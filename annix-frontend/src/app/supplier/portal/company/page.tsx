@@ -1,34 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { supplierPortalApi, SupplierCompanyDto } from '@/app/lib/api/supplierApi';
-import { log } from '@/app/lib/logger';
+import { useState } from 'react';
+import { supplierPortalApi, type SupplierCompanyDto } from '@/app/lib/api/supplierApi';
+import { useSupplierProfile } from '@/app/lib/query/hooks';
 
 export default function SupplierCompanyPage() {
-  const [company, setCompany] = useState<SupplierCompanyDto | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const profileQuery = useSupplierProfile();
+  const company = (profileQuery.data?.company as SupplierCompanyDto) ?? null;
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<SupplierCompanyDto | null>(null);
-
-  useEffect(() => {
-    const fetchCompany = async () => {
-      try {
-        const profile = await supplierPortalApi.getProfile();
-        if (profile.company) {
-          setCompany(profile.company);
-        }
-      } catch (err) {
-        log.error('Failed to fetch company:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCompany();
-  }, []);
 
   const handleEdit = () => {
     setEditData(company);
@@ -55,7 +38,7 @@ export default function SupplierCompanyPage() {
 
     try {
       await supplierPortalApi.saveCompanyDetails(editData);
-      setCompany(editData);
+      await profileQuery.refetch();
       setIsEditing(false);
       setSuccess('Company details updated successfully');
     } catch (err) {
@@ -65,7 +48,7 @@ export default function SupplierCompanyPage() {
     }
   };
 
-  if (isLoading) {
+  if (profileQuery.isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-8 flex justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

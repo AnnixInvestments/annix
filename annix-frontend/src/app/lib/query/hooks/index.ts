@@ -45,6 +45,8 @@ export {
   useSetBoqReminder,
 } from './supplier/useSupplierBoqs'
 export { useSupplierProfile } from './supplier/useSupplierProfile'
+export { useSupplierCapabilities } from './supplier/useSupplierCapabilities'
+export { useSupplierDocuments } from './supplier/useSupplierDocuments'
 export { useFeatureFlags, useToggleFeatureFlag } from './admin/useFeatureFlags'
 export {
   useAdminConversations,

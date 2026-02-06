@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { supplierPortalApi, SupplierDocumentDto, OnboardingStatusResponse, SupplierCompanyDto } from '@/app/lib/api/supplierApi';
+import { supplierPortalApi, type SupplierDocumentDto, type SupplierCompanyDto } from '@/app/lib/api/supplierApi';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
 import { formatDateZA } from '@/app/lib/datetime';
 import { log } from '@/app/lib/logger';
 import { nixApi, RegistrationDocumentType, RegistrationVerificationResult } from '@/app/lib/nix/api';
 import NixRegistrationVerifier from '@/app/lib/nix/components/NixRegistrationVerifier';
+import { useSupplierDocuments, useSupplierOnboardingStatus, useSupplierProfile } from '@/app/lib/query/hooks';
 
 const documentTypes = [
   { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', required: true, nixType: 'registration' as RegistrationDocumentType },
@@ -21,10 +22,14 @@ const documentTypes = [
 
 export default function SupplierDocumentsPage() {
   const router = useRouter();
-  const [documents, setDocuments] = useState<SupplierDocumentDto[]>([]);
-  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatusResponse | null>(null);
-  const [companyDetails, setCompanyDetails] = useState<SupplierCompanyDto | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const docsQuery = useSupplierDocuments();
+  const onboardingQuery = useSupplierOnboardingStatus();
+  const profileQuery = useSupplierProfile();
+
+  const documents = docsQuery.data ?? [];
+  const onboardingStatus = onboardingQuery.data ?? null;
+  const companyDetails = (profileQuery.data?.company as SupplierCompanyDto) ?? null;
+
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,36 +43,6 @@ export default function SupplierDocumentsPage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<RegistrationVerificationResult | null>(null);
   const [showNixVerifier, setShowNixVerifier] = useState(false);
-
-  const fetchData = async () => {
-    try {
-      const [docs, status, profile] = await Promise.all([
-        supplierPortalApi.getDocuments(),
-        supplierPortalApi.getOnboardingStatus(),
-        supplierPortalApi.getProfile(),
-      ]);
-      setDocuments(docs);
-      setOnboardingStatus(status);
-      setCompanyDetails(profile.company);
-    } catch (err) {
-      log.error('Failed to fetch data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchDocuments = async () => {
-    try {
-      const docs = await supplierPortalApi.getDocuments();
-      setDocuments(docs);
-    } catch (err) {
-      log.error('Failed to fetch documents:', err);
-    }
-  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -127,7 +102,7 @@ export default function SupplierDocumentsPage() {
 
       await supplierPortalApi.uploadDocument(file, selectedType, expiryDate || undefined, verificationData);
       setSuccess(`${file.name} uploaded successfully`);
-      await fetchDocuments();
+      await docsQuery.refetch();
       resetUploadState();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -189,7 +164,7 @@ export default function SupplierDocumentsPage() {
     try {
       await supplierPortalApi.deleteDocument(documentId);
       setSuccess('Document deleted successfully');
-      await fetchDocuments();
+      await docsQuery.refetch();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Delete failed');
     }
@@ -263,7 +238,7 @@ export default function SupplierDocumentsPage() {
     (t) => t.required && !uploadedTypes.includes(t.value)
   );
 
-  if (isLoading) {
+  if (docsQuery.isLoading || onboardingQuery.isLoading || profileQuery.isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-8 flex justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
