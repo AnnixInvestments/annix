@@ -10,7 +10,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import {
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
@@ -120,6 +120,16 @@ export class UploadSupplierDocumentDto {
     description: 'Pre-verified document verification result from frontend Nix verification',
   })
   @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  })
   @ValidateNested()
   @Type(() => VerificationResultDto)
   verificationResult?: VerificationResultDto;

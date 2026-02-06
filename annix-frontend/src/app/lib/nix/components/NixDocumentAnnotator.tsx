@@ -51,13 +51,31 @@ export default function NixDocumentAnnotator({
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [scale, setScale] = useState(1);
+  const [baseScale, setBaseScale] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const currentField = missingFields[currentFieldIndex];
+  const scale = baseScale * zoomLevel;
+
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 3;
+  const ZOOM_STEP = 0.25;
+
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel((prev) => Math.min(prev + ZOOM_STEP, ZOOM_MAX));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel((prev) => Math.max(prev - ZOOM_STEP, ZOOM_MIN));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setZoomLevel(1);
+  }, []);
 
   const loadDocument = useCallback(async () => {
     if (!file) return;
@@ -93,7 +111,7 @@ export default function NixDocumentAnnotator({
       if (page) {
         const scaleX = containerWidth / page.width;
         const scaleY = containerHeight / page.height;
-        setScale(Math.min(scaleX, scaleY, 1));
+        setBaseScale(Math.min(scaleX, scaleY, 1));
       }
     };
 
@@ -312,6 +330,35 @@ export default function NixDocumentAnnotator({
             </div>
           ) : currentPageData ? (
             <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 mb-3 bg-white rounded-lg shadow px-3 py-2">
+                <button
+                  onClick={handleZoomOut}
+                  disabled={zoomLevel <= ZOOM_MIN}
+                  className="p-1.5 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Zoom out"
+                >
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleZoomReset}
+                  className="px-2 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors min-w-[60px]"
+                  title="Reset zoom"
+                >
+                  {Math.round(zoomLevel * 100)}%
+                </button>
+                <button
+                  onClick={handleZoomIn}
+                  disabled={zoomLevel >= ZOOM_MAX}
+                  className="p-1.5 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Zoom in"
+                >
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                  </svg>
+                </button>
+              </div>
               <div className="relative inline-block shadow-xl rounded-lg overflow-hidden bg-white">
                 <img
                   ref={imageRef}

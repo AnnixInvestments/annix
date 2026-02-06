@@ -158,7 +158,10 @@ export default function SupplierDocumentsPage() {
   };
 
   const handleNixApplyCorrections = (corrections: Array<{ field: string; value: string | number }>) => {
-    log.info('Applying corrections is not supported in document upload - corrections should be made to company profile');
+    log.info('Corrections selected:', corrections);
+    if (pendingFile) {
+      proceedWithUpload(pendingFile, verificationResult);
+    }
   };
 
   const handleFieldLearned = (fieldName: string, value: string) => {
