@@ -1,32 +1,22 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { adminCustomerApi, CustomerListItem, CustomerListResponse } from '@/app/lib/api/adminCustomerApi';
 import { formatDateZA } from '@/app/lib/datetime';
+import { useAdminCustomers } from '@/app/lib/query/hooks';
 
 export default function AdminCustomersPage() {
-  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Pagination
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
   const limit = 20;
 
-  // Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Set page title
   useEffect(() => {
     document.title = 'Annix Admin';
   }, []);
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -36,31 +26,22 @@ export default function AdminCustomersPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const fetchCustomers = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const customersQuery = useAdminCustomers({
+    search: debouncedSearch || undefined,
+    status: (statusFilter || undefined) as any,
+    page,
+    limit,
+  });
 
-    try {
-      const response = await adminCustomerApi.listCustomers({
-        search: debouncedSearch || undefined,
-        status: statusFilter || undefined,
-        page,
-        limit,
-      });
-
-      setCustomers(response.items);
-      setTotalPages(response.totalPages);
-      setTotal(response.total);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load customers');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [debouncedSearch, statusFilter, page, limit]);
-
-  useEffect(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
+  const customers = customersQuery.data?.items ?? [];
+  const totalPages = customersQuery.data?.totalPages ?? 1;
+  const total = customersQuery.data?.total ?? 0;
+  const isLoading = customersQuery.isLoading;
+  const error = customersQuery.error
+    ? customersQuery.error instanceof Error
+      ? customersQuery.error.message
+      : 'Failed to load customers'
+    : null;
 
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
