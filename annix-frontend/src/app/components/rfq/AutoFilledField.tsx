@@ -68,7 +68,7 @@ export function AutoFilledInput({
   // Determine if we should show auto-filled styling
   const showAutoFilledStyle = isAutoFilled && !hasBeenEdited;
 
-  const baseClasses = 'w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 text-gray-900';
+  const baseClasses = 'w-full px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-gray-900 text-sm';
 
   const borderClasses = showAutoFilledStyle
     ? 'border-2 border-green-500 focus:ring-green-500 focus:border-green-500'
@@ -138,7 +138,7 @@ export function AutoFilledSelect({
   // Determine if we should show auto-filled styling
   const showAutoFilledStyle = isAutoFilled && !hasBeenEdited;
 
-  const baseClasses = 'w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 text-gray-900';
+  const baseClasses = 'w-full px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-gray-900 text-sm';
 
   const borderClasses = showAutoFilledStyle
     ? 'border-2 border-green-500 focus:ring-green-500 focus:border-green-500'

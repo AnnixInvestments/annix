@@ -40,7 +40,7 @@ export default function CustomerSuppliersPage() {
   const [addForm, setAddForm] = useState({
     supplierName: '',
     supplierEmail: '',
-    priority: 0,
+    priority: 1,
     notes: '',
   });
   const [addError, setAddError] = useState<string | null>(null);
@@ -58,6 +58,9 @@ export default function CustomerSuppliersPage() {
   const [blockingSupplier, setBlockingSupplier] = useState<DirectorySupplier | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [blockSubmitting, setBlockSubmitting] = useState(false);
+
+  const [showProductsModal, setShowProductsModal] = useState(false);
+  const [productsModalSupplier, setProductsModalSupplier] = useState<DirectorySupplier | null>(null);
 
   useEffect(() => {
     loadData();
@@ -223,7 +226,7 @@ export default function CustomerSuppliersPage() {
   };
 
   const resetAddForm = () => {
-    setAddForm({ supplierName: '', supplierEmail: '', priority: 0, notes: '' });
+    setAddForm({ supplierName: '', supplierEmail: '', priority: 1, notes: '' });
     setAddError(null);
   };
 
@@ -662,9 +665,15 @@ export default function CustomerSuppliersPage() {
                             </span>
                           ))}
                           {supplier.productLabels.length > 3 && (
-                            <span className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
+                            <button
+                              onClick={() => {
+                                setProductsModalSupplier(supplier);
+                                setShowProductsModal(true);
+                              }}
+                              className="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+                            >
                               +{supplier.productLabels.length - 3} more
-                            </span>
+                            </button>
                           )}
                         </div>
                       </td>
@@ -776,11 +785,11 @@ export default function CustomerSuppliersPage() {
                   <input
                     type="number"
                     value={addForm.priority}
-                    onChange={(e) => setAddForm({ ...addForm, priority: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => setAddForm({ ...addForm, priority: parseInt(e.target.value) || 1 })}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    min="0"
+                    min="1"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Lower numbers = higher priority</p>
+                  <p className="mt-1 text-xs text-gray-500">1 = highest priority, 2 = second, etc.</p>
                 </div>
 
                 <div>
@@ -966,6 +975,52 @@ export default function CustomerSuppliersPage() {
                   className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400"
                 >
                   {blockSubmitting ? 'Blocking...' : 'Block Supplier'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProductsModal && productsModalSupplier && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div
+              className="fixed inset-0 bg-black bg-opacity-30"
+              onClick={() => {
+                setShowProductsModal(false);
+                setProductsModalSupplier(null);
+              }}
+            />
+
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Products &amp; Services
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                {productsModalSupplier.companyName}
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {productsModalSupplier.productLabels.map((label, idx) => (
+                  <span
+                    key={idx}
+                    className="px-3 py-1.5 rounded-md text-sm bg-blue-50 text-blue-700"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => {
+                    setShowProductsModal(false);
+                    setProductsModalSupplier(null);
+                  }}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                >
+                  Close
                 </button>
               </div>
             </div>

@@ -886,7 +886,7 @@ function FittingFormComponent({
                           </label>
                           {hasThreeDropdowns ? (
                             <select
-                              value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                              value={entry.specs?.flangePressureClassId || effectiveClassId || ''}
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                               })}
@@ -908,7 +908,7 @@ function FittingFormComponent({
                             </select>
                           ) : (
                             <select
-                              value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                              value={entry.specs?.flangePressureClassId || effectiveClassId || ''}
                               onChange={(e) => onUpdateEntry(entry.id, {
                                 specs: { ...entry.specs, flangePressureClassId: parseInt(e.target.value) || undefined }
                               })}
@@ -1716,23 +1716,11 @@ function FittingFormComponent({
                               </div>
                             </div>
 
-                            {/* Total Weight - Green for auto-calculated */}
-                            <div className="bg-green-50 p-2 rounded text-center border border-green-200">
-                              <p className="text-xs text-green-800 font-medium">Total Weight</p>
-                              <p className="text-lg font-bold text-green-900">{totalWeight.toFixed(2)} kg</p>
-                              <p className="text-[10px] text-green-600">per fitting</p>
-                              {(totalBlankFlangeWeight > 0 || closureTotalWeight > 0) && (
-                                <p className="text-[10px] text-gray-500">
-                                  {totalBlankFlangeWeight > 0 && `+${totalBlankFlangeWeight.toFixed(2)}kg blanks`}
-                                  {closureTotalWeight > 0 && ` +${closureTotalWeight.toFixed(2)}kg closures`}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Weight Breakdown - Green for auto-calculated */}
-                            <div className="bg-green-50 p-2 rounded text-center border border-green-200">
-                              <p className="text-xs text-green-800 font-medium">Weight Breakdown</p>
-                              <div className="mt-1 text-xs text-green-700">
+                            {/* Weight Breakdown - Combined total weight with breakdown */}
+                            <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
+                              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Weight Breakdown</p>
+                              <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{totalWeight.toFixed(2)}kg</p>
+                              <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
                                 {(entry.calculation.fittingWeight || 0) > 0 && (
                                   <p>Fitting: {entry.calculation.fittingWeight.toFixed(2)}kg</p>
                                 )}
@@ -1779,10 +1767,16 @@ function FittingFormComponent({
                               )}
                             </div>
 
-                            {/* Weld Summary - Purple for weld info */}
-                            <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded text-center border border-purple-200 dark:border-purple-700">
-                              <p className="text-xs text-purple-800 font-medium">Weld Summary</p>
-                              <div className="mt-1 text-xs text-purple-700">
+                            {/* Weld Summary with Volume - Combined */}
+                            <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
+                              <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400 font-medium">Weld Summary</p>
+                              {fittingWeldVolume && (
+                                <>
+                                  <p className="text-lg font-bold text-fuchsia-900 dark:text-fuchsia-100">{(fittingWeldVolume.totalVolumeCm3 * quantity).toFixed(1)}</p>
+                                  <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400">cm³ total</p>
+                                </>
+                              )}
+                              <div className="mt-1 text-xs text-fuchsia-500 dark:text-fuchsia-400">
                                 <p>Tee Junction: 1 @ {branchWeldThickness?.toFixed(1)}mm</p>
                                 {numFlanges > 0 && (() => {
                                   const mainCircMm = Math.PI * mainOdMm;
@@ -1796,15 +1790,6 @@ function FittingFormComponent({
                                 })()}
                               </div>
                             </div>
-
-                            {/* Weld Volume - Fuchsia */}
-                            {fittingWeldVolume && (
-                              <div className="bg-fuchsia-50 p-2 rounded text-center border border-fuchsia-200">
-                                <p className="text-xs text-fuchsia-800 font-medium">Weld Volume</p>
-                                <p className="text-lg font-bold text-fuchsia-900">{(fittingWeldVolume.totalVolumeCm3 * quantity).toFixed(1)}</p>
-                                <p className="text-xs text-fuchsia-600">cm³ total</p>
-                              </div>
-                            )}
 
                             {/* Surface Area - Indigo/Cyan */}
                             {mainOdMm && pipeWallThickness && (() => {

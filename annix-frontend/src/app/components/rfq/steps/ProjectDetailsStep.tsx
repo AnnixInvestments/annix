@@ -1048,7 +1048,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
                 title={isDisabledForUnregistered ? 'Register or login to access this option' : undefined}
                 onClick={isDisabledForUnregistered ? showRestrictionPopup : undefined}
                 onMouseEnter={isDisabledForUnregistered ? showRestrictionPopup : undefined}
-                className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-colors text-sm ${
+                className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-colors text-sm h-10 ${
                   isDisabledForUnregistered
                     ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
                     : rfqData.projectType === type.value
@@ -1119,7 +1119,7 @@ export default function ProjectDetailsStep({ rfqData, onUpdate, errors, onSetVal
                     title={isDisabledForUnregistered ? 'Register or login to access this product/service' : product.description}
                     onClick={isDisabledForUnregistered ? showRestrictionPopup : undefined}
                     onMouseEnter={isDisabledForUnregistered ? showRestrictionPopup : undefined}
-                    className={`flex items-center gap-2 px-2 py-2 border-2 rounded-lg transition-all text-xs ${
+                    className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-all text-xs h-10 ${
                       isDisabledForUnregistered
                         ? 'border-gray-200 bg-gray-100 cursor-not-allowed opacity-50'
                         : isSelected

@@ -1064,7 +1064,7 @@ function StraightPipeFormComponent({
                               <span className="ml-1 text-gray-400 font-normal cursor-help" title="Flange pressure rating. Should match or exceed working pressure. Auto-selected based on working pressure.">?</span>
                             </label>
                             <select
-                              value={entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId || ''}
+                              value={entry.specs?.flangePressureClassId || effectiveClassId || ''}
                               onChange={(e) => {
                                 const newFlangePressureClassId = e.target.value ? Number(e.target.value) : undefined;
                                 const updatedEntry = { ...entry, specs: { ...entry.specs, flangePressureClassId: newFlangePressureClassId } };

@@ -7,6 +7,28 @@ export * from './pumpSpareParts';
 export * from './references';
 export * from './pricing';
 export * from './calculations';
+export * from './api610Classification';
+export * from './pumpSelectionGuide';
+export * from './pumpComparison';
+
+// Compatibility exports for admin pages
+import { NEW_PUMP_PRICING, SPARE_PARTS_PRICING, REPAIR_SERVICE_PRICING, RENTAL_PRICING } from './pricing';
+import { PERFORMANCE_SPECS, FLUID_SPECS, CONSTRUCTION_SPECS, MOTOR_SPECS, MATERIAL_OPTIONS } from './pumpSpecifications';
+
+export const PUMP_PRICING_TIERS = {
+  newPumps: NEW_PUMP_PRICING,
+  spareParts: SPARE_PARTS_PRICING,
+  repairService: REPAIR_SERVICE_PRICING,
+  rental: RENTAL_PRICING,
+};
+
+export const PUMP_SPECIFICATIONS = {
+  performance: PERFORMANCE_SPECS,
+  fluid: FLUID_SPECS,
+  construction: CONSTRUCTION_SPECS,
+  motor: MOTOR_SPECS,
+  materials: MATERIAL_OPTIONS,
+};
 
 // Module metadata
 export const PUMPS_MODULE = {

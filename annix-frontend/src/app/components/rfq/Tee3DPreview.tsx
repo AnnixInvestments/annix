@@ -515,6 +515,72 @@ function GussetWeld({
   );
 }
 
+// Saddle weld component - V-groove weld where branch meets run pipe
+// This follows the Steinmetz curve (intersection of two cylinders)
+function SaddleWeld({
+  runRadius,
+  branchRadius,
+  branchOffsetX,
+  weldThickness = 0.04,
+}: {
+  runRadius: number;
+  branchRadius: number;
+  branchOffsetX: number;
+  weldThickness?: number;
+}) {
+  const geometry = useMemo(() => {
+    // Create the saddle curve - the intersection of branch cylinder with run cylinder
+    // Parametric: for angle θ around branch (0 to 2π):
+    // - x offset along run = branchRadius * cos(θ)
+    // - y (height) = runRadius + small offset for weld sitting on top
+    // - z offset = branchRadius * sin(θ) adjusted for run surface curvature
+    const segments = 64;
+    const points: THREE.Vector3[] = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const theta = (i / segments) * Math.PI * 2;
+      // The saddle curve follows the intersection of two cylinders
+      // For a branch of radius r meeting a run of radius R:
+      // The height varies as the branch wraps around the curved run surface
+      const x = branchOffsetX + branchRadius * Math.cos(theta);
+      const z = branchRadius * Math.sin(theta);
+      // Y position follows the run pipe's curved surface
+      // At the top (theta=0, z=0), y = runRadius
+      // As we go around, the weld dips down following the cylinder curvature
+      const y = Math.sqrt(Math.max(0, runRadius * runRadius - z * z));
+      points.push(new THREE.Vector3(x, y, z));
+    }
+
+    const curve = new THREE.CatmullRomCurve3(points, true); // true = closed curve
+
+    // Create a custom weld bead cross-section (V-groove fillet profile)
+    // This gives the characteristic welding bead appearance
+    const weldProfile = new THREE.Shape();
+    const w = weldThickness;
+    const h = weldThickness * 1.2; // Height slightly more than width for V profile
+
+    // Create a rounded triangular profile for the fillet weld
+    weldProfile.moveTo(0, -h * 0.3);
+    weldProfile.quadraticCurveTo(w * 0.6, 0, w * 0.3, h * 0.5);
+    weldProfile.quadraticCurveTo(0, h * 0.7, -w * 0.3, h * 0.5);
+    weldProfile.quadraticCurveTo(-w * 0.6, 0, 0, -h * 0.3);
+
+    const extrudeSettings = {
+      steps: segments,
+      bevelEnabled: false,
+      extrudePath: curve,
+    };
+
+    return new THREE.ExtrudeGeometry(weldProfile, extrudeSettings);
+  }, [runRadius, branchRadius, branchOffsetX, weldThickness]);
+
+  return (
+    <mesh geometry={geometry} castShadow receiveShadow>
+      <meshStandardMaterial {...weldColor} />
+    </mesh>
+  );
+}
+
 // Main Tee Scene component
 function TeeScene(props: Tee3DPreviewProps) {
   const {
