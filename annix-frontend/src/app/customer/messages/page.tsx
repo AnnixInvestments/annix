@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { useToast } from '@/app/components/Toast';
@@ -12,56 +12,41 @@ import {
 } from '@/app/components/messaging';
 import {
   customerMessagingApi,
-  ConversationSummary,
-  ConversationDetail,
-  BroadcastSummary,
-  Message,
+  type ConversationSummary,
+  type ConversationDetail,
 } from '@/app/lib/api/messagingApi';
+import {
+  useCustomerConversations,
+  useCustomerBroadcasts,
+  useSendCustomerMessage,
+  useArchiveCustomerConversation,
+  useMarkCustomerBroadcastRead,
+} from '@/app/lib/query/hooks';
 
 export default function CustomerMessagesPage() {
   const router = useRouter();
   const { customer, isLoading: authLoading } = useCustomerAuth();
   const { showToast } = useToast();
 
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const conversationsQuery = useCustomerConversations();
+  const broadcastsQuery = useCustomerBroadcasts();
+  const sendMessageMutation = useSendCustomerMessage();
+  const archiveMutation = useArchiveCustomerConversation();
+  const markBroadcastReadMutation = useMarkCustomerBroadcastRead();
+
+  const conversations = conversationsQuery.data?.conversations ?? [];
+  const broadcasts = broadcastsQuery.data?.broadcasts ?? [];
+
   const [selectedConversation, setSelectedConversation] =
     useState<ConversationDetail | null>(null);
-  const [broadcasts, setBroadcasts] = useState<BroadcastSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<number>(0);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [convResult, broadcastResult] = await Promise.all([
-        customerMessagingApi.conversations(),
-        customerMessagingApi.broadcasts({ unreadOnly: true }),
-      ]);
-      setConversations(convResult.conversations);
-      setBroadcasts(broadcastResult.broadcasts);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load messages', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    if (!authLoading && customer) {
-      fetchData();
-    }
-  }, [authLoading, customer, fetchData]);
 
   const handleSelectConversation = async (conversation: ConversationSummary) => {
     try {
       const detail = await customerMessagingApi.conversation(conversation.id);
       setSelectedConversation(detail);
       await customerMessagingApi.markAsRead(conversation.id);
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conversation.id ? { ...c, unreadCount: 0 } : c,
-        ),
-      );
+      conversationsQuery.refetch();
     } catch (error: any) {
       showToast(error.message || 'Failed to load conversation', 'error');
     }
@@ -71,10 +56,10 @@ export default function CustomerMessagesPage() {
     if (!selectedConversation) return;
 
     try {
-      const newMessage = await customerMessagingApi.sendMessage(
-        selectedConversation.id,
-        { content },
-      );
+      const newMessage = await sendMessageMutation.mutateAsync({
+        conversationId: selectedConversation.id,
+        dto: { content },
+      });
 
       if (currentUserId === 0) {
         setCurrentUserId(newMessage.senderId);
@@ -85,18 +70,6 @@ export default function CustomerMessagesPage() {
           ? { ...prev, messages: [...prev.messages, newMessage] }
           : null,
       );
-
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === selectedConversation.id
-            ? {
-                ...c,
-                lastMessageAt: newMessage.sentAt,
-                lastMessagePreview: newMessage.content.substring(0, 100),
-              }
-            : c,
-        ),
-      );
     } catch (error: any) {
       showToast(error.message || 'Failed to send message', 'error');
     }
@@ -104,12 +77,7 @@ export default function CustomerMessagesPage() {
 
   const handleArchive = async (conversationId: number) => {
     try {
-      await customerMessagingApi.archiveConversation(conversationId);
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conversationId ? { ...c, isArchived: true } : c,
-        ),
-      );
+      await archiveMutation.mutateAsync(conversationId);
       if (selectedConversation?.id === conversationId) {
         setSelectedConversation(null);
       }
@@ -121,16 +89,13 @@ export default function CustomerMessagesPage() {
 
   const handleMarkBroadcastRead = async (broadcastId: number) => {
     try {
-      await customerMessagingApi.markBroadcastRead(broadcastId);
-      setBroadcasts((prev) =>
-        prev.map((b) => (b.id === broadcastId ? { ...b, isRead: true } : b)),
-      );
+      await markBroadcastReadMutation.mutateAsync(broadcastId);
     } catch (error: any) {
       showToast(error.message || 'Failed to mark broadcast as read', 'error');
     }
   };
 
-  if (authLoading || isLoading) {
+  if (authLoading || conversationsQuery.isLoading || broadcastsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -178,7 +143,7 @@ export default function CustomerMessagesPage() {
               selectedId={selectedConversation?.id}
               onSelect={handleSelectConversation}
               onArchive={handleArchive}
-              isLoading={isLoading}
+              isLoading={conversationsQuery.isLoading}
             />
           </div>
 

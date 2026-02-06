@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { useToast } from '@/app/components/Toast';
 import {
-  customerMessagingApi,
   ConversationType,
   RelatedEntityType,
 } from '@/app/lib/api/messagingApi';
+import { useCreateCustomerConversation } from '@/app/lib/query/hooks';
 
 export default function NewConversationPage() {
   const router = useRouter();
   const { isLoading: authLoading } = useCustomerAuth();
   const { showToast } = useToast();
+  const createConversationMutation = useCreateCustomerConversation();
 
   const [subject, setSubject] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
@@ -21,7 +22,8 @@ export default function NewConversationPage() {
     RelatedEntityType.GENERAL,
   );
   const [relatedEntityId, setRelatedEntityId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isSubmitting = createConversationMutation.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,8 +39,7 @@ export default function NewConversationPage() {
     }
 
     try {
-      setIsSubmitting(true);
-      const conversation = await customerMessagingApi.createConversation({
+      const conversation = await createConversationMutation.mutateAsync({
         subject: subject.trim(),
         conversationType: ConversationType.SUPPORT,
         relatedEntityType,
@@ -51,8 +52,6 @@ export default function NewConversationPage() {
       router.push(`/customer/messages/${conversation.id}`);
     } catch (error: any) {
       showToast(error.message || 'Failed to create conversation', 'error');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

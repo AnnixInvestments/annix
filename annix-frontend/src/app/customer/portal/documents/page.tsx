@@ -1,15 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   customerDocumentApi,
-  customerOnboardingApi,
-  customerPortalApi,
-  CustomerDocument,
-  OnboardingStatus,
-  CustomerCompanyDto,
+  type CustomerDocument,
+  type CustomerCompanyDto,
 } from '@/app/lib/api/customerApi';
+import {
+  useCustomerDocuments,
+  useCustomerOnboardingStatus,
+  useCustomerCompany,
+} from '@/app/lib/query/hooks';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
 import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
 import { formatDateZA } from '@/app/lib/datetime';
@@ -27,10 +29,13 @@ const DOCUMENT_TYPES = [
 ];
 
 export default function CustomerDocumentsPage() {
-  const [documents, setDocuments] = useState<CustomerDocument[]>([]);
-  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
-  const [companyDetails, setCompanyDetails] = useState<CustomerCompanyDto | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const documentsQuery = useCustomerDocuments();
+  const onboardingQuery = useCustomerOnboardingStatus();
+  const companyQuery = useCustomerCompany();
+  const documents = documentsQuery.data ?? [];
+  const onboardingStatus = onboardingQuery.data ?? null;
+  const companyDetails = (companyQuery.data as CustomerCompanyDto) ?? null;
+
   const [error, setError] = useState<string | null>(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -51,26 +56,12 @@ export default function CustomerDocumentsPage() {
     return onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected' || doc.validationStatus === 'invalid';
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      const [docs, status, company] = await Promise.all([
-        customerDocumentApi.getDocuments(),
-        customerOnboardingApi.getStatus(),
-        customerPortalApi.getCompany(),
-      ]);
-      setDocuments(docs);
-      setOnboardingStatus(status);
-      setCompanyDetails(company);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load documents');
-    } finally {
-      setIsLoading(false);
-    }
+  const refreshData = async () => {
+    await Promise.all([
+      documentsQuery.refetch(),
+      onboardingQuery.refetch(),
+      companyQuery.refetch(),
+    ]);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,7 +135,7 @@ export default function CustomerDocumentsPage() {
       } : undefined;
 
       await customerDocumentApi.uploadDocument(selectedFile, selectedType, expiryDate || undefined, verificationData);
-      await loadData();
+      await refreshData();
       setShowUploadModal(false);
       resetUploadForm();
     } catch (e) {
@@ -159,7 +150,7 @@ export default function CustomerDocumentsPage() {
 
     try {
       await customerDocumentApi.deleteDocument(id);
-      await loadData();
+      await refreshData();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete document');
     }
@@ -257,7 +248,7 @@ export default function CustomerDocumentsPage() {
     setShowUploadModal(true);
   };
 
-  if (isLoading) {
+  if (documentsQuery.isLoading || onboardingQuery.isLoading || companyQuery.isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">

@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   customerOnboardingApi,
   customerDocumentApi,
-  OnboardingStatus,
-  CustomerDocument,
+  type CustomerDocument,
 } from "@/app/lib/api/customerApi";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
+import { useCustomerOnboardingStatus, useCustomerDocuments } from '@/app/lib/query/hooks';
 import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from "@/app/components/DocumentPreviewModal";
 import { DocumentActionButtons } from "@/app/components/DocumentActionButtons";
 import { CurrencySelect, DEFAULT_CURRENCY } from "@/app/components/ui/CurrencySelect";
@@ -29,14 +29,15 @@ export default function CustomerOnboardingPage() {
   const router = useRouter();
   const { profile, refreshProfile } = useCustomerAuth();
 
+  const onboardingQuery = useCustomerOnboardingStatus();
+  const documentsQuery = useCustomerDocuments();
+  const onboardingStatus = onboardingQuery.data ?? null;
+  const documents = documentsQuery.data ?? [];
+
   const [currentStep, setCurrentStep] = useState<Step>('status');
-  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
-  const [documents, setDocuments] = useState<CustomerDocument[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Company form data
   const [companyData, setCompanyData] = useState({
     legalName: '',
     tradingName: '',
@@ -57,39 +58,25 @@ export default function CustomerOnboardingPage() {
   const [previewModal, setPreviewModal] = useState<PreviewModalState>(initialPreviewState);
 
   useEffect(() => {
-    loadOnboardingData();
-  }, []);
+    if (!onboardingStatus) return;
 
-  const loadOnboardingData = async () => {
-    try {
-      setIsLoading(true);
-      const [status, docs] = await Promise.all([
-        customerOnboardingApi.getStatus(),
-        customerDocumentApi.getDocuments(),
-      ]);
-      setOnboardingStatus(status);
-      setDocuments(docs);
-
-      // Determine initial step based on status
-      if (status.status === 'approved') {
-        router.push('/customer/portal/dashboard');
-        return;
-      } else if (status.status === 'submitted' || status.status === 'under_review') {
-        setCurrentStep('status');
-      } else if (status.status === 'rejected') {
-        setCurrentStep('status');
-      } else if (!status.companyDetailsComplete) {
-        setCurrentStep('company');
-      } else if (!status.documentsComplete) {
-        setCurrentStep('documents');
-      } else {
-        setCurrentStep('review');
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load onboarding data');
-    } finally {
-      setIsLoading(false);
+    if (onboardingStatus.status === 'approved') {
+      router.push('/customer/portal/dashboard');
+    } else if (onboardingStatus.status === 'submitted' || onboardingStatus.status === 'under_review') {
+      setCurrentStep('status');
+    } else if (onboardingStatus.status === 'rejected') {
+      setCurrentStep('status');
+    } else if (!onboardingStatus.companyDetailsComplete) {
+      setCurrentStep('company');
+    } else if (!onboardingStatus.documentsComplete) {
+      setCurrentStep('documents');
+    } else {
+      setCurrentStep('review');
     }
+  }, [onboardingStatus, router]);
+
+  const refreshData = async () => {
+    await Promise.all([onboardingQuery.refetch(), documentsQuery.refetch()]);
   };
 
   const handleCompanyChange = (field: string, value: string) => {
@@ -110,7 +97,7 @@ export default function CustomerOnboardingPage() {
       setIsSubmitting(true);
       setError(null);
       await customerOnboardingApi.updateCompanyDetails(companyData);
-      await loadOnboardingData();
+      await refreshData();
       setCurrentStep('documents');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save company details');
@@ -141,7 +128,7 @@ export default function CustomerOnboardingPage() {
       setUploadingDoc(documentType);
       setUploadError(null);
       await customerDocumentApi.uploadDocument(file, documentType);
-      await loadOnboardingData();
+      await refreshData();
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Failed to upload document');
     } finally {
@@ -155,7 +142,7 @@ export default function CustomerOnboardingPage() {
 
     try {
       await customerDocumentApi.deleteDocument(id);
-      await loadOnboardingData();
+      await refreshData();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete document');
     }
@@ -198,7 +185,7 @@ export default function CustomerOnboardingPage() {
       setIsSubmitting(true);
       setError(null);
       await customerOnboardingApi.submit();
-      await loadOnboardingData();
+      await refreshData();
       await refreshProfile();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to submit onboarding');
@@ -243,7 +230,7 @@ export default function CustomerOnboardingPage() {
     );
   };
 
-  if (isLoading) {
+  if (onboardingQuery.isLoading || documentsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">

@@ -25,6 +25,17 @@ export {
 } from './customer/useCustomerRfqs'
 export { useCustomerProfile } from './customer/useCustomerProfile'
 export { useCustomerCompany } from './customer/useCustomerCompany'
+export { useCustomerOnboardingStatus } from './customer/useCustomerOnboarding'
+export { useCustomerDocuments } from './customer/useCustomerDocuments'
+export {
+  useCustomerConversations,
+  useCustomerConversationDetail,
+  useCustomerBroadcasts,
+  useSendCustomerMessage,
+  useCreateCustomerConversation,
+  useArchiveCustomerConversation,
+  useMarkCustomerBroadcastRead,
+} from './customer/useCustomerMessaging'
 export {
   useCustomerPreferredSuppliers,
   useCustomerInvitations,
@@ -47,6 +58,14 @@ export {
 export { useSupplierProfile } from './supplier/useSupplierProfile'
 export { useSupplierCapabilities } from './supplier/useSupplierCapabilities'
 export { useSupplierDocuments } from './supplier/useSupplierDocuments'
+export {
+  useSupplierConversations,
+  useSupplierConversationDetail,
+  useSupplierBroadcasts,
+  useSendSupplierMessage,
+  useArchiveSupplierConversation,
+  useMarkSupplierBroadcastRead,
+} from './supplier/useSupplierMessaging'
 export { useFeatureFlags, useToggleFeatureFlag } from './admin/useFeatureFlags'
 export {
   useAdminConversations,

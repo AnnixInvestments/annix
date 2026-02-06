@@ -28,4 +28,11 @@ export const supplierKeys = {
     all: ['supplier', 'documents'] as const,
     list: () => [...supplierKeys.documents.all, 'list'] as const,
   },
+  messaging: {
+    all: ['supplier', 'messaging'] as const,
+    conversations: () => [...supplierKeys.messaging.all, 'conversations'] as const,
+    conversationDetail: (id: number) =>
+      [...supplierKeys.messaging.all, 'conversation', id] as const,
+    broadcasts: () => [...supplierKeys.messaging.all, 'broadcasts'] as const,
+  },
 } as const

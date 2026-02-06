@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useToast } from '@/app/components/Toast';
 import { ConversationThread, MessageComposer } from '@/app/components/messaging';
+import { supplierMessagingApi } from '@/app/lib/api/messagingApi';
 import {
-  supplierMessagingApi,
-  ConversationDetail,
-} from '@/app/lib/api/messagingApi';
+  useSupplierConversationDetail,
+  useSendSupplierMessage,
+  useArchiveSupplierConversation,
+} from '@/app/lib/query/hooks';
 
 export default function SupplierConversationDetailPage() {
   const router = useRouter();
@@ -15,49 +17,52 @@ export default function SupplierConversationDetailPage() {
   const { showToast } = useToast();
 
   const conversationId = Number(params.id);
+  const conversationQuery = useSupplierConversationDetail(conversationId);
+  const sendMessageMutation = useSendSupplierMessage();
+  const archiveMutation = useArchiveSupplierConversation();
 
-  const [conversation, setConversation] = useState<ConversationDetail | null>(
-    null,
-  );
-  const [isLoading, setIsLoading] = useState(true);
+  const conversation = conversationQuery.data ?? null;
   const [currentUserId, setCurrentUserId] = useState<number>(0);
-
-  const fetchConversation = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const detail = await supplierMessagingApi.conversation(conversationId);
-      setConversation(detail);
-      await supplierMessagingApi.markAsRead(conversationId);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load conversation', 'error');
-      router.push('/supplier/messages');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [conversationId, router, showToast]);
+  const [localMessages, setLocalMessages] = useState<typeof conversation extends null ? never : NonNullable<typeof conversation>['messages']>([]);
 
   useEffect(() => {
-    if (conversationId) {
-      fetchConversation();
+    if (conversation) {
+      setLocalMessages(conversation.messages);
     }
-  }, [conversationId, fetchConversation]);
+  }, [conversation]);
+
+  useEffect(() => {
+    if (conversationId && conversation) {
+      supplierMessagingApi.markAsRead(conversationId);
+    }
+  }, [conversationId, conversation]);
+
+  useEffect(() => {
+    if (conversationQuery.error) {
+      showToast(
+        conversationQuery.error instanceof Error
+          ? conversationQuery.error.message
+          : 'Failed to load conversation',
+        'error',
+      );
+      router.push('/supplier/messages');
+    }
+  }, [conversationQuery.error, showToast, router]);
 
   const handleSendMessage = async (content: string) => {
     if (!conversation) return;
 
     try {
-      const newMessage = await supplierMessagingApi.sendMessage(
-        conversation.id,
-        { content },
-      );
+      const newMessage = await sendMessageMutation.mutateAsync({
+        conversationId: conversation.id,
+        dto: { content },
+      });
 
       if (currentUserId === 0) {
         setCurrentUserId(newMessage.senderId);
       }
 
-      setConversation((prev) =>
-        prev ? { ...prev, messages: [...prev.messages, newMessage] } : null,
-      );
+      setLocalMessages((prev) => [...prev, newMessage]);
     } catch (error: any) {
       showToast(error.message || 'Failed to send message', 'error');
     }
@@ -67,7 +72,7 @@ export default function SupplierConversationDetailPage() {
     if (!conversation) return;
 
     try {
-      await supplierMessagingApi.archiveConversation(conversation.id);
+      await archiveMutation.mutateAsync(conversation.id);
       showToast('Conversation archived', 'success');
       router.push('/supplier/messages');
     } catch (error: any) {
@@ -75,7 +80,7 @@ export default function SupplierConversationDetailPage() {
     }
   };
 
-  if (isLoading) {
+  if (conversationQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -139,7 +144,7 @@ export default function SupplierConversationDetailPage() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="flex flex-col min-h-[600px]">
           <ConversationThread
-            messages={conversation.messages}
+            messages={localMessages}
             currentUserId={currentUserId}
           />
 

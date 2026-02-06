@@ -1,65 +1,70 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
 import { useToast } from '@/app/components/Toast';
 import { ConversationThread, MessageComposer } from '@/app/components/messaging';
+import { customerMessagingApi } from '@/app/lib/api/messagingApi';
 import {
-  customerMessagingApi,
-  ConversationDetail,
-} from '@/app/lib/api/messagingApi';
+  useCustomerConversationDetail,
+  useSendCustomerMessage,
+  useArchiveCustomerConversation,
+} from '@/app/lib/query/hooks';
 
 export default function CustomerConversationDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { customer, isLoading: authLoading } = useCustomerAuth();
+  const { isLoading: authLoading } = useCustomerAuth();
   const { showToast } = useToast();
 
   const conversationId = Number(params.id);
+  const conversationQuery = useCustomerConversationDetail(conversationId);
+  const sendMessageMutation = useSendCustomerMessage();
+  const archiveMutation = useArchiveCustomerConversation();
 
-  const [conversation, setConversation] = useState<ConversationDetail | null>(
-    null,
-  );
-  const [isLoading, setIsLoading] = useState(true);
+  const conversation = conversationQuery.data ?? null;
   const [currentUserId, setCurrentUserId] = useState<number>(0);
-
-  const fetchConversation = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const detail = await customerMessagingApi.conversation(conversationId);
-      setConversation(detail);
-      await customerMessagingApi.markAsRead(conversationId);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load conversation', 'error');
-      router.push('/customer/messages');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [conversationId, router, showToast]);
+  const [localMessages, setLocalMessages] = useState<typeof conversation extends null ? never : NonNullable<typeof conversation>['messages']>([]);
 
   useEffect(() => {
-    if (!authLoading && customer && conversationId) {
-      fetchConversation();
+    if (conversation) {
+      setLocalMessages(conversation.messages);
     }
-  }, [authLoading, customer, conversationId, fetchConversation]);
+  }, [conversation]);
+
+  useEffect(() => {
+    if (conversationId && conversation) {
+      customerMessagingApi.markAsRead(conversationId);
+    }
+  }, [conversationId, conversation]);
+
+  useEffect(() => {
+    if (conversationQuery.error) {
+      showToast(
+        conversationQuery.error instanceof Error
+          ? conversationQuery.error.message
+          : 'Failed to load conversation',
+        'error',
+      );
+      router.push('/customer/messages');
+    }
+  }, [conversationQuery.error, showToast, router]);
 
   const handleSendMessage = async (content: string) => {
     if (!conversation) return;
 
     try {
-      const newMessage = await customerMessagingApi.sendMessage(
-        conversation.id,
-        { content },
-      );
+      const newMessage = await sendMessageMutation.mutateAsync({
+        conversationId: conversation.id,
+        dto: { content },
+      });
 
       if (currentUserId === 0) {
         setCurrentUserId(newMessage.senderId);
       }
 
-      setConversation((prev) =>
-        prev ? { ...prev, messages: [...prev.messages, newMessage] } : null,
-      );
+      setLocalMessages((prev) => [...prev, newMessage]);
     } catch (error: any) {
       showToast(error.message || 'Failed to send message', 'error');
     }
@@ -69,7 +74,7 @@ export default function CustomerConversationDetailPage() {
     if (!conversation) return;
 
     try {
-      await customerMessagingApi.archiveConversation(conversation.id);
+      await archiveMutation.mutateAsync(conversation.id);
       showToast('Conversation archived', 'success');
       router.push('/customer/messages');
     } catch (error: any) {
@@ -77,7 +82,7 @@ export default function CustomerConversationDetailPage() {
     }
   };
 
-  if (authLoading || isLoading) {
+  if (authLoading || conversationQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -141,7 +146,7 @@ export default function CustomerConversationDetailPage() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="flex flex-col min-h-[600px]">
           <ConversationThread
-            messages={conversation.messages}
+            messages={localMessages}
             currentUserId={currentUserId}
           />
 

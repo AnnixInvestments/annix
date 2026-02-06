@@ -29,4 +29,19 @@ export const customerKeys = {
     all: ['customer', 'company'] as const,
     data: () => [...customerKeys.company.all, 'data'] as const,
   },
+  onboarding: {
+    all: ['customer', 'onboarding'] as const,
+    status: () => [...customerKeys.onboarding.all, 'status'] as const,
+  },
+  documents: {
+    all: ['customer', 'documents'] as const,
+    list: () => [...customerKeys.documents.all, 'list'] as const,
+  },
+  messaging: {
+    all: ['customer', 'messaging'] as const,
+    conversations: () => [...customerKeys.messaging.all, 'conversations'] as const,
+    conversationDetail: (id: number) =>
+      [...customerKeys.messaging.all, 'conversation', id] as const,
+    broadcasts: () => [...customerKeys.messaging.all, 'broadcasts'] as const,
+  },
 } as const
