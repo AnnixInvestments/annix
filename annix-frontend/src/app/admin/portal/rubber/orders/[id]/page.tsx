@@ -3,18 +3,22 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import {
+import type {
   CallOff,
-  RubberCompanyDto,
   RubberOrderDto,
-  rubberPortalApi,
-  RubberProductDto,
 } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
 import { nowMillis, formatDateTimeZA, formatDateZA, fromMillis } from '@/app/lib/datetime';
 import { statusColor, statusLabel, validNextStatuses, STATUS_LABELS, isTerminalStatus } from '@/app/lib/config/rubber/orderStatus';
 import { calloffStatusColor, calloffStatusLabel, CALLOFF_STATUS, CALLOFF_STATUS_OPTIONS, CalloffStatus } from '@/app/lib/config/rubber/calloffStatus';
 import { THICKNESS_OPTIONS, WIDTH_OPTIONS, LENGTH_OPTIONS } from '@/app/lib/config/rubber/dimensions';
+import {
+  useRubberOrderDetail,
+  useRubberProducts,
+  useRubberCompanies,
+  useRubberOrderStatuses,
+  useUpdateRubberOrder,
+} from '@/app/lib/query/hooks';
 import { CalloffInput } from '../components/CalloffInput';
 import { Breadcrumb } from '../../components/Breadcrumb';
 
@@ -115,12 +119,17 @@ export default function RubberOrderDetailPage() {
   const orderId = Number(params.id);
   const { showToast } = useToast();
 
-  const [order, setOrder] = useState<RubberOrderDto | null>(null);
-  const [products, setProducts] = useState<RubberProductDto[]>([]);
-  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
-  const [statuses, setStatuses] = useState<{ value: number; label: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const orderQuery = useRubberOrderDetail(orderId);
+  const productsQuery = useRubberProducts();
+  const companiesQuery = useRubberCompanies();
+  const statusesQuery = useRubberOrderStatuses();
+  const updateOrderMutation = useUpdateRubberOrder();
+
+  const order = orderQuery.data ?? null;
+  const products = productsQuery.data ?? [];
+  const companies = companiesQuery.data ?? [];
+  const statuses = statusesQuery.data ?? [];
+
   const [isSaving, setIsSaving] = useState(false);
 
   const [editStatus, setEditStatus] = useState<number>(0);
@@ -130,54 +139,30 @@ export default function RubberOrderDetailPage() {
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   const [originalState, setOriginalState] = useState<OriginalState | null>(null);
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const [orderData, productsData, companiesData, statusesData] = await Promise.all([
-        rubberPortalApi.orderById(orderId),
-        rubberPortalApi.products(),
-        rubberPortalApi.companies(),
-        rubberPortalApi.orderStatuses(),
-      ]);
-      setOrder(orderData);
-      setProducts(productsData);
-      setCompanies(companiesData);
-      setStatuses(statusesData);
-
-      setEditStatus(orderData.status);
-      setEditCompanyId(orderData.companyId || undefined);
-      setEditCompanyOrderNumber(orderData.companyOrderNumber || '');
-      const mappedItems = orderData.items.map((item) => ({
-          id: item.id,
-          productId: item.productId || undefined,
-          thickness: item.thickness || undefined,
-          width: item.width || undefined,
-          length: item.length || undefined,
-          quantity: item.quantity || undefined,
-          callOffs: item.callOffs || [],
-          kgPerRoll: item.kgPerRoll,
-        }));
+  useEffect(() => {
+    if (order) {
+      setEditStatus(order.status);
+      setEditCompanyId(order.companyId || undefined);
+      setEditCompanyOrderNumber(order.companyOrderNumber || '');
+      const mappedItems = order.items.map((item) => ({
+        id: item.id,
+        productId: item.productId || undefined,
+        thickness: item.thickness || undefined,
+        width: item.width || undefined,
+        length: item.length || undefined,
+        quantity: item.quantity || undefined,
+        callOffs: item.callOffs || [],
+        kgPerRoll: item.kgPerRoll,
+      }));
       setEditItems(mappedItems);
       setOriginalState({
-        status: orderData.status,
-        companyId: orderData.companyId || undefined,
-        companyOrderNumber: orderData.companyOrderNumber || '',
+        status: order.status,
+        companyId: order.companyId || undefined,
+        companyOrderNumber: order.companyOrderNumber || '',
         items: JSON.stringify(mappedItems),
       });
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load order';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    if (orderId) {
-      fetchData();
-    }
-  }, [orderId]);
+  }, [order]);
 
   const hasUnsavedChanges = useMemo(() => {
     if (!originalState) return false;
@@ -253,21 +238,23 @@ export default function RubberOrderDetailPage() {
 
     try {
       setIsSaving(true);
-      await rubberPortalApi.updateOrder(orderId, {
-        status: editStatus,
-        companyId: editCompanyId,
-        companyOrderNumber: editCompanyOrderNumber || undefined,
-        items: editItems.filter((item) => item.productId).map((item) => ({
-          productId: item.productId,
-          thickness: item.thickness,
-          width: item.width,
-          length: item.length,
-          quantity: item.quantity,
-          callOffs: item.callOffs,
-        })),
+      await updateOrderMutation.mutateAsync({
+        id: orderId,
+        data: {
+          status: editStatus,
+          companyId: editCompanyId,
+          companyOrderNumber: editCompanyOrderNumber || undefined,
+          items: editItems.filter((item) => item.productId).map((item) => ({
+            productId: item.productId,
+            thickness: item.thickness,
+            width: item.width,
+            length: item.length,
+            quantity: item.quantity,
+            callOffs: item.callOffs,
+          })),
+        },
       });
       showToast('Order updated', 'success');
-      fetchData();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update order';
       showToast(errorMessage, 'error');
@@ -424,7 +411,7 @@ export default function RubberOrderDetailPage() {
     return `R ${value.toLocaleString('en-ZA', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   };
 
-  if (isLoading) {
+  if (orderQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -435,13 +422,13 @@ export default function RubberOrderDetailPage() {
     );
   }
 
-  if (error) {
+  if (orderQuery.error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Order</div>
-          <p className="text-gray-600">{error}</p>
-          <button onClick={fetchData} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <p className="text-gray-600">{orderQuery.error instanceof Error ? orderQuery.error.message : 'Failed to load order'}</p>
+          <button onClick={() => orderQuery.refetch()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
             Retry
           </button>
         </div>

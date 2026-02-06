@@ -57,6 +57,8 @@ export {
 } from './admin/useAdminMessaging'
 export {
   useRubberOrders,
+  useRubberOrderDetail,
+  useUpdateRubberOrder,
   useRubberCompanies,
   useRubberProducts,
   useRubberOrderStatuses,

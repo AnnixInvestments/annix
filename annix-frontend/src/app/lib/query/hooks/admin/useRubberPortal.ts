@@ -53,6 +53,26 @@ export function useRubberPricingTiers() {
   })
 }
 
+export function useRubberOrderDetail(id: number) {
+  return useQuery<RubberOrderDto>({
+    queryKey: rubberKeys.orders.detail(id),
+    queryFn: () => rubberPortalApi.orderById(id),
+    enabled: id > 0,
+  })
+}
+
+export function useUpdateRubberOrder() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof rubberPortalApi.updateOrder>[1] }) =>
+      rubberPortalApi.updateOrder(id, data),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.orders.all })
+      queryClient.invalidateQueries({ queryKey: rubberKeys.orders.detail(variables.id) })
+    },
+  })
+}
+
 export function useCreateRubberOrder() {
   const queryClient = useQueryClient()
   return useMutation({
