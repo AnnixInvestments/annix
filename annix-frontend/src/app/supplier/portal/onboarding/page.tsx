@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supplierPortalApi, SupplierCompanyDto, OnboardingStatusResponse } from '@/app/lib/api/supplierApi';
+import { supplierPortalApi, type SupplierCompanyDto } from '@/app/lib/api/supplierApi';
 import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
 import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
 import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
 import { currencyCodeForCountry } from '@/app/lib/currencies';
-import { log } from '@/app/lib/logger';
+import { useSupplierOnboardingStatus, useSupplierProfile, useSupplierCapabilities } from '@/app/lib/query/hooks';
 
 const initialCompanyData: SupplierCompanyDto = {
   legalName: '',
@@ -70,47 +70,34 @@ const companySizes = [
 export default function SupplierOnboardingPage() {
   const router = useRouter();
   const { refreshDashboard } = useSupplierAuth();
+  const onboardingQuery = useSupplierOnboardingStatus();
+  const profileQuery = useSupplierProfile();
+  const capabilitiesQuery = useSupplierCapabilities();
+
+  const onboardingStatus = onboardingQuery.data ?? null;
+
   const [step, setStep] = useState(1);
   const [companyData, setCompanyData] = useState<SupplierCompanyDto>(initialCompanyData);
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>([]);
-  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatusResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statusData, profileData, capabilitiesData] = await Promise.all([
-          supplierPortalApi.getOnboardingStatus(),
-          supplierPortalApi.getProfile(),
-          supplierPortalApi.getCapabilities(),
-        ]);
-        setOnboardingStatus(statusData);
+    if (profileQuery.data?.company) {
+      setCompanyData({
+        ...initialCompanyData,
+        ...profileQuery.data.company,
+      });
+    }
+  }, [profileQuery.data]);
 
-        // Pre-fill company data if exists
-        if (profileData.company) {
-          setCompanyData({
-            ...initialCompanyData,
-            ...profileData.company,
-          });
-        }
-
-        // Pre-fill capabilities if they exist
-        if (capabilitiesData.capabilities) {
-          setSelectedCapabilities(capabilitiesData.capabilities);
-        }
-      } catch (err) {
-        log.error('Failed to fetch data:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  useEffect(() => {
+    if (capabilitiesQuery.data?.capabilities) {
+      setSelectedCapabilities(capabilitiesQuery.data.capabilities);
+    }
+  }, [capabilitiesQuery.data]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -221,7 +208,7 @@ export default function SupplierOnboardingPage() {
     }
   };
 
-  if (isLoading) {
+  if (onboardingQuery.isLoading || profileQuery.isLoading || capabilitiesQuery.isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-8 flex justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
