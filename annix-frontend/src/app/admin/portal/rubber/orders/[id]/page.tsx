@@ -12,7 +12,7 @@ import {
 } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
 import { nowMillis, formatDateTimeZA, formatDateZA, fromMillis } from '@/app/lib/datetime';
-import { statusColor, statusLabel } from '@/app/lib/config/rubber/orderStatus';
+import { statusColor, statusLabel, validNextStatuses, STATUS_LABELS, isTerminalStatus } from '@/app/lib/config/rubber/orderStatus';
 import { calloffStatusColor, calloffStatusLabel, CALLOFF_STATUS, CALLOFF_STATUS_OPTIONS, CalloffStatus } from '@/app/lib/config/rubber/calloffStatus';
 import { THICKNESS_OPTIONS, WIDTH_OPTIONS, LENGTH_OPTIONS } from '@/app/lib/config/rubber/dimensions';
 import { CalloffInput } from '../components/CalloffInput';
@@ -374,6 +374,13 @@ export default function RubberOrderDetailPage() {
     return duplicateItemKeys.has(key);
   };
 
+  const availableStatuses = useMemo(() => {
+    if (!order) return statuses;
+    const validNext = validNextStatuses(order.status);
+    const currentStatus = order.status;
+    return statuses.filter((s) => s.value === currentStatus || (validNext as number[]).includes(s.value));
+  }, [order, statuses]);
+
   const addCalloff = (itemIndex: number, quantity: number, status: CalloffStatus, notes: string) => {
     const item = editItems[itemIndex];
     const summary = calloffSummary(item);
@@ -492,17 +499,26 @@ export default function RubberOrderDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Status</label>
-            <select
-                value={editStatus}
-                onChange={(e) => setEditStatus(Number(e.target.value))}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
-            >
-              {statuses.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-              ))}
-            </select>
+            {isTerminalStatus(order.status) ? (
+              <div className="mt-1 flex items-center space-x-2">
+                <span className={`px-3 py-2 inline-flex text-sm font-medium rounded-md ${statusColor(order.status)}`}>
+                  {statusLabel(order.status)}
+                </span>
+                <span className="text-sm text-gray-500">(Final status)</span>
+              </div>
+            ) : (
+              <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(Number(e.target.value))}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+              >
+                {availableStatuses.map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                ))}
+              </select>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Company</label>
@@ -531,6 +547,54 @@ export default function RubberOrderDetailPage() {
           </div>
         </div>
       </div>
+
+      {order.statusHistory && order.statusHistory.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Status History</h2>
+          <div className="flow-root">
+            <ul className="-mb-8">
+              {order.statusHistory.map((event, idx) => (
+                <li key={idx}>
+                  <div className="relative pb-8">
+                    {idx !== order.statusHistory.length - 1 && (
+                      <span className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+                    )}
+                    <div className="relative flex space-x-3">
+                      <div>
+                        <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
+                          <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </span>
+                      </div>
+                      <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
+                        <div>
+                          <p className="text-sm text-gray-500">
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.fromStatus)}`}>
+                              {STATUS_LABELS[event.fromStatus] || 'Unknown'}
+                            </span>
+                            <span className="mx-2">→</span>
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.toStatus)}`}>
+                              {STATUS_LABELS[event.toStatus] || 'Unknown'}
+                            </span>
+                          </p>
+                          {event.notes && (
+                            <p className="mt-1 text-sm text-gray-500 italic">{event.notes}</p>
+                          )}
+                        </div>
+                        <div className="whitespace-nowrap text-right text-sm text-gray-500">
+                          <time>{formatDateTimeZA(fromMillis(event.timestamp).toISO())}</time>
+                          {event.changedBy && <div className="text-xs text-gray-400">by {event.changedBy}</div>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">

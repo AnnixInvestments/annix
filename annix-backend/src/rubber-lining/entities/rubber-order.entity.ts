@@ -22,6 +22,14 @@ export enum RubberOrderStatus {
   COMPLETE = 6,
 }
 
+export interface StatusHistoryEvent {
+  timestamp: number;
+  fromStatus: RubberOrderStatus;
+  toStatus: RubberOrderStatus;
+  changedBy?: string;
+  notes?: string;
+}
+
 @Entity('rubber_order')
 export class RubberOrder {
   @PrimaryGeneratedColumn()
@@ -81,6 +89,13 @@ export class RubberOrder {
     nullable: true,
   })
   updatedByFirebaseUid: string | null;
+
+  @Column({
+    name: 'status_history',
+    type: 'jsonb',
+    default: '[]',
+  })
+  statusHistory: StatusHistoryEvent[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

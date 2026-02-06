@@ -742,4 +742,84 @@ export class NixController {
       );
     return { definitions };
   }
+
+  @Post('document-pages')
+  @ApiOperation({ summary: 'Convert uploaded document to page images for annotation' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        scale: { type: 'number', default: 1.5 },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'PDF pages as base64 images', type: PdfPagesResponseDto })
+  @UseInterceptors(FileInterceptor('file'))
+  async documentPagesFromUpload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { scale?: string },
+  ): Promise<PdfPagesResponseDto> {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    if (!file.buffer) {
+      throw new BadRequestException(`File buffer is empty. File: ${file.originalname}, size: ${file.size}, mimetype: ${file.mimetype}`);
+    }
+
+    const scale = body.scale ? parseFloat(body.scale) : 1.5;
+    return this.documentAnnotationService.convertPdfToImages(file.buffer, scale);
+  }
+
+  @Post('extract-from-region')
+  @ApiOperation({ summary: 'Extract text from a region in an uploaded document' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        regionCoordinates: { type: 'string', description: 'JSON string of region coordinates' },
+        fieldName: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Extraction result' })
+  @UseInterceptors(FileInterceptor('file'))
+  async extractFromRegionUpload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { regionCoordinates: string; fieldName: string },
+  ): Promise<{ text: string; confidence: number }> {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    let coordinates;
+    try {
+      coordinates = JSON.parse(body.regionCoordinates);
+    } catch {
+      throw new BadRequestException('Invalid regionCoordinates JSON');
+    }
+
+    return this.documentAnnotationService.extractFromRegion(
+      file.buffer,
+      coordinates,
+      body.fieldName,
+    );
+  }
+
+  @Post('save-extraction-region')
+  @ApiOperation({ summary: 'Save a learned extraction region from portal user' })
+  @ApiResponse({ status: 201, description: 'Region saved successfully' })
+  async saveExtractionRegionFromPortal(
+    @Body() dto: SaveExtractionRegionDto,
+  ): Promise<{ success: boolean; id: number }> {
+    const region = await this.documentAnnotationService.saveExtractionRegion(
+      dto,
+      undefined,
+    );
+    return { success: true, id: region.id };
+  }
 }

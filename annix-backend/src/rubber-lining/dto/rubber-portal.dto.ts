@@ -10,7 +10,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProductCodingType } from '../entities/rubber-product-coding.entity';
-import { RubberOrderStatus } from '../entities/rubber-order.entity';
+import {
+  RubberOrderStatus,
+  StatusHistoryEvent,
+} from '../entities/rubber-order.entity';
 import { CallOff } from '../entities/rubber-order-item.entity';
 
 export class RubberProductCodingDto {
@@ -368,6 +371,7 @@ export class RubberOrderDto {
   updatedAt: string;
   createdBy: string | null;
   updatedBy: string | null;
+  statusHistory: StatusHistoryEvent[];
 }
 
 export class CreateRubberOrderDto {

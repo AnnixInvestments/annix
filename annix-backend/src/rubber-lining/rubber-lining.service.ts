@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
-import { generateUniqueId } from '../lib/datetime';
+import { generateUniqueId, nowMillis } from '../lib/datetime';
 import { RubberType } from './entities/rubber-type.entity';
 import { RubberSpecification } from './entities/rubber-specification.entity';
 import {
@@ -16,7 +16,11 @@ import {
 import { RubberPricingTier } from './entities/rubber-pricing-tier.entity';
 import { RubberCompany } from './entities/rubber-company.entity';
 import { RubberProduct } from './entities/rubber-product.entity';
-import { RubberOrder, RubberOrderStatus } from './entities/rubber-order.entity';
+import {
+  RubberOrder,
+  RubberOrderStatus,
+  StatusHistoryEvent,
+} from './entities/rubber-order.entity';
 import { RubberOrderItem } from './entities/rubber-order-item.entity';
 import {
   RubberTypeDto,
@@ -841,7 +845,15 @@ export class RubberLiningService {
 
     if (dto.companyOrderNumber !== undefined)
       order.companyOrderNumber = dto.companyOrderNumber || null;
-    if (dto.status !== undefined) order.status = dto.status;
+    if (dto.status !== undefined && dto.status !== order.status) {
+      const historyEvent: StatusHistoryEvent = {
+        timestamp: nowMillis(),
+        fromStatus: order.status,
+        toStatus: dto.status,
+      };
+      order.statusHistory = [...(order.statusHistory || []), historyEvent];
+      order.status = dto.status;
+    }
     if (dto.companyId !== undefined) order.companyId = dto.companyId || null;
 
     await this.orderRepository.save(order);
@@ -1050,6 +1062,7 @@ export class RubberLiningService {
       updatedAt: order.updatedAt.toISOString(),
       createdBy: order.createdByFirebaseUid,
       updatedBy: order.updatedByFirebaseUid,
+      statusHistory: order.statusHistory || [],
     };
   }
 

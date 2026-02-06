@@ -57,3 +57,46 @@ export const ORDER_STATUS_OPTIONS = ORDER_STATUS_VALUES.map((value) => ({
   value,
   label: STATUS_LABELS[value],
 }));
+
+export const STATUS_TRANSITIONS: Record<RubberOrderStatus, readonly RubberOrderStatus[]> = {
+  [RUBBER_ORDER_STATUS.NEW]: [RUBBER_ORDER_STATUS.DRAFT, RUBBER_ORDER_STATUS.CANCELLED],
+  [RUBBER_ORDER_STATUS.DRAFT]: [RUBBER_ORDER_STATUS.SUBMITTED, RUBBER_ORDER_STATUS.PARTIALLY_SUBMITTED, RUBBER_ORDER_STATUS.CANCELLED],
+  [RUBBER_ORDER_STATUS.CANCELLED]: [],
+  [RUBBER_ORDER_STATUS.PARTIALLY_SUBMITTED]: [RUBBER_ORDER_STATUS.SUBMITTED, RUBBER_ORDER_STATUS.MANUFACTURING, RUBBER_ORDER_STATUS.CANCELLED],
+  [RUBBER_ORDER_STATUS.SUBMITTED]: [RUBBER_ORDER_STATUS.MANUFACTURING, RUBBER_ORDER_STATUS.CANCELLED],
+  [RUBBER_ORDER_STATUS.MANUFACTURING]: [RUBBER_ORDER_STATUS.DELIVERING, RUBBER_ORDER_STATUS.CANCELLED],
+  [RUBBER_ORDER_STATUS.DELIVERING]: [RUBBER_ORDER_STATUS.COMPLETE, RUBBER_ORDER_STATUS.CANCELLED],
+  [RUBBER_ORDER_STATUS.COMPLETE]: [],
+};
+
+export const validNextStatuses = (currentStatus: number): RubberOrderStatus[] => {
+  if (!isValidOrderStatus(currentStatus)) {
+    return [];
+  }
+  return [...STATUS_TRANSITIONS[currentStatus]];
+};
+
+export const canTransitionTo = (currentStatus: number, targetStatus: number): boolean => {
+  if (!isValidOrderStatus(currentStatus) || !isValidOrderStatus(targetStatus)) {
+    return false;
+  }
+  if (currentStatus === targetStatus) {
+    return true;
+  }
+  return STATUS_TRANSITIONS[currentStatus].includes(targetStatus);
+};
+
+export const isTerminalStatus = (status: number): boolean => {
+  if (!isValidOrderStatus(status)) {
+    return false;
+  }
+  return STATUS_TRANSITIONS[status].length === 0;
+};
+
+export interface StatusHistoryEvent {
+  timestamp: number;
+  fromStatus: RubberOrderStatus;
+  toStatus: RubberOrderStatus;
+  changedBy?: string;
+  notes?: string;
+}

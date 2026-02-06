@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { NixController } from './nix.controller';
 import { NixService } from './nix.service';
 import { NixExtraction } from './entities/nix-extraction.entity';
@@ -50,7 +51,7 @@ import { AuditModule } from '../audit/audit.module';
       SupplierOnboarding,
     ]),
     MulterModule.register({
-      dest: './uploads/nix',
+      storage: memoryStorage(),
       limits: {
         fileSize: 100 * 1024 * 1024, // 100 MB for tender documents
       },

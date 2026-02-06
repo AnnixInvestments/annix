@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/lib/api-config';
 import type { CalloffStatus } from '@/app/lib/config/rubber/calloffStatus';
+import type { StatusHistoryEvent } from '@/app/lib/config/rubber/orderStatus';
 
 export interface RubberProductCodingDto {
   id: number;
@@ -113,6 +114,7 @@ export interface RubberOrderDto {
   updatedAt: string;
   createdBy: string | null;
   updatedBy: string | null;
+  statusHistory: StatusHistoryEvent[];
 }
 
 export interface RubberPriceCalculationDto {
