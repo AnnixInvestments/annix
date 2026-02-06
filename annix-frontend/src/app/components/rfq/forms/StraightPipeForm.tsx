@@ -952,10 +952,11 @@ function StraightPipeFormComponent({
 
                     const effectiveStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                     const effectiveTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const normalizedTypeCode = effectiveTypeCode?.replace(/^\//, '') || '';
 
                     const globalClass = masterData.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId);
                     const globalBasePressure = globalClass?.designation?.replace(/\/\d+$/, '') || '';
-                    const targetDesignationForGlobal = effectiveTypeCode && globalBasePressure ? `${globalBasePressure}/${effectiveTypeCode}` : null;
+                    const targetDesignationForGlobal = normalizedTypeCode && globalBasePressure ? `${globalBasePressure}/${normalizedTypeCode}` : null;
                     const matchingClassForGlobal = targetDesignationForGlobal
                       ? masterData.pressureClasses?.find((pc: any) => pc.designation === targetDesignationForGlobal)
                       : null;
@@ -1087,7 +1088,7 @@ function StraightPipeFormComponent({
                                 if (isSabs1123) {
                                   return SABS_1123_PRESSURE_CLASSES.map((pc) => {
                                     const pcValue = String(pc.value);
-                                    const targetDesignation = effectiveTypeCode ? `${pcValue}/${effectiveTypeCode}` : null;
+                                    const targetDesignation = normalizedTypeCode ? `${pcValue}/${normalizedTypeCode}` : null;
                                     const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
                                       if (targetDesignation && mpc.designation === targetDesignation) return true;
                                       return mpc.designation?.includes(pcValue);
@@ -1102,7 +1103,7 @@ function StraightPipeFormComponent({
                                   return BS_4504_PRESSURE_CLASSES.map((pc) => {
                                     const pcValue = String(pc.value);
                                     const equivalentValue = pcValue === '64' ? '63' : pcValue;
-                                    const targetDesignation = effectiveTypeCode ? `${pcValue}/${effectiveTypeCode}` : null;
+                                    const targetDesignation = normalizedTypeCode ? `${pcValue}/${normalizedTypeCode}` : null;
                                     const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
                                       if (targetDesignation && mpc.designation === targetDesignation) return true;
                                       return mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue);

@@ -581,6 +581,92 @@ function SaddleWeld({
   );
 }
 
+// Flange weld component - shows weld beads on inside and outside of pipe-to-flange connection
+function FlangeWeldRing({
+  position,
+  rotation,
+  pipeOuterRadius,
+  pipeInnerRadius,
+  weldThickness = 0.03,
+}: {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  pipeOuterRadius: number;
+  pipeInnerRadius: number;
+  weldThickness?: number;
+}) {
+  // Outer weld bead - fillet weld on outside of pipe where it meets flange
+  const outerWeldGeometry = useMemo(() => {
+    const segments = 48;
+    const points: THREE.Vector3[] = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const x = (pipeOuterRadius + weldThickness * 0.3) * Math.cos(angle);
+      const y = (pipeOuterRadius + weldThickness * 0.3) * Math.sin(angle);
+      points.push(new THREE.Vector3(x, y, 0));
+    }
+
+    const curve = new THREE.CatmullRomCurve3(points, true);
+
+    // Create fillet weld profile (triangular cross-section)
+    const weldProfile = new THREE.Shape();
+    const w = weldThickness;
+    weldProfile.moveTo(0, 0);
+    weldProfile.lineTo(w * 0.8, 0);
+    weldProfile.quadraticCurveTo(w * 0.4, w * 0.5, 0, w * 0.7);
+    weldProfile.lineTo(0, 0);
+
+    return new THREE.ExtrudeGeometry(weldProfile, {
+      steps: segments,
+      bevelEnabled: false,
+      extrudePath: curve,
+    });
+  }, [pipeOuterRadius, weldThickness]);
+
+  // Inner weld bead - fillet weld on inside of pipe bore where it meets flange
+  const innerWeldGeometry = useMemo(() => {
+    const segments = 48;
+    const points: THREE.Vector3[] = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const x = (pipeInnerRadius - weldThickness * 0.3) * Math.cos(angle);
+      const y = (pipeInnerRadius - weldThickness * 0.3) * Math.sin(angle);
+      points.push(new THREE.Vector3(x, y, 0));
+    }
+
+    const curve = new THREE.CatmullRomCurve3(points, true);
+
+    // Inner weld profile (reversed for inside)
+    const weldProfile = new THREE.Shape();
+    const w = weldThickness;
+    weldProfile.moveTo(0, 0);
+    weldProfile.lineTo(-w * 0.8, 0);
+    weldProfile.quadraticCurveTo(-w * 0.4, w * 0.5, 0, w * 0.7);
+    weldProfile.lineTo(0, 0);
+
+    return new THREE.ExtrudeGeometry(weldProfile, {
+      steps: segments,
+      bevelEnabled: false,
+      extrudePath: curve,
+    });
+  }, [pipeInnerRadius, weldThickness]);
+
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Outer weld bead */}
+      <mesh geometry={outerWeldGeometry} castShadow receiveShadow>
+        <meshStandardMaterial {...weldColor} />
+      </mesh>
+      {/* Inner weld bead */}
+      <mesh geometry={innerWeldGeometry} castShadow receiveShadow>
+        <meshStandardMaterial {...weldColor} />
+      </mesh>
+    </group>
+  );
+}
+
 // Main Tee Scene component
 function TeeScene(props: Tee3DPreviewProps) {
   const {
@@ -803,30 +889,14 @@ function TeeScene(props: Tee3DPreviewProps) {
     const indices: number[] = [];
     const normals: number[] = [];
 
-    const lengthSegments = 64;
-    const radialSegments = 64;
+    const lengthSegments = 128;  // High resolution for smooth hole edge
+    const radialSegments = 128;
     const halfLength = runLength / 2;
 
-    // Helper: check if a point on the run pipe surface is inside the branch hole
-    const isInBranchHole = (x: number, angle: number, radius: number): boolean => {
-      // Point on run pipe surface at position x along length, angle around circumference
-      const y = radius * Math.cos(angle);
-      const z = radius * Math.sin(angle);
-      // Check if this point is inside the branch cylinder
-      const dx = x - branchOffsetXVal;
-      const distFromBranchAxis = Math.sqrt(dx * dx + z * z);
-      // Only check top half of pipe (where branch is)
-      return y > 0 && distFromBranchAxis < branchOuterR;
-    };
-
-    // Helper: check if inner surface point is inside branch inner hole
-    const isInBranchInnerHole = (x: number, angle: number): boolean => {
-      const y = runInnerR * Math.cos(angle);
-      const z = runInnerR * Math.sin(angle);
-      const dx = x - branchOffsetXVal;
-      const distFromBranchAxis = Math.sqrt(dx * dx + z * z);
-      return y > 0 && distFromBranchAxis < branchInnerR;
-    };
+    // Don't cut a hole - let the branch pipe sit on top and the weld covers the junction
+    // This avoids jagged edges from grid-based hole detection
+    const isInBranchHole = (_x: number, _angle: number, _radius: number): boolean => false;
+    const isInBranchInnerHole = (_x: number, _angle: number): boolean => false;
 
     // Generate outer surface with hole
     const outerVertices: Map<string, number> = new Map();
@@ -931,42 +1001,8 @@ function TeeScene(props: Tee3DPreviewProps) {
     addEndCap(-halfLength, -1); // Left end
     addEndCap(halfLength, 1);   // Right end
 
-    // Add hole edge surface (the cut edge where branch meets run)
-    // This creates the visible edge around the hole
-    const holeEdgeStart = vertices.length / 3;
-    const holeSegments = 48;
-    for (let hi = 0; hi <= holeSegments; hi++) {
-      const angle = (hi / holeSegments) * Math.PI * 2;
-      const localX = branchOuterR * Math.cos(angle);
-      const localZ = branchOuterR * Math.sin(angle);
-
-      // Position on run pipe where branch hole edge is
-      const x = branchOffsetXVal + localX;
-      const outerY = Math.sqrt(Math.max(0, runOuterR * runOuterR - localZ * localZ));
-      const innerY = Math.sqrt(Math.max(0, runInnerR * runInnerR - localZ * localZ));
-
-      // Outer edge of hole
-      vertices.push(x, outerY, localZ);
-      // Normal points into the hole (toward branch center)
-      const nx = -localX / branchOuterR;
-      const nz = -localZ / branchOuterR;
-      normals.push(nx, 0, nz);
-
-      // Inner edge of hole
-      vertices.push(x, innerY, localZ);
-      normals.push(nx, 0, nz);
-    }
-
-    // Hole edge triangles
-    for (let hi = 0; hi < holeSegments; hi++) {
-      const o1 = holeEdgeStart + hi * 2;
-      const i1 = o1 + 1;
-      const o2 = o1 + 2;
-      const i2 = i1 + 2;
-
-      indices.push(o1, i1, o2);
-      indices.push(i1, i2, o2);
-    }
+    // Skip hole edge surface - the saddle weld covers the junction
+    // The branch pipe's saddle-cut bottom sits directly on the run pipe surface
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
@@ -1011,7 +1047,7 @@ function TeeScene(props: Tee3DPreviewProps) {
           runRadius={outerRadius}
           branchRadius={branchOuterRadius}
           branchOffsetX={branchOffsetX}
-          weldThickness={0.04}
+          weldThickness={0.12}
         />
 
         {/* Gusset plates for Gusset Tees - curved reinforcement plates on both sides of branch */}
@@ -1163,16 +1199,26 @@ function TeeScene(props: Tee3DPreviewProps) {
                 </Text>
               </>
             ) : (
-              <FlangeComponent
-                position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor, 0, 0]}
-                rotation={[0, Math.PI / 2, 0]}
-                outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-                innerDiameter={(od + 3) / scaleFactor}
-                thickness={runFlangeSpecs.thickness / scaleFactor}
-                pcd={runFlangeSpecs.pcd / scaleFactor}
-                boltHoles={runFlangeSpecs.boltHoles}
-                holeID={runFlangeSpecs.holeID / scaleFactor}
-              />
+              <>
+                <FlangeComponent
+                  position={[-halfRunLength, 0, 0]}
+                  rotation={[0, Math.PI / 2, 0]}
+                  outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+                  innerDiameter={(od + 3) / scaleFactor}
+                  thickness={runFlangeSpecs.thickness / scaleFactor}
+                  pcd={runFlangeSpecs.pcd / scaleFactor}
+                  boltHoles={runFlangeSpecs.boltHoles}
+                  holeID={runFlangeSpecs.holeID / scaleFactor}
+                />
+                {/* Flange welds - inside and outside */}
+                <FlangeWeldRing
+                  position={[-halfRunLength, 0, 0]}
+                  rotation={[0, Math.PI / 2, 0]}
+                  pipeOuterRadius={outerRadius}
+                  pipeInnerRadius={innerRadius}
+                  weldThickness={0.08}
+                />
+              </>
             )}
           </>
         )}
@@ -1286,16 +1332,26 @@ function TeeScene(props: Tee3DPreviewProps) {
                 </Text>
               </>
             ) : (
-              <FlangeComponent
-                position={[halfRunLength + runFlangeSpecs.thickness / scaleFactor, 0, 0]}
-                rotation={[0, -Math.PI / 2, 0]}
-                outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-                innerDiameter={(od + 3) / scaleFactor}
-                thickness={runFlangeSpecs.thickness / scaleFactor}
-                pcd={runFlangeSpecs.pcd / scaleFactor}
-                boltHoles={runFlangeSpecs.boltHoles}
-                holeID={runFlangeSpecs.holeID / scaleFactor}
-              />
+              <>
+                <FlangeComponent
+                  position={[halfRunLength, 0, 0]}
+                  rotation={[0, -Math.PI / 2, 0]}
+                  outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
+                  innerDiameter={(od + 3) / scaleFactor}
+                  thickness={runFlangeSpecs.thickness / scaleFactor}
+                  pcd={runFlangeSpecs.pcd / scaleFactor}
+                  boltHoles={runFlangeSpecs.boltHoles}
+                  holeID={runFlangeSpecs.holeID / scaleFactor}
+                />
+                {/* Flange welds - inside and outside */}
+                <FlangeWeldRing
+                  position={[halfRunLength, 0, 0]}
+                  rotation={[0, -Math.PI / 2, 0]}
+                  pipeOuterRadius={outerRadius}
+                  pipeInnerRadius={innerRadius}
+                  weldThickness={0.08}
+                />
+              </>
             )}
           </>
         )}
@@ -1409,16 +1465,26 @@ function TeeScene(props: Tee3DPreviewProps) {
                 </Text>
               </>
             ) : (
-              <FlangeComponent
-                position={[branchOffsetX, height + branchFlangeSpecs.thickness / scaleFactor, 0]}
-                rotation={[Math.PI / 2, 0, 0]}
-                outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
-                innerDiameter={(branchOD + 3) / scaleFactor}
-                thickness={branchFlangeSpecs.thickness / scaleFactor}
-                pcd={branchFlangeSpecs.pcd / scaleFactor}
-                boltHoles={branchFlangeSpecs.boltHoles}
-                holeID={branchFlangeSpecs.holeID / scaleFactor}
-              />
+              <>
+                <FlangeComponent
+                  position={[branchOffsetX, height, 0]}
+                  rotation={[Math.PI / 2, 0, 0]}
+                  outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
+                  innerDiameter={(branchOD + 3) / scaleFactor}
+                  thickness={branchFlangeSpecs.thickness / scaleFactor}
+                  pcd={branchFlangeSpecs.pcd / scaleFactor}
+                  boltHoles={branchFlangeSpecs.boltHoles}
+                  holeID={branchFlangeSpecs.holeID / scaleFactor}
+                />
+                {/* Flange welds - inside and outside */}
+                <FlangeWeldRing
+                  position={[branchOffsetX, height, 0]}
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  pipeOuterRadius={branchOuterRadius}
+                  pipeInnerRadius={branchInnerRadius}
+                  weldThickness={0.08}
+                />
+              </>
             )}
           </>
         )}
@@ -1428,7 +1494,7 @@ function TeeScene(props: Tee3DPreviewProps) {
         {hasBlankInlet && (
           <>
             <BlankFlangeComponent
-              position={[-halfRunLength - (2 * runFlangeSpecs.thickness / scaleFactor) - 0.5, 0, 0]}
+              position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor - 0.5, 0, 0]}
               rotation={[0, Math.PI / 2, 0]}
               outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
               thickness={runFlangeSpecs.thickness / scaleFactor}
@@ -1437,7 +1503,7 @@ function TeeScene(props: Tee3DPreviewProps) {
               holeID={runFlangeSpecs.holeID / scaleFactor}
             />
             <Text
-              position={[-halfRunLength - (2 * runFlangeSpecs.thickness / scaleFactor) - 0.25, -outerRadius - 0.2, 0]}
+              position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor - 0.25, -outerRadius - 0.2, 0]}
               fontSize={0.12}
               color="#cc3300"
               anchorX="center"
@@ -1450,7 +1516,7 @@ function TeeScene(props: Tee3DPreviewProps) {
         {hasBlankOutlet && (
           <>
             <BlankFlangeComponent
-              position={[halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + 0.5, 0, 0]}
+              position={[halfRunLength + runFlangeSpecs.thickness / scaleFactor + 0.5, 0, 0]}
               rotation={[0, -Math.PI / 2, 0]}
               outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
               thickness={runFlangeSpecs.thickness / scaleFactor}
@@ -1459,7 +1525,7 @@ function TeeScene(props: Tee3DPreviewProps) {
               holeID={runFlangeSpecs.holeID / scaleFactor}
             />
             <Text
-              position={[halfRunLength + (2 * runFlangeSpecs.thickness / scaleFactor) + 0.75, -outerRadius - 0.2, 0]}
+              position={[halfRunLength + runFlangeSpecs.thickness / scaleFactor + 0.75, -outerRadius - 0.2, 0]}
               fontSize={0.12}
               color="#cc3300"
               anchorX="center"
@@ -1472,7 +1538,7 @@ function TeeScene(props: Tee3DPreviewProps) {
         {hasBlankBranch && (
           <>
             <BlankFlangeComponent
-              position={[branchOffsetX, height + (2 * branchFlangeSpecs.thickness / scaleFactor) + 0.5, 0]}
+              position={[branchOffsetX, height + branchFlangeSpecs.thickness / scaleFactor + 0.5, 0]}
               rotation={[-Math.PI / 2, 0, 0]}
               outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
               thickness={branchFlangeSpecs.thickness / scaleFactor}
@@ -1481,7 +1547,7 @@ function TeeScene(props: Tee3DPreviewProps) {
               holeID={branchFlangeSpecs.holeID / scaleFactor}
             />
             <Text
-              position={[branchOffsetX - branchOuterRadius - 0.3, height + (2 * branchFlangeSpecs.thickness / scaleFactor) + 0.5, 0]}
+              position={[branchOffsetX - branchOuterRadius - 0.3, height + branchFlangeSpecs.thickness / scaleFactor + 0.5, 0]}
               fontSize={0.12}
               color="#cc3300"
               anchorX="right"

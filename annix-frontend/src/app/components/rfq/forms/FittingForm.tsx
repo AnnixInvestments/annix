@@ -177,10 +177,17 @@ function FittingFormComponent({
     masterDataApi.getFittingDimensions(effectiveStandardForDims as 'SABS62' | 'SABS719', fittingType!, fittingNb!, entry.specs?.angleRange)
       .then((dims) => {
         if (dims) {
-          const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
-          const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
           const isGussetTee = ['GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE'].includes(fittingType!);
-          const standardLength = isGussetTee ? (dimB || dimA) : dimA;
+          let standardLength: number | null = null;
+
+          if (effectiveStandardForDims === 'SABS62') {
+            const centreToFace = dims.centreToFaceCMm ? Number(dims.centreToFaceCMm) : null;
+            standardLength = centreToFace ? centreToFace * 2 : null;
+          } else {
+            const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
+            const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
+            standardLength = isGussetTee ? (dimB || dimA) : dimA;
+          }
 
           if (standardLength) {
             onUpdateEntry(entry.id, {
@@ -818,10 +825,11 @@ function FittingFormComponent({
 
                     const effectiveStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                     const effectiveTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const normalizedTypeCode = effectiveTypeCode?.replace(/^\//, '') || '';
 
                     const globalClass = masterData.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId);
                     const globalBasePressure = globalClass?.designation?.replace(/\/\d+$/, '') || '';
-                    const targetDesignationForGlobal = effectiveTypeCode && globalBasePressure ? `${globalBasePressure}/${effectiveTypeCode}` : null;
+                    const targetDesignationForGlobal = normalizedTypeCode && globalBasePressure ? `${globalBasePressure}/${normalizedTypeCode}` : null;
                     const matchingClassForGlobal = targetDesignationForGlobal
                       ? masterData.pressureClasses?.find((pc: any) => pc.designation === targetDesignationForGlobal)
                       : null;
@@ -896,7 +904,7 @@ function FittingFormComponent({
                               {(isSabs1123 ? SABS_1123_PRESSURE_CLASSES : BS_4504_PRESSURE_CLASSES).map((pc) => {
                                 const pcValue = String(pc.value);
                                 const equivalentValue = pcValue === '64' ? '63' : pcValue;
-                                const targetDesignation = effectiveTypeCode ? `${pcValue}/${effectiveTypeCode}` : null;
+                                const targetDesignation = normalizedTypeCode ? `${pcValue}/${normalizedTypeCode}` : null;
                                 const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
                                   if (targetDesignation && mpc.designation === targetDesignation) return true;
                                   return mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue);

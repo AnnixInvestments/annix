@@ -1390,6 +1390,7 @@ function BendFormComponent({
                   {(() => {
                     const effectiveStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
                     const effectiveFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const normalizedFlangeTypeCode = effectiveFlangeTypeCode?.replace(/^\//, '') || '';
                     const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === effectiveStandardId);
                     const standardCode = selectedStandard?.code?.toUpperCase() || '';
                     const isSabs1123 = (standardCode.includes('SABS') || standardCode.includes('SANS')) && standardCode.includes('1123');
@@ -1400,7 +1401,7 @@ function BendFormComponent({
 
                     const globalClass = masterData.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId);
                     const globalBasePressure = globalClass?.designation?.replace(/\/\d+$/, '') || '';
-                    const targetDesignationForGlobal = effectiveFlangeTypeCode && globalBasePressure ? `${globalBasePressure}/${effectiveFlangeTypeCode}` : null;
+                    const targetDesignationForGlobal = normalizedFlangeTypeCode && globalBasePressure ? `${globalBasePressure}/${normalizedFlangeTypeCode}` : null;
                     const matchingClassForGlobal = targetDesignationForGlobal
                       ? masterData.pressureClasses?.find((pc: any) => pc.designation === targetDesignationForGlobal)
                       : null;
@@ -1532,7 +1533,7 @@ function BendFormComponent({
                               {pressureClasses.map((pc) => {
                                 const pcValue = String(pc.value);
                                 const equivalentValue = pcValue === '64' ? '63' : pcValue;
-                                const targetDesignation = effectiveFlangeTypeCode ? `${pcValue}/${effectiveFlangeTypeCode}` : null;
+                                const targetDesignation = normalizedFlangeTypeCode ? `${pcValue}/${normalizedFlangeTypeCode}` : null;
                                 const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
                                   if (targetDesignation && mpc.designation === targetDesignation) return true;
                                   return mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue);
@@ -2097,6 +2098,7 @@ function BendFormComponent({
                       {(() => {
                         const effectiveStandardId = entry.specs?.stubs?.[0]?.flangeStandardId || globalSpecs?.flangeStandardId;
                         const effectiveFlangeTypeCode = entry.specs?.stubs?.[0]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                        const normalizedFlangeTypeCode = effectiveFlangeTypeCode?.replace(/^\//, '') || '';
                         const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === effectiveStandardId);
                         const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') && selectedStandard?.code?.includes('1123');
                         const isBs4504 = selectedStandard?.code?.toUpperCase().includes('BS') && selectedStandard?.code?.includes('4504');
@@ -2106,7 +2108,7 @@ function BendFormComponent({
 
                         const stub1GlobalClass = masterData.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId);
                         const stub1GlobalBasePressure = stub1GlobalClass?.designation?.replace(/\/\d+$/, '') || '';
-                        const stub1TargetDesignation = effectiveFlangeTypeCode && stub1GlobalBasePressure ? `${stub1GlobalBasePressure}/${effectiveFlangeTypeCode}` : null;
+                        const stub1TargetDesignation = normalizedFlangeTypeCode && stub1GlobalBasePressure ? `${stub1GlobalBasePressure}/${normalizedFlangeTypeCode}` : null;
                         const stub1MatchingClass = stub1TargetDesignation
                           ? masterData.pressureClasses?.find((pc: any) => pc.designation === stub1TargetDesignation)
                           : null;
@@ -2193,7 +2195,7 @@ function BendFormComponent({
                                   {pressureClasses.map((pc) => {
                                     const pcValue = String(pc.value);
                                     const equivalentValue = pcValue === '64' ? '63' : pcValue;
-                                    const targetDesignation = effectiveFlangeTypeCode ? `${pcValue}/${effectiveFlangeTypeCode}` : null;
+                                    const targetDesignation = normalizedFlangeTypeCode ? `${pcValue}/${normalizedFlangeTypeCode}` : null;
                                     const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
                                       if (targetDesignation && mpc.designation === targetDesignation) return true;
                                       return mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue);
@@ -2503,6 +2505,7 @@ function BendFormComponent({
                             {(() => {
                               const effectiveStandardId = entry.specs?.stubs?.[1]?.flangeStandardId || globalSpecs?.flangeStandardId;
                               const effectiveFlangeTypeCode = entry.specs?.stubs?.[1]?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                              const normalizedFlangeTypeCode = effectiveFlangeTypeCode?.replace(/^\//, '') || '';
                               const selectedStandard = masterData.flangeStandards?.find((fs: any) => fs.id === effectiveStandardId);
                               const isSabs1123 = selectedStandard?.code?.toUpperCase().includes('SABS') && selectedStandard?.code?.includes('1123');
                               const isBs4504 = selectedStandard?.code?.toUpperCase().includes('BS') && selectedStandard?.code?.includes('4504');
@@ -2512,7 +2515,7 @@ function BendFormComponent({
 
                               const stub2GlobalClass = masterData.pressureClasses?.find((p: any) => p.id === globalSpecs?.flangePressureClassId);
                               const stub2GlobalBasePressure = stub2GlobalClass?.designation?.replace(/\/\d+$/, '') || '';
-                              const stub2TargetDesignation = effectiveFlangeTypeCode && stub2GlobalBasePressure ? `${stub2GlobalBasePressure}/${effectiveFlangeTypeCode}` : null;
+                              const stub2TargetDesignation = normalizedFlangeTypeCode && stub2GlobalBasePressure ? `${stub2GlobalBasePressure}/${normalizedFlangeTypeCode}` : null;
                               const stub2MatchingClass = stub2TargetDesignation
                                 ? masterData.pressureClasses?.find((pc: any) => pc.designation === stub2TargetDesignation)
                                 : null;
@@ -2600,7 +2603,7 @@ function BendFormComponent({
                                         {pressureClasses.map((pc) => {
                                           const pcValue = String(pc.value);
                                           const equivalentValue = pcValue === '64' ? '63' : pcValue;
-                                          const targetDesignation = effectiveFlangeTypeCode ? `${pcValue}/${effectiveFlangeTypeCode}` : null;
+                                          const targetDesignation = normalizedFlangeTypeCode ? `${pcValue}/${normalizedFlangeTypeCode}` : null;
                                           const matchingPc = masterData.pressureClasses?.find((mpc: any) => {
                                             if (targetDesignation && mpc.designation === targetDesignation) return true;
                                             return mpc.designation?.includes(pcValue) || mpc.designation?.includes(equivalentValue);
