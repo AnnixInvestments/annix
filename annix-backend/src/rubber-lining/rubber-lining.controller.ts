@@ -8,7 +8,12 @@ import {
   Param,
   Query,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { RubberLiningService } from './rubber-lining.service';
 import {
   RubberTypeDto,
@@ -251,6 +256,9 @@ export class RubberLiningController {
     ];
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/product-codings')
   async productCodings(
     @Query('codingType') codingType?: ProductCodingType,
@@ -258,6 +266,9 @@ export class RubberLiningController {
     return this.rubberLiningService.allProductCodings(codingType);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/product-codings/:id')
   async productCodingById(
     @Param('id') id: string,
@@ -267,6 +278,9 @@ export class RubberLiningController {
     return coding;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Post('portal/product-codings')
   async createProductCoding(
     @Body() dto: CreateRubberProductCodingDto,
@@ -274,6 +288,9 @@ export class RubberLiningController {
     return this.rubberLiningService.createProductCoding(dto);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Put('portal/product-codings/:id')
   async updateProductCoding(
     @Param('id') id: string,
@@ -287,6 +304,9 @@ export class RubberLiningController {
     return coding;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Delete('portal/product-codings/:id')
   async deleteProductCoding(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteProductCoding(
@@ -295,11 +315,17 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException('Product coding not found');
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/pricing-tiers')
   async pricingTiers(): Promise<RubberPricingTierDto[]> {
     return this.rubberLiningService.allPricingTiers();
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/pricing-tiers/:id')
   async pricingTierById(
     @Param('id') id: string,
@@ -309,6 +335,9 @@ export class RubberLiningController {
     return tier;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Post('portal/pricing-tiers')
   async createPricingTier(
     @Body() dto: CreateRubberPricingTierDto,
@@ -316,6 +345,9 @@ export class RubberLiningController {
     return this.rubberLiningService.createPricingTier(dto);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Put('portal/pricing-tiers/:id')
   async updatePricingTier(
     @Param('id') id: string,
@@ -329,17 +361,26 @@ export class RubberLiningController {
     return tier;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Delete('portal/pricing-tiers/:id')
   async deletePricingTier(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deletePricingTier(Number(id));
     if (!deleted) throw new NotFoundException('Pricing tier not found');
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/companies')
   async companies(): Promise<RubberCompanyDto[]> {
     return this.rubberLiningService.allCompanies();
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/companies/:id')
   async companyById(@Param('id') id: string): Promise<RubberCompanyDto> {
     const company = await this.rubberLiningService.companyById(Number(id));
@@ -347,6 +388,9 @@ export class RubberLiningController {
     return company;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Post('portal/companies')
   async createCompany(
     @Body() dto: CreateRubberCompanyDto,
@@ -354,6 +398,9 @@ export class RubberLiningController {
     return this.rubberLiningService.createCompany(dto);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Put('portal/companies/:id')
   async updateCompany(
     @Param('id') id: string,
@@ -367,17 +414,26 @@ export class RubberLiningController {
     return company;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Delete('portal/companies/:id')
   async deleteCompany(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteCompany(Number(id));
     if (!deleted) throw new NotFoundException('Company not found');
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/products')
   async products(): Promise<RubberProductDto[]> {
     return this.rubberLiningService.allProducts();
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/products/:id')
   async productById(@Param('id') id: string): Promise<RubberProductDto> {
     const product = await this.rubberLiningService.productById(Number(id));
@@ -385,6 +441,9 @@ export class RubberLiningController {
     return product;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Post('portal/products')
   async createProduct(
     @Body() dto: CreateRubberProductDto,
@@ -392,6 +451,9 @@ export class RubberLiningController {
     return this.rubberLiningService.createProduct(dto);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Put('portal/products/:id')
   async updateProduct(
     @Param('id') id: string,
@@ -405,12 +467,18 @@ export class RubberLiningController {
     return product;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Delete('portal/products/:id')
   async deleteProduct(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteProduct(Number(id));
     if (!deleted) throw new NotFoundException('Product not found');
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/orders')
   async orders(@Query('status') status?: string): Promise<RubberOrderDto[]> {
     const orderStatus =
@@ -418,6 +486,9 @@ export class RubberLiningController {
     return this.rubberLiningService.allOrders(orderStatus);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/orders/:id')
   async orderById(@Param('id') id: string): Promise<RubberOrderDto> {
     const order = await this.rubberLiningService.orderById(Number(id));
@@ -425,11 +496,17 @@ export class RubberLiningController {
     return order;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Post('portal/orders')
   async createOrder(@Body() dto: CreateRubberOrderDto): Promise<RubberOrderDto> {
     return this.rubberLiningService.createOrder(dto);
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Put('portal/orders/:id')
   async updateOrder(
     @Param('id') id: string,
@@ -440,12 +517,18 @@ export class RubberLiningController {
     return order;
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Delete('portal/orders/:id')
   async deleteOrder(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteOrder(Number(id));
     if (!deleted) throw new NotFoundException('Order not found');
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/order-statuses')
   async orderStatuses(): Promise<{ value: number; label: string }[]> {
     return [
@@ -460,6 +543,9 @@ export class RubberLiningController {
     ];
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Get('portal/coding-types')
   async codingTypes(): Promise<{ value: string; label: string }[]> {
     return [
@@ -472,6 +558,9 @@ export class RubberLiningController {
     ];
   }
 
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
   @Post('portal/calculate-price')
   async calculatePrice(
     @Body() request: RubberPriceCalculationRequestDto,

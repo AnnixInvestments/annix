@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RubberLiningController } from './rubber-lining.controller';
 import { RubberLiningService } from './rubber-lining.service';
+import { AdminModule } from '../admin/admin.module';
 import { RubberType } from './entities/rubber-type.entity';
 import { RubberSpecification } from './entities/rubber-specification.entity';
 import {
@@ -18,6 +19,7 @@ import { RubberOrderItem } from './entities/rubber-order-item.entity';
 
 @Module({
   imports: [
+    AdminModule,
     TypeOrmModule.forFeature([
       RubberType,
       RubberSpecification,
