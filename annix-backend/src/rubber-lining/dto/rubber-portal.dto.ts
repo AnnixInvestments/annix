@@ -459,3 +459,85 @@ export class RubberPriceCalculationDto {
   totalKg: number;
   totalPrice: number;
 }
+
+export class ImportProductRowDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @IsOptional()
+  @IsString()
+  compound?: string;
+
+  @IsOptional()
+  @IsString()
+  colour?: string;
+
+  @IsOptional()
+  @IsString()
+  hardness?: string;
+
+  @IsOptional()
+  @IsString()
+  grade?: string;
+
+  @IsOptional()
+  @IsString()
+  curingMethod?: string;
+
+  @IsOptional()
+  @IsString()
+  compoundOwner?: string;
+
+  @IsOptional()
+  @IsNumber()
+  specificGravity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  costPerKg?: number;
+
+  @IsOptional()
+  @IsNumber()
+  markup?: number;
+
+  @IsOptional()
+  @IsString()
+  firebaseUid?: string;
+}
+
+export class ImportProductsRequestDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ImportProductRowDto)
+  rows: ImportProductRowDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  updateExisting?: boolean;
+}
+
+export class ImportProductRowResultDto {
+  rowIndex: number;
+  status: 'created' | 'updated' | 'failed' | 'skipped';
+  title: string | null;
+  errors: string[];
+  productId?: number;
+}
+
+export class ImportProductsResultDto {
+  totalRows: number;
+  created: number;
+  updated: number;
+  failed: number;
+  skipped: number;
+  results: ImportProductRowResultDto[];
+}

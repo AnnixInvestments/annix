@@ -47,6 +47,8 @@ import {
   UpdateRubberOrderDto,
   RubberPriceCalculationRequestDto,
   RubberPriceCalculationDto,
+  ImportProductsRequestDto,
+  ImportProductsResultDto,
 } from './dto/rubber-portal.dto';
 
 @ApiTags('Rubber Lining')
@@ -572,6 +574,21 @@ export class RubberLiningController {
   async deleteProduct(@Param('id') id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteProduct(Number(id));
     if (!deleted) throw new NotFoundException('Product not found');
+  }
+
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('admin', 'employee')
+  @ApiBearerAuth()
+  @Post('portal/products/import')
+  @ApiOperation({
+    summary: 'Import products from CSV data',
+    description: 'Bulk import products. Coding fields (type, compound, colour, etc.) use names which are resolved to Firebase UIDs. Supports create and update modes.',
+  })
+  @ApiResponse({ status: 200, description: 'Import results with counts and per-row status' })
+  async importProducts(
+    @Body() dto: ImportProductsRequestDto,
+  ): Promise<ImportProductsResultDto> {
+    return this.rubberLiningService.importProducts(dto.rows, dto.updateExisting ?? false);
   }
 
   @UseGuards(AdminAuthGuard, RolesGuard)

@@ -131,6 +131,39 @@ export interface RubberPriceCalculationDto {
   totalPrice: number;
 }
 
+export interface ImportProductRowDto {
+  title?: string;
+  description?: string;
+  type?: string;
+  compound?: string;
+  colour?: string;
+  hardness?: string;
+  grade?: string;
+  curingMethod?: string;
+  compoundOwner?: string;
+  specificGravity?: number;
+  costPerKg?: number;
+  markup?: number;
+  firebaseUid?: string;
+}
+
+export interface ImportProductRowResultDto {
+  rowIndex: number;
+  status: 'created' | 'updated' | 'failed' | 'skipped';
+  title: string | null;
+  errors: string[];
+  productId?: number;
+}
+
+export interface ImportProductsResultDto {
+  totalRows: number;
+  created: number;
+  updated: number;
+  failed: number;
+  skipped: number;
+  results: ImportProductRowResultDto[];
+}
+
 function adminHeaders(): Record<string, string> {
   if (typeof window === 'undefined') return {};
   const token = localStorage.getItem('adminAccessToken');
@@ -367,6 +400,16 @@ export const rubberPortalApi = {
     quantity: number;
   }): Promise<RubberPriceCalculationDto> => {
     return request('/rubber-lining/portal/calculate-price', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  importProducts: async (data: {
+    rows: ImportProductRowDto[];
+    updateExisting?: boolean;
+  }): Promise<ImportProductsResultDto> => {
+    return request('/rubber-lining/portal/products/import', {
       method: 'POST',
       body: JSON.stringify(data),
     });

@@ -8,6 +8,7 @@ import { useToast } from '@/app/components/Toast';
 import { useRubberProducts, useDeleteRubberProduct } from '@/app/lib/query/hooks';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ProductFormModal } from '../components/ProductFormModal';
+import { ProductImportModal } from '../components/ProductImportModal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { SortIcon, SortDirection, TableLoadingState, TableEmptyState, Pagination, TableIcons, ITEMS_PER_PAGE } from '../components/TableComponents';
 
@@ -58,6 +59,7 @@ export default function RubberProductsPage() {
   const [deleteProductId, setDeleteProductId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>('title');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
@@ -222,6 +224,15 @@ export default function RubberProductsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export CSV
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m4-8l-4-4m0 0L12 8m4-4v12" />
+            </svg>
+            Import CSV
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -521,6 +532,14 @@ export default function RubberProductsPage() {
         variant="danger"
         onConfirm={handleBulkDelete}
         onCancel={() => setShowBulkDeleteModal(false)}
+      />
+
+      <ProductImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportComplete={() => {
+          productsQuery.refetch();
+        }}
       />
     </div>
   );

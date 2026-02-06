@@ -51,6 +51,9 @@ import {
   UpdateRubberOrderDto,
   RubberPriceCalculationRequestDto,
   RubberPriceCalculationDto,
+  ImportProductRowDto,
+  ImportProductsResultDto,
+  ImportProductRowResultDto,
 } from './dto/rubber-portal.dto';
 
 @Injectable()
@@ -777,6 +780,155 @@ export class RubberLiningService {
   async deleteProduct(id: number): Promise<boolean> {
     const result = await this.productRepository.delete(id);
     return (result.affected || 0) > 0;
+  }
+
+  async importProducts(
+    rows: ImportProductRowDto[],
+    updateExisting: boolean = false,
+  ): Promise<ImportProductsResultDto> {
+    const codings = await this.productCodingRepository.find();
+    const companies = await this.companyRepository.find();
+    const existingProducts = await this.productRepository.find();
+
+    const codingLookup = (name: string | undefined, type: ProductCodingType): string | null => {
+      if (!name) return null;
+      const coding = codings.find(
+        (c) => c.codingType === type && c.name.toLowerCase() === name.toLowerCase(),
+      );
+      return coding?.firebaseUid || null;
+    };
+
+    const companyLookup = (name: string | undefined): string | null => {
+      if (!name) return null;
+      const company = companies.find(
+        (c) => c.name.toLowerCase() === name.toLowerCase() && c.isCompoundOwner,
+      );
+      return company?.firebaseUid || null;
+    };
+
+    const results: ImportProductRowResultDto[] = [];
+    let created = 0;
+    let updated = 0;
+    let failed = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const errors: string[] = [];
+
+      const typeUid = codingLookup(row.type, ProductCodingType.TYPE);
+      const compoundUid = codingLookup(row.compound, ProductCodingType.COMPOUND);
+      const colourUid = codingLookup(row.colour, ProductCodingType.COLOUR);
+      const hardnessUid = codingLookup(row.hardness, ProductCodingType.HARDNESS);
+      const gradeUid = codingLookup(row.grade, ProductCodingType.GRADE);
+      const curingMethodUid = codingLookup(row.curingMethod, ProductCodingType.CURING_METHOD);
+      const compoundOwnerUid = companyLookup(row.compoundOwner);
+
+      if (row.type && !typeUid) errors.push(`Type '${row.type}' not found`);
+      if (row.compound && !compoundUid) errors.push(`Compound '${row.compound}' not found`);
+      if (row.colour && !colourUid) errors.push(`Colour '${row.colour}' not found`);
+      if (row.hardness && !hardnessUid) errors.push(`Hardness '${row.hardness}' not found`);
+      if (row.grade && !gradeUid) errors.push(`Grade '${row.grade}' not found`);
+      if (row.curingMethod && !curingMethodUid) errors.push(`Curing method '${row.curingMethod}' not found`);
+      if (row.compoundOwner && !compoundOwnerUid) errors.push(`Compound owner '${row.compoundOwner}' not found or not marked as compound owner`);
+
+      if (errors.length > 0) {
+        failed++;
+        results.push({
+          rowIndex: i,
+          status: 'failed',
+          title: row.title || null,
+          errors,
+        });
+        continue;
+      }
+
+      let existingProduct = row.firebaseUid
+        ? existingProducts.find((p) => p.firebaseUid === row.firebaseUid)
+        : existingProducts.find((p) => p.title && row.title && p.title.toLowerCase() === row.title.toLowerCase());
+
+      if (existingProduct && !updateExisting) {
+        skipped++;
+        results.push({
+          rowIndex: i,
+          status: 'skipped',
+          title: row.title || null,
+          errors: ['Product already exists and updateExisting is false'],
+          productId: existingProduct.id,
+        });
+        continue;
+      }
+
+      try {
+        if (existingProduct) {
+          if (row.title !== undefined) existingProduct.title = row.title || null;
+          if (row.description !== undefined) existingProduct.description = row.description || null;
+          if (row.specificGravity !== undefined) existingProduct.specificGravity = row.specificGravity || null;
+          if (row.costPerKg !== undefined) existingProduct.costPerKg = row.costPerKg || null;
+          if (row.markup !== undefined) existingProduct.markup = row.markup || null;
+          if (typeUid !== undefined) existingProduct.typeFirebaseUid = typeUid;
+          if (compoundUid !== undefined) existingProduct.compoundFirebaseUid = compoundUid;
+          if (colourUid !== undefined) existingProduct.colourFirebaseUid = colourUid;
+          if (hardnessUid !== undefined) existingProduct.hardnessFirebaseUid = hardnessUid;
+          if (gradeUid !== undefined) existingProduct.gradeFirebaseUid = gradeUid;
+          if (curingMethodUid !== undefined) existingProduct.curingMethodFirebaseUid = curingMethodUid;
+          if (compoundOwnerUid !== undefined) existingProduct.compoundOwnerFirebaseUid = compoundOwnerUid;
+
+          await this.productRepository.save(existingProduct);
+          updated++;
+          results.push({
+            rowIndex: i,
+            status: 'updated',
+            title: row.title || null,
+            errors: [],
+            productId: existingProduct.id,
+          });
+        } else {
+          const product = this.productRepository.create({
+            firebaseUid: `pg_${generateUniqueId()}`,
+            title: row.title || null,
+            description: row.description || null,
+            specificGravity: row.specificGravity || null,
+            costPerKg: row.costPerKg || null,
+            markup: row.markup || null,
+            typeFirebaseUid: typeUid,
+            compoundFirebaseUid: compoundUid,
+            colourFirebaseUid: colourUid,
+            hardnessFirebaseUid: hardnessUid,
+            gradeFirebaseUid: gradeUid,
+            curingMethodFirebaseUid: curingMethodUid,
+            compoundOwnerFirebaseUid: compoundOwnerUid,
+          });
+          const saved = await this.productRepository.save(product);
+          existingProducts.push(saved);
+          created++;
+          results.push({
+            rowIndex: i,
+            status: 'created',
+            title: row.title || null,
+            errors: [],
+            productId: saved.id,
+          });
+        }
+      } catch (err) {
+        failed++;
+        results.push({
+          rowIndex: i,
+          status: 'failed',
+          title: row.title || null,
+          errors: [err instanceof Error ? err.message : 'Unknown error'],
+        });
+      }
+    }
+
+    return {
+      totalRows: rows.length,
+      created,
+      updated,
+      failed,
+      skipped,
+      results,
+    };
   }
 
   async allOrders(status?: RubberOrderStatus): Promise<RubberOrderDto[]> {
