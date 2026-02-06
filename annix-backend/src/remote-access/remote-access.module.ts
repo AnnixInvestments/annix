@@ -12,6 +12,7 @@ import { User } from '../user/entities/user.entity';
 import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
 import { AdminModule } from '../admin/admin.module';
 import { EmailModule } from '../email/email.module';
+import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { EmailModule } from '../email/email.module';
     }),
     forwardRef(() => AdminModule),
     EmailModule,
+    FeatureFlagsModule,
   ],
   providers: [RemoteAccessService, RemoteAccessFeatureGuard],
   controllers: [RemoteAccessController],

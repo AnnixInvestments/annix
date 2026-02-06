@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, MoreThan } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { now, DateTime } from '../lib/datetime';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 
 import {
   RemoteAccessRequest,
@@ -41,17 +42,18 @@ export class RemoteAccessService {
     private readonly userRepo: Repository<User>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly featureFlagsService: FeatureFlagsService,
   ) {}
 
-  isFeatureEnabled(): boolean {
-    return this.configService.get('ENABLE_REMOTE_ACCESS') === 'true';
+  isFeatureEnabled(): Promise<boolean> {
+    return this.featureFlagsService.isEnabled('REMOTE_ACCESS');
   }
 
   async requestAccess(
     adminId: number,
     dto: CreateRemoteAccessRequestDto,
   ): Promise<RemoteAccessRequestResponseDto> {
-    if (!this.isFeatureEnabled()) {
+    if (!(await this.isFeatureEnabled())) {
       throw new BadRequestException('Remote access feature is disabled');
     }
 
@@ -126,7 +128,7 @@ export class RemoteAccessService {
     documentType: RemoteAccessDocumentType,
     documentId: number,
   ): Promise<AccessStatusResponseDto> {
-    if (!this.isFeatureEnabled()) {
+    if (!(await this.isFeatureEnabled())) {
       return {
         hasAccess: true,
         status: RemoteAccessStatus.APPROVED,

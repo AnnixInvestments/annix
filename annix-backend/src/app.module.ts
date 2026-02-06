@@ -67,6 +67,7 @@ import { ThermalModule } from './thermal/thermal.module';
 import { DataValidationModule } from './data-validation/data-validation.module';
 import { UnifiedApiModule } from './unified-api/unified-api.module';
 import { RemoteAccessModule } from './remote-access/remote-access.module';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 import { FlangeTypeWeightModule } from './flange-type-weight/flange-type-weight.module';
 import { BnwSetWeightModule } from './bnw-set-weight/bnw-set-weight.module';
 import { RetainingRingWeightModule } from './retaining-ring-weight/retaining-ring-weight.module';
@@ -142,6 +143,7 @@ import typeormConfig from './config/typeorm';
     DataValidationModule,
     UnifiedApiModule,
     RemoteAccessModule,
+    FeatureFlagsModule,
     FlangeTypeWeightModule,
     BnwSetWeightModule,
     RetainingRingWeightModule,

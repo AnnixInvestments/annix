@@ -68,8 +68,9 @@ export class RemoteAccessController {
   @Get('enabled')
   @ApiOperation({ summary: 'Check if remote access feature is enabled' })
   @ApiResponse({ status: 200, description: 'Feature status returned' })
-  featureEnabled(): { enabled: boolean } {
-    return { enabled: this.remoteAccessService.isFeatureEnabled() };
+  async featureEnabled(): Promise<{ enabled: boolean }> {
+    const enabled = await this.remoteAccessService.isFeatureEnabled();
+    return { enabled };
   }
 
   @Post('request')

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/app/context/AdminAuthContext';
 import { LayoutProvider } from '@/app/context/LayoutContext';
 import PortalToolbar from '@/app/components/PortalToolbar';
+import { useFeatureFlags } from '@/app/hooks/useFeatureFlags';
 
 const navItems = [
   {
@@ -54,13 +55,15 @@ const navItems = [
     href: '/admin/portal/rubber',
     label: 'Rubber Lining',
     icon: 'M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z',
-    roles: ['admin', 'employee']
+    roles: ['admin', 'employee'],
+    featureFlag: 'RUBBER_PORTAL',
   },
 ];
 
 function AdminNavigation() {
   const router = useRouter();
   const { admin, logout } = useAdminAuth();
+  const { flags } = useFeatureFlags();
 
   const handleLogout = async () => {
     await logout();
@@ -78,6 +81,7 @@ function AdminNavigation() {
         roles: admin.roles,
       } : null}
       onLogout={handleLogout}
+      featureFlags={flags}
     />
   );
 }

@@ -15,6 +15,7 @@ export interface NavItem {
   sublabel?: string;
   icon: string;
   roles?: string[];
+  featureFlag?: string;
 }
 
 export interface UserInfo {
@@ -32,11 +33,12 @@ export interface PortalToolbarProps {
   onLogout: () => void;
   additionalActions?: React.ReactNode;
   statusBadge?: React.ReactNode;
+  featureFlags?: Record<string, boolean> | null;
 }
 
 // Descriptive tooltips for navigation items
 const NAV_TOOLTIPS: Record<string, string> = {
-  'Dashboard': 'View your portal overview and key metrics',
+  'Admin Portal': 'View your portal overview and key metrics',
   'Customer Portal': 'View your portal overview and key metrics',
   'Customers': 'Manage customer accounts and onboarding',
   'Suppliers': 'Manage supplier accounts and approvals',
@@ -52,6 +54,7 @@ const NAV_TOOLTIPS: Record<string, string> = {
   'BOQs': 'View and respond to bill of quantities',
   'Submitted BOQs': 'View and amend your submitted quotes',
   'Products & Services': 'Select the products and services you can offer',
+  'Rubber Lining': 'Manage rubber lining products and orders',
 };
 
 const getNavTooltip = (label: string): string => NAV_TOOLTIPS[label] || label;
@@ -63,6 +66,7 @@ export default function PortalToolbar({
   onLogout,
   additionalActions,
   statusBadge,
+  featureFlags,
 }: PortalToolbarProps) {
   const pathname = usePathname();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -89,9 +93,11 @@ export default function PortalToolbar({
     return `${firstInitial}${lastInitial}` || 'U';
   })();
 
-  const visibleNavItems = navItems.filter(item =>
-    !item.roles || item.roles.some(role => user?.roles?.includes(role))
-  );
+  const visibleNavItems = navItems.filter(item => {
+    const roleCheck = !item.roles || item.roles.some(role => user?.roles?.includes(role));
+    const flagCheck = !item.featureFlag || (featureFlags?.[item.featureFlag] === true);
+    return roleCheck && flagCheck;
+  });
 
   return (
     <nav
@@ -124,7 +130,7 @@ export default function PortalToolbar({
                 )}
               </Link>
             </div>
-            <div className="hidden xl:ml-8 xl:flex xl:space-x-1">
+            <div className="hidden xl:ml-8 xl:flex xl:items-center xl:space-x-1">
               {visibleNavItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                 return (
