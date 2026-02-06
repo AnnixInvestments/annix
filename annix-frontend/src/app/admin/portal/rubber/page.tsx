@@ -3,16 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { rubberPortalApi, RubberOrderDto, RubberCompanyDto, RubberProductDto } from '@/app/lib/api/rubberPortalApi';
+import { formatDateZA } from '@/app/lib/datetime';
+import { statusColor, statusLabel, RUBBER_ORDER_STATUS } from '@/app/lib/config/rubber/orderStatus';
 
-function statusColor(status: number): string {
-  const colors: Record<number, string> = {
-    1: 'bg-gray-100 text-gray-800',
-    2: 'bg-blue-100 text-blue-800',
-    3: 'bg-yellow-100 text-yellow-800',
-    4: 'bg-green-100 text-green-800',
-    5: 'bg-red-100 text-red-800',
-  };
-  return colors[status] || 'bg-gray-100 text-gray-800';
+interface StatusCount {
+  status: number;
+  label: string;
+  count: number;
 }
 
 interface DashboardStats {
@@ -20,6 +17,7 @@ interface DashboardStats {
   companiesCount: number;
   productsCount: number;
   recentOrders: RubberOrderDto[];
+  ordersByStatus: StatusCount[];
 }
 
 export default function RubberLiningDashboard() {
@@ -28,6 +26,7 @@ export default function RubberLiningDashboard() {
     companiesCount: 0,
     productsCount: 0,
     recentOrders: [],
+    ordersByStatus: [],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,11 +41,18 @@ export default function RubberLiningDashboard() {
           rubberPortalApi.products(),
         ]);
 
+        const ordersByStatus = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
+          status: value,
+          label: statusLabel(value),
+          count: orders.filter(o => o.status === value).length,
+        }));
+
         setStats({
           ordersCount: orders.length,
           companiesCount: companies.length,
           productsCount: products.length,
           recentOrders: orders.slice(0, 5),
+          ordersByStatus,
         });
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
@@ -203,6 +209,30 @@ export default function RubberLiningDashboard() {
         </Link>
       </div>
 
+      {stats.ordersByStatus.some((s) => s.count > 0) && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Orders by Status</h3>
+          </div>
+          <div className="p-4">
+            <div className="flex flex-wrap gap-3">
+              {stats.ordersByStatus
+                .filter((s) => s.count > 0)
+                .map((s) => (
+                  <Link
+                    key={s.status}
+                    href={`/admin/portal/rubber/orders?status=${s.status}`}
+                    className={`px-3 py-2 rounded-lg ${statusColor(s.status)} hover:opacity-80 transition-opacity`}
+                  >
+                    <span className="font-semibold">{s.count}</span>
+                    <span className="ml-1">{s.label}</span>
+                  </Link>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Orders</h3>
@@ -256,7 +286,7 @@ export default function RubberLiningDashboard() {
                     {order.items.length}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(order.createdAt).toLocaleDateString()}
+                    {formatDateZA(order.createdAt)}
                   </td>
                 </tr>
               ))}
@@ -274,3 +304,4 @@ export default function RubberLiningDashboard() {
     </div>
   );
 }
+

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { rubberPortalApi, RubberProductDto } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
 
@@ -9,6 +10,22 @@ export default function RubberProductsPage() {
   const [products, setProducts] = useState<RubberProductDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [compoundFilter, setCompoundFilter] = useState('');
+
+  const uniqueTypes = [...new Set(products.map((p) => p.typeName).filter((t): t is string => Boolean(t)))].sort();
+  const uniqueCompounds = [...new Set(products.map((p) => p.compoundName).filter((c): c is string => Boolean(c)))].sort();
+
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch =
+      searchQuery === '' ||
+      (product.title && product.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesType = typeFilter === '' || product.typeName === typeFilter;
+    const matchesCompound = compoundFilter === '' || product.compoundName === compoundFilter;
+    return matchesSearch && matchesType && matchesCompound;
+  });
 
   const fetchData = async () => {
     try {
@@ -63,8 +80,78 @@ export default function RubberProductsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <Link href="/admin/portal/rubber" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-2">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Dashboard
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Rubber Products</h1>
           <p className="mt-1 text-sm text-gray-600">View and manage rubber lining products</p>
+        </div>
+      </div>
+
+      <div className="bg-white shadow rounded-lg p-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Search:</label>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Title or description"
+              className="block w-56 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Type:</label>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+            >
+              <option value="">All Types</option>
+              {uniqueTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Compound:</label>
+            <select
+              value={compoundFilter}
+              onChange={(e) => setCompoundFilter(e.target.value)}
+              className="block w-40 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+            >
+              <option value="">All Compounds</option>
+              {uniqueCompounds.map((compound) => (
+                <option key={compound} value={compound}>
+                  {compound}
+                </option>
+              ))}
+            </select>
+          </div>
+          {(searchQuery || typeFilter || compoundFilter) && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setTypeFilter('');
+                setCompoundFilter('');
+              }}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -76,13 +163,15 @@ export default function RubberProductsPage() {
               <p className="mt-4 text-gray-600">Loading products...</p>
             </div>
           </div>
-        ) : products.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">No products found</h3>
-            <p className="mt-1 text-sm text-gray-500">Products will appear here after import.</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {(searchQuery || typeFilter || compoundFilter) ? 'Try adjusting your filters' : 'Products will appear here after import.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -116,7 +205,7 @@ export default function RubberProductsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{product.title || 'Untitled'}</div>

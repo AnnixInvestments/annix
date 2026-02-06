@@ -11,10 +11,10 @@ import {
   RubberProductDto,
 } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
-
-const THICKNESS_OPTIONS = [3, 4, 5, 6, 8, 10, 12, 15, 20, 25];
-const WIDTH_OPTIONS = [600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500, 1570];
-const LENGTH_OPTIONS = [5, 6, 7, 8, 9, 10, 12, 15, 20];
+import { nowMillis, formatDateTimeZA, formatDateZA, fromMillis } from '@/app/lib/datetime';
+import { statusColor, statusLabel } from '@/app/lib/config/rubber/orderStatus';
+import { THICKNESS_OPTIONS, WIDTH_OPTIONS, LENGTH_OPTIONS } from '@/app/lib/config/rubber/dimensions';
+import { CalloffInput } from '../components/CalloffInput';
 
 interface EditableItem {
   id?: number;
@@ -185,7 +185,7 @@ export default function RubberOrderDetailPage() {
     const newCalloff: CallOff = {
       quantity,
       quantityRemaining: summary.remaining - quantity,
-      events: [{timestamp: Date.now(), status: 3}],
+      events: [{timestamp: nowMillis(), status: 3}],
     };
     updateItem(itemIndex, {callOffs: [...item.callOffs, newCalloff]});
   };
@@ -239,8 +239,6 @@ export default function RubberOrderDetailPage() {
     );
   }
 
-  const selectedCompany = companies.find((c) => c.id === editCompanyId);
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -257,7 +255,7 @@ export default function RubberOrderDetailPage() {
             </span>
           </div>
           <p className="mt-1 text-sm text-gray-600">
-            Created {new Date(order.createdAt).toLocaleString()}
+            Created {formatDateTimeZA(order.createdAt)}
           </p>
         </div>
         <button
@@ -556,7 +554,7 @@ export default function RubberOrderDetailPage() {
                                               <td className="px-3 py-2 text-sm text-gray-500">
                                                 {calloff.events.map((event, eIndex) => (
                                                     <div key={eIndex}>
-                                                      {new Date(event.timestamp).toLocaleDateString()} - {statusLabel(event.status)}
+                                                      {formatDateZA(fromMillis(event.timestamp).toISO())} - {statusLabel(event.status)}
                                                     </div>
                                                 ))}
                                               </td>
@@ -633,94 +631,4 @@ export default function RubberOrderDetailPage() {
   );
 }
 
-function CalloffInput({maxQuantity, onAdd}: { maxQuantity: number; onAdd: (qty: number) => void }) {
-  const [quantity, setQuantity] = useState(0);
 
-  return (
-      <div className="flex items-center space-x-2">
-        <button
-            onClick={() => setQuantity(Math.max(0, quantity - 1))}
-            className="p-1 text-gray-400 hover:text-gray-600 border rounded"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
-          </svg>
-        </button>
-        <input
-            type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(Math.min(maxQuantity, Math.max(0, Number(e.target.value))))}
-            className="w-16 text-center rounded-md border-gray-300 shadow-sm text-sm border p-1"
-            min="0"
-            max={maxQuantity}
-        />
-        <button
-            onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
-            className="p-1 text-gray-400 hover:text-gray-600 border rounded"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
-          </svg>
-        </button>
-        <span className="text-sm text-gray-500">rolls only</span>
-        <button
-            onClick={() => {
-              if (quantity > 0) {
-                onAdd(quantity);
-                setQuantity(0);
-              }
-            }}
-            disabled={quantity === 0}
-            className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-        >
-          Add Calloff
-        </button>
-    </div>
-  );
-}
-
-function statusColor(status: number): string {
-  switch (status) {
-    case -1:
-      return 'bg-gray-100 text-gray-800';
-    case 0:
-      return 'bg-yellow-100 text-yellow-800';
-    case 1:
-      return 'bg-red-100 text-red-800';
-    case 2:
-      return 'bg-orange-100 text-orange-800';
-    case 3:
-      return 'bg-blue-100 text-blue-800';
-    case 4:
-      return 'bg-indigo-100 text-indigo-800';
-    case 5:
-      return 'bg-purple-100 text-purple-800';
-    case 6:
-      return 'bg-green-100 text-green-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}
-
-function statusLabel(status: number): string {
-  switch (status) {
-    case -1:
-      return 'New';
-    case 0:
-      return 'Draft';
-    case 1:
-      return 'Cancelled';
-    case 2:
-      return 'Partially Submitted';
-    case 3:
-      return 'Submitted';
-    case 4:
-      return 'Manufacturing';
-    case 5:
-      return 'Delivering';
-    case 6:
-      return 'Complete';
-    default:
-      return 'Unknown';
-  }
-}

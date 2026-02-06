@@ -1,19 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { rubberPortalApi, RubberProductCodingDto } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
-
-type CodingType = 'COLOUR' | 'COMPOUND' | 'CURING_METHOD' | 'GRADE' | 'HARDNESS' | 'TYPE';
-
-const CODING_TYPES: { value: CodingType; label: string; description: string }[] = [
-  { value: 'COMPOUND', label: 'Compounds', description: 'Rubber compound types' },
-  { value: 'COLOUR', label: 'Colours', description: 'Product colours' },
-  { value: 'TYPE', label: 'Types', description: 'Rubber types' },
-  { value: 'HARDNESS', label: 'Hardness', description: 'Hardness values (IRHD)' },
-  { value: 'GRADE', label: 'Grades', description: 'Product grades (A, B, C, D)' },
-  { value: 'CURING_METHOD', label: 'Curing Methods', description: 'Vulcanization methods' },
-];
+import { CodingType, CODING_TYPES } from '@/app/lib/config/rubber/codingTypes';
 
 export default function RubberCodingsPage() {
   const { showToast } = useToast();
@@ -126,6 +117,12 @@ export default function RubberCodingsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <Link href="/admin/portal/rubber" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-2">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Dashboard
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Product Codings</h1>
           <p className="mt-1 text-sm text-gray-600">Manage product attribute codes</p>
         </div>

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
+import { generateUniqueId } from '../lib/datetime';
 import { RubberType } from './entities/rubber-type.entity';
 import { RubberSpecification } from './entities/rubber-specification.entity';
 import {
@@ -503,7 +504,7 @@ export class RubberLiningService {
   ): Promise<RubberProductCodingDto> {
     const coding = this.productCodingRepository.create({
       ...dto,
-      firebaseUid: `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      firebaseUid: `pg_${generateUniqueId()}`,
     });
     const saved = await this.productCodingRepository.save(coding);
     return this.mapProductCodingToDto(saved);
@@ -542,7 +543,7 @@ export class RubberLiningService {
   ): Promise<RubberPricingTierDto> {
     const tier = this.pricingTierRepository.create({
       ...dto,
-      firebaseUid: `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      firebaseUid: `pg_${generateUniqueId()}`,
     });
     const saved = await this.pricingTierRepository.save(tier);
     return this.mapPricingTierToDto(saved);
@@ -582,7 +583,7 @@ export class RubberLiningService {
 
   async createCompany(dto: CreateRubberCompanyDto): Promise<RubberCompanyDto> {
     const company = new RubberCompany();
-    company.firebaseUid = `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    company.firebaseUid = `pg_${generateUniqueId()}`;
     company.name = dto.name;
     company.code = dto.code || null;
     company.pricingTierId = dto.pricingTierId || null;
@@ -654,7 +655,7 @@ export class RubberLiningService {
 
   async createProduct(dto: CreateRubberProductDto): Promise<RubberProductDto> {
     const product = this.productRepository.create({
-      firebaseUid: `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      firebaseUid: `pg_${generateUniqueId()}`,
       title: dto.title || null,
       description: dto.description || null,
       specificGravity: dto.specificGravity || null,
@@ -741,7 +742,7 @@ export class RubberLiningService {
     const orderNumber = dto.orderNumber || `ORD-${String(nextNumber).padStart(5, '0')}`;
 
     const order = this.orderRepository.create({
-      firebaseUid: `pg_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      firebaseUid: `pg_${generateUniqueId()}`,
       orderNumber,
       companyOrderNumber: dto.companyOrderNumber || null,
       status: RubberOrderStatus.DRAFT,

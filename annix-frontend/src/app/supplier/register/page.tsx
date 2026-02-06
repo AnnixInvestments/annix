@@ -129,6 +129,12 @@ export default function SupplierRegistrationPage() {
     bee: false,
   });
 
+  const [storedVerificationResults, setStoredVerificationResults] = useState<{
+    vat?: VerificationResult;
+    registration?: VerificationResult;
+    bee?: VerificationResult;
+  }>({});
+
   useEffect(() => {
     if (security.password) {
       setPasswordErrors(validatePassword(security.password));
@@ -210,6 +216,8 @@ export default function SupplierRegistrationPage() {
         result,
       }));
 
+      setStoredVerificationResults(prev => ({ ...prev, [documentType]: result }));
+
       if (result.allFieldsMatch) {
         setDocumentsValidated(prev => ({ ...prev, [documentType]: true }));
       }
@@ -267,6 +275,7 @@ export default function SupplierRegistrationPage() {
     const key = docType === 'vat' ? 'vatDocument' : docType === 'registration' ? 'companyRegDocument' : 'beeDocument';
     setDocuments(prev => ({ ...prev, [key]: null }));
     setDocumentsValidated(prev => ({ ...prev, [docType]: false }));
+    setStoredVerificationResults(prev => ({ ...prev, [docType]: undefined }));
     setNixVerification(prev => ({ ...prev, isVisible: false, result: null }));
   };
 
@@ -391,6 +400,11 @@ export default function SupplierRegistrationPage() {
         securityPolicyAccepted: security.securityPolicyAccepted,
         documentStorageAccepted: security.documentStorageAccepted,
       }));
+
+      // Add document verification results from Nix
+      if (Object.keys(storedVerificationResults).length > 0) {
+        formData.append('documentVerificationResults', JSON.stringify(storedVerificationResults));
+      }
 
       // Add document files
       if (documents.vatDocument) {

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { rubberPortalApi, RubberOrderDto, RubberCompanyDto } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
+import { formatDateZA, fromISO } from '@/app/lib/datetime';
+import { statusColor } from '@/app/lib/config/rubber/orderStatus';
 
 export default function RubberOrdersPage() {
   const { showToast } = useToast();
@@ -17,6 +19,21 @@ export default function RubberOrdersPage() {
   const [newOrderCompanyId, setNewOrderCompanyId] = useState<number | undefined>(undefined);
   const [newOrderCompanyOrderNumber, setNewOrderCompanyOrderNumber] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [companyFilter, setCompanyFilter] = useState<number | undefined>(undefined);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch = searchQuery === '' ||
+      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (order.companyOrderNumber && order.companyOrderNumber.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCompany = companyFilter === undefined || order.companyId === companyFilter;
+    const orderDate = fromISO(order.createdAt);
+    const matchesDateFrom = dateFrom === '' || orderDate >= fromISO(dateFrom).startOf('day');
+    const matchesDateTo = dateTo === '' || orderDate <= fromISO(dateTo).endOf('day');
+    return matchesSearch && matchesCompany && matchesDateFrom && matchesDateTo;
+  });
 
   const fetchOrders = async () => {
     try {
@@ -92,6 +109,12 @@ export default function RubberOrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <Link href="/admin/portal/rubber" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-2">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Dashboard
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Rubber Lining Orders</h1>
           <p className="mt-1 text-sm text-gray-600">Manage rubber lining orders and deliveries</p>
         </div>
@@ -107,20 +130,86 @@ export default function RubberOrdersPage() {
       </div>
 
       <div className="bg-white shadow rounded-lg p-4">
-        <div className="flex items-center space-x-4">
-          <label className="text-sm font-medium text-gray-700">Filter by Status:</label>
-          <select
-            value={statusFilter ?? ''}
-            onChange={(e) => setStatusFilter(e.target.value ? Number(e.target.value) : undefined)}
-            className="block w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-          >
-            <option value="">All Statuses</option>
-            {statuses.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Search:</label>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Order # or Company Order #"
+              className="block w-56 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Company:</label>
+            <select
+              value={companyFilter ?? ''}
+              onChange={(e) => setCompanyFilter(e.target.value ? Number(e.target.value) : undefined)}
+              className="block w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+            >
+              <option value="">All Companies</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Status:</label>
+            <select
+              value={statusFilter ?? ''}
+              onChange={(e) => setStatusFilter(e.target.value ? Number(e.target.value) : undefined)}
+              className="block w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+            >
+              <option value="">All Statuses</option>
+              {statuses.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">From:</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="block w-40 pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">To:</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="block w-40 pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => {
+                setDateFrom('');
+                setDateTo('');
+              }}
+              className="text-gray-400 hover:text-gray-600"
+              title="Clear date filters"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -132,14 +221,14 @@ export default function RubberOrdersPage() {
               <p className="mt-4 text-gray-600">Loading orders...</p>
             </div>
           </div>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">No orders found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {statusFilter !== undefined ? 'Try adjusting your filter' : 'Get started by creating a new order'}
+              {(searchQuery || companyFilter !== undefined || statusFilter !== undefined || dateFrom || dateTo) ? 'Try adjusting your filters' : 'Get started by creating a new order'}
             </p>
           </div>
         ) : (
@@ -170,7 +259,7 @@ export default function RubberOrdersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <Link href={`/admin/portal/rubber/orders/${order.id}`} className="text-blue-600 hover:text-blue-800 font-medium">
@@ -192,7 +281,7 @@ export default function RubberOrdersPage() {
                     {order.items.length}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(order.createdAt).toLocaleDateString()}
+                    {formatDateZA(order.createdAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
@@ -265,25 +354,3 @@ export default function RubberOrdersPage() {
   );
 }
 
-function statusColor(status: number): string {
-  switch (status) {
-    case -1:
-      return 'bg-gray-100 text-gray-800';
-    case 0:
-      return 'bg-yellow-100 text-yellow-800';
-    case 1:
-      return 'bg-red-100 text-red-800';
-    case 2:
-      return 'bg-orange-100 text-orange-800';
-    case 3:
-      return 'bg-blue-100 text-blue-800';
-    case 4:
-      return 'bg-indigo-100 text-indigo-800';
-    case 5:
-      return 'bg-purple-100 text-purple-800';
-    case 6:
-      return 'bg-green-100 text-green-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}

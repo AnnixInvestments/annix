@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { rubberPortalApi, RubberCompanyDto, RubberPricingTierDto } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
 
@@ -20,8 +21,20 @@ export default function RubberCompaniesPage() {
     registrationNumber: '',
     isCompoundOwner: false,
     notes: '',
+    address: {
+      street: '',
+      city: '',
+      province: '',
+      postalCode: '',
+    },
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredCompanies = companies.filter((company) =>
+    company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (company.code && company.code.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   const fetchData = async () => {
     try {
@@ -55,6 +68,12 @@ export default function RubberCompaniesPage() {
       registrationNumber: '',
       isCompoundOwner: false,
       notes: '',
+      address: {
+        street: '',
+        city: '',
+        province: '',
+        postalCode: '',
+      },
     });
     setShowModal(true);
   };
@@ -69,6 +88,12 @@ export default function RubberCompaniesPage() {
       registrationNumber: company.registrationNumber || '',
       isCompoundOwner: company.isCompoundOwner,
       notes: company.notes || '',
+      address: {
+        street: company.address?.street || '',
+        city: company.address?.city || '',
+        province: company.address?.province || '',
+        postalCode: company.address?.postalCode || '',
+      },
     });
     setShowModal(true);
   };
@@ -76,11 +101,14 @@ export default function RubberCompaniesPage() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
+      const addressEntries = Object.entries(formData.address).filter(([, v]) => v.trim() !== '');
+      const cleanedAddress = addressEntries.length > 0 ? Object.fromEntries(addressEntries) : undefined;
+      const payload = { ...formData, address: cleanedAddress };
       if (editingCompany) {
-        await rubberPortalApi.updateCompany(editingCompany.id, formData);
+        await rubberPortalApi.updateCompany(editingCompany.id, payload);
         showToast('Company updated', 'success');
       } else {
-        await rubberPortalApi.createCompany(formData);
+        await rubberPortalApi.createCompany(payload);
         showToast('Company created', 'success');
       }
       setShowModal(false);
@@ -123,6 +151,12 @@ export default function RubberCompaniesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <Link href="/admin/portal/rubber" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-2">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Dashboard
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Rubber Lining Companies</h1>
           <p className="mt-1 text-sm text-gray-600">Manage companies and their pricing tiers</p>
         </div>
@@ -137,6 +171,29 @@ export default function RubberCompaniesPage() {
         </button>
       </div>
 
+      <div className="bg-white shadow rounded-lg p-4">
+        <div className="flex items-center space-x-4">
+          <label className="text-sm font-medium text-gray-700">Search:</label>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by name or code..."
+            className="block w-64 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -145,13 +202,15 @@ export default function RubberCompaniesPage() {
               <p className="mt-4 text-gray-600">Loading companies...</p>
             </div>
           </div>
-        ) : companies.length === 0 ? (
+        ) : filteredCompanies.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">No companies found</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by adding your first company.</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {searchQuery ? 'Try adjusting your search' : 'Get started by adding your first company.'}
+            </p>
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
@@ -178,7 +237,7 @@ export default function RubberCompaniesPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {companies.map((company) => (
+              {filteredCompanies.map((company) => (
                 <tr key={company.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{company.name}</div>
@@ -295,6 +354,41 @@ export default function RubberCompaniesPage() {
                       onChange={(e) => setFormData({ ...formData, registrationNumber: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
                       placeholder="2020/123456/07"
+                    />
+                  </div>
+                </div>
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={formData.address.street}
+                      onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                      placeholder="Street Address"
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={formData.address.city}
+                        onChange={(e) => setFormData({ ...formData, address: { ...formData.address, city: e.target.value } })}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                        placeholder="City"
+                      />
+                      <input
+                        type="text"
+                        value={formData.address.province}
+                        onChange={(e) => setFormData({ ...formData, address: { ...formData.address, province: e.target.value } })}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
+                        placeholder="Province"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={formData.address.postalCode}
+                      onChange={(e) => setFormData({ ...formData, address: { ...formData.address, postalCode: e.target.value } })}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 w-32"
+                      placeholder="Postal Code"
                     />
                   </div>
                 </div>

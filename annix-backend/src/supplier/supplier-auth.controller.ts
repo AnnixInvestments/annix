@@ -110,11 +110,14 @@ export class SupplierAuthController {
     const userAgent = req.headers['user-agent'] || '';
 
     // Parse JSON strings from form data
-    let company, profile, security;
+    let company, profile, security, documentVerificationResults;
     try {
       company = JSON.parse(body.company);
       profile = JSON.parse(body.profile);
       security = JSON.parse(body.security);
+      documentVerificationResults = body.documentVerificationResults
+        ? JSON.parse(body.documentVerificationResults)
+        : null;
     } catch {
       throw new BadRequestException('Invalid JSON in form data');
     }
@@ -135,6 +138,7 @@ export class SupplierAuthController {
         documentStorageAccepted: security.documentStorageAccepted,
         company,
         profile,
+        documentVerificationResults,
       },
       clientIp,
       userAgent,

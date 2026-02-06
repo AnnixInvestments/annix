@@ -252,6 +252,11 @@ export class SupplierAuthService {
       documentStorageAccepted?: boolean;
       company: any;
       profile: any;
+      documentVerificationResults?: {
+        vat?: any;
+        registration?: any;
+        bee?: any;
+      };
     },
     clientIp: string,
     userAgent: string,
@@ -356,14 +361,15 @@ export class SupplierAuthService {
       });
       await queryRunner.manager.save(onboarding);
 
-      let savedDocumentIds: number[] = [];
+      let documentIdsNeedingVerification: number[] = [];
       if (vatDocument || companyRegDocument || beeDocument) {
-        savedDocumentIds = await this.saveRegistrationDocuments(
+        documentIdsNeedingVerification = await this.saveRegistrationDocuments(
           queryRunner.manager,
           savedProfile.id,
           vatDocument,
           companyRegDocument,
           beeDocument,
+          dto.documentVerificationResults,
         );
       }
 
@@ -398,7 +404,9 @@ export class SupplierAuthService {
         savedCompany.tradingName || savedCompany.legalName,
       );
 
-      this.triggerDocumentVerifications(savedProfile.id, savedDocumentIds);
+      if (documentIdsNeedingVerification.length > 0) {
+        this.triggerDocumentVerifications(savedProfile.id, documentIdsNeedingVerification);
+      }
 
       const { session, sessionToken } = this.sessionService.createSession(
         this.sessionRepo,
@@ -451,9 +459,10 @@ export class SupplierAuthService {
     vatDocument?: Express.Multer.File,
     companyRegDocument?: Express.Multer.File,
     beeDocument?: Express.Multer.File,
+    verificationResults?: { vat?: any; registration?: any; bee?: any },
   ): Promise<number[]> {
     const subPath = `suppliers/${supplierId}/documents`;
-    const savedDocumentIds: number[] = [];
+    const idsNeedingVerification: number[] = [];
 
     if (vatDocument) {
       const storageResult = await this.storageService.upload(
@@ -461,6 +470,7 @@ export class SupplierAuthService {
         subPath,
       );
 
+      const vatVerification = verificationResults?.vat;
       const vatDocEntity = this.documentRepo.create({
         supplierId,
         documentType: SupplierDocumentType.VAT_CERT,
@@ -468,12 +478,15 @@ export class SupplierAuthService {
         filePath: storageResult.path,
         fileSize: vatDocument.size,
         mimeType: vatDocument.mimetype,
-        validationStatus: SupplierDocumentValidationStatus.PENDING,
+        validationStatus: this.determineValidationStatus(vatVerification),
         isRequired: true,
+        ...this.extractVerificationFields(vatVerification),
       });
 
       const saved = await manager.save(vatDocEntity);
-      savedDocumentIds.push(saved.id);
+      if (!vatVerification) {
+        idsNeedingVerification.push(saved.id);
+      }
     }
 
     if (companyRegDocument) {
@@ -482,6 +495,7 @@ export class SupplierAuthService {
         subPath,
       );
 
+      const regVerification = verificationResults?.registration;
       const companyRegEntity = this.documentRepo.create({
         supplierId,
         documentType: SupplierDocumentType.REGISTRATION_CERT,
@@ -489,12 +503,15 @@ export class SupplierAuthService {
         filePath: storageResult.path,
         fileSize: companyRegDocument.size,
         mimeType: companyRegDocument.mimetype,
-        validationStatus: SupplierDocumentValidationStatus.PENDING,
+        validationStatus: this.determineValidationStatus(regVerification),
         isRequired: true,
+        ...this.extractVerificationFields(regVerification),
       });
 
       const saved = await manager.save(companyRegEntity);
-      savedDocumentIds.push(saved.id);
+      if (!regVerification) {
+        idsNeedingVerification.push(saved.id);
+      }
     }
 
     if (beeDocument) {
@@ -503,6 +520,7 @@ export class SupplierAuthService {
         subPath,
       );
 
+      const beeVerification = verificationResults?.bee;
       const beeDocEntity = this.documentRepo.create({
         supplierId,
         documentType: SupplierDocumentType.BEE_CERT,
@@ -510,15 +528,63 @@ export class SupplierAuthService {
         filePath: storageResult.path,
         fileSize: beeDocument.size,
         mimeType: beeDocument.mimetype,
-        validationStatus: SupplierDocumentValidationStatus.PENDING,
+        validationStatus: this.determineValidationStatus(beeVerification),
         isRequired: false,
+        ...this.extractVerificationFields(beeVerification),
       });
 
       const saved = await manager.save(beeDocEntity);
-      savedDocumentIds.push(saved.id);
+      if (!beeVerification) {
+        idsNeedingVerification.push(saved.id);
+      }
     }
 
-    return savedDocumentIds;
+    return idsNeedingVerification;
+  }
+
+  private determineValidationStatus(verificationResult: any): SupplierDocumentValidationStatus {
+    if (!verificationResult) {
+      return SupplierDocumentValidationStatus.PENDING;
+    }
+    if (verificationResult.allFieldsMatch && verificationResult.overallConfidence >= 0.7) {
+      return SupplierDocumentValidationStatus.VALID;
+    }
+    return SupplierDocumentValidationStatus.MANUAL_REVIEW;
+  }
+
+  private extractVerificationFields(verificationResult: any): Partial<SupplierDocument> {
+    if (!verificationResult) {
+      return {};
+    }
+
+    return {
+      ocrExtractedData: verificationResult.extractedData
+        ? {
+            vatNumber: verificationResult.extractedData.vatNumber,
+            registrationNumber: verificationResult.extractedData.registrationNumber,
+            companyName: verificationResult.extractedData.companyName,
+            streetAddress: verificationResult.extractedData.streetAddress,
+            city: verificationResult.extractedData.city,
+            provinceState: verificationResult.extractedData.provinceState,
+            postalCode: verificationResult.extractedData.postalCode,
+            beeLevel: verificationResult.extractedData.beeLevel,
+            beeExpiryDate: verificationResult.extractedData.beeExpiryDate,
+            rawText: verificationResult.extractedData.rawText,
+            confidence: String(verificationResult.overallConfidence ?? 0),
+          }
+        : null,
+      ocrProcessedAt: now().toJSDate(),
+      ocrFailed: !verificationResult.success,
+      verificationConfidence: verificationResult.overallConfidence ?? 0,
+      allFieldsMatch: verificationResult.allFieldsMatch ?? false,
+      fieldResults: verificationResult.fieldResults?.map((fr: any) => ({
+        fieldName: fr.field,
+        expected: String(fr.expected ?? ''),
+        extracted: String(fr.extracted ?? ''),
+        matches: fr.match,
+        similarity: fr.similarity ?? (fr.match ? 100 : 0),
+      })) ?? null,
+    };
   }
 
   async verifyEmail(
