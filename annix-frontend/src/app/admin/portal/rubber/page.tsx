@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { rubberPortalApi, RubberOrderDto, RubberCompanyDto, RubberProductDto } from '@/app/lib/api/rubberPortalApi';
 import { formatDateZA } from '@/app/lib/datetime';
 import { statusColor, statusLabel, RUBBER_ORDER_STATUS } from '@/app/lib/config/rubber/orderStatus';
+import { useRubberOrders, useRubberCompanies, useRubberProducts } from '@/app/lib/query/hooks';
 
 interface StatusCount {
   status: number;
@@ -12,67 +12,33 @@ interface StatusCount {
   count: number;
 }
 
-interface DashboardStats {
-  ordersCount: number;
-  companiesCount: number;
-  productsCount: number;
-  allOrders: RubberOrderDto[];
-  ordersByStatus: StatusCount[];
-}
-
 const ORDERS_PER_PAGE = 5;
 
 export default function RubberLiningDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    ordersCount: 0,
-    companiesCount: 0,
-    productsCount: 0,
-    allOrders: [],
-    ordersByStatus: [],
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const ordersQuery = useRubberOrders();
+  const companiesQuery = useRubberCompanies();
+  const productsQuery = useRubberProducts();
+
   const [currentPage, setCurrentPage] = useState(0);
 
-  const totalPages = Math.ceil(stats.allOrders.length / ORDERS_PER_PAGE);
-  const paginatedOrders = stats.allOrders.slice(
+  const orders = ordersQuery.data ?? [];
+  const companies = companiesQuery.data ?? [];
+  const products = productsQuery.data ?? [];
+
+  const ordersByStatus: StatusCount[] = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
+    status: value,
+    label: statusLabel(value),
+    count: orders.filter(o => o.status === value).length,
+  }));
+
+  const isLoading = ordersQuery.isLoading || companiesQuery.isLoading || productsQuery.isLoading;
+  const error = ordersQuery.error || companiesQuery.error || productsQuery.error;
+
+  const totalPages = Math.ceil(orders.length / ORDERS_PER_PAGE);
+  const paginatedOrders = orders.slice(
     currentPage * ORDERS_PER_PAGE,
     (currentPage + 1) * ORDERS_PER_PAGE
   );
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setIsLoading(true);
-        const [orders, companies, products] = await Promise.all([
-          rubberPortalApi.orders(),
-          rubberPortalApi.companies(),
-          rubberPortalApi.products(),
-        ]);
-
-        const ordersByStatus = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
-          status: value,
-          label: statusLabel(value),
-          count: orders.filter(o => o.status === value).length,
-        }));
-
-        setStats({
-          ordersCount: orders.length,
-          companiesCount: companies.length,
-          productsCount: products.length,
-          allOrders: orders,
-          ordersByStatus,
-        });
-      } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
-        setError(errorMessage);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
 
   if (isLoading) {
     return (
@@ -90,7 +56,7 @@ export default function RubberLiningDashboard() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error}</p>
+          <p className="text-gray-600">{error.message}</p>
         </div>
       </div>
     );
@@ -130,7 +96,7 @@ export default function RubberLiningDashboard() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Orders</dt>
-                  <dd className="text-2xl font-semibold text-gray-900">{stats.ordersCount}</dd>
+                  <dd className="text-2xl font-semibold text-gray-900">{orders.length}</dd>
                 </dl>
               </div>
             </div>
@@ -150,7 +116,7 @@ export default function RubberLiningDashboard() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Companies</dt>
-                  <dd className="text-2xl font-semibold text-gray-900">{stats.companiesCount}</dd>
+                  <dd className="text-2xl font-semibold text-gray-900">{companies.length}</dd>
                 </dl>
               </div>
             </div>
@@ -170,7 +136,7 @@ export default function RubberLiningDashboard() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Products</dt>
-                  <dd className="text-2xl font-semibold text-gray-900">{stats.productsCount}</dd>
+                  <dd className="text-2xl font-semibold text-gray-900">{products.length}</dd>
                 </dl>
               </div>
             </div>
@@ -218,14 +184,14 @@ export default function RubberLiningDashboard() {
         </Link>
       </div>
 
-      {stats.ordersByStatus.some((s) => s.count > 0) && (
+      {ordersByStatus.some((s) => s.count > 0) && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
             <h3 className="text-lg leading-6 font-medium text-gray-900">Orders by Status</h3>
           </div>
           <div className="p-4">
             <div className="flex flex-wrap gap-3">
-              {stats.ordersByStatus
+              {ordersByStatus
                 .filter((s) => s.count > 0)
                 .map((s) => (
                   <Link
@@ -246,7 +212,7 @@ export default function RubberLiningDashboard() {
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Recent Orders</h3>
         </div>
-        {stats.allOrders.length === 0 ? (
+        {orders.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -302,7 +268,7 @@ export default function RubberLiningDashboard() {
             </tbody>
           </table>
         )}
-        {stats.allOrders.length > 0 && (
+        {orders.length > 0 && (
           <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
             <Link href="/admin/portal/rubber/orders" className="text-sm text-blue-600 hover:text-blue-800">
               View all orders &rarr;
@@ -338,4 +304,3 @@ export default function RubberLiningDashboard() {
     </div>
   );
 }
-

@@ -2,10 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { rubberPortalApi, RubberOrderDto, RubberCompanyDto } from '@/app/lib/api/rubberPortalApi';
+import { useQueryClient } from '@tanstack/react-query';
+import { rubberPortalApi, RubberOrderDto } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA, fromISO, now } from '@/app/lib/datetime';
 import { statusColor } from '@/app/lib/config/rubber/orderStatus';
+import { rubberKeys } from '@/app/lib/query/keys';
+import {
+  useRubberOrders,
+  useRubberCompanies,
+  useRubberOrderStatuses,
+  useCreateRubberOrder,
+  useDeleteRubberOrder,
+} from '@/app/lib/query/hooks';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { SortIcon, SortDirection, TableLoadingState, TableEmptyState, Pagination, TableIcons, ITEMS_PER_PAGE } from '../components/TableComponents';
@@ -41,26 +50,31 @@ const exportOrdersToCSV = (orders: RubberOrderDto[]) => {
 
 export default function RubberOrdersPage() {
   const { showToast } = useToast();
-  const [orders, setOrders] = useState<RubberOrderDto[]>([]);
-  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
-  const [statuses, setStatuses] = useState<{ value: number; label: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
-  const [newOrderCompanyId, setNewOrderCompanyId] = useState<number | undefined>(undefined);
-  const [newOrderCompanyOrderNumber, setNewOrderCompanyOrderNumber] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState<number | undefined>(undefined);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [newOrderCompanyId, setNewOrderCompanyId] = useState<number | undefined>(undefined);
+  const [newOrderCompanyOrderNumber, setNewOrderCompanyOrderNumber] = useState('');
   const [deleteOrderId, setDeleteOrderId] = useState<number | null>(null);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [sortColumn, setSortColumn] = useState<SortColumn>('createdAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
+
+  const ordersQuery = useRubberOrders(statusFilter);
+  const companiesQuery = useRubberCompanies();
+  const statusesQuery = useRubberOrderStatuses();
+  const createMutation = useCreateRubberOrder();
+  const deleteMutation = useDeleteRubberOrder();
+
+  const orders = ordersQuery.data ?? [];
+  const companies = companiesQuery.data ?? [];
+  const statuses = statusesQuery.data ?? [];
 
   const sortOrders = (ordersToSort: RubberOrderDto[]): RubberOrderDto[] => {
     return [...ordersToSort].sort((a, b) => {
@@ -131,7 +145,7 @@ export default function RubberOrdersPage() {
     if (successCount > 0) {
       showToast(`Deleted ${successCount} order${successCount > 1 ? 's' : ''}${failCount > 0 ? `, ${failCount} failed` : ''}`, failCount > 0 ? 'warning' : 'success');
       setSelectedOrders(new Set());
-      fetchOrders();
+      queryClient.invalidateQueries({ queryKey: rubberKeys.orders.all });
     } else if (failCount > 0) {
       showToast(`Failed to delete ${failCount} order${failCount > 1 ? 's' : ''}`, 'error');
     }
@@ -158,69 +172,47 @@ export default function RubberOrdersPage() {
     setSelectedOrders(new Set());
   }, [searchQuery, companyFilter, dateFrom, dateTo, statusFilter]);
 
-  const fetchOrders = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const [ordersData, companiesData, statusesData] = await Promise.all([
-        rubberPortalApi.orders(statusFilter),
-        rubberPortalApi.companies(),
-        rubberPortalApi.orderStatuses(),
-      ]);
-      setOrders(ordersData);
-      setCompanies(companiesData);
-      setStatuses(statusesData);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load orders';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchOrders();
-  }, [statusFilter]);
-
-  const handleCreateOrder = async () => {
-    try {
-      setIsCreating(true);
-      const order = await rubberPortalApi.createOrder({
+  const handleCreateOrder = () => {
+    createMutation.mutate(
+      {
         companyId: newOrderCompanyId,
         companyOrderNumber: newOrderCompanyOrderNumber || undefined,
-      });
-      showToast(`Order ${order.orderNumber} created`, 'success');
-      setShowNewOrderModal(false);
-      setNewOrderCompanyId(undefined);
-      setNewOrderCompanyOrderNumber('');
-      fetchOrders();
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create order';
-      showToast(errorMessage, 'error');
-    } finally {
-      setIsCreating(false);
-    }
+      },
+      {
+        onSuccess: (order) => {
+          showToast(`Order ${order.orderNumber} created`, 'success');
+          setShowNewOrderModal(false);
+          setNewOrderCompanyId(undefined);
+          setNewOrderCompanyOrderNumber('');
+        },
+        onError: (err: unknown) => {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to create order';
+          showToast(errorMessage, 'error');
+        },
+      }
+    );
   };
 
-  const handleDeleteOrder = async (id: number) => {
-    try {
-      await rubberPortalApi.deleteOrder(id);
-      showToast('Order deleted', 'success');
-      setDeleteOrderId(null);
-      fetchOrders();
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete order';
-      showToast(errorMessage, 'error');
-    }
+  const handleDeleteOrder = (id: number) => {
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        showToast('Order deleted', 'success');
+        setDeleteOrderId(null);
+      },
+      onError: (err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete order';
+        showToast(errorMessage, 'error');
+      },
+    });
   };
 
-  if (error) {
+  if (ordersQuery.error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Orders</div>
-          <p className="text-gray-600">{error}</p>
-          <button onClick={fetchOrders} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <p className="text-gray-600">{ordersQuery.error.message}</p>
+          <button onClick={() => ordersQuery.refetch()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
             Retry
           </button>
         </div>
@@ -355,7 +347,7 @@ export default function RubberOrdersPage() {
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {isLoading ? (
+        {ordersQuery.isLoading ? (
           <TableLoadingState message="Loading orders..." />
         ) : filteredOrders.length === 0 ? (
           <TableEmptyState
@@ -527,10 +519,10 @@ export default function RubberOrdersPage() {
                 </button>
                 <button
                   onClick={handleCreateOrder}
-                  disabled={isCreating}
+                  disabled={createMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isCreating ? 'Creating...' : 'Create Order'}
+                  {createMutation.isPending ? 'Creating...' : 'Create Order'}
                 </button>
               </div>
             </div>
@@ -562,4 +554,3 @@ export default function RubberOrdersPage() {
     </div>
   );
 }
-

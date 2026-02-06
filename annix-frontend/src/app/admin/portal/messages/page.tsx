@@ -1,95 +1,100 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/app/components/Toast';
 import {
   ConversationList,
   ConversationThread,
   MessageComposer,
 } from '@/app/components/messaging';
+import type { ConversationSummary, ConversationDetail } from '@/app/lib/api/messagingApi';
+import { messagingKeys } from '@/app/lib/query/keys';
 import {
-  adminMessagingApi,
-  ConversationSummary,
-  ConversationDetail,
-} from '@/app/lib/api/messagingApi';
+  useAdminConversations,
+  useAdminConversationDetail,
+  useSendAdminMessage,
+} from '@/app/lib/query/hooks';
 
 export default function AdminMessagesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
 
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [selectedConversation, setSelectedConversation] =
-    useState<ConversationDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number>(0);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const convResult = await adminMessagingApi.conversations();
-      setConversations(convResult.conversations);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load messages', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showToast]);
+  const conversationsQuery = useAdminConversations();
+  const detailQuery = useAdminConversationDetail(selectedConversationId ?? 0);
+  const sendMutation = useSendAdminMessage();
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const conversations = conversationsQuery.data?.conversations ?? [];
+  const selectedConversation = detailQuery.data ?? null;
 
-  const handleSelectConversation = async (conversation: ConversationSummary) => {
-    try {
-      const detail = await adminMessagingApi.conversation(conversation.id);
-      setSelectedConversation(detail);
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conversation.id ? { ...c, unreadCount: 0 } : c,
-        ),
-      );
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load conversation', 'error');
-    }
+  const handleSelectConversation = (conversation: ConversationSummary) => {
+    setSelectedConversationId(conversation.id);
+    queryClient.setQueryData<{ conversations: ConversationSummary[]; total: number }>(
+      messagingKeys.conversations.list(),
+      (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          conversations: old.conversations.map((c) =>
+            c.id === conversation.id ? { ...c, unreadCount: 0 } : c,
+          ),
+        };
+      },
+    );
   };
 
   const handleSendMessage = async (content: string) => {
     if (!selectedConversation) return;
 
-    try {
-      const newMessage = await adminMessagingApi.sendMessage(
-        selectedConversation.id,
-        { content },
-      );
+    sendMutation.mutate(
+      { conversationId: selectedConversation.id, dto: { content } },
+      {
+        onSuccess: (newMessage) => {
+          if (currentUserId === 0) {
+            setCurrentUserId(newMessage.senderId);
+          }
 
-      if (currentUserId === 0) {
-        setCurrentUserId(newMessage.senderId);
-      }
+          queryClient.setQueryData<ConversationDetail>(
+            messagingKeys.conversations.detail(selectedConversation.id),
+            (old) =>
+              old
+                ? { ...old, messages: [...old.messages, newMessage] }
+                : old,
+          );
 
-      setSelectedConversation((prev) =>
-        prev
-          ? { ...prev, messages: [...prev.messages, newMessage] }
-          : null,
-      );
-
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === selectedConversation.id
-            ? {
-                ...c,
-                lastMessageAt: newMessage.sentAt,
-                lastMessagePreview: newMessage.content.substring(0, 100),
-              }
-            : c,
-        ),
-      );
-    } catch (error: any) {
-      showToast(error.message || 'Failed to send message', 'error');
-    }
+          queryClient.setQueryData<{ conversations: ConversationSummary[]; total: number }>(
+            messagingKeys.conversations.list(),
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                conversations: old.conversations.map((c) =>
+                  c.id === selectedConversation.id
+                    ? {
+                        ...c,
+                        lastMessageAt: newMessage.sentAt,
+                        lastMessagePreview: newMessage.content.substring(0, 100),
+                      }
+                    : c,
+                ),
+              };
+            },
+          );
+        },
+        onError: (err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Failed to send message';
+          showToast(message, 'error');
+        },
+      },
+    );
   };
 
-  if (isLoading) {
+  if (conversationsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -126,7 +131,7 @@ export default function AdminMessagesPage() {
               conversations={conversations}
               selectedId={selectedConversation?.id}
               onSelect={handleSelectConversation}
-              isLoading={isLoading}
+              isLoading={conversationsQuery.isLoading}
             />
           </div>
 

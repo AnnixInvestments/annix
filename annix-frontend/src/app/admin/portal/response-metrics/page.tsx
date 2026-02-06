@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/app/components/Toast';
+import type { RatingBreakdown, SlaConfig } from '@/app/lib/api/messagingApi';
 import {
-  adminMessagingApi,
-  ResponseMetricsSummary,
-  SlaConfig,
-  RatingBreakdown,
-} from '@/app/lib/api/messagingApi';
+  useAdminResponseMetrics,
+  useAdminSlaConfig,
+  useUpdateSlaConfig,
+} from '@/app/lib/query/hooks';
 
 type RatingKey = keyof RatingBreakdown;
 
@@ -62,32 +62,17 @@ export default function ResponseMetricsPage() {
   const router = useRouter();
   const { showToast } = useToast();
 
-  const [metrics, setMetrics] = useState<ResponseMetricsSummary | null>(null);
-  const [slaConfig, setSlaConfig] = useState<SlaConfig | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const metricsQuery = useAdminResponseMetrics();
+  const slaQuery = useAdminSlaConfig();
+  const updateSlaMutation = useUpdateSlaConfig();
+
+  const metrics = metricsQuery.data ?? null;
+  const slaConfig = slaQuery.data ?? null;
+
   const [isEditingSla, setIsEditingSla] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [editedSla, setEditedSla] = useState<SlaConfig | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [metricsResult, slaResult] = await Promise.all([
-        adminMessagingApi.responseMetrics(),
-        adminMessagingApi.slaConfig(),
-      ]);
-      setMetrics(metricsResult);
-      setSlaConfig(slaResult);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load metrics', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const isLoading = metricsQuery.isLoading || slaQuery.isLoading;
 
   const handleEditSla = () => {
     setEditedSla(slaConfig ? { ...slaConfig } : null);
@@ -99,21 +84,20 @@ export default function ResponseMetricsPage() {
     setEditedSla(null);
   };
 
-  const handleSaveSla = async () => {
+  const handleSaveSla = () => {
     if (!editedSla) return;
 
-    try {
-      setIsSaving(true);
-      const updated = await adminMessagingApi.updateSlaConfig(editedSla);
-      setSlaConfig(updated);
-      setIsEditingSla(false);
-      setEditedSla(null);
-      showToast('SLA configuration updated', 'success');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to update SLA configuration', 'error');
-    } finally {
-      setIsSaving(false);
-    }
+    updateSlaMutation.mutate(editedSla, {
+      onSuccess: () => {
+        setIsEditingSla(false);
+        setEditedSla(null);
+        showToast('SLA configuration updated', 'success');
+      },
+      onError: (err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Failed to update SLA configuration';
+        showToast(message, 'error');
+      },
+    });
   };
 
   if (isLoading) {
@@ -495,16 +479,16 @@ export default function ResponseMetricsPage() {
                     <button
                       onClick={handleCancelEdit}
                       className="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                      disabled={isSaving}
+                      disabled={updateSlaMutation.isPending}
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSaveSla}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                      disabled={isSaving}
+                      disabled={updateSlaMutation.isPending}
                     >
-                      {isSaving ? 'Saving...' : 'Save Changes'}
+                      {updateSlaMutation.isPending ? 'Saving...' : 'Save Changes'}
                     </button>
                   </div>
                 </div>

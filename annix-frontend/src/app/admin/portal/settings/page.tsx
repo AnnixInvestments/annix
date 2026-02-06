@@ -1,59 +1,32 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import { useToast } from '@/app/components/Toast';
-import {
-  featureFlagsApi,
-  FeatureFlagDetail,
-} from '@/app/lib/api/featureFlagsApi';
+import { useFeatureFlags, useToggleFeatureFlag } from '@/app/lib/query/hooks';
 
 export default function SettingsPage() {
   const { showToast } = useToast();
-  const [flags, setFlags] = useState<FeatureFlagDetail[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [updatingFlags, setUpdatingFlags] = useState<Set<string>>(new Set());
+  const flagsQuery = useFeatureFlags();
+  const toggleMutation = useToggleFeatureFlag();
 
-  const fetchFlags = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const result = await featureFlagsApi.allFlagsDetailed();
-      setFlags(result.flags);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load feature flags';
-      showToast(message, 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showToast]);
+  const flags = flagsQuery.data?.flags ?? [];
 
-  useEffect(() => {
-    fetchFlags();
-  }, [fetchFlags]);
-
-  const handleToggle = async (flagKey: string, currentEnabled: boolean) => {
-    setUpdatingFlags((prev) => new Set([...prev, flagKey]));
-
-    try {
-      const updated = await featureFlagsApi.updateFlag(flagKey, !currentEnabled);
-      setFlags((prev) =>
-        prev.map((f) =>
-          f.flagKey === flagKey ? { ...f, enabled: updated.enabled } : f,
-        ),
-      );
-      showToast(
-        `${flagKey} ${updated.enabled ? 'enabled' : 'disabled'}`,
-        'success',
-      );
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to update flag';
-      showToast(message, 'error');
-    } finally {
-      setUpdatingFlags((prev) => {
-        const next = new Set(prev);
-        next.delete(flagKey);
-        return next;
-      });
-    }
+  const handleToggle = (flagKey: string, currentEnabled: boolean) => {
+    toggleMutation.mutate(
+      { flagKey, enabled: !currentEnabled },
+      {
+        onSuccess: (updated) => {
+          showToast(
+            `${flagKey} ${updated.enabled ? 'enabled' : 'disabled'}`,
+            'success',
+          );
+        },
+        onError: (err) => {
+          const message = err instanceof Error ? err.message : 'Failed to update flag';
+          showToast(message, 'error');
+        },
+      },
+    );
   };
 
   return (
@@ -75,15 +48,25 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {isLoading ? (
+        {flagsQuery.isLoading ? (
           <div className="px-6 py-12 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Loading feature flags...</p>
           </div>
+        ) : flagsQuery.error ? (
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm text-red-600">{flagsQuery.error.message}</p>
+            <button
+              onClick={() => flagsQuery.refetch()}
+              className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+            >
+              Try again
+            </button>
+          </div>
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-slate-700">
             {flags.map((flag) => {
-              const isUpdating = updatingFlags.has(flag.flagKey);
+              const isUpdating = toggleMutation.isPending && toggleMutation.variables?.flagKey === flag.flagKey;
               return (
                 <div
                   key={flag.flagKey}

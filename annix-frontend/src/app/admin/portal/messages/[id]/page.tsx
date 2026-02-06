@@ -1,70 +1,77 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/app/components/Toast';
 import { ConversationThread, MessageComposer } from '@/app/components/messaging';
+import type { ConversationDetail } from '@/app/lib/api/messagingApi';
+import { messagingKeys } from '@/app/lib/query/keys';
 import {
-  adminMessagingApi,
-  ConversationDetail,
-} from '@/app/lib/api/messagingApi';
+  useAdminConversationDetail,
+  useSendAdminMessage,
+} from '@/app/lib/query/hooks';
 
 export default function AdminConversationDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
 
   const conversationId = Number(params.id);
 
-  const [conversation, setConversation] = useState<ConversationDetail | null>(
-    null,
-  );
-  const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<number>(0);
 
-  const fetchConversation = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const detail = await adminMessagingApi.conversation(conversationId);
-      setConversation(detail);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load conversation', 'error');
-      router.push('/admin/portal/messages');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [conversationId, router, showToast]);
+  const conversationQuery = useAdminConversationDetail(conversationId);
+  const sendMutation = useSendAdminMessage();
 
-  useEffect(() => {
-    if (conversationId) {
-      fetchConversation();
-    }
-  }, [conversationId, fetchConversation]);
+  const conversation = conversationQuery.data ?? null;
 
   const handleSendMessage = async (content: string) => {
     if (!conversation) return;
 
-    try {
-      const newMessage = await adminMessagingApi.sendMessage(conversation.id, {
-        content,
-      });
+    sendMutation.mutate(
+      { conversationId: conversation.id, dto: { content } },
+      {
+        onSuccess: (newMessage) => {
+          if (currentUserId === 0) {
+            setCurrentUserId(newMessage.senderId);
+          }
 
-      if (currentUserId === 0) {
-        setCurrentUserId(newMessage.senderId);
-      }
-
-      setConversation((prev) =>
-        prev ? { ...prev, messages: [...prev.messages, newMessage] } : null,
-      );
-    } catch (error: any) {
-      showToast(error.message || 'Failed to send message', 'error');
-    }
+          queryClient.setQueryData<ConversationDetail>(
+            messagingKeys.conversations.detail(conversation.id),
+            (old) =>
+              old
+                ? { ...old, messages: [...old.messages, newMessage] }
+                : old,
+          );
+        },
+        onError: (err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Failed to send message';
+          showToast(message, 'error');
+        },
+      },
+    );
   };
 
-  if (isLoading) {
+  if (conversationQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (conversationQuery.error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
+        <p>{conversationQuery.error instanceof Error ? conversationQuery.error.message : 'Failed to load conversation'}</p>
+        <button
+          onClick={() => router.push('/admin/portal/messages')}
+          className="mt-4 text-blue-600 hover:text-blue-700"
+        >
+          Back to Messages
+        </button>
       </div>
     );
   }

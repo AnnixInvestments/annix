@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/app/components/Toast';
 import { formatDateTime, formatRelative } from '@/app/lib/datetime';
 import {
-  adminMessagingApi,
-  BroadcastDetail,
   BroadcastPriority,
   BroadcastTarget,
 } from '@/app/lib/api/messagingApi';
+import { useAdminBroadcasts } from '@/app/lib/query/hooks';
 
 function priorityBadge(priority: BroadcastPriority) {
   const styles: Record<BroadcastPriority, string> = {
@@ -33,29 +31,13 @@ function targetLabel(target: BroadcastTarget): string {
 
 export default function AdminBroadcastsPage() {
   const router = useRouter();
-  const { showToast } = useToast();
 
-  const [broadcasts, setBroadcasts] = useState<BroadcastDetail[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [includeExpired, setIncludeExpired] = useState(false);
 
-  const fetchBroadcasts = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const result = await adminMessagingApi.broadcastsAdmin({ includeExpired });
-      setBroadcasts(result.broadcasts);
-    } catch (error: any) {
-      showToast(error.message || 'Failed to load broadcasts', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [includeExpired, showToast]);
+  const broadcastsQuery = useAdminBroadcasts({ includeExpired });
+  const broadcasts = broadcastsQuery.data?.broadcasts ?? [];
 
-  useEffect(() => {
-    fetchBroadcasts();
-  }, [fetchBroadcasts]);
-
-  if (isLoading) {
+  if (broadcastsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

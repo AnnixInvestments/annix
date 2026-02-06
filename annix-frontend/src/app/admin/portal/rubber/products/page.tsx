@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { rubberPortalApi, RubberProductDto } from '@/app/lib/api/rubberPortalApi';
 import { now } from '@/app/lib/datetime';
 import { useToast } from '@/app/components/Toast';
+import { useRubberProducts, useDeleteRubberProduct } from '@/app/lib/query/hooks';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ProductFormModal } from '../components/ProductFormModal';
 import { Breadcrumb } from '../components/Breadcrumb';
@@ -47,9 +47,10 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
 
 export default function RubberProductsPage() {
   const { showToast } = useToast();
-  const [products, setProducts] = useState<RubberProductDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const productsQuery = useRubberProducts();
+  const deleteMutation = useDeleteRubberProduct();
+  const products = productsQuery.data ?? [];
+
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [compoundFilter, setCompoundFilter] = useState('');
@@ -131,7 +132,7 @@ export default function RubberProductsPage() {
     if (successCount > 0) {
       showToast(`Deleted ${successCount} product${successCount > 1 ? 's' : ''}${failCount > 0 ? `, ${failCount} failed` : ''}`, failCount > 0 ? 'warning' : 'success');
       setSelectedProducts(new Set());
-      fetchData();
+      productsQuery.refetch();
     } else if (failCount > 0) {
       showToast(`Failed to delete ${failCount} product${failCount > 1 ? 's' : ''}`, 'error');
     }
@@ -160,34 +161,17 @@ export default function RubberProductsPage() {
     setSelectedProducts(new Set());
   }, [searchQuery, typeFilter, compoundFilter]);
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const productsData = await rubberPortalApi.products();
-      setProducts(productsData);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load products';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleDelete = async (id: number) => {
-    try {
-      await rubberPortalApi.deleteProduct(id);
-      showToast('Product deleted', 'success');
-      setDeleteProductId(null);
-      fetchData();
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete product';
-      showToast(errorMessage, 'error');
-    }
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        showToast('Product deleted', 'success');
+        setDeleteProductId(null);
+      },
+      onError: (err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete product';
+        showToast(errorMessage, 'error');
+      },
+    });
   };
 
   const formatCurrency = (value: number | null): string => {
@@ -195,13 +179,13 @@ export default function RubberProductsPage() {
     return `R ${value.toFixed(2)}`;
   };
 
-  if (error) {
+  if (productsQuery.error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Products</div>
-          <p className="text-gray-600">{error}</p>
-          <button onClick={fetchData} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <p className="text-gray-600">{productsQuery.error.message}</p>
+          <button onClick={() => productsQuery.refetch()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
             Retry
           </button>
         </div>
@@ -319,7 +303,7 @@ export default function RubberProductsPage() {
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {isLoading ? (
+        {productsQuery.isLoading ? (
           <TableLoadingState message="Loading products..." />
         ) : filteredProducts.length === 0 ? (
           <TableEmptyState
@@ -526,7 +510,7 @@ export default function RubberProductsPage() {
           setShowModal(false);
           setEditingProduct(null);
           showToast(editingProduct ? 'Product updated' : 'Product created', 'success');
-          fetchData();
+          productsQuery.refetch();
         }}
         onCancel={() => {
           setShowModal(false);

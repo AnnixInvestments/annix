@@ -4,14 +4,16 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/app/components/Toast';
 import {
-  adminMessagingApi,
   BroadcastTarget,
   BroadcastPriority,
 } from '@/app/lib/api/messagingApi';
+import { useCreateBroadcast } from '@/app/lib/query/hooks';
 
 export default function NewBroadcastPage() {
   const router = useRouter();
   const { showToast } = useToast();
+
+  const createMutation = useCreateBroadcast();
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -23,9 +25,8 @@ export default function NewBroadcastPage() {
   );
   const [expiresAt, setExpiresAt] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim()) {
@@ -38,24 +39,26 @@ export default function NewBroadcastPage() {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      await adminMessagingApi.createBroadcast({
+    createMutation.mutate(
+      {
         title: title.trim(),
         content: content.trim(),
         targetAudience,
         priority,
         expiresAt: expiresAt || undefined,
         sendEmail,
-      });
-
-      showToast('Broadcast created successfully', 'success');
-      router.push('/admin/portal/broadcasts');
-    } catch (error: any) {
-      showToast(error.message || 'Failed to create broadcast', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          showToast('Broadcast created successfully', 'success');
+          router.push('/admin/portal/broadcasts');
+        },
+        onError: (err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Failed to create broadcast';
+          showToast(message, 'error');
+        },
+      },
+    );
   };
 
   return (
@@ -100,7 +103,7 @@ export default function NewBroadcastPage() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Announcement title"
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
             />
           </div>
 
@@ -118,7 +121,7 @@ export default function NewBroadcastPage() {
               placeholder="Write your announcement..."
               rows={6}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
             />
           </div>
 
@@ -137,7 +140,7 @@ export default function NewBroadcastPage() {
                   setTargetAudience(e.target.value as BroadcastTarget)
                 }
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={isSubmitting}
+                disabled={createMutation.isPending}
               >
                 <option value={BroadcastTarget.ALL}>All Users</option>
                 <option value={BroadcastTarget.CUSTOMERS}>Customers Only</option>
@@ -159,7 +162,7 @@ export default function NewBroadcastPage() {
                   setPriority(e.target.value as BroadcastPriority)
                 }
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={isSubmitting}
+                disabled={createMutation.isPending}
               >
                 <option value={BroadcastPriority.LOW}>Low</option>
                 <option value={BroadcastPriority.NORMAL}>Normal</option>
@@ -182,7 +185,7 @@ export default function NewBroadcastPage() {
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
             />
           </div>
 
@@ -193,7 +196,7 @@ export default function NewBroadcastPage() {
               checked={sendEmail}
               onChange={(e) => setSendEmail(e.target.checked)}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
             />
             <label
               htmlFor="sendEmail"
@@ -215,16 +218,16 @@ export default function NewBroadcastPage() {
               type="button"
               onClick={() => router.push('/admin/portal/broadcasts')}
               className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !title.trim() || !content.trim()}
+              disabled={createMutation.isPending || !title.trim() || !content.trim()}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {isSubmitting ? (
+              {createMutation.isPending ? (
                 <>
                   <svg
                     className="w-5 h-5 animate-spin"

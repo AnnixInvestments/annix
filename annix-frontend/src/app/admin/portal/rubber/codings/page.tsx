@@ -1,20 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { rubberPortalApi, RubberProductCodingDto } from '@/app/lib/api/rubberPortalApi';
+import React, { useState } from 'react';
+import { type RubberProductCodingDto } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
 import { CodingType, CODING_TYPES } from '@/app/lib/config/rubber/codingTypes';
+import { useRubberCodings, useSaveRubberCoding, useDeleteRubberCoding } from '@/app/lib/query/hooks';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { TableLoadingState, Pagination, ITEMS_PER_PAGE } from '../components/TableComponents';
 
 export default function RubberCodingsPage() {
   const { showToast } = useToast();
-  const [codings, setCodings] = useState<RubberProductCodingDto[]>([]);
   const [selectedType, setSelectedType] = useState<CodingType>('COMPOUND');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingCoding, setEditingCoding] = useState<RubberProductCodingDto | null>(null);
   const [deleteCodingId, setDeleteCodingId] = useState<number | null>(null);
@@ -23,35 +20,18 @@ export default function RubberCodingsPage() {
     code: '',
     name: '',
   });
-  const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
+
+  const codingsQuery = useRubberCodings(selectedType);
+  const saveMutation = useSaveRubberCoding();
+  const deleteMutation = useDeleteRubberCoding();
+
+  const codings = codingsQuery.data ?? [];
 
   const paginatedCodings = codings.slice(
     currentPage * ITEMS_PER_PAGE,
     (currentPage + 1) * ITEMS_PER_PAGE
   );
-
-  const fetchData = async (type: CodingType) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await rubberPortalApi.productCodings(type);
-      setCodings(data);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load codings';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData(selectedType);
-  }, [selectedType]);
-
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [selectedType]);
 
   const openNewModal = () => {
     setEditingCoding(null);
@@ -73,51 +53,61 @@ export default function RubberCodingsPage() {
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      if (editingCoding) {
-        await rubberPortalApi.updateProductCoding(editingCoding.id, {
-          code: formData.code,
-          name: formData.name,
-        });
-        showToast('Coding updated', 'success');
-      } else {
-        await rubberPortalApi.createProductCoding(formData);
-        showToast('Coding created', 'success');
+  const handleSave = () => {
+    const payload = {
+      codingType: formData.codingType,
+      code: formData.code,
+      name: formData.name,
+    };
+
+    saveMutation.mutate(
+      {
+        id: editingCoding?.id,
+        payload,
+      },
+      {
+        onSuccess: () => {
+          showToast(editingCoding ? 'Coding updated' : 'Coding created', 'success');
+          setShowModal(false);
+        },
+        onError: (err: unknown) => {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to save coding';
+          showToast(errorMessage, 'error');
+        },
       }
-      setShowModal(false);
-      fetchData(selectedType);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save coding';
-      showToast(errorMessage, 'error');
-    } finally {
-      setIsSaving(false);
-    }
+    );
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      await rubberPortalApi.deleteProductCoding(id);
-      showToast('Coding deleted', 'success');
-      setDeleteCodingId(null);
-      fetchData(selectedType);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete coding';
-      showToast(errorMessage, 'error');
-    }
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        showToast('Coding deleted', 'success');
+        setDeleteCodingId(null);
+      },
+      onError: (err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete coding';
+        showToast(errorMessage, 'error');
+      },
+    });
+  };
+
+  const handleTypeChange = (type: CodingType) => {
+    setSelectedType(type);
+    setCurrentPage(0);
   };
 
   const currentTypeInfo = CODING_TYPES.find((t) => t.value === selectedType);
 
-  if (error) {
+  if (codingsQuery.error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Codings</div>
-          <p className="text-gray-600">{error}</p>
+          <p className="text-gray-600">
+            {codingsQuery.error instanceof Error ? codingsQuery.error.message : 'Failed to load codings'}
+          </p>
           <button
-            onClick={() => fetchData(selectedType)}
+            onClick={() => codingsQuery.refetch()}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Retry
@@ -151,7 +141,7 @@ export default function RubberCodingsPage() {
           {CODING_TYPES.map((type) => (
             <button
               key={type.value}
-              onClick={() => setSelectedType(type.value)}
+              onClick={() => handleTypeChange(type.value)}
               className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
                 selectedType === type.value
                   ? 'border-blue-500 text-blue-600'
@@ -169,7 +159,7 @@ export default function RubberCodingsPage() {
       )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {isLoading ? (
+        {codingsQuery.isLoading ? (
           <TableLoadingState message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`} />
         ) : codings.length === 0 ? (
           <div className="text-center py-12">
@@ -285,10 +275,10 @@ export default function RubberCodingsPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isSaving || !formData.code || !formData.name}
+                  disabled={saveMutation.isPending || !formData.code || !formData.name}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isSaving ? 'Saving...' : 'Save'}
+                  {saveMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>

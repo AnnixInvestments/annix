@@ -1,29 +1,42 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { rubberPortalApi, RubberCompanyDto, RubberPricingTierDto, RubberProductDto } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { SortIcon, SortDirection, TableLoadingState, TableEmptyState, Pagination, TableIcons, ITEMS_PER_PAGE } from '../components/TableComponents';
+import {
+  useRubberCompanies,
+  useRubberPricingTiers,
+  useRubberProducts,
+  useSaveRubberCompany,
+  useDeleteRubberCompany,
+} from '@/app/lib/query/hooks';
 
 type SortColumn = 'name' | 'code' | 'pricingTier' | 'vatNumber' | 'isCompoundOwner' | 'products';
 
 export default function RubberCompaniesPage() {
   const { showToast } = useToast();
-  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
-  const [pricingTiers, setPricingTiers] = useState<RubberPricingTierDto[]>([]);
-  const [products, setProducts] = useState<RubberProductDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const companiesQuery = useRubberCompanies();
+  const tiersQuery = useRubberPricingTiers();
+  const productsQuery = useRubberProducts();
+  const saveMutation = useSaveRubberCompany();
+  const deleteMutation = useDeleteRubberCompany();
+
+  const companies = companiesQuery.data ?? [];
+  const pricingTiers = tiersQuery.data ?? [];
+  const products = productsQuery.data ?? [];
+  const isLoading = companiesQuery.isLoading || tiersQuery.isLoading || productsQuery.isLoading;
+
   const [showModal, setShowModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState<RubberCompanyDto | null>(null);
   const [deleteCompanyId, setDeleteCompanyId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    pricingTierId: undefined as number | undefined,
+    pricingTierId: null as number | null,
     vatNumber: '',
     registrationNumber: '',
     isCompoundOwner: false,
@@ -36,7 +49,6 @@ export default function RubberCompaniesPage() {
     },
     availableProducts: [] as string[],
   });
-  const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const [sortColumn, setSortColumn] = useState<SortColumn>('name');
@@ -115,7 +127,7 @@ export default function RubberCompaniesPage() {
     if (successCount > 0) {
       showToast(`Deleted ${successCount} compan${successCount > 1 ? 'ies' : 'y'}${failCount > 0 ? `, ${failCount} failed` : ''}`, failCount > 0 ? 'warning' : 'success');
       setSelectedCompanies(new Set());
-      fetchData();
+      companiesQuery.refetch();
     } else if (failCount > 0) {
       showToast(`Failed to delete ${failCount} compan${failCount > 1 ? 'ies' : 'y'}`, 'error');
     }
@@ -136,36 +148,12 @@ export default function RubberCompaniesPage() {
     setSelectedCompanies(new Set());
   }, [searchQuery]);
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const [companiesData, tiersData, productsData] = await Promise.all([
-        rubberPortalApi.companies(),
-        rubberPortalApi.pricingTiers(),
-        rubberPortalApi.products(),
-      ]);
-      setCompanies(companiesData);
-      setPricingTiers(tiersData);
-      setProducts(productsData);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load companies';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const openNewModal = () => {
     setEditingCompany(null);
     setFormData({
       name: '',
       code: '',
-      pricingTierId: undefined,
+      pricingTierId: null,
       vatNumber: '',
       registrationNumber: '',
       isCompoundOwner: false,
@@ -186,7 +174,7 @@ export default function RubberCompaniesPage() {
     setFormData({
       name: company.name,
       code: company.code || '',
-      pricingTierId: company.pricingTierId || undefined,
+      pricingTierId: company.pricingTierId || null,
       vatNumber: company.vatNumber || '',
       registrationNumber: company.registrationNumber || '',
       isCompoundOwner: company.isCompoundOwner,
@@ -202,48 +190,45 @@ export default function RubberCompaniesPage() {
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      const addressEntries = Object.entries(formData.address).filter(([, v]) => v.trim() !== '');
-      const cleanedAddress = addressEntries.length > 0 ? Object.fromEntries(addressEntries) : undefined;
-      const payload = { ...formData, address: cleanedAddress };
-      if (editingCompany) {
-        await rubberPortalApi.updateCompany(editingCompany.id, payload);
-        showToast('Company updated', 'success');
-      } else {
-        await rubberPortalApi.createCompany(payload);
-        showToast('Company created', 'success');
-      }
-      setShowModal(false);
-      fetchData();
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save company';
-      showToast(errorMessage, 'error');
-    } finally {
-      setIsSaving(false);
-    }
+  const handleSave = () => {
+    const addressEntries = Object.entries(formData.address).filter(([, v]) => v.trim() !== '');
+    const cleanedAddress = addressEntries.length > 0 ? Object.fromEntries(addressEntries) : undefined;
+    const payload = { ...formData, pricingTierId: formData.pricingTierId ?? undefined, address: cleanedAddress };
+    saveMutation.mutate(
+      { id: editingCompany?.id, payload },
+      {
+        onSuccess: () => {
+          showToast(editingCompany ? 'Company updated' : 'Company created', 'success');
+          setShowModal(false);
+        },
+        onError: (err: unknown) => {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to save company';
+          showToast(errorMessage, 'error');
+        },
+      },
+    );
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      await rubberPortalApi.deleteCompany(id);
-      showToast('Company deleted', 'success');
-      setDeleteCompanyId(null);
-      fetchData();
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete company';
-      showToast(errorMessage, 'error');
-    }
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        showToast('Company deleted', 'success');
+        setDeleteCompanyId(null);
+      },
+      onError: (err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete company';
+        showToast(errorMessage, 'error');
+      },
+    });
   };
 
-  if (error) {
+  if (companiesQuery.error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Companies</div>
-          <p className="text-gray-600">{error}</p>
-          <button onClick={fetchData} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <p className="text-gray-600">{companiesQuery.error.message}</p>
+          <button onClick={() => companiesQuery.refetch()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
             Retry
           </button>
         </div>
@@ -489,7 +474,7 @@ export default function RubberCompaniesPage() {
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          pricingTierId: e.target.value ? Number(e.target.value) : undefined,
+                          pricingTierId: e.target.value ? Number(e.target.value) : null,
                         })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
@@ -622,10 +607,10 @@ export default function RubberCompaniesPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isSaving || !formData.name}
+                  disabled={saveMutation.isPending || !formData.name}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isSaving ? 'Saving...' : 'Save'}
+                  {saveMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>

@@ -1,19 +1,29 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { rubberPortalApi, RubberPricingTierDto, RubberCompanyDto } from '@/app/lib/api/rubberPortalApi';
+import React, { useState } from 'react';
+import type { RubberPricingTierDto } from '@/app/lib/api/rubberPortalApi';
 import { useToast } from '@/app/components/Toast';
+import {
+  useRubberPricingTiers,
+  useRubberCompanies,
+  useSaveRubberPricingTier,
+  useDeleteRubberPricingTier,
+} from '@/app/lib/query/hooks';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { TableLoadingState, TableEmptyState, TableIcons } from '../components/TableComponents';
 
 export default function RubberPricingTiersPage() {
   const { showToast } = useToast();
-  const [tiers, setTiers] = useState<RubberPricingTierDto[]>([]);
-  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const tiersQuery = useRubberPricingTiers();
+  const companiesQuery = useRubberCompanies();
+  const saveMutation = useSaveRubberPricingTier();
+  const deleteMutation = useDeleteRubberPricingTier();
+
+  const tiers = tiersQuery.data ?? [];
+  const companies = companiesQuery.data ?? [];
+  const isLoading = tiersQuery.isLoading || companiesQuery.isLoading;
+
   const [showModal, setShowModal] = useState(false);
   const [editingTier, setEditingTier] = useState<RubberPricingTierDto | null>(null);
   const [deleteTierId, setDeleteTierId] = useState<number | null>(null);
@@ -21,33 +31,10 @@ export default function RubberPricingTiersPage() {
     name: '',
     pricingFactor: 100,
   });
-  const [isSaving, setIsSaving] = useState(false);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const [tiersData, companiesData] = await Promise.all([
-        rubberPortalApi.pricingTiers(),
-        rubberPortalApi.companies(),
-      ]);
-      setTiers(tiersData);
-      setCompanies(companiesData);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load pricing tiers';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const companyCountByTier = (tierId: number) => {
     return companies.filter((c) => c.pricingTierId === tierId).length;
   };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   const openNewModal = () => {
     setEditingTier(null);
@@ -67,45 +54,45 @@ export default function RubberPricingTiersPage() {
     setShowModal(true);
   };
 
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      if (editingTier) {
-        await rubberPortalApi.updatePricingTier(editingTier.id, formData);
-        showToast('Pricing tier updated', 'success');
-      } else {
-        await rubberPortalApi.createPricingTier(formData);
-        showToast('Pricing tier created', 'success');
-      }
-      setShowModal(false);
-      fetchData();
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save pricing tier';
-      showToast(errorMessage, 'error');
-    } finally {
-      setIsSaving(false);
-    }
+  const handleSave = () => {
+    saveMutation.mutate(
+      {
+        id: editingTier?.id,
+        payload: formData,
+      },
+      {
+        onSuccess: () => {
+          showToast(editingTier ? 'Pricing tier updated' : 'Pricing tier created', 'success');
+          setShowModal(false);
+        },
+        onError: (err: unknown) => {
+          const errorMessage = err instanceof Error ? err.message : 'Failed to save pricing tier';
+          showToast(errorMessage, 'error');
+        },
+      },
+    );
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      await rubberPortalApi.deletePricingTier(id);
-      showToast('Pricing tier deleted', 'success');
-      setDeleteTierId(null);
-      fetchData();
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete pricing tier';
-      showToast(errorMessage, 'error');
-    }
+  const handleDelete = (id: number) => {
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        showToast('Pricing tier deleted', 'success');
+        setDeleteTierId(null);
+      },
+      onError: (err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete pricing tier';
+        showToast(errorMessage, 'error');
+      },
+    });
   };
 
-  if (error) {
+  if (tiersQuery.error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Pricing Tiers</div>
-          <p className="text-gray-600">{error}</p>
-          <button onClick={fetchData} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <p className="text-gray-600">{tiersQuery.error.message}</p>
+          <button onClick={() => tiersQuery.refetch()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
             Retry
           </button>
         </div>
@@ -253,10 +240,10 @@ export default function RubberPricingTiersPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={isSaving || !formData.name}
+                  disabled={saveMutation.isPending || !formData.name}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isSaving ? 'Saving...' : 'Save'}
+                  {saveMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
