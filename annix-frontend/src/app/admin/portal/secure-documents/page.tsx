@@ -3,8 +3,17 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { adminApiClient, SecureDocument, SecureDocumentWithContent, LocalDocument, LocalDocumentWithContent, NixUploadResponse } from '@/app/lib/api/adminApi';
+import { useQueryClient } from '@tanstack/react-query';
+import { adminApiClient, type SecureDocument, type SecureDocumentWithContent, type LocalDocument, type LocalDocumentWithContent } from '@/app/lib/api/adminApi';
 import { formatDateZA, fromISO, nowMillis } from '@/app/lib/datetime';
+import { adminKeys } from '@/app/lib/query/keys';
+import {
+  useSecureDocumentsList,
+  useLocalDocumentsList,
+  useCreateSecureDocument,
+  useUpdateSecureDocument,
+  useDeleteSecureDocument,
+} from '@/app/lib/query/hooks';
 import SecureDocumentEditor, { EditorPaneMode, EditorState } from './SecureDocumentEditor';
 import SecureDocumentViewer from './SecureDocumentViewer';
 
@@ -128,11 +137,18 @@ function extractDescription(content: string): string {
 export default function SecureDocumentsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  const secureDocsQuery = useSecureDocumentsList();
+  const localDocsQuery = useLocalDocumentsList();
+  const createMutation = useCreateSecureDocument();
+  const updateMutation = useUpdateSecureDocument();
+  const deleteMutation = useDeleteSecureDocument();
+
+  const documents = secureDocsQuery.data ?? [];
+  const localDocuments = localDocsQuery.data ?? [];
+
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [documents, setDocuments] = useState<SecureDocument[]>([]);
-  const [localDocuments, setLocalDocuments] = useState<LocalDocument[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedDocument, setSelectedDocument] = useState<SecureDocumentWithContent | null>(null);
   const [selectedLocalDocument, setSelectedLocalDocument] = useState<LocalDocumentWithContent | null>(null);
@@ -312,7 +328,7 @@ export default function SecureDocumentsPage() {
         setActionMessage({ type: 'error', text: `Deleted ${successCount}, failed to delete ${failCount} document${failCount !== 1 ? 's' : ''}` });
       }
 
-      fetchDocuments();
+      invalidateDocumentList();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to delete documents';
       setShowBulkDeleteConfirm(false);
@@ -322,27 +338,9 @@ export default function SecureDocumentsPage() {
     }
   };
 
-  const fetchDocuments = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const [secureResponse, localResponse] = await Promise.all([
-        adminApiClient.listSecureDocuments(),
-        adminApiClient.listLocalDocuments().catch(() => [] as LocalDocument[]),
-      ]);
-      setDocuments(secureResponse);
-      setLocalDocuments(localResponse);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch documents';
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
+  const invalidateDocumentList = () => {
+    queryClient.invalidateQueries({ queryKey: adminKeys.secureDocuments.all });
   };
-
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
 
   useEffect(() => {
     const expandedParam = searchParams.get('expanded');
@@ -381,11 +379,11 @@ export default function SecureDocumentsPage() {
       setEditorFullscreen(false);
     }
 
-    if (!selectedDocument && !selectedLocalDocument && !isLoadingDocument && !isLoading) {
+    if (!selectedDocument && !selectedLocalDocument && !isLoadingDocument && !secureDocsQuery.isLoading) {
       const targetMode = urlMode === 'edit' ? 'edit' : 'view';
       handleViewDocumentBySlug(docSlug, targetMode);
     }
-  }, [searchParams, selectedDocument, selectedLocalDocument, isLoadingDocument, isLoading, localDocuments]);
+  }, [searchParams, selectedDocument, selectedLocalDocument, isLoadingDocument, secureDocsQuery.isLoading, localDocuments]);
 
   const updateUrl = (slug: string | null, mode?: UrlMode, pane?: EditorPaneMode, fullscreen?: boolean) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -529,14 +527,14 @@ export default function SecureDocumentsPage() {
     try {
       let message: string;
       if (viewMode === 'create') {
-        const created = await adminApiClient.createSecureDocument(data);
+        const created = await createMutation.mutateAsync(data);
         message = 'Document created successfully';
         const doc = await adminApiClient.getSecureDocument(created.id);
         setSelectedDocument(doc);
         setViewMode('edit');
         updateUrl(doc.slug, 'edit', editorPaneMode, editorFullscreen);
       } else if (selectedDocument) {
-        await adminApiClient.updateSecureDocument(selectedDocument.id, data);
+        await updateMutation.mutateAsync({ id: selectedDocument.id, dto: data });
         message = 'Document saved';
         const doc = await adminApiClient.getSecureDocument(selectedDocument.id);
         setSelectedDocument(doc);
@@ -555,10 +553,9 @@ export default function SecureDocumentsPage() {
   const handleDelete = async (id: string) => {
     try {
       setIsDeleting(true);
-      await adminApiClient.deleteSecureDocument(id);
+      await deleteMutation.mutateAsync(id);
       setShowDeleteConfirm(null);
       setActionMessage({ type: 'success', text: 'Document deleted successfully' });
-      fetchDocuments();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to delete document';
       setShowDeleteConfirm(null);
@@ -636,7 +633,7 @@ export default function SecureDocumentsPage() {
           documentSlug: result.documentSlug,
           documentPath: documentPath || undefined,
         });
-        fetchDocuments();
+        invalidateDocumentList();
       } else {
         setUploadingFiles(prev =>
           prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'error', error: result.error || 'Upload failed' } : f)
@@ -736,7 +733,7 @@ export default function SecureDocumentsPage() {
       setIsImporting(false);
       setImportResult({ successful, failed });
       if (successful.length > 0) {
-        fetchDocuments();
+        invalidateDocumentList();
       }
     }
   }, [uploadNixFile]);
@@ -844,14 +841,14 @@ export default function SecureDocumentsPage() {
     );
   }
 
-  if (error) {
+  if (secureDocsQuery.error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Documents</div>
-          <p className="text-gray-600">{error}</p>
+          <p className="text-gray-600">{secureDocsQuery.error instanceof Error ? secureDocsQuery.error.message : 'Failed to fetch documents'}</p>
           <button
-            onClick={fetchDocuments}
+            onClick={() => secureDocsQuery.refetch()}
             className="mt-4 px-4 py-2 bg-[#323288] text-white rounded-md hover:bg-[#4a4da3]"
           >
             Retry
@@ -915,7 +912,7 @@ export default function SecureDocumentsPage() {
             </div>
           </div>
         )}
-        {isLoading || isLoadingDocument ? (
+        {secureDocsQuery.isLoading || isLoadingDocument ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto"></div>

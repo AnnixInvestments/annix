@@ -72,3 +72,12 @@ export {
   useSaveRubberPricingTier,
   useDeleteRubberPricingTier,
 } from './admin/useRubberPortal'
+export {
+  useSecureDocumentsList,
+  useLocalDocumentsList,
+  useSecureDocument,
+  useCreateSecureDocument,
+  useUpdateSecureDocument,
+  useDeleteSecureDocument,
+  useUploadNixDocument,
+} from './admin/useSecureDocuments'
