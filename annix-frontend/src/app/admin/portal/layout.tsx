@@ -58,6 +58,12 @@ const navItems = [
     roles: ['admin', 'employee'],
     featureFlag: 'RUBBER_PORTAL',
   },
+  {
+    href: '/admin/portal/pumps',
+    label: 'Pumps',
+    icon: 'M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 007.92 12.446A9 9 0 1112 3zm0 0a9 9 0 109 9M12 3v9m0 0l6.364-6.364M12 12l-6.364-6.364',
+    roles: ['admin', 'employee'],
+  },
 ];
 
 function AdminNavigation() {
