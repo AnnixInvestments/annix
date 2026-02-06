@@ -1,55 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
 import { formatDateZA } from '@/app/lib/datetime';
-
-interface Rfq {
-  id: number;
-  rfqNumber: string;
-  projectName: string;
-  description?: string;
-  customerName?: string;
-  status: string;
-  totalWeightKg?: number;
-  totalCost?: number;
-  itemCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import { useRfqs } from '@/app/lib/query/hooks';
+import type { Rfq } from '@/app/lib/query/hooks';
 
 export default function RfqListPage() {
   const router = useRouter();
-  const [rfqs, setRfqs] = useState<Rfq[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  useEffect(() => {
-    fetchRfqs();
-  }, [statusFilter]);
+  const rfqQuery = useRfqs(
+    statusFilter !== 'all' ? { status: statusFilter } : undefined,
+  );
 
-  const fetchRfqs = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${browserBaseUrl()}/rfq`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch RFQs');
-      }
-
-      const data = await response.json();
-      setRfqs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const rfqs = rfqQuery.data ?? [];
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -80,7 +46,7 @@ export default function RfqListPage() {
 
   const formatDate = (dateString: string) => formatDateZA(dateString);
 
-  const filteredRfqs = rfqs.filter((rfq) => {
+  const filteredRfqs = rfqs.filter((rfq: Rfq) => {
     const matchesSearch =
       !searchTerm ||
       rfq.rfqNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -90,7 +56,7 @@ export default function RfqListPage() {
     return matchesSearch && matchesStatus;
   });
 
-  if (loading && rfqs.length === 0) {
+  if (rfqQuery.isLoading && rfqs.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -101,7 +67,7 @@ export default function RfqListPage() {
     );
   }
 
-  if (error) {
+  if (rfqQuery.error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -109,9 +75,9 @@ export default function RfqListPage() {
             <span className="text-red-600 text-2xl">!</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-gray-600 mb-6">{rfqQuery.error.message}</p>
           <button
-            onClick={() => fetchRfqs()}
+            onClick={() => rfqQuery.refetch()}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
           >
             Try Again
@@ -201,7 +167,7 @@ export default function RfqListPage() {
           </div>
         ) : (
           <div className="grid gap-4">
-            {filteredRfqs.map((rfq) => (
+            {filteredRfqs.map((rfq: Rfq) => (
               <div
                 key={rfq.id}
                 onClick={() => router.push(`/rfq/${rfq.id}`)}

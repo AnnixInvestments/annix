@@ -23,9 +23,11 @@
     "@react-google-maps/api": "^2.20.8",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.4.2",
+    "@tanstack/react-query": "^5.90.20",
     "@types/react-window": "^1.8.8",
     "@uiw/react-md-editor": "^4.0.11",
     "es-toolkit": "^1.43.0",
+    "immer": "^11.1.3",
     "luxon": "^3.7.2",
     "next": "^16.1.1",
     "openapi-fetch": "^0.13.4",
@@ -36,12 +38,14 @@
     "react-window": "^1.8.10",
     "three": "^0.182.0",
     "xlsx": "^0.18.5",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@openapitools/openapi-generator-cli": "^2.8.0",
     "@tailwindcss/postcss": "^4",
+    "@tanstack/react-query-devtools": "^5.91.3",
     "@types/luxon": "^3.7.1",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -1,85 +1,60 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminApiClient } from '@/app/lib/api/adminApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA } from '@/app/lib/datetime';
+import { useAdminSuppliers, useInviteSupplier } from '@/app/lib/query/hooks';
 
 export default function AdminSuppliersPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
-  const [totalPages, setTotalPages] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({ total: 0, active: 0, pending: 0, suspended: 0 });
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
-  const [isSendingInvite, setIsSendingInvite] = useState(false);
 
-  const fetchSuppliers = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const suppliersQuery = useAdminSuppliers({
+    page,
+    limit,
+    status: statusFilter || undefined,
+  });
 
-      const response = await adminApiClient.listSuppliers({
-        page,
-        limit,
-        status: statusFilter || undefined,
-      });
+  const inviteMutation = useInviteSupplier();
 
-      const supplierList = response.items || response.suppliers || [];
-      setSuppliers(supplierList);
-      setTotal(response.total || 0);
-      setTotalPages(response.totalPages || 0);
+  const supplierList = suppliersQuery.data?.items ?? suppliersQuery.data?.suppliers ?? [];
+  const total = suppliersQuery.data?.total ?? 0;
+  const totalPages = suppliersQuery.data?.totalPages ?? 0;
 
-      const allSuppliers = supplierList;
-      const activeCount = allSuppliers.filter((s: any) => s.accountStatus === 'active').length;
-      const pendingCount = allSuppliers.filter((s: any) => s.accountStatus === 'pending').length;
-      const suspendedCount = allSuppliers.filter((s: any) => s.accountStatus === 'suspended').length;
-
-      setStats({
-        total: response.total || 0,
-        active: activeCount,
-        pending: pendingCount,
-        suspended: suspendedCount,
-      });
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch suppliers');
-      console.error('Error fetching suppliers:', err);
-    } finally {
-      setIsLoading(false);
-    }
+  const stats = {
+    total,
+    active: supplierList.filter((s: any) => s.accountStatus === 'active').length,
+    pending: supplierList.filter((s: any) => s.accountStatus === 'pending').length,
+    suspended: supplierList.filter((s: any) => s.accountStatus === 'suspended').length,
   };
-
-  useEffect(() => {
-    fetchSuppliers();
-  }, [page, statusFilter]);
 
   const handleInvite = async () => {
     if (!inviteEmail) return;
-    setIsSendingInvite(true);
-    try {
-      const response = await adminApiClient.inviteSupplier(inviteEmail, inviteMessage || undefined);
-      if (response.success) {
-        showToast(`Invitation sent to ${inviteEmail}`, 'success');
-        setShowInviteModal(false);
-        setInviteEmail('');
-        setInviteMessage('');
-      } else {
-        showToast('Failed to send invitation', 'error');
-      }
-    } catch (err: any) {
-      showToast(`Error: ${err.message}`, 'error');
-    } finally {
-      setIsSendingInvite(false);
-    }
+    inviteMutation.mutate(
+      { email: inviteEmail, message: inviteMessage || undefined },
+      {
+        onSuccess: (response) => {
+          if (response.success) {
+            showToast(`Invitation sent to ${inviteEmail}`, 'success');
+            setShowInviteModal(false);
+            setInviteEmail('');
+            setInviteMessage('');
+          } else {
+            showToast('Failed to send invitation', 'error');
+          }
+        },
+        onError: (err) => {
+          showToast(`Error: ${err.message}`, 'error');
+        },
+      },
+    );
   };
 
   const getStatusBadgeClass = (status: string): string => {
@@ -102,14 +77,14 @@ export default function AdminSuppliersPage() {
     return formatDateZA(dateString);
   };
 
-  if (error) {
+  if (suppliersQuery.error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Suppliers</div>
-          <p className="text-gray-600">{error}</p>
+          <p className="text-gray-600">{suppliersQuery.error.message}</p>
           <button
-            onClick={fetchSuppliers}
+            onClick={() => suppliersQuery.refetch()}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Retry
@@ -151,7 +126,7 @@ export default function AdminSuppliersPage() {
       {/* Quick Stats */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-4">
         <button
-          onClick={() => setStatusFilter('')}
+          onClick={() => { setStatusFilter(''); setPage(1); }}
           className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-blue-500 transition-all ${statusFilter === '' ? 'ring-2 ring-blue-500' : ''}`}
         >
           <div className="p-5">
@@ -174,7 +149,7 @@ export default function AdminSuppliersPage() {
         </button>
 
         <button
-          onClick={() => setStatusFilter('active')}
+          onClick={() => { setStatusFilter('active'); setPage(1); }}
           className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-green-500 transition-all ${statusFilter === 'active' ? 'ring-2 ring-green-500' : ''}`}
         >
           <div className="p-5">
@@ -197,7 +172,7 @@ export default function AdminSuppliersPage() {
         </button>
 
         <button
-          onClick={() => setStatusFilter('pending')}
+          onClick={() => { setStatusFilter('pending'); setPage(1); }}
           className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-orange-500 transition-all ${statusFilter === 'pending' ? 'ring-2 ring-orange-500' : ''}`}
         >
           <div className="p-5">
@@ -220,7 +195,7 @@ export default function AdminSuppliersPage() {
         </button>
 
         <button
-          onClick={() => setStatusFilter('suspended')}
+          onClick={() => { setStatusFilter('suspended'); setPage(1); }}
           className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-red-500 transition-all ${statusFilter === 'suspended' ? 'ring-2 ring-red-500' : ''}`}
         >
           <div className="p-5">
@@ -265,7 +240,7 @@ export default function AdminSuppliersPage() {
           <div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
               className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             >
               <option value="">All Statuses</option>
@@ -280,14 +255,14 @@ export default function AdminSuppliersPage() {
 
       {/* Supplier Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {isLoading ? (
+        {suppliersQuery.isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-4 text-gray-600">Loading suppliers...</p>
             </div>
           </div>
-        ) : suppliers.length === 0 ? (
+        ) : supplierList.length === 0 ? (
           <div className="text-center py-12">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -323,7 +298,7 @@ export default function AdminSuppliersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {suppliers.map((supplier) => (
+                {supplierList.map((supplier: any) => (
                   <tr
                     key={supplier.id}
                     onClick={() => router.push(`/admin/portal/suppliers/${supplier.id}`)}
@@ -488,10 +463,10 @@ export default function AdminSuppliersPage() {
                 </button>
                 <button
                   onClick={handleInvite}
-                  disabled={!inviteEmail || isSendingInvite}
+                  disabled={!inviteEmail || inviteMutation.isPending}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isSendingInvite ? 'Sending...' : 'Send Invitation'}
+                  {inviteMutation.isPending ? 'Sending...' : 'Send Invitation'}
                 </button>
               </div>
             </div>

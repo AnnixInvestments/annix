@@ -1,90 +1,72 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminApiClient, CustomerAccountStatus, CustomerListItem, CustomerListResponse } from '@/app/lib/api/adminApi';
+import { CustomerAccountStatus, CustomerListItem } from '@/app/lib/api/adminApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA } from '@/app/lib/datetime';
-import { log } from '@/app/lib/logger';
+import { useAdminCustomers, useInviteCustomer } from '@/app/lib/query/hooks';
 
 export default function AdminCustomersPage() {
   const router = useRouter();
   const {showToast} = useToast();
-  const [isLoading, setIsLoading] = useState(true);
-  const [customers, setCustomers] = useState<CustomerListItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
-  const [totalPages, setTotalPages] = useState(0);
   const [search, setSearch] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<CustomerAccountStatus | ''>('');
   const [sortBy, setSortBy] = useState<string>('createdAt');
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({ active: 0, pending: 0, suspended: 0 });
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
-  const [isSendingInvite, setIsSendingInvite] = useState(false);
 
-  const fetchCustomers = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const customersQuery = useAdminCustomers({
+    search: activeSearch || undefined,
+    status: statusFilter || undefined,
+    page,
+    limit,
+    sortBy,
+    sortOrder,
+  });
 
-      const response: CustomerListResponse = await adminApiClient.listCustomers({
-        search: search || undefined,
-        status: statusFilter || undefined,
-        page,
-        limit,
-        sortBy,
-        sortOrder,
-      });
+  const inviteMutation = useInviteCustomer();
 
-      setCustomers(response.items);
-      setTotal(response.total);
-      setTotalPages(response.totalPages);
+  const customers = customersQuery.data?.items ?? [];
+  const total = customersQuery.data?.total ?? 0;
+  const totalPages = customersQuery.data?.totalPages ?? 0;
 
-      // Calculate stats from the customer list
-      const activeCount = response.items.filter(c => c.accountStatus === 'active').length;
-      const pendingCount = response.items.filter(c => c.accountStatus === 'pending').length;
-      const suspendedCount = response.items.filter(c => c.accountStatus === 'suspended').length;
-      setStats({ active: activeCount, pending: pendingCount, suspended: suspendedCount });
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch customers');
-      log.error('Error fetching customers:', err);
-    } finally {
-      setIsLoading(false);
-    }
+  const stats = {
+    active: customers.filter(c => c.accountStatus === 'active').length,
+    pending: customers.filter(c => c.accountStatus === 'pending').length,
+    suspended: customers.filter(c => c.accountStatus === 'suspended').length,
   };
-
-  useEffect(() => {
-    fetchCustomers();
-  }, [page, statusFilter, sortBy, sortOrder]);
 
   const handleInvite = async () => {
     if (!inviteEmail) return;
-    setIsSendingInvite(true);
-    try {
-      const response = await adminApiClient.inviteCustomer(inviteEmail, inviteMessage || undefined);
-      if (response.success) {
-        showToast(`Invitation sent to ${inviteEmail}`, 'success');
-        setShowInviteModal(false);
-        setInviteEmail('');
-        setInviteMessage('');
-      } else {
-        showToast('Failed to send invitation', 'error');
-      }
-    } catch (err: any) {
-      showToast(`Error: ${err.message}`, 'error');
-    } finally {
-      setIsSendingInvite(false);
-    }
+    inviteMutation.mutate(
+      { email: inviteEmail, message: inviteMessage || undefined },
+      {
+        onSuccess: (response) => {
+          if (response.success) {
+            showToast(`Invitation sent to ${inviteEmail}`, 'success');
+            setShowInviteModal(false);
+            setInviteEmail('');
+            setInviteMessage('');
+          } else {
+            showToast('Failed to send invitation', 'error');
+          }
+        },
+        onError: (err) => {
+          showToast(`Error: ${err.message}`, 'error');
+        },
+      },
+    );
   };
 
   const handleSearch = () => {
+    setActiveSearch(search);
     setPage(1);
-    fetchCustomers();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -112,14 +94,14 @@ export default function AdminCustomersPage() {
     return formatDateZA(dateString);
   };
 
-  if (error) {
+  if (customersQuery.error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Customers</div>
-          <p className="text-gray-600">{error}</p>
+          <p className="text-gray-600">{customersQuery.error.message}</p>
           <button
-            onClick={fetchCustomers}
+            onClick={() => customersQuery.refetch()}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Retry
@@ -267,7 +249,10 @@ export default function AdminCustomersPage() {
           <div>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as CustomerAccountStatus | '')}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as CustomerAccountStatus | '');
+                setPage(1);
+              }}
               className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             >
               <option value="">All Statuses</option>
@@ -290,7 +275,7 @@ export default function AdminCustomersPage() {
 
       {/* Customer Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {isLoading ? (
+        {customersQuery.isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -336,7 +321,7 @@ export default function AdminCustomersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {customers.map((customer) => (
+                {customers.map((customer: CustomerListItem) => (
                   <tr
                     key={customer.id}
                     onClick={() => router.push(`/admin/portal/customers/${customer.id}`)}
@@ -511,10 +496,10 @@ export default function AdminCustomersPage() {
                   </button>
                   <button
                       onClick={handleInvite}
-                      disabled={!inviteEmail || isSendingInvite}
+                      disabled={!inviteEmail || inviteMutation.isPending}
                       className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                   >
-                    {isSendingInvite ? 'Sending...' : 'Send Invitation'}
+                    {inviteMutation.isPending ? 'Sending...' : 'Send Invitation'}
                   </button>
                 </div>
               </div>

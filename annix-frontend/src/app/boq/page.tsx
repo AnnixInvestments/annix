@@ -1,108 +1,47 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
 import { formatDateZA } from '@/app/lib/datetime';
-
-interface Boq {
-  id: number;
-  boqNumber: string;
-  title: string;
-  description?: string;
-  status: string;
-  totalQuantity?: number;
-  totalWeightKg?: number;
-  totalEstimatedCost?: number;
-  createdBy: {
-    id: number;
-    username: string;
-  };
-  drawing?: {
-    id: number;
-    drawingNumber: string;
-  };
-  rfq?: {
-    id: number;
-    rfqNumber: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface PaginatedResult {
-  data: Boq[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-interface UploadResult {
-  boq: Boq;
-  warnings: string[];
-}
+import { useBoqs, useUploadBoq } from '@/app/lib/query/hooks';
+import type { Boq } from '@/app/lib/query/hooks';
 
 export default function BoqListPage() {
   const router = useRouter();
-  const [boqs, setBoqs] = useState<Boq[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [page, setPage] = useState(1);
+  const [activeSearch, setActiveSearch] = useState('');
 
-  // Upload modal state
+  const boqQuery = useBoqs({
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    search: activeSearch || undefined,
+    page,
+    limit: 20,
+  });
+
+  const uploadMutation = useUploadBoq();
+
+  const boqs = boqQuery.data?.data ?? [];
+  const pagination = {
+    page: boqQuery.data?.page ?? 1,
+    totalPages: boqQuery.data?.totalPages ?? 1,
+    total: boqQuery.data?.total ?? 0,
+  };
+
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadDescription, setUploadDescription] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchBoqs();
-  }, [statusFilter]);
-
-  const fetchBoqs = async (page = 1) => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      params.set('page', page.toString());
-      params.set('limit', '20');
-      if (statusFilter !== 'all') {
-        params.set('status', statusFilter);
-      }
-      if (searchTerm) {
-        params.set('search', searchTerm);
-      }
-
-      const response = await fetch(`${browserBaseUrl()}/boq?${params.toString()}`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch BOQs');
-      }
-
-      const data: PaginatedResult = await response.json();
-      setBoqs(data.data);
-      setPagination({
-        page: data.page,
-        totalPages: data.totalPages,
-        total: data.total,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
+  const handleSearch = () => {
+    setActiveSearch(searchTerm);
+    setPage(1);
   };
 
-  const handleSearch = () => {
-    fetchBoqs(1);
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   const getStatusColor = (status: string) => {
@@ -138,7 +77,6 @@ export default function BoqListPage() {
     const file = e.target.files?.[0];
     if (file) {
       setUploadFile(file);
-      // Auto-fill title from filename if empty
       if (!uploadTitle) {
         const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
         setUploadTitle(nameWithoutExt);
@@ -147,50 +85,11 @@ export default function BoqListPage() {
   };
 
   const handleUpload = async () => {
-    if (!uploadFile || !uploadTitle.trim()) {
-      setUploadError('Please select a file and enter a title');
-      return;
-    }
+    if (!uploadFile || !uploadTitle.trim()) return;
 
-    setUploading(true);
-    setUploadError(null);
-    setUploadResult(null);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', uploadFile);
-      formData.append('title', uploadTitle.trim());
-      if (uploadDescription.trim()) {
-        formData.append('description', uploadDescription.trim());
-      }
-
-      const headers = getAuthHeaders();
-      // Remove Content-Type to let browser set it with boundary for multipart
-      delete (headers as Record<string, string>)['Content-Type'];
-
-      const response = await fetch(`${browserBaseUrl()}/boq/upload`, {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.message ||
-          errorData.errors?.join(', ') ||
-          'Failed to upload BOQ'
-        );
-      }
-
-      const result: UploadResult = await response.json();
-      setUploadResult(result);
-      fetchBoqs(); // Refresh the list
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'An error occurred during upload');
-    } finally {
-      setUploading(false);
-    }
+    uploadMutation.mutate(
+      { file: uploadFile, title: uploadTitle, description: uploadDescription },
+    );
   };
 
   const closeUploadModal = () => {
@@ -198,14 +97,13 @@ export default function BoqListPage() {
     setUploadFile(null);
     setUploadTitle('');
     setUploadDescription('');
-    setUploadError(null);
-    setUploadResult(null);
+    uploadMutation.reset();
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  if (loading && boqs.length === 0) {
+  if (boqQuery.isLoading && boqs.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -216,7 +114,7 @@ export default function BoqListPage() {
     );
   }
 
-  if (error) {
+  if (boqQuery.error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -224,9 +122,9 @@ export default function BoqListPage() {
             <span className="text-red-600 text-2xl">✕</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-gray-600 mb-6">{boqQuery.error.message}</p>
           <button
-            onClick={() => fetchBoqs()}
+            onClick={() => boqQuery.refetch()}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
           >
             Try Again
@@ -288,7 +186,10 @@ export default function BoqListPage() {
             <div>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full sm:w-auto px-4 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               >
                 <option value="all">All Status</option>
@@ -335,7 +236,7 @@ export default function BoqListPage() {
         ) : (
           <>
             <div className="grid gap-4">
-              {boqs.map((boq) => (
+              {boqs.map((boq: Boq) => (
                 <div
                   key={boq.id}
                   onClick={() => router.push(`/boq/${boq.id}`)}
@@ -411,7 +312,7 @@ export default function BoqListPage() {
             {pagination.totalPages > 1 && (
               <div className="mt-6 flex justify-center gap-2">
                 <button
-                  onClick={() => fetchBoqs(pagination.page - 1)}
+                  onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={pagination.page === 1}
                   className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -421,7 +322,7 @@ export default function BoqListPage() {
                   Page {pagination.page} of {pagination.totalPages}
                 </span>
                 <button
-                  onClick={() => fetchBoqs(pagination.page + 1)}
+                  onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={pagination.page === pagination.totalPages}
                   className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -452,8 +353,7 @@ export default function BoqListPage() {
               <p className="text-gray-600 mt-1">Import BOQ from Excel or PDF file</p>
             </div>
 
-            {uploadResult ? (
-              // Success view
+            {uploadMutation.data ? (
               <div className="p-6">
                 <div className="flex items-center justify-center mb-4">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
@@ -464,12 +364,12 @@ export default function BoqListPage() {
                 </div>
                 <h3 className="text-xl font-bold text-center text-gray-900 mb-2">BOQ Imported Successfully!</h3>
                 <p className="text-center text-gray-600 mb-4">
-                  Created BOQ: <span className="font-semibold">{uploadResult.boq.boqNumber}</span>
+                  Created BOQ: <span className="font-semibold">{uploadMutation.data.boq.boqNumber}</span>
                 </p>
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
                   <p className="font-semibold text-gray-700 mb-2">Import Summary:</p>
                   <ul className="text-sm text-gray-600 space-y-1">
-                    {uploadResult.warnings.map((warning, index) => (
+                    {uploadMutation.data.warnings.map((warning, index) => (
                       <li key={index} className={warning.startsWith('Error:') ? 'text-orange-600' : ''}>
                         {warning.startsWith('Error:') ? '! ' : '- '}{warning}
                       </li>
@@ -478,7 +378,7 @@ export default function BoqListPage() {
                 </div>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => router.push(`/boq/${uploadResult.boq.id}`)}
+                    onClick={() => router.push(`/boq/${uploadMutation.data!.boq.id}`)}
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold transition-all"
                   >
                     View BOQ
@@ -492,11 +392,10 @@ export default function BoqListPage() {
                 </div>
               </div>
             ) : (
-              // Upload form
               <div className="p-6">
-                {uploadError && (
+                {uploadMutation.error && (
                   <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <p className="text-red-700 text-sm">{uploadError}</p>
+                    <p className="text-red-700 text-sm">{uploadMutation.error.message}</p>
                   </div>
                 )}
 
@@ -579,10 +478,10 @@ export default function BoqListPage() {
                 <div className="mt-6 flex gap-3">
                   <button
                     onClick={handleUpload}
-                    disabled={uploading || !uploadFile || !uploadTitle.trim()}
+                    disabled={uploadMutation.isPending || !uploadFile || !uploadTitle.trim()}
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {uploading ? (
+                    {uploadMutation.isPending ? (
                       <>
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Uploading...
@@ -598,7 +497,7 @@ export default function BoqListPage() {
                   </button>
                   <button
                     onClick={closeUploadModal}
-                    disabled={uploading}
+                    disabled={uploadMutation.isPending}
                     className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors disabled:opacity-50"
                   >
                     Cancel
