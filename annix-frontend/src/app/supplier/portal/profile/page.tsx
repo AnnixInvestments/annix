@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supplierPortalApi, SupplierProfileDto } from '@/app/lib/api/supplierApi';
 import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
-import { log } from '@/app/lib/logger';
+import { useSupplierProfile } from '@/app/lib/query/hooks';
 
 interface ProfileData extends SupplierProfileDto {
   email?: string;
@@ -11,8 +11,8 @@ interface ProfileData extends SupplierProfileDto {
 
 export default function SupplierProfilePage() {
   const { supplier, refreshDashboard } = useSupplierAuth();
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const profileQuery = useSupplierProfile();
+  const profile = (profileQuery.data as ProfileData) ?? null;
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -20,26 +20,16 @@ export default function SupplierProfilePage() {
   const [editData, setEditData] = useState<SupplierProfileDto>({});
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const data = await supplierPortalApi.getProfile();
-        setProfile(data);
-        setEditData({
-          firstName: data.firstName || '',
-          lastName: data.lastName || '',
-          jobTitle: data.jobTitle || '',
-          directPhone: data.directPhone || '',
-          mobilePhone: data.mobilePhone || '',
-        });
-      } catch (err) {
-        log.error('Failed to fetch profile:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, []);
+    if (profile) {
+      setEditData({
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        jobTitle: profile.jobTitle || '',
+        directPhone: profile.directPhone || '',
+        mobilePhone: profile.mobilePhone || '',
+      });
+    }
+  }, [profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -52,8 +42,8 @@ export default function SupplierProfilePage() {
     setSuccess(null);
 
     try {
-      const updated = await supplierPortalApi.updateProfile(editData);
-      setProfile(updated);
+      await supplierPortalApi.updateProfile(editData);
+      await profileQuery.refetch();
       setIsEditing(false);
       setSuccess('Profile updated successfully');
       await refreshDashboard();
@@ -64,7 +54,7 @@ export default function SupplierProfilePage() {
     }
   };
 
-  if (isLoading) {
+  if (profileQuery.isLoading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-8 flex justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

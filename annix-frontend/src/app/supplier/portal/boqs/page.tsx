@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { supplierPortalApi, SupplierBoqListItem, SupplierBoqStatus } from '@/app/lib/api/supplierApi';
+import { type SupplierBoqListItem, type SupplierBoqStatus } from '@/app/lib/api/supplierApi';
 import { formatDateZA, fromISO, now } from '@/app/lib/datetime';
+import { useSupplierBoqs } from '@/app/lib/query/hooks';
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
@@ -33,29 +34,12 @@ const getDaysUntilDeadline = (dateString?: string): number | null => {
 };
 
 export default function SupplierBoqsPage() {
-  const [boqs, setBoqs] = useState<SupplierBoqListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<SupplierBoqStatus | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    loadBoqs();
-  }, [filterStatus]);
-
-  const loadBoqs = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const statusFilter = filterStatus === 'all' ? undefined : filterStatus;
-      const data = await supplierPortalApi.getMyBoqs(statusFilter);
-      setBoqs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load BOQs');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const statusFilter = filterStatus === 'all' ? undefined : filterStatus;
+  const boqsQuery = useSupplierBoqs(statusFilter);
+  const boqs = boqsQuery.data ?? [];
 
   const filteredBoqs = boqs.filter((boq) => {
     if (!searchTerm) return true;
@@ -113,16 +97,16 @@ export default function SupplierBoqsPage() {
 
       {/* Content */}
       <div className="p-6">
-        {loading ? (
+        {boqsQuery.isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <span className="ml-3 text-gray-600">Loading BOQ requests...</span>
           </div>
-        ) : error ? (
+        ) : boqsQuery.error ? (
           <div className="text-center py-12">
-            <div className="text-red-600 mb-4">{error}</div>
+            <div className="text-red-600 mb-4">{boqsQuery.error instanceof Error ? boqsQuery.error.message : 'Failed to load BOQs'}</div>
             <button
-              onClick={loadBoqs}
+              onClick={() => boqsQuery.refetch()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Retry

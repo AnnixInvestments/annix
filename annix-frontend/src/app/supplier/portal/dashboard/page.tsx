@@ -3,10 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
-import { supplierPortalApi, OnboardingStatusResponse, SupplierBoqListItem, SupplierBoqStatus } from '@/app/lib/api/supplierApi';
+import { type SupplierBoqListItem, type SupplierBoqStatus } from '@/app/lib/api/supplierApi';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA, fromISO, now, nowMillis, formatIcsDate } from '@/app/lib/datetime';
-import { log } from '@/app/lib/logger';
+import {
+  useSupplierOnboardingStatus,
+  useSupplierDashboardBoqs,
+  useDeclineBoq,
+  useMarkBoqViewed,
+  useSetBoqReminder,
+} from '@/app/lib/query/hooks';
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending Response' },
@@ -19,11 +25,14 @@ const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label:
 export default function SupplierDashboardPage() {
   const { supplier, dashboard, refreshDashboard } = useSupplierAuth();
   const { showToast } = useToast();
-  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatusResponse | null>(null);
-  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
-  const [boqs, setBoqs] = useState<SupplierBoqListItem[]>([]);
-  const [loadingBoqs, setLoadingBoqs] = useState(true);
-  const [decliningBoqId, setDecliningBoqId] = useState<number | null>(null);
+  const onboardingQuery = useSupplierOnboardingStatus();
+  const boqsQuery = useSupplierDashboardBoqs();
+  const declineMutation = useDeclineBoq();
+  const markViewedMutation = useMarkBoqViewed();
+  const setReminderMutation = useSetBoqReminder();
+
+  const onboardingStatus = onboardingQuery.data ?? null;
+  const boqs = boqsQuery.data ?? [];
   const [declineReason, setDeclineReason] = useState('');
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [selectedBoqForDecline, setSelectedBoqForDecline] = useState<SupplierBoqListItem | null>(null);
@@ -56,35 +65,9 @@ export default function SupplierDashboardPage() {
   }, []);
   const [selectedBoqForCalendar, setSelectedBoqForCalendar] = useState<SupplierBoqListItem | null>(null);
   const [selectedReminder, setSelectedReminder] = useState<string>('none');
-  const [savingReminder, setSavingReminder] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [status, boqData] = await Promise.all([
-          supplierPortalApi.getOnboardingStatus(),
-          supplierPortalApi.getMyBoqs().catch(() => []),
-        ]);
-        setOnboardingStatus(status);
-        setBoqs(boqData);
-      } catch (err) {
-        log.error('Failed to fetch data:', err);
-      } finally {
-        setIsLoadingStatus(false);
-        setLoadingBoqs(false);
-      }
-    };
-
-    fetchData();
     refreshDashboard();
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchData();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [refreshDashboard]);
 
   const handleDeclineClick = (boq: SupplierBoqListItem) => {
@@ -112,9 +95,7 @@ export default function SupplierDashboardPage() {
     }
 
     try {
-      setDecliningBoqId(selectedBoqForDecline.id);
-      await supplierPortalApi.declineBoq(selectedBoqForDecline.id, finalReason);
-      setBoqs(boqs.map(b => b.id === selectedBoqForDecline.id ? { ...b, status: 'declined' as SupplierBoqStatus } : b));
+      await declineMutation.mutateAsync({ boqId: selectedBoqForDecline.id, reason: finalReason });
 
       if (selectedDeclineReason === 'other' && declineReason.trim()) {
         const newCustomReasons = [...customDeclineReasons, declineReason.trim()].slice(-10);
@@ -126,8 +107,6 @@ export default function SupplierDashboardPage() {
       setShowDeclineModal(false);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to decline', 'error');
-    } finally {
-      setDecliningBoqId(null);
     }
   };
 
@@ -135,8 +114,7 @@ export default function SupplierDashboardPage() {
 
   const handleIntendToQuote = async (boqId: number) => {
     try {
-      await supplierPortalApi.markBoqViewed(boqId);
-      setBoqs(boqs.map(b => b.id === boqId ? { ...b, status: 'viewed' as SupplierBoqStatus } : b));
+      await markViewedMutation.mutateAsync(boqId);
       showToast('Marked as intending to quote', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to update status', 'error');
@@ -192,15 +170,12 @@ export default function SupplierDashboardPage() {
   const handleSaveReminder = async () => {
     if (!selectedBoqForCalendar) return;
 
-    setSavingReminder(true);
     try {
-      await supplierPortalApi.setBoqReminder(selectedBoqForCalendar.id, selectedReminder);
+      await setReminderMutation.mutateAsync({ boqId: selectedBoqForCalendar.id, reminderDays: selectedReminder });
       showToast(selectedReminder === 'none' ? 'Reminder cancelled' : 'Reminder set successfully', 'success');
       setShowCalendarModal(false);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to set reminder', 'error');
-    } finally {
-      setSavingReminder(false);
     }
   };
 
@@ -283,7 +258,7 @@ export default function SupplierDashboardPage() {
             </Link>
           </div>
 
-          {loadingBoqs ? (
+          {boqsQuery.isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
@@ -395,7 +370,7 @@ export default function SupplierDashboardPage() {
                                 e.stopPropagation();
                                 handleDeclineClick(boq);
                               }}
-                              disabled={decliningBoqId === boq.id}
+                              disabled={declineMutation.isPending}
                               className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 cursor-pointer"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -581,7 +556,7 @@ export default function SupplierDashboardPage() {
                   type="button"
                   onClick={() => setShowDeclineModal(false)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  disabled={decliningBoqId !== null}
+                  disabled={declineMutation.isPending}
                 >
                   Cancel
                 </button>
@@ -589,9 +564,9 @@ export default function SupplierDashboardPage() {
                   type="button"
                   onClick={handleConfirmDecline}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-                  disabled={decliningBoqId !== null || !selectedDeclineReason || (selectedDeclineReason === 'other' && !declineReason.trim())}
+                  disabled={declineMutation.isPending || !selectedDeclineReason || (selectedDeclineReason === 'other' && !declineReason.trim())}
                 >
-                  {decliningBoqId !== null ? 'Declining...' : 'Confirm Decline'}
+                  {declineMutation.isPending ? 'Declining...' : 'Confirm Decline'}
                 </button>
               </div>
             </div>
@@ -664,16 +639,16 @@ export default function SupplierDashboardPage() {
                 <button
                   onClick={() => setShowCalendarModal(false)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  disabled={savingReminder}
+                  disabled={setReminderMutation.isPending}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveReminder}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                  disabled={savingReminder}
+                  disabled={setReminderMutation.isPending}
                 >
-                  {savingReminder ? 'Saving...' : 'Save Reminder'}
+                  {setReminderMutation.isPending ? 'Saving...' : 'Save Reminder'}
                 </button>
               </div>
             </div>
