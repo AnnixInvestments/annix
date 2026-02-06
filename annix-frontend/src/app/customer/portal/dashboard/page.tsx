@@ -1,54 +1,31 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { customerPortalApi, CustomerDashboardResponse } from '@/app/lib/api/customerApi';
-import { draftsApi, RfqDraftResponse, RfqDraftStatus } from '@/app/lib/api/client';
+import type { RfqDraftResponse, RfqDraftStatus } from '@/app/lib/api/client';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA, formatDateTimeZA } from '@/app/lib/datetime';
+import {
+  useCustomerDashboard,
+  useCustomerDrafts,
+  useDeleteDraft,
+} from '@/app/lib/query/hooks';
 
 export default function CustomerDashboardPage() {
   const router = useRouter();
   const { customer } = useCustomerAuth();
   const { showToast } = useToast();
-  const [dashboard, setDashboard] = useState<CustomerDashboardResponse | null>(null);
-  const [drafts, setDrafts] = useState<RfqDraftResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const dashboardQuery = useCustomerDashboard();
+  const draftsQuery = useCustomerDrafts();
+  const deleteDraftMutation = useDeleteDraft();
+
+  const dashboard = dashboardQuery.data ?? null;
+  const drafts = draftsQuery.data ?? [];
+
   const [deletingDraftId, setDeletingDraftId] = useState<number | null>(null);
-
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [dashboardData, draftsData] = await Promise.all([
-        customerPortalApi.getDashboard(),
-        draftsApi.getAll().catch(() => []),
-      ]);
-      setDashboard(dashboardData);
-      setDrafts(draftsData);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load dashboard');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        fetchData();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [fetchData]);
 
   const handleResumeDraft = (draft: RfqDraftResponse) => {
     sessionStorage.setItem('rfq_return_path', '/customer/portal/dashboard');
@@ -62,8 +39,7 @@ export default function CustomerDashboardPage() {
 
     setDeletingDraftId(draftId);
     try {
-      await draftsApi.delete(draftId);
-      setDrafts(drafts.filter(d => d.id !== draftId));
+      await deleteDraftMutation.mutateAsync(draftId);
       showToast('Draft deleted successfully', 'success');
     } catch (e) {
       showToast('Failed to delete draft. Please try again.', 'error');
@@ -92,7 +68,7 @@ export default function CustomerDashboardPage() {
     return { label: 'Submitted', className: 'bg-blue-100 text-blue-800' };
   };
 
-  if (isLoading) {
+  if (dashboardQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -100,10 +76,10 @@ export default function CustomerDashboardPage() {
     );
   }
 
-  if (error) {
+  if (dashboardQuery.error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">{error}</p>
+        <p className="text-red-700">{dashboardQuery.error instanceof Error ? dashboardQuery.error.message : 'Failed to load dashboard'}</p>
       </div>
     );
   }

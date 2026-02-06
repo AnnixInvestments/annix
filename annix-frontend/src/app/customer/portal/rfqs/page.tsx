@@ -1,54 +1,33 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { apiClient, draftsApi, RfqResponse, RfqDraftResponse, RfqDraftStatus } from '@/app/lib/api/client';
+import type { RfqDraftStatus } from '@/app/lib/api/client';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA, formatDateTimeZA } from '@/app/lib/datetime';
-import { log } from '@/app/lib/logger';
+import {
+  useCustomerRfqs,
+  useCustomerDrafts,
+  useDeleteDraft,
+} from '@/app/lib/query/hooks';
 
 export default function CustomerRfqsPage() {
   const { showToast } = useToast();
-  const [rfqs, setRfqs] = useState<RfqResponse[]>([]);
-  const [allRfqs, setAllRfqs] = useState<RfqDraftResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAllRfqsLoading, setIsAllRfqsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const rfqsQuery = useCustomerRfqs();
+  const draftsQuery = useCustomerDrafts();
+  const deleteDraftMutation = useDeleteDraft();
+
+  const rfqs = rfqsQuery.data ?? [];
+  const allRfqs = draftsQuery.data ?? [];
+
   const [filter, setFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'rfqs' | 'rfq-list'>('rfq-list');
-
-  useEffect(() => {
-    fetchRfqs();
-    fetchAllRfqs();
-  }, []);
-
-  const fetchRfqs = async () => {
-    try {
-      const data = await apiClient.getRfqs();
-      setRfqs(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load RFQs');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchAllRfqs = async () => {
-    try {
-      const data = await draftsApi.getAll();
-      setAllRfqs(data);
-    } catch (e) {
-      log.error('Failed to load RFQs:', e);
-    } finally {
-      setIsAllRfqsLoading(false);
-    }
-  };
 
   const handleDeleteDraft = async (draftId: number) => {
     if (!confirm('Are you sure you want to delete this draft?')) return;
     try {
-      await draftsApi.delete(draftId);
-      setAllRfqs(allRfqs.filter(d => d.id !== draftId));
+      await deleteDraftMutation.mutateAsync(draftId);
       showToast('Draft deleted successfully', 'success');
     } catch (e) {
       showToast('Failed to delete draft', 'error');
@@ -80,7 +59,7 @@ export default function CustomerRfqsPage() {
     ? rfqs
     : rfqs.filter(rfq => rfq.status.toLowerCase() === filter);
 
-  if (isLoading) {
+  if (rfqsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -108,9 +87,9 @@ export default function CustomerRfqsPage() {
         </Link>
       </div>
 
-      {error && (
+      {rfqsQuery.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-700">{error}</p>
+          <p className="text-sm text-red-700">{rfqsQuery.error instanceof Error ? rfqsQuery.error.message : 'Failed to load RFQs'}</p>
         </div>
       )}
 
@@ -272,7 +251,7 @@ export default function CustomerRfqsPage() {
       {/* RFQ List - shows all RFQs (drafts, submitted, closed) */}
       {activeTab === 'rfq-list' && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          {isAllRfqsLoading ? (
+          {draftsQuery.isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>

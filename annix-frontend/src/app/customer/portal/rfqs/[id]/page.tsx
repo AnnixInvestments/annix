@@ -1,52 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { apiClient } from '@/app/lib/api/client';
 import { formatDateZA } from '@/app/lib/datetime';
-
-interface RfqDetail {
-  id: number;
-  rfqNumber: string;
-  projectName: string;
-  description?: string;
-  customerName?: string;
-  customerEmail?: string;
-  customerPhone?: string;
-  requiredDate?: string;
-  status: string;
-  notes?: string;
-  totalWeightKg?: number;
-  totalCost?: number;
-  createdAt: string;
-  updatedAt: string;
-  items: any[];
-}
+import { useCustomerRfqDetail } from '@/app/lib/query/hooks';
 
 export default function CustomerRfqDetailPage() {
   const params = useParams();
-  const router = useRouter();
-  const [rfq, setRfq] = useState<RfqDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const rfqId = Number(params.id);
 
-  useEffect(() => {
-    if (params.id) {
-      fetchRfq(Number(params.id));
-    }
-  }, [params.id]);
-
-  const fetchRfq = async (id: number) => {
-    try {
-      const data = await apiClient.getRfqById(id);
-      setRfq(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load RFQ');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const rfqQuery = useCustomerRfqDetail(rfqId);
+  const rfq = rfqQuery.data ?? null;
 
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
@@ -67,7 +32,7 @@ export default function CustomerRfqDetailPage() {
     }
   };
 
-  if (isLoading) {
+  if (rfqQuery.isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -75,11 +40,11 @@ export default function CustomerRfqDetailPage() {
     );
   }
 
-  if (error || !rfq) {
+  if (rfqQuery.error || !rfq) {
     return (
       <div className="space-y-4">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-700">{error || 'RFQ not found'}</p>
+          <p className="text-sm text-red-700">{rfqQuery.error instanceof Error ? rfqQuery.error.message : 'RFQ not found'}</p>
         </div>
         <Link
           href="/customer/portal/rfqs"
@@ -133,7 +98,7 @@ export default function CustomerRfqDetailPage() {
             </div>
             <div className="divide-y divide-gray-200">
               {rfq.items && rfq.items.length > 0 ? (
-                rfq.items.map((item, index) => (
+                rfq.items.map((item: any, index: number) => (
                   <div key={item.id || index} className="p-6">
                     <div className="flex justify-between items-start">
                       <div>
