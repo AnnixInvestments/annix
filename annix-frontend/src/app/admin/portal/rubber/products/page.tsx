@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { rubberPortalApi, RubberProductDto } from '@/app/lib/api/rubberPortalApi';
 import { now } from '@/app/lib/datetime';
 import { useToast } from '@/app/components/Toast';
@@ -56,8 +57,7 @@ export default function RubberProductsPage() {
   const [compoundFilter, setCompoundFilter] = useState('');
   const [deleteProductId, setDeleteProductId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
-  const [showModal, setShowModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<RubberProductDto | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [sortColumn, setSortColumn] = useState<SortColumn>('title');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
@@ -224,10 +224,7 @@ export default function RubberProductsPage() {
             Export CSV
           </button>
           <button
-            onClick={() => {
-              setEditingProduct(null);
-              setShowModal(true);
-            }}
+            onClick={() => setShowCreateModal(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -310,7 +307,7 @@ export default function RubberProductsPage() {
             icon={TableIcons.cube}
             title="No products found"
             subtitle={(searchQuery || typeFilter || compoundFilter) ? 'Try adjusting your filters' : 'Get started by creating your first product.'}
-            action={!searchQuery && !typeFilter && !compoundFilter ? { label: 'Create Product', onClick: () => { setEditingProduct(null); setShowModal(true); } } : undefined}
+            action={!searchQuery && !typeFilter && !compoundFilter ? { label: 'Create Product', onClick: () => setShowCreateModal(true) } : undefined}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -393,7 +390,9 @@ export default function RubberProductsPage() {
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{product.title || 'Untitled'}</div>
+                      <Link href={`/admin/portal/rubber/products/${product.id}/edit`} className="text-sm font-medium text-blue-600 hover:text-blue-900">
+                        {product.title || 'Untitled'}
+                      </Link>
                       {product.description && (
                         <div className="text-sm text-gray-500 truncate max-w-xs">{product.description}</div>
                       )}
@@ -439,15 +438,12 @@ export default function RubberProductsPage() {
                       {product.specificGravity?.toFixed(2) || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                      <button
-                        onClick={() => {
-                          setEditingProduct(product);
-                          setShowModal(true);
-                        }}
+                      <Link
+                        href={`/admin/portal/rubber/products/${product.id}/edit`}
                         className="text-blue-600 hover:text-blue-900"
                       >
                         Edit
-                      </button>
+                      </Link>
                       <button onClick={() => setDeleteProductId(product.id)} className="text-red-600 hover:text-red-900">
                         Delete
                       </button>
@@ -504,17 +500,15 @@ export default function RubberProductsPage() {
       />
 
       <ProductFormModal
-        isOpen={showModal}
-        product={editingProduct}
+        isOpen={showCreateModal}
+        product={null}
         onSave={() => {
-          setShowModal(false);
-          setEditingProduct(null);
-          showToast(editingProduct ? 'Product updated' : 'Product created', 'success');
+          setShowCreateModal(false);
+          showToast('Product created', 'success');
           productsQuery.refetch();
         }}
         onCancel={() => {
-          setShowModal(false);
-          setEditingProduct(null);
+          setShowCreateModal(false);
         }}
       />
 

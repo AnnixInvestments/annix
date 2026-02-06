@@ -11,6 +11,7 @@ export const rubberKeys = {
   products: {
     all: ['rubber', 'products'] as const,
     list: () => [...rubberKeys.products.all, 'list'] as const,
+    detail: (id: number) => [...rubberKeys.products.all, 'detail', id] as const,
   },
   codings: {
     all: ['rubber', 'codings'] as const,

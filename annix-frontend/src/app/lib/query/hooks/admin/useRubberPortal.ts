@@ -31,6 +31,26 @@ export function useRubberProducts() {
   })
 }
 
+export function useRubberProductDetail(id: number) {
+  return useQuery<RubberProductDto>({
+    queryKey: rubberKeys.products.detail(id),
+    queryFn: () => rubberPortalApi.productById(id),
+    enabled: id > 0,
+  })
+}
+
+export function useUpdateRubberProduct() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CreateRubberProductDto }) =>
+      rubberPortalApi.updateProduct(id, data),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.products.all })
+      queryClient.invalidateQueries({ queryKey: rubberKeys.products.detail(variables.id) })
+    },
+  })
+}
+
 export function useRubberOrderStatuses() {
   return useQuery<{ value: number; label: string }[]>({
     queryKey: rubberKeys.statuses.list(),

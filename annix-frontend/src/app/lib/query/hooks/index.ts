@@ -83,6 +83,8 @@ export {
   useUpdateRubberOrder,
   useRubberCompanies,
   useRubberProducts,
+  useRubberProductDetail,
+  useUpdateRubberProduct,
   useRubberOrderStatuses,
   useRubberCodings,
   useRubberPricingTiers,
