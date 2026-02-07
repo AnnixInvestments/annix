@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { PendingDocument } from "@/app/components/rfq/steps/ProjectDetailsStep";
 import { generateUniqueId, nowMillis } from "@/app/lib/datetime";
 import type {
   BendEntry,
@@ -12,6 +11,7 @@ import type {
 } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
 import { type NixClarificationDto, type NixExtractedItem, nixApi } from "@/app/lib/nix";
+import type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
 
 function generateClientItemNumber(customerName: string, index: number): string {
   const prefix = customerName.slice(0, 3).toUpperCase();

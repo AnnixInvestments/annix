@@ -22,6 +22,7 @@ import {
 } from "@/app/lib/config/productsServices";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
+import type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
 import { generateSystemReferenceNumber } from "@/app/lib/utils/systemUtils";
 
 interface RestrictionPopupPosition {
@@ -112,10 +113,7 @@ function RestrictionPopup({
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-export interface PendingDocument {
-  file: File;
-  id: string;
-}
+export type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
 
 interface ProjectDetailsStepProps {
   rfqData: any;

@@ -32,12 +32,11 @@ import {
   NB_TO_OD_LOOKUP,
 } from "@/app/lib/hooks/useFlangeWeights";
 import { formatLastSaved } from "@/app/lib/hooks/useRfqDraftStorage";
-import {
+import type {
   BendEntry,
   FittingEntry,
   PipeItem,
   StraightPipeEntry,
-  useRfqForm,
 } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
 import {
@@ -47,6 +46,7 @@ import {
   NixProcessingPopup,
   nixApi,
 } from "@/app/lib/nix";
+import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { consolidateBoqData } from "@/app/lib/utils/boqConsolidation";
 import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
 import {
@@ -57,7 +57,7 @@ import {
 import NixFormHelper, { NixMinimizedButton } from "./NixFormHelper";
 import BOQStep from "./steps/BOQStep";
 import ItemUploadStep from "./steps/ItemUploadStep";
-import ProjectDetailsStep, { PendingDocument } from "./steps/ProjectDetailsStep";
+import ProjectDetailsStep from "./steps/ProjectDetailsStep";
 import ReviewSubmitStep from "./steps/ReviewSubmitStep";
 import SpecificationsStep from "./steps/SpecificationsStep";
 
@@ -111,21 +111,6 @@ interface Props {
   onSuccess: (rfqId: string) => void;
   onCancel: () => void;
   editRfqId?: number;
-}
-
-// Master data structure for API integration
-interface MasterData {
-  steelSpecs: Array<{ id: number; steelSpecName: string }>;
-  flangeStandards: Array<{ id: number; code: string }>;
-  pressureClasses: Array<{ id: number; designation: string }>;
-  nominalBores?: Array<{
-    id: number;
-    nominal_diameter_mm?: number;
-    outside_diameter_mm?: number;
-    nominalDiameterMm?: number;
-    outsideDiameterMm?: number;
-  }>;
-  flangeTypes?: Array<{ id: number; code: string; name: string }>;
 }
 
 /**
@@ -227,7 +212,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const isEditing = editRfqId !== undefined;
   const { showToast } = useToast();
   const searchParams = useSearchParams();
-  const [showCloseConfirmation, setShowCloseConfirmation] = useState(false);
+
   const {
     currentStep,
     setCurrentStep,
@@ -247,39 +232,45 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     removeStraightPipeEntry,
     duplicateItem,
     updateEntryCalculation,
-    getTotalWeight,
-    getTotalValue,
+    totalWeight: getTotalWeight,
+    totalValue: getTotalValue,
     nextStep: originalNextStep,
     prevStep,
     restoreFromDraft,
-  } = useRfqForm();
+    masterData,
+    setMasterData,
+    isLoadingMasterData,
+    setIsLoadingMasterData,
+    isSubmitting,
+    setIsSubmitting,
+    validationErrors,
+    setValidationErrors,
+    availableSchedulesMap,
+    setAvailableSchedulesMap,
+    availablePressureClasses,
+    setAvailablePressureClasses,
+    pressureClassesByStandard,
+    setPressureClassesByStandard,
+    bendOptionsCache,
+    setBendOptionsCache,
+    pendingDocuments,
+    setPendingDocuments,
+    pendingTenderDocuments,
+    setPendingTenderDocuments,
+    showCloseConfirmation,
+    setShowCloseConfirmation,
+    addDocument,
+    removeDocument,
+    addTenderDocument,
+    removeTenderDocument,
+    setValidationError,
+  } = useRfqWizardStore();
 
-  // Ref to track current rfqData for memoized callbacks
   const rfqDataRef = useRef(rfqData);
   rfqDataRef.current = rfqData;
 
-  // Authentication status for draft storage
   const { isAuthenticated } = useOptionalCustomerAuth();
 
-  const [masterData, setMasterData] = useState<MasterData>({
-    steelSpecs: [],
-    flangeStandards: [],
-    pressureClasses: [],
-    nominalBores: [],
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [isLoadingMasterData, setIsLoadingMasterData] = useState(true);
-  const [availableSchedulesMap, setAvailableSchedulesMap] = useState<Record<string, any[]>>({});
-  const [availablePressureClasses, setAvailablePressureClasses] = useState<any[]>([]);
-  const [pressureClassesByStandard, setPressureClassesByStandard] = useState<Record<number, any[]>>(
-    {},
-  );
-  const [bendOptionsCache, setBendOptionsCache] = useState<
-    Record<string, { nominalBores: number[]; degrees: number[] }>
-  >({});
-  const [pendingDocuments, setPendingDocuments] = useState<PendingDocument[]>([]);
-  const [pendingTenderDocuments, setPendingTenderDocuments] = useState<PendingDocument[]>([]);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Draft management hook
@@ -355,41 +346,30 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     showToast,
   });
 
-  // Document upload handlers
   const handleAddDocument = (file: File) => {
-    const newDoc: PendingDocument = {
+    addDocument({
       file,
       id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
-    };
-    setPendingDocuments((prev) => [...prev, newDoc]);
+    });
   };
 
   const handleRemoveDocument = (id: string) => {
-    setPendingDocuments((prev) => prev.filter((doc) => doc.id !== id));
+    removeDocument(id);
   };
 
-  // Tender specification document handlers
   const handleAddTenderDocument = (file: File) => {
-    const newDoc: PendingDocument = {
+    addTenderDocument({
       file,
       id: `tender-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
-    };
-    setPendingTenderDocuments((prev) => [...prev, newDoc]);
+    });
   };
 
   const handleRemoveTenderDocument = (id: string) => {
-    setPendingTenderDocuments((prev) => prev.filter((doc) => doc.id !== id));
+    removeTenderDocument(id);
   };
 
   const handleSetValidationError = (field: string, message: string | null) => {
-    setValidationErrors((prev) => {
-      if (message === null) {
-        const { [field]: _, ...rest } = prev;
-        return rest;
-      } else {
-        return { ...prev, [field]: message };
-      }
-    });
+    setValidationError(field, message);
   };
 
   // Get filtered pressure classes for a specific standard (with caching)
