@@ -1,10 +1,11 @@
 // export class CreatePipeDimensionDto {}
-import { IsNumber, IsOptional, IsString, IsNotEmpty } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+
+import { ApiProperty } from "@nestjs/swagger";
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class CreatePipeDimensionDto {
   @ApiProperty({
-    description: 'Wall thickness in millimetres',
+    description: "Wall thickness in millimetres",
     example: 2.77,
   })
   @IsNumber()
@@ -12,7 +13,7 @@ export class CreatePipeDimensionDto {
   wall_thickness_mm: number;
 
   @ApiProperty({
-    description: 'Internal diameter in millimetres (nullable)',
+    description: "Internal diameter in millimetres (nullable)",
     example: 15.76,
     required: false,
   })
@@ -21,7 +22,7 @@ export class CreatePipeDimensionDto {
   internal_diameter_mm?: number;
 
   @ApiProperty({
-    description: 'Mass per metre in kg/m',
+    description: "Mass per metre in kg/m",
     example: 1.27,
   })
   @IsNumber()
@@ -29,8 +30,8 @@ export class CreatePipeDimensionDto {
   mass_kgm: number;
 
   @ApiProperty({
-    description: 'Schedule designation (e.g., STD, XS, XXS)',
-    example: 'STD',
+    description: "Schedule designation (e.g., STD, XS, XXS)",
+    example: "STD",
     required: false,
   })
   @IsOptional()
@@ -38,7 +39,7 @@ export class CreatePipeDimensionDto {
   schedule_designation?: string;
 
   @ApiProperty({
-    description: 'Schedule number (e.g., 40, 80, 160)',
+    description: "Schedule number (e.g., 40, 80, 160)",
     example: 40,
     required: false,
   })
@@ -46,12 +47,12 @@ export class CreatePipeDimensionDto {
   @IsNumber()
   schedule_number?: number;
 
-  @ApiProperty({ description: 'SteelSpecification ID' })
+  @ApiProperty({ description: "SteelSpecification ID" })
   @IsNumber()
   @IsNotEmpty()
   steelSpecificationId: number;
 
-  @ApiProperty({ description: 'nominalOutsideDiameter ID' })
+  @ApiProperty({ description: "nominalOutsideDiameter ID" })
   @IsNumber()
   @IsNotEmpty()
   nominalOutsideDiameterId: number;

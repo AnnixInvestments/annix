@@ -1,12 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddBracketDimensionsAndPadTable1773200000000 implements MigrationInterface {
-  name = 'AddBracketDimensionsAndPadTable1773200000000';
+  name = "AddBracketDimensionsAndPadTable1773200000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      'Adding bracket dimensions and reinforcement pad lookup tables...',
-    );
+    console.warn("Adding bracket dimensions and reinforcement pad lookup tables...");
 
     await queryRunner.query(`
       ALTER TABLE bracket_types
@@ -38,7 +36,7 @@ export class AddBracketDimensionsAndPadTable1773200000000 implements MigrationIn
 
     const bracketDimensions = [
       {
-        typeCode: 'CLEVIS_HANGER',
+        typeCode: "CLEVIS_HANGER",
         dimA: 105,
         dimB: 151,
         rod: 12.7,
@@ -46,30 +44,30 @@ export class AddBracketDimensionsAndPadTable1773200000000 implements MigrationIn
         maxLoad: 649,
       },
       {
-        typeCode: 'THREE_BOLT_CLAMP',
+        typeCode: "THREE_BOLT_CLAMP",
         width: 51,
         thickness: 6.35,
         weight: 0.23,
         maxLoad: 454,
       },
       {
-        typeCode: 'WELDED_BRACKET',
+        typeCode: "WELDED_BRACKET",
         length: 305,
         brace: 152,
         weight: 1.68,
         maxLoad: 1361,
       },
       {
-        typeCode: 'PIPE_SADDLE',
+        typeCode: "PIPE_SADDLE",
         baseW: 152,
         baseL: 152,
         height: 203,
         weight: 2.69,
         maxLoad: 567,
       },
-      { typeCode: 'U_BOLT', rod: 10, weight: 0.15, maxLoad: 227 },
+      { typeCode: "U_BOLT", rod: 10, weight: 0.15, maxLoad: 227 },
       {
-        typeCode: 'ROLLER_SUPPORT',
+        typeCode: "ROLLER_SUPPORT",
         baseW: 200,
         baseL: 300,
         height: 150,
@@ -77,7 +75,7 @@ export class AddBracketDimensionsAndPadTable1773200000000 implements MigrationIn
         maxLoad: 2000,
       },
       {
-        typeCode: 'SLIDE_PLATE',
+        typeCode: "SLIDE_PLATE",
         baseW: 250,
         baseL: 350,
         thickness: 10,
@@ -85,7 +83,7 @@ export class AddBracketDimensionsAndPadTable1773200000000 implements MigrationIn
         maxLoad: 2500,
       },
       {
-        typeCode: 'BAND_HANGER',
+        typeCode: "BAND_HANGER",
         width: 25,
         thickness: 2,
         weight: 0.1,
@@ -643,26 +641,16 @@ export class AddBracketDimensionsAndPadTable1773200000000 implements MigrationIn
           unit_weight_kg = EXCLUDED.unit_weight_kg,
           max_load_kg = EXCLUDED.max_load_kg
       `,
-        [
-          dim.nps,
-          dim.nb,
-          dim.baseW,
-          dim.baseL,
-          dim.height,
-          dim.weight,
-          dim.load,
-        ],
+        [dim.nps, dim.nb, dim.baseW, dim.baseL, dim.height, dim.weight, dim.load],
       );
     }
 
-    console.warn(
-      'Bracket dimensions and reinforcement pad standards added successfully.',
-    );
+    console.warn("Bracket dimensions and reinforcement pad standards added successfully.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS bracket_dimensions_by_size`);
-    await queryRunner.query(`DROP TABLE IF EXISTS reinforcement_pad_standards`);
+    await queryRunner.query("DROP TABLE IF EXISTS bracket_dimensions_by_size");
+    await queryRunner.query("DROP TABLE IF EXISTS reinforcement_pad_standards");
 
     await queryRunner.query(`
       ALTER TABLE bracket_types
@@ -680,8 +668,6 @@ export class AddBracketDimensionsAndPadTable1773200000000 implements MigrationIn
       DROP COLUMN IF EXISTS "max_load_kg"
     `);
 
-    await queryRunner.query(
-      `DELETE FROM bracket_types WHERE type_code = 'BAND_HANGER'`,
-    );
+    await queryRunner.query(`DELETE FROM bracket_types WHERE type_code = 'BAND_HANGER'`);
   }
 }

@@ -1,26 +1,26 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/app/components/Toast';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
+  BroadcastBanner,
   ConversationList,
   ConversationThread,
   MessageComposer,
-  BroadcastBanner,
-} from '@/app/components/messaging';
+} from "@/app/components/messaging";
+import { useToast } from "@/app/components/Toast";
 import {
-  supplierMessagingApi,
-  type ConversationSummary,
   type ConversationDetail,
-} from '@/app/lib/api/messagingApi';
+  type ConversationSummary,
+  supplierMessagingApi,
+} from "@/app/lib/api/messagingApi";
 import {
-  useSupplierConversations,
-  useSupplierBroadcasts,
-  useSendSupplierMessage,
   useArchiveSupplierConversation,
   useMarkSupplierBroadcastRead,
-} from '@/app/lib/query/hooks';
+  useSendSupplierMessage,
+  useSupplierBroadcasts,
+  useSupplierConversations,
+} from "@/app/lib/query/hooks";
 
 export default function SupplierMessagesPage() {
   const router = useRouter();
@@ -35,8 +35,7 @@ export default function SupplierMessagesPage() {
   const conversations = conversationsQuery.data?.conversations ?? [];
   const broadcasts = broadcastsQuery.data?.broadcasts ?? [];
 
-  const [selectedConversation, setSelectedConversation] =
-    useState<ConversationDetail | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number>(0);
 
   const handleSelectConversation = async (conversation: ConversationSummary) => {
@@ -46,7 +45,7 @@ export default function SupplierMessagesPage() {
       await supplierMessagingApi.markAsRead(conversation.id);
       conversationsQuery.refetch();
     } catch (error: any) {
-      showToast(error.message || 'Failed to load conversation', 'error');
+      showToast(error.message || "Failed to load conversation", "error");
     }
   };
 
@@ -64,12 +63,10 @@ export default function SupplierMessagesPage() {
       }
 
       setSelectedConversation((prev) =>
-        prev
-          ? { ...prev, messages: [...prev.messages, newMessage] }
-          : null,
+        prev ? { ...prev, messages: [...prev.messages, newMessage] } : null,
       );
     } catch (error: any) {
-      showToast(error.message || 'Failed to send message', 'error');
+      showToast(error.message || "Failed to send message", "error");
     }
   };
 
@@ -79,9 +76,9 @@ export default function SupplierMessagesPage() {
       if (selectedConversation?.id === conversationId) {
         setSelectedConversation(null);
       }
-      showToast('Conversation archived', 'success');
+      showToast("Conversation archived", "success");
     } catch (error: any) {
-      showToast(error.message || 'Failed to archive conversation', 'error');
+      showToast(error.message || "Failed to archive conversation", "error");
     }
   };
 
@@ -89,7 +86,7 @@ export default function SupplierMessagesPage() {
     try {
       await markBroadcastReadMutation.mutateAsync(broadcastId);
     } catch (error: any) {
-      showToast(error.message || 'Failed to mark broadcast as read', 'error');
+      showToast(error.message || "Failed to mark broadcast as read", "error");
     }
   };
 
@@ -104,15 +101,10 @@ export default function SupplierMessagesPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Messages
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
       </div>
 
-      <BroadcastBanner
-        broadcasts={broadcasts}
-        onMarkRead={handleMarkBroadcastRead}
-      />
+      <BroadcastBanner broadcasts={broadcasts} onMarkRead={handleMarkBroadcastRead} />
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-3 min-h-[600px]">
@@ -134,7 +126,7 @@ export default function SupplierMessagesPage() {
                     {selectedConversation.subject}
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {selectedConversation.participantNames.join(', ')}
+                    {selectedConversation.participantNames.join(", ")}
                   </p>
                 </div>
 
@@ -165,9 +157,7 @@ export default function SupplierMessagesPage() {
                   />
                 </svg>
                 <p className="text-lg font-medium">Select a conversation</p>
-                <p className="text-sm">
-                  Choose a conversation from the list to view messages
-                </p>
+                <p className="text-sm">Choose a conversation from the list to view messages</p>
               </div>
             )}
           </div>

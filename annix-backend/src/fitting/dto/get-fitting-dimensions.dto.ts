@@ -1,47 +1,47 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
+import { IsEnum, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export enum FittingStandard {
-  SABS62 = 'SABS62',
-  SABS719 = 'SABS719',
+  SABS62 = "SABS62",
+  SABS719 = "SABS719",
 }
 
 export enum FittingType {
   // SABS62 Types
-  EQUAL_TEE = 'EQUAL_TEE',
-  UNEQUAL_TEE = 'UNEQUAL_TEE',
-  LATERAL = 'LATERAL',
-  SWEEP_TEE = 'SWEEP_TEE',
-  UNEQUAL_CROSS = 'UNEQUAL_CROSS',
-  Y_PIECE = 'Y_PIECE',
-  GUSSETTED_TEE = 'GUSSETTED_TEE',
-  EQUAL_CROSS = 'EQUAL_CROSS',
+  EQUAL_TEE = "EQUAL_TEE",
+  UNEQUAL_TEE = "UNEQUAL_TEE",
+  LATERAL = "LATERAL",
+  SWEEP_TEE = "SWEEP_TEE",
+  UNEQUAL_CROSS = "UNEQUAL_CROSS",
+  Y_PIECE = "Y_PIECE",
+  GUSSETTED_TEE = "GUSSETTED_TEE",
+  EQUAL_CROSS = "EQUAL_CROSS",
   // SABS719 Tee Types
-  SHORT_TEE = 'SHORT_TEE',
-  GUSSET_TEE = 'GUSSET_TEE',
-  UNEQUAL_SHORT_TEE = 'UNEQUAL_SHORT_TEE',
-  UNEQUAL_GUSSET_TEE = 'UNEQUAL_GUSSET_TEE',
+  SHORT_TEE = "SHORT_TEE",
+  GUSSET_TEE = "GUSSET_TEE",
+  UNEQUAL_SHORT_TEE = "UNEQUAL_SHORT_TEE",
+  UNEQUAL_GUSSET_TEE = "UNEQUAL_GUSSET_TEE",
   // SABS719 Elbow/Bend Types
-  ELBOW = 'ELBOW',
-  MEDIUM_RADIUS_BEND = 'MEDIUM_RADIUS_BEND',
-  LONG_RADIUS_BEND = 'LONG_RADIUS_BEND',
+  ELBOW = "ELBOW",
+  MEDIUM_RADIUS_BEND = "MEDIUM_RADIUS_BEND",
+  LONG_RADIUS_BEND = "LONG_RADIUS_BEND",
   // SABS719 Specialty Types
-  DUCKFOOT_SHORT = 'DUCKFOOT_SHORT',
-  DUCKFOOT_GUSSETTED = 'DUCKFOOT_GUSSETTED',
-  SWEEP_LONG_RADIUS = 'SWEEP_LONG_RADIUS',
-  SWEEP_MEDIUM_RADIUS = 'SWEEP_MEDIUM_RADIUS',
-  SWEEP_ELBOW = 'SWEEP_ELBOW',
-  SABS719_LATERAL = 'SABS719_LATERAL',
+  DUCKFOOT_SHORT = "DUCKFOOT_SHORT",
+  DUCKFOOT_GUSSETTED = "DUCKFOOT_GUSSETTED",
+  SWEEP_LONG_RADIUS = "SWEEP_LONG_RADIUS",
+  SWEEP_MEDIUM_RADIUS = "SWEEP_MEDIUM_RADIUS",
+  SWEEP_ELBOW = "SWEEP_ELBOW",
+  SABS719_LATERAL = "SABS719_LATERAL",
   // Reducers
-  CON_REDUCER = 'CON_REDUCER',
-  ECCENTRIC_REDUCER = 'ECCENTRIC_REDUCER',
+  CON_REDUCER = "CON_REDUCER",
+  ECCENTRIC_REDUCER = "ECCENTRIC_REDUCER",
 }
 
 export class GetFittingDimensionsDto {
   @ApiProperty({
     enum: FittingStandard,
-    description: 'Fitting standard (SABS62 or SABS719)',
+    description: "Fitting standard (SABS62 or SABS719)",
     example: FittingStandard.SABS62,
   })
   @IsEnum(FittingStandard)
@@ -49,14 +49,14 @@ export class GetFittingDimensionsDto {
 
   @ApiProperty({
     enum: FittingType,
-    description: 'Type of fitting',
+    description: "Type of fitting",
     example: FittingType.EQUAL_TEE,
   })
   @IsEnum(FittingType)
   fittingType: FittingType;
 
   @ApiProperty({
-    description: 'Nominal diameter in mm',
+    description: "Nominal diameter in mm",
     example: 100,
     minimum: 1,
   })
@@ -66,9 +66,8 @@ export class GetFittingDimensionsDto {
   nominalDiameterMm: number;
 
   @ApiPropertyOptional({
-    description:
-      'Angle range for laterals and Y-pieces (e.g., "60-90", "45-59", "30-44")',
-    example: '60-90',
+    description: 'Angle range for laterals and Y-pieces (e.g., "60-90", "45-59", "30-44")',
+    example: "60-90",
   })
   @IsOptional()
   @IsString()

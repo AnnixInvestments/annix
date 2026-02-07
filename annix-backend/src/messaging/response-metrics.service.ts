@@ -1,22 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, Not } from 'typeorm';
-import { now, fromJSDate, fromISO } from '../lib/datetime';
-import {
-  ConversationResponseMetric,
-  Message,
-  SlaConfig,
-  ResponseRating,
-} from './entities';
-import { User } from '../user/entities/user.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Not, Repository } from "typeorm";
+import { fromISO, fromJSDate } from "../lib/datetime";
+import { User } from "../user/entities/user.entity";
 import {
   MetricsFilterDto,
-  UserResponseStatsDto,
-  ResponseMetricsSummaryDto,
   RatingBreakdownDto,
+  ResponseMetricsSummaryDto,
   SlaConfigDto,
   UpdateSlaConfigDto,
-} from './dto';
+  UserResponseStatsDto,
+} from "./dto";
+import { ConversationResponseMetric, Message, ResponseRating, SlaConfig } from "./entities";
 
 @Injectable()
 export class ResponseMetricsService {
@@ -37,7 +32,7 @@ export class ResponseMetricsService {
         conversationId: responseMessage.conversationId,
         senderId: Not(responseMessage.senderId),
       },
-      order: { sentAt: 'DESC' },
+      order: { sentAt: "DESC" },
       take: 1,
     });
 
@@ -60,9 +55,7 @@ export class ResponseMetricsService {
 
     const originalSentAt = fromJSDate(originalMessage.sentAt);
     const responseSentAt = fromJSDate(responseMessage.sentAt);
-    const responseTimeMinutes = Math.floor(
-      responseSentAt.diff(originalSentAt, 'minutes').minutes,
-    );
+    const responseTimeMinutes = Math.floor(responseSentAt.diff(originalSentAt, "minutes").minutes);
 
     const slaConfig = await this.slaConfig();
     const rating = this.ratingForResponseTime(responseTimeMinutes, slaConfig);
@@ -88,21 +81,21 @@ export class ResponseMetricsService {
     const user = await this.userRepo.findOne({ where: { id: userId } });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     const queryBuilder = this.metricRepo
-      .createQueryBuilder('m')
-      .where('m.responderId = :userId', { userId });
+      .createQueryBuilder("m")
+      .where("m.responderId = :userId", { userId });
 
     if (filters?.startDate) {
-      queryBuilder.andWhere('m.createdAt >= :startDate', {
+      queryBuilder.andWhere("m.createdAt >= :startDate", {
         startDate: fromISO(filters.startDate).toJSDate(),
       });
     }
 
     if (filters?.endDate) {
-      queryBuilder.andWhere('m.createdAt <= :endDate', {
+      queryBuilder.andWhere("m.createdAt <= :endDate", {
         endDate: fromISO(filters.endDate).toJSDate(),
       });
     }
@@ -112,7 +105,7 @@ export class ResponseMetricsService {
     if (metrics.length === 0) {
       return {
         userId,
-        userName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+        userName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
         totalResponses: 0,
         averageResponseTimeMinutes: 0,
         slaCompliancePercent: 100,
@@ -127,17 +120,14 @@ export class ResponseMetricsService {
       };
     }
 
-    const totalResponseTime = metrics.reduce(
-      (sum, m) => sum + m.responseTimeMinutes,
-      0,
-    );
+    const totalResponseTime = metrics.reduce((sum, m) => sum + m.responseTimeMinutes, 0);
     const slaCompliant = metrics.filter((m) => m.withinSla).length;
 
     const ratingBreakdown = this.calculateRatingBreakdown(metrics);
 
     return {
       userId,
-      userName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      userName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       totalResponses: metrics.length,
       averageResponseTimeMinutes: Math.round(totalResponseTime / metrics.length),
       slaCompliancePercent: Math.round((slaCompliant / metrics.length) * 100),
@@ -146,25 +136,23 @@ export class ResponseMetricsService {
     };
   }
 
-  async responseMetricsSummary(
-    filters?: MetricsFilterDto,
-  ): Promise<ResponseMetricsSummaryDto> {
-    const queryBuilder = this.metricRepo.createQueryBuilder('m');
+  async responseMetricsSummary(filters?: MetricsFilterDto): Promise<ResponseMetricsSummaryDto> {
+    const queryBuilder = this.metricRepo.createQueryBuilder("m");
 
     if (filters?.startDate) {
-      queryBuilder.andWhere('m.createdAt >= :startDate', {
+      queryBuilder.andWhere("m.createdAt >= :startDate", {
         startDate: fromISO(filters.startDate).toJSDate(),
       });
     }
 
     if (filters?.endDate) {
-      queryBuilder.andWhere('m.createdAt <= :endDate', {
+      queryBuilder.andWhere("m.createdAt <= :endDate", {
         endDate: fromISO(filters.endDate).toJSDate(),
       });
     }
 
     if (filters?.userId) {
-      queryBuilder.andWhere('m.responderId = :userId', {
+      queryBuilder.andWhere("m.responderId = :userId", {
         userId: filters.userId,
       });
     }
@@ -189,17 +177,12 @@ export class ResponseMetricsService {
       };
     }
 
-    const totalResponseTime = metrics.reduce(
-      (sum, m) => sum + m.responseTimeMinutes,
-      0,
-    );
+    const totalResponseTime = metrics.reduce((sum, m) => sum + m.responseTimeMinutes, 0);
     const slaCompliant = metrics.filter((m) => m.withinSla).length;
     const ratingBreakdown = this.calculateRatingBreakdown(metrics);
 
     const userIds = [...new Set(metrics.map((m) => m.responderId))];
-    const userStats = await Promise.all(
-      userIds.map((id) => this.userResponseStats(id, filters)),
-    );
+    const userStats = await Promise.all(userIds.map((id) => this.userResponseStats(id, filters)));
 
     const sortedByCompliance = userStats.sort(
       (a, b) => b.slaCompliancePercent - a.slaCompliancePercent,
@@ -279,10 +262,7 @@ export class ResponseMetricsService {
     return this.slaConfigDto();
   }
 
-  ratingForResponseTime(
-    responseTimeMinutes: number,
-    config: SlaConfig,
-  ): ResponseRating {
+  ratingForResponseTime(responseTimeMinutes: number, config: SlaConfig): ResponseRating {
     const hours = responseTimeMinutes / 60;
 
     if (hours <= config.excellentThresholdHours) {
@@ -298,9 +278,7 @@ export class ResponseMetricsService {
     }
   }
 
-  private calculateRatingBreakdown(
-    metrics: ConversationResponseMetric[],
-  ): RatingBreakdownDto {
+  private calculateRatingBreakdown(metrics: ConversationResponseMetric[]): RatingBreakdownDto {
     return metrics.reduce(
       (acc, m) => {
         const key = m.rating.toLowerCase() as keyof RatingBreakdownDto;
@@ -329,8 +307,7 @@ export class ResponseMetricsService {
       return ResponseRating.EXCELLENT;
     }
 
-    const excellentGoodPercent =
-      ((breakdown.excellent + breakdown.good) / total) * 100;
+    const excellentGoodPercent = ((breakdown.excellent + breakdown.good) / total) * 100;
 
     if (excellentGoodPercent >= 80) {
       return ResponseRating.EXCELLENT;

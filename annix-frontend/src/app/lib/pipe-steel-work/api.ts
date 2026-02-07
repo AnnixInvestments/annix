@@ -1,47 +1,47 @@
-import { API_BASE_URL } from '@/lib/api-config';
+import { API_BASE_URL } from "@/lib/api-config";
 import type {
-  SupportSpacingRequest,
-  SupportSpacingResponse,
-  ReinforcementPadRequest,
-  ReinforcementPadResponse,
-  BracketTypeResponse,
-  BracketDimensionResponse,
-  PadStandardResponse,
-  ThermalExpansionRequest,
-  ThermalExpansionResponse,
-  CalculationRequest,
-  CalculationResponse,
-  ValidateBracketRequest,
-  BracketCompatibilityResponse,
   BatchCalculationRequest,
   BatchCalculationResponse,
-  MultiStandardSpacingRequest,
-  MultiStandardSpacingResponse,
-  ReinforcementPadWithDeratingRequest,
-  ReinforcementPadWithDeratingResponse,
-  VibrationAnalysisRequest,
-  VibrationAnalysisResponse,
-  StressAnalysisRequest,
-  StressAnalysisResponse,
-  MaterialCompatibilityRequest,
-  MaterialCompatibilityResponse,
+  BracketCompatibilityResponse,
+  BracketDimensionResponse,
+  BracketTypeResponse,
+  CalculationRequest,
+  CalculationResponse,
+  ConfigValue,
   ExportReportRequest,
   ExportReportResponse,
-  ConfigValue,
-  StandardPlateSize,
-  GasketMaterial,
   GasketCompatibilityRequest,
   GasketCompatibilityResponse,
+  GasketMaterial,
   HeatTreatment,
   HeatTreatmentRequirementRequest,
   HeatTreatmentRequirementResponse,
-} from './types';
+  MaterialCompatibilityRequest,
+  MaterialCompatibilityResponse,
+  MultiStandardSpacingRequest,
+  MultiStandardSpacingResponse,
+  PadStandardResponse,
+  ReinforcementPadRequest,
+  ReinforcementPadResponse,
+  ReinforcementPadWithDeratingRequest,
+  ReinforcementPadWithDeratingResponse,
+  StandardPlateSize,
+  StressAnalysisRequest,
+  StressAnalysisResponse,
+  SupportSpacingRequest,
+  SupportSpacingResponse,
+  ThermalExpansionRequest,
+  ThermalExpansionResponse,
+  ValidateBracketRequest,
+  VibrationAnalysisRequest,
+  VibrationAnalysisResponse,
+} from "./types";
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
   });
@@ -57,27 +57,30 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 export const pipeSteelWorkApi = {
   supportSpacing: (dto: SupportSpacingRequest): Promise<SupportSpacingResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/support-spacing`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   reinforcementPad: (dto: ReinforcementPadRequest): Promise<ReinforcementPadResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/reinforcement-pad`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   bracketTypes: (nominalDiameterMm?: number): Promise<BracketTypeResponse[]> => {
-    const params = nominalDiameterMm
-      ? `?nominalDiameterMm=${nominalDiameterMm}`
-      : '';
+    const params = nominalDiameterMm ? `?nominalDiameterMm=${nominalDiameterMm}` : "";
     return fetchJson(`${API_BASE_URL}/pipe-steel-work/bracket-types${params}`);
   },
 
   padStandard: (branchNbMm: number, headerNbMm: number): Promise<PadStandardResponse | null> =>
-    fetchJson(`${API_BASE_URL}/pipe-steel-work/pad-standard?branchNbMm=${branchNbMm}&headerNbMm=${headerNbMm}`),
+    fetchJson(
+      `${API_BASE_URL}/pipe-steel-work/pad-standard?branchNbMm=${branchNbMm}&headerNbMm=${headerNbMm}`,
+    ),
 
-  bracketDimensions: (bracketTypeCode: string, nbMm?: number): Promise<BracketDimensionResponse | BracketDimensionResponse[]> => {
+  bracketDimensions: (
+    bracketTypeCode: string,
+    nbMm?: number,
+  ): Promise<BracketDimensionResponse | BracketDimensionResponse[]> => {
     const params = nbMm
       ? `?bracketTypeCode=${bracketTypeCode}&nbMm=${nbMm}`
       : `?bracketTypeCode=${bracketTypeCode}`;
@@ -86,100 +89,111 @@ export const pipeSteelWorkApi = {
 
   thermalExpansion: (dto: ThermalExpansionRequest): Promise<ThermalExpansionResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/thermal-expansion`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   calculate: (dto: CalculationRequest): Promise<CalculationResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/calculate`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   validateBracket: (dto: ValidateBracketRequest): Promise<BracketCompatibilityResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/validate-bracket`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   batchCalculate: (dto: BatchCalculationRequest): Promise<BatchCalculationResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/batch-calculate`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
-  supportSpacingMultiStandard: (dto: MultiStandardSpacingRequest): Promise<MultiStandardSpacingResponse> =>
+  supportSpacingMultiStandard: (
+    dto: MultiStandardSpacingRequest,
+  ): Promise<MultiStandardSpacingResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/support-spacing/multi-standard`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
-  reinforcementPadWithDerating: (dto: ReinforcementPadWithDeratingRequest): Promise<ReinforcementPadWithDeratingResponse> =>
+  reinforcementPadWithDerating: (
+    dto: ReinforcementPadWithDeratingRequest,
+  ): Promise<ReinforcementPadWithDeratingResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/reinforcement-pad/with-derating`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   vibrationAnalysis: (dto: VibrationAnalysisRequest): Promise<VibrationAnalysisResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/vibration-analysis`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   stressAnalysis: (dto: StressAnalysisRequest): Promise<StressAnalysisResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/stress-analysis`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
-  materialCompatibility: (dto: MaterialCompatibilityRequest): Promise<MaterialCompatibilityResponse> =>
+  materialCompatibility: (
+    dto: MaterialCompatibilityRequest,
+  ): Promise<MaterialCompatibilityResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/material-compatibility`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   exportReport: (dto: ExportReportRequest): Promise<ExportReportResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/export`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   configs: (category?: string): Promise<ConfigValue[]> => {
-    const params = category ? `?category=${category}` : '';
+    const params = category ? `?category=${category}` : "";
     return fetchJson(`${API_BASE_URL}/pipe-steel-work/config${params}`);
   },
 
   config: (key: string): Promise<{ key: string; value: string | null }> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/config/${key}`),
 
-  updateConfig: (key: string, value: string): Promise<{ success: boolean; config?: ConfigValue; message?: string }> =>
+  updateConfig: (
+    key: string,
+    value: string,
+  ): Promise<{ success: boolean; config?: ConfigValue; message?: string }> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/config/${key}`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ value }),
     }),
 
   standardPlateSizes: (category?: string): Promise<StandardPlateSize[]> => {
-    const params = category ? `?category=${category}` : '';
+    const params = category ? `?category=${category}` : "";
     return fetchJson(`${API_BASE_URL}/pipe-steel-work/standard-plate-sizes${params}`);
   },
 
   gasketMaterials: (type?: string): Promise<GasketMaterial[]> => {
-    const params = type ? `?type=${type}` : '';
+    const params = type ? `?type=${type}` : "";
     return fetchJson(`${API_BASE_URL}/pipe-steel-work/gasket-materials${params}`);
   },
 
   gasketCompatibility: (dto: GasketCompatibilityRequest): Promise<GasketCompatibilityResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/gasket-compatibility`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 
   heatTreatments: (): Promise<HeatTreatment[]> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/heat-treatments`),
 
-  heatTreatmentRequirement: (dto: HeatTreatmentRequirementRequest): Promise<HeatTreatmentRequirementResponse> =>
+  heatTreatmentRequirement: (
+    dto: HeatTreatmentRequirementRequest,
+  ): Promise<HeatTreatmentRequirementResponse> =>
     fetchJson(`${API_BASE_URL}/pipe-steel-work/heat-treatment-requirement`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(dto),
     }),
 };

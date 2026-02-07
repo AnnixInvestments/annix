@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInterface {
-  name = 'SeedBnwAndStainlessSteelData1767700000000';
+  name = "SeedBnwAndStainlessSteelData1767700000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // =====================================================
@@ -12,25 +12,25 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
 
     // Insert bolt designations (M12 - M64)
     const boltDesignations = [
-      'M12',
-      'M14',
-      'M16',
-      'M18',
-      'M20',
-      'M22',
-      'M24',
-      'M27',
-      'M30',
-      'M33',
-      'M36',
-      'M39',
-      'M42',
-      'M45',
-      'M48',
-      'M52',
-      'M56',
-      'M60',
-      'M64',
+      "M12",
+      "M14",
+      "M16",
+      "M18",
+      "M20",
+      "M22",
+      "M24",
+      "M27",
+      "M30",
+      "M33",
+      "M36",
+      "M39",
+      "M42",
+      "M45",
+      "M48",
+      "M52",
+      "M56",
+      "M60",
+      "M64",
     ];
 
     for (const designation of boltDesignations) {
@@ -595,10 +595,9 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
     // Insert bolt mass data
     // Note: bolt_masses uses "boltId" (camelCase) column
     for (const [designation, lengths] of Object.entries(boltMassData)) {
-      const boltResult = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = $1`,
-        [designation],
-      );
+      const boltResult = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+        designation,
+      ]);
 
       if (boltResult.length > 0) {
         const boltId = boltResult[0].id;
@@ -610,7 +609,7 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
             VALUES ($1, $2, $3)
             ON CONFLICT DO NOTHING
           `,
-            [boltId, parseInt(length), mass],
+            [boltId, parseInt(length, 10), mass],
           );
         }
       }
@@ -641,10 +640,9 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
 
     // Insert nut mass data
     for (const [designation, mass] of Object.entries(nutMassData)) {
-      const boltResult = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = $1`,
-        [designation],
-      );
+      const boltResult = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+        designation,
+      ]);
 
       if (boltResult.length > 0) {
         const boltId = boltResult[0].id;
@@ -679,9 +677,7 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
     `);
 
     if (ssSpecResult.length === 0) {
-      console.warn(
-        'Stainless steel specification not found, skipping pipe dimensions',
-      );
+      console.warn("Stainless steel specification not found, skipping pipe dimensions");
       return;
     }
 
@@ -934,7 +930,7 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
 
     // Insert stainless steel pipe dimensions
     for (const [nominalBore, schedules] of Object.entries(stainlessSteelData)) {
-      const nb = parseInt(nominalBore);
+      const nb = parseInt(nominalBore, 10);
       const od = outsideDiameters[nb];
 
       if (!od) continue;
@@ -964,7 +960,7 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
 
         const schMatch = schedule.match(/Sch(\d+)/);
         if (schMatch) {
-          scheduleNumber = parseInt(schMatch[1]);
+          scheduleNumber = parseInt(schMatch[1], 10);
         }
 
         await queryRunner.query(
@@ -993,7 +989,7 @@ export class SeedBnwAndStainlessSteelData1767700000000 implements MigrationInter
       }
     }
 
-    console.warn('BNW and Stainless Steel data seeded successfully');
+    console.warn("BNW and Stainless Steel data seeded successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

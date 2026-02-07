@@ -1,21 +1,18 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany,
-  Unique,
-} from 'typeorm';
-import { Fitting } from '../../fitting/entities/fitting.entity';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { Fitting } from "../../fitting/entities/fitting.entity";
 
-@Entity('fitting_types')
-@Unique(['name'])
+@Entity("fitting_types")
+@Unique(["name"])
 export class FittingType {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', unique: true })
+  @Column({ type: "varchar", unique: true })
   name: string;
 
-  @OneToMany(() => Fitting, (fitting) => fitting.fittingType)
+  @OneToMany(
+    () => Fitting,
+    (fitting) => fitting.fittingType,
+  )
   fittings: Fitting[];
 }

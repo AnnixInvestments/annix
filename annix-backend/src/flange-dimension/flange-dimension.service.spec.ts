@@ -1,15 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FlangeDimensionService } from './flange-dimension.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { FlangeDimension } from './entities/flange-dimension.entity';
-import { NominalOutsideDiameterMm } from '../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity';
-import { FlangeStandard } from '../flange-standard/entities/flange-standard.entity';
-import { FlangePressureClass } from '../flange-pressure-class/entities/flange-pressure-class.entity';
-import { Bolt } from '../bolt/entities/bolt.entity';
-import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { Bolt } from "../bolt/entities/bolt.entity";
+import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
+import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pressure-class.entity";
+import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
+import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
+import { FlangeDimension } from "./entities/flange-dimension.entity";
+import { FlangeDimensionService } from "./flange-dimension.service";
 
-describe('FlangeDimensionService', () => {
+describe("FlangeDimensionService", () => {
   let service: FlangeDimensionService;
 
   const mockFlangeRepo = {
@@ -71,53 +71,43 @@ describe('FlangeDimensionService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('findAll', () => {
-    it('should return array of flange dimensions', async () => {
+  describe("findAll", () => {
+    it("should return array of flange dimensions", async () => {
       const result = [{ id: 1 }] as FlangeDimension[];
       mockFlangeRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
       expect(mockFlangeRepo.find).toHaveBeenCalledWith({
-        relations: [
-          'nominalOutsideDiameter',
-          'standard',
-          'pressureClass',
-          'bolt',
-        ],
+        relations: ["nominalOutsideDiameter", "standard", "pressureClass", "bolt"],
       });
     });
   });
 
-  describe('findOne', () => {
-    it('should return a flange dimension by id', async () => {
+  describe("findOne", () => {
+    it("should return a flange dimension by id", async () => {
       const result = { id: 1 } as FlangeDimension;
       mockFlangeRepo.findOne.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
       expect(mockFlangeRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: [
-          'nominalOutsideDiameter',
-          'standard',
-          'pressureClass',
-          'bolt',
-        ],
+        relations: ["nominalOutsideDiameter", "standard", "pressureClass", "bolt"],
       });
     });
 
-    it('should throw NotFoundException if flange dimension not found', async () => {
+    it("should throw NotFoundException if flange dimension not found", async () => {
       mockFlangeRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('remove', () => {
-    it('should delete a flange dimension', async () => {
+  describe("remove", () => {
+    it("should delete a flange dimension", async () => {
       const entity = { id: 1 } as FlangeDimension;
       mockFlangeRepo.findOne.mockResolvedValue(entity);
       mockFlangeRepo.remove.mockResolvedValue(undefined);

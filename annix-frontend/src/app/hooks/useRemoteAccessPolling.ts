@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from "react";
 import {
-  remoteAccessApi,
   type PendingAccessRequestsResponse,
   type RemoteAccessRequestResponse,
-} from '@/app/lib/api/remoteAccessApi';
+  remoteAccessApi,
+} from "@/app/lib/api/remoteAccessApi";
 
 interface UseRemoteAccessPollingOptions {
   enabled?: boolean;
@@ -25,7 +25,7 @@ export function useRemoteAccessPolling({
   const checkPendingRequests = useCallback(async () => {
     if (!enabled) return;
 
-    const token = localStorage.getItem('customerAccessToken');
+    const token = localStorage.getItem("customerAccessToken");
     if (!token) return;
 
     setIsLoading(true);
@@ -36,7 +36,7 @@ export function useRemoteAccessPolling({
       setPendingRequests(result.requests);
       setCount(result.count);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to check pending requests');
+      setError(err instanceof Error ? err.message : "Failed to check pending requests");
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +67,7 @@ export function useRemoteAccessPolling({
         await checkPendingRequests();
         return true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to respond to request');
+        setError(err instanceof Error ? err.message : "Failed to respond to request");
         return false;
       }
     },

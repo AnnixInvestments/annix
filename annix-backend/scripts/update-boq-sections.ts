@@ -1,7 +1,7 @@
-import { AppDataSource } from '../src/config/data-source';
-import { Boq } from '../src/boq/entities/boq.entity';
-import { BoqSection } from '../src/boq/entities/boq-section.entity';
-import { RfqItem } from '../src/rfq/entities/rfq-item.entity';
+import { Boq } from "../src/boq/entities/boq.entity";
+import { BoqSection } from "../src/boq/entities/boq-section.entity";
+import { AppDataSource } from "../src/config/data-source";
+import { RfqItem } from "../src/rfq/entities/rfq-item.entity";
 
 interface ConsolidatedItem {
   description: string;
@@ -11,75 +11,150 @@ interface ConsolidatedItem {
   entries: number[];
 }
 
-function getFlangeCountFromConfig(config: string, itemType: string): { main: number; branch: number } {
-  if (itemType === 'bend' || itemType === 'straight_pipe' || !itemType) {
+function getFlangeCountFromConfig(
+  config: string,
+  itemType: string,
+): { main: number; branch: number } {
+  if (itemType === "bend" || itemType === "straight_pipe" || !itemType) {
     switch (config) {
-      case 'PE': return { main: 0, branch: 0 };
-      case 'FOE': return { main: 1, branch: 0 };
-      case 'FBE': return { main: 2, branch: 0 };
-      case 'FOE_LF': return { main: 2, branch: 0 };
-      case 'FOE_RF': return { main: 2, branch: 0 };
-      case '2X_RF': return { main: 2, branch: 0 };
-      case '2xLF': return { main: 4, branch: 0 };
-      default: return { main: 0, branch: 0 };
+      case "PE":
+        return { main: 0, branch: 0 };
+      case "FOE":
+        return { main: 1, branch: 0 };
+      case "FBE":
+        return { main: 2, branch: 0 };
+      case "FOE_LF":
+        return { main: 2, branch: 0 };
+      case "FOE_RF":
+        return { main: 2, branch: 0 };
+      case "2X_RF":
+        return { main: 2, branch: 0 };
+      case "2xLF":
+        return { main: 4, branch: 0 };
+      default:
+        return { main: 0, branch: 0 };
     }
   }
-  if (itemType === 'fitting') {
+  if (itemType === "fitting") {
     switch (config) {
-      case 'PE': return { main: 0, branch: 0 };
-      case 'FAE': case 'FFF': return { main: 2, branch: 1 };
-      case 'F2E': case 'FFP': return { main: 2, branch: 0 };
-      case 'PFF': return { main: 1, branch: 1 };
-      case 'PPF': return { main: 0, branch: 1 };
-      case 'FPP': return { main: 1, branch: 0 };
-      case 'PFP': return { main: 1, branch: 0 };
-      default: return { main: 0, branch: 0 };
+      case "PE":
+        return { main: 0, branch: 0 };
+      case "FAE":
+      case "FFF":
+        return { main: 2, branch: 1 };
+      case "F2E":
+      case "FFP":
+        return { main: 2, branch: 0 };
+      case "PFF":
+        return { main: 1, branch: 1 };
+      case "PPF":
+        return { main: 0, branch: 1 };
+      case "FPP":
+        return { main: 1, branch: 0 };
+      case "PFP":
+        return { main: 1, branch: 0 };
+      default:
+        return { main: 0, branch: 0 };
     }
   }
   return { main: 0, branch: 0 };
 }
 
 function getFlangeTypeName(config: string): string {
-  if (!config || config === 'PE') return 'Slip On';
-  if (config.includes('LF') || config.includes('_L')) return 'Slip On';
-  if (config.includes('RF') || config.includes('_R')) return 'Rotating';
-  return 'Slip On';
+  if (!config || config === "PE") return "Slip On";
+  if (config.includes("LF") || config.includes("_L")) return "Slip On";
+  if (config.includes("RF") || config.includes("_R")) return "Rotating";
+  return "Slip On";
 }
 
-function getBnwSetInfo(nb: number, pressureClass: string): { boltSize: string; holesPerFlange: number; weightPerHole: number } {
+function getBnwSetInfo(
+  nb: number,
+  pressureClass: string,
+): { boltSize: string; holesPerFlange: number; weightPerHole: number } {
   const pnMatch = pressureClass.match(/PN(\d+)/i);
-  const pn = pnMatch ? parseInt(pnMatch[1]) : 16;
+  const pn = pnMatch ? parseInt(pnMatch[1], 10) : 16;
 
-  const boltData: Record<number, Record<number, { boltSize: string; holes: number; weight: number }>> = {
-    50: { 16: { boltSize: 'M16', holes: 4, weight: 0.25 }, 25: { boltSize: 'M16', holes: 4, weight: 0.3 }, 40: { boltSize: 'M16', holes: 4, weight: 0.35 } },
-    80: { 16: { boltSize: 'M16', holes: 8, weight: 0.25 }, 25: { boltSize: 'M16', holes: 8, weight: 0.3 }, 40: { boltSize: 'M20', holes: 8, weight: 0.5 } },
-    100: { 16: { boltSize: 'M16', holes: 8, weight: 0.3 }, 25: { boltSize: 'M20', holes: 8, weight: 0.5 }, 40: { boltSize: 'M20', holes: 8, weight: 0.6 } },
-    150: { 16: { boltSize: 'M20', holes: 8, weight: 0.5 }, 25: { boltSize: 'M20', holes: 8, weight: 0.6 }, 40: { boltSize: 'M24', holes: 8, weight: 0.9 } },
-    200: { 16: { boltSize: 'M20', holes: 8, weight: 0.6 }, 25: { boltSize: 'M20', holes: 12, weight: 0.7 }, 40: { boltSize: 'M24', holes: 12, weight: 1.0 } },
-    250: { 16: { boltSize: 'M20', holes: 12, weight: 0.7 }, 25: { boltSize: 'M24', holes: 12, weight: 1.0 }, 40: { boltSize: 'M27', holes: 12, weight: 1.3 } },
-    300: { 16: { boltSize: 'M20', holes: 12, weight: 0.8 }, 25: { boltSize: 'M24', holes: 12, weight: 1.1 }, 40: { boltSize: 'M27', holes: 16, weight: 1.5 } },
-    350: { 16: { boltSize: 'M20', holes: 12, weight: 0.9 }, 25: { boltSize: 'M24', holes: 16, weight: 1.2 }, 40: { boltSize: 'M30', holes: 16, weight: 1.8 } },
-    400: { 16: { boltSize: 'M24', holes: 16, weight: 1.0 }, 25: { boltSize: 'M27', holes: 16, weight: 1.4 }, 40: { boltSize: 'M30', holes: 16, weight: 2.0 } },
-    450: { 16: { boltSize: 'M24', holes: 16, weight: 1.1 }, 25: { boltSize: 'M27', holes: 20, weight: 1.5 }, 40: { boltSize: 'M33', holes: 20, weight: 2.3 } },
-    500: { 16: { boltSize: 'M24', holes: 20, weight: 1.2 }, 25: { boltSize: 'M30', holes: 20, weight: 1.7 }, 40: { boltSize: 'M33', holes: 20, weight: 2.5 } },
-    600: { 16: { boltSize: 'M27', holes: 20, weight: 1.4 }, 25: { boltSize: 'M30', holes: 20, weight: 1.9 }, 40: { boltSize: 'M36', holes: 20, weight: 3.0 } },
+  const boltData: Record<
+    number,
+    Record<number, { boltSize: string; holes: number; weight: number }>
+  > = {
+    50: {
+      16: { boltSize: "M16", holes: 4, weight: 0.25 },
+      25: { boltSize: "M16", holes: 4, weight: 0.3 },
+      40: { boltSize: "M16", holes: 4, weight: 0.35 },
+    },
+    80: {
+      16: { boltSize: "M16", holes: 8, weight: 0.25 },
+      25: { boltSize: "M16", holes: 8, weight: 0.3 },
+      40: { boltSize: "M20", holes: 8, weight: 0.5 },
+    },
+    100: {
+      16: { boltSize: "M16", holes: 8, weight: 0.3 },
+      25: { boltSize: "M20", holes: 8, weight: 0.5 },
+      40: { boltSize: "M20", holes: 8, weight: 0.6 },
+    },
+    150: {
+      16: { boltSize: "M20", holes: 8, weight: 0.5 },
+      25: { boltSize: "M20", holes: 8, weight: 0.6 },
+      40: { boltSize: "M24", holes: 8, weight: 0.9 },
+    },
+    200: {
+      16: { boltSize: "M20", holes: 8, weight: 0.6 },
+      25: { boltSize: "M20", holes: 12, weight: 0.7 },
+      40: { boltSize: "M24", holes: 12, weight: 1.0 },
+    },
+    250: {
+      16: { boltSize: "M20", holes: 12, weight: 0.7 },
+      25: { boltSize: "M24", holes: 12, weight: 1.0 },
+      40: { boltSize: "M27", holes: 12, weight: 1.3 },
+    },
+    300: {
+      16: { boltSize: "M20", holes: 12, weight: 0.8 },
+      25: { boltSize: "M24", holes: 12, weight: 1.1 },
+      40: { boltSize: "M27", holes: 16, weight: 1.5 },
+    },
+    350: {
+      16: { boltSize: "M20", holes: 12, weight: 0.9 },
+      25: { boltSize: "M24", holes: 16, weight: 1.2 },
+      40: { boltSize: "M30", holes: 16, weight: 1.8 },
+    },
+    400: {
+      16: { boltSize: "M24", holes: 16, weight: 1.0 },
+      25: { boltSize: "M27", holes: 16, weight: 1.4 },
+      40: { boltSize: "M30", holes: 16, weight: 2.0 },
+    },
+    450: {
+      16: { boltSize: "M24", holes: 16, weight: 1.1 },
+      25: { boltSize: "M27", holes: 20, weight: 1.5 },
+      40: { boltSize: "M33", holes: 20, weight: 2.3 },
+    },
+    500: {
+      16: { boltSize: "M24", holes: 20, weight: 1.2 },
+      25: { boltSize: "M30", holes: 20, weight: 1.7 },
+      40: { boltSize: "M33", holes: 20, weight: 2.5 },
+    },
+    600: {
+      16: { boltSize: "M27", holes: 20, weight: 1.4 },
+      25: { boltSize: "M30", holes: 20, weight: 1.9 },
+      40: { boltSize: "M36", holes: 20, weight: 3.0 },
+    },
   };
 
-  const closestNb = Object.keys(boltData).map(Number).reduce((prev, curr) =>
-    Math.abs(curr - nb) < Math.abs(prev - nb) ? curr : prev
-  );
+  const closestNb = Object.keys(boltData)
+    .map(Number)
+    .reduce((prev, curr) => (Math.abs(curr - nb) < Math.abs(prev - nb) ? curr : prev));
 
   const closestPn = [16, 25, 40].reduce((prev, curr) =>
-    Math.abs(curr - pn) < Math.abs(prev - pn) ? curr : prev
+    Math.abs(curr - pn) < Math.abs(prev - pn) ? curr : prev,
   );
 
-  const data = boltData[closestNb]?.[closestPn] || { boltSize: 'M20', holes: 8, weight: 0.5 };
+  const data = boltData[closestNb]?.[closestPn] || { boltSize: "M20", holes: 8, weight: 0.5 };
   return { boltSize: data.boltSize, holesPerFlange: data.holes, weightPerHole: data.weight };
 }
 
 function getFlangeWeight(nb: number, pressureClass: string): number {
   const pnMatch = pressureClass.match(/PN(\d+)/i);
-  const pn = pnMatch ? parseInt(pnMatch[1]) : 16;
+  const pn = pnMatch ? parseInt(pnMatch[1], 10) : 16;
 
   const weights: Record<number, Record<number, number>> = {
     50: { 16: 2.5, 25: 3.5, 40: 5.0 },
@@ -96,12 +171,12 @@ function getFlangeWeight(nb: number, pressureClass: string): number {
     600: { 16: 90.0, 25: 140.0, 40: 220.0 },
   };
 
-  const closestNb = Object.keys(weights).map(Number).reduce((prev, curr) =>
-    Math.abs(curr - nb) < Math.abs(prev - nb) ? curr : prev
-  );
+  const closestNb = Object.keys(weights)
+    .map(Number)
+    .reduce((prev, curr) => (Math.abs(curr - nb) < Math.abs(prev - nb) ? curr : prev));
 
   const closestPn = [16, 25, 40].reduce((prev, curr) =>
-    Math.abs(curr - pn) < Math.abs(prev - pn) ? curr : prev
+    Math.abs(curr - pn) < Math.abs(prev - pn) ? curr : prev,
   );
 
   return weights[closestNb]?.[closestPn] || 10;
@@ -109,23 +184,23 @@ function getFlangeWeight(nb: number, pressureClass: string): number {
 
 function getGasketWeight(gasketType: string, nb: number): number {
   const baseWeight = nb * 0.002;
-  if (gasketType?.toLowerCase().includes('spiral')) return baseWeight * 1.5;
-  if (gasketType?.toLowerCase().includes('ring')) return baseWeight * 2;
+  if (gasketType?.toLowerCase().includes("spiral")) return baseWeight * 1.5;
+  if (gasketType?.toLowerCase().includes("ring")) return baseWeight * 2;
   return baseWeight;
 }
 
 function getCapabilityKey(sectionType: string): string {
   const mapping: Record<string, string> = {
-    'flanges': 'fabricated_steel',
-    'bnw_sets': 'fasteners_gaskets',
-    'gaskets': 'fasteners_gaskets',
-    'blank_flanges': 'fabricated_steel',
+    flanges: "fabricated_steel",
+    bnw_sets: "fasteners_gaskets",
+    gaskets: "fasteners_gaskets",
+    blank_flanges: "fabricated_steel",
   };
-  return mapping[sectionType] || 'fabricated_steel';
+  return mapping[sectionType] || "fabricated_steel";
 }
 
 async function updateBoqSections() {
-  console.log('Connecting to database...');
+  console.log("Connecting to database...");
   await AppDataSource.initialize();
 
   try {
@@ -134,8 +209,8 @@ async function updateBoqSections() {
     const rfqItemRepo = AppDataSource.getRepository(RfqItem);
 
     const boqs = await boqRepo.find({
-      relations: ['rfq'],
-      order: { id: 'DESC' }
+      relations: ["rfq"],
+      order: { id: "DESC" },
     });
 
     console.log(`Found ${boqs.length} BOQs`);
@@ -144,14 +219,14 @@ async function updateBoqSections() {
       console.log(`\nProcessing BOQ ${boq.boqNumber} (ID: ${boq.id})...`);
 
       if (!boq.rfq) {
-        console.log(`  - No linked RFQ, skipping`);
+        console.log("  - No linked RFQ, skipping");
         continue;
       }
 
       const rfqItems = await rfqItemRepo.find({
         where: { rfq: { id: boq.rfq.id } },
-        relations: ['straightPipeDetails', 'bendDetails', 'fittingDetails'],
-        order: { lineNumber: 'ASC' }
+        relations: ["straightPipeDetails", "bendDetails", "fittingDetails"],
+        order: { lineNumber: "ASC" },
       });
 
       console.log(`  - Found ${rfqItems.length} RFQ items`);
@@ -161,13 +236,13 @@ async function updateBoqSections() {
       const consolidatedGaskets: Map<string, ConsolidatedItem> = new Map();
       const consolidatedBlankFlanges: Map<string, ConsolidatedItem> = new Map();
 
-      const pressureClass = 'PN16';
-      const gasketType = 'NBR';
+      const pressureClass = "PN16";
+      const gasketType = "NBR";
 
       for (const item of rfqItems) {
         const lineNumber = item.lineNumber;
         let nb = 100;
-        let endConfig = 'PE';
+        let endConfig = "PE";
         let qty = item.quantity || 1;
         const itemType = item.itemType;
         let branchNb = nb;
@@ -176,15 +251,15 @@ async function updateBoqSections() {
 
         if (item.straightPipeDetails) {
           nb = item.straightPipeDetails.nominalBoreMm || 100;
-          endConfig = item.straightPipeDetails.pipeEndConfiguration || 'PE';
+          endConfig = item.straightPipeDetails.pipeEndConfiguration || "PE";
           qty = item.straightPipeDetails.calculatedPipeCount || qty;
         } else if (item.bendDetails) {
           nb = item.bendDetails.nominalBoreMm || 100;
-          endConfig = (item.bendDetails as any).bendEndConfiguration || 'PE';
+          endConfig = (item.bendDetails as any).bendEndConfiguration || "PE";
         } else if (item.fittingDetails) {
           nb = item.fittingDetails.nominalDiameterMm || 100;
           branchNb = (item.fittingDetails as any).branchNominalDiameterMm || nb;
-          endConfig = item.fittingDetails.pipeEndConfiguration || 'PE';
+          endConfig = item.fittingDetails.pipeEndConfiguration || "PE";
           addBlankFlange = item.fittingDetails.addBlankFlange || false;
           blankFlangeCount = item.fittingDetails.blankFlangeCount || 0;
         }
@@ -206,9 +281,9 @@ async function updateBoqSections() {
             consolidatedFlanges.set(flangeKey, {
               description: `${nb}NB ${flangeTypeName} Flange ${pressureClass}`,
               qty: flangeQty,
-              unit: 'Each',
+              unit: "Each",
               weightKg: flangeWeight * flangeQty,
-              entries: [lineNumber]
+              entries: [lineNumber],
             });
           }
 
@@ -227,9 +302,9 @@ async function updateBoqSections() {
               consolidatedBnwSets.set(bnwKey, {
                 description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${pressureClass}`,
                 qty: boltSetQty,
-                unit: 'sets',
+                unit: "sets",
                 weightKg: bnwWeight * boltSetQty,
-                entries: [lineNumber]
+                entries: [lineNumber],
               });
             }
           }
@@ -247,9 +322,9 @@ async function updateBoqSections() {
               consolidatedGaskets.set(gasketKey, {
                 description: `${gasketType} Gasket ${nb}NB ${pressureClass}`,
                 qty: boltSetQty,
-                unit: 'Each',
+                unit: "Each",
                 weightKg: gasketWeight * boltSetQty,
-                entries: [lineNumber]
+                entries: [lineNumber],
               });
             }
           }
@@ -269,9 +344,9 @@ async function updateBoqSections() {
             consolidatedFlanges.set(branchFlangeKey, {
               description: `${branchNb}NB ${flangeTypeName} Flange ${pressureClass}`,
               qty: branchFlangeQty,
-              unit: 'Each',
+              unit: "Each",
               weightKg: branchFlangeWeight * branchFlangeQty,
-              entries: [lineNumber]
+              entries: [lineNumber],
             });
           }
         }
@@ -290,28 +365,28 @@ async function updateBoqSections() {
             consolidatedBlankFlanges.set(blankKey, {
               description: `${nb}NB Blank Flange ${pressureClass}`,
               qty: blankQty,
-              unit: 'Each',
+              unit: "Each",
               weightKg: blankWeight * blankQty,
-              entries: [lineNumber]
+              entries: [lineNumber],
             });
           }
         }
       }
 
       const existingSections = await sectionRepo.find({ where: { boqId: boq.id } });
-      const existingTypes = existingSections.map(s => s.sectionType);
+      const existingTypes = existingSections.map((s) => s.sectionType);
 
-      console.log(`  - Existing sections: ${existingTypes.join(', ') || 'none'}`);
+      console.log(`  - Existing sections: ${existingTypes.join(", ") || "none"}`);
 
       let sectionsAdded = 0;
 
-      if (consolidatedFlanges.size > 0 && !existingTypes.includes('flanges')) {
+      if (consolidatedFlanges.size > 0 && !existingTypes.includes("flanges")) {
         const items = Array.from(consolidatedFlanges.values());
         const section = sectionRepo.create({
           boqId: boq.id,
-          sectionType: 'flanges',
-          capabilityKey: getCapabilityKey('flanges'),
-          sectionTitle: 'Flanges',
+          sectionType: "flanges",
+          capabilityKey: getCapabilityKey("flanges"),
+          sectionTitle: "Flanges",
           items: items.map((item, idx) => ({
             lineNumber: idx + 1,
             description: item.description,
@@ -328,13 +403,13 @@ async function updateBoqSections() {
         sectionsAdded++;
       }
 
-      if (consolidatedBnwSets.size > 0 && !existingTypes.includes('bnw_sets')) {
+      if (consolidatedBnwSets.size > 0 && !existingTypes.includes("bnw_sets")) {
         const items = Array.from(consolidatedBnwSets.values());
         const section = sectionRepo.create({
           boqId: boq.id,
-          sectionType: 'bnw_sets',
-          capabilityKey: getCapabilityKey('bnw_sets'),
-          sectionTitle: 'Bolt, Nut & Washer Sets',
+          sectionType: "bnw_sets",
+          capabilityKey: getCapabilityKey("bnw_sets"),
+          sectionTitle: "Bolt, Nut & Washer Sets",
           items: items.map((item, idx) => ({
             lineNumber: idx + 1,
             description: item.description,
@@ -351,13 +426,13 @@ async function updateBoqSections() {
         sectionsAdded++;
       }
 
-      if (consolidatedGaskets.size > 0 && !existingTypes.includes('gaskets')) {
+      if (consolidatedGaskets.size > 0 && !existingTypes.includes("gaskets")) {
         const items = Array.from(consolidatedGaskets.values());
         const section = sectionRepo.create({
           boqId: boq.id,
-          sectionType: 'gaskets',
-          capabilityKey: getCapabilityKey('gaskets'),
-          sectionTitle: 'Gaskets',
+          sectionType: "gaskets",
+          capabilityKey: getCapabilityKey("gaskets"),
+          sectionTitle: "Gaskets",
           items: items.map((item, idx) => ({
             lineNumber: idx + 1,
             description: item.description,
@@ -374,13 +449,13 @@ async function updateBoqSections() {
         sectionsAdded++;
       }
 
-      if (consolidatedBlankFlanges.size > 0 && !existingTypes.includes('blank_flanges')) {
+      if (consolidatedBlankFlanges.size > 0 && !existingTypes.includes("blank_flanges")) {
         const items = Array.from(consolidatedBlankFlanges.values());
         const section = sectionRepo.create({
           boqId: boq.id,
-          sectionType: 'blank_flanges',
-          capabilityKey: getCapabilityKey('blank_flanges'),
-          sectionTitle: 'Blank Flanges',
+          sectionType: "blank_flanges",
+          capabilityKey: getCapabilityKey("blank_flanges"),
+          sectionTitle: "Blank Flanges",
           items: items.map((item, idx) => ({
             lineNumber: idx + 1,
             description: item.description,
@@ -398,13 +473,13 @@ async function updateBoqSections() {
       }
 
       if (sectionsAdded === 0) {
-        console.log(`  - No new sections to add (items may have PE end config)`);
+        console.log("  - No new sections to add (items may have PE end config)");
       } else {
         console.log(`  - Total sections added: ${sectionsAdded}`);
       }
     }
 
-    console.log('\nDone!');
+    console.log("\nDone!");
   } finally {
     await AppDataSource.destroy();
   }

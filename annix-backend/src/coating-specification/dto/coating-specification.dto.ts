@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsIn } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class CreateCoatingStandardDto {
   @IsString()
@@ -33,7 +33,7 @@ export class CreateCoatingSpecificationDto {
   @IsNumber()
   environmentId: number;
 
-  @IsIn(['external', 'internal'])
+  @IsIn(["external", "internal"])
   coatingType: string;
 
   @IsString()
@@ -59,7 +59,7 @@ export class GetRecommendedCoatingDto {
   @IsString()
   category: string; // e.g., "C3", "C5", "CX"
 
-  @IsIn(['external', 'internal'])
+  @IsIn(["external", "internal"])
   coatingType: string;
 
   @IsOptional()

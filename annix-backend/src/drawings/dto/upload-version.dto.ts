@@ -1,9 +1,9 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, MaxLength } from 'class-validator';
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsOptional, IsString, MaxLength } from "class-validator";
 
 export class UploadVersionDto {
   @ApiPropertyOptional({
-    description: 'Notes describing what changed in this version',
+    description: "Notes describing what changed in this version",
   })
   @IsOptional()
   @IsString()

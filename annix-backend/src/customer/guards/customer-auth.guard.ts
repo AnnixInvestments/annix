@@ -1,20 +1,15 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { Request } from 'express';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { Request } from "express";
 
-import { CustomerAuthService } from '../customer-auth.service';
+import { CustomerAuthService } from "../customer-auth.service";
 
 export interface CustomerJwtPayload {
   sub: number; // User ID
   customerId: number; // Customer Profile ID
   email: string;
-  type: 'customer';
+  type: "customer";
   sessionToken: string;
 }
 
@@ -31,32 +26,27 @@ export class CustomerAuthGuard implements CanActivate {
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {
-      throw new UnauthorizedException('Authentication required');
+      throw new UnauthorizedException("Authentication required");
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<CustomerJwtPayload>(
-        token,
-        {
-          secret: this.configService.get<string>('JWT_SECRET'),
-        },
-      );
+      const payload = await this.jwtService.verifyAsync<CustomerJwtPayload>(token, {
+        secret: this.configService.get<string>("JWT_SECRET"),
+      });
 
       // Verify this is a customer token
-      if (payload.type !== 'customer') {
-        throw new UnauthorizedException('Invalid token type');
+      if (payload.type !== "customer") {
+        throw new UnauthorizedException("Invalid token type");
       }
 
       // Verify session is still valid
-      const session = await this.customerAuthService.verifySession(
-        payload.sessionToken,
-      );
+      const session = await this.customerAuthService.verifySession(payload.sessionToken);
       if (!session) {
-        throw new UnauthorizedException('Session expired or invalid');
+        throw new UnauthorizedException("Session expired or invalid");
       }
 
       // Attach customer info to request
-      request['customer'] = {
+      request["customer"] = {
         userId: payload.sub,
         customerId: payload.customerId,
         email: payload.email,
@@ -68,12 +58,12 @@ export class CustomerAuthGuard implements CanActivate {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException("Invalid token");
     }
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    const [type, token] = request.headers.authorization?.split(" ") ?? [];
+    return type === "Bearer" ? token : undefined;
   }
 }

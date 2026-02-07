@@ -1,16 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import {
-  Repository,
-  LessThanOrEqual,
-  IsNull,
-  MoreThan,
-  And,
-  Not,
-} from 'typeorm';
-import { CustomerDocument } from '../../customer/entities/customer-document.entity';
-import { SupplierDocument } from '../../supplier/entities/supplier-document.entity';
-import { now, fromJSDate } from '../../lib/datetime';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { IsNull, LessThanOrEqual, Not, Repository } from "typeorm";
+import { CustomerDocument } from "../../customer/entities/customer-document.entity";
+import { fromJSDate, now } from "../../lib/datetime";
+import { SupplierDocument } from "../../supplier/entities/supplier-document.entity";
 
 export interface ExpiringDocument {
   id: number;
@@ -18,7 +11,7 @@ export interface ExpiringDocument {
   fileName: string;
   expiryDate: Date;
   daysUntilExpiry: number;
-  ownerType: 'customer' | 'supplier';
+  ownerType: "customer" | "supplier";
   ownerId: number;
   ownerEmail?: string;
 }
@@ -40,10 +33,8 @@ export class DocumentExpiryService {
     private readonly supplierDocumentRepo: Repository<SupplierDocument>,
   ) {}
 
-  async checkCustomerDocumentExpiry(
-    customerId: number,
-  ): Promise<ExpiryCheckResult> {
-    const today = now().startOf('day');
+  async checkCustomerDocumentExpiry(customerId: number): Promise<ExpiryCheckResult> {
+    const today = now().startOf("day");
     const warningDate = today.plus({ days: this.warningDays }).toJSDate();
 
     const documents = await this.customerDocumentRepo.find({
@@ -51,7 +42,7 @@ export class DocumentExpiryService {
         customerId,
         expiryDate: Not(IsNull()),
       },
-      relations: ['customer'],
+      relations: ["customer"],
     });
 
     const expiringSoon: ExpiringDocument[] = [];
@@ -61,9 +52,7 @@ export class DocumentExpiryService {
       if (!doc.expiryDate) continue;
 
       const expiryDateTime = fromJSDate(doc.expiryDate);
-      const daysUntilExpiry = Math.ceil(
-        expiryDateTime.diff(today, 'days').days,
-      );
+      const daysUntilExpiry = Math.ceil(expiryDateTime.diff(today, "days").days);
 
       const expiringDoc: ExpiringDocument = {
         id: doc.id,
@@ -71,7 +60,7 @@ export class DocumentExpiryService {
         fileName: doc.fileName,
         expiryDate: doc.expiryDate,
         daysUntilExpiry,
-        ownerType: 'customer',
+        ownerType: "customer",
         ownerId: customerId,
       };
 
@@ -85,17 +74,15 @@ export class DocumentExpiryService {
     return { expiringSoon, expired };
   }
 
-  async checkSupplierDocumentExpiry(
-    supplierId: number,
-  ): Promise<ExpiryCheckResult> {
-    const today = now().startOf('day');
+  async checkSupplierDocumentExpiry(supplierId: number): Promise<ExpiryCheckResult> {
+    const today = now().startOf("day");
 
     const documents = await this.supplierDocumentRepo.find({
       where: {
         supplierId,
         expiryDate: Not(IsNull()),
       },
-      relations: ['supplier'],
+      relations: ["supplier"],
     });
 
     const expiringSoon: ExpiringDocument[] = [];
@@ -105,9 +92,7 @@ export class DocumentExpiryService {
       if (!doc.expiryDate) continue;
 
       const expiryDateTime = fromJSDate(doc.expiryDate);
-      const daysUntilExpiry = Math.ceil(
-        expiryDateTime.diff(today, 'days').days,
-      );
+      const daysUntilExpiry = Math.ceil(expiryDateTime.diff(today, "days").days);
 
       const expiringDoc: ExpiringDocument = {
         id: doc.id,
@@ -115,7 +100,7 @@ export class DocumentExpiryService {
         fileName: doc.fileName,
         expiryDate: doc.expiryDate,
         daysUntilExpiry,
-        ownerType: 'supplier',
+        ownerType: "supplier",
         ownerId: supplierId,
       };
 
@@ -129,14 +114,8 @@ export class DocumentExpiryService {
     return { expiringSoon, expired };
   }
 
-  async markWarningsSent(
-    documentIds: number[],
-    ownerType: 'customer' | 'supplier',
-  ): Promise<void> {
-    const repo =
-      ownerType === 'customer'
-        ? this.customerDocumentRepo
-        : this.supplierDocumentRepo;
+  async markWarningsSent(documentIds: number[], ownerType: "customer" | "supplier"): Promise<void> {
+    const repo = ownerType === "customer" ? this.customerDocumentRepo : this.supplierDocumentRepo;
     await repo.update(documentIds, {
       expiryWarningSentAt: now().toJSDate(),
     });
@@ -144,12 +123,9 @@ export class DocumentExpiryService {
 
   async markExpiredNotificationSent(
     documentIds: number[],
-    ownerType: 'customer' | 'supplier',
+    ownerType: "customer" | "supplier",
   ): Promise<void> {
-    const repo =
-      ownerType === 'customer'
-        ? this.customerDocumentRepo
-        : this.supplierDocumentRepo;
+    const repo = ownerType === "customer" ? this.customerDocumentRepo : this.supplierDocumentRepo;
     await repo.update(documentIds, {
       expiryNotificationSentAt: now().toJSDate(),
       isExpired: true,
@@ -158,29 +134,24 @@ export class DocumentExpiryService {
 
   async updateDocumentExpiry(
     documentId: number,
-    ownerType: 'customer' | 'supplier',
+    ownerType: "customer" | "supplier",
     newExpiryDate: Date,
   ): Promise<void> {
-    const repo =
-      ownerType === 'customer'
-        ? this.customerDocumentRepo
-        : this.supplierDocumentRepo;
+    const repo = ownerType === "customer" ? this.customerDocumentRepo : this.supplierDocumentRepo;
     await repo.update(documentId, {
       expiryDate: newExpiryDate,
       expiryWarningSentAt: null,
       expiryNotificationSentAt: null,
       isExpired: false,
     });
-    this.logger.log(
-      `Document ${documentId} expiry updated to ${newExpiryDate.toISOString()}`,
-    );
+    this.logger.log(`Document ${documentId} expiry updated to ${newExpiryDate.toISOString()}`);
   }
 
   async getAllExpiringDocuments(): Promise<{
     customers: Array<{ customerId: number; result: ExpiryCheckResult }>;
     suppliers: Array<{ supplierId: number; result: ExpiryCheckResult }>;
   }> {
-    const today = now().startOf('day').toJSDate();
+    const today = now().startOf("day").toJSDate();
     const warningDate = now().plus({ days: this.warningDays }).toJSDate();
 
     const customerDocs = await this.customerDocumentRepo.find({
@@ -188,7 +159,7 @@ export class DocumentExpiryService {
         expiryDate: LessThanOrEqual(warningDate),
         expiryWarningSentAt: IsNull(),
       },
-      relations: ['customer'],
+      relations: ["customer"],
     });
 
     const supplierDocs = await this.supplierDocumentRepo.find({
@@ -196,15 +167,13 @@ export class DocumentExpiryService {
         expiryDate: LessThanOrEqual(warningDate),
         expiryWarningSentAt: IsNull(),
       },
-      relations: ['supplier'],
+      relations: ["supplier"],
     });
 
     const customerMap = new Map<number, ExpiryCheckResult>();
     for (const doc of customerDocs) {
       const expiryDateTime = fromJSDate(doc.expiryDate!);
-      const daysUntilExpiry = Math.ceil(
-        expiryDateTime.diff(now().startOf('day'), 'days').days,
-      );
+      const daysUntilExpiry = Math.ceil(expiryDateTime.diff(now().startOf("day"), "days").days);
 
       const expiringDoc: ExpiringDocument = {
         id: doc.id,
@@ -212,7 +181,7 @@ export class DocumentExpiryService {
         fileName: doc.fileName,
         expiryDate: doc.expiryDate!,
         daysUntilExpiry,
-        ownerType: 'customer',
+        ownerType: "customer",
         ownerId: doc.customerId,
       };
 
@@ -231,9 +200,7 @@ export class DocumentExpiryService {
     const supplierMap = new Map<number, ExpiryCheckResult>();
     for (const doc of supplierDocs) {
       const expiryDateTime = fromJSDate(doc.expiryDate!);
-      const daysUntilExpiry = Math.ceil(
-        expiryDateTime.diff(now().startOf('day'), 'days').days,
-      );
+      const daysUntilExpiry = Math.ceil(expiryDateTime.diff(now().startOf("day"), "days").days);
 
       const expiringDoc: ExpiringDocument = {
         id: doc.id,
@@ -241,7 +208,7 @@ export class DocumentExpiryService {
         fileName: doc.fileName,
         expiryDate: doc.expiryDate!,
         daysUntilExpiry,
-        ownerType: 'supplier',
+        ownerType: "supplier",
         ownerId: doc.supplierId,
       };
 
@@ -258,12 +225,14 @@ export class DocumentExpiryService {
     }
 
     return {
-      customers: Array.from(customerMap.entries()).map(
-        ([customerId, result]) => ({ customerId, result }),
-      ),
-      suppliers: Array.from(supplierMap.entries()).map(
-        ([supplierId, result]) => ({ supplierId, result }),
-      ),
+      customers: Array.from(customerMap.entries()).map(([customerId, result]) => ({
+        customerId,
+        result,
+      })),
+      suppliers: Array.from(supplierMap.entries()).map(([supplierId, result]) => ({
+        supplierId,
+        result,
+      })),
     };
   }
 }

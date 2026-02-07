@@ -1,12 +1,11 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Image from 'next/image';
-import { log } from '@/app/lib/logger';
+import Image from "next/image";
+import { log } from "@/app/lib/logger";
 
 interface AmixLogoProps {
   /** Size variant: 'sm' (32px), 'md' (48px), 'lg' (64px), 'xl' (96px) */
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: "sm" | "md" | "lg" | "xl";
   /** Show the "Amix" text next to the logo */
   showText?: boolean;
   /** Custom className for the container */
@@ -16,10 +15,10 @@ interface AmixLogoProps {
 }
 
 const sizeMap = {
-  sm: { logo: 32, text: 'text-lg' },
-  md: { logo: 48, text: 'text-2xl' },
-  lg: { logo: 64, text: 'text-3xl' },
-  xl: { logo: 96, text: 'text-4xl' },
+  sm: { logo: 32, text: "text-lg" },
+  md: { logo: 48, text: "text-2xl" },
+  lg: { logo: 64, text: "text-3xl" },
+  xl: { logo: 96, text: "text-4xl" },
 };
 
 /**
@@ -36,9 +35,9 @@ const sizeMap = {
  * 2. The component will automatically use it
  */
 export default function AmixLogo({
-  size = 'md',
+  size = "md",
   showText = true,
-  className = '',
+  className = "",
   useSignatureFont = true,
 }: AmixLogoProps) {
   const { logo: logoSize } = sizeMap[size];
@@ -48,7 +47,13 @@ export default function AmixLogo({
     const textHeight = 48.4;
     const textWidth = Math.round(textHeight * 2.5);
 
-    log.debug('AmixLogo rendering inline parts', { size, logoSize, iconSize, textWidth, textHeight });
+    log.debug("AmixLogo rendering inline parts", {
+      size,
+      logoSize,
+      iconSize,
+      textWidth,
+      textHeight,
+    });
 
     return (
       <div className={`flex items-center ${className}`}>
@@ -66,13 +71,13 @@ export default function AmixLogo({
           width={textWidth}
           height={textHeight}
           priority
-          style={{ width: 'auto', height: textHeight }}
+          style={{ width: "auto", height: textHeight }}
         />
       </div>
     );
   }
 
-  log.debug('AmixLogo rendering icon only', { size, logoSize });
+  log.debug("AmixLogo rendering icon only", { size, logoSize });
 
   return (
     <div className={`inline-block ${className}`}>
@@ -92,13 +97,13 @@ export default function AmixLogo({
  * Full logo with navy background - for use on light backgrounds
  */
 export function AmixLogoWithBackground({
-  size = 'md',
-  className = '',
-}: Omit<AmixLogoProps, 'showText' | 'useSignatureFont'>) {
+  size = "md",
+  className = "",
+}: Omit<AmixLogoProps, "showText" | "useSignatureFont">) {
   return (
     <div
       className={`inline-flex items-center rounded-lg px-4 py-2 ${className}`}
-      style={{ backgroundColor: '#323288' }}
+      style={{ backgroundColor: "#323288" }}
     >
       <AmixLogo size={size} showText useSignatureFont />
     </div>

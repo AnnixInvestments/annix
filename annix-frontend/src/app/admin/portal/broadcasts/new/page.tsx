@@ -1,13 +1,10 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/app/components/Toast';
-import {
-  BroadcastTarget,
-  BroadcastPriority,
-} from '@/app/lib/api/messagingApi';
-import { useCreateBroadcast } from '@/app/lib/query/hooks';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import { BroadcastPriority, BroadcastTarget } from "@/app/lib/api/messagingApi";
+import { useCreateBroadcast } from "@/app/lib/query/hooks";
 
 export default function NewBroadcastPage() {
   const router = useRouter();
@@ -15,27 +12,23 @@ export default function NewBroadcastPage() {
 
   const createMutation = useCreateBroadcast();
 
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [targetAudience, setTargetAudience] = useState<BroadcastTarget>(
-    BroadcastTarget.ALL,
-  );
-  const [priority, setPriority] = useState<BroadcastPriority>(
-    BroadcastPriority.NORMAL,
-  );
-  const [expiresAt, setExpiresAt] = useState('');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [targetAudience, setTargetAudience] = useState<BroadcastTarget>(BroadcastTarget.ALL);
+  const [priority, setPriority] = useState<BroadcastPriority>(BroadcastPriority.NORMAL);
+  const [expiresAt, setExpiresAt] = useState("");
   const [sendEmail, setSendEmail] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title.trim()) {
-      showToast('Please enter a title', 'error');
+      showToast("Please enter a title", "error");
       return;
     }
 
     if (!content.trim()) {
-      showToast('Please enter content', 'error');
+      showToast("Please enter content", "error");
       return;
     }
 
@@ -50,12 +43,12 @@ export default function NewBroadcastPage() {
       },
       {
         onSuccess: () => {
-          showToast('Broadcast created successfully', 'success');
-          router.push('/admin/portal/broadcasts');
+          showToast("Broadcast created successfully", "success");
+          router.push("/admin/portal/broadcasts");
         },
         onError: (err: unknown) => {
-          const message = err instanceof Error ? err.message : 'Failed to create broadcast';
-          showToast(message, 'error');
+          const message = err instanceof Error ? err.message : "Failed to create broadcast";
+          showToast(message, "error");
         },
       },
     );
@@ -65,15 +58,10 @@ export default function NewBroadcastPage() {
     <div className="max-w-2xl mx-auto">
       <div className="mb-6 flex items-center gap-4">
         <button
-          onClick={() => router.push('/admin/portal/broadcasts')}
+          onClick={() => router.push("/admin/portal/broadcasts")}
           className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -82,9 +70,7 @@ export default function NewBroadcastPage() {
             />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          New Broadcast
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">New Broadcast</h1>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -136,9 +122,7 @@ export default function NewBroadcastPage() {
               <select
                 id="targetAudience"
                 value={targetAudience}
-                onChange={(e) =>
-                  setTargetAudience(e.target.value as BroadcastTarget)
-                }
+                onChange={(e) => setTargetAudience(e.target.value as BroadcastTarget)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={createMutation.isPending}
               >
@@ -158,9 +142,7 @@ export default function NewBroadcastPage() {
               <select
                 id="priority"
                 value={priority}
-                onChange={(e) =>
-                  setPriority(e.target.value as BroadcastPriority)
-                }
+                onChange={(e) => setPriority(e.target.value as BroadcastPriority)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={createMutation.isPending}
               >
@@ -198,25 +180,22 @@ export default function NewBroadcastPage() {
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               disabled={createMutation.isPending}
             />
-            <label
-              htmlFor="sendEmail"
-              className="ml-2 text-sm text-gray-700 dark:text-gray-300"
-            >
+            <label htmlFor="sendEmail" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
               Also send email notifications to recipients
             </label>
           </div>
 
           {priority === BroadcastPriority.URGENT && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-400 text-sm">
-              <strong>Warning:</strong> Urgent broadcasts will appear prominently
-              to all targeted users and may trigger immediate notifications.
+              <strong>Warning:</strong> Urgent broadcasts will appear prominently to all targeted
+              users and may trigger immediate notifications.
             </div>
           )}
 
           <div className="flex justify-end gap-4">
             <button
               type="button"
-              onClick={() => router.push('/admin/portal/broadcasts')}
+              onClick={() => router.push("/admin/portal/broadcasts")}
               className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               disabled={createMutation.isPending}
             >
@@ -229,11 +208,7 @@ export default function NewBroadcastPage() {
             >
               {createMutation.isPending ? (
                 <>
-                  <svg
-                    className="w-5 h-5 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle
                       className="opacity-25"
                       cx="12"
@@ -251,7 +226,7 @@ export default function NewBroadcastPage() {
                   Publishing...
                 </>
               ) : (
-                'Publish Broadcast'
+                "Publish Broadcast"
               )}
             </button>
           </div>

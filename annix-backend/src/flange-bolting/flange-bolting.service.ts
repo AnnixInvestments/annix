@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { FlangeBolting } from './entities/flange-bolting.entity';
-import { FlangeBoltingMaterial } from './entities/flange-bolting-material.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import {
+  BulkCreateFlangeBoltingDto,
   CreateFlangeBoltingDto,
   CreateFlangeBoltingMaterialDto,
-  BulkCreateFlangeBoltingDto,
-} from './dto/create-flange-bolting.dto';
+} from "./dto/create-flange-bolting.dto";
+import { FlangeBolting } from "./entities/flange-bolting.entity";
+import { FlangeBoltingMaterial } from "./entities/flange-bolting-material.entity";
 
 @Injectable()
 export class FlangeBoltingService {
@@ -18,9 +18,7 @@ export class FlangeBoltingService {
     private readonly boltingMaterialRepo: Repository<FlangeBoltingMaterial>,
   ) {}
 
-  async createMaterial(
-    dto: CreateFlangeBoltingMaterialDto,
-  ): Promise<FlangeBoltingMaterial> {
+  async createMaterial(dto: CreateFlangeBoltingMaterialDto): Promise<FlangeBoltingMaterial> {
     const entity = this.boltingMaterialRepo.create({
       materialGroup: dto.materialGroup,
       studSpec: dto.studSpec,
@@ -45,9 +43,7 @@ export class FlangeBoltingService {
     return this.boltingRepo.save(entity);
   }
 
-  async bulkCreateBolting(
-    dto: BulkCreateFlangeBoltingDto,
-  ): Promise<FlangeBolting[]> {
+  async bulkCreateBolting(dto: BulkCreateFlangeBoltingDto): Promise<FlangeBolting[]> {
     const entities = dto.boltingData.map((data) =>
       this.boltingRepo.create({
         standardId: dto.standardId,
@@ -65,13 +61,11 @@ export class FlangeBoltingService {
 
   async findAllMaterials(): Promise<FlangeBoltingMaterial[]> {
     return this.boltingMaterialRepo.find({
-      order: { materialGroup: 'ASC' },
+      order: { materialGroup: "ASC" },
     });
   }
 
-  async findMaterialByGroup(
-    materialGroup: string,
-  ): Promise<FlangeBoltingMaterial | null> {
+  async findMaterialByGroup(materialGroup: string): Promise<FlangeBoltingMaterial | null> {
     return this.boltingMaterialRepo.findOne({
       where: { materialGroup },
     });
@@ -79,15 +73,15 @@ export class FlangeBoltingService {
 
   async findAllBolting(): Promise<FlangeBolting[]> {
     return this.boltingRepo.find({
-      relations: ['standard'],
-      order: { standardId: 'ASC', pressureClass: 'ASC', nps: 'ASC' },
+      relations: ["standard"],
+      order: { standardId: "ASC", pressureClass: "ASC", nps: "ASC" },
     });
   }
 
   async findBoltingByStandard(standardId: number): Promise<FlangeBolting[]> {
     return this.boltingRepo.find({
       where: { standardId },
-      order: { pressureClass: 'ASC', nps: 'ASC' },
+      order: { pressureClass: "ASC", nps: "ASC" },
     });
   }
 
@@ -97,7 +91,7 @@ export class FlangeBoltingService {
   ): Promise<FlangeBolting[]> {
     return this.boltingRepo.find({
       where: { standardId, pressureClass },
-      order: { nps: 'ASC' },
+      order: { nps: "ASC" },
     });
   }
 
@@ -111,16 +105,14 @@ export class FlangeBoltingService {
   ): Promise<FlangeBolting | null> {
     return this.boltingRepo.findOne({
       where: { standardId, pressureClass, nps },
-      relations: ['standard'],
+      relations: ["standard"],
     });
   }
 
   /**
    * Get bolting material specifications for a material group
    */
-  async getBoltingMaterialSpecs(
-    materialGroup: string,
-  ): Promise<FlangeBoltingMaterial | null> {
+  async getBoltingMaterialSpecs(materialGroup: string): Promise<FlangeBoltingMaterial | null> {
     return this.boltingMaterialRepo.findOne({
       where: { materialGroup },
     });
@@ -133,7 +125,7 @@ export class FlangeBoltingService {
     standardId: number,
     pressureClass: string,
     nps: string,
-    materialGroup: string = 'Carbon Steel A105 (Group 1.1)',
+    materialGroup: string = "Carbon Steel A105 (Group 1.1)",
   ): Promise<{
     bolting: FlangeBolting | null;
     materialSpecs: FlangeBoltingMaterial | null;

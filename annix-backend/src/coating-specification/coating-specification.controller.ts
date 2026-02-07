@@ -1,56 +1,49 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { CoatingSpecificationService } from './coating-specification.service';
+import { Controller, Get, Query } from "@nestjs/common";
+import { CoatingSpecificationService } from "./coating-specification.service";
 
-@Controller('coating-specifications')
+@Controller("coating-specifications")
 export class CoatingSpecificationController {
   constructor(private readonly coatingService: CoatingSpecificationService) {}
 
-  @Get('standards')
+  @Get("standards")
   findAllStandards() {
     return this.coatingService.findAllStandards();
   }
 
-  @Get('standards/by-code')
-  findStandardByCode(@Query('code') code: string) {
+  @Get("standards/by-code")
+  findStandardByCode(@Query("code") code: string) {
     return this.coatingService.findStandardByCode(code);
   }
 
-  @Get('environments')
+  @Get("environments")
   findAllEnvironments() {
     return this.coatingService.findAllEnvironments();
   }
 
-  @Get('environments/by-standard')
-  findEnvironmentsByStandard(@Query('standardCode') standardCode: string) {
+  @Get("environments/by-standard")
+  findEnvironmentsByStandard(@Query("standardCode") standardCode: string) {
     return this.coatingService.findEnvironmentsByStandard(standardCode);
   }
 
-  @Get('environments/by-category')
+  @Get("environments/by-category")
   findEnvironmentByCategory(
-    @Query('standardCode') standardCode: string,
-    @Query('category') category: string,
+    @Query("standardCode") standardCode: string,
+    @Query("category") category: string,
   ) {
-    return this.coatingService.findEnvironmentByCategory(
-      standardCode,
-      category,
-    );
+    return this.coatingService.findEnvironmentByCategory(standardCode, category);
   }
 
-  @Get('specifications/by-environment')
-  findSpecificationsByEnvironment(
-    @Query('environmentId') environmentId: string,
-  ) {
-    return this.coatingService.findSpecificationsByEnvironment(
-      Number(environmentId),
-    );
+  @Get("specifications/by-environment")
+  findSpecificationsByEnvironment(@Query("environmentId") environmentId: string) {
+    return this.coatingService.findSpecificationsByEnvironment(Number(environmentId));
   }
 
-  @Get('recommended')
+  @Get("recommended")
   getRecommendedCoatings(
-    @Query('standardCode') standardCode: string,
-    @Query('category') category: string,
-    @Query('coatingType') coatingType: 'external' | 'internal',
-    @Query('lifespan') lifespan?: string,
+    @Query("standardCode") standardCode: string,
+    @Query("category") category: string,
+    @Query("coatingType") coatingType: "external" | "internal",
+    @Query("lifespan") lifespan?: string,
   ) {
     return this.coatingService.getRecommendedCoatings(
       standardCode,
@@ -60,44 +53,44 @@ export class CoatingSpecificationController {
     );
   }
 
-  @Get('complete')
+  @Get("complete")
   getCompleteCoatingInfo(
-    @Query('standardCode') standardCode: string,
-    @Query('category') category: string,
+    @Query("standardCode") standardCode: string,
+    @Query("category") category: string,
   ) {
     return this.coatingService.getCompleteCoatingInfo(standardCode, category);
   }
 
-  @Get('lifespan-options')
+  @Get("lifespan-options")
   getLifespanOptions() {
     return this.coatingService.getLifespanOptions();
   }
 
-  @Get('corrosivity-categories')
+  @Get("corrosivity-categories")
   getCorrosivityCategories() {
     return this.coatingService.getCorrosivityCategories();
   }
 
-  @Get('iso12944/systems-by-durability')
+  @Get("iso12944/systems-by-durability")
   systemsByDurability(
-    @Query('category') category: string,
-    @Query('durability') durability: 'L' | 'M' | 'H' | 'VH',
+    @Query("category") category: string,
+    @Query("durability") durability: "L" | "M" | "H" | "VH",
   ) {
     return this.coatingService.systemsByDurability(category, durability);
   }
 
-  @Get('iso12944/systems-by-category')
-  systemsByCategory(@Query('category') category: string) {
+  @Get("iso12944/systems-by-category")
+  systemsByCategory(@Query("category") category: string) {
     return this.coatingService.systemsByCategory(category);
   }
 
-  @Get('iso12944/durabilities')
-  availableDurabilitiesForCategory(@Query('category') category: string) {
+  @Get("iso12944/durabilities")
+  availableDurabilitiesForCategory(@Query("category") category: string) {
     return this.coatingService.availableDurabilitiesForCategory(category);
   }
 
-  @Get('iso12944/system-by-code')
-  systemByCode(@Query('systemCode') systemCode: string) {
+  @Get("iso12944/system-by-code")
+  systemByCode(@Query("systemCode") systemCode: string) {
     return this.coatingService.systemByCode(systemCode);
   }
 }

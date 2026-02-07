@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { formatDateZA } from '@/app/lib/datetime';
-import { useAdminCustomers } from '@/app/lib/query/hooks';
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
+import { useAdminCustomers } from "@/app/lib/query/hooks";
 
 export default function AdminCustomersPage() {
   const [page, setPage] = useState(1);
   const limit = 20;
 
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
-    document.title = 'Annix Admin';
+    document.title = "Annix Admin";
   }, []);
 
   useEffect(() => {
@@ -40,21 +40,21 @@ export default function AdminCustomersPage() {
   const error = customersQuery.error
     ? customersQuery.error instanceof Error
       ? customersQuery.error.message
-      : 'Failed to load customers'
+      : "Failed to load customers"
     : null;
 
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'suspended':
-        return 'bg-red-100 text-red-800';
-      case 'deactivated':
-        return 'bg-gray-100 text-gray-600';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "suspended":
+        return "bg-red-100 text-red-800";
+      case "deactivated":
+        return "bg-gray-100 text-gray-600";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -67,9 +67,7 @@ export default function AdminCustomersPage() {
             Manage customer accounts, view login history, and handle account actions
           </p>
         </div>
-        <div className="text-sm text-gray-500">
-          Total: {total} customers
-        </div>
+        <div className="text-sm text-gray-500">Total: {total} customers</div>
       </div>
 
       {/* Filters */}
@@ -119,14 +117,24 @@ export default function AdminCustomersPage() {
           </div>
         ) : customers.length === 0 ? (
           <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+              />
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">No customers found</h3>
             <p className="mt-1 text-sm text-gray-500">
               {search || statusFilter
-                ? 'Try adjusting your filters.'
-                : 'No customers have registered yet.'}
+                ? "Try adjusting your filters."
+                : "No customers have registered yet."}
             </p>
           </div>
         ) : (
@@ -169,22 +177,44 @@ export default function AdminCustomersPage() {
                       <span className="text-sm text-gray-900">{customer.companyName}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(customer.accountStatus)}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(customer.accountStatus)}`}
+                      >
                         {customer.accountStatus}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {customer.deviceBound ? (
                         <span className="inline-flex items-center text-green-600">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                           Bound
                         </span>
                       ) : (
                         <span className="inline-flex items-center text-gray-400">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                           Not Bound
                         </span>
@@ -228,19 +258,32 @@ export default function AdminCustomersPage() {
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm text-gray-700">
-                      Showing page <span className="font-medium">{page}</span> of{' '}
+                      Showing page <span className="font-medium">{page}</span> of{" "}
                       <span className="font-medium">{totalPages}</span>
                     </p>
                   </div>
                   <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <nav
+                      className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+                      aria-label="Pagination"
+                    >
                       <button
                         onClick={() => setPage(Math.max(1, page - 1))}
                         disabled={page === 1}
                         className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 19l-7-7 7-7"
+                          />
                         </svg>
                       </button>
                       <button
@@ -248,8 +291,18 @@ export default function AdminCustomersPage() {
                         disabled={page === totalPages}
                         className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
                         </svg>
                       </button>
                     </nav>

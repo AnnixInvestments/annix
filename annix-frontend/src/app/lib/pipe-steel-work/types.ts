@@ -64,15 +64,15 @@ export interface PadStandardResponse {
 }
 
 export type PipeMaterial =
-  | 'CARBON_STEEL'
-  | 'STAINLESS_304'
-  | 'STAINLESS_316'
-  | 'COPPER'
-  | 'ALUMINUM'
-  | 'CHROME_MOLY'
-  | 'CAST_IRON'
-  | 'PVC'
-  | 'HDPE';
+  | "CARBON_STEEL"
+  | "STAINLESS_304"
+  | "STAINLESS_316"
+  | "COPPER"
+  | "ALUMINUM"
+  | "CHROME_MOLY"
+  | "CAST_IRON"
+  | "PVC"
+  | "HDPE";
 
 export interface ThermalExpansionRequest {
   pipeLengthM: number;
@@ -96,7 +96,7 @@ export interface ThermalExpansionResponse {
 }
 
 export interface CalculationRequest {
-  workType: 'pipe_support' | 'reinforcement_pad' | 'saddle_support' | 'shoe_support';
+  workType: "pipe_support" | "reinforcement_pad" | "saddle_support" | "shoe_support";
   nominalDiameterMm: number;
   scheduleNumber?: string;
   bracketType?: string;
@@ -128,7 +128,7 @@ export interface ValidateBracketRequest {
 }
 
 export interface ValidationIssue {
-  severity: 'error' | 'warning' | 'info';
+  severity: "error" | "warning" | "info";
   code: string;
   message: string;
 }
@@ -146,7 +146,7 @@ export interface BracketCompatibilityResponse {
 
 export interface BatchCalculationItem {
   itemId: string;
-  workType: 'pipe_support' | 'reinforcement_pad' | 'saddle_support' | 'shoe_support';
+  workType: "pipe_support" | "reinforcement_pad" | "saddle_support" | "shoe_support";
   nominalDiameterMm: number;
   scheduleNumber?: string;
   bracketType?: string;
@@ -179,7 +179,7 @@ export interface BatchCalculationResponse {
   };
 }
 
-export type SupportStandard = 'MSS_SP_58' | 'DIN_2509' | 'EN_13480' | 'ASME_B31_1' | 'ASME_B31_3';
+export type SupportStandard = "MSS_SP_58" | "DIN_2509" | "EN_13480" | "ASME_B31_1" | "ASME_B31_3";
 
 export interface MultiStandardSpacingRequest {
   nominalDiameterMm: number;
@@ -206,7 +206,7 @@ export interface MultiStandardSpacingResponse {
 export interface ReinforcementPadWithDeratingRequest extends ReinforcementPadRequest {
   operatingTempC?: number;
   materialPNumber?: number;
-  jointType?: 'fillet' | 'full_penetration';
+  jointType?: "fillet" | "full_penetration";
   includeStressAnalysis?: boolean;
 }
 
@@ -219,7 +219,7 @@ export interface ReinforcementPadWithDeratingResponse extends ReinforcementPadRe
   combinedStressRatio?: number;
 }
 
-export type SupportConfiguration = 'simply_supported' | 'fixed_fixed' | 'cantilever';
+export type SupportConfiguration = "simply_supported" | "fixed_fixed" | "cantilever";
 
 export interface VibrationAnalysisRequest {
   nominalDiameterMm: number;
@@ -231,7 +231,7 @@ export interface VibrationAnalysisRequest {
   supportConfig?: SupportConfiguration;
 }
 
-export type ResonanceRisk = 'none' | 'low' | 'moderate' | 'high' | 'critical';
+export type ResonanceRisk = "none" | "low" | "moderate" | "high" | "critical";
 
 export interface VibrationAnalysisResponse {
   naturalFrequencyHz: number;
@@ -255,7 +255,7 @@ export interface StressAnalysisRequest {
   yieldStrengthMpa?: number;
 }
 
-export type StressStatus = 'adequate' | 'marginal' | 'inadequate';
+export type StressStatus = "adequate" | "marginal" | "inadequate";
 
 export interface StressAnalysisResponse {
   rodTensileStressMpa: number;
@@ -268,9 +268,21 @@ export interface StressAnalysisResponse {
   notes: string;
 }
 
-export type MaterialCategory = 'CARBON_STEEL' | 'STAINLESS' | 'ALLOY' | 'COPPER' | 'ALUMINUM' | 'PLASTIC' | 'CAST_IRON';
-export type GalvanicCorrosionRisk = 'none' | 'low' | 'moderate' | 'high';
-export type CompatibilityRating = 'excellent' | 'good' | 'acceptable' | 'caution' | 'not_recommended';
+export type MaterialCategory =
+  | "CARBON_STEEL"
+  | "STAINLESS"
+  | "ALLOY"
+  | "COPPER"
+  | "ALUMINUM"
+  | "PLASTIC"
+  | "CAST_IRON";
+export type GalvanicCorrosionRisk = "none" | "low" | "moderate" | "high";
+export type CompatibilityRating =
+  | "excellent"
+  | "good"
+  | "acceptable"
+  | "caution"
+  | "not_recommended";
 
 export interface MaterialCompatibilityRequest {
   pipeMaterial: PipeMaterial;
@@ -291,7 +303,7 @@ export interface MaterialCompatibilityResponse {
   notes: string;
 }
 
-export type ExportFormat = 'PDF' | 'EXCEL' | 'CSV';
+export type ExportFormat = "PDF" | "EXCEL" | "CSV";
 
 export interface ExportReportRequest {
   format: ExportFormat;
@@ -315,13 +327,13 @@ export interface ConfigValue {
   id: number;
   configKey: string;
   configValue: string;
-  valueType: 'string' | 'number' | 'boolean' | 'json';
+  valueType: "string" | "number" | "boolean" | "json";
   description: string | null;
   category: string | null;
   unit: string | null;
 }
 
-export type PlateSizeCategory = 'small' | 'medium' | 'large';
+export type PlateSizeCategory = "small" | "medium" | "large";
 
 export interface StandardPlateSize {
   id: string;
@@ -335,13 +347,13 @@ export interface StandardPlateSize {
 }
 
 export type GasketMaterialType =
-  | 'spiral_wound'
-  | 'ring_joint'
-  | 'soft_cut'
-  | 'ptfe'
-  | 'graphite'
-  | 'rubber'
-  | 'compressed_asbestos_free';
+  | "spiral_wound"
+  | "ring_joint"
+  | "soft_cut"
+  | "ptfe"
+  | "graphite"
+  | "rubber"
+  | "compressed_asbestos_free";
 
 export interface GasketMaterial {
   code: string;
@@ -375,12 +387,12 @@ export interface GasketCompatibilityResponse {
 }
 
 export type HeatTreatmentType =
-  | 'pwht'
-  | 'stress_relief'
-  | 'normalizing'
-  | 'annealing'
-  | 'solution_annealing'
-  | 'quench_temper';
+  | "pwht"
+  | "stress_relief"
+  | "normalizing"
+  | "annealing"
+  | "solution_annealing"
+  | "quench_temper";
 
 export interface HeatTreatment {
   code: string;

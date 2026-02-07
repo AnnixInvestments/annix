@@ -1,66 +1,63 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PipeSupportSpacing } from './entities/pipe-support-spacing.entity';
-import { BracketTypeEntity } from './entities/bracket-type.entity';
-import { ReinforcementPadStandardEntity } from './entities/reinforcement-pad-standard.entity';
-import { BracketDimensionBySizeEntity } from './entities/bracket-dimension-by-size.entity';
-import { PipeSteelWorkConfigEntity } from './entities/pipe-steel-work-config.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import {
-  CalculateSupportSpacingDto,
-  CalculateReinforcementPadDto,
-  CalculateNumberOfSupportsDto,
-  SupportSpacingResponseDto,
-  ReinforcementPadResponseDto,
-  BracketTypeResponseDto,
-  PipeSteelWorkCalculationDto,
-  PipeSteelWorkCalculationResponseDto,
-  PipeSteelWorkTypeDto,
-  CalculateThermalExpansionDto,
-  ThermalExpansionResponseDto,
-  PipeMaterialDto,
-  ValidateBracketCompatibilityDto,
-  BracketCompatibilityResponseDto,
-  ValidationIssue,
   BatchCalculationDto,
   BatchCalculationResponseDto,
   BatchCalculationResultDto,
-  SupportStandardDto,
-  CalculateSupportSpacingMultiStandardDto,
-  MultiStandardSpacingResponseDto,
-  StandardComparisonDto,
+  BracketCompatibilityResponseDto,
+  BracketTypeResponseDto,
+  CalculateNumberOfSupportsDto,
+  CalculateReinforcementPadDto,
   CalculateReinforcementPadWithDeratingDto,
-  ReinforcementPadWithDeratingResponseDto,
-  CalculateVibrationAnalysisDto,
-  VibrationAnalysisResponseDto,
   CalculateStressAnalysisDto,
-  StressAnalysisResponseDto,
-  MaterialCompatibilityCheckDto,
-  MaterialCompatibilityResponseDto,
-  MaterialCategoryDto,
+  CalculateSupportSpacingDto,
+  CalculateSupportSpacingMultiStandardDto,
+  CalculateThermalExpansionDto,
+  CalculateVibrationAnalysisDto,
+  ExportFormatDto,
   ExportReportDto,
   ExportReportResponseDto,
-  ExportFormatDto,
-  StandardPlateSizeDto,
-  PlateSizeCategory,
-  GasketMaterialDto,
-  GasketMaterialType,
   GasketCompatibilityCheckDto,
   GasketCompatibilityResponseDto,
+  GasketMaterialDto,
+  GasketMaterialType,
   HeatTreatmentDto,
-  HeatTreatmentType,
   HeatTreatmentRequirementDto,
   HeatTreatmentRequirementResponseDto,
-} from './dto/pipe-steel-work.dto';
+  HeatTreatmentType,
+  MaterialCategoryDto,
+  MaterialCompatibilityCheckDto,
+  MaterialCompatibilityResponseDto,
+  MultiStandardSpacingResponseDto,
+  PipeMaterialDto,
+  PipeSteelWorkCalculationDto,
+  PipeSteelWorkCalculationResponseDto,
+  PipeSteelWorkTypeDto,
+  PlateSizeCategory,
+  ReinforcementPadResponseDto,
+  ReinforcementPadWithDeratingResponseDto,
+  StandardComparisonDto,
+  StandardPlateSizeDto,
+  StressAnalysisResponseDto,
+  SupportSpacingResponseDto,
+  SupportStandardDto,
+  ThermalExpansionResponseDto,
+  ValidateBracketCompatibilityDto,
+  ValidationIssue,
+  VibrationAnalysisResponseDto,
+} from "./dto/pipe-steel-work.dto";
+import { BracketDimensionBySizeEntity } from "./entities/bracket-dimension-by-size.entity";
+import { BracketTypeEntity } from "./entities/bracket-type.entity";
+import { PipeSteelWorkConfigEntity } from "./entities/pipe-steel-work-config.entity";
+import { PipeSupportSpacing } from "./entities/pipe-support-spacing.entity";
+import { ReinforcementPadStandardEntity } from "./entities/reinforcement-pad-standard.entity";
 
 @Injectable()
 export class PipeSteelWorkService {
   private readonly STEEL_DENSITY_KG_M3 = 7850;
 
-  private readonly thermalExpansionCoefficients: Record<
-    PipeMaterialDto,
-    number
-  > = {
+  private readonly thermalExpansionCoefficients: Record<PipeMaterialDto, number> = {
     [PipeMaterialDto.CARBON_STEEL]: 0.012,
     [PipeMaterialDto.STAINLESS_304]: 0.017,
     [PipeMaterialDto.STAINLESS_316]: 0.016,
@@ -138,10 +135,7 @@ export class PipeSteelWorkService {
     private readonly configRepo: Repository<PipeSteelWorkConfigEntity>,
   ) {}
 
-  async configValue(
-    key: string,
-    defaultValue?: string,
-  ): Promise<string | null> {
+  async configValue(key: string, defaultValue?: string): Promise<string | null> {
     if (this.configCache.has(key)) {
       return this.configCache.get(key) || defaultValue || null;
     }
@@ -161,7 +155,7 @@ export class PipeSteelWorkService {
     const value = await this.configValue(key);
     if (value !== null) {
       const parsed = parseFloat(value);
-      return isNaN(parsed) ? defaultValue : parsed;
+      return Number.isNaN(parsed) ? defaultValue : parsed;
     }
     return defaultValue;
   }
@@ -170,18 +164,15 @@ export class PipeSteelWorkService {
     if (category) {
       return this.configRepo.find({
         where: { category },
-        order: { configKey: 'ASC' },
+        order: { configKey: "ASC" },
       });
     }
     return this.configRepo.find({
-      order: { category: 'ASC', configKey: 'ASC' },
+      order: { category: "ASC", configKey: "ASC" },
     });
   }
 
-  async updateConfig(
-    key: string,
-    value: string,
-  ): Promise<PipeSteelWorkConfigEntity | null> {
+  async updateConfig(key: string, value: string): Promise<PipeSteelWorkConfigEntity | null> {
     const config = await this.configRepo.findOne({
       where: { configKey: key },
     });
@@ -211,12 +202,10 @@ export class PipeSteelWorkService {
     });
   }
 
-  async bracketDimensionsForType(
-    bracketTypeCode: string,
-  ): Promise<BracketDimensionBySizeEntity[]> {
+  async bracketDimensionsForType(bracketTypeCode: string): Promise<BracketDimensionBySizeEntity[]> {
     return this.bracketDimensionRepo.find({
       where: { bracketTypeCode },
-      order: { nbMm: 'ASC' },
+      order: { nbMm: "ASC" },
     });
   }
 
@@ -231,7 +220,7 @@ export class PipeSteelWorkService {
         waterFilledSpacingM: defaultSpacing.water,
         vaporGasSpacingM: defaultSpacing.vapor,
         rodSizeMm: defaultSpacing.rod,
-        standard: 'MSS-SP-58 (interpolated)',
+        standard: "MSS-SP-58 (interpolated)",
       };
     }
 
@@ -240,13 +229,11 @@ export class PipeSteelWorkService {
       waterFilledSpacingM: spacing.water,
       vaporGasSpacingM: spacing.vapor,
       rodSizeMm: spacing.rod,
-      standard: 'MSS-SP-58',
+      standard: "MSS-SP-58",
     };
   }
 
-  reinforcementPad(
-    dto: CalculateReinforcementPadDto,
-  ): ReinforcementPadResponseDto {
+  reinforcementPad(dto: CalculateReinforcementPadDto): ReinforcementPadResponseDto {
     const {
       headerOdMm,
       headerWallMm,
@@ -269,11 +256,9 @@ export class PipeSteelWorkService {
     const yCoeff = 0.4;
 
     const designHeaderWall =
-      (pressure * headerOdMm) /
-      (2 * (allowableStress * jointEfficiency + pressure * yCoeff));
+      (pressure * headerOdMm) / (2 * (allowableStress * jointEfficiency + pressure * yCoeff));
     const designBranchWall =
-      (pressure * branchOdMm) /
-      (2 * (allowableStress * jointEfficiency + pressure * yCoeff));
+      (pressure * branchOdMm) / (2 * (allowableStress * jointEfficiency + pressure * yCoeff));
 
     const d1 = branchIdMm;
     const Th = headerWallMm;
@@ -323,9 +308,7 @@ export class PipeSteelWorkService {
         padOuterDiameter += Math.ceil(additionalNeeded / padThickness / 2) * 10;
       }
 
-      const padArea =
-        (Math.PI / 4) *
-        (Math.pow(padOuterDiameter, 2) - Math.pow(padInnerDiameter, 2));
+      const padArea = (Math.PI / 4) * (padOuterDiameter ** 2 - padInnerDiameter ** 2);
       const padVolume = (padArea * padThickness) / 1e9;
       padWeight = padVolume * this.STEEL_DENSITY_KG_M3;
     }
@@ -349,68 +332,66 @@ export class PipeSteelWorkService {
     return Math.ceil(pipelineLengthM / supportSpacingM) + 1;
   }
 
-  async bracketTypes(
-    nominalDiameterMm?: number,
-  ): Promise<BracketTypeResponseDto[]> {
+  async bracketTypes(nominalDiameterMm?: number): Promise<BracketTypeResponseDto[]> {
     const defaultBrackets: BracketTypeResponseDto[] = [
       {
-        typeCode: 'CLEVIS_HANGER',
-        displayName: 'Clevis Hanger',
-        description: 'For suspended pipelines, allows slight movement',
+        typeCode: "CLEVIS_HANGER",
+        displayName: "Clevis Hanger",
+        description: "For suspended pipelines, allows slight movement",
         isSuitable: true,
         baseCostPerUnit: 150,
         allowsExpansion: true,
         isAnchorType: false,
       },
       {
-        typeCode: 'THREE_BOLT_CLAMP',
-        displayName: 'Three-Bolt Pipe Clamp',
-        description: 'Heavy-duty support for larger pipes',
+        typeCode: "THREE_BOLT_CLAMP",
+        displayName: "Three-Bolt Pipe Clamp",
+        description: "Heavy-duty support for larger pipes",
         isSuitable: nominalDiameterMm ? nominalDiameterMm >= 100 : true,
         baseCostPerUnit: 250,
         allowsExpansion: false,
         isAnchorType: false,
       },
       {
-        typeCode: 'WELDED_BRACKET',
-        displayName: 'Welded Bracket',
-        description: 'Fixed support welded to structure',
+        typeCode: "WELDED_BRACKET",
+        displayName: "Welded Bracket",
+        description: "Fixed support welded to structure",
         isSuitable: true,
         baseCostPerUnit: 180,
         allowsExpansion: false,
         isAnchorType: true,
       },
       {
-        typeCode: 'PIPE_SADDLE',
-        displayName: 'Pipe Saddle',
-        description: 'Base-mounted support with curved cradle',
+        typeCode: "PIPE_SADDLE",
+        displayName: "Pipe Saddle",
+        description: "Base-mounted support with curved cradle",
         isSuitable: nominalDiameterMm ? nominalDiameterMm >= 150 : true,
         baseCostPerUnit: 280,
         allowsExpansion: true,
         isAnchorType: false,
       },
       {
-        typeCode: 'U_BOLT',
-        displayName: 'U-Bolt Clamp',
-        description: 'Simple, economical support for smaller pipes',
+        typeCode: "U_BOLT",
+        displayName: "U-Bolt Clamp",
+        description: "Simple, economical support for smaller pipes",
         isSuitable: nominalDiameterMm ? nominalDiameterMm <= 150 : true,
         baseCostPerUnit: 80,
         allowsExpansion: false,
         isAnchorType: false,
       },
       {
-        typeCode: 'ROLLER_SUPPORT',
-        displayName: 'Roller Support',
-        description: 'Allows axial thermal expansion movement',
+        typeCode: "ROLLER_SUPPORT",
+        displayName: "Roller Support",
+        description: "Allows axial thermal expansion movement",
         isSuitable: true,
         baseCostPerUnit: 450,
         allowsExpansion: true,
         isAnchorType: false,
       },
       {
-        typeCode: 'SLIDE_PLATE',
-        displayName: 'Slide Plate',
-        description: 'Low-friction support for thermal expansion',
+        typeCode: "SLIDE_PLATE",
+        displayName: "Slide Plate",
+        description: "Low-friction support for thermal expansion",
         isSuitable: nominalDiameterMm ? nominalDiameterMm >= 200 : true,
         baseCostPerUnit: 350,
         allowsExpansion: true,
@@ -421,9 +402,7 @@ export class PipeSteelWorkService {
     return defaultBrackets;
   }
 
-  calculate(
-    dto: PipeSteelWorkCalculationDto,
-  ): PipeSteelWorkCalculationResponseDto {
+  calculate(dto: PipeSteelWorkCalculationDto): PipeSteelWorkCalculationResponseDto {
     const response: PipeSteelWorkCalculationResponseDto = {
       workType: dto.workType,
     };
@@ -443,13 +422,9 @@ export class PipeSteelWorkService {
           supportSpacingM: spacing.waterFilledSpacingM,
         });
 
-        const bracketWeight = this.estimateBracketWeight(
-          dto.nominalDiameterMm,
-          dto.bracketType,
-        );
+        const bracketWeight = this.estimateBracketWeight(dto.nominalDiameterMm, dto.bracketType);
         response.weightPerUnitKg = bracketWeight;
-        response.totalWeightKg =
-          Math.round(bracketWeight * response.numberOfSupports * 100) / 100;
+        response.totalWeightKg = Math.round(bracketWeight * response.numberOfSupports * 100) / 100;
 
         const baseCost = this.estimateBracketCost(dto.bracketType);
         response.unitCost = baseCost;
@@ -461,10 +436,7 @@ export class PipeSteelWorkService {
 
     if (dto.workType === PipeSteelWorkTypeDto.REINFORCEMENT_PAD) {
       const od = this.nbToOdMap[dto.nominalDiameterMm] || dto.nominalDiameterMm;
-      const wallThickness = this.estimateWallThickness(
-        dto.nominalDiameterMm,
-        dto.scheduleNumber,
-      );
+      const wallThickness = this.estimateWallThickness(dto.nominalDiameterMm, dto.scheduleNumber);
       const branchOd = dto.branchDiameterMm
         ? this.nbToOdMap[dto.branchDiameterMm] || dto.branchDiameterMm
         : od / 2;
@@ -483,14 +455,11 @@ export class PipeSteelWorkService {
 
       response.reinforcementPad = padResult;
       response.weightPerUnitKg = padResult.padWeightKg;
-      response.totalWeightKg =
-        Math.round(padResult.padWeightKg * (dto.quantity || 1) * 100) / 100;
+      response.totalWeightKg = Math.round(padResult.padWeightKg * (dto.quantity || 1) * 100) / 100;
 
       const steelPricePerKg = 25;
       const fabricationFactor = 2.5;
-      response.unitCost = Math.round(
-        padResult.padWeightKg * steelPricePerKg * fabricationFactor,
-      );
+      response.unitCost = Math.round(padResult.padWeightKg * steelPricePerKg * fabricationFactor);
       response.totalCost = response.unitCost * (dto.quantity || 1);
 
       response.notes = padResult.notes;
@@ -499,9 +468,7 @@ export class PipeSteelWorkService {
     return response;
   }
 
-  thermalExpansion(
-    dto: CalculateThermalExpansionDto,
-  ): ThermalExpansionResponseDto {
+  thermalExpansion(dto: CalculateThermalExpansionDto): ThermalExpansionResponseDto {
     const {
       pipeLengthM,
       installationTempC,
@@ -512,8 +479,7 @@ export class PipeSteelWorkService {
 
     const selectedMaterial = material || PipeMaterialDto.CARBON_STEEL;
     const coefficient =
-      customCoefficientMmPerMPerC ||
-      this.thermalExpansionCoefficients[selectedMaterial];
+      customCoefficientMmPerMPerC || this.thermalExpansionCoefficients[selectedMaterial];
 
     const temperatureChange = operatingTempC - installationTempC;
     const isExpansion = temperatureChange > 0;
@@ -525,20 +491,18 @@ export class PipeSteelWorkService {
 
     const maxJointMovement = 100;
     const recommendedJoints =
-      expansionMm > maxJointMovement
-        ? Math.ceil(expansionMm / maxJointMovement)
-        : 1;
+      expansionMm > maxJointMovement ? Math.ceil(expansionMm / maxJointMovement) : 1;
 
     const materialNames: Record<PipeMaterialDto, string> = {
-      [PipeMaterialDto.CARBON_STEEL]: 'Carbon Steel (ASTM A106/A53)',
-      [PipeMaterialDto.STAINLESS_304]: 'Stainless Steel 304',
-      [PipeMaterialDto.STAINLESS_316]: 'Stainless Steel 316',
-      [PipeMaterialDto.COPPER]: 'Copper',
-      [PipeMaterialDto.ALUMINUM]: 'Aluminum',
-      [PipeMaterialDto.CHROME_MOLY]: 'Chrome-Moly Steel (ASTM A335)',
-      [PipeMaterialDto.CAST_IRON]: 'Cast Iron',
-      [PipeMaterialDto.PVC]: 'PVC',
-      [PipeMaterialDto.HDPE]: 'HDPE',
+      [PipeMaterialDto.CARBON_STEEL]: "Carbon Steel (ASTM A106/A53)",
+      [PipeMaterialDto.STAINLESS_304]: "Stainless Steel 304",
+      [PipeMaterialDto.STAINLESS_316]: "Stainless Steel 316",
+      [PipeMaterialDto.COPPER]: "Copper",
+      [PipeMaterialDto.ALUMINUM]: "Aluminum",
+      [PipeMaterialDto.CHROME_MOLY]: "Chrome-Moly Steel (ASTM A335)",
+      [PipeMaterialDto.CAST_IRON]: "Cast Iron",
+      [PipeMaterialDto.PVC]: "PVC",
+      [PipeMaterialDto.HDPE]: "HDPE",
     };
 
     const notes = this.buildThermalExpansionNotes(
@@ -552,9 +516,7 @@ export class PipeSteelWorkService {
     return {
       pipeLengthM,
       temperatureChangeC: temperatureChange,
-      material: customCoefficientMmPerMPerC
-        ? 'Custom'
-        : materialNames[selectedMaterial],
+      material: customCoefficientMmPerMPerC ? "Custom" : materialNames[selectedMaterial],
       coefficientMmPerMPerC: coefficient,
       expansionMm: Math.round(expansionMm * 100) / 100,
       expansionPerMeterMm: Math.round(expansionPerMeter * 1000) / 1000,
@@ -572,18 +534,17 @@ export class PipeSteelWorkService {
     expansion: number,
     joints: number,
   ): string {
-    const direction = tempChange > 0 ? 'expansion' : 'contraction';
+    const direction = tempChange > 0 ? "expansion" : "contraction";
     const absExpansion = Math.abs(expansion);
 
     let note = `Thermal ${direction}: ΔL = α × L × ΔT = ${coefficient} × L × ${Math.abs(tempChange)}°C. `;
 
     if (absExpansion < 10) {
-      note += 'Minor movement - standard guides/anchors may suffice. ';
+      note += "Minor movement - standard guides/anchors may suffice. ";
     } else if (absExpansion < 50) {
-      note +=
-        'Moderate movement - consider expansion loops or bellows joints. ';
+      note += "Moderate movement - consider expansion loops or bellows joints. ";
     } else {
-      note += 'Significant movement - expansion joints required. ';
+      note += "Significant movement - expansion joints required. ";
     }
 
     if (joints > 1) {
@@ -591,8 +552,7 @@ export class PipeSteelWorkService {
     }
 
     if (material === PipeMaterialDto.PVC || material === PipeMaterialDto.HDPE) {
-      note +=
-        'Note: Plastic materials have high expansion rates - ensure adequate guide spacing.';
+      note += "Note: Plastic materials have high expansion rates - ensure adequate guide spacing.";
     }
 
     return note;
@@ -626,37 +586,33 @@ export class PipeSteelWorkService {
     };
 
     const expansionBrackets = [
-      'ROLLER_SUPPORT',
-      'SLIDE_PLATE',
-      'SPRING_HANGER',
-      'CLEVIS_HANGER',
-      'PIPE_SADDLE',
+      "ROLLER_SUPPORT",
+      "SLIDE_PLATE",
+      "SPRING_HANGER",
+      "CLEVIS_HANGER",
+      "PIPE_SADDLE",
     ];
-    const anchorBrackets = [
-      'WELDED_BRACKET',
-      'THREE_BOLT_CLAMP',
-      'RISER_CLAMP',
-    ];
+    const anchorBrackets = ["WELDED_BRACKET", "THREE_BOLT_CLAMP", "RISER_CLAMP"];
 
     const range = bracketSizeRanges[bracketTypeCode.toUpperCase()];
     if (!range) {
       issues.push({
-        severity: 'error',
-        code: 'UNKNOWN_BRACKET_TYPE',
+        severity: "error",
+        code: "UNKNOWN_BRACKET_TYPE",
         message: `Unknown bracket type: ${bracketTypeCode}`,
       });
     } else {
       if (nominalDiameterMm < range.min) {
         issues.push({
-          severity: 'error',
-          code: 'PIPE_TOO_SMALL',
+          severity: "error",
+          code: "PIPE_TOO_SMALL",
           message: `Pipe size ${nominalDiameterMm}mm is below minimum ${range.min}mm for ${bracketTypeCode}`,
         });
       }
       if (nominalDiameterMm > range.max) {
         issues.push({
-          severity: 'error',
-          code: 'PIPE_TOO_LARGE',
+          severity: "error",
+          code: "PIPE_TOO_LARGE",
           message: `Pipe size ${nominalDiameterMm}mm exceeds maximum ${range.max}mm for ${bracketTypeCode}`,
         });
       }
@@ -673,9 +629,7 @@ export class PipeSteelWorkService {
         isWaterFilled,
       });
       const spacingM =
-        isWaterFilled !== false
-          ? spacing.waterFilledSpacingM
-          : spacing.vaporGasSpacingM;
+        isWaterFilled !== false ? spacing.waterFilledSpacingM : spacing.vaporGasSpacingM;
 
       const pipeWeight = this.estimatePipeWeightPerMeter(
         nominalDiameterMm,
@@ -690,20 +644,18 @@ export class PipeSteelWorkService {
       );
       if (bracketDimension) {
         bracketMaxLoadKg = bracketDimension.maxLoadKg;
-        loadUtilizationPercent = Math.round(
-          (estimatedLoadKg / bracketMaxLoadKg) * 100,
-        );
+        loadUtilizationPercent = Math.round((estimatedLoadKg / bracketMaxLoadKg) * 100);
 
         if (loadUtilizationPercent > 100) {
           issues.push({
-            severity: 'error',
-            code: 'LOAD_EXCEEDS_CAPACITY',
+            severity: "error",
+            code: "LOAD_EXCEEDS_CAPACITY",
             message: `Estimated load ${estimatedLoadKg}kg exceeds bracket capacity ${bracketMaxLoadKg}kg (${loadUtilizationPercent}% utilization)`,
           });
         } else if (loadUtilizationPercent > 80) {
           issues.push({
-            severity: 'warning',
-            code: 'HIGH_LOAD_UTILIZATION',
+            severity: "warning",
+            code: "HIGH_LOAD_UTILIZATION",
             message: `High load utilization at ${loadUtilizationPercent}%. Consider a higher-capacity bracket.`,
           });
         }
@@ -711,13 +663,11 @@ export class PipeSteelWorkService {
     }
 
     if (expectedExpansionMm && expectedExpansionMm > 10) {
-      const isExpansionBracket = expansionBrackets.includes(
-        bracketTypeCode.toUpperCase(),
-      );
+      const isExpansionBracket = expansionBrackets.includes(bracketTypeCode.toUpperCase());
       if (!isExpansionBracket) {
         issues.push({
-          severity: 'warning',
-          code: 'EXPANSION_NOT_ACCOMMODATED',
+          severity: "warning",
+          code: "EXPANSION_NOT_ACCOMMODATED",
           message: `${bracketTypeCode} does not allow thermal movement. Expected expansion: ${expectedExpansionMm}mm. Consider roller or slide plate supports.`,
         });
       }
@@ -727,26 +677,25 @@ export class PipeSteelWorkService {
       const isAnchor = anchorBrackets.includes(bracketTypeCode.toUpperCase());
       if (!isAnchor) {
         issues.push({
-          severity: 'info',
-          code: 'NOT_ANCHOR_TYPE',
+          severity: "info",
+          code: "NOT_ANCHOR_TYPE",
           message: `${bracketTypeCode} allows movement. If this is an anchor point, consider welded bracket or three-bolt clamp.`,
         });
       }
     }
 
-    const hasErrors = issues.some((i) => i.severity === 'error');
-    const hasWarnings = issues.some((i) => i.severity === 'warning');
+    const hasErrors = issues.some((i) => i.severity === "error");
+    const hasWarnings = issues.some((i) => i.severity === "warning");
 
     let recommendation: string;
     if (hasErrors) {
-      recommendation = 'Not recommended. Please address the errors above.';
+      recommendation = "Not recommended. Please address the errors above.";
     } else if (hasWarnings) {
-      recommendation = 'Acceptable with caution. Review warnings above.';
+      recommendation = "Acceptable with caution. Review warnings above.";
     } else if (issues.length === 0) {
-      recommendation =
-        'Excellent choice. Bracket is well-suited for this application.';
+      recommendation = "Excellent choice. Bracket is well-suited for this application.";
     } else {
-      recommendation = 'Acceptable. Review informational notes above.';
+      recommendation = "Acceptable. Review informational notes above.";
     }
 
     return {
@@ -761,21 +710,17 @@ export class PipeSteelWorkService {
     };
   }
 
-  private estimatePipeWeightPerMeter(
-    nbMm: number,
-    schedule?: string,
-    waterFilled = true,
-  ): number {
+  private estimatePipeWeightPerMeter(nbMm: number, schedule?: string, waterFilled = true): number {
     const od = this.nbToOdMap[nbMm] || nbMm * 1.1;
     const wall = this.estimateWallThickness(nbMm, schedule);
     const id = od - 2 * wall;
 
-    const steelArea = (Math.PI / 4) * (Math.pow(od, 2) - Math.pow(id, 2));
+    const steelArea = (Math.PI / 4) * (od ** 2 - id ** 2);
     const steelWeight = (steelArea / 1e6) * this.STEEL_DENSITY_KG_M3;
 
     let waterWeight = 0;
     if (waterFilled) {
-      const waterArea = (Math.PI / 4) * Math.pow(id, 2);
+      const waterArea = (Math.PI / 4) * id ** 2;
       waterWeight = (waterArea / 1e6) * 1000;
     }
 
@@ -832,25 +777,16 @@ export class PipeSteelWorkService {
 
     return {
       water:
-        Math.round(
-          (lowerSpacing.water +
-            ratio * (upperSpacing.water - lowerSpacing.water)) *
-            10,
-        ) / 10,
+        Math.round((lowerSpacing.water + ratio * (upperSpacing.water - lowerSpacing.water)) * 10) /
+        10,
       vapor:
-        Math.round(
-          (lowerSpacing.vapor +
-            ratio * (upperSpacing.vapor - lowerSpacing.vapor)) *
-            10,
-        ) / 10,
+        Math.round((lowerSpacing.vapor + ratio * (upperSpacing.vapor - lowerSpacing.vapor)) * 10) /
+        10,
       rod: lowerSpacing.rod,
     };
   }
 
-  private estimateBracketWeight(
-    nominalDiameterMm: number,
-    bracketType?: string,
-  ): number {
+  private estimateBracketWeight(nominalDiameterMm: number, bracketType?: string): number {
     const baseWeight = 0.5 + (nominalDiameterMm / 100) * 1.5;
 
     const multipliers: Record<string, number> = {
@@ -882,10 +818,7 @@ export class PipeSteelWorkService {
     return bracketType ? costs[bracketType] || 200 : 200;
   }
 
-  private estimateWallThickness(
-    nominalDiameterMm: number,
-    schedule?: string,
-  ): number {
+  private estimateWallThickness(nominalDiameterMm: number, schedule?: string): number {
     const scheduleWalls: Record<string, Record<number, number>> = {
       Std: {
         50: 3.91,
@@ -916,8 +849,7 @@ export class PipeSteelWorkService {
     };
 
     const closestNb = this.findClosestNb(nominalDiameterMm);
-    const scheduleData =
-      scheduleWalls[schedule || 'Std'] || scheduleWalls['Std'];
+    const scheduleData = scheduleWalls[schedule || "Std"] || scheduleWalls["Std"];
 
     return scheduleData[closestNb] || 6.0;
   }
@@ -940,7 +872,7 @@ export class PipeSteelWorkService {
         return {
           itemId: item.itemId,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: error instanceof Error ? error.message : "Unknown error",
         };
       }
     });
@@ -953,14 +885,8 @@ export class PipeSteelWorkService {
       failureCount: dto.items.length - successResults.length,
       results,
       summary: {
-        totalWeightKg: successResults.reduce(
-          (sum, r) => sum + (r.result?.totalWeightKg || 0),
-          0,
-        ),
-        totalCost: successResults.reduce(
-          (sum, r) => sum + (r.result?.totalCost || 0),
-          0,
-        ),
+        totalWeightKg: successResults.reduce((sum, r) => sum + (r.result?.totalWeightKg || 0), 0),
+        totalCost: successResults.reduce((sum, r) => sum + (r.result?.totalCost || 0), 0),
         totalSupports: successResults.reduce(
           (sum, r) => sum + (r.result?.numberOfSupports || 0),
           0,
@@ -1061,28 +987,22 @@ export class PipeSteelWorkService {
   };
 
   private readonly standardFullNames: Record<SupportStandardDto, string> = {
-    [SupportStandardDto.MSS_SP_58]:
-      'Manufacturers Standardization Society SP-58',
-    [SupportStandardDto.DIN_2509]: 'Deutsches Institut für Normung 2509',
-    [SupportStandardDto.EN_13480]:
-      'European Standard EN 13480 - Metallic Industrial Piping',
-    [SupportStandardDto.ASME_B31_1]: 'ASME B31.1 - Power Piping',
-    [SupportStandardDto.ASME_B31_3]: 'ASME B31.3 - Process Piping',
+    [SupportStandardDto.MSS_SP_58]: "Manufacturers Standardization Society SP-58",
+    [SupportStandardDto.DIN_2509]: "Deutsches Institut für Normung 2509",
+    [SupportStandardDto.EN_13480]: "European Standard EN 13480 - Metallic Industrial Piping",
+    [SupportStandardDto.ASME_B31_1]: "ASME B31.1 - Power Piping",
+    [SupportStandardDto.ASME_B31_3]: "ASME B31.3 - Process Piping",
   };
 
   supportSpacingMultiStandard(
     dto: CalculateSupportSpacingMultiStandardDto,
   ): MultiStandardSpacingResponseDto {
-    const standards = dto.standards?.length
-      ? dto.standards
-      : Object.values(SupportStandardDto);
+    const standards = dto.standards?.length ? dto.standards : Object.values(SupportStandardDto);
     const nbMm = this.findClosestNb(dto.nominalDiameterMm);
 
     const comparisons: StandardComparisonDto[] = standards.map((standard) => {
       const table = this.standardSpacingTables[standard];
-      const spacing =
-        table[nbMm] ||
-        this.interpolateSpacingFromTable(dto.nominalDiameterMm, table);
+      const spacing = table[nbMm] || this.interpolateSpacingFromTable(dto.nominalDiameterMm, table);
 
       return {
         standard,
@@ -1092,7 +1012,7 @@ export class PipeSteelWorkService {
         rodSizeMm: spacing.rod,
         notes:
           standard === SupportStandardDto.DIN_2509
-            ? 'More conservative European approach'
+            ? "More conservative European approach"
             : undefined,
       };
     });
@@ -1117,8 +1037,7 @@ export class PipeSteelWorkService {
       .sort((a, b) => a - b);
 
     if (diameterMm <= sizes[0]) return table[sizes[0]];
-    if (diameterMm >= sizes[sizes.length - 1])
-      return table[sizes[sizes.length - 1]];
+    if (diameterMm >= sizes[sizes.length - 1]) return table[sizes[sizes.length - 1]];
 
     let lower = sizes[0];
     let upper = sizes[sizes.length - 1];
@@ -1136,14 +1055,8 @@ export class PipeSteelWorkService {
     const upperVal = table[upper];
 
     return {
-      water:
-        Math.round(
-          (lowerVal.water + ratio * (upperVal.water - lowerVal.water)) * 10,
-        ) / 10,
-      vapor:
-        Math.round(
-          (lowerVal.vapor + ratio * (upperVal.vapor - lowerVal.vapor)) * 10,
-        ) / 10,
+      water: Math.round((lowerVal.water + ratio * (upperVal.water - lowerVal.water)) * 10) / 10,
+      vapor: Math.round((lowerVal.vapor + ratio * (upperVal.vapor - lowerVal.vapor)) * 10) / 10,
       rod: lowerVal.rod,
     };
   }
@@ -1169,18 +1082,13 @@ export class PipeSteelWorkService {
   reinforcementPadWithDerating(
     dto: CalculateReinforcementPadWithDeratingDto,
   ): ReinforcementPadWithDeratingResponseDto {
-    const tempDeratingFactor = this.interpolateTemperatureDerating(
-      dto.operatingTempC || 20,
-    );
-    const weldFactor =
-      this.weldStrengthFactors[dto.jointType || 'full_penetration'];
+    const tempDeratingFactor = this.interpolateTemperatureDerating(dto.operatingTempC || 20);
+    const weldFactor = this.weldStrengthFactors[dto.jointType || "full_penetration"];
     const pressureDeratingFactor =
       dto.workingPressureBar && dto.workingPressureBar > 100 ? 0.9 : 1.0;
 
     const effectiveAllowableStress =
-      (dto.allowableStressMpa || 138) *
-      tempDeratingFactor *
-      pressureDeratingFactor;
+      (dto.allowableStressMpa || 138) * tempDeratingFactor * pressureDeratingFactor;
 
     const baseResult = this.reinforcementPad({
       ...dto,
@@ -1197,14 +1105,11 @@ export class PipeSteelWorkService {
       thermalStressMpa = (E * alpha * deltaT) / 1000;
 
       const pressureStress = dto.workingPressureBar
-        ? ((dto.workingPressureBar / 10) * (dto.headerOdMm / 2)) /
-          dto.headerWallMm
+        ? ((dto.workingPressureBar / 10) * (dto.headerOdMm / 2)) / dto.headerWallMm
         : 0;
 
       const vonMisesStress = Math.sqrt(
-        Math.pow(pressureStress, 2) +
-          Math.pow(thermalStressMpa, 2) -
-          pressureStress * thermalStressMpa,
+        pressureStress ** 2 + thermalStressMpa ** 2 - pressureStress * thermalStressMpa,
       );
 
       combinedStressRatio = vonMisesStress / effectiveAllowableStress;
@@ -1215,11 +1120,8 @@ export class PipeSteelWorkService {
       pressureDeratingFactor,
       temperatureDeratingFactor: tempDeratingFactor,
       weldStrengthFactor: weldFactor,
-      effectiveAllowableStressMpa:
-        Math.round(effectiveAllowableStress * 10) / 10,
-      thermalStressMpa: thermalStressMpa
-        ? Math.round(thermalStressMpa * 10) / 10
-        : undefined,
+      effectiveAllowableStressMpa: Math.round(effectiveAllowableStress * 10) / 10,
+      thermalStressMpa: thermalStressMpa ? Math.round(thermalStressMpa * 10) / 10 : undefined,
       combinedStressRatio: combinedStressRatio
         ? Math.round(combinedStressRatio * 100) / 100
         : undefined,
@@ -1252,24 +1154,16 @@ export class PipeSteelWorkService {
     const ratio = (tempC - lower) / (upper - lower);
     return (
       this.temperatureDeratingFactors[lower] +
-      ratio *
-        (this.temperatureDeratingFactors[upper] -
-          this.temperatureDeratingFactors[lower])
+      ratio * (this.temperatureDeratingFactors[upper] - this.temperatureDeratingFactors[lower])
     );
   }
 
-  vibrationAnalysis(
-    dto: CalculateVibrationAnalysisDto,
-  ): VibrationAnalysisResponseDto {
-    const od =
-      this.nbToOdMap[dto.nominalDiameterMm] || dto.nominalDiameterMm * 1.1;
-    const wall = this.estimateWallThickness(
-      dto.nominalDiameterMm,
-      dto.scheduleNumber,
-    );
+  vibrationAnalysis(dto: CalculateVibrationAnalysisDto): VibrationAnalysisResponseDto {
+    const od = this.nbToOdMap[dto.nominalDiameterMm] || dto.nominalDiameterMm * 1.1;
+    const wall = this.estimateWallThickness(dto.nominalDiameterMm, dto.scheduleNumber);
     const id = od - 2 * wall;
 
-    const I = ((Math.PI / 64) * (Math.pow(od, 4) - Math.pow(id, 4))) / 1e12;
+    const I = ((Math.PI / 64) * (od ** 4 - id ** 4)) / 1e12;
     const E = 200e9;
     const pipeWeight = this.estimatePipeWeightPerMeter(
       dto.nominalDiameterMm,
@@ -1279,9 +1173,7 @@ export class PipeSteelWorkService {
 
     const insulationWeight = dto.insulationThicknessMm
       ? Math.PI *
-        (((od / 1000 + dto.insulationThicknessMm / 1000) *
-          dto.insulationThicknessMm) /
-          1000) *
+        (((od / 1000 + dto.insulationThicknessMm / 1000) * dto.insulationThicknessMm) / 1000) *
         100
       : 0;
 
@@ -1289,60 +1181,49 @@ export class PipeSteelWorkService {
     const m = totalWeightPerM;
     const L = dto.spanLengthM;
 
-    const configFactors: Record<
-      string,
-      { fn1: number; fn2: number; fn3: number }
-    > = {
+    const configFactors: Record<string, { fn1: number; fn2: number; fn3: number }> = {
       simply_supported: { fn1: 9.87, fn2: 39.48, fn3: 88.83 },
       fixed_fixed: { fn1: 22.37, fn2: 61.67, fn3: 120.9 },
       cantilever: { fn1: 3.52, fn2: 22.03, fn3: 61.7 },
     };
 
-    const factors = configFactors[dto.supportConfig || 'simply_supported'];
+    const factors = configFactors[dto.supportConfig || "simply_supported"];
 
-    const naturalFrequency =
-      (factors.fn1 / (2 * Math.PI)) * Math.sqrt((E * I) / (m * Math.pow(L, 4)));
-    const secondMode =
-      (factors.fn2 / (2 * Math.PI)) * Math.sqrt((E * I) / (m * Math.pow(L, 4)));
-    const thirdMode =
-      (factors.fn3 / (2 * Math.PI)) * Math.sqrt((E * I) / (m * Math.pow(L, 4)));
+    const naturalFrequency = (factors.fn1 / (2 * Math.PI)) * Math.sqrt((E * I) / (m * L ** 4));
+    const secondMode = (factors.fn2 / (2 * Math.PI)) * Math.sqrt((E * I) / (m * L ** 4));
+    const thirdMode = (factors.fn3 / (2 * Math.PI)) * Math.sqrt((E * I) / (m * L ** 4));
 
-    let resonanceRisk: 'none' | 'low' | 'moderate' | 'high' | 'critical' =
-      'none';
+    let resonanceRisk: "none" | "low" | "moderate" | "high" | "critical" = "none";
     let frequencyRatio: number | undefined;
 
     if (dto.excitationFrequencyHz) {
       frequencyRatio = dto.excitationFrequencyHz / naturalFrequency;
 
       if (frequencyRatio > 0.9 && frequencyRatio < 1.1) {
-        resonanceRisk = 'critical';
+        resonanceRisk = "critical";
       } else if (frequencyRatio > 0.8 && frequencyRatio < 1.2) {
-        resonanceRisk = 'high';
+        resonanceRisk = "high";
       } else if (frequencyRatio > 0.7 && frequencyRatio < 1.4) {
-        resonanceRisk = 'moderate';
+        resonanceRisk = "moderate";
       } else if (frequencyRatio > 0.5 && frequencyRatio < 2.0) {
-        resonanceRisk = 'low';
+        resonanceRisk = "low";
       }
     }
 
-    const recommendedMinFreq = dto.excitationFrequencyHz
-      ? dto.excitationFrequencyHz * 1.4
-      : 8;
+    const recommendedMinFreq = dto.excitationFrequencyHz ? dto.excitationFrequencyHz * 1.4 : 8;
 
     const recommendedMaxSpan = Math.sqrt(
-      (factors.fn1 / (2 * Math.PI * recommendedMinFreq)) *
-        Math.sqrt((E * I) / m),
+      (factors.fn1 / (2 * Math.PI * recommendedMinFreq)) * Math.sqrt((E * I) / m),
     );
 
-    let notes = `Support config: ${dto.supportConfig || 'simply_supported'}. `;
-    if (resonanceRisk === 'critical' || resonanceRisk === 'high') {
+    let notes = `Support config: ${dto.supportConfig || "simply_supported"}. `;
+    if (resonanceRisk === "critical" || resonanceRisk === "high") {
       notes += `WARNING: High resonance risk at ${(frequencyRatio! * 100).toFixed(0)}% of natural frequency. `;
       notes += `Reduce span to ${recommendedMaxSpan.toFixed(2)}m or add damping. `;
     } else if (naturalFrequency < 4) {
-      notes +=
-        'Low natural frequency may cause sway. Consider reducing span or adding guides. ';
+      notes += "Low natural frequency may cause sway. Consider reducing span or adding guides. ";
     } else {
-      notes += 'Vibration characteristics acceptable. ';
+      notes += "Vibration characteristics acceptable. ";
     }
 
     return {
@@ -1350,9 +1231,7 @@ export class PipeSteelWorkService {
       secondModeFrequencyHz: Math.round(secondMode * 100) / 100,
       thirdModeFrequencyHz: Math.round(thirdMode * 100) / 100,
       excitationFrequencyHz: dto.excitationFrequencyHz,
-      frequencyRatio: frequencyRatio
-        ? Math.round(frequencyRatio * 100) / 100
-        : undefined,
+      frequencyRatio: frequencyRatio ? Math.round(frequencyRatio * 100) / 100 : undefined,
       resonanceRisk,
       recommendedMaxSpanM: Math.round(recommendedMaxSpan * 100) / 100,
       minimumSupportFrequencyHz: Math.round(recommendedMinFreq * 10) / 10,
@@ -1360,26 +1239,20 @@ export class PipeSteelWorkService {
     };
   }
 
-  async stressAnalysis(
-    dto: CalculateStressAnalysisDto,
-  ): Promise<StressAnalysisResponseDto> {
+  async stressAnalysis(dto: CalculateStressAnalysisDto): Promise<StressAnalysisResponseDto> {
     const bracketDim = await this.bracketDimension(
       dto.bracketTypeCode.toUpperCase(),
       dto.nominalDiameterMm,
     );
     const rodDiameter =
-      bracketDim?.rodDiameterMm ||
-      this.estimateRodDiameter(dto.nominalDiameterMm);
+      bracketDim?.rodDiameterMm || this.estimateRodDiameter(dto.nominalDiameterMm);
 
-    const dynamicLoad =
-      dto.appliedLoadKg * (dto.dynamicLoadFactor || 1.0) * 9.81;
-    const rodArea = (Math.PI / 4) * Math.pow(rodDiameter / 1000, 2);
+    const dynamicLoad = dto.appliedLoadKg * (dto.dynamicLoadFactor || 1.0) * 9.81;
+    const rodArea = (Math.PI / 4) * (rodDiameter / 1000) ** 2;
     const rodTensileStress = dynamicLoad / rodArea / 1e6;
 
     const yieldStrength = dto.yieldStrengthMpa || 250;
-    const tempFactor = this.interpolateTemperatureDerating(
-      dto.operatingTempC || 20,
-    );
+    const tempFactor = this.interpolateTemperatureDerating(dto.operatingTempC || 20);
     const effectiveYield = yieldStrength * tempFactor;
 
     const allowableStress = effectiveYield / 1.5;
@@ -1394,31 +1267,30 @@ export class PipeSteelWorkService {
       const width = bracketDim.dimensionBMm || 50;
 
       const bendingMoment = (dynamicLoad * (width / 1000)) / 4;
-      const sectionModulus =
-        ((width / 1000) * Math.pow(thickness / 1000, 2)) / 6;
+      const sectionModulus = ((width / 1000) * (thickness / 1000) ** 2) / 6;
       clampBendingStress = bendingMoment / sectionModulus / 1e6;
 
       const bearingArea = (thickness / 1000) * (rodDiameter / 1000);
       bearingStress = dynamicLoad / bearingArea / 1e6;
     }
 
-    let status: 'adequate' | 'marginal' | 'inadequate';
+    let status: "adequate" | "marginal" | "inadequate";
     if (factorOfSafety >= 2.0) {
-      status = 'adequate';
+      status = "adequate";
     } else if (factorOfSafety >= 1.5) {
-      status = 'marginal';
+      status = "marginal";
     } else {
-      status = 'inadequate';
+      status = "inadequate";
     }
 
     let notes = `Rod M${rodDiameter} tensile stress: ${rodTensileStress.toFixed(1)} MPa. `;
     if (dto.operatingTempC && dto.operatingTempC > 100) {
       notes += `Temperature derating applied: ${(tempFactor * 100).toFixed(0)}%. `;
     }
-    if (status === 'inadequate') {
-      notes += 'DESIGN INADEQUATE: Increase rod size or reduce load. ';
-    } else if (status === 'marginal') {
-      notes += 'Marginal safety factor - consider design review. ';
+    if (status === "inadequate") {
+      notes += "DESIGN INADEQUATE: Increase rod size or reduce load. ";
+    } else if (status === "marginal") {
+      notes += "Marginal safety factor - consider design review. ";
     }
 
     return {
@@ -1427,11 +1299,9 @@ export class PipeSteelWorkService {
       clampBendingStressMpa: clampBendingStress
         ? Math.round(clampBendingStress * 10) / 10
         : undefined,
-      bearingStressMpa: bearingStress
-        ? Math.round(bearingStress * 10) / 10
-        : undefined,
+      bearingStressMpa: bearingStress ? Math.round(bearingStress * 10) / 10 : undefined,
       factorOfSafety: Math.round(factorOfSafety * 100) / 100,
-      isAdequate: status !== 'inadequate',
+      isAdequate: status !== "inadequate",
       status,
       notes,
     };
@@ -1452,7 +1322,7 @@ export class PipeSteelWorkService {
       PipeMaterialDto,
       {
         compatible: boolean;
-        galvanicRisk: 'none' | 'low' | 'moderate' | 'high';
+        galvanicRisk: "none" | "low" | "moderate" | "high";
         notes: string;
       }
     >
@@ -1460,338 +1330,335 @@ export class PipeSteelWorkService {
     [MaterialCategoryDto.CARBON_STEEL]: {
       [PipeMaterialDto.CARBON_STEEL]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Excellent match',
+        galvanicRisk: "none",
+        notes: "Excellent match",
       },
       [PipeMaterialDto.STAINLESS_304]: {
         compatible: true,
-        galvanicRisk: 'moderate',
-        notes: 'Use isolation pads in wet environments',
+        galvanicRisk: "moderate",
+        notes: "Use isolation pads in wet environments",
       },
       [PipeMaterialDto.STAINLESS_316]: {
         compatible: true,
-        galvanicRisk: 'moderate',
-        notes: 'Use isolation pads in wet environments',
+        galvanicRisk: "moderate",
+        notes: "Use isolation pads in wet environments",
       },
       [PipeMaterialDto.COPPER]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Galvanic corrosion risk - use isolators',
+        galvanicRisk: "high",
+        notes: "Galvanic corrosion risk - use isolators",
       },
       [PipeMaterialDto.ALUMINUM]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Severe galvanic corrosion - avoid',
+        galvanicRisk: "high",
+        notes: "Severe galvanic corrosion - avoid",
       },
       [PipeMaterialDto.CHROME_MOLY]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Compatible with proper surface prep',
+        galvanicRisk: "low",
+        notes: "Compatible with proper surface prep",
       },
       [PipeMaterialDto.CAST_IRON]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Generally compatible',
+        galvanicRisk: "low",
+        notes: "Generally compatible",
       },
       [PipeMaterialDto.PVC]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues - check temp limits',
+        galvanicRisk: "none",
+        notes: "No galvanic issues - check temp limits",
       },
       [PipeMaterialDto.HDPE]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues - check temp limits',
+        galvanicRisk: "none",
+        notes: "No galvanic issues - check temp limits",
       },
     },
     [MaterialCategoryDto.STAINLESS]: {
       [PipeMaterialDto.CARBON_STEEL]: {
         compatible: true,
-        galvanicRisk: 'moderate',
-        notes: 'Carbon steel pipe may corrode faster',
+        galvanicRisk: "moderate",
+        notes: "Carbon steel pipe may corrode faster",
       },
       [PipeMaterialDto.STAINLESS_304]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Excellent match',
+        galvanicRisk: "none",
+        notes: "Excellent match",
       },
       [PipeMaterialDto.STAINLESS_316]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Excellent match',
+        galvanicRisk: "none",
+        notes: "Excellent match",
       },
       [PipeMaterialDto.COPPER]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Minor galvanic potential',
+        galvanicRisk: "low",
+        notes: "Minor galvanic potential",
       },
       [PipeMaterialDto.ALUMINUM]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Aluminum will corrode - avoid',
+        galvanicRisk: "high",
+        notes: "Aluminum will corrode - avoid",
       },
       [PipeMaterialDto.CHROME_MOLY]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Generally compatible',
+        galvanicRisk: "low",
+        notes: "Generally compatible",
       },
       [PipeMaterialDto.CAST_IRON]: {
         compatible: true,
-        galvanicRisk: 'moderate',
-        notes: 'Cast iron may corrode',
+        galvanicRisk: "moderate",
+        notes: "Cast iron may corrode",
       },
       [PipeMaterialDto.PVC]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Compatible',
+        galvanicRisk: "none",
+        notes: "Compatible",
       },
       [PipeMaterialDto.HDPE]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Compatible',
+        galvanicRisk: "none",
+        notes: "Compatible",
       },
     },
     [MaterialCategoryDto.ALLOY]: {
       [PipeMaterialDto.CARBON_STEEL]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Generally compatible',
+        galvanicRisk: "low",
+        notes: "Generally compatible",
       },
       [PipeMaterialDto.STAINLESS_304]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Generally compatible',
+        galvanicRisk: "low",
+        notes: "Generally compatible",
       },
       [PipeMaterialDto.STAINLESS_316]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Generally compatible',
+        galvanicRisk: "low",
+        notes: "Generally compatible",
       },
       [PipeMaterialDto.COPPER]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Check specific alloy',
+        galvanicRisk: "low",
+        notes: "Check specific alloy",
       },
       [PipeMaterialDto.ALUMINUM]: {
         compatible: false,
-        galvanicRisk: 'moderate',
-        notes: 'May cause corrosion',
+        galvanicRisk: "moderate",
+        notes: "May cause corrosion",
       },
       [PipeMaterialDto.CHROME_MOLY]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Excellent for high-temp',
+        galvanicRisk: "none",
+        notes: "Excellent for high-temp",
       },
       [PipeMaterialDto.CAST_IRON]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Compatible',
+        galvanicRisk: "low",
+        notes: "Compatible",
       },
       [PipeMaterialDto.PVC]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Compatible',
+        galvanicRisk: "none",
+        notes: "Compatible",
       },
       [PipeMaterialDto.HDPE]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Compatible',
+        galvanicRisk: "none",
+        notes: "Compatible",
       },
     },
     [MaterialCategoryDto.COPPER]: {
       [PipeMaterialDto.CARBON_STEEL]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Steel will corrode - use isolators',
+        galvanicRisk: "high",
+        notes: "Steel will corrode - use isolators",
       },
       [PipeMaterialDto.STAINLESS_304]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Minor potential',
+        galvanicRisk: "low",
+        notes: "Minor potential",
       },
       [PipeMaterialDto.STAINLESS_316]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Minor potential',
+        galvanicRisk: "low",
+        notes: "Minor potential",
       },
       [PipeMaterialDto.COPPER]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Excellent match',
+        galvanicRisk: "none",
+        notes: "Excellent match",
       },
       [PipeMaterialDto.ALUMINUM]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Severe - avoid',
+        galvanicRisk: "high",
+        notes: "Severe - avoid",
       },
       [PipeMaterialDto.CHROME_MOLY]: {
         compatible: true,
-        galvanicRisk: 'moderate',
-        notes: 'Use isolators',
+        galvanicRisk: "moderate",
+        notes: "Use isolators",
       },
       [PipeMaterialDto.CAST_IRON]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Cast iron will corrode',
+        galvanicRisk: "high",
+        notes: "Cast iron will corrode",
       },
       [PipeMaterialDto.PVC]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Compatible',
+        galvanicRisk: "none",
+        notes: "Compatible",
       },
       [PipeMaterialDto.HDPE]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Compatible',
+        galvanicRisk: "none",
+        notes: "Compatible",
       },
     },
     [MaterialCategoryDto.ALUMINUM]: {
       [PipeMaterialDto.CARBON_STEEL]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Aluminum will corrode rapidly',
+        galvanicRisk: "high",
+        notes: "Aluminum will corrode rapidly",
       },
       [PipeMaterialDto.STAINLESS_304]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Aluminum will corrode',
+        galvanicRisk: "high",
+        notes: "Aluminum will corrode",
       },
       [PipeMaterialDto.STAINLESS_316]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Aluminum will corrode',
+        galvanicRisk: "high",
+        notes: "Aluminum will corrode",
       },
       [PipeMaterialDto.COPPER]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Severe galvanic corrosion',
+        galvanicRisk: "high",
+        notes: "Severe galvanic corrosion",
       },
       [PipeMaterialDto.ALUMINUM]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Excellent match',
+        galvanicRisk: "none",
+        notes: "Excellent match",
       },
       [PipeMaterialDto.CHROME_MOLY]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Avoid this combination',
+        galvanicRisk: "high",
+        notes: "Avoid this combination",
       },
       [PipeMaterialDto.CAST_IRON]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Aluminum will corrode',
+        galvanicRisk: "high",
+        notes: "Aluminum will corrode",
       },
       [PipeMaterialDto.PVC]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Compatible',
+        galvanicRisk: "none",
+        notes: "Compatible",
       },
       [PipeMaterialDto.HDPE]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Compatible',
+        galvanicRisk: "none",
+        notes: "Compatible",
       },
     },
     [MaterialCategoryDto.PLASTIC]: {
       [PipeMaterialDto.CARBON_STEEL]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues',
+        galvanicRisk: "none",
+        notes: "No galvanic issues",
       },
       [PipeMaterialDto.STAINLESS_304]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues',
+        galvanicRisk: "none",
+        notes: "No galvanic issues",
       },
       [PipeMaterialDto.STAINLESS_316]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues',
+        galvanicRisk: "none",
+        notes: "No galvanic issues",
       },
       [PipeMaterialDto.COPPER]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues',
+        galvanicRisk: "none",
+        notes: "No galvanic issues",
       },
       [PipeMaterialDto.ALUMINUM]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues',
+        galvanicRisk: "none",
+        notes: "No galvanic issues",
       },
       [PipeMaterialDto.CHROME_MOLY]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues',
+        galvanicRisk: "none",
+        notes: "No galvanic issues",
       },
       [PipeMaterialDto.CAST_IRON]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues',
+        galvanicRisk: "none",
+        notes: "No galvanic issues",
       },
       [PipeMaterialDto.PVC]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Excellent match',
+        galvanicRisk: "none",
+        notes: "Excellent match",
       },
       [PipeMaterialDto.HDPE]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Excellent match',
+        galvanicRisk: "none",
+        notes: "Excellent match",
       },
     },
     [MaterialCategoryDto.CAST_IRON]: {
       [PipeMaterialDto.CARBON_STEEL]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Similar materials',
+        galvanicRisk: "low",
+        notes: "Similar materials",
       },
       [PipeMaterialDto.STAINLESS_304]: {
         compatible: true,
-        galvanicRisk: 'moderate',
-        notes: 'Cast iron may corrode faster',
+        galvanicRisk: "moderate",
+        notes: "Cast iron may corrode faster",
       },
       [PipeMaterialDto.STAINLESS_316]: {
         compatible: true,
-        galvanicRisk: 'moderate',
-        notes: 'Cast iron may corrode faster',
+        galvanicRisk: "moderate",
+        notes: "Cast iron may corrode faster",
       },
       [PipeMaterialDto.COPPER]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Cast iron will corrode',
+        galvanicRisk: "high",
+        notes: "Cast iron will corrode",
       },
       [PipeMaterialDto.ALUMINUM]: {
         compatible: false,
-        galvanicRisk: 'high',
-        notes: 'Aluminum will corrode',
+        galvanicRisk: "high",
+        notes: "Aluminum will corrode",
       },
       [PipeMaterialDto.CHROME_MOLY]: {
         compatible: true,
-        galvanicRisk: 'low',
-        notes: 'Generally compatible',
+        galvanicRisk: "low",
+        notes: "Generally compatible",
       },
       [PipeMaterialDto.CAST_IRON]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'Excellent match',
+        galvanicRisk: "none",
+        notes: "Excellent match",
       },
       [PipeMaterialDto.PVC]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues',
+        galvanicRisk: "none",
+        notes: "No galvanic issues",
       },
       [PipeMaterialDto.HDPE]: {
         compatible: true,
-        galvanicRisk: 'none',
-        notes: 'No galvanic issues',
+        galvanicRisk: "none",
+        notes: "No galvanic issues",
       },
     },
   };
 
-  private readonly materialTempLimits: Record<
-    MaterialCategoryDto,
-    { min: number; max: number }
-  > = {
+  private readonly materialTempLimits: Record<MaterialCategoryDto, { min: number; max: number }> = {
     [MaterialCategoryDto.CARBON_STEEL]: { min: -29, max: 425 },
     [MaterialCategoryDto.STAINLESS]: { min: -196, max: 815 },
     [MaterialCategoryDto.ALLOY]: { min: -45, max: 650 },
@@ -1801,66 +1668,53 @@ export class PipeSteelWorkService {
     [MaterialCategoryDto.CAST_IRON]: { min: -29, max: 230 },
   };
 
-  materialCompatibility(
-    dto: MaterialCompatibilityCheckDto,
-  ): MaterialCompatibilityResponseDto {
-    const compat =
-      this.materialCompatibilityMatrix[dto.bracketMaterial][dto.pipeMaterial];
+  materialCompatibility(dto: MaterialCompatibilityCheckDto): MaterialCompatibilityResponseDto {
+    const compat = this.materialCompatibilityMatrix[dto.bracketMaterial][dto.pipeMaterial];
     const tempLimits = this.materialTempLimits[dto.bracketMaterial];
     const operatingTemp = dto.operatingTempC || 20;
 
-    const tempCompatible =
-      operatingTemp >= tempLimits.min && operatingTemp <= tempLimits.max;
+    const tempCompatible = operatingTemp >= tempLimits.min && operatingTemp <= tempLimits.max;
 
-    let rating:
-      | 'excellent'
-      | 'good'
-      | 'acceptable'
-      | 'caution'
-      | 'not_recommended';
+    let rating: "excellent" | "good" | "acceptable" | "caution" | "not_recommended";
     if (!compat.compatible) {
-      rating = 'not_recommended';
-    } else if (compat.galvanicRisk === 'none' && tempCompatible) {
-      rating = 'excellent';
-    } else if (compat.galvanicRisk === 'low' && tempCompatible) {
-      rating = 'good';
-    } else if (compat.galvanicRisk === 'moderate' || !tempCompatible) {
-      rating = 'caution';
+      rating = "not_recommended";
+    } else if (compat.galvanicRisk === "none" && tempCompatible) {
+      rating = "excellent";
+    } else if (compat.galvanicRisk === "low" && tempCompatible) {
+      rating = "good";
+    } else if (compat.galvanicRisk === "moderate" || !tempCompatible) {
+      rating = "caution";
     } else {
-      rating = 'acceptable';
+      rating = "acceptable";
     }
 
     const recommendations: string[] = [];
 
-    if (compat.galvanicRisk === 'high' || compat.galvanicRisk === 'moderate') {
-      recommendations.push('Use dielectric isolators between pipe and bracket');
-      recommendations.push('Apply protective coating to contact surfaces');
+    if (compat.galvanicRisk === "high" || compat.galvanicRisk === "moderate") {
+      recommendations.push("Use dielectric isolators between pipe and bracket");
+      recommendations.push("Apply protective coating to contact surfaces");
     }
 
     if (dto.isCorrosiveEnvironment) {
-      recommendations.push(
-        'Consider upgrading bracket material to stainless steel',
-      );
-      recommendations.push('Apply corrosion-resistant coating');
+      recommendations.push("Consider upgrading bracket material to stainless steel");
+      recommendations.push("Apply corrosion-resistant coating");
     }
 
     if (dto.isOutdoor) {
-      recommendations.push('Use hot-dip galvanized or painted brackets');
-      recommendations.push('Consider stainless fasteners');
+      recommendations.push("Use hot-dip galvanized or painted brackets");
+      recommendations.push("Consider stainless fasteners");
     }
 
     if (!tempCompatible) {
       recommendations.push(
         `Operating temp ${operatingTemp}°C outside bracket limits (${tempLimits.min}°C to ${tempLimits.max}°C)`,
       );
-      recommendations.push(
-        'Select bracket material rated for operating temperature',
-      );
+      recommendations.push("Select bracket material rated for operating temperature");
     }
 
     const isolationRequired =
-      compat.galvanicRisk === 'high' || compat.galvanicRisk === 'moderate'
-        ? 'HDPE liner, neoprene pad, or dielectric union required'
+      compat.galvanicRisk === "high" || compat.galvanicRisk === "moderate"
+        ? "HDPE liner, neoprene pad, or dielectric union required"
         : undefined;
 
     return {
@@ -1876,8 +1730,8 @@ export class PipeSteelWorkService {
   }
 
   exportReport(dto: ExportReportDto): ExportReportResponseDto {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const projectName = dto.projectName || 'PipeSteelWork';
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const projectName = dto.projectName || "PipeSteelWork";
 
     let content: string;
     let mimeType: string;
@@ -1885,19 +1739,19 @@ export class PipeSteelWorkService {
 
     if (dto.format === ExportFormatDto.CSV) {
       content = this.generateCsvReport(dto);
-      mimeType = 'text/csv';
+      mimeType = "text/csv";
       filename = `${projectName}_Report_${timestamp}.csv`;
     } else if (dto.format === ExportFormatDto.EXCEL) {
       content = this.generateExcelXmlReport(dto);
-      mimeType = 'application/vnd.ms-excel';
+      mimeType = "application/vnd.ms-excel";
       filename = `${projectName}_Report_${timestamp}.xls`;
     } else {
       content = this.generatePdfHtmlReport(dto);
-      mimeType = 'text/html';
+      mimeType = "text/html";
       filename = `${projectName}_Report_${timestamp}.html`;
     }
 
-    const base64Content = Buffer.from(content).toString('base64');
+    const base64Content = Buffer.from(content).toString("base64");
 
     return {
       format: dto.format,
@@ -1911,9 +1765,7 @@ export class PipeSteelWorkService {
   private generateCsvReport(dto: ExportReportDto): string {
     const lines: string[] = [];
 
-    lines.push(
-      'Item ID,Work Type,NB (mm),Supports,Weight (kg),Cost (ZAR),Status',
-    );
+    lines.push("Item ID,Work Type,NB (mm),Supports,Weight (kg),Cost (ZAR),Status");
 
     dto.calculations
       .filter((c) => c.success && c.result)
@@ -1923,18 +1775,18 @@ export class PipeSteelWorkService {
           [
             calc.itemId,
             r.workType,
-            '',
-            r.numberOfSupports || '',
-            r.totalWeightKg || '',
-            r.totalCost || '',
-            calc.success ? 'OK' : 'Error',
-          ].join(','),
+            "",
+            r.numberOfSupports || "",
+            r.totalWeightKg || "",
+            r.totalCost || "",
+            calc.success ? "OK" : "Error",
+          ].join(","),
         );
       });
 
     if (dto.includeWeightSummary || dto.includeCostBreakdown) {
-      lines.push('');
-      lines.push('SUMMARY');
+      lines.push("");
+      lines.push("SUMMARY");
       const totals = dto.calculations
         .filter((c) => c.success && c.result)
         .reduce(
@@ -1951,7 +1803,7 @@ export class PipeSteelWorkService {
       lines.push(`Total Supports,${totals.supports}`);
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   private generateExcelXmlReport(dto: ExportReportDto): string {
@@ -1968,7 +1820,7 @@ export class PipeSteelWorkService {
             <Cell><Data ss:Type="Number">${r.totalCost || 0}</Data></Cell>
           </Row>`;
       })
-      .join('');
+      .join("");
 
     return `<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
@@ -2009,12 +1861,12 @@ export class PipeSteelWorkService {
           <tr>
             <td>${calc.itemId}</td>
             <td>${r.workType}</td>
-            <td>${r.numberOfSupports || '-'}</td>
-            <td>${r.totalWeightKg?.toFixed(2) || '-'}</td>
-            <td>R ${r.totalCost?.toFixed(2) || '-'}</td>
+            <td>${r.numberOfSupports || "-"}</td>
+            <td>${r.totalWeightKg?.toFixed(2) || "-"}</td>
+            <td>R ${r.totalCost?.toFixed(2) || "-"}</td>
           </tr>`;
       })
-      .join('');
+      .join("");
 
     return `<!DOCTYPE html>
 <html>
@@ -2034,9 +1886,9 @@ export class PipeSteelWorkService {
 <body>
   <h1>Pipe Steel Work Calculation Report</h1>
   <div class="header-info">
-    <p><strong>Project:</strong> ${dto.projectName || 'N/A'}</p>
-    <p><strong>Project No:</strong> ${dto.projectNumber || 'N/A'}</p>
-    <p><strong>Client:</strong> ${dto.clientName || 'N/A'}</p>
+    <p><strong>Project:</strong> ${dto.projectName || "N/A"}</p>
+    <p><strong>Project No:</strong> ${dto.projectNumber || "N/A"}</p>
+    <p><strong>Client:</strong> ${dto.clientName || "N/A"}</p>
     <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
   </div>
 
@@ -2068,204 +1920,204 @@ export class PipeSteelWorkService {
 
   private readonly standardPlateSizesData: StandardPlateSizeDto[] = [
     {
-      id: 'plate-100x100x5',
-      name: '100 x 100 x 5mm',
+      id: "plate-100x100x5",
+      name: "100 x 100 x 5mm",
       lengthMm: 100,
       widthMm: 100,
       thicknessMm: 5,
       category: PlateSizeCategory.SMALL,
       weightKg: 0.39,
-      commonUses: 'Small brackets, light supports',
+      commonUses: "Small brackets, light supports",
     },
     {
-      id: 'plate-100x100x8',
-      name: '100 x 100 x 8mm',
+      id: "plate-100x100x8",
+      name: "100 x 100 x 8mm",
       lengthMm: 100,
       widthMm: 100,
       thicknessMm: 8,
       category: PlateSizeCategory.SMALL,
       weightKg: 0.63,
-      commonUses: 'Small brackets, light supports',
+      commonUses: "Small brackets, light supports",
     },
     {
-      id: 'plate-100x100x10',
-      name: '100 x 100 x 10mm',
+      id: "plate-100x100x10",
+      name: "100 x 100 x 10mm",
       lengthMm: 100,
       widthMm: 100,
       thicknessMm: 10,
       category: PlateSizeCategory.SMALL,
       weightKg: 0.79,
-      commonUses: 'Small brackets, medium supports',
+      commonUses: "Small brackets, medium supports",
     },
     {
-      id: 'plate-150x150x8',
-      name: '150 x 150 x 8mm',
+      id: "plate-150x150x8",
+      name: "150 x 150 x 8mm",
       lengthMm: 150,
       widthMm: 150,
       thicknessMm: 8,
       category: PlateSizeCategory.SMALL,
       weightKg: 1.41,
-      commonUses: 'Medium brackets, pipe clamps',
+      commonUses: "Medium brackets, pipe clamps",
     },
     {
-      id: 'plate-150x150x10',
-      name: '150 x 150 x 10mm',
+      id: "plate-150x150x10",
+      name: "150 x 150 x 10mm",
       lengthMm: 150,
       widthMm: 150,
       thicknessMm: 10,
       category: PlateSizeCategory.SMALL,
       weightKg: 1.77,
-      commonUses: 'Medium brackets, pipe clamps',
+      commonUses: "Medium brackets, pipe clamps",
     },
     {
-      id: 'plate-150x150x12',
-      name: '150 x 150 x 12mm',
+      id: "plate-150x150x12",
+      name: "150 x 150 x 12mm",
       lengthMm: 150,
       widthMm: 150,
       thicknessMm: 12,
       category: PlateSizeCategory.SMALL,
       weightKg: 2.12,
-      commonUses: 'Medium brackets, pipe clamps',
+      commonUses: "Medium brackets, pipe clamps",
     },
     {
-      id: 'plate-200x200x10',
-      name: '200 x 200 x 10mm',
+      id: "plate-200x200x10",
+      name: "200 x 200 x 10mm",
       lengthMm: 200,
       widthMm: 200,
       thicknessMm: 10,
       category: PlateSizeCategory.MEDIUM,
       weightKg: 3.14,
-      commonUses: 'Standard base plates',
+      commonUses: "Standard base plates",
     },
     {
-      id: 'plate-200x200x12',
-      name: '200 x 200 x 12mm',
+      id: "plate-200x200x12",
+      name: "200 x 200 x 12mm",
       lengthMm: 200,
       widthMm: 200,
       thicknessMm: 12,
       category: PlateSizeCategory.MEDIUM,
       weightKg: 3.77,
-      commonUses: 'Standard base plates',
+      commonUses: "Standard base plates",
     },
     {
-      id: 'plate-200x200x15',
-      name: '200 x 200 x 15mm',
+      id: "plate-200x200x15",
+      name: "200 x 200 x 15mm",
       lengthMm: 200,
       widthMm: 200,
       thicknessMm: 15,
       category: PlateSizeCategory.MEDIUM,
       weightKg: 4.71,
-      commonUses: 'Heavy base plates',
+      commonUses: "Heavy base plates",
     },
     {
-      id: 'plate-250x250x12',
-      name: '250 x 250 x 12mm',
+      id: "plate-250x250x12",
+      name: "250 x 250 x 12mm",
       lengthMm: 250,
       widthMm: 250,
       thicknessMm: 12,
       category: PlateSizeCategory.MEDIUM,
       weightKg: 5.89,
-      commonUses: 'Large base plates',
+      commonUses: "Large base plates",
     },
     {
-      id: 'plate-250x250x15',
-      name: '250 x 250 x 15mm',
+      id: "plate-250x250x15",
+      name: "250 x 250 x 15mm",
       lengthMm: 250,
       widthMm: 250,
       thicknessMm: 15,
       category: PlateSizeCategory.MEDIUM,
       weightKg: 7.36,
-      commonUses: 'Large base plates',
+      commonUses: "Large base plates",
     },
     {
-      id: 'plate-250x250x20',
-      name: '250 x 250 x 20mm',
+      id: "plate-250x250x20",
+      name: "250 x 250 x 20mm",
       lengthMm: 250,
       widthMm: 250,
       thicknessMm: 20,
       category: PlateSizeCategory.MEDIUM,
       weightKg: 9.81,
-      commonUses: 'Heavy duty supports',
+      commonUses: "Heavy duty supports",
     },
     {
-      id: 'plate-300x300x15',
-      name: '300 x 300 x 15mm',
+      id: "plate-300x300x15",
+      name: "300 x 300 x 15mm",
       lengthMm: 300,
       widthMm: 300,
       thicknessMm: 15,
       category: PlateSizeCategory.LARGE,
       weightKg: 10.6,
-      commonUses: 'Large supports, anchors',
+      commonUses: "Large supports, anchors",
     },
     {
-      id: 'plate-300x300x20',
-      name: '300 x 300 x 20mm',
+      id: "plate-300x300x20",
+      name: "300 x 300 x 20mm",
       lengthMm: 300,
       widthMm: 300,
       thicknessMm: 20,
       category: PlateSizeCategory.LARGE,
       weightKg: 14.13,
-      commonUses: 'Large supports, anchors',
+      commonUses: "Large supports, anchors",
     },
     {
-      id: 'plate-300x300x25',
-      name: '300 x 300 x 25mm',
+      id: "plate-300x300x25",
+      name: "300 x 300 x 25mm",
       lengthMm: 300,
       widthMm: 300,
       thicknessMm: 25,
       category: PlateSizeCategory.LARGE,
       weightKg: 17.66,
-      commonUses: 'Heavy anchors',
+      commonUses: "Heavy anchors",
     },
     {
-      id: 'plate-400x400x20',
-      name: '400 x 400 x 20mm',
+      id: "plate-400x400x20",
+      name: "400 x 400 x 20mm",
       lengthMm: 400,
       widthMm: 400,
       thicknessMm: 20,
       category: PlateSizeCategory.LARGE,
       weightKg: 25.12,
-      commonUses: 'Large equipment supports',
+      commonUses: "Large equipment supports",
     },
     {
-      id: 'plate-400x400x25',
-      name: '400 x 400 x 25mm',
+      id: "plate-400x400x25",
+      name: "400 x 400 x 25mm",
       lengthMm: 400,
       widthMm: 400,
       thicknessMm: 25,
       category: PlateSizeCategory.LARGE,
       weightKg: 31.4,
-      commonUses: 'Large equipment supports',
+      commonUses: "Large equipment supports",
     },
     {
-      id: 'plate-500x500x20',
-      name: '500 x 500 x 20mm',
+      id: "plate-500x500x20",
+      name: "500 x 500 x 20mm",
       lengthMm: 500,
       widthMm: 500,
       thicknessMm: 20,
       category: PlateSizeCategory.LARGE,
       weightKg: 39.25,
-      commonUses: 'Major equipment bases',
+      commonUses: "Major equipment bases",
     },
     {
-      id: 'plate-500x500x25',
-      name: '500 x 500 x 25mm',
+      id: "plate-500x500x25",
+      name: "500 x 500 x 25mm",
       lengthMm: 500,
       widthMm: 500,
       thicknessMm: 25,
       category: PlateSizeCategory.LARGE,
       weightKg: 49.06,
-      commonUses: 'Major equipment bases',
+      commonUses: "Major equipment bases",
     },
     {
-      id: 'plate-500x500x30',
-      name: '500 x 500 x 30mm',
+      id: "plate-500x500x30",
+      name: "500 x 500 x 30mm",
       lengthMm: 500,
       widthMm: 500,
       thicknessMm: 30,
       category: PlateSizeCategory.LARGE,
       weightKg: 58.88,
-      commonUses: 'Heavy equipment foundations',
+      commonUses: "Heavy equipment foundations",
     },
   ];
 
@@ -2278,174 +2130,143 @@ export class PipeSteelWorkService {
 
   private readonly gasketMaterialsData: GasketMaterialDto[] = [
     {
-      code: 'SW-304-GRAPH',
-      name: 'Spiral Wound 304SS/Graphite',
+      code: "SW-304-GRAPH",
+      name: "Spiral Wound 304SS/Graphite",
       type: GasketMaterialType.SPIRAL_WOUND,
       minTempC: -200,
       maxTempC: 450,
       maxPressureBar: 250,
-      compatibleFlanges: ['RF', 'RTJ'],
-      compatibleServices: [
-        'Steam',
-        'Hydrocarbons',
-        'Chemicals',
-        'Water',
-        'Air',
-      ],
-      incompatibleServices: ['Strong acids', 'Fluorine'],
+      compatibleFlanges: ["RF", "RTJ"],
+      compatibleServices: ["Steam", "Hydrocarbons", "Chemicals", "Water", "Air"],
+      incompatibleServices: ["Strong acids", "Fluorine"],
       costFactor: 1.5,
-      notes:
-        'General purpose, excellent recovery. Inner ring recommended for vacuum service.',
+      notes: "General purpose, excellent recovery. Inner ring recommended for vacuum service.",
     },
     {
-      code: 'SW-316-GRAPH',
-      name: 'Spiral Wound 316SS/Graphite',
+      code: "SW-316-GRAPH",
+      name: "Spiral Wound 316SS/Graphite",
       type: GasketMaterialType.SPIRAL_WOUND,
       minTempC: -200,
       maxTempC: 450,
       maxPressureBar: 250,
-      compatibleFlanges: ['RF', 'RTJ'],
-      compatibleServices: [
-        'Steam',
-        'Hydrocarbons',
-        'Chemicals',
-        'Seawater',
-        'Acids',
-      ],
-      incompatibleServices: ['Chlorides at high temp'],
+      compatibleFlanges: ["RF", "RTJ"],
+      compatibleServices: ["Steam", "Hydrocarbons", "Chemicals", "Seawater", "Acids"],
+      incompatibleServices: ["Chlorides at high temp"],
       costFactor: 1.8,
-      notes: 'Better corrosion resistance than 304SS.',
+      notes: "Better corrosion resistance than 304SS.",
     },
     {
-      code: 'SW-304-PTFE',
-      name: 'Spiral Wound 304SS/PTFE',
+      code: "SW-304-PTFE",
+      name: "Spiral Wound 304SS/PTFE",
       type: GasketMaterialType.SPIRAL_WOUND,
       minTempC: -200,
       maxTempC: 260,
       maxPressureBar: 150,
-      compatibleFlanges: ['RF'],
-      compatibleServices: [
-        'Acids',
-        'Alkalis',
-        'Solvents',
-        'Food grade',
-        'Pharmaceuticals',
-      ],
+      compatibleFlanges: ["RF"],
+      compatibleServices: ["Acids", "Alkalis", "Solvents", "Food grade", "Pharmaceuticals"],
       costFactor: 2.0,
-      notes: 'Excellent chemical resistance. Not suitable for high temp steam.',
+      notes: "Excellent chemical resistance. Not suitable for high temp steam.",
     },
     {
-      code: 'RTJ-SOFT-IRON',
-      name: 'Ring Joint - Soft Iron',
+      code: "RTJ-SOFT-IRON",
+      name: "Ring Joint - Soft Iron",
       type: GasketMaterialType.RING_JOINT,
       minTempC: -29,
       maxTempC: 450,
       maxPressureBar: 690,
-      compatibleFlanges: ['RTJ'],
-      compatibleServices: ['High pressure steam', 'Hydrocarbons', 'Gas'],
-      incompatibleServices: ['Corrosive chemicals'],
+      compatibleFlanges: ["RTJ"],
+      compatibleServices: ["High pressure steam", "Hydrocarbons", "Gas"],
+      incompatibleServices: ["Corrosive chemicals"],
       costFactor: 2.5,
-      notes:
-        'Metal-to-metal seal. For Class 600+ and high pressure applications.',
+      notes: "Metal-to-metal seal. For Class 600+ and high pressure applications.",
     },
     {
-      code: 'RTJ-304SS',
-      name: 'Ring Joint - 304SS',
+      code: "RTJ-304SS",
+      name: "Ring Joint - 304SS",
       type: GasketMaterialType.RING_JOINT,
       minTempC: -196,
       maxTempC: 540,
       maxPressureBar: 690,
-      compatibleFlanges: ['RTJ'],
-      compatibleServices: ['High pressure', 'Cryogenic', 'Corrosive services'],
+      compatibleFlanges: ["RTJ"],
+      compatibleServices: ["High pressure", "Cryogenic", "Corrosive services"],
       costFactor: 3.0,
-      notes: 'Metal-to-metal seal with corrosion resistance.',
+      notes: "Metal-to-metal seal with corrosion resistance.",
     },
     {
-      code: 'PTFE-SHEET',
-      name: 'PTFE Sheet (Virgin)',
+      code: "PTFE-SHEET",
+      name: "PTFE Sheet (Virgin)",
       type: GasketMaterialType.PTFE,
       minTempC: -200,
       maxTempC: 260,
       maxPressureBar: 40,
-      compatibleFlanges: ['FF', 'RF'],
-      compatibleServices: ['Acids', 'Alkalis', 'Solvents', 'Food', 'Pharma'],
-      incompatibleServices: ['Molten alkali metals'],
+      compatibleFlanges: ["FF", "RF"],
+      compatibleServices: ["Acids", "Alkalis", "Solvents", "Food", "Pharma"],
+      incompatibleServices: ["Molten alkali metals"],
       costFactor: 1.2,
-      notes: 'Excellent chemical resistance. Subject to cold flow.',
+      notes: "Excellent chemical resistance. Subject to cold flow.",
     },
     {
-      code: 'PTFE-ENV',
-      name: 'PTFE Envelope with Filler',
+      code: "PTFE-ENV",
+      name: "PTFE Envelope with Filler",
       type: GasketMaterialType.PTFE,
       minTempC: -200,
       maxTempC: 230,
       maxPressureBar: 60,
-      compatibleFlanges: ['FF', 'RF'],
-      compatibleServices: ['Corrosive chemicals', 'Food', 'Pharma'],
+      compatibleFlanges: ["FF", "RF"],
+      compatibleServices: ["Corrosive chemicals", "Food", "Pharma"],
       costFactor: 1.4,
-      notes: 'Better compression than virgin PTFE.',
+      notes: "Better compression than virgin PTFE.",
     },
     {
-      code: 'GRAPHITE-FLEX',
-      name: 'Flexible Graphite Sheet',
+      code: "GRAPHITE-FLEX",
+      name: "Flexible Graphite Sheet",
       type: GasketMaterialType.GRAPHITE,
       minTempC: -200,
       maxTempC: 650,
       maxPressureBar: 200,
-      compatibleFlanges: ['RF', 'FF'],
-      compatibleServices: [
-        'Steam',
-        'Hydrocarbons',
-        'Chemicals',
-        'High temperature',
-      ],
-      incompatibleServices: ['Strong oxidizers'],
+      compatibleFlanges: ["RF", "FF"],
+      compatibleServices: ["Steam", "Hydrocarbons", "Chemicals", "High temperature"],
+      incompatibleServices: ["Strong oxidizers"],
       costFactor: 1.3,
-      notes: 'Excellent high temp performance. SS insert recommended.',
+      notes: "Excellent high temp performance. SS insert recommended.",
     },
     {
-      code: 'CAF-STANDARD',
-      name: 'Compressed Non-Asbestos Fibre',
+      code: "CAF-STANDARD",
+      name: "Compressed Non-Asbestos Fibre",
       type: GasketMaterialType.CAF,
       minTempC: -40,
       maxTempC: 200,
       maxPressureBar: 40,
-      compatibleFlanges: ['FF', 'RF'],
-      compatibleServices: ['Water', 'Air', 'Low pressure steam', 'Oil'],
+      compatibleFlanges: ["FF", "RF"],
+      compatibleServices: ["Water", "Air", "Low pressure steam", "Oil"],
       costFactor: 0.8,
-      notes:
-        'General utility gasket. Economical choice for non-critical service.',
+      notes: "General utility gasket. Economical choice for non-critical service.",
     },
     {
-      code: 'RUBBER-EPDM',
-      name: 'EPDM Rubber',
+      code: "RUBBER-EPDM",
+      name: "EPDM Rubber",
       type: GasketMaterialType.RUBBER,
       minTempC: -40,
       maxTempC: 120,
       maxPressureBar: 16,
-      compatibleFlanges: ['FF'],
-      compatibleServices: [
-        'Water',
-        'Steam (low temp)',
-        'Dilute acids',
-        'Alkalis',
-      ],
-      incompatibleServices: ['Oils', 'Hydrocarbons'],
+      compatibleFlanges: ["FF"],
+      compatibleServices: ["Water", "Steam (low temp)", "Dilute acids", "Alkalis"],
+      incompatibleServices: ["Oils", "Hydrocarbons"],
       costFactor: 0.6,
-      notes: 'Good for water systems. Not oil resistant.',
+      notes: "Good for water systems. Not oil resistant.",
     },
     {
-      code: 'RUBBER-NBR',
-      name: 'Nitrile Rubber (NBR)',
+      code: "RUBBER-NBR",
+      name: "Nitrile Rubber (NBR)",
       type: GasketMaterialType.RUBBER,
       minTempC: -30,
       maxTempC: 100,
       maxPressureBar: 16,
-      compatibleFlanges: ['FF'],
-      compatibleServices: ['Oils', 'Fuels', 'Hydraulic fluids'],
-      incompatibleServices: ['Ketones', 'Chlorinated solvents'],
+      compatibleFlanges: ["FF"],
+      compatibleServices: ["Oils", "Fuels", "Hydraulic fluids"],
+      incompatibleServices: ["Ketones", "Chlorinated solvents"],
       costFactor: 0.7,
-      notes: 'Good oil resistance. Standard for petroleum services.',
+      notes: "Good oil resistance. Standard for petroleum services.",
     },
   ];
 
@@ -2456,19 +2277,15 @@ export class PipeSteelWorkService {
     return this.gasketMaterialsData;
   }
 
-  gasketCompatibility(
-    dto: GasketCompatibilityCheckDto,
-  ): GasketCompatibilityResponseDto {
-    const gasket = this.gasketMaterialsData.find(
-      (g) => g.code === dto.gasketCode,
-    );
+  gasketCompatibility(dto: GasketCompatibilityCheckDto): GasketCompatibilityResponseDto {
+    const gasket = this.gasketMaterialsData.find((g) => g.code === dto.gasketCode);
 
     if (!gasket) {
       return {
         isCompatible: false,
         score: 0,
-        warnings: ['Unknown gasket material code'],
-        recommendations: ['Select a valid gasket material'],
+        warnings: ["Unknown gasket material code"],
+        recommendations: ["Select a valid gasket material"],
       };
     }
 
@@ -2477,15 +2294,11 @@ export class PipeSteelWorkService {
     let score = 100;
 
     if (dto.designTempC < gasket.minTempC) {
-      warnings.push(
-        `Temperature ${dto.designTempC}°C below minimum ${gasket.minTempC}°C`,
-      );
+      warnings.push(`Temperature ${dto.designTempC}°C below minimum ${gasket.minTempC}°C`);
       score -= 40;
     }
     if (dto.designTempC > gasket.maxTempC) {
-      warnings.push(
-        `Temperature ${dto.designTempC}°C exceeds maximum ${gasket.maxTempC}°C`,
-      );
+      warnings.push(`Temperature ${dto.designTempC}°C exceeds maximum ${gasket.maxTempC}°C`);
       score -= 40;
     }
 
@@ -2499,9 +2312,7 @@ export class PipeSteelWorkService {
     if (dto.flangeFace && !gasket.compatibleFlanges.includes(dto.flangeFace)) {
       warnings.push(`Not recommended for ${dto.flangeFace} flange face`);
       score -= 20;
-      recommendations.push(
-        `Use flange face type: ${gasket.compatibleFlanges.join(' or ')}`,
-      );
+      recommendations.push(`Use flange face type: ${gasket.compatibleFlanges.join(" or ")}`);
     }
 
     const serviceFluidLower = dto.serviceFluid.toLowerCase();
@@ -2515,8 +2326,7 @@ export class PipeSteelWorkService {
 
     const isCompatibleService = gasket.compatibleServices.some(
       (s) =>
-        serviceFluidLower.includes(s.toLowerCase()) ||
-        s.toLowerCase().includes(serviceFluidLower),
+        serviceFluidLower.includes(s.toLowerCase()) || s.toLowerCase().includes(serviceFluidLower),
     );
     if (isCompatibleService) {
       score += 10;
@@ -2538,7 +2348,7 @@ export class PipeSteelWorkService {
         .forEach((g) => alternatives.push(`${g.name} (${g.code})`));
 
       if (alternatives.length > 0) {
-        recommendations.push('Consider alternative gasket materials');
+        recommendations.push("Consider alternative gasket materials");
       }
     }
 
@@ -2553,97 +2363,94 @@ export class PipeSteelWorkService {
 
   private readonly heatTreatmentsData: HeatTreatmentDto[] = [
     {
-      code: 'PWHT-CS',
-      name: 'Post Weld Heat Treatment (Carbon Steel)',
+      code: "PWHT-CS",
+      name: "Post Weld Heat Treatment (Carbon Steel)",
       type: HeatTreatmentType.PWHT,
-      description:
-        'Stress relief heat treatment for carbon steel welds per ASME B31.3',
+      description: "Stress relief heat treatment for carbon steel welds per ASME B31.3",
       tempRangeLowC: 595,
       tempRangeHighC: 650,
-      holdTimeFormula: '1 hour per 25mm thickness, minimum 1 hour',
+      holdTimeFormula: "1 hour per 25mm thickness, minimum 1 hour",
       heatingRateMaxCPerHr: 220,
       coolingRateMaxCPerHr: 280,
-      applicableMaterials: ['A106', 'A105', 'A234', 'A53', 'Carbon Steel'],
-      codeReferences: ['ASME B31.3 §331.1.1', 'ASME VIII Div 1 UCS-56'],
+      applicableMaterials: ["A106", "A105", "A234", "A53", "Carbon Steel"],
+      codeReferences: ["ASME B31.3 §331.1.1", "ASME VIII Div 1 UCS-56"],
       baseCostPerKg: 15,
-      notes: 'Required for wall thickness > 19mm in most applications',
+      notes: "Required for wall thickness > 19mm in most applications",
     },
     {
-      code: 'PWHT-LACS',
-      name: 'PWHT (Low Alloy Chrome-Moly)',
+      code: "PWHT-LACS",
+      name: "PWHT (Low Alloy Chrome-Moly)",
       type: HeatTreatmentType.PWHT,
-      description: 'Stress relief for P11/P22 chrome-moly steels',
+      description: "Stress relief for P11/P22 chrome-moly steels",
       tempRangeLowC: 675,
       tempRangeHighC: 730,
-      holdTimeFormula: '1 hour per 25mm, minimum 2 hours',
+      holdTimeFormula: "1 hour per 25mm, minimum 2 hours",
       heatingRateMaxCPerHr: 165,
       coolingRateMaxCPerHr: 165,
-      applicableMaterials: ['P11', 'P22', 'A335', '1.25Cr-0.5Mo', '2.25Cr-1Mo'],
-      codeReferences: ['ASME B31.3 §331.1.3', 'AWS D10.8'],
+      applicableMaterials: ["P11", "P22", "A335", "1.25Cr-0.5Mo", "2.25Cr-1Mo"],
+      codeReferences: ["ASME B31.3 §331.1.3", "AWS D10.8"],
       baseCostPerKg: 25,
-      notes: 'Critical for preventing hydrogen attack and stress corrosion',
+      notes: "Critical for preventing hydrogen attack and stress corrosion",
     },
     {
-      code: 'STRESS-RELIEF',
-      name: 'Stress Relief Anneal',
+      code: "STRESS-RELIEF",
+      name: "Stress Relief Anneal",
       type: HeatTreatmentType.STRESS_RELIEF,
-      description:
-        'Lower temperature stress relief without metallurgical changes',
+      description: "Lower temperature stress relief without metallurgical changes",
       tempRangeLowC: 550,
       tempRangeHighC: 595,
-      holdTimeFormula: '1 hour per 25mm, minimum 30 minutes',
+      holdTimeFormula: "1 hour per 25mm, minimum 30 minutes",
       heatingRateMaxCPerHr: 280,
       coolingRateMaxCPerHr: 280,
-      applicableMaterials: ['Carbon Steel', 'Low Alloy Steel'],
-      codeReferences: ['ASME B31.3 §331.2'],
+      applicableMaterials: ["Carbon Steel", "Low Alloy Steel"],
+      codeReferences: ["ASME B31.3 §331.2"],
       baseCostPerKg: 12,
-      notes: 'Alternative to full PWHT where permitted',
+      notes: "Alternative to full PWHT where permitted",
     },
     {
-      code: 'NORMALIZE',
-      name: 'Normalizing',
+      code: "NORMALIZE",
+      name: "Normalizing",
       type: HeatTreatmentType.NORMALIZING,
-      description: 'Heat above transformation temperature, air cool',
+      description: "Heat above transformation temperature, air cool",
       tempRangeLowC: 870,
       tempRangeHighC: 930,
-      holdTimeFormula: '1 hour per 25mm, minimum 1 hour',
+      holdTimeFormula: "1 hour per 25mm, minimum 1 hour",
       heatingRateMaxCPerHr: 220,
       coolingRateMaxCPerHr: 0,
-      applicableMaterials: ['Carbon Steel', 'Low Alloy Steel'],
-      codeReferences: ['ASTM A941', 'ASME SA-20'],
+      applicableMaterials: ["Carbon Steel", "Low Alloy Steel"],
+      codeReferences: ["ASTM A941", "ASME SA-20"],
       baseCostPerKg: 18,
-      notes: 'Air cooling. Refines grain structure.',
+      notes: "Air cooling. Refines grain structure.",
     },
     {
-      code: 'SOLUTION-SS',
-      name: 'Solution Annealing (Stainless)',
+      code: "SOLUTION-SS",
+      name: "Solution Annealing (Stainless)",
       type: HeatTreatmentType.SOLUTION_ANNEALING,
-      description: 'Dissolve carbides and restore corrosion resistance',
+      description: "Dissolve carbides and restore corrosion resistance",
       tempRangeLowC: 1010,
       tempRangeHighC: 1120,
-      holdTimeFormula: 'Based on section thickness, typically 1hr/25mm',
+      holdTimeFormula: "Based on section thickness, typically 1hr/25mm",
       heatingRateMaxCPerHr: 0,
       coolingRateMaxCPerHr: 0,
-      applicableMaterials: ['304', '304L', '316', '316L', 'Stainless Steel'],
-      codeReferences: ['ASTM A380', 'ASME SA-479'],
+      applicableMaterials: ["304", "304L", "316", "316L", "Stainless Steel"],
+      codeReferences: ["ASTM A380", "ASME SA-479"],
       baseCostPerKg: 35,
-      notes: 'Rapid water quench required. Essential after welding 304H/316H.',
+      notes: "Rapid water quench required. Essential after welding 304H/316H.",
     },
     {
-      code: 'SOLUTION-DUPLEX',
-      name: 'Solution Annealing (Duplex)',
+      code: "SOLUTION-DUPLEX",
+      name: "Solution Annealing (Duplex)",
       type: HeatTreatmentType.SOLUTION_ANNEALING,
-      description: 'Restore austenite/ferrite balance in duplex stainless',
+      description: "Restore austenite/ferrite balance in duplex stainless",
       tempRangeLowC: 1020,
       tempRangeHighC: 1100,
-      holdTimeFormula: 'Minimum 5 minutes at temperature',
+      holdTimeFormula: "Minimum 5 minutes at temperature",
       heatingRateMaxCPerHr: 0,
       coolingRateMaxCPerHr: 0,
-      applicableMaterials: ['2205', '2507', 'Duplex', 'Super Duplex'],
-      codeReferences: ['ASTM A928', 'NORSOK M-601'],
+      applicableMaterials: ["2205", "2507", "Duplex", "Super Duplex"],
+      codeReferences: ["ASTM A928", "NORSOK M-601"],
       baseCostPerKg: 45,
-      notes:
-        'Rapid water quench essential. Critical for maintaining phase balance.',
+      notes: "Rapid water quench essential. Critical for maintaining phase balance.",
     },
   ];
 
@@ -2651,100 +2458,85 @@ export class PipeSteelWorkService {
     return this.heatTreatmentsData;
   }
 
-  private readonly pwhtThresholds: Record<
-    string,
-    { wallThicknessMm: number; pNumber: string }
-  > = {
-    'Carbon Steel': { wallThicknessMm: 19, pNumber: '1' },
-    A106: { wallThicknessMm: 19, pNumber: '1' },
-    A105: { wallThicknessMm: 19, pNumber: '1' },
-    A53: { wallThicknessMm: 19, pNumber: '1' },
-    P11: { wallThicknessMm: 13, pNumber: '4' },
-    P22: { wallThicknessMm: 13, pNumber: '5A' },
-    '1.25Cr-0.5Mo': { wallThicknessMm: 13, pNumber: '4' },
-    '2.25Cr-1Mo': { wallThicknessMm: 13, pNumber: '5A' },
-    '304': { wallThicknessMm: 0, pNumber: '8' },
-    '316': { wallThicknessMm: 0, pNumber: '8' },
-    '304L': { wallThicknessMm: 0, pNumber: '8' },
-    '316L': { wallThicknessMm: 0, pNumber: '8' },
-    '2205': { wallThicknessMm: 0, pNumber: '10H' },
-    Duplex: { wallThicknessMm: 0, pNumber: '10H' },
+  private readonly pwhtThresholds: Record<string, { wallThicknessMm: number; pNumber: string }> = {
+    "Carbon Steel": { wallThicknessMm: 19, pNumber: "1" },
+    A106: { wallThicknessMm: 19, pNumber: "1" },
+    A105: { wallThicknessMm: 19, pNumber: "1" },
+    A53: { wallThicknessMm: 19, pNumber: "1" },
+    P11: { wallThicknessMm: 13, pNumber: "4" },
+    P22: { wallThicknessMm: 13, pNumber: "5A" },
+    "1.25Cr-0.5Mo": { wallThicknessMm: 13, pNumber: "4" },
+    "2.25Cr-1Mo": { wallThicknessMm: 13, pNumber: "5A" },
+    "304": { wallThicknessMm: 0, pNumber: "8" },
+    "316": { wallThicknessMm: 0, pNumber: "8" },
+    "304L": { wallThicknessMm: 0, pNumber: "8" },
+    "316L": { wallThicknessMm: 0, pNumber: "8" },
+    "2205": { wallThicknessMm: 0, pNumber: "10H" },
+    Duplex: { wallThicknessMm: 0, pNumber: "10H" },
   };
 
-  heatTreatmentRequirement(
-    dto: HeatTreatmentRequirementDto,
-  ): HeatTreatmentRequirementResponseDto {
+  heatTreatmentRequirement(dto: HeatTreatmentRequirementDto): HeatTreatmentRequirementResponseDto {
     const materialUpper = dto.material.toUpperCase();
     const threshold = Object.entries(this.pwhtThresholds).find(([key]) =>
       materialUpper.includes(key.toUpperCase()),
     );
 
     if (
-      materialUpper.includes('304') ||
-      materialUpper.includes('316') ||
-      materialUpper.includes('STAINLESS')
+      materialUpper.includes("304") ||
+      materialUpper.includes("316") ||
+      materialUpper.includes("STAINLESS")
     ) {
-      const treatment = this.heatTreatmentsData.find(
-        (t) => t.code === 'SOLUTION-SS',
-      )!;
+      const treatment = this.heatTreatmentsData.find((t) => t.code === "SOLUTION-SS")!;
       const isRequired =
         dto.wallThicknessMm > 6 &&
-        (dto.weldType === 'multipass' || dto.weldType === 'full_penetration');
+        (dto.weldType === "multipass" || dto.weldType === "full_penetration");
 
       return {
         isRequired,
-        requiredTreatment: isRequired
-          ? HeatTreatmentType.SOLUTION_ANNEALING
-          : null,
+        requiredTreatment: isRequired ? HeatTreatmentType.SOLUTION_ANNEALING : null,
         treatment: isRequired ? treatment : null,
         reason: isRequired
-          ? 'Solution annealing may be required to restore corrosion resistance after welding'
-          : 'Solution annealing typically not required for L-grade austenitic stainless with proper weld procedures',
+          ? "Solution annealing may be required to restore corrosion resistance after welding"
+          : "Solution annealing typically not required for L-grade austenitic stainless with proper weld procedures",
         estimatedCostImpact: isRequired
           ? Math.round(dto.wallThicknessMm * 10 * treatment.baseCostPerKg!)
           : 0,
-        codeReferences: ['ASME B31.3 §331.1.4', 'NACE MR0175'],
+        codeReferences: ["ASME B31.3 §331.1.4", "NACE MR0175"],
         exemptionConditions: isRequired
           ? undefined
           : [
-              'L-grade material (304L, 316L)',
-              'Low heat input welding',
-              'Non-sensitizing service conditions',
+              "L-grade material (304L, 316L)",
+              "Low heat input welding",
+              "Non-sensitizing service conditions",
             ],
       };
     }
 
     if (
-      materialUpper.includes('DUPLEX') ||
-      materialUpper.includes('2205') ||
-      materialUpper.includes('2507')
+      materialUpper.includes("DUPLEX") ||
+      materialUpper.includes("2205") ||
+      materialUpper.includes("2507")
     ) {
-      const treatment = this.heatTreatmentsData.find(
-        (t) => t.code === 'SOLUTION-DUPLEX',
-      )!;
+      const treatment = this.heatTreatmentsData.find((t) => t.code === "SOLUTION-DUPLEX")!;
 
       return {
         isRequired: true,
         requiredTreatment: HeatTreatmentType.SOLUTION_ANNEALING,
         treatment,
         reason:
-          'Solution annealing required for duplex stainless to maintain phase balance after welding',
-        estimatedCostImpact: Math.round(
-          dto.wallThicknessMm * 10 * treatment.baseCostPerKg!,
-        ),
-        codeReferences: ['ASME B31.3 §331.1.4', 'NORSOK M-601', 'API RP 938-C'],
+          "Solution annealing required for duplex stainless to maintain phase balance after welding",
+        estimatedCostImpact: Math.round(dto.wallThicknessMm * 10 * treatment.baseCostPerKg!),
+        codeReferences: ["ASME B31.3 §331.1.4", "NORSOK M-601", "API RP 938-C"],
       };
     }
 
     if (
-      materialUpper.includes('P11') ||
-      materialUpper.includes('P22') ||
-      materialUpper.includes('CR-MO') ||
-      materialUpper.includes('CHROME')
+      materialUpper.includes("P11") ||
+      materialUpper.includes("P22") ||
+      materialUpper.includes("CR-MO") ||
+      materialUpper.includes("CHROME")
     ) {
-      const treatment = this.heatTreatmentsData.find(
-        (t) => t.code === 'PWHT-LACS',
-      )!;
+      const treatment = this.heatTreatmentsData.find((t) => t.code === "PWHT-LACS")!;
       const thresholdMm = 13;
       const isRequired = dto.wallThicknessMm > thresholdMm;
 
@@ -2758,16 +2550,14 @@ export class PipeSteelWorkService {
         estimatedCostImpact: isRequired
           ? Math.round(dto.wallThicknessMm * 10 * treatment.baseCostPerKg!)
           : 0,
-        codeReferences: ['ASME B31.3 §331.1.3', 'AWS D10.8'],
+        codeReferences: ["ASME B31.3 §331.1.3", "AWS D10.8"],
         exemptionConditions: isRequired
           ? undefined
-          : [`Thickness ≤ ${thresholdMm}mm`, 'Preheat maintained per WPS'],
+          : [`Thickness ≤ ${thresholdMm}mm`, "Preheat maintained per WPS"],
       };
     }
 
-    const treatment = this.heatTreatmentsData.find(
-      (t) => t.code === 'PWHT-CS',
-    )!;
+    const treatment = this.heatTreatmentsData.find((t) => t.code === "PWHT-CS")!;
     const thresholdMm = threshold?.[1]?.wallThicknessMm || 19;
     const isRequired = dto.wallThicknessMm > thresholdMm;
 
@@ -2781,14 +2571,14 @@ export class PipeSteelWorkService {
       estimatedCostImpact: isRequired
         ? Math.round(dto.wallThicknessMm * 10 * treatment.baseCostPerKg!)
         : 0,
-      codeReferences: ['ASME B31.3 §331.1.1', 'ASME VIII Div 1 UCS-56'],
+      codeReferences: ["ASME B31.3 §331.1.1", "ASME VIII Div 1 UCS-56"],
       exemptionConditions: isRequired
         ? undefined
         : [
             `Thickness ≤ ${thresholdMm}mm`,
-            'Design temperature > -29°C',
-            'Non-lethal service (non-toxic, non-flammable)',
-            'Carbon equivalent ≤ 0.50%',
+            "Design temperature > -29°C",
+            "Non-lethal service (non-toxic, non-flammable)",
+            "Carbon equivalent ≤ 0.50%",
           ],
     };
   }

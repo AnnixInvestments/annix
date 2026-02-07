@@ -1,17 +1,17 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddSABS719FittingData1760428800000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Insert SABS 719 fitting types
     const fittingTypes = [
-      'Short Tee',
-      'Gusset Tee',
-      'Elbow - Short Radius',
-      'Elbow - Medium Radius',
-      'Elbow - Long Radius',
-      'Reducer',
-      'Bellmouth',
-      'Segmented Bend',
+      "Short Tee",
+      "Gusset Tee",
+      "Elbow - Short Radius",
+      "Elbow - Medium Radius",
+      "Elbow - Long Radius",
+      "Reducer",
+      "Bellmouth",
+      "Segmented Bend",
     ];
 
     for (const fittingType of fittingTypes) {
@@ -29,7 +29,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
     const steelId = steelResult[0]?.id;
 
     if (!steelId) {
-      throw new Error('SABS 719 steel specification not found');
+      throw new Error("SABS 719 steel specification not found");
     }
 
     // Create basic fitting entries for each fitting type
@@ -70,21 +70,21 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
 
     // Insert reducer dimensions
     const reducerDimensions = [
-      { nb: 200, od: 219.1, d2Range: '102-180', length: 180.0 },
-      { nb: 250, od: 273.1, d2Range: '155-230', length: 205.0 },
-      { nb: 300, od: 323.9, d2Range: '180-280', length: 230.0 },
-      { nb: 350, od: 355.6, d2Range: '230-330', length: 255.0 },
-      { nb: 400, od: 406.4, d2Range: '255-380', length: 280.0 },
-      { nb: 450, od: 457, d2Range: '305-430', length: 305.0 },
-      { nb: 500, od: 508, d2Range: '330-485', length: 330.0 },
-      { nb: 550, od: 559, d2Range: '355-535', length: 355.0 },
-      { nb: 600, od: 610, d2Range: '405-585', length: 380.0 },
-      { nb: 650, od: 660, d2Range: '430-635', length: 405.0 },
-      { nb: 700, od: 711, d2Range: '485-685', length: 430.0 },
-      { nb: 750, od: 762, d2Range: '510-740', length: 460.0 },
-      { nb: 800, od: 813, d2Range: '560-790', length: 485.0 },
-      { nb: 850, od: 864, d2Range: '585-840', length: 510.0 },
-      { nb: 900, od: 914, d2Range: '635-890', length: 535.0 },
+      { nb: 200, od: 219.1, d2Range: "102-180", length: 180.0 },
+      { nb: 250, od: 273.1, d2Range: "155-230", length: 205.0 },
+      { nb: 300, od: 323.9, d2Range: "180-280", length: 230.0 },
+      { nb: 350, od: 355.6, d2Range: "230-330", length: 255.0 },
+      { nb: 400, od: 406.4, d2Range: "255-380", length: 280.0 },
+      { nb: 450, od: 457, d2Range: "305-430", length: 305.0 },
+      { nb: 500, od: 508, d2Range: "330-485", length: 330.0 },
+      { nb: 550, od: 559, d2Range: "355-535", length: 355.0 },
+      { nb: 600, od: 610, d2Range: "405-585", length: 380.0 },
+      { nb: 650, od: 660, d2Range: "430-635", length: 405.0 },
+      { nb: 700, od: 711, d2Range: "485-685", length: 430.0 },
+      { nb: 750, od: 762, d2Range: "510-740", length: 460.0 },
+      { nb: 800, od: 813, d2Range: "560-790", length: 485.0 },
+      { nb: 850, od: 864, d2Range: "585-840", length: 510.0 },
+      { nb: 900, od: 914, d2Range: "635-890", length: 535.0 },
     ];
 
     // Insert bellmouth dimensions
@@ -112,7 +112,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 200,
         od: 219.1,
-        type: 'Short',
+        type: "Short",
         a90: 230.0,
         a45: 155.0,
         a22: 115.0,
@@ -121,7 +121,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 250,
         od: 273.1,
-        type: 'Short',
+        type: "Short",
         a90: 280.0,
         a45: 180.0,
         a22: 140.0,
@@ -130,7 +130,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 300,
         od: 323.9,
-        type: 'Short',
+        type: "Short",
         a90: 305.0,
         a45: 205.0,
         a22: 155.0,
@@ -139,7 +139,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 350,
         od: 355.6,
-        type: 'Short',
+        type: "Short",
         a90: 355.0,
         a45: 230.0,
         a22: 180.0,
@@ -148,7 +148,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 400,
         od: 406.4,
-        type: 'Short',
+        type: "Short",
         a90: 405.0,
         a45: 255.0,
         a22: 205.0,
@@ -157,7 +157,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 450,
         od: 457,
-        type: 'Short',
+        type: "Short",
         a90: 460.0,
         a45: 280.0,
         a22: 230.0,
@@ -166,7 +166,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 500,
         od: 508,
-        type: 'Short',
+        type: "Short",
         a90: 510.0,
         a45: 305.0,
         a22: 255.0,
@@ -177,7 +177,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 200,
         od: 219.1,
-        type: 'Medium',
+        type: "Medium",
         a90: 405.0,
         a45: 205.0,
         a22: 140.0,
@@ -186,7 +186,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 250,
         od: 273.1,
-        type: 'Medium',
+        type: "Medium",
         a90: 510.0,
         a45: 255.0,
         a22: 180.0,
@@ -195,7 +195,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 300,
         od: 323.9,
-        type: 'Medium',
+        type: "Medium",
         a90: 610.0,
         a45: 305.0,
         a22: 205.0,
@@ -204,7 +204,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 350,
         od: 355.6,
-        type: 'Medium',
+        type: "Medium",
         a90: 710.0,
         a45: 355.0,
         a22: 240.0,
@@ -213,7 +213,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 400,
         od: 406.4,
-        type: 'Medium',
+        type: "Medium",
         a90: 815.0,
         a45: 405.0,
         a22: 280.0,
@@ -222,7 +222,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 450,
         od: 457,
-        type: 'Medium',
+        type: "Medium",
         a90: 915.0,
         a45: 460.0,
         a22: 305.0,
@@ -231,7 +231,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 500,
         od: 508,
-        type: 'Medium',
+        type: "Medium",
         a90: 1020.0,
         a45: 510.0,
         a22: 345.0,
@@ -242,7 +242,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 200,
         od: 219.1,
-        type: 'Long',
+        type: "Long",
         a90: 610.0,
         a45: 405.0,
         a22: 205.0,
@@ -251,7 +251,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 250,
         od: 273.1,
-        type: 'Long',
+        type: "Long",
         a90: 760.0,
         a45: 510.0,
         a22: 255.0,
@@ -260,7 +260,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 300,
         od: 323.9,
-        type: 'Long',
+        type: "Long",
         a90: 915.0,
         a45: 610.0,
         a22: 305.0,
@@ -269,7 +269,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 350,
         od: 355.6,
-        type: 'Long',
+        type: "Long",
         a90: 1065.0,
         a45: 710.0,
         a22: 355.0,
@@ -278,7 +278,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 400,
         od: 406.4,
-        type: 'Long',
+        type: "Long",
         a90: 1215.0,
         a45: 815.0,
         a22: 405.0,
@@ -287,7 +287,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 450,
         od: 457,
-        type: 'Long',
+        type: "Long",
         a90: 1380.0,
         a45: 915.0,
         a22: 460.0,
@@ -296,7 +296,7 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       {
         nb: 500,
         od: 508,
-        type: 'Long',
+        type: "Long",
         a90: 1530.0,
         a45: 1020.0,
         a22: 510.0,
@@ -304,16 +304,14 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
       },
     ];
 
+    console.warn("SABS 719 fitting types and basic fitting entries created successfully");
+    console.warn("Detailed dimensional data available for:");
+    console.warn("- Tee dimensions (Short and Gusset types)");
+    console.warn("- Reducer dimensions with size ranges");
+    console.warn("- Bellmouth dimensions");
+    console.warn("- Elbow dimensions (Short, Medium, Long radius)");
     console.warn(
-      'SABS 719 fitting types and basic fitting entries created successfully',
-    );
-    console.warn('Detailed dimensional data available for:');
-    console.warn('- Tee dimensions (Short and Gusset types)');
-    console.warn('- Reducer dimensions with size ranges');
-    console.warn('- Bellmouth dimensions');
-    console.warn('- Elbow dimensions (Short, Medium, Long radius)');
-    console.warn(
-      'Note: Detailed fitting dimensions can be added to fitting_dimensions table as needed',
+      "Note: Detailed fitting dimensions can be added to fitting_dimensions table as needed",
     );
   }
 
@@ -328,14 +326,14 @@ export class AddSABS719FittingData1760428800000 implements MigrationInterface {
 
     // Remove SABS 719 fitting types
     const fittingTypes = [
-      'Short Tee',
-      'Gusset Tee',
-      'Elbow - Short Radius',
-      'Elbow - Medium Radius',
-      'Elbow - Long Radius',
-      'Reducer',
-      'Bellmouth',
-      'Segmented Bend',
+      "Short Tee",
+      "Gusset Tee",
+      "Elbow - Short Radius",
+      "Elbow - Medium Radius",
+      "Elbow - Long Radius",
+      "Reducer",
+      "Bellmouth",
+      "Segmented Bend",
     ];
 
     for (const fittingType of fittingTypes) {

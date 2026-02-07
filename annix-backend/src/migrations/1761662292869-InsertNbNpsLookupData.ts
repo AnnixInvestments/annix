@@ -1,17 +1,15 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class InsertNbNpsLookupData1761662292869 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('🔧 Inserting NB-NPS lookup data...');
+    console.warn("🔧 Inserting NB-NPS lookup data...");
 
     // First, check if data already exists
-    const result = await queryRunner.query(
-      `SELECT COUNT(*) FROM nb_nps_lookup`,
-    );
-    const count = parseInt(result[0].count);
+    const result = await queryRunner.query("SELECT COUNT(*) FROM nb_nps_lookup");
+    const count = parseInt(result[0].count, 10);
 
     if (count > 0) {
-      console.warn('✅ NB-NPS lookup data already exists, skipping...');
+      console.warn("✅ NB-NPS lookup data already exists, skipping...");
       return;
     }
 
@@ -65,11 +63,11 @@ export class InsertNbNpsLookupData1761662292869 implements MigrationInterface {
             (1900, 76, 1930.4)     -- 76"
         `);
 
-    console.warn('✅ NB-NPS lookup data inserted successfully');
+    console.warn("✅ NB-NPS lookup data inserted successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('⏮️ Removing NB-NPS lookup data...');
+    console.warn("⏮️ Removing NB-NPS lookup data...");
 
     await queryRunner.query(`
             DELETE FROM nb_nps_lookup 
@@ -79,6 +77,6 @@ export class InsertNbNpsLookupData1761662292869 implements MigrationInterface {
                            1600, 1800, 1900)
         `);
 
-    console.warn('✅ NB-NPS lookup data removed');
+    console.warn("✅ NB-NPS lookup data removed");
   }
 }

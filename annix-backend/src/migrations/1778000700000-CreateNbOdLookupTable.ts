@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateNbOdLookupTable1778000700000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -30,6 +30,6 @@ export class CreateNbOdLookupTable1778000700000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS nb_od_lookup`);
+    await queryRunner.query("DROP TABLE IF EXISTS nb_od_lookup");
   }
 }

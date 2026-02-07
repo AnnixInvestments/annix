@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import Image from 'next/image';
+import Image from "next/image";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface NixFloatingAvatarProps {
   isVisible: boolean;
@@ -33,14 +33,17 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
     setShowMenu(false);
   }, []);
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging) return;
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return;
 
-    const newX = Math.max(0, Math.min(window.innerWidth - 80, e.clientX - dragOffset.current.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - 80, e.clientY - dragOffset.current.y));
+      const newX = Math.max(0, Math.min(window.innerWidth - 80, e.clientX - dragOffset.current.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - 80, e.clientY - dragOffset.current.y));
 
-    setPosition({ x: newX, y: newY });
-  }, [isDragging]);
+      setPosition({ x: newX, y: newY });
+    },
+    [isDragging],
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -60,15 +63,24 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
     setShowMenu(false);
   }, []);
 
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!isDragging) return;
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (!isDragging) return;
 
-    const touch = e.touches[0];
-    const newX = Math.max(0, Math.min(window.innerWidth - 80, touch.clientX - dragOffset.current.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - 80, touch.clientY - dragOffset.current.y));
+      const touch = e.touches[0];
+      const newX = Math.max(
+        0,
+        Math.min(window.innerWidth - 80, touch.clientX - dragOffset.current.x),
+      );
+      const newY = Math.max(
+        0,
+        Math.min(window.innerHeight - 80, touch.clientY - dragOffset.current.y),
+      );
 
-    setPosition({ x: newX, y: newY });
-  }, [isDragging]);
+      setPosition({ x: newX, y: newY });
+    },
+    [isDragging],
+  );
 
   const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
@@ -76,17 +88,17 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
 
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('touchmove', handleTouchMove);
-      window.addEventListener('touchend', handleTouchEnd);
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("touchmove", handleTouchMove);
+      window.addEventListener("touchend", handleTouchEnd);
     }
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
     };
   }, [isDragging, handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
@@ -102,12 +114,16 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
     <>
       <div
         ref={avatarRef}
-        className={`fixed z-[9998] cursor-grab select-none ${isDragging ? 'cursor-grabbing' : ''} ${position === null ? 'right-6 top-1/3' : ''}`}
-        style={position !== null ? {
-          left: position.x,
-          top: position.y,
-          transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
-        } : undefined}
+        className={`fixed z-[9998] cursor-grab select-none ${isDragging ? "cursor-grabbing" : ""} ${position === null ? "right-6 top-1/3" : ""}`}
+        style={
+          position !== null
+            ? {
+                left: position.x,
+                top: position.y,
+                transition: isDragging ? "none" : "box-shadow 0.2s ease",
+              }
+            : undefined
+        }
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onClick={handleClick}
@@ -115,12 +131,12 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
         <div className="relative group">
           <div
             className={`w-16 h-16 rounded-full overflow-hidden shadow-lg border-3 border-orange-400 hover:border-orange-500 transition-all duration-200 ${
-              isDragging ? 'scale-110 shadow-xl' : 'hover:scale-105'
+              isDragging ? "scale-110 shadow-xl" : "hover:scale-105"
             }`}
             style={{
               boxShadow: isDragging
-                ? '0 20px 40px rgba(0, 0, 0, 0.3)'
-                : '0 8px 24px rgba(0, 0, 0, 0.2)',
+                ? "0 20px 40px rgba(0, 0, 0, 0.3)"
+                : "0 8px 24px rgba(0, 0, 0, 0.2)",
             }}
           >
             <Image
@@ -135,7 +151,7 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
 
           <div
             className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full animate-pulse"
-            style={{ backgroundColor: '#FFA500' }}
+            style={{ backgroundColor: "#FFA500" }}
           />
 
           <div className="absolute -top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none">
@@ -178,12 +194,7 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
         </div>
       )}
 
-      {showMenu && (
-        <div
-          className="fixed inset-0 z-[9997]"
-          onClick={() => setShowMenu(false)}
-        />
-      )}
+      {showMenu && <div className="fixed inset-0 z-[9997]" onClick={() => setShowMenu(false)} />}
     </>
   );
 }

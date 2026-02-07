@@ -1,6 +1,4 @@
-'use client';
-
-import React from 'react';
+"use client";
 
 interface PipeIconProps {
   className?: string;
@@ -8,18 +6,12 @@ interface PipeIconProps {
 }
 
 // Horizontal steel pipe with realistic chrome/metallic finish
-export function SteelPipeIcon({ className = '', size = 24 }: PipeIconProps) {
+export function SteelPipeIcon({ className = "", size = 24 }: PipeIconProps) {
   const width = size * 2.5;
   const height = size;
 
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 60 24"
-      fill="none"
-      className={className}
-    >
+    <svg width={width} height={height} viewBox="0 0 60 24" fill="none" className={className}>
       <defs>
         {/* Metallic gradient for pipe body */}
         <linearGradient id="steelGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -57,7 +49,15 @@ export function SteelPipeIcon({ className = '', size = 24 }: PipeIconProps) {
       <line x1="8" y1="19" x2="60" y2="19" stroke="#505050" strokeWidth="1" opacity="0.4" />
 
       {/* Pipe end - outer ellipse (visible end face) */}
-      <ellipse cx="8" cy="12" rx="4" ry="8" fill="url(#endFaceGradient)" stroke="#606060" strokeWidth="0.5" />
+      <ellipse
+        cx="8"
+        cy="12"
+        rx="4"
+        ry="8"
+        fill="url(#endFaceGradient)"
+        stroke="#606060"
+        strokeWidth="0.5"
+      />
 
       {/* Pipe end - wall thickness ring */}
       <ellipse cx="8" cy="12" rx="3" ry="6" fill="none" stroke="#888888" strokeWidth="0.3" />
@@ -75,11 +75,16 @@ export function SteelPipeIcon({ className = '', size = 24 }: PipeIconProps) {
 }
 
 // Keep old options for reference
-export function PipeIconA({ className = '', size = 24 }: PipeIconProps) {
+export function PipeIconA({ className = "", size = 24 }: PipeIconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <ellipse cx="12" cy="4" rx="8" ry="2.5" fill="#9CA3AF" stroke="#6B7280" strokeWidth="1" />
-      <path d="M4 4 L4 18 A8 2.5 0 0 0 20 18 L20 4" fill="#D1D5DB" stroke="#6B7280" strokeWidth="1" />
+      <path
+        d="M4 4 L4 18 A8 2.5 0 0 0 20 18 L20 4"
+        fill="#D1D5DB"
+        stroke="#6B7280"
+        strokeWidth="1"
+      />
       <ellipse cx="12" cy="18" rx="8" ry="2.5" fill="#E5E7EB" stroke="#6B7280" strokeWidth="1" />
       <ellipse cx="12" cy="4" rx="4.5" ry="1.4" fill="#4B5563" />
       <path d="M6 6 L6 16" stroke="#F9FAFB" strokeWidth="1.5" opacity="0.4" />
@@ -87,10 +92,15 @@ export function PipeIconA({ className = '', size = 24 }: PipeIconProps) {
   );
 }
 
-export function PipeIconB({ className = '', size = 24 }: PipeIconProps) {
+export function PipeIconB({ className = "", size = 24 }: PipeIconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M3 8 C3 5.5 7 4 12 4 C17 4 21 5.5 21 8 L21 16 C21 18.5 17 20 12 20 C7 20 3 18.5 3 16 Z" fill="#D1D5DB" stroke="#6B7280" strokeWidth="1" />
+      <path
+        d="M3 8 C3 5.5 7 4 12 4 C17 4 21 5.5 21 8 L21 16 C21 18.5 17 20 12 20 C7 20 3 18.5 3 16 Z"
+        fill="#D1D5DB"
+        stroke="#6B7280"
+        strokeWidth="1"
+      />
       <ellipse cx="12" cy="8" rx="9" ry="3" fill="#E5E7EB" stroke="#6B7280" strokeWidth="1" />
       <ellipse cx="12" cy="8" rx="5" ry="1.7" fill="#374151" />
       <path d="M5 10 L5 17" stroke="#FFFFFF" strokeWidth="2" opacity="0.3" strokeLinecap="round" />
@@ -98,7 +108,7 @@ export function PipeIconB({ className = '', size = 24 }: PipeIconProps) {
   );
 }
 
-export function PipeIconC({ className = '', size = 24 }: PipeIconProps) {
+export function PipeIconC({ className = "", size = 24 }: PipeIconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
       <ellipse cx="12" cy="6" rx="10" ry="3" fill="#9CA3AF" stroke="#6B7280" strokeWidth="1" />
@@ -113,18 +123,12 @@ export function PipeIconC({ className = '', size = 24 }: PipeIconProps) {
 }
 
 // PVC Pipe - Blue plastic pipe (like Image 6)
-export function PvcPipeIcon({ className = '', size = 24 }: PipeIconProps) {
+export function PvcPipeIcon({ className = "", size = 24 }: PipeIconProps) {
   const width = size * 2.5;
   const height = size;
 
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 60 24"
-      fill="none"
-      className={className}
-    >
+    <svg width={width} height={height} viewBox="0 0 60 24" fill="none" className={className}>
       <defs>
         {/* Blue PVC gradient */}
         <linearGradient id="pvcGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -162,7 +166,15 @@ export function PvcPipeIcon({ className = '', size = 24 }: PipeIconProps) {
       <line x1="8" y1="19" x2="60" y2="19" stroke="#083558" strokeWidth="1" opacity="0.5" />
 
       {/* Pipe end - outer ellipse */}
-      <ellipse cx="8" cy="12" rx="4" ry="8" fill="url(#pvcEndGradient)" stroke="#0A4B7A" strokeWidth="0.5" />
+      <ellipse
+        cx="8"
+        cy="12"
+        rx="4"
+        ry="8"
+        fill="url(#pvcEndGradient)"
+        stroke="#0A4B7A"
+        strokeWidth="0.5"
+      />
 
       {/* Pipe end - wall thickness ring */}
       <ellipse cx="8" cy="12" rx="3" ry="6" fill="none" stroke="#1E7AB8" strokeWidth="0.3" />
@@ -180,18 +192,12 @@ export function PvcPipeIcon({ className = '', size = 24 }: PipeIconProps) {
 }
 
 // HDPE Pipe - Black with blue stripe (like Image 7)
-export function HdpePipeIcon({ className = '', size = 24 }: PipeIconProps) {
+export function HdpePipeIcon({ className = "", size = 24 }: PipeIconProps) {
   const width = size * 2.5;
   const height = size;
 
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 60 24"
-      fill="none"
-      className={className}
-    >
+    <svg width={width} height={height} viewBox="0 0 60 24" fill="none" className={className}>
       <defs>
         {/* Black HDPE gradient */}
         <linearGradient id="hdpeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -230,7 +236,15 @@ export function HdpePipeIcon({ className = '', size = 24 }: PipeIconProps) {
       <line x1="8" y1="19" x2="60" y2="19" stroke="#000000" strokeWidth="1" opacity="0.6" />
 
       {/* Pipe end - outer ellipse */}
-      <ellipse cx="8" cy="12" rx="4" ry="8" fill="url(#hdpeEndGradient)" stroke="#000000" strokeWidth="0.5" />
+      <ellipse
+        cx="8"
+        cy="12"
+        rx="4"
+        ry="8"
+        fill="url(#hdpeEndGradient)"
+        stroke="#000000"
+        strokeWidth="0.5"
+      />
 
       {/* Blue stripe on end face */}
       <path d="M 4 10 Q 8 9.5 12 10 L 12 13 Q 8 12.5 4 13 Z" fill="#00A3D9" opacity="0.8" />
@@ -250,7 +264,7 @@ export function HdpePipeIcon({ className = '', size = 24 }: PipeIconProps) {
   );
 }
 
-export function PipeIcon({ className = '', size = 24 }: PipeIconProps) {
+export function PipeIcon({ className = "", size = 24 }: PipeIconProps) {
   return <SteelPipeIcon className={className} size={size} />;
 }
 

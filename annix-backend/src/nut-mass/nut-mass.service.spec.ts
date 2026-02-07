@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NutMassService } from './nut-mass.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { NutMass } from './entities/nut-mass.entity';
-import { Bolt } from '../bolt/entities/bolt.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { Bolt } from "../bolt/entities/bolt.entity";
+import { NutMass } from "./entities/nut-mass.entity";
+import { NutMassService } from "./nut-mass.service";
 
-describe('NutMassService', () => {
+describe("NutMassService", () => {
   let service: NutMassService;
 
   const mockNutMassRepo = {
@@ -34,12 +34,12 @@ describe('NutMassService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new nut mass', async () => {
+  describe("create", () => {
+    it("should create a new nut mass", async () => {
       const dto = { boltId: 1, mass_kg: 0.1 };
       const bolt = { id: 1 } as Bolt;
       const entity = { id: 1, bolt, mass_kg: 0.1 } as NutMass;
@@ -63,14 +63,14 @@ describe('NutMassService', () => {
       });
     });
 
-    it('should throw NotFoundException if bolt not found', async () => {
+    it("should throw NotFoundException if bolt not found", async () => {
       const dto = { boltId: 1, mass_kg: 0.1 };
       mockBoltRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.create(dto)).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw BadRequestException if nut mass already exists', async () => {
+    it("should throw BadRequestException if nut mass already exists", async () => {
       const dto = { boltId: 1, mass_kg: 0.1 };
       const bolt = { id: 1 } as Bolt;
       const existing = { id: 2 } as NutMass;
@@ -82,39 +82,39 @@ describe('NutMassService', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return array of nut masses', async () => {
+  describe("findAll", () => {
+    it("should return array of nut masses", async () => {
       const result = [{ id: 1 }] as NutMass[];
       mockNutMassRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
       expect(mockNutMassRepo.find).toHaveBeenCalledWith({
-        relations: ['bolt'],
+        relations: ["bolt"],
       });
     });
   });
 
-  describe('findOne', () => {
-    it('should return a nut mass by id', async () => {
+  describe("findOne", () => {
+    it("should return a nut mass by id", async () => {
       const result = { id: 1 } as NutMass;
       mockNutMassRepo.findOne.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
       expect(mockNutMassRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['bolt'],
+        relations: ["bolt"],
       });
     });
 
-    it('should throw NotFoundException if nut mass not found', async () => {
+    it("should throw NotFoundException if nut mass not found", async () => {
       mockNutMassRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('remove', () => {
-    it('should delete a nut mass', async () => {
+  describe("remove", () => {
+    it("should delete a nut mass", async () => {
       const entity = { id: 1 } as NutMass;
       mockNutMassRepo.findOne.mockResolvedValue(entity);
       mockNutMassRepo.remove.mockResolvedValue(undefined);

@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInterface {
-  name = 'AddAsmeVIIIPressureVesselData1777800000004';
+  name = "AddAsmeVIIIPressureVesselData1777800000004";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding ASME VIII pressure vessel data for Tank Module...');
+    console.warn("Adding ASME VIII pressure vessel data for Tank Module...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS vessel_weld_categories (
@@ -133,24 +133,24 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
 
     const weldCategories = [
       [
-        'A',
-        'Longitudinal',
-        'Longitudinal joints in shells, communicating chambers, nozzles, and any joint within a sphere',
+        "A",
+        "Longitudinal",
+        "Longitudinal joints in shells, communicating chambers, nozzles, and any joint within a sphere",
       ],
       [
-        'B',
-        'Circumferential',
-        'Circumferential joints in shells and nozzles; joints between hemispherical heads and shells',
+        "B",
+        "Circumferential",
+        "Circumferential joints in shells and nozzles; joints between hemispherical heads and shells",
       ],
       [
-        'C',
-        'Flange-to-shell',
-        'Joints connecting flanges, tubesheets, flat heads to main shell, nozzles, or communicating chambers',
+        "C",
+        "Flange-to-shell",
+        "Joints connecting flanges, tubesheets, flat heads to main shell, nozzles, or communicating chambers",
       ],
       [
-        'D',
-        'Nozzle-to-shell',
-        'Joints connecting nozzle necks, communicating chambers, or couplings to shells, heads, or flat-sided vessels',
+        "D",
+        "Nozzle-to-shell",
+        "Joints connecting nozzle necks, communicating chambers, or couplings to shells, heads, or flat-sided vessels",
       ],
     ];
 
@@ -166,97 +166,17 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
     }
 
     const jointEfficiencies = [
-      [
-        1,
-        'Double-welded butt joint with full radiography',
-        1.0,
-        1.0,
-        1.0,
-        1.0,
-        'Full RT',
-      ],
-      [
-        1,
-        'Double-welded butt joint with spot radiography',
-        0.85,
-        0.85,
-        0.85,
-        0.85,
-        'Spot RT',
-      ],
-      [
-        1,
-        'Double-welded butt joint without radiography',
-        0.7,
-        0.7,
-        0.7,
-        0.7,
-        'No RT',
-      ],
-      [
-        2,
-        'Single-welded butt with backing strip, full RT',
-        0.9,
-        0.9,
-        0.9,
-        0.9,
-        'Full RT',
-      ],
-      [
-        2,
-        'Single-welded butt with backing strip, spot RT',
-        0.8,
-        0.8,
-        0.8,
-        0.8,
-        'Spot RT',
-      ],
-      [
-        2,
-        'Single-welded butt with backing strip, no RT',
-        0.65,
-        0.65,
-        0.65,
-        0.65,
-        'No RT',
-      ],
-      [
-        3,
-        'Single-welded butt without backing strip',
-        null,
-        0.8,
-        null,
-        null,
-        'Spot RT',
-      ],
-      [
-        3,
-        'Single-welded butt without backing strip, no RT',
-        null,
-        0.6,
-        null,
-        null,
-        'No RT',
-      ],
-      [4, 'Double full fillet lap joint', null, 0.55, null, null, 'No RT'],
-      [
-        5,
-        'Single full fillet lap joint with plug welds',
-        null,
-        0.5,
-        null,
-        null,
-        'No RT',
-      ],
-      [
-        6,
-        'Single-welded butt without backing (Cat B only)',
-        null,
-        0.6,
-        null,
-        null,
-        'No RT',
-      ],
+      [1, "Double-welded butt joint with full radiography", 1.0, 1.0, 1.0, 1.0, "Full RT"],
+      [1, "Double-welded butt joint with spot radiography", 0.85, 0.85, 0.85, 0.85, "Spot RT"],
+      [1, "Double-welded butt joint without radiography", 0.7, 0.7, 0.7, 0.7, "No RT"],
+      [2, "Single-welded butt with backing strip, full RT", 0.9, 0.9, 0.9, 0.9, "Full RT"],
+      [2, "Single-welded butt with backing strip, spot RT", 0.8, 0.8, 0.8, 0.8, "Spot RT"],
+      [2, "Single-welded butt with backing strip, no RT", 0.65, 0.65, 0.65, 0.65, "No RT"],
+      [3, "Single-welded butt without backing strip", null, 0.8, null, null, "Spot RT"],
+      [3, "Single-welded butt without backing strip, no RT", null, 0.6, null, null, "No RT"],
+      [4, "Double full fillet lap joint", null, 0.55, null, null, "No RT"],
+      [5, "Single full fillet lap joint with plug welds", null, 0.5, null, null, "No RT"],
+      [6, "Single-welded butt without backing (Cat B only)", null, 0.6, null, null, "No RT"],
     ];
 
     for (const [type, desc, catA, catB, catC, catD, rt] of jointEfficiencies) {
@@ -273,56 +193,50 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
 
     const headTypes = [
       [
-        'hemispherical',
-        'Hemispherical head - half sphere',
+        "hemispherical",
+        "Hemispherical head - half sphere",
         0.5,
-        't = PR/(2SE - 0.2P)',
-        'High pressure vessels, reactors',
+        "t = PR/(2SE - 0.2P)",
+        "High pressure vessels, reactors",
       ],
       [
-        'ellipsoidal_2_1',
-        'Ellipsoidal head - 2:1 ratio',
+        "ellipsoidal_2_1",
+        "Ellipsoidal head - 2:1 ratio",
         1.0,
-        't = PD/(2SE - 0.2P)',
-        'Standard pressure vessels',
+        "t = PD/(2SE - 0.2P)",
+        "Standard pressure vessels",
       ],
       [
-        'torispherical',
-        'Torispherical (ASME F&D) head',
+        "torispherical",
+        "Torispherical (ASME F&D) head",
         1.77,
-        't = 0.885PL/(SE - 0.1P)',
-        'Low pressure vessels, tanks',
+        "t = 0.885PL/(SE - 0.1P)",
+        "Low pressure vessels, tanks",
       ],
       [
-        'flat',
-        'Flat head or cover',
+        "flat",
+        "Flat head or cover",
         null,
-        'Per UG-34 (C factor method)',
-        'Small diameter, low pressure',
+        "Per UG-34 (C factor method)",
+        "Small diameter, low pressure",
       ],
       [
-        'conical',
-        'Conical head or reducer',
+        "conical",
+        "Conical head or reducer",
         null,
-        't = PD/(2cos(α)(SE - 0.6P))',
-        'Transition sections, hoppers',
+        "t = PD/(2cos(α)(SE - 0.6P))",
+        "Transition sections, hoppers",
       ],
       [
-        'toriconical',
-        'Toriconical head',
+        "toriconical",
+        "Toriconical head",
         null,
-        'Combination torispherical/conical',
-        'Large diameter transitions',
+        "Combination torispherical/conical",
+        "Large diameter transitions",
       ],
     ];
 
-    for (const [
-      headType,
-      description,
-      factor,
-      formula,
-      application,
-    ] of headTypes) {
+    for (const [headType, description, factor, formula, application] of headTypes) {
       await queryRunner.query(
         `
         INSERT INTO vessel_head_types (head_type, description, thickness_factor, formula, typical_application)
@@ -335,50 +249,20 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
     }
 
     const gasketData = [
-      [
-        'rubber_with_fabric',
-        1.25,
-        400,
-        2.76,
-        'Elastomers with cotton/asbestos fabric',
-      ],
-      ['rubber_without_fabric', 0.5, 0, 0, 'Plain elastomers, O-rings'],
-      ['compressed_fiber', 2.0, 1600, 11.03, 'Compressed non-asbestos fiber'],
-      [
-        'spiral_wound_metal',
-        2.5,
-        10000,
-        68.95,
-        'Spiral wound with metal windings',
-      ],
-      ['spiral_wound_ptfe', 2.0, 3700, 25.51, 'Spiral wound with PTFE filler'],
-      ['flexible_graphite', 2.0, 3700, 25.51, 'Flexible graphite sheet'],
-      ['soft_aluminum', 2.75, 4000, 27.58, 'Soft aluminum (O temper)'],
-      ['soft_copper_brass', 3.0, 4500, 31.03, 'Soft copper or brass'],
-      ['iron_soft_steel', 3.25, 5500, 37.92, 'Iron or soft steel'],
-      ['monel_4_6_chrome', 3.5, 6500, 44.82, 'Monel, 4-6% chrome steel'],
-      ['stainless_steel', 3.75, 7600, 52.4, 'Stainless steel'],
-      [
-        'ring_joint_soft_iron',
-        5.5,
-        18000,
-        124.11,
-        'Ring joint - soft iron/carbon steel',
-      ],
-      [
-        'ring_joint_monel',
-        6.0,
-        21800,
-        150.31,
-        'Ring joint - Monel/4-6% chrome',
-      ],
-      [
-        'ring_joint_stainless',
-        6.5,
-        26000,
-        179.27,
-        'Ring joint - stainless steel',
-      ],
+      ["rubber_with_fabric", 1.25, 400, 2.76, "Elastomers with cotton/asbestos fabric"],
+      ["rubber_without_fabric", 0.5, 0, 0, "Plain elastomers, O-rings"],
+      ["compressed_fiber", 2.0, 1600, 11.03, "Compressed non-asbestos fiber"],
+      ["spiral_wound_metal", 2.5, 10000, 68.95, "Spiral wound with metal windings"],
+      ["spiral_wound_ptfe", 2.0, 3700, 25.51, "Spiral wound with PTFE filler"],
+      ["flexible_graphite", 2.0, 3700, 25.51, "Flexible graphite sheet"],
+      ["soft_aluminum", 2.75, 4000, 27.58, "Soft aluminum (O temper)"],
+      ["soft_copper_brass", 3.0, 4500, 31.03, "Soft copper or brass"],
+      ["iron_soft_steel", 3.25, 5500, 37.92, "Iron or soft steel"],
+      ["monel_4_6_chrome", 3.5, 6500, 44.82, "Monel, 4-6% chrome steel"],
+      ["stainless_steel", 3.75, 7600, 52.4, "Stainless steel"],
+      ["ring_joint_soft_iron", 5.5, 18000, 124.11, "Ring joint - soft iron/carbon steel"],
+      ["ring_joint_monel", 6.0, 21800, 150.31, "Ring joint - Monel/4-6% chrome"],
+      ["ring_joint_stainless", 6.5, 26000, 179.27, "Ring joint - stainless steel"],
     ];
 
     for (const [gasketType, m, yPsi, yMpa, notes] of gasketData) {
@@ -394,16 +278,8 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
     }
 
     const nozzleReqs = [
-      [
-        'NPS 2 and smaller',
-        'Schedule 80',
-        'Minimum for small bore nozzles per UG-45',
-      ],
-      [
-        'Greater than NPS 2',
-        'Schedule 40',
-        'Or calculated design thickness, whichever is greater',
-      ],
+      ["NPS 2 and smaller", "Schedule 80", "Minimum for small bore nozzles per UG-45"],
+      ["Greater than NPS 2", "Schedule 40", "Or calculated design thickness, whichever is greater"],
     ];
 
     for (const [sizeRange, minSchedule, notes] of nozzleReqs) {
@@ -420,64 +296,64 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
 
     const pwhtData = [
       [
-        'carbon_steel',
-        'P-1',
+        "carbon_steel",
+        "P-1",
         32,
         1.25,
         1100,
         1200,
         593,
         649,
-        '1 hr/in., 15 min minimum',
-        'Standard carbon steel vessels',
+        "1 hr/in., 15 min minimum",
+        "Standard carbon steel vessels",
       ],
       [
-        'low_alloy',
-        'P-3',
+        "low_alloy",
+        "P-3",
         16,
         0.625,
         1100,
         1200,
         593,
         649,
-        '1 hr/in., 15 min minimum',
-        'C-Mo, Mn-Mo steels',
+        "1 hr/in., 15 min minimum",
+        "C-Mo, Mn-Mo steels",
       ],
       [
-        'cr_mo_low',
-        'P-4',
+        "cr_mo_low",
+        "P-4",
         13,
         0.5,
         1250,
         1300,
         677,
         704,
-        '1 hr/in., 15 min minimum',
-        '1-1/4Cr-1/2Mo, 2Cr-1/2Mo',
+        "1 hr/in., 15 min minimum",
+        "1-1/4Cr-1/2Mo, 2Cr-1/2Mo",
       ],
       [
-        'cr_mo_high',
-        'P-5A',
+        "cr_mo_high",
+        "P-5A",
         13,
         0.5,
         1300,
         1400,
         704,
         760,
-        '1 hr/in., 15 min minimum',
-        '5Cr-1/2Mo through 9Cr-1Mo',
+        "1 hr/in., 15 min minimum",
+        "5Cr-1/2Mo through 9Cr-1Mo",
       ],
       [
-        'stainless_austenitic',
-        'P-8',
+        "stainless_austenitic",
+        "P-8",
         null,
         null,
         null,
         null,
         null,
         null,
-        'Not required unless specified',
-        '304, 316 stainless - solution anneal if required',
+        "Not required unless specified",
+        "304, 316 stainless - solution anneal if required",
       ],
     ];
 
@@ -502,52 +378,35 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
           temp_min_f = $5, temp_max_f = $6, temp_min_c = $7, temp_max_c = $8,
           holding_time = $9, notes = $10
       `,
-        [
-          material,
-          pNum,
-          thickMm,
-          thickIn,
-          tempMinF,
-          tempMaxF,
-          tempMinC,
-          tempMaxC,
-          holding,
-          notes,
-        ],
+        [material, pNum, thickMm, thickIn, tempMinF, tempMaxF, tempMinC, tempMaxC, holding, notes],
       );
     }
 
     const testReqs = [
       [
-        'hydrostatic',
+        "hydrostatic",
         1.3,
-        'PT = 1.3 × MAWP × (ST/S)',
-        'Time for examination',
-        'Standard test method, preferred',
+        "PT = 1.3 × MAWP × (ST/S)",
+        "Time for examination",
+        "Standard test method, preferred",
       ],
       [
-        'pneumatic',
+        "pneumatic",
         1.1,
-        'PT = 1.1 × MAWP × (ST/S)',
-        '10 minutes minimum',
-        'Increase in stages: 25%, then 10% increments',
+        "PT = 1.1 × MAWP × (ST/S)",
+        "10 minutes minimum",
+        "Increase in stages: 25%, then 10% increments",
       ],
       [
-        'hydropneumatic',
+        "hydropneumatic",
         1.3,
-        'Combination hydro + pneumatic',
-        'Per procedure',
-        'Used when complete filling not practical',
+        "Combination hydro + pneumatic",
+        "Per procedure",
+        "Used when complete filling not practical",
       ],
     ];
 
-    for (const [
-      testType,
-      factor,
-      formula,
-      holdTime,
-      requirements,
-    ] of testReqs) {
+    for (const [testType, factor, formula, holdTime, requirements] of testReqs) {
       await queryRunner.query(
         `
         INSERT INTO pressure_test_requirements (test_type, pressure_factor, formula, min_hold_time, special_requirements)
@@ -560,88 +419,46 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
     }
 
     const materialSpecs = [
+      ["SA-516", "plate", "55, 60, 65, 70", "Standard carbon steel pressure vessel plate", null],
+      ["SA-285", "plate", "A, B, C", "Low/medium strength carbon steel plate", null],
+      ["SA-240", "plate", "304, 304L, 316, 316L, 321, 347", "Stainless steel plate", null],
+      ["SA-387", "plate", "11, 12, 22", "Cr-Mo alloy steel plate for elevated temperature", null],
+      ["SA-106", "pipe", "A, B, C", "Seamless carbon steel pipe for high temperature", null],
       [
-        'SA-516',
-        'plate',
-        '55, 60, 65, 70',
-        'Standard carbon steel pressure vessel plate',
+        "SA-312",
+        "pipe",
+        "TP304, TP316, TP321, TP347",
+        "Seamless and welded stainless steel pipe",
+        null,
+      ],
+      ["SA-333", "pipe", "1, 6, 7, 8", "Seamless and welded pipe for low temperature", null],
+      [
+        "SA-335",
+        "pipe",
+        "P5, P9, P11, P22",
+        "Seamless alloy steel pipe for high temperature",
+        null,
+      ],
+      ["SA-105", "forging", "Standard", "Carbon steel forgings for flanges and fittings", null],
+      [
+        "SA-182",
+        "forging",
+        "F304, F316, F11, F22",
+        "Forged or rolled alloy and stainless flanges/fittings",
         null,
       ],
       [
-        'SA-285',
-        'plate',
-        'A, B, C',
-        'Low/medium strength carbon steel plate',
+        "SA-350",
+        "forging",
+        "LF1, LF2, LF3",
+        "Carbon and low alloy forgings for low temperature",
         null,
       ],
       [
-        'SA-240',
-        'plate',
-        '304, 304L, 316, 316L, 321, 347',
-        'Stainless steel plate',
-        null,
-      ],
-      [
-        'SA-387',
-        'plate',
-        '11, 12, 22',
-        'Cr-Mo alloy steel plate for elevated temperature',
-        null,
-      ],
-      [
-        'SA-106',
-        'pipe',
-        'A, B, C',
-        'Seamless carbon steel pipe for high temperature',
-        null,
-      ],
-      [
-        'SA-312',
-        'pipe',
-        'TP304, TP316, TP321, TP347',
-        'Seamless and welded stainless steel pipe',
-        null,
-      ],
-      [
-        'SA-333',
-        'pipe',
-        '1, 6, 7, 8',
-        'Seamless and welded pipe for low temperature',
-        null,
-      ],
-      [
-        'SA-335',
-        'pipe',
-        'P5, P9, P11, P22',
-        'Seamless alloy steel pipe for high temperature',
-        null,
-      ],
-      [
-        'SA-105',
-        'forging',
-        'Standard',
-        'Carbon steel forgings for flanges and fittings',
-        null,
-      ],
-      [
-        'SA-182',
-        'forging',
-        'F304, F316, F11, F22',
-        'Forged or rolled alloy and stainless flanges/fittings',
-        null,
-      ],
-      [
-        'SA-350',
-        'forging',
-        'LF1, LF2, LF3',
-        'Carbon and low alloy forgings for low temperature',
-        null,
-      ],
-      [
-        'SA-266',
-        'forging',
-        '1, 2, 3, 4',
-        'Carbon steel forgings for pressure vessel components',
+        "SA-266",
+        "forging",
+        "1, 2, 3, 4",
+        "Carbon steel forgings for pressure vessel components",
         null,
       ],
     ];
@@ -659,12 +476,12 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
     }
 
     const coneAngles = [
-      [30, 'Standard cone rules apply', false, null],
+      [30, "Standard cone rules apply", false, null],
       [
         60,
-        'Knuckle or reinforcement required at large end',
+        "Knuckle or reinforcement required at large end",
         true,
-        '6% of large diameter or reinforcement per Appendix 1-5',
+        "6% of large diameter or reinforcement per Appendix 1-5",
       ],
     ];
 
@@ -682,56 +499,50 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
 
     const flangeTypes = [
       [
-        'integral',
-        'One-piece forged or welded construction with hub',
-        'Appendix 2',
-        '2-3, 2-4',
-        'Highest integrity, used for high pressure',
+        "integral",
+        "One-piece forged or welded construction with hub",
+        "Appendix 2",
+        "2-3, 2-4",
+        "Highest integrity, used for high pressure",
       ],
       [
-        'loose',
-        'Lapped, threaded, or slip-on construction',
-        'Appendix 2',
-        '2-5',
-        'Lower cost, easier alignment',
+        "loose",
+        "Lapped, threaded, or slip-on construction",
+        "Appendix 2",
+        "2-5",
+        "Lower cost, easier alignment",
       ],
       [
-        'optional',
-        'Can be designed as integral when meeting requirements',
-        'Owner choice',
-        '2-6',
-        'Designer option for borderline cases',
+        "optional",
+        "Can be designed as integral when meeting requirements",
+        "Owner choice",
+        "2-6",
+        "Designer option for borderline cases",
       ],
       [
-        'reverse',
-        'Bolts inside, gasket outside bolt circle',
-        'Special rules',
-        '2-10',
-        'Used for heat exchangers, special applications',
+        "reverse",
+        "Bolts inside, gasket outside bolt circle",
+        "Special rules",
+        "2-10",
+        "Used for heat exchangers, special applications",
       ],
       [
-        'full_face',
-        'Gasket extends to outer edge',
-        'Appendix 2',
-        '2-5',
-        'Typically with flat face flanges',
+        "full_face",
+        "Gasket extends to outer edge",
+        "Appendix 2",
+        "2-5",
+        "Typically with flat face flanges",
       ],
       [
-        'split_loose',
-        'Multi-piece loose flange',
-        'Appendix 2',
-        '2-5',
-        'Large diameter applications',
+        "split_loose",
+        "Multi-piece loose flange",
+        "Appendix 2",
+        "2-5",
+        "Large diameter applications",
       ],
     ];
 
-    for (const [
-      flangeType,
-      description,
-      method,
-      appendix,
-      notes,
-    ] of flangeTypes) {
+    for (const [flangeType, description, method, appendix, notes] of flangeTypes) {
       await queryRunner.query(
         `
         INSERT INTO vessel_flange_types (flange_type, description, design_method, appendix_reference, notes)
@@ -743,19 +554,19 @@ export class AddAsmeVIIIPressureVesselData1777800000004 implements MigrationInte
       );
     }
 
-    console.warn('ASME VIII pressure vessel data added successfully');
+    console.warn("ASME VIII pressure vessel data added successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS vessel_flange_types`);
-    await queryRunner.query(`DROP TABLE IF EXISTS cone_angle_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS vessel_material_specs`);
-    await queryRunner.query(`DROP TABLE IF EXISTS pressure_test_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS pwht_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS vessel_nozzle_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS gasket_factors`);
-    await queryRunner.query(`DROP TABLE IF EXISTS vessel_head_types`);
-    await queryRunner.query(`DROP TABLE IF EXISTS vessel_joint_efficiencies`);
-    await queryRunner.query(`DROP TABLE IF EXISTS vessel_weld_categories`);
+    await queryRunner.query("DROP TABLE IF EXISTS vessel_flange_types");
+    await queryRunner.query("DROP TABLE IF EXISTS cone_angle_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS vessel_material_specs");
+    await queryRunner.query("DROP TABLE IF EXISTS pressure_test_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS pwht_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS vessel_nozzle_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS gasket_factors");
+    await queryRunner.query("DROP TABLE IF EXISTS vessel_head_types");
+    await queryRunner.query("DROP TABLE IF EXISTS vessel_joint_efficiencies");
+    await queryRunner.query("DROP TABLE IF EXISTS vessel_weld_categories");
   }
 }

@@ -12,81 +12,76 @@ interface CoastlinePoint {
 // Coverage from Namibia border (west) around to Mozambique border (east)
 const SOUTH_AFRICA_COASTLINE: CoastlinePoint[] = [
   // West Coast (Atlantic)
-  { lat: -28.7167, lng: 16.4500 },   // Alexander Bay
-  { lat: -29.2667, lng: 16.8833 },   // Port Nolloth
-  { lat: -30.9500, lng: 17.5833 },   // Hondeklip Bay
-  { lat: -31.6333, lng: 18.0167 },   // Lamberts Bay
-  { lat: -32.0833, lng: 18.3333 },   // Elands Bay
-  { lat: -32.7500, lng: 17.9333 },   // Saldanha Bay
-  { lat: -33.0167, lng: 17.9333 },   // Langebaan
-  { lat: -33.4833, lng: 18.3667 },   // Melkbosstrand
-  { lat: -33.9167, lng: 18.4167 },   // Cape Town
+  { lat: -28.7167, lng: 16.45 }, // Alexander Bay
+  { lat: -29.2667, lng: 16.8833 }, // Port Nolloth
+  { lat: -30.95, lng: 17.5833 }, // Hondeklip Bay
+  { lat: -31.6333, lng: 18.0167 }, // Lamberts Bay
+  { lat: -32.0833, lng: 18.3333 }, // Elands Bay
+  { lat: -32.75, lng: 17.9333 }, // Saldanha Bay
+  { lat: -33.0167, lng: 17.9333 }, // Langebaan
+  { lat: -33.4833, lng: 18.3667 }, // Melkbosstrand
+  { lat: -33.9167, lng: 18.4167 }, // Cape Town
 
   // Cape Peninsula
-  { lat: -34.0833, lng: 18.3500 },   // Hout Bay
-  { lat: -34.2000, lng: 18.4333 },   // Simon's Town
-  { lat: -34.3500, lng: 18.4833 },   // Cape Point
+  { lat: -34.0833, lng: 18.35 }, // Hout Bay
+  { lat: -34.2, lng: 18.4333 }, // Simon's Town
+  { lat: -34.35, lng: 18.4833 }, // Cape Point
 
   // South Coast (Indian Ocean)
-  { lat: -34.4167, lng: 19.2500 },   // Hermanus
-  { lat: -34.5833, lng: 19.6167 },   // Gansbaai
-  { lat: -34.4667, lng: 20.5000 },   // Arniston
-  { lat: -34.1833, lng: 22.1333 },   // Mossel Bay
-  { lat: -34.0333, lng: 23.0500 },   // George/Wilderness
-  { lat: -34.0500, lng: 23.3667 },   // Knysna
-  { lat: -33.9667, lng: 23.9167 },   // Plettenberg Bay
-  { lat: -33.7667, lng: 25.9500 },   // Port Elizabeth
-  { lat: -33.0333, lng: 27.9167 },   // East London
+  { lat: -34.4167, lng: 19.25 }, // Hermanus
+  { lat: -34.5833, lng: 19.6167 }, // Gansbaai
+  { lat: -34.4667, lng: 20.5 }, // Arniston
+  { lat: -34.1833, lng: 22.1333 }, // Mossel Bay
+  { lat: -34.0333, lng: 23.05 }, // George/Wilderness
+  { lat: -34.05, lng: 23.3667 }, // Knysna
+  { lat: -33.9667, lng: 23.9167 }, // Plettenberg Bay
+  { lat: -33.7667, lng: 25.95 }, // Port Elizabeth
+  { lat: -33.0333, lng: 27.9167 }, // East London
 
   // East Coast
-  { lat: -31.6000, lng: 29.5333 },   // Port St Johns
-  { lat: -30.8667, lng: 30.3833 },   // Port Shepstone
-  { lat: -29.8667, lng: 31.0333 },   // Durban
-  { lat: -29.5500, lng: 31.2167 },   // Ballito
-  { lat: -28.7500, lng: 32.0667 },   // Richards Bay
-  { lat: -27.5333, lng: 32.6833 },   // St Lucia
-  { lat: -27.0167, lng: 32.9000 },   // Kosi Bay
+  { lat: -31.6, lng: 29.5333 }, // Port St Johns
+  { lat: -30.8667, lng: 30.3833 }, // Port Shepstone
+  { lat: -29.8667, lng: 31.0333 }, // Durban
+  { lat: -29.55, lng: 31.2167 }, // Ballito
+  { lat: -28.75, lng: 32.0667 }, // Richards Bay
+  { lat: -27.5333, lng: 32.6833 }, // St Lucia
+  { lat: -27.0167, lng: 32.9 }, // Kosi Bay
 ];
 
 // Additional global coastline points for major regions
 const GLOBAL_COASTLINE_SAMPLES: CoastlinePoint[] = [
   // Europe - Mediterranean
-  { lat: 41.9000, lng: 12.5000 },    // Italy
-  { lat: 36.7000, lng: -4.4000 },    // Spain
-  { lat: 43.3000, lng: 5.3700 },     // France
+  { lat: 41.9, lng: 12.5 }, // Italy
+  { lat: 36.7, lng: -4.4 }, // Spain
+  { lat: 43.3, lng: 5.37 }, // France
 
   // Europe - Atlantic
-  { lat: 51.5000, lng: 0.1276 },     // UK
-  { lat: 52.3700, lng: 4.8900 },     // Netherlands
+  { lat: 51.5, lng: 0.1276 }, // UK
+  { lat: 52.37, lng: 4.89 }, // Netherlands
 
   // Middle East
-  { lat: 25.2000, lng: 55.2700 },    // UAE
-  { lat: 29.5000, lng: 34.9200 },    // Red Sea
+  { lat: 25.2, lng: 55.27 }, // UAE
+  { lat: 29.5, lng: 34.92 }, // Red Sea
 
   // Asia
-  { lat: 1.3500, lng: 103.8200 },    // Singapore
-  { lat: 22.3000, lng: 114.1700 },   // Hong Kong
+  { lat: 1.35, lng: 103.82 }, // Singapore
+  { lat: 22.3, lng: 114.17 }, // Hong Kong
 
   // Australia
-  { lat: -33.8700, lng: 151.2100 },  // Sydney
-  { lat: -31.9500, lng: 115.8600 },  // Perth
+  { lat: -33.87, lng: 151.21 }, // Sydney
+  { lat: -31.95, lng: 115.86 }, // Perth
 
   // Americas
-  { lat: 25.7600, lng: -80.1900 },   // Miami
-  { lat: 34.0500, lng: -118.2500 },  // Los Angeles
-  { lat: -22.9000, lng: -43.1700 },  // Rio de Janeiro
+  { lat: 25.76, lng: -80.19 }, // Miami
+  { lat: 34.05, lng: -118.25 }, // Los Angeles
+  { lat: -22.9, lng: -43.17 }, // Rio de Janeiro
 ];
 
 /**
  * Calculate distance between two points using Haversine formula
  * @returns Distance in kilometers
  */
-function haversineDistance(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number
-): number {
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371; // Earth's radius in kilometers
 
   const dLat = toRadians(lat2 - lat1);
@@ -94,10 +89,7 @@ function haversineDistance(
 
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRadians(lat1)) *
-    Math.cos(toRadians(lat2)) *
-    Math.sin(dLng / 2) *
-    Math.sin(dLng / 2);
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
@@ -144,16 +136,14 @@ export function calculateDistanceToCoast(lat: number, lng: number): number {
  * @param distanceKm Distance to coast in kilometers
  * @returns Marine influence classification
  */
-export function classifyMarineInfluence(
-  distanceKm: number
-): 'None' | 'Coastal' | 'Offshore' {
+export function classifyMarineInfluence(distanceKm: number): "None" | "Coastal" | "Offshore" {
   if (distanceKm < 1) {
-    return 'Offshore';
+    return "Offshore";
   }
   if (distanceKm < 5) {
-    return 'Coastal';
+    return "Coastal";
   }
-  return 'None';
+  return "None";
 }
 
 /**
@@ -162,29 +152,29 @@ export function classifyMarineInfluence(
  * @returns Detailed marine influence classification
  */
 export function classifyDetailedMarineInfluence(
-  distanceKm: number
-): 'Extreme Marine' | 'Severe Marine' | 'High Marine' | 'Moderate Marine' | 'Low / Non-Marine' {
+  distanceKm: number,
+): "Extreme Marine" | "Severe Marine" | "High Marine" | "Moderate Marine" | "Low / Non-Marine" {
   if (distanceKm <= 0.5) {
-    return 'Extreme Marine';
+    return "Extreme Marine";
   }
   if (distanceKm <= 1) {
-    return 'Severe Marine';
+    return "Severe Marine";
   }
   if (distanceKm <= 5) {
-    return 'High Marine';
+    return "High Marine";
   }
   if (distanceKm <= 20) {
-    return 'Moderate Marine';
+    return "Moderate Marine";
   }
-  return 'Low / Non-Marine';
+  return "Low / Non-Marine";
 }
 
 /**
  * Air Salt Content classification based on ISO 9223 chloride deposition rates
  */
 export interface AirSaltContentResult {
-  level: 'Very Low' | 'Low' | 'Moderate' | 'High' | 'Very High';
-  isoCategory: 'S0' | 'S1' | 'S2' | 'S3';
+  level: "Very Low" | "Low" | "Moderate" | "High" | "Very High";
+  isoCategory: "S0" | "S1" | "S2" | "S3";
   estimatedDeposition: string; // mg/m²/day range
 }
 
@@ -197,57 +187,57 @@ export interface AirSaltContentResult {
  */
 export function classifyAirSaltContent(
   distanceKm: number,
-  humidity?: number
+  humidity?: number,
 ): AirSaltContentResult {
   // Base classification from distance to coast
-  let baseCategory: 'S0' | 'S1' | 'S2' | 'S3';
-  let level: 'Very Low' | 'Low' | 'Moderate' | 'High' | 'Very High';
+  let baseCategory: "S0" | "S1" | "S2" | "S3";
+  let level: "Very Low" | "Low" | "Moderate" | "High" | "Very High";
   let estimatedDeposition: string;
 
   if (distanceKm > 50) {
     // S0: < 3 mg/m²/day
-    baseCategory = 'S0';
-    level = 'Very Low';
-    estimatedDeposition = '< 3 mg/m²/day';
+    baseCategory = "S0";
+    level = "Very Low";
+    estimatedDeposition = "< 3 mg/m²/day";
   } else if (distanceKm > 20) {
     // S1: 3-60 mg/m²/day
-    baseCategory = 'S1';
-    level = 'Low';
-    estimatedDeposition = '3-60 mg/m²/day';
+    baseCategory = "S1";
+    level = "Low";
+    estimatedDeposition = "3-60 mg/m²/day";
   } else if (distanceKm > 5) {
     // S2: 60-300 mg/m²/day
-    baseCategory = 'S2';
-    level = 'Moderate';
-    estimatedDeposition = '60-300 mg/m²/day';
+    baseCategory = "S2";
+    level = "Moderate";
+    estimatedDeposition = "60-300 mg/m²/day";
   } else if (distanceKm > 1) {
     // S3: 300-1500 mg/m²/day
-    baseCategory = 'S3';
-    level = 'High';
-    estimatedDeposition = '300-1,500 mg/m²/day';
+    baseCategory = "S3";
+    level = "High";
+    estimatedDeposition = "300-1,500 mg/m²/day";
   } else {
     // Very close to coast - highest category
-    baseCategory = 'S3';
-    level = 'Very High';
-    estimatedDeposition = '> 1,500 mg/m²/day';
+    baseCategory = "S3";
+    level = "Very High";
+    estimatedDeposition = "> 1,500 mg/m²/day";
   }
 
   // Increase category by one level if humidity > 75%
   if (humidity !== undefined && humidity > 75) {
-    if (level === 'Very Low') {
-      level = 'Low';
-      baseCategory = 'S1';
-      estimatedDeposition = '3-60 mg/m²/day';
-    } else if (level === 'Low') {
-      level = 'Moderate';
-      baseCategory = 'S2';
-      estimatedDeposition = '60-300 mg/m²/day';
-    } else if (level === 'Moderate') {
-      level = 'High';
-      baseCategory = 'S3';
-      estimatedDeposition = '300-1,500 mg/m²/day';
-    } else if (level === 'High') {
-      level = 'Very High';
-      estimatedDeposition = '> 1,500 mg/m²/day';
+    if (level === "Very Low") {
+      level = "Low";
+      baseCategory = "S1";
+      estimatedDeposition = "3-60 mg/m²/day";
+    } else if (level === "Low") {
+      level = "Moderate";
+      baseCategory = "S2";
+      estimatedDeposition = "60-300 mg/m²/day";
+    } else if (level === "Moderate") {
+      level = "High";
+      baseCategory = "S3";
+      estimatedDeposition = "300-1,500 mg/m²/day";
+    } else if (level === "High") {
+      level = "Very High";
+      estimatedDeposition = "> 1,500 mg/m²/day";
     }
   }
 
@@ -263,8 +253,8 @@ export function classifyAirSaltContent(
  * TOW is defined as hours where RH >= 80% and Temp > 0°C
  */
 export interface TimeOfWetnessResult {
-  level: 'Low' | 'Moderate' | 'High';
-  isoCategory: 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
+  level: "Low" | "Moderate" | "High";
+  isoCategory: "T1" | "T2" | "T3" | "T4" | "T5";
   estimatedHours: string;
 }
 
@@ -274,10 +264,7 @@ export interface TimeOfWetnessResult {
  * @param avgTemp Average temperature in Celsius
  * @returns Time of Wetness classification
  */
-export function classifyTimeOfWetness(
-  avgHumidity: number,
-  avgTemp: number
-): TimeOfWetnessResult {
+export function classifyTimeOfWetness(avgHumidity: number, avgTemp: number): TimeOfWetnessResult {
   // Estimate annualized TOW hours based on humidity and temperature
   // This is a simplified model - actual TOW requires hourly data
   let estimatedAnnualHours: number;
@@ -299,30 +286,30 @@ export function classifyTimeOfWetness(
   }
 
   // Classify based on annualized hours
-  let level: 'Low' | 'Moderate' | 'High';
-  let isoCategory: 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
+  let level: "Low" | "Moderate" | "High";
+  let isoCategory: "T1" | "T2" | "T3" | "T4" | "T5";
   let estimatedHours: string;
 
   if (estimatedAnnualHours < 250) {
-    level = 'Low';
-    isoCategory = 'T1';
-    estimatedHours = '< 250 hrs/year';
+    level = "Low";
+    isoCategory = "T1";
+    estimatedHours = "< 250 hrs/year";
   } else if (estimatedAnnualHours < 2500) {
-    level = 'Low';
-    isoCategory = 'T2';
-    estimatedHours = '250-2,500 hrs/year';
+    level = "Low";
+    isoCategory = "T2";
+    estimatedHours = "250-2,500 hrs/year";
   } else if (estimatedAnnualHours < 4000) {
-    level = 'Moderate';
-    isoCategory = 'T3';
-    estimatedHours = '2,500-4,000 hrs/year';
+    level = "Moderate";
+    isoCategory = "T3";
+    estimatedHours = "2,500-4,000 hrs/year";
   } else if (estimatedAnnualHours < 5500) {
-    level = 'High';
-    isoCategory = 'T4';
-    estimatedHours = '4,000-5,500 hrs/year';
+    level = "High";
+    isoCategory = "T4";
+    estimatedHours = "4,000-5,500 hrs/year";
   } else {
-    level = 'High';
-    isoCategory = 'T5';
-    estimatedHours = '> 5,500 hrs/year';
+    level = "High";
+    isoCategory = "T5";
+    estimatedHours = "> 5,500 hrs/year";
   }
 
   return {
@@ -335,7 +322,7 @@ export function classifyTimeOfWetness(
 /**
  * Flooding / Water Table Risk classification
  */
-export type FloodRiskLevel = 'None' | 'Low' | 'Moderate' | 'High';
+export type FloodRiskLevel = "None" | "Low" | "Moderate" | "High";
 
 /**
  * Estimate flood risk based on location and environmental factors
@@ -344,25 +331,22 @@ export type FloodRiskLevel = 'None' | 'Low' | 'Moderate' | 'High';
  * @param avgRainfall Average annual rainfall (optional)
  * @returns Flood risk classification
  */
-export function estimateFloodRisk(
-  distanceToCoastKm: number,
-  avgRainfall?: number
-): FloodRiskLevel {
+export function estimateFloodRisk(distanceToCoastKm: number, avgRainfall?: number): FloodRiskLevel {
   // Coastal areas have higher flood risk
   if (distanceToCoastKm <= 1) {
-    return 'High';
+    return "High";
   }
   if (distanceToCoastKm <= 5) {
-    return 'Moderate';
+    return "Moderate";
   }
 
   // Check rainfall if available
   if (avgRainfall !== undefined) {
-    if (avgRainfall > 1500) return 'Moderate';
-    if (avgRainfall > 2500) return 'High';
+    if (avgRainfall > 1500) return "Moderate";
+    if (avgRainfall > 2500) return "High";
   }
 
-  return 'Low';
+  return "Low";
 }
 
 /**
@@ -371,9 +355,9 @@ export function estimateFloodRisk(
  */
 export function marineInfluence(
   lat: number,
-  lng: number
+  lng: number,
 ): {
-  influence: 'None' | 'Coastal' | 'Offshore';
+  influence: "None" | "Coastal" | "Offshore";
   distanceToCoastKm: number;
 } {
   const distanceToCoastKm = calculateDistanceToCoast(lat, lng);
@@ -391,8 +375,13 @@ export function marineInfluence(
 export interface MarineEnvironmentalData {
   distanceToCoastKm: number;
   distanceToCoastFormatted: string;
-  marineInfluence: 'None' | 'Coastal' | 'Offshore';
-  detailedMarineInfluence: 'Extreme Marine' | 'Severe Marine' | 'High Marine' | 'Moderate Marine' | 'Low / Non-Marine';
+  marineInfluence: "None" | "Coastal" | "Offshore";
+  detailedMarineInfluence:
+    | "Extreme Marine"
+    | "Severe Marine"
+    | "High Marine"
+    | "Moderate Marine"
+    | "Low / Non-Marine";
   airSaltContent: AirSaltContentResult;
   timeOfWetness?: TimeOfWetnessResult;
   floodRisk: FloodRiskLevel;
@@ -409,7 +398,7 @@ export function getMarineEnvironmentalData(
   lat: number,
   lng: number,
   humidity?: number,
-  avgTemp?: number
+  avgTemp?: number,
 ): MarineEnvironmentalData {
   const distanceToCoastKm = calculateDistanceToCoast(lat, lng);
   const roundedDistance = Math.round(distanceToCoastKm * 100) / 100;

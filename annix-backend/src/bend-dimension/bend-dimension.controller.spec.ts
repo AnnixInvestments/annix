@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { BendDimensionController } from './bend-dimension.controller';
-import { BendDimensionService } from './bend-dimension.service';
-import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
+import { BendDimensionController } from "./bend-dimension.controller";
+import { BendDimensionService } from "./bend-dimension.service";
 
-describe('BendDimensionController', () => {
+describe("BendDimensionController", () => {
   let controller: BendDimensionController;
   let service: BendDimensionService;
 
@@ -31,7 +31,7 @@ describe('BendDimensionController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

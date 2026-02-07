@@ -1,75 +1,68 @@
-import {
-  IsString,
-  IsNotEmpty,
-  IsEmail,
-  IsOptional,
-  IsObject,
-  MinLength,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsEmail, IsNotEmpty, IsObject, IsOptional, IsString, MinLength } from "class-validator";
 
 export class CustomerLoginDto {
   @ApiProperty({
-    description: 'Email address',
-    example: 'john.smith@acme.co.za',
+    description: "Email address",
+    example: "john.smith@acme.co.za",
   })
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ description: 'Password', example: 'SecureP@ssw0rd!' })
+  @ApiProperty({ description: "Password", example: "SecureP@ssw0rd!" })
   @IsString()
   @IsNotEmpty()
   @MinLength(8)
   password: string;
 
   @ApiProperty({
-    description: 'Device fingerprint hash',
-    example: 'a1b2c3d4e5f6...',
+    description: "Device fingerprint hash",
+    example: "a1b2c3d4e5f6...",
   })
   @IsString()
   @IsNotEmpty()
   deviceFingerprint: string;
 
-  @ApiPropertyOptional({ description: 'Browser and device information' })
+  @ApiPropertyOptional({ description: "Browser and device information" })
   @IsObject()
   @IsOptional()
   browserInfo?: Record<string, any>;
 }
 
 export class CustomerLoginResponseDto {
-  @ApiProperty({ description: 'JWT access token' })
+  @ApiProperty({ description: "JWT access token" })
   accessToken: string;
 
-  @ApiProperty({ description: 'JWT refresh token' })
+  @ApiProperty({ description: "JWT refresh token" })
   refreshToken: string;
 
-  @ApiProperty({ description: 'Token expiration time in seconds' })
+  @ApiProperty({ description: "Token expiration time in seconds" })
   expiresIn: number;
 
-  @ApiProperty({ description: 'Customer profile ID' })
+  @ApiProperty({ description: "Customer profile ID" })
   customerId: number;
 
-  @ApiProperty({ description: 'Customer full name' })
+  @ApiProperty({ description: "Customer full name" })
   name: string;
 
-  @ApiProperty({ description: 'Company name' })
+  @ApiProperty({ description: "Company name" })
   companyName: string;
 
-  @ApiProperty({ description: 'Warning if IP address has changed' })
+  @ApiProperty({ description: "Warning if IP address has changed" })
   ipMismatchWarning?: boolean;
 
-  @ApiProperty({ description: 'Registered IP address' })
+  @ApiProperty({ description: "Registered IP address" })
   registeredIp?: string;
 }
 
 export class CustomerRefreshTokenDto {
-  @ApiProperty({ description: 'Refresh token' })
+  @ApiProperty({ description: "Refresh token" })
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
 
-  @ApiProperty({ description: 'Device fingerprint hash' })
+  @ApiProperty({ description: "Device fingerprint hash" })
   @IsString()
   @IsNotEmpty()
   deviceFingerprint: string;
@@ -77,8 +70,8 @@ export class CustomerRefreshTokenDto {
 
 export class ResendVerificationEmailDto {
   @ApiProperty({
-    description: 'Email address',
-    example: 'john.smith@acme.co.za',
+    description: "Email address",
+    example: "john.smith@acme.co.za",
   })
   @IsEmail()
   @IsNotEmpty()

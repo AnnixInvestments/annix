@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { FlangePtRating } from './entities/flange-pt-rating.entity';
-import { FlangePtRatingService } from './flange-pt-rating.service';
-import { FlangePtRatingController } from './flange-pt-rating.controller';
-import { FlangePressureClass } from '../flange-pressure-class/entities/flange-pressure-class.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pressure-class.entity";
+import { FlangePtRating } from "./entities/flange-pt-rating.entity";
+import { FlangePtRatingController } from "./flange-pt-rating.controller";
+import { FlangePtRatingService } from "./flange-pt-rating.service";
 
 @Module({
   imports: [TypeOrmModule.forFeature([FlangePtRating, FlangePressureClass])],

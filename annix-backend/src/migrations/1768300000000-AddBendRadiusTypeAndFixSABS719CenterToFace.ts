@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000 implements MigrationInterface {
-  name = 'AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000';
+  name = "AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -21,10 +21,7 @@ export class AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000 implements 
       WHERE br.steel_specification_id = 8
     `);
 
-    const SABS719_LONG_RADIUS: Record<
-      number,
-      { A: number; B: number; C: number; R: number }
-    > = {
+    const SABS719_LONG_RADIUS: Record<number, { A: number; B: number; C: number; R: number }> = {
       200: { A: 610, B: 405, C: 205, R: 610 },
       250: { A: 760, B: 510, C: 255, R: 760 },
       300: { A: 915, B: 610, C: 305, R: 915 },
@@ -39,10 +36,7 @@ export class AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000 implements 
       900: { A: 2745, B: 1830, C: 915, R: 2745 },
     };
 
-    const SABS719_MEDIUM_RADIUS: Record<
-      number,
-      { A: number; B: number; C: number; R: number }
-    > = {
+    const SABS719_MEDIUM_RADIUS: Record<number, { A: number; B: number; C: number; R: number }> = {
       200: { A: 405, B: 205, C: 140, R: 405 },
       250: { A: 510, B: 255, C: 175, R: 510 },
       300: { A: 610, B: 305, C: 205, R: 610 },
@@ -57,10 +51,7 @@ export class AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000 implements 
       900: { A: 1830, B: 915, C: 610, R: 1830 },
     };
 
-    const SABS719_ELBOWS: Record<
-      number,
-      { A: number; B: number; C: number; R: number }
-    > = {
+    const SABS719_ELBOWS: Record<number, { A: number; B: number; C: number; R: number }> = {
       200: { A: 230, B: 155, C: 115, R: 230 },
       250: { A: 280, B: 180, C: 140, R: 280 },
       300: { A: 305, B: 205, C: 155, R: 305 },
@@ -75,16 +66,13 @@ export class AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000 implements 
       900: { A: 915, B: 610, C: 460, R: 915 },
     };
 
-    const getColumnBySegments = (
-      bendRadiusType: string,
-      segments: number,
-    ): 'A' | 'B' | 'C' => {
-      const map: Record<string, Record<number, 'A' | 'B' | 'C'>> = {
-        elbow: { 7: 'A', 6: 'A', 5: 'A', 4: 'A', 3: 'B', 2: 'C' },
-        medium: { 7: 'A', 6: 'A', 5: 'A', 4: 'B', 3: 'B', 2: 'C' },
-        long: { 7: 'A', 6: 'A', 5: 'A', 4: 'B', 3: 'B', 2: 'C' },
+    const getColumnBySegments = (bendRadiusType: string, segments: number): "A" | "B" | "C" => {
+      const map: Record<string, Record<number, "A" | "B" | "C">> = {
+        elbow: { 7: "A", 6: "A", 5: "A", 4: "A", 3: "B", 2: "C" },
+        medium: { 7: "A", 6: "A", 5: "A", 4: "B", 3: "B", 2: "C" },
+        long: { 7: "A", 6: "A", 5: "A", 4: "B", 3: "B", 2: "C" },
       };
-      return map[bendRadiusType]?.[segments] || 'B';
+      return map[bendRadiusType]?.[segments] || "B";
     };
 
     const getCenterToFace = (
@@ -113,9 +101,9 @@ export class AddBendRadiusTypeAndFixSABS719CenterToFace1768300000000 implements 
       const calcData = bend.calculation_data || {};
       const segments = Number(calcData.numberOfSegments) || 5;
 
-      const bendRadiusType = calcData.bendRadiusType || 'long';
+      const bendRadiusType = calcData.bendRadiusType || "long";
 
-      const longResult = getCenterToFace('long', nominalBore, segments);
+      const longResult = getCenterToFace("long", nominalBore, segments);
 
       if (longResult) {
         await queryRunner.query(

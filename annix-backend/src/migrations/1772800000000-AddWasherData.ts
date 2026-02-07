@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddWasherData1772800000000 implements MigrationInterface {
-  name = 'AddWasherData1772800000000';
+  name = "AddWasherData1772800000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding washer data (flat, split, tooth, belleville)...');
+    console.warn("Adding washer data (flat, split, tooth, belleville)...");
 
     const boltIdColumnExists = await queryRunner.query(
       `SELECT column_name FROM information_schema.columns WHERE table_name = 'washers' AND column_name = 'bolt_id'`,
@@ -14,10 +14,8 @@ export class AddWasherData1772800000000 implements MigrationInterface {
         `SELECT column_name FROM information_schema.columns WHERE table_name = 'washers' AND column_name = 'boltId'`,
       );
       if (camelCaseColumnExists.length > 0) {
-        console.warn('Renaming boltId column to bolt_id...');
-        await queryRunner.query(
-          `ALTER TABLE washers RENAME COLUMN "boltId" TO bolt_id`,
-        );
+        console.warn("Renaming boltId column to bolt_id...");
+        await queryRunner.query(`ALTER TABLE washers RENAME COLUMN "boltId" TO bolt_id`);
       }
     }
 
@@ -122,23 +120,22 @@ export class AddWasherData1772800000000 implements MigrationInterface {
     };
 
     const washerTypes = [
-      { data: flatWasherData, type: 'flat', material: 'Carbon Steel' },
-      { data: splitWasherData, type: 'split', material: 'Carbon Steel' },
-      { data: toothWasherData, type: 'tooth', material: 'Carbon Steel' },
+      { data: flatWasherData, type: "flat", material: "Carbon Steel" },
+      { data: splitWasherData, type: "split", material: "Carbon Steel" },
+      { data: toothWasherData, type: "tooth", material: "Carbon Steel" },
       {
         data: bellevilleWasherData,
-        type: 'belleville',
-        material: 'Carbon Steel',
+        type: "belleville",
+        material: "Carbon Steel",
       },
-      { data: imperialFlatWasherData, type: 'flat', material: 'Carbon Steel' },
+      { data: imperialFlatWasherData, type: "flat", material: "Carbon Steel" },
     ];
 
     for (const { data, type, material } of washerTypes) {
       for (const [designation, spec] of Object.entries(data)) {
-        const boltResult = await queryRunner.query(
-          `SELECT id FROM bolts WHERE designation = $1`,
-          [designation],
-        );
+        const boltResult = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+          designation,
+        ]);
         if (boltResult.length === 0) continue;
         const boltId = boltResult[0].id;
 
@@ -148,15 +145,7 @@ export class AddWasherData1772800000000 implements MigrationInterface {
           VALUES ($1, $2, $3, $4, $5, $6, $7)
           ON CONFLICT DO NOTHING
         `,
-          [
-            boltId,
-            type,
-            material,
-            spec.massKg,
-            spec.odMm,
-            spec.idMm,
-            spec.thicknessMm,
-          ],
+          [boltId, type, material, spec.massKg, spec.odMm, spec.idMm, spec.thicknessMm],
         );
       }
     }
@@ -175,10 +164,9 @@ export class AddWasherData1772800000000 implements MigrationInterface {
     };
 
     for (const [designation, spec] of Object.entries(ssFlatWasherData)) {
-      const boltResult = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = $1`,
-        [designation],
-      );
+      const boltResult = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+        designation,
+      ]);
       if (boltResult.length === 0) continue;
       const boltId = boltResult[0].id;
 
@@ -190,8 +178,8 @@ export class AddWasherData1772800000000 implements MigrationInterface {
       `,
         [
           boltId,
-          'flat',
-          'Stainless Steel 316',
+          "flat",
+          "Stainless Steel 316",
           spec.massKg,
           spec.odMm,
           spec.idMm,
@@ -200,10 +188,10 @@ export class AddWasherData1772800000000 implements MigrationInterface {
       );
     }
 
-    console.warn('Washer data added successfully.');
+    console.warn("Washer data added successfully.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DELETE FROM washers`);
+    await queryRunner.query("DELETE FROM washers");
   }
 }

@@ -1,22 +1,22 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddSABS62FittingTypes1760428600000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Insert SABS 62 fitting types
     const fittingTypes = [
-      '90° Pulled Bend 3D',
-      '90° Pulled Bend 5D',
-      'Spring Bend 3D',
-      'Spring Bend 5D',
-      'Equal Tee',
-      'Unequal Tee',
-      'Equal Cross',
-      'Unequal Cross',
-      'Lateral',
-      'Y-Piece',
-      'Sweep Tee',
-      'Bullhead Tee',
-      'Equal Tee (Gussetted)',
+      "90° Pulled Bend 3D",
+      "90° Pulled Bend 5D",
+      "Spring Bend 3D",
+      "Spring Bend 5D",
+      "Equal Tee",
+      "Unequal Tee",
+      "Equal Cross",
+      "Unequal Cross",
+      "Lateral",
+      "Y-Piece",
+      "Sweep Tee",
+      "Bullhead Tee",
+      "Equal Tee (Gussetted)",
     ];
 
     for (const fittingType of fittingTypes) {
@@ -39,7 +39,7 @@ export class AddSABS62FittingTypes1760428600000 implements MigrationInterface {
     const heavySteelId = heavySteelResult[0]?.id;
 
     if (!mediumSteelId || !heavySteelId) {
-      throw new Error('SABS 62 steel specifications not found');
+      throw new Error("SABS 62 steel specifications not found");
     }
 
     // Create basic fitting entries for each steel type and fitting type
@@ -77,19 +77,19 @@ export class AddSABS62FittingTypes1760428600000 implements MigrationInterface {
 
     // Remove SABS 62 fitting types
     const fittingTypes = [
-      '90° Pulled Bend 3D',
-      '90° Pulled Bend 5D',
-      'Spring Bend 3D',
-      'Spring Bend 5D',
-      'Equal Tee',
-      'Unequal Tee',
-      'Equal Cross',
-      'Unequal Cross',
-      'Lateral',
-      'Y-Piece',
-      'Sweep Tee',
-      'Bullhead Tee',
-      'Equal Tee (Gussetted)',
+      "90° Pulled Bend 3D",
+      "90° Pulled Bend 5D",
+      "Spring Bend 3D",
+      "Spring Bend 5D",
+      "Equal Tee",
+      "Unequal Tee",
+      "Equal Cross",
+      "Unequal Cross",
+      "Lateral",
+      "Y-Piece",
+      "Sweep Tee",
+      "Bullhead Tee",
+      "Equal Tee (Gussetted)",
     ];
 
     for (const fittingType of fittingTypes) {

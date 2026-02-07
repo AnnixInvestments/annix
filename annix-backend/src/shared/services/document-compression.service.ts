@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import sharp from 'sharp';
-import * as path from 'path';
-import * as fs from 'fs/promises';
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import { Injectable, Logger } from "@nestjs/common";
+import sharp from "sharp";
 
 export interface CompressionResult {
   compressedBuffer: Buffer;
@@ -26,11 +26,11 @@ export class DocumentCompressionService {
   ): Promise<CompressionResult | null> {
     const originalSize = buffer.length;
 
-    if (mimeType.startsWith('image/')) {
+    if (mimeType.startsWith("image/")) {
       return this.compressImage(buffer, mimeType, originalSize);
     }
 
-    if (mimeType === 'application/pdf') {
+    if (mimeType === "application/pdf") {
       return {
         compressedBuffer: buffer,
         compressedSize: originalSize,
@@ -59,50 +59,41 @@ export class DocumentCompressionService {
         (metadata.width && metadata.width > this.maxImageWidth) ||
         (metadata.height && metadata.height > this.maxImageHeight)
       ) {
-        processedImage = processedImage.resize(
-          this.maxImageWidth,
-          this.maxImageHeight,
-          {
-            fit: 'inside',
-            withoutEnlargement: true,
-          },
-        );
+        processedImage = processedImage.resize(this.maxImageWidth, this.maxImageHeight, {
+          fit: "inside",
+          withoutEnlargement: true,
+        });
       }
 
       let compressedBuffer: Buffer;
       let compressedMimeType: string;
 
-      compressedBuffer = await processedImage
-        .webp({ quality: this.imageQuality })
-        .toBuffer();
-      compressedMimeType = 'image/webp';
+      compressedBuffer = await processedImage.webp({ quality: this.imageQuality }).toBuffer();
+      compressedMimeType = "image/webp";
 
       const webpSize = compressedBuffer.length;
 
-      if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
+      if (mimeType === "image/jpeg" || mimeType === "image/jpg") {
         const jpegBuffer = await processedImage
           .jpeg({ quality: this.imageQuality, progressive: true })
           .toBuffer();
 
         if (jpegBuffer.length < webpSize) {
           compressedBuffer = jpegBuffer;
-          compressedMimeType = 'image/jpeg';
+          compressedMimeType = "image/jpeg";
         }
       }
 
-      if (mimeType === 'image/png') {
-        const pngBuffer = await processedImage
-          .png({ compressionLevel: 9 })
-          .toBuffer();
+      if (mimeType === "image/png") {
+        const pngBuffer = await processedImage.png({ compressionLevel: 9 }).toBuffer();
 
         if (pngBuffer.length < webpSize) {
           compressedBuffer = pngBuffer;
-          compressedMimeType = 'image/png';
+          compressedMimeType = "image/png";
         }
       }
 
-      const compressionRatio =
-        originalSize > 0 ? compressedBuffer.length / originalSize : 1;
+      const compressionRatio = originalSize > 0 ? compressedBuffer.length / originalSize : 1;
 
       this.logger.log(
         `Image compressed: ${originalSize} -> ${compressedBuffer.length} bytes (${(compressionRatio * 100).toFixed(1)}%)`,
@@ -133,10 +124,7 @@ export class DocumentCompressionService {
     compressedMimeType: string,
   ): Promise<string> {
     const ext = this.mimeToExtension(compressedMimeType);
-    const baseName = path.basename(
-      originalFilePath,
-      path.extname(originalFilePath),
-    );
+    const baseName = path.basename(originalFilePath, path.extname(originalFilePath));
     const dirName = path.dirname(originalFilePath);
     const compressedPath = path.join(dirName, `${baseName}_compressed${ext}`);
 
@@ -147,26 +135,26 @@ export class DocumentCompressionService {
 
   private mimeToExtension(mimeType: string): string {
     const mimeMap: Record<string, string> = {
-      'image/webp': '.webp',
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/gif': '.gif',
-      'application/pdf': '.pdf',
+      "image/webp": ".webp",
+      "image/jpeg": ".jpg",
+      "image/png": ".png",
+      "image/gif": ".gif",
+      "application/pdf": ".pdf",
     };
 
-    return mimeMap[mimeType] || '';
+    return mimeMap[mimeType] || "";
   }
 
   extensionToMime(ext: string): string {
     const extMap: Record<string, string> = {
-      '.webp': 'image/webp',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.pdf': 'application/pdf',
+      ".webp": "image/webp",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".pdf": "application/pdf",
     };
 
-    return extMap[ext.toLowerCase()] || 'application/octet-stream';
+    return extMap[ext.toLowerCase()] || "application/octet-stream";
   }
 }

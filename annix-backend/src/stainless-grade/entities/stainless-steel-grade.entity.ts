@@ -1,34 +1,34 @@
-import { Entity, PrimaryGeneratedColumn, Column, Unique } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, Unique } from "typeorm";
 
-@Entity('stainless_steel_grades')
-@Unique(['gradeNumber'])
+@Entity("stainless_steel_grades")
+@Unique(["gradeNumber"])
 export class StainlessSteelGrade {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'grade_number', type: 'varchar', length: 20 })
+  @Column({ name: "grade_number", type: "varchar", length: 20 })
   gradeNumber: string;
 
-  @Column({ name: 'uns_number', type: 'varchar', length: 20, nullable: true })
+  @Column({ name: "uns_number", type: "varchar", length: 20, nullable: true })
   unsNumber: string | null;
 
   @Column({
-    name: 'en_designation',
-    type: 'varchar',
+    name: "en_designation",
+    type: "varchar",
     length: 50,
     nullable: true,
   })
   enDesignation: string | null;
 
-  @Column({ name: 'en_number', type: 'varchar', length: 20, nullable: true })
+  @Column({ name: "en_number", type: "varchar", length: 20, nullable: true })
   enNumber: string | null;
 
-  @Column({ name: 'family', type: 'varchar', length: 30 })
+  @Column({ name: "family", type: "varchar", length: 30 })
   family: string;
 
   @Column({
-    name: 'carbon_max_pct',
-    type: 'decimal',
+    name: "carbon_max_pct",
+    type: "decimal",
     precision: 6,
     scale: 4,
     nullable: true,
@@ -36,8 +36,8 @@ export class StainlessSteelGrade {
   carbonMaxPct: number | null;
 
   @Column({
-    name: 'chromium_min_pct',
-    type: 'decimal',
+    name: "chromium_min_pct",
+    type: "decimal",
     precision: 5,
     scale: 2,
     nullable: true,
@@ -45,8 +45,8 @@ export class StainlessSteelGrade {
   chromiumMinPct: number | null;
 
   @Column({
-    name: 'chromium_max_pct',
-    type: 'decimal',
+    name: "chromium_max_pct",
+    type: "decimal",
     precision: 5,
     scale: 2,
     nullable: true,
@@ -54,8 +54,8 @@ export class StainlessSteelGrade {
   chromiumMaxPct: number | null;
 
   @Column({
-    name: 'nickel_min_pct',
-    type: 'decimal',
+    name: "nickel_min_pct",
+    type: "decimal",
     precision: 5,
     scale: 2,
     nullable: true,
@@ -63,8 +63,8 @@ export class StainlessSteelGrade {
   nickelMinPct: number | null;
 
   @Column({
-    name: 'nickel_max_pct',
-    type: 'decimal',
+    name: "nickel_max_pct",
+    type: "decimal",
     precision: 5,
     scale: 2,
     nullable: true,
@@ -72,8 +72,8 @@ export class StainlessSteelGrade {
   nickelMaxPct: number | null;
 
   @Column({
-    name: 'molybdenum_min_pct',
-    type: 'decimal',
+    name: "molybdenum_min_pct",
+    type: "decimal",
     precision: 5,
     scale: 2,
     nullable: true,
@@ -81,8 +81,8 @@ export class StainlessSteelGrade {
   molybdenumMinPct: number | null;
 
   @Column({
-    name: 'molybdenum_max_pct',
-    type: 'decimal',
+    name: "molybdenum_max_pct",
+    type: "decimal",
     precision: 5,
     scale: 2,
     nullable: true,
@@ -90,8 +90,8 @@ export class StainlessSteelGrade {
   molybdenumMaxPct: number | null;
 
   @Column({
-    name: 'nitrogen_max_pct',
-    type: 'decimal',
+    name: "nitrogen_max_pct",
+    type: "decimal",
     precision: 5,
     scale: 3,
     nullable: true,
@@ -99,13 +99,13 @@ export class StainlessSteelGrade {
   nitrogenMaxPct: number | null;
 
   @Column({
-    name: 'other_elements',
-    type: 'varchar',
+    name: "other_elements",
+    type: "varchar",
     length: 255,
     nullable: true,
   })
   otherElements: string | null;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ type: "varchar", length: 500, nullable: true })
   description: string | null;
 }

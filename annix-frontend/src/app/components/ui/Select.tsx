@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import * as Popover from '@radix-ui/react-popover';
-import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
+import * as Popover from "@radix-ui/react-popover";
+import * as React from "react";
+import { FixedSizeList as List, ListChildComponentProps } from "react-window";
 
 interface SelectOption {
   value: string;
@@ -28,17 +28,37 @@ interface SelectProps {
   loading?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  'aria-required'?: boolean;
-  'aria-invalid'?: boolean;
-  'aria-describedby'?: string;
-  'aria-label'?: string;
-  'data-nix-target'?: string;
+  "aria-required"?: boolean;
+  "aria-invalid"?: boolean;
+  "aria-describedby"?: string;
+  "aria-label"?: string;
+  "data-nix-target"?: string;
 }
 
 const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
-  ({ id, value, onChange, options, groupedOptions, placeholder = 'Select...', className, disabled, loading, open: controlledOpen, onOpenChange, 'aria-required': ariaRequired, 'aria-invalid': ariaInvalid, 'aria-describedby': ariaDescribedby, 'aria-label': ariaLabel, 'data-nix-target': dataNixTarget }, ref) => {
+  (
+    {
+      id,
+      value,
+      onChange,
+      options,
+      groupedOptions,
+      placeholder = "Select...",
+      className,
+      disabled,
+      loading,
+      open: controlledOpen,
+      onOpenChange,
+      "aria-required": ariaRequired,
+      "aria-invalid": ariaInvalid,
+      "aria-describedby": ariaDescribedby,
+      "aria-label": ariaLabel,
+      "data-nix-target": dataNixTarget,
+    },
+    ref,
+  ) => {
     const [internalOpen, setInternalOpen] = React.useState(false);
-    const [searchTerm, setSearchTerm] = React.useState('');
+    const [searchTerm, setSearchTerm] = React.useState("");
     const [highlightedIndex, setHighlightedIndex] = React.useState(0);
     const [shouldScrollToHighlighted, setShouldScrollToHighlighted] = React.useState(false);
     const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -59,7 +79,7 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
       }
       onOpenChange?.(newOpen);
       if (newOpen) {
-        setSearchTerm('');
+        setSearchTerm("");
         setHighlightedIndex(0);
         setTimeout(() => searchInputRef.current?.focus(), 0);
       }
@@ -67,7 +87,7 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
 
     const allOptions = React.useMemo(() => {
       if (groupedOptions) {
-        return groupedOptions.flatMap(g => g.options);
+        return groupedOptions.flatMap((g) => g.options);
       }
       return options;
     }, [options, groupedOptions]);
@@ -75,9 +95,9 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
     const filteredOptions = React.useMemo(() => {
       if (!searchTerm.trim()) return allOptions;
       const term = searchTerm.toLowerCase();
-      return allOptions.filter((option) =>
-        option.label.toLowerCase().includes(term) ||
-        option.value.toLowerCase().includes(term)
+      return allOptions.filter(
+        (option) =>
+          option.label.toLowerCase().includes(term) || option.value.toLowerCase().includes(term),
       );
     }, [allOptions, searchTerm]);
 
@@ -86,14 +106,15 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
       if (!searchTerm.trim()) return groupedOptions;
       const term = searchTerm.toLowerCase();
       return groupedOptions
-        .map(group => ({
+        .map((group) => ({
           ...group,
-          options: group.options.filter(option =>
-            option.label.toLowerCase().includes(term) ||
-            option.value.toLowerCase().includes(term)
-          )
+          options: group.options.filter(
+            (option) =>
+              option.label.toLowerCase().includes(term) ||
+              option.value.toLowerCase().includes(term),
+          ),
         }))
-        .filter(group => group.options.length > 0);
+        .filter((group) => group.options.length > 0);
     }, [groupedOptions, searchTerm]);
 
     React.useEffect(() => {
@@ -108,8 +129,8 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
       handleOpenChange(false);
     };
 
-    const findNextEnabledIndex = (currentIndex: number, direction: 'up' | 'down'): number => {
-      const step = direction === 'down' ? 1 : -1;
+    const findNextEnabledIndex = (currentIndex: number, direction: "up" | "down"): number => {
+      const step = direction === "down" ? 1 : -1;
       let nextIndex = currentIndex + step;
       while (nextIndex >= 0 && nextIndex < filteredOptions.length) {
         if (!filteredOptions[nextIndex].disabled) {
@@ -121,32 +142,45 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
+      if (e.key === "ArrowDown") {
         e.preventDefault();
         setShouldScrollToHighlighted(true);
-        setHighlightedIndex((prev) => findNextEnabledIndex(prev, 'down'));
-      } else if (e.key === 'ArrowUp') {
+        setHighlightedIndex((prev) => findNextEnabledIndex(prev, "down"));
+      } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setShouldScrollToHighlighted(true);
-        setHighlightedIndex((prev) => findNextEnabledIndex(prev, 'up'));
-      } else if (e.key === 'Enter' && filteredOptions[highlightedIndex] && !filteredOptions[highlightedIndex].disabled) {
+        setHighlightedIndex((prev) => findNextEnabledIndex(prev, "up"));
+      } else if (
+        e.key === "Enter" &&
+        filteredOptions[highlightedIndex] &&
+        !filteredOptions[highlightedIndex].disabled
+      ) {
         e.preventDefault();
         handleSelect(filteredOptions[highlightedIndex]);
-      } else if (e.key === 'Escape') {
+      } else if (e.key === "Escape") {
         handleOpenChange(false);
       }
     };
 
     React.useEffect(() => {
       if (shouldScrollToHighlighted) {
-        if (virtualListRef.current && !filteredGroupedOptions && filteredOptions.length > VIRTUALIZATION_THRESHOLD) {
-          virtualListRef.current.scrollToItem(highlightedIndex, 'smart');
+        if (
+          virtualListRef.current &&
+          !filteredGroupedOptions &&
+          filteredOptions.length > VIRTUALIZATION_THRESHOLD
+        ) {
+          virtualListRef.current.scrollToItem(highlightedIndex, "smart");
         } else if (highlightedOptionRef.current) {
-          highlightedOptionRef.current.scrollIntoView({ block: 'nearest' });
+          highlightedOptionRef.current.scrollIntoView({ block: "nearest" });
         }
         setShouldScrollToHighlighted(false);
       }
-    }, [highlightedIndex, shouldScrollToHighlighted, filteredGroupedOptions, filteredOptions.length]);
+    }, [
+      highlightedIndex,
+      shouldScrollToHighlighted,
+      filteredGroupedOptions,
+      filteredOptions.length,
+    ]);
 
     return (
       <Popover.Root open={isOpen} onOpenChange={handleOpenChange}>
@@ -164,10 +198,10 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
             aria-describedby={ariaDescribedby}
             aria-label={ariaLabel}
             data-nix-target={dataNixTarget}
-            className={`flex items-center justify-between w-full px-2 py-1.5 text-xs border border-gray-300 rounded bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-left ${className || ''}`}
+            className={`flex items-center justify-between w-full px-2 py-1.5 text-xs border border-gray-300 rounded bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-left ${className || ""}`}
           >
-            <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
-              {loading ? 'Loading...' : (selectedOption?.label || placeholder)}
+            <span className={selectedOption ? "text-gray-900" : "text-gray-400"}>
+              {loading ? "Loading..." : selectedOption?.label || placeholder}
             </span>
             {loading ? <LoadingSpinner /> : <ChevronDownIcon />}
           </button>
@@ -213,7 +247,9 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
                           >
                             {option.label}
                             {option.disabledReason && (
-                              <span className="ml-2 text-xs text-red-400">- {option.disabledReason}</span>
+                              <span className="ml-2 text-xs text-red-400">
+                                - {option.disabledReason}
+                              </span>
                             )}
                           </div>
                         ) : (
@@ -224,8 +260,8 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
                             onClick={() => handleSelect(option)}
                             onMouseEnter={() => setHighlightedIndex(currentIndex)}
                             className={`relative flex items-center w-full px-8 py-2 text-sm rounded cursor-pointer select-none text-left ${
-                              isHighlighted ? 'bg-green-50' : ''
-                            } ${option.value === value ? 'text-green-700 font-medium' : 'text-gray-900'} hover:bg-green-50`}
+                              isHighlighted ? "bg-green-50" : ""
+                            } ${option.value === value ? "text-green-700 font-medium" : "text-gray-900"} hover:bg-green-50`}
                           >
                             {option.value === value && (
                               <span className="absolute left-2 inline-flex items-center">
@@ -260,7 +296,9 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
                       >
                         {option.label}
                         {option.disabledReason && (
-                          <span className="ml-2 text-xs text-red-400">- {option.disabledReason}</span>
+                          <span className="ml-2 text-xs text-red-400">
+                            - {option.disabledReason}
+                          </span>
                         )}
                       </div>
                     ) : (
@@ -270,8 +308,8 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
                         onClick={() => handleSelect(option)}
                         onMouseEnter={() => setHighlightedIndex(index)}
                         className={`relative flex items-center w-full px-8 text-sm rounded cursor-pointer select-none text-left ${
-                          isHighlighted ? 'bg-green-50' : ''
-                        } ${option.value === value ? 'text-green-700 font-medium' : 'text-gray-900'} hover:bg-green-50`}
+                          isHighlighted ? "bg-green-50" : ""
+                        } ${option.value === value ? "text-green-700 font-medium" : "text-gray-900"} hover:bg-green-50`}
                       >
                         {option.value === value && (
                           <span className="absolute left-2 inline-flex items-center">
@@ -306,8 +344,8 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
                       onClick={() => handleSelect(option)}
                       onMouseEnter={() => setHighlightedIndex(index)}
                       className={`relative flex items-center w-full px-8 py-2 text-sm rounded cursor-pointer select-none text-left ${
-                        isHighlighted ? 'bg-green-50' : ''
-                      } ${option.value === value ? 'text-green-700 font-medium' : 'text-gray-900'} hover:bg-green-50`}
+                        isHighlighted ? "bg-green-50" : ""
+                      } ${option.value === value ? "text-green-700 font-medium" : "text-gray-900"} hover:bg-green-50`}
                     >
                       {option.value === value && (
                         <span className="absolute left-2 inline-flex items-center">
@@ -324,17 +362,23 @@ const SelectComponent = React.forwardRef<HTMLButtonElement, SelectProps>(
         </Popover.Portal>
       </Popover.Root>
     );
-  }
+  },
 );
 
-SelectComponent.displayName = 'Select';
+SelectComponent.displayName = "Select";
 
 const Select = React.memo(SelectComponent);
 
 function ChevronDownIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M2.5 4.5L6 8L9.5 4.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -342,16 +386,34 @@ function ChevronDownIcon() {
 function CheckIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M10 3L4.5 8.5L2 6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function LoadingSpinner() {
   return (
-    <svg className="animate-spin" width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      className="animate-spin"
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
       <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.25" />
-      <path d="M6 1C8.76142 1 11 3.23858 11 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path
+        d="M6 1C8.76142 1 11 3.23858 11 6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

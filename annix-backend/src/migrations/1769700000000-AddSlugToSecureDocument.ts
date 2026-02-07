@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddSlugToSecureDocument1769700000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -35,12 +35,10 @@ export class AddSlugToSecureDocument1769700000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_secure_document_slug`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_secure_document_slug");
     await queryRunner.query(
-      `ALTER TABLE secure_document DROP CONSTRAINT IF EXISTS uq_secure_document_slug`,
+      "ALTER TABLE secure_document DROP CONSTRAINT IF EXISTS uq_secure_document_slug",
     );
-    await queryRunner.query(
-      `ALTER TABLE secure_document DROP COLUMN IF EXISTS slug`,
-    );
+    await queryRunner.query("ALTER TABLE secure_document DROP COLUMN IF EXISTS slug");
   }
 }

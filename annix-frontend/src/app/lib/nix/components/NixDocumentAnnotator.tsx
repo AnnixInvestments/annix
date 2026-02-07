@@ -1,14 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import Image from 'next/image';
-import AmixLogo from '@/app/components/AmixLogo';
-import {
-  nixApi,
-  PdfPageImage,
-  RegionCoordinates,
-  RegistrationDocumentType,
-} from '../api';
+import Image from "next/image";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import AmixLogo from "@/app/components/AmixLogo";
+import { nixApi, PdfPageImage, RegionCoordinates, RegistrationDocumentType } from "../api";
 
 interface NixDocumentAnnotatorProps {
   isVisible: boolean;
@@ -28,9 +23,9 @@ interface SelectionBox {
 }
 
 const DOCUMENT_TYPE_LABELS: Record<RegistrationDocumentType, string> = {
-  vat: 'VAT Certificate',
-  registration: 'Company Registration',
-  bee: 'BEE Certificate',
+  vat: "VAT Certificate",
+  registration: "Company Registration",
+  bee: "BEE Certificate",
 };
 
 export default function NixDocumentAnnotator({
@@ -88,7 +83,7 @@ export default function NixDocumentAnnotator({
       setPages(response.pages);
       setCurrentPage(1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load document');
+      setError(err instanceof Error ? err.message : "Failed to load document");
     } finally {
       setIsLoading(false);
     }
@@ -116,15 +111,15 @@ export default function NixDocumentAnnotator({
     };
 
     updateScale();
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
   }, [pages, currentPage]);
 
   useEffect(() => {
     if (!canvasRef.current || pages.length === 0) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const page = pages[currentPage - 1];
@@ -134,8 +129,8 @@ export default function NixDocumentAnnotator({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (selection) {
-      ctx.fillStyle = 'rgba(255, 165, 0, 0.3)';
-      ctx.strokeStyle = '#FFA500';
+      ctx.fillStyle = "rgba(255, 165, 0, 0.3)";
+      ctx.strokeStyle = "#FFA500";
       ctx.lineWidth = 2;
 
       const x = Math.min(selection.startX, selection.endX) * scale;
@@ -148,27 +143,33 @@ export default function NixDocumentAnnotator({
     }
   }, [selection, pages, currentPage, scale]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!canvasRef.current) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / scale;
-    const y = (e.clientY - rect.top) / scale;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / scale;
+      const y = (e.clientY - rect.top) / scale;
 
-    setIsDrawing(true);
-    setSelection({ startX: x, startY: y, endX: x, endY: y });
-    setExtractedText(null);
-  }, [scale]);
+      setIsDrawing(true);
+      setSelection({ startX: x, startY: y, endX: x, endY: y });
+      setExtractedText(null);
+    },
+    [scale],
+  );
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !canvasRef.current) return;
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isDrawing || !canvasRef.current) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / scale;
-    const y = (e.clientY - rect.top) / scale;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / scale;
+      const y = (e.clientY - rect.top) / scale;
 
-    setSelection(prev => prev ? { ...prev, endX: x, endY: y } : null);
-  }, [isDrawing, scale]);
+      setSelection((prev) => (prev ? { ...prev, endX: x, endY: y } : null));
+    },
+    [isDrawing, scale],
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDrawing(false);
@@ -183,7 +184,7 @@ export default function NixDocumentAnnotator({
     const height = Math.abs(selection.endY - selection.startY);
 
     if (width < 10 || height < 10) {
-      setError('Selection is too small. Please draw a larger box around the text.');
+      setError("Selection is too small. Please draw a larger box around the text.");
       return;
     }
 
@@ -199,7 +200,11 @@ export default function NixDocumentAnnotator({
     };
 
     try {
-      const result = await nixApi.extractFromRegion(file, regionCoordinates, currentField.fieldName);
+      const result = await nixApi.extractFromRegion(
+        file,
+        regionCoordinates,
+        currentField.fieldName,
+      );
       setExtractedText(result.text);
 
       if (result.text && result.confidence > 0.3) {
@@ -211,7 +216,7 @@ export default function NixDocumentAnnotator({
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to extract text');
+      setError(err instanceof Error ? err.message : "Failed to extract text");
     } finally {
       setIsExtracting(false);
     }
@@ -223,7 +228,7 @@ export default function NixDocumentAnnotator({
     onFieldExtracted(currentField.fieldName, extractedText);
 
     if (currentFieldIndex < missingFields.length - 1) {
-      setCurrentFieldIndex(prev => prev + 1);
+      setCurrentFieldIndex((prev) => prev + 1);
       setSelection(null);
       setExtractedText(null);
     } else {
@@ -233,7 +238,7 @@ export default function NixDocumentAnnotator({
 
   const handleSkipField = () => {
     if (currentFieldIndex < missingFields.length - 1) {
-      setCurrentFieldIndex(prev => prev + 1);
+      setCurrentFieldIndex((prev) => prev + 1);
       setSelection(null);
       setExtractedText(null);
     } else {
@@ -258,15 +263,17 @@ export default function NixDocumentAnnotator({
       >
         <div
           className="px-4 py-3 flex items-center justify-between flex-shrink-0"
-          style={{ backgroundColor: '#323288' }}
+          style={{ backgroundColor: "#323288" }}
         >
           <AmixLogo size="md" showText useSignatureFont />
-          <button
-            onClick={onClose}
-            className="text-white/70 hover:text-white transition-colors"
-          >
+          <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -284,10 +291,11 @@ export default function NixDocumentAnnotator({
           </div>
           <div className="flex-1">
             <h2 className="text-lg font-bold text-gray-900">
-              Help Me Find: {currentField?.label || 'Information'}
+              Help Me Find: {currentField?.label || "Information"}
             </h2>
             <p className="text-sm text-gray-600">
-              Draw a box around the {currentField?.label || 'field'} in your {DOCUMENT_TYPE_LABELS[documentType]}
+              Draw a box around the {currentField?.label || "field"} in your{" "}
+              {DOCUMENT_TYPE_LABELS[documentType]}
             </p>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-gray-500">
@@ -315,8 +323,18 @@ export default function NixDocumentAnnotator({
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-md">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <svg
+                    className="w-8 h-8 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
                   </svg>
                 </div>
                 <p className="text-gray-900 font-medium mb-2">{error}</p>
@@ -337,8 +355,18 @@ export default function NixDocumentAnnotator({
                   className="p-1.5 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Zoom out"
                 >
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                  <svg
+                    className="w-5 h-5 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"
+                    />
                   </svg>
                 </button>
                 <button
@@ -354,8 +382,18 @@ export default function NixDocumentAnnotator({
                   className="p-1.5 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Zoom in"
                 >
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                  <svg
+                    className="w-5 h-5 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"
+                    />
                   </svg>
                 </button>
               </div>
@@ -383,7 +421,7 @@ export default function NixDocumentAnnotator({
               {pages.length > 1 && (
                 <div className="flex items-center gap-4 mt-4">
                   <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                     className="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -393,7 +431,7 @@ export default function NixDocumentAnnotator({
                     Page {currentPage} of {pages.length}
                   </span>
                   <button
-                    onClick={() => setCurrentPage(p => Math.min(pages.length, p + 1))}
+                    onClick={() => setCurrentPage((p) => Math.min(pages.length, p + 1))}
                     disabled={currentPage === pages.length}
                     className="px-3 py-1.5 bg-white border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -415,7 +453,7 @@ export default function NixDocumentAnnotator({
           {extractedText !== null && (
             <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
               <p className="text-sm font-medium text-green-800 mb-1">Extracted Text:</p>
-              <p className="text-green-700 font-mono">{extractedText || '(empty)'}</p>
+              <p className="text-green-700 font-mono">{extractedText || "(empty)"}</p>
             </div>
           )}
 
@@ -434,7 +472,12 @@ export default function NixDocumentAnnotator({
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
                     </svg>
                     Extract Text from Selection
                   </>
@@ -465,7 +508,8 @@ export default function NixDocumentAnnotator({
 
             {!selection && !extractedText && (
               <p className="flex-1 text-center text-gray-500 text-sm">
-                Click and drag on the document to select the area containing the {currentField?.label || 'information'}
+                Click and drag on the document to select the area containing the{" "}
+                {currentField?.label || "information"}
               </p>
             )}
 
@@ -478,10 +522,7 @@ export default function NixDocumentAnnotator({
           </div>
         </div>
 
-        <div
-          className="h-1 flex-shrink-0"
-          style={{ backgroundColor: '#FFA500' }}
-        />
+        <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FFA500" }} />
       </div>
     </div>
   );

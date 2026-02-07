@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { NominalOutsideDiameterMmService } from './nominal-outside-diameter-mm.service';
-import { NominalOutsideDiameterMmController } from './nominal-outside-diameter-mm.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { NominalOutsideDiameterMm } from './entities/nominal-outside-diameter-mm.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { NominalOutsideDiameterMm } from "./entities/nominal-outside-diameter-mm.entity";
+import { NominalOutsideDiameterMmController } from "./nominal-outside-diameter-mm.controller";
+import { NominalOutsideDiameterMmService } from "./nominal-outside-diameter-mm.service";
 
 @Module({
   imports: [TypeOrmModule.forFeature([NominalOutsideDiameterMm])],

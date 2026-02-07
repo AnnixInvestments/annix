@@ -1,79 +1,79 @@
 import {
-  Controller,
-  Post,
+  BadRequestException,
   Body,
-  Req,
-  Param,
+  Controller,
+  Get,
   HttpCode,
   HttpStatus,
-  Get,
-  UseInterceptors,
+  Param,
+  Post,
+  Req,
   UploadedFiles,
   UseGuards,
-  BadRequestException,
-} from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+  UseInterceptors,
+} from "@nestjs/common";
+import { FileFieldsInterceptor } from "@nestjs/platform-express";
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-  ApiParam,
-  ApiConsumes,
   ApiBearerAuth,
-} from '@nestjs/swagger';
-import { Request } from 'express';
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+import { Request } from "express";
 
-import { CustomerAuthService } from './customer-auth.service';
-import { CustomerAuthGuard } from './guards/customer-auth.guard';
+import { CustomerAuthService } from "./customer-auth.service";
 import {
   CreateCustomerRegistrationDto,
   CustomerLoginDto,
   CustomerLoginResponseDto,
   CustomerRefreshTokenDto,
-} from './dto';
+} from "./dto";
+import { CustomerAuthGuard } from "./guards/customer-auth.guard";
 
-@ApiTags('Customer Authentication')
-@Controller('customer')
+@ApiTags("Customer Authentication")
+@Controller("customer")
 export class CustomerAuthController {
   constructor(private readonly customerAuthService: CustomerAuthService) {}
 
-  @Post('register')
-  @ApiOperation({ summary: 'Register a new customer account with documents' })
-  @ApiConsumes('multipart/form-data')
+  @Post("register")
+  @ApiOperation({ summary: "Register a new customer account with documents" })
+  @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        company: { type: 'string', description: 'JSON string of company data' },
-        user: { type: 'string', description: 'JSON string of user data' },
+        company: { type: "string", description: "JSON string of company data" },
+        user: { type: "string", description: "JSON string of user data" },
         security: {
-          type: 'string',
-          description: 'JSON string of security data',
+          type: "string",
+          description: "JSON string of security data",
         },
         vatDocument: {
-          type: 'string',
-          format: 'binary',
-          description: 'VAT registration document',
+          type: "string",
+          format: "binary",
+          description: "VAT registration document",
         },
         companyRegDocument: {
-          type: 'string',
-          format: 'binary',
-          description: 'Company registration document',
+          type: "string",
+          format: "binary",
+          description: "Company registration document",
         },
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Registration successful' })
+  @ApiResponse({ status: 201, description: "Registration successful" })
   @ApiResponse({
     status: 400,
-    description: 'Invalid input or terms not accepted',
+    description: "Invalid input or terms not accepted",
   })
-  @ApiResponse({ status: 409, description: 'Email or company already exists' })
+  @ApiResponse({ status: 409, description: "Email or company already exists" })
   @UseInterceptors(
     FileFieldsInterceptor([
-      { name: 'vatDocument', maxCount: 1 },
-      { name: 'companyRegDocument', maxCount: 1 },
+      { name: "vatDocument", maxCount: 1 },
+      { name: "companyRegDocument", maxCount: 1 },
     ]),
   )
   async register(
@@ -96,53 +96,48 @@ export class CustomerAuthController {
         security: JSON.parse(body.security),
       };
     } catch {
-      throw new BadRequestException('Invalid JSON in form data');
+      throw new BadRequestException("Invalid JSON in form data");
     }
 
     // Extract files
     const vatDocument = files.vatDocument?.[0];
     const companyRegDocument = files.companyRegDocument?.[0];
 
-    return this.customerAuthService.register(
-      dto,
-      clientIp,
-      vatDocument,
-      companyRegDocument,
-    );
+    return this.customerAuthService.register(dto, clientIp, vatDocument, companyRegDocument);
   }
 
-  @Post('validate-document')
+  @Post("validate-document")
   @ApiOperation({
-    summary: 'Validate uploaded document against user input using OCR',
+    summary: "Validate uploaded document against user input using OCR",
   })
-  @ApiConsumes('multipart/form-data')
+  @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         document: {
-          type: 'string',
-          format: 'binary',
-          description: 'Document to validate',
+          type: "string",
+          format: "binary",
+          description: "Document to validate",
         },
         documentType: {
-          type: 'string',
-          enum: ['vat', 'registration'],
-          description: 'Type of document',
+          type: "string",
+          enum: ["vat", "registration"],
+          description: "Type of document",
         },
         expectedData: {
-          type: 'string',
-          description: 'JSON string of expected data to validate against',
+          type: "string",
+          description: "JSON string of expected data to validate against",
         },
       },
     },
   })
-  @ApiResponse({ status: 200, description: 'Document validation result' })
+  @ApiResponse({ status: 200, description: "Document validation result" })
   @ApiResponse({
     status: 400,
-    description: 'Invalid input or unsupported file type',
+    description: "Invalid input or unsupported file type",
   })
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'document', maxCount: 1 }]))
+  @UseInterceptors(FileFieldsInterceptor([{ name: "document", maxCount: 1 }]))
   async validateDocument(
     @Body() body: { documentType: string; expectedData: string },
     @UploadedFiles() files: { document?: Express.Multer.File[] },
@@ -152,52 +147,48 @@ export class CustomerAuthController {
     if (!document) {
       return {
         success: false,
-        message: 'No document provided',
+        message: "No document provided",
       };
     }
 
-    const documentType = body.documentType as 'vat' | 'registration';
+    const documentType = body.documentType as "vat" | "registration";
     let expectedData;
     try {
       expectedData = JSON.parse(body.expectedData);
     } catch {
-      throw new BadRequestException('Invalid expectedData JSON');
+      throw new BadRequestException("Invalid expectedData JSON");
     }
 
-    return this.customerAuthService.validateUploadedDocument(
-      document,
-      documentType,
-      expectedData,
-    );
+    return this.customerAuthService.validateUploadedDocument(document, documentType, expectedData);
   }
 
-  @Post('auth/login')
+  @Post("auth/login")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Customer login with device verification' })
+  @ApiOperation({ summary: "Customer login with device verification" })
   @ApiBody({ type: CustomerLoginDto })
   @ApiResponse({
     status: 200,
-    description: 'Login successful',
+    description: "Login successful",
     type: CustomerLoginResponseDto,
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid credentials or device mismatch',
+    description: "Invalid credentials or device mismatch",
   })
-  @ApiResponse({ status: 403, description: 'Account suspended or pending' })
+  @ApiResponse({ status: 403, description: "Account suspended or pending" })
   async login(
     @Body() dto: CustomerLoginDto,
     @Req() req: Request,
   ): Promise<CustomerLoginResponseDto> {
     const clientIp = this.getClientIp(req);
-    const userAgent = req.headers['user-agent'] || '';
+    const userAgent = req.headers["user-agent"] || "";
     return this.customerAuthService.login(dto, clientIp, userAgent);
   }
 
-  @Post('auth/logout')
+  @Post("auth/logout")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Customer logout' })
-  @ApiResponse({ status: 200, description: 'Logout successful' })
+  @ApiOperation({ summary: "Customer logout" })
+  @ApiResponse({ status: 200, description: "Logout successful" })
   async logout(@Req() req: Request) {
     const sessionToken = this.extractSessionToken(req);
     const clientIp = this.getClientIp(req);
@@ -206,21 +197,21 @@ export class CustomerAuthController {
       await this.customerAuthService.logout(sessionToken, clientIp);
     }
 
-    return { success: true, message: 'Logged out successfully' };
+    return { success: true, message: "Logged out successfully" };
   }
 
-  @Post('auth/refresh')
+  @Post("auth/refresh")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Refresh customer session token' })
+  @ApiOperation({ summary: "Refresh customer session token" })
   @ApiBody({ type: CustomerRefreshTokenDto })
   @ApiResponse({
     status: 200,
-    description: 'Token refreshed',
+    description: "Token refreshed",
     type: CustomerLoginResponseDto,
   })
   @ApiResponse({
     status: 401,
-    description: 'Invalid refresh token or device mismatch',
+    description: "Invalid refresh token or device mismatch",
   })
   async refresh(
     @Body() dto: CustomerRefreshTokenDto,
@@ -230,49 +221,40 @@ export class CustomerAuthController {
     return this.customerAuthService.refreshSession(dto, clientIp);
   }
 
-  @Get('auth/verify-email/:token')
-  @ApiOperation({ summary: 'Verify email with token' })
-  @ApiParam({ name: 'token', description: 'Email verification token' })
-  @ApiResponse({ status: 200, description: 'Email verified successfully' })
-  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
-  async verifyEmail(@Param('token') token: string, @Req() req: Request) {
+  @Get("auth/verify-email/:token")
+  @ApiOperation({ summary: "Verify email with token" })
+  @ApiParam({ name: "token", description: "Email verification token" })
+  @ApiResponse({ status: 200, description: "Email verified successfully" })
+  @ApiResponse({ status: 400, description: "Invalid or expired token" })
+  async verifyEmail(@Param("token") token: string, @Req() req: Request) {
     const clientIp = this.getClientIp(req);
     return this.customerAuthService.verifyEmail(token, clientIp);
   }
 
-  @Post('auth/resend-verification')
+  @Post("auth/resend-verification")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Resend email verification link' })
+  @ApiOperation({ summary: "Resend email verification link" })
   @ApiBody({
-    schema: { properties: { email: { type: 'string', format: 'email' } } },
+    schema: { properties: { email: { type: "string", format: "email" } } },
   })
-  @ApiResponse({ status: 200, description: 'Verification email sent' })
-  @ApiResponse({ status: 400, description: 'Email already verified' })
-  async resendVerification(
-    @Body() body: { email: string },
-    @Req() req: Request,
-  ) {
+  @ApiResponse({ status: 200, description: "Verification email sent" })
+  @ApiResponse({ status: 400, description: "Email already verified" })
+  async resendVerification(@Body() body: { email: string }, @Req() req: Request) {
     const clientIp = this.getClientIp(req);
-    return this.customerAuthService.resendVerificationEmail(
-      body.email,
-      clientIp,
-    );
+    return this.customerAuthService.resendVerificationEmail(body.email, clientIp);
   }
 
-  @Post('auth/verify-device')
+  @Post("auth/verify-device")
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify device fingerprint is registered' })
+  @ApiOperation({ summary: "Verify device fingerprint is registered" })
   @ApiBody({
-    schema: { properties: { deviceFingerprint: { type: 'string' } } },
+    schema: { properties: { deviceFingerprint: { type: "string" } } },
   })
-  @ApiResponse({ status: 200, description: 'Device verification result' })
-  async verifyDevice(
-    @Body() body: { deviceFingerprint: string },
-    @Req() req: Request,
-  ) {
-    const customerId = req['customer'].customerId;
+  @ApiResponse({ status: 200, description: "Device verification result" })
+  async verifyDevice(@Body() body: { deviceFingerprint: string }, @Req() req: Request) {
+    const customerId = req["customer"].customerId;
     const binding = await this.customerAuthService.verifyDeviceBinding(
       customerId,
       body.deviceFingerprint,
@@ -280,34 +262,28 @@ export class CustomerAuthController {
 
     return {
       valid: !!binding,
-      message: binding
-        ? 'Device is registered and active'
-        : 'Device not recognized',
+      message: binding ? "Device is registered and active" : "Device not recognized",
     };
   }
 
   // Helper methods
 
   private getClientIp(req: Request): string {
-    const forwarded = req.headers['x-forwarded-for'];
+    const forwarded = req.headers["x-forwarded-for"];
     if (forwarded) {
-      const ips = Array.isArray(forwarded)
-        ? forwarded[0]
-        : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
       return ips.trim();
     }
-    return req.ip || req.socket?.remoteAddress || 'unknown';
+    return req.ip || req.socket?.remoteAddress || "unknown";
   }
 
   private extractSessionToken(req: Request): string | null {
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader?.startsWith("Bearer ")) {
       try {
         // Decode JWT to get session token
         const token = authHeader.substring(7);
-        const decoded = JSON.parse(
-          Buffer.from(token.split('.')[1], 'base64').toString(),
-        );
+        const decoded = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
         return decoded.sessionToken || null;
       } catch {
         return null;

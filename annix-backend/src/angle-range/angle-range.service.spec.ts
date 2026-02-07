@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AngleRangeService } from './angle-range.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { AngleRange } from './entities/angle-range.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { AngleRangeService } from "./angle-range.service";
+import { AngleRange } from "./entities/angle-range.entity";
 
-describe('AngleRangeService', () => {
+describe("AngleRangeService", () => {
   let service: AngleRangeService;
 
   const mockRepo = {
@@ -28,12 +28,12 @@ describe('AngleRangeService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new angle range', async () => {
+  describe("create", () => {
+    it("should create a new angle range", async () => {
       const dto = { angle_min: 0, angle_max: 90 };
       const entity = { id: 1, ...dto } as AngleRange;
 
@@ -50,7 +50,7 @@ describe('AngleRangeService', () => {
       expect(mockRepo.save).toHaveBeenCalledWith(dto);
     });
 
-    it('should throw BadRequestException if angle range already exists', async () => {
+    it("should throw BadRequestException if angle range already exists", async () => {
       const dto = { angle_min: 0, angle_max: 90 };
       mockRepo.findOne.mockResolvedValue({
         id: 1,
@@ -65,39 +65,39 @@ describe('AngleRangeService', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return array of angle ranges', async () => {
+  describe("findAll", () => {
+    it("should return array of angle ranges", async () => {
       const result = [{ id: 1, angle_min: 0, angle_max: 90 }] as AngleRange[];
       mockRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
       expect(mockRepo.find).toHaveBeenCalledWith({
-        relations: ['fittingDimensions'],
+        relations: ["fittingDimensions"],
       });
     });
   });
 
-  describe('findOne', () => {
-    it('should return an angle range by id', async () => {
+  describe("findOne", () => {
+    it("should return an angle range by id", async () => {
       const result = { id: 1, angle_min: 0, angle_max: 90 } as AngleRange;
       mockRepo.findOne.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['fittingDimensions'],
+        relations: ["fittingDimensions"],
       });
     });
 
-    it('should throw NotFoundException if angle range not found', async () => {
+    it("should throw NotFoundException if angle range not found", async () => {
       mockRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('update', () => {
-    it('should update an angle range', async () => {
+  describe("update", () => {
+    it("should update an angle range", async () => {
       const dto = { angle_max: 45 };
       const existing = { id: 1, angle_min: 0, angle_max: 90 } as AngleRange;
       const updated = { id: 1, angle_min: 0, angle_max: 45 } as AngleRange;
@@ -111,8 +111,8 @@ describe('AngleRangeService', () => {
     });
   });
 
-  describe('remove', () => {
-    it('should delete an angle range', async () => {
+  describe("remove", () => {
+    it("should delete an angle range", async () => {
       const entity = { id: 1, angle_min: 0, angle_max: 90 } as AngleRange;
       mockRepo.findOne.mockResolvedValue(entity);
       mockRepo.remove.mockResolvedValue(undefined);

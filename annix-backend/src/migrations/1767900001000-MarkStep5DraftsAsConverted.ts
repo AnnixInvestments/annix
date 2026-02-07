@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class MarkStep5DraftsAsConverted1767900001000 implements MigrationInterface {
-  name = 'MarkStep5DraftsAsConverted1767900001000';
+  name = "MarkStep5DraftsAsConverted1767900001000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const draftsAtStep5 = await queryRunner.query(`
@@ -16,20 +16,15 @@ export class MarkStep5DraftsAsConverted1767900001000 implements MigrationInterfa
     for (const draft of draftsAtStep5) {
       if (draft.rfq_id) {
         await queryRunner.query(
-          `UPDATE rfq_drafts SET is_converted = true, converted_rfq_id = $1 WHERE id = $2`,
+          "UPDATE rfq_drafts SET is_converted = true, converted_rfq_id = $1 WHERE id = $2",
           [draft.rfq_id, draft.id],
         );
-        console.warn(
-          `Marked draft ${draft.draft_number} as converted to RFQ ${draft.rfq_number}`,
-        );
+        console.warn(`Marked draft ${draft.draft_number} as converted to RFQ ${draft.rfq_number}`);
       } else {
-        await queryRunner.query(
-          `UPDATE rfq_drafts SET is_converted = true WHERE id = $1`,
-          [draft.id],
-        );
-        console.warn(
-          `Marked draft ${draft.draft_number} as converted (no matching RFQ found)`,
-        );
+        await queryRunner.query("UPDATE rfq_drafts SET is_converted = true WHERE id = $1", [
+          draft.id,
+        ]);
+        console.warn(`Marked draft ${draft.draft_number} as converted (no matching RFQ found)`);
       }
     }
   }

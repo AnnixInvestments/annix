@@ -24,19 +24,15 @@
 //     return `This action removes a #${id} fittingVariant`;
 //   }
 // }
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { FittingVariant } from './entities/fitting-variant.entity';
-import { CreateFittingVariantDto } from './dto/create-fitting-variant.dto';
-import { UpdateFittingVariantDto } from './dto/update-fitting-variant.dto';
-import { Fitting } from 'src/fitting/entities/fitting.entity';
-import { FittingBore } from 'src/fitting-bore/entities/fitting-bore.entity';
-import { FittingDimension } from 'src/fitting-dimension/entities/fitting-dimension.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Fitting } from "src/fitting/entities/fitting.entity";
+import { FittingBore } from "src/fitting-bore/entities/fitting-bore.entity";
+import { FittingDimension } from "src/fitting-dimension/entities/fitting-dimension.entity";
+import { Repository } from "typeorm";
+import { CreateFittingVariantDto } from "./dto/create-fitting-variant.dto";
+import { UpdateFittingVariantDto } from "./dto/update-fitting-variant.dto";
+import { FittingVariant } from "./entities/fitting-variant.entity";
 
 @Injectable()
 export class FittingVariantService {
@@ -82,8 +78,7 @@ export class FittingVariantService {
     const fitting = await this.fittingRepo.findOne({
       where: { id: dto.fittingId },
     });
-    if (!fitting)
-      throw new NotFoundException(`Fitting ${dto.fittingId} not found`);
+    if (!fitting) throw new NotFoundException(`Fitting ${dto.fittingId} not found`);
 
     const bores: FittingBore[] = dto.bores.map((b) =>
       this.boreRepo.create({
@@ -112,23 +107,20 @@ export class FittingVariantService {
 
   async findAll(): Promise<FittingVariant[]> {
     return this.variantRepo.find({
-      relations: ['fitting', 'bores', 'dimensions'],
+      relations: ["fitting", "bores", "dimensions"],
     });
   }
 
   async findOne(id: number): Promise<FittingVariant> {
     const variant = await this.variantRepo.findOne({
       where: { id },
-      relations: ['fitting', 'bores', 'dimensions'],
+      relations: ["fitting", "bores", "dimensions"],
     });
     if (!variant) throw new NotFoundException(`FittingVariant ${id} not found`);
     return variant;
   }
 
-  async update(
-    id: number,
-    dto: UpdateFittingVariantDto,
-  ): Promise<FittingVariant> {
+  async update(id: number, dto: UpdateFittingVariantDto): Promise<FittingVariant> {
     const variant = await this.findOne(id);
     Object.assign(variant, dto);
     return this.variantRepo.save(variant);

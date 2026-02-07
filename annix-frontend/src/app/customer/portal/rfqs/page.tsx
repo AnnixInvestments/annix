@@ -1,15 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import type { RfqDraftStatus } from '@/app/lib/api/client';
-import { useToast } from '@/app/components/Toast';
-import { formatDateZA, formatDateTimeZA } from '@/app/lib/datetime';
-import {
-  useCustomerRfqs,
-  useCustomerDrafts,
-  useDeleteDraft,
-} from '@/app/lib/query/hooks';
+import Link from "next/link";
+import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import type { RfqDraftStatus } from "@/app/lib/api/client";
+import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { useCustomerDrafts, useCustomerRfqs, useDeleteDraft } from "@/app/lib/query/hooks";
 
 export default function CustomerRfqsPage() {
   const { showToast } = useToast();
@@ -21,33 +17,33 @@ export default function CustomerRfqsPage() {
   const rfqs = rfqsQuery.data ?? [];
   const allRfqs = draftsQuery.data ?? [];
 
-  const [filter, setFilter] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'rfqs' | 'rfq-list'>('rfq-list');
+  const [filter, setFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<"rfqs" | "rfq-list">("rfq-list");
 
   const handleDeleteDraft = async (draftId: number) => {
-    if (!confirm('Are you sure you want to delete this draft?')) return;
+    if (!confirm("Are you sure you want to delete this draft?")) return;
     try {
       await deleteDraftMutation.mutateAsync(draftId);
-      showToast('Draft deleted successfully', 'success');
+      showToast("Draft deleted successfully", "success");
     } catch (e) {
-      showToast('Failed to delete draft', 'error');
+      showToast("Failed to delete draft", "error");
     }
   };
 
   const statusConfig: Record<RfqDraftStatus, { class: string; label: string }> = {
-    draft: { class: 'bg-amber-100 text-amber-800', label: 'Draft' },
-    submitted: { class: 'bg-blue-100 text-blue-800', label: 'Submitted' },
-    pending: { class: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
-    in_review: { class: 'bg-purple-100 text-purple-800', label: 'In Review' },
-    quoted: { class: 'bg-indigo-100 text-indigo-800', label: 'Quoted' },
-    accepted: { class: 'bg-green-100 text-green-800', label: 'Accepted' },
-    rejected: { class: 'bg-red-100 text-red-800', label: 'Rejected' },
-    cancelled: { class: 'bg-gray-100 text-gray-600', label: 'Cancelled' },
+    draft: { class: "bg-amber-100 text-amber-800", label: "Draft" },
+    submitted: { class: "bg-blue-100 text-blue-800", label: "Submitted" },
+    pending: { class: "bg-yellow-100 text-yellow-800", label: "Pending" },
+    in_review: { class: "bg-purple-100 text-purple-800", label: "In Review" },
+    quoted: { class: "bg-indigo-100 text-indigo-800", label: "Quoted" },
+    accepted: { class: "bg-green-100 text-green-800", label: "Accepted" },
+    rejected: { class: "bg-red-100 text-red-800", label: "Rejected" },
+    cancelled: { class: "bg-gray-100 text-gray-600", label: "Cancelled" },
   };
 
   const getStatusBadgeClass = (status: string) => {
     const config = statusConfig[status.toLowerCase() as RfqDraftStatus];
-    return config?.class || 'bg-gray-100 text-gray-800';
+    return config?.class || "bg-gray-100 text-gray-800";
   };
 
   const getStatusLabel = (status: string) => {
@@ -55,9 +51,8 @@ export default function CustomerRfqsPage() {
     return config?.label || status;
   };
 
-  const filteredRfqs = filter === 'all'
-    ? rfqs
-    : rfqs.filter(rfq => rfq.status.toLowerCase() === filter);
+  const filteredRfqs =
+    filter === "all" ? rfqs : rfqs.filter((rfq) => rfq.status.toLowerCase() === filter);
 
   if (rfqsQuery.isLoading) {
     return (
@@ -72,9 +67,7 @@ export default function CustomerRfqsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My RFQs</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            View and manage your requests for quotation
-          </p>
+          <p className="mt-1 text-sm text-gray-500">View and manage your requests for quotation</p>
         </div>
         <Link
           href="/customer/portal/rfqs/create"
@@ -89,7 +82,9 @@ export default function CustomerRfqsPage() {
 
       {rfqsQuery.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-700">{rfqsQuery.error instanceof Error ? rfqsQuery.error.message : 'Failed to load RFQs'}</p>
+          <p className="text-sm text-red-700">
+            {rfqsQuery.error instanceof Error ? rfqsQuery.error.message : "Failed to load RFQs"}
+          </p>
         </div>
       )}
 
@@ -97,11 +92,11 @@ export default function CustomerRfqsPage() {
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
-            onClick={() => setActiveTab('rfq-list')}
+            onClick={() => setActiveTab("rfq-list")}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'rfq-list'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              activeTab === "rfq-list"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
             RFQ List
@@ -110,11 +105,11 @@ export default function CustomerRfqsPage() {
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('rfqs')}
+            onClick={() => setActiveTab("rfqs")}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'rfqs'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              activeTab === "rfqs"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
             Submitted RFQs
@@ -126,23 +121,28 @@ export default function CustomerRfqsPage() {
       </div>
 
       {/* Filters - only show for RFQs tab */}
-      {activeTab === 'rfqs' && (
+      {activeTab === "rfqs" && (
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex flex-wrap gap-2">
-            {['all', 'draft', 'pending', 'quoted', 'accepted', 'rejected'].map((status) => (
+            {["all", "draft", "pending", "quoted", "accepted", "rejected"].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
                 className={`px-4 py-2 text-sm font-medium rounded-md ${
                   filter === status
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
-                {status !== 'all' && (
+                {status !== "all" && (
                   <span className="ml-1 text-xs">
-                    ({rfqs.filter(r => status === 'all' || r.status.toLowerCase() === status).length})
+                    (
+                    {
+                      rfqs.filter((r) => status === "all" || r.status.toLowerCase() === status)
+                        .length
+                    }
+                    )
                   </span>
                 )}
               </button>
@@ -152,27 +152,47 @@ export default function CustomerRfqsPage() {
       )}
 
       {/* RFQ List - only show when RFQs tab is active */}
-      {activeTab === 'rfqs' && (
+      {activeTab === "rfqs" && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {filteredRfqs.length === 0 ? (
             <div className="text-center py-12">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">No RFQs found</h3>
               <p className="mt-1 text-sm text-gray-500">
-                {filter === 'all'
+                {filter === "all"
                   ? "Get started by creating a new request for quotation."
                   : `No RFQs with status "${filter}" found.`}
               </p>
-              {filter === 'all' && (
+              {filter === "all" && (
                 <div className="mt-6">
                   <Link
                     href="/customer/portal/rfqs/create"
                     className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    <svg
+                      className="w-5 h-5 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
                     </svg>
                     Create RFQ
                   </Link>
@@ -216,12 +236,14 @@ export default function CustomerRfqsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(rfq.status)}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(rfq.status)}`}
+                      >
                         {rfq.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {rfq.itemCount} item{rfq.itemCount !== 1 ? 's' : ''}
+                      {rfq.itemCount} item{rfq.itemCount !== 1 ? "s" : ""}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDateZA(rfq.createdAt)}
@@ -249,7 +271,7 @@ export default function CustomerRfqsPage() {
       )}
 
       {/* RFQ List - shows all RFQs (drafts, submitted, closed) */}
-      {activeTab === 'rfq-list' && (
+      {activeTab === "rfq-list" && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {draftsQuery.isLoading ? (
             <div className="flex items-center justify-center py-12">
@@ -257,8 +279,18 @@ export default function CustomerRfqsPage() {
             </div>
           ) : allRfqs.length === 0 ? (
             <div className="text-center py-12">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">No RFQs found</h3>
               <p className="mt-1 text-sm text-gray-500">
@@ -269,8 +301,18 @@ export default function CustomerRfqsPage() {
                   href="/customer/portal/rfqs/create"
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   Create RFQ
                 </Link>
@@ -304,20 +346,26 @@ export default function CustomerRfqsPage() {
                 {allRfqs.map((rfq) => (
                   <tr key={rfq.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`text-sm font-medium ${rfq.isConverted ? 'text-blue-700' : 'text-amber-700'}`}>
+                      <span
+                        className={`text-sm font-medium ${rfq.isConverted ? "text-blue-700" : "text-amber-700"}`}
+                      >
                         {rfq.rfqNumber || rfq.draftNumber}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div>
-                        <span className="text-sm font-medium text-gray-900">{rfq.customerRfqReference || '-'}</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {rfq.customerRfqReference || "-"}
+                        </span>
                         {rfq.projectName && (
                           <p className="text-xs text-gray-500">{rfq.projectName}</p>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(rfq.status)}`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(rfq.status)}`}
+                      >
                         {getStatusLabel(rfq.status)}
                       </span>
                     </td>
@@ -325,7 +373,7 @@ export default function CustomerRfqsPage() {
                       <div className="flex items-center">
                         <div className="w-24 bg-gray-200 rounded-full h-2 mr-2">
                           <div
-                            className={`h-2 rounded-full ${rfq.isConverted ? 'bg-blue-500' : 'bg-amber-500'}`}
+                            className={`h-2 rounded-full ${rfq.isConverted ? "bg-blue-500" : "bg-amber-500"}`}
                             style={{ width: `${rfq.completionPercentage}%` }}
                           ></div>
                         </div>

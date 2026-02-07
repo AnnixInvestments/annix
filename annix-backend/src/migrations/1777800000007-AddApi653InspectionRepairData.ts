@@ -1,18 +1,18 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddApi653InspectionRepairData1777800000007 implements MigrationInterface {
-  name = 'AddApi653InspectionRepairData1777800000007';
+  name = "AddApi653InspectionRepairData1777800000007";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const tableExists = async (tableName: string): Promise<boolean> => {
       const result = await queryRunner.query(
-        `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)`,
+        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
         [tableName],
       );
       return result[0].exists;
     };
 
-    if (!(await tableExists('api653_inspection_intervals'))) {
+    if (!(await tableExists("api653_inspection_intervals"))) {
       await queryRunner.query(`
         CREATE TABLE api653_inspection_intervals (
           id SERIAL PRIMARY KEY,
@@ -38,7 +38,7 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
       `);
     }
 
-    if (!(await tableExists('api653_joint_efficiencies'))) {
+    if (!(await tableExists("api653_joint_efficiencies"))) {
       await queryRunner.query(`
         CREATE TABLE api653_joint_efficiencies (
           id SERIAL PRIMARY KEY,
@@ -77,7 +77,7 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
       `);
     }
 
-    if (!(await tableExists('api653_material_stresses'))) {
+    if (!(await tableExists("api653_material_stresses"))) {
       await queryRunner.query(`
         CREATE TABLE api653_material_stresses (
           id SERIAL PRIMARY KEY,
@@ -122,7 +122,7 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
       `);
     }
 
-    if (!(await tableExists('api653_bottom_thickness_limits'))) {
+    if (!(await tableExists("api653_bottom_thickness_limits"))) {
       await queryRunner.query(`
         CREATE TABLE api653_bottom_thickness_limits (
           id SERIAL PRIMARY KEY,
@@ -142,7 +142,7 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
       `);
     }
 
-    if (!(await tableExists('api653_annular_plate_thickness'))) {
+    if (!(await tableExists("api653_annular_plate_thickness"))) {
       await queryRunner.query(`
         CREATE TABLE api653_annular_plate_thickness (
           id SERIAL PRIMARY KEY,
@@ -181,7 +181,7 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
       `);
     }
 
-    if (!(await tableExists('api653_weld_spacing_requirements'))) {
+    if (!(await tableExists("api653_weld_spacing_requirements"))) {
       await queryRunner.query(`
         CREATE TABLE api653_weld_spacing_requirements (
           id SERIAL PRIMARY KEY,
@@ -207,7 +207,7 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
       `);
     }
 
-    if (!(await tableExists('api653_hot_tap_limits'))) {
+    if (!(await tableExists("api653_hot_tap_limits"))) {
       await queryRunner.query(`
         CREATE TABLE api653_hot_tap_limits (
           id SERIAL PRIMARY KEY,
@@ -229,7 +229,7 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
       `);
     }
 
-    if (!(await tableExists('api653_weld_reinforcement_limits'))) {
+    if (!(await tableExists("api653_weld_reinforcement_limits"))) {
       await queryRunner.query(`
         CREATE TABLE api653_weld_reinforcement_limits (
           id SERIAL PRIMARY KEY,
@@ -251,7 +251,7 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
       `);
     }
 
-    if (!(await tableExists('api653_dimensional_tolerances'))) {
+    if (!(await tableExists("api653_dimensional_tolerances"))) {
       await queryRunner.query(`
         CREATE TABLE api653_dimensional_tolerances (
           id SERIAL PRIMARY KEY,
@@ -286,7 +286,7 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
       `);
     }
 
-    if (!(await tableExists('api653_nde_requirements'))) {
+    if (!(await tableExists("api653_nde_requirements"))) {
       await queryRunner.query(`
         CREATE TABLE api653_nde_requirements (
           id SERIAL PRIMARY KEY,
@@ -321,25 +321,15 @@ export class AddApi653InspectionRepairData1777800000007 implements MigrationInte
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_nde_requirements`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS api653_dimensional_tolerances`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS api653_weld_reinforcement_limits`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_hot_tap_limits`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS api653_weld_spacing_requirements`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS api653_annular_plate_thickness`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS api653_bottom_thickness_limits`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_material_stresses`);
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_joint_efficiencies`);
-    await queryRunner.query(`DROP TABLE IF EXISTS api653_inspection_intervals`);
+    await queryRunner.query("DROP TABLE IF EXISTS api653_nde_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS api653_dimensional_tolerances");
+    await queryRunner.query("DROP TABLE IF EXISTS api653_weld_reinforcement_limits");
+    await queryRunner.query("DROP TABLE IF EXISTS api653_hot_tap_limits");
+    await queryRunner.query("DROP TABLE IF EXISTS api653_weld_spacing_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS api653_annular_plate_thickness");
+    await queryRunner.query("DROP TABLE IF EXISTS api653_bottom_thickness_limits");
+    await queryRunner.query("DROP TABLE IF EXISTS api653_material_stresses");
+    await queryRunner.query("DROP TABLE IF EXISTS api653_joint_efficiencies");
+    await queryRunner.query("DROP TABLE IF EXISTS api653_inspection_intervals");
   }
 }

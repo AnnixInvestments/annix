@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CoatingStandard } from './entities/coating-standard.entity';
-import { CoatingEnvironment } from './entities/coating-environment.entity';
-import { CoatingSpecification } from './entities/coating-specification.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CoatingEnvironment } from "./entities/coating-environment.entity";
+import { CoatingSpecification } from "./entities/coating-specification.entity";
+import { CoatingStandard } from "./entities/coating-standard.entity";
 
 @Injectable()
 export class CoatingSpecificationService {
@@ -18,31 +18,29 @@ export class CoatingSpecificationService {
 
   async findAllStandards(): Promise<CoatingStandard[]> {
     return this.standardRepo.find({
-      order: { code: 'ASC' },
+      order: { code: "ASC" },
     });
   }
 
   async findStandardByCode(code: string): Promise<CoatingStandard | null> {
     return this.standardRepo.findOne({
       where: { code },
-      relations: ['environments', 'environments.specifications'],
+      relations: ["environments", "environments.specifications"],
     });
   }
 
   async findAllEnvironments(): Promise<CoatingEnvironment[]> {
     return this.environmentRepo.find({
-      relations: ['standard'],
-      order: { standardId: 'ASC', category: 'ASC' },
+      relations: ["standard"],
+      order: { standardId: "ASC", category: "ASC" },
     });
   }
 
-  async findEnvironmentsByStandard(
-    standardCode: string,
-  ): Promise<CoatingEnvironment[]> {
+  async findEnvironmentsByStandard(standardCode: string): Promise<CoatingEnvironment[]> {
     return this.environmentRepo.find({
       where: { standard: { code: standardCode } },
-      relations: ['standard'],
-      order: { category: 'ASC' },
+      relations: ["standard"],
+      order: { category: "ASC" },
     });
   }
 
@@ -55,16 +53,14 @@ export class CoatingSpecificationService {
         standard: { code: standardCode },
         category,
       },
-      relations: ['standard', 'specifications'],
+      relations: ["standard", "specifications"],
     });
   }
 
-  async findSpecificationsByEnvironment(
-    environmentId: number,
-  ): Promise<CoatingSpecification[]> {
+  async findSpecificationsByEnvironment(environmentId: number): Promise<CoatingSpecification[]> {
     return this.specificationRepo.find({
       where: { environmentId },
-      order: { coatingType: 'ASC', lifespan: 'ASC' },
+      order: { coatingType: "ASC", lifespan: "ASC" },
     });
   }
 
@@ -74,7 +70,7 @@ export class CoatingSpecificationService {
   async getRecommendedCoatings(
     standardCode: string,
     category: string,
-    coatingType: 'external' | 'internal',
+    coatingType: "external" | "internal",
     lifespan?: string,
   ): Promise<CoatingSpecification[]> {
     const environment = await this.environmentRepo.findOne({
@@ -82,7 +78,7 @@ export class CoatingSpecificationService {
         standard: { code: standardCode },
         category,
       },
-      relations: ['standard'],
+      relations: ["standard"],
     });
 
     if (!environment) {
@@ -100,8 +96,8 @@ export class CoatingSpecificationService {
 
     return this.specificationRepo.find({
       where: whereClause,
-      relations: ['environment', 'environment.standard'],
-      order: { lifespan: 'ASC' },
+      relations: ["environment", "environment.standard"],
+      order: { lifespan: "ASC" },
     });
   }
 
@@ -126,7 +122,7 @@ export class CoatingSpecificationService {
         standard: { code: standardCode },
         category,
       },
-      relations: ['standard'],
+      relations: ["standard"],
     });
 
     if (!environment) {
@@ -140,12 +136,12 @@ export class CoatingSpecificationService {
 
     const [externalSpecs, internalSpecs] = await Promise.all([
       this.specificationRepo.find({
-        where: { environmentId: environment.id, coatingType: 'external' },
-        order: { lifespan: 'ASC' },
+        where: { environmentId: environment.id, coatingType: "external" },
+        order: { lifespan: "ASC" },
       }),
       this.specificationRepo.find({
-        where: { environmentId: environment.id, coatingType: 'internal' },
-        order: { lifespan: 'ASC' },
+        where: { environmentId: environment.id, coatingType: "internal" },
+        order: { lifespan: "ASC" },
       }),
     ]);
 
@@ -162,22 +158,20 @@ export class CoatingSpecificationService {
    */
   getLifespanOptions(): { value: string; label: string; years: string }[] {
     return [
-      { value: 'Low', label: 'Low', years: '2-7 years' },
-      { value: 'Medium', label: 'Medium', years: '7-15 years' },
-      { value: 'High', label: 'High', years: '15-25 years' },
-      { value: 'Very High', label: 'Very High', years: '>25 years' },
+      { value: "Low", label: "Low", years: "2-7 years" },
+      { value: "Medium", label: "Medium", years: "7-15 years" },
+      { value: "High", label: "High", years: "15-25 years" },
+      { value: "Very High", label: "Very High", years: ">25 years" },
     ];
   }
 
   /**
    * Get all corrosivity categories for ISO 12944
    */
-  async getCorrosivityCategories(): Promise<
-    { category: string; description: string }[]
-  > {
+  async getCorrosivityCategories(): Promise<{ category: string; description: string }[]> {
     const environments = await this.environmentRepo.find({
-      where: { standard: { code: 'ISO 12944' } },
-      order: { category: 'ASC' },
+      where: { standard: { code: "ISO 12944" } },
+      order: { category: "ASC" },
     });
 
     return environments.map((env) => ({
@@ -193,14 +187,14 @@ export class CoatingSpecificationService {
    */
   async systemsByDurability(
     category: string,
-    durability: 'L' | 'M' | 'H' | 'VH',
+    durability: "L" | "M" | "H" | "VH",
   ): Promise<{
     recommended: CoatingSpecification | null;
     alternatives: CoatingSpecification[];
   }> {
     const environment = await this.environmentRepo.findOne({
       where: {
-        standard: { code: 'ISO 12944' },
+        standard: { code: "ISO 12944" },
         category,
       },
     });
@@ -212,13 +206,13 @@ export class CoatingSpecificationService {
     const allSpecs = await this.specificationRepo.find({
       where: {
         environmentId: environment.id,
-        coatingType: 'external',
+        coatingType: "external",
       },
-      relations: ['environment', 'environment.standard'],
+      relations: ["environment", "environment.standard"],
     });
 
     const matchingSpecs = allSpecs.filter((spec) => {
-      const durabilities = spec.supportedDurabilities?.split(',') || [];
+      const durabilities = spec.supportedDurabilities?.split(",") || [];
       return durabilities.includes(durability);
     });
 
@@ -245,7 +239,7 @@ export class CoatingSpecificationService {
   async systemsByCategory(category: string): Promise<CoatingSpecification[]> {
     const environment = await this.environmentRepo.findOne({
       where: {
-        standard: { code: 'ISO 12944' },
+        standard: { code: "ISO 12944" },
         category,
       },
     });
@@ -257,10 +251,10 @@ export class CoatingSpecificationService {
     return this.specificationRepo.find({
       where: {
         environmentId: environment.id,
-        coatingType: 'external',
+        coatingType: "external",
       },
-      relations: ['environment', 'environment.standard'],
-      order: { systemCode: 'ASC' },
+      relations: ["environment", "environment.standard"],
+      order: { systemCode: "ASC" },
     });
   }
 
@@ -274,20 +268,20 @@ export class CoatingSpecificationService {
 
     const durabilitySet = new Set<string>();
     for (const spec of specs) {
-      const durabilities = spec.supportedDurabilities?.split(',') || [];
+      const durabilities = spec.supportedDurabilities?.split(",") || [];
       for (const d of durabilities) {
         durabilitySet.add(d);
       }
     }
 
     const durabilityMap: { [key: string]: { label: string; years: string } } = {
-      L: { label: 'Low', years: '2-7 years' },
-      M: { label: 'Medium', years: '7-15 years' },
-      H: { label: 'High', years: '15-25 years' },
-      VH: { label: 'Very High', years: '>25 years' },
+      L: { label: "Low", years: "2-7 years" },
+      M: { label: "Medium", years: "7-15 years" },
+      H: { label: "High", years: "15-25 years" },
+      VH: { label: "Very High", years: ">25 years" },
     };
 
-    const orderedCodes = ['L', 'M', 'H', 'VH'];
+    const orderedCodes = ["L", "M", "H", "VH"];
     return orderedCodes
       .filter((code) => durabilitySet.has(code))
       .map((code) => ({
@@ -303,7 +297,7 @@ export class CoatingSpecificationService {
   async systemByCode(systemCode: string): Promise<CoatingSpecification | null> {
     return this.specificationRepo.findOne({
       where: { systemCode },
-      relations: ['environment', 'environment.standard'],
+      relations: ["environment", "environment.standard"],
     });
   }
 }

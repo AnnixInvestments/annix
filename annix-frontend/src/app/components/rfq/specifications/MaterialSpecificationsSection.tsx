@@ -1,48 +1,47 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from "react";
+import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
+import { materialValidationApi, type ValidPressureClassInfo } from "@/app/lib/api/client";
 import {
-  type MaterialLimits,
-  materialLimits as getMaterialLimits,
   checkMaterialSuitability,
-} from '@/app/lib/config/rfq';
-import { materialValidationApi, type ValidPressureClassInfo } from '@/app/lib/api/client';
-import { log } from '@/app/lib/logger';
-import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
+  materialLimits as getMaterialLimits,
+  type MaterialLimits,
+} from "@/app/lib/config/rfq";
 import {
-  SABS_1123_FLANGE_TYPES,
-  BS_4504_FLANGE_TYPES,
   ASME_B16_5_FLANGE_TYPES,
-  BS_10_FLANGE_TYPES,
   ASME_B16_47_SERIES_A_FLANGE_TYPES,
   ASME_B16_47_SERIES_B_FLANGE_TYPES,
-} from '@/app/lib/hooks/useFlangeWeights';
+  BS_10_FLANGE_TYPES,
+  BS_4504_FLANGE_TYPES,
+  SABS_1123_FLANGE_TYPES,
+} from "@/app/lib/hooks/useFlangeWeights";
+import { log } from "@/app/lib/logger";
 
 const isSteelSpecAllowedForUnregistered = (specName: string): boolean => {
   const name = specName.toLowerCase();
-  if (name.includes('sabs 62') && (name.includes('medium') || name.includes('heavy'))) {
+  if (name.includes("sabs 62") && (name.includes("medium") || name.includes("heavy"))) {
     return true;
   }
-  if (name.includes('sabs 719')) {
+  if (name.includes("sabs 719")) {
     return true;
   }
-  if (name.includes('astm a106') && (name.includes('gr.b') || name.includes('grade b') || name.includes('gr b'))) {
+  if (
+    name.includes("astm a106") &&
+    (name.includes("gr.b") || name.includes("grade b") || name.includes("gr b"))
+  ) {
     return true;
   }
   return false;
 };
 
-const UNREGISTERED_ALLOWED_FLANGE_STANDARDS = [
-  'BS 4504',
-  'SABS 1123',
-  'BS 10',
-  'ASME B16.5',
-];
+const UNREGISTERED_ALLOWED_FLANGE_STANDARDS = ["BS 4504", "SABS 1123", "BS 10", "ASME B16.5"];
 
 const isFlangeStandardAllowedForUnregistered = (standardCode: string): boolean => {
-  return UNREGISTERED_ALLOWED_FLANGE_STANDARDS.some(allowed =>
-    standardCode.toLowerCase().includes(allowed.toLowerCase()) ||
-    allowed.toLowerCase().includes(standardCode.toLowerCase())
+  return UNREGISTERED_ALLOWED_FLANGE_STANDARDS.some(
+    (allowed) =>
+      standardCode.toLowerCase().includes(allowed.toLowerCase()) ||
+      allowed.toLowerCase().includes(standardCode.toLowerCase()),
   );
 };
 
@@ -84,7 +83,7 @@ export interface MaterialSpecificationsSectionProps {
     standardId: number | string,
     pressureBar?: number,
     temperatureC?: number,
-    materialGroup?: string
+    materialGroup?: string,
   ) => Promise<number | undefined>;
   ptRecommendations?: PTRecommendations;
   autoPressureClassId: number | null;
@@ -112,21 +111,27 @@ export function MaterialSpecificationsSection({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (steelSpecDropdownRef.current && !steelSpecDropdownRef.current.contains(event.target as Node)) {
+      if (
+        steelSpecDropdownRef.current &&
+        !steelSpecDropdownRef.current.contains(event.target as Node)
+      ) {
         setSteelSpecDropdownOpen(false);
       }
-      if (flangeStandardDropdownRef.current && !flangeStandardDropdownRef.current.contains(event.target as Node)) {
+      if (
+        flangeStandardDropdownRef.current &&
+        !flangeStandardDropdownRef.current.contains(event.target as Node)
+      ) {
         setFlangeStandardDropdownOpen(false);
       }
     };
     if (steelSpecDropdownOpen || flangeStandardDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [steelSpecDropdownOpen, flangeStandardDropdownOpen]);
 
   const pressureClassInfoMap = new Map<number, ValidPressureClassInfo>(
-    ptRecommendations?.validPressureClasses.map((c) => [c.id, c]) || []
+    ptRecommendations?.validPressureClasses.map((c) => [c.id, c]) || [],
   );
 
   const extractPressureNumeric = (designation: string | undefined): number => {
@@ -156,52 +161,60 @@ export function MaterialSpecificationsSection({
     return {
       isOverride: true,
       isHigher: currentNumeric > autoNumeric,
-      isLower: currentNumeric < autoNumeric
+      isLower: currentNumeric < autoNumeric,
     };
   })();
 
   const currentPressureClassInfo = globalSpecs?.flangePressureClassId
     ? pressureClassInfoMap.get(globalSpecs.flangePressureClassId)
     : undefined;
-  const isPressureClassUnsuitable = currentPressureClassInfo && !currentPressureClassInfo.isAdequate;
-  const isPressureClassMissingPTData = globalSpecs?.flangePressureClassId &&
+  const isPressureClassUnsuitable =
+    currentPressureClassInfo && !currentPressureClassInfo.isAdequate;
+  const isPressureClassMissingPTData =
+    globalSpecs?.flangePressureClassId &&
     ptRecommendations?.validPressureClasses &&
     ptRecommendations.validPressureClasses.length > 0 &&
     !currentPressureClassInfo;
 
   const isSpecSuitable = (specName: string): boolean => {
     if (!globalSpecs?.workingPressureBar && !globalSpecs?.workingTemperatureC) return true;
-    const suitability = checkMaterialSuitability(specName, globalSpecs?.workingTemperatureC, globalSpecs?.workingPressureBar);
+    const suitability = checkMaterialSuitability(
+      specName,
+      globalSpecs?.workingTemperatureC,
+      globalSpecs?.workingPressureBar,
+    );
     return suitability.isSuitable;
   };
 
   const getLimitsText = (specName: string): string => {
     const limits = getMaterialLimits(specName);
-    if (!limits) return '';
+    if (!limits) return "";
     return ` [Max ${limits.maxTempC}°C]`;
   };
 
   const handleSpecSelect = async (specId: number) => {
     let recommendedPressureClassId = globalSpecs?.flangePressureClassId;
     const newSteelSpec = masterData.steelSpecs?.find((s) => s.id === specId);
-    const specName = newSteelSpec?.steelSpecName || '';
+    const specName = newSteelSpec?.steelSpecName || "";
 
     try {
       if (specName && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC)) {
         const suitability = await materialValidationApi.checkMaterialSuitability(
           specName,
           globalSpecs?.workingTemperatureC,
-          globalSpecs?.workingPressureBar
+          globalSpecs?.workingPressureBar,
         );
 
         if (!suitability.isSuitable) {
-          const mappedLimits = suitability.limits ? {
-            minTempC: suitability.limits.minTempC,
-            maxTempC: suitability.limits.maxTempC,
-            maxPressureBar: suitability.limits.maxPressureBar,
-            type: suitability.limits.materialType,
-            notes: suitability.limits.notes
-          } : undefined;
+          const mappedLimits = suitability.limits
+            ? {
+                minTempC: suitability.limits.minTempC,
+                maxTempC: suitability.limits.maxTempC,
+                maxPressureBar: suitability.limits.maxPressureBar,
+                type: suitability.limits.materialType,
+                notes: suitability.limits.notes,
+              }
+            : undefined;
 
           onMaterialWarning({
             show: true,
@@ -209,95 +222,141 @@ export function MaterialSpecificationsSection({
             specId,
             warnings: suitability.warnings,
             recommendation: suitability.recommendation,
-            limits: mappedLimits
+            limits: mappedLimits,
           });
           setSteelSpecDropdownOpen(false);
           return;
         }
       }
     } catch (error) {
-      log.warn('Material validation API unavailable, proceeding with selection:', error);
+      log.warn("Material validation API unavailable, proceeding with selection:", error);
     }
 
     try {
       if (specId && globalSpecs?.flangeStandardId && globalSpecs?.workingPressureBar) {
         const materialGroup = getFlangeMaterialGroup(newSteelSpec?.steelSpecName);
         recommendedPressureClassId = await fetchAndSelectPressureClass(
-          globalSpecs.flangeStandardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup
+          globalSpecs.flangeStandardId,
+          globalSpecs.workingPressureBar,
+          globalSpecs.workingTemperatureC,
+          materialGroup,
         );
       }
     } catch (error) {
-      log.warn('Pressure class API unavailable:', error);
+      log.warn("Pressure class API unavailable:", error);
     }
 
     onUpdateGlobalSpecs({
       ...globalSpecs,
       steelSpecificationId: specId,
-      flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId
+      flangePressureClassId: recommendedPressureClassId || globalSpecs?.flangePressureClassId,
     });
     setSteelSpecDropdownOpen(false);
   };
 
   const handleFlangeStandardSelect = async (rawValue: string | number) => {
-    if (rawValue === 'PE') {
+    if (rawValue === "PE") {
       onUpdateGlobalSpecs({
         ...globalSpecs,
-        flangeStandardId: 'PE',
-        flangePressureClassId: undefined
+        flangeStandardId: "PE",
+        flangePressureClassId: undefined,
       });
       setFlangeStandardDropdownOpen(false);
       return;
     }
 
-    const standardId = typeof rawValue === 'number' ? rawValue : Number(rawValue);
-    let recommendedPressureClassId: number | undefined = undefined;
+    const standardId = typeof rawValue === "number" ? rawValue : Number(rawValue);
+    let recommendedPressureClassId: number | undefined;
     const standardChanged = standardId !== globalSpecs?.flangeStandardId;
-    const steelSpec = masterData.steelSpecs?.find((s) => s.id === globalSpecs?.steelSpecificationId);
+    const steelSpec = masterData.steelSpecs?.find(
+      (s) => s.id === globalSpecs?.steelSpecificationId,
+    );
     const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
 
     try {
       if (standardId && globalSpecs?.workingPressureBar) {
-        recommendedPressureClassId = await fetchAndSelectPressureClass(standardId, globalSpecs.workingPressureBar, globalSpecs.workingTemperatureC, materialGroup) || undefined;
+        recommendedPressureClassId =
+          (await fetchAndSelectPressureClass(
+            standardId,
+            globalSpecs.workingPressureBar,
+            globalSpecs.workingTemperatureC,
+            materialGroup,
+          )) || undefined;
       } else if (standardId) {
         await fetchAndSelectPressureClass(standardId);
       }
     } catch (error) {
-      log.warn('Pressure class fetch failed:', error);
+      log.warn("Pressure class fetch failed:", error);
     }
 
     const newPressureClassId = standardChanged
       ? recommendedPressureClassId
-      : (recommendedPressureClassId || globalSpecs?.flangePressureClassId);
+      : recommendedPressureClassId || globalSpecs?.flangePressureClassId;
 
     onUpdateGlobalSpecs({
       ...globalSpecs,
       flangeStandardId: standardId,
-      flangePressureClassId: newPressureClassId
+      flangePressureClassId: newPressureClassId,
     });
     setFlangeStandardDropdownOpen(false);
   };
 
   const groups = [
-    { label: 'South African Standards (SABS)', filter: (name: string) => name.startsWith('SABS') },
-    { label: 'Carbon Steel - ASTM A106 (High-Temp Seamless) - up to 427°C', filter: (name: string) => name.startsWith('ASTM A106') },
-    { label: 'Carbon Steel - ASTM A53 (General Purpose) - up to 400°C', filter: (name: string) => name.startsWith('ASTM A53') },
-    { label: 'Line Pipe - API 5L (Oil/Gas Pipelines) - up to 400°C', filter: (name: string) => name.startsWith('API 5L') },
-    { label: 'Low Temperature - ASTM A333 - down to -100°C', filter: (name: string) => name.startsWith('ASTM A333') },
-    { label: 'Heat Exchangers/Boilers - ASTM A179/A192', filter: (name: string) => /^ASTM A1(79|92)/.test(name) },
-    { label: 'Structural Tubing - ASTM A500 - up to 200°C', filter: (name: string) => name.startsWith('ASTM A500') },
-    { label: 'Alloy Steel - ASTM A335 (Chrome-Moly) - up to 593°C', filter: (name: string) => name.startsWith('ASTM A335') },
-    { label: 'Stainless Steel - ASTM A312 - up to 816°C', filter: (name: string) => name.startsWith('ASTM A312') },
+    { label: "South African Standards (SABS)", filter: (name: string) => name.startsWith("SABS") },
+    {
+      label: "Carbon Steel - ASTM A106 (High-Temp Seamless) - up to 427°C",
+      filter: (name: string) => name.startsWith("ASTM A106"),
+    },
+    {
+      label: "Carbon Steel - ASTM A53 (General Purpose) - up to 400°C",
+      filter: (name: string) => name.startsWith("ASTM A53"),
+    },
+    {
+      label: "Line Pipe - API 5L (Oil/Gas Pipelines) - up to 400°C",
+      filter: (name: string) => name.startsWith("API 5L"),
+    },
+    {
+      label: "Low Temperature - ASTM A333 - down to -100°C",
+      filter: (name: string) => name.startsWith("ASTM A333"),
+    },
+    {
+      label: "Heat Exchangers/Boilers - ASTM A179/A192",
+      filter: (name: string) => /^ASTM A1(79|92)/.test(name),
+    },
+    {
+      label: "Structural Tubing - ASTM A500 - up to 200°C",
+      filter: (name: string) => name.startsWith("ASTM A500"),
+    },
+    {
+      label: "Alloy Steel - ASTM A335 (Chrome-Moly) - up to 593°C",
+      filter: (name: string) => name.startsWith("ASTM A335"),
+    },
+    {
+      label: "Stainless Steel - ASTM A312 - up to 816°C",
+      filter: (name: string) => name.startsWith("ASTM A312"),
+    },
   ];
 
-  const selectedStandard = masterData.flangeStandards?.find((s) => s.id === globalSpecs?.flangeStandardId);
-  const standardCode = selectedStandard?.code || '';
+  const selectedStandard = masterData.flangeStandards?.find(
+    (s) => s.id === globalSpecs?.flangeStandardId,
+  );
+  const standardCode = selectedStandard?.code || "";
   const flangeTypesForStandard = (() => {
-    if (standardCode === 'SABS 1123') return SABS_1123_FLANGE_TYPES;
-    if (standardCode === 'BS 4504') return BS_4504_FLANGE_TYPES;
-    if (standardCode.includes('ASME B16.5') || standardCode.includes('ANSI B16.5')) return ASME_B16_5_FLANGE_TYPES;
-    if (standardCode.includes('ASME B16.47') && (standardCode.includes('Series A') || standardCode.endsWith('A'))) return ASME_B16_47_SERIES_A_FLANGE_TYPES;
-    if (standardCode.includes('ASME B16.47') && (standardCode.includes('Series B') || standardCode.endsWith('B'))) return ASME_B16_47_SERIES_B_FLANGE_TYPES;
-    if (standardCode === 'BS 10') return BS_10_FLANGE_TYPES;
+    if (standardCode === "SABS 1123") return SABS_1123_FLANGE_TYPES;
+    if (standardCode === "BS 4504") return BS_4504_FLANGE_TYPES;
+    if (standardCode.includes("ASME B16.5") || standardCode.includes("ANSI B16.5"))
+      return ASME_B16_5_FLANGE_TYPES;
+    if (
+      standardCode.includes("ASME B16.47") &&
+      (standardCode.includes("Series A") || standardCode.endsWith("A"))
+    )
+      return ASME_B16_47_SERIES_A_FLANGE_TYPES;
+    if (
+      standardCode.includes("ASME B16.47") &&
+      (standardCode.includes("Series B") || standardCode.endsWith("B"))
+    )
+      return ASME_B16_47_SERIES_B_FLANGE_TYPES;
+    if (standardCode === "BS 10") return BS_10_FLANGE_TYPES;
     return null;
   })();
 
@@ -307,27 +366,46 @@ export function MaterialSpecificationsSection({
 
       <div className="grid grid-cols-4 gap-3">
         <div ref={steelSpecDropdownRef} className="relative">
-          <label className="block text-xs font-semibold text-gray-900 mb-1">Steel Specification <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-semibold text-gray-900 mb-1">
+            Steel Specification <span className="text-red-500">*</span>
+          </label>
           <button
             type="button"
             onClick={() => setSteelSpecDropdownOpen(!steelSpecDropdownOpen)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white text-left flex items-center justify-between"
           >
-            <span className={globalSpecs?.steelSpecificationId ? 'text-gray-900' : 'text-gray-400'}>
+            <span className={globalSpecs?.steelSpecificationId ? "text-gray-900" : "text-gray-400"}>
               {globalSpecs?.steelSpecificationId
-                ? masterData.steelSpecs?.find((s) => s.id === globalSpecs.steelSpecificationId)?.steelSpecName || 'Select steel specification...'
-                : 'Select steel specification...'}
+                ? masterData.steelSpecs?.find((s) => s.id === globalSpecs.steelSpecificationId)
+                    ?.steelSpecName || "Select steel specification..."
+                : "Select steel specification..."}
             </span>
-            <svg className={`w-4 h-4 text-gray-400 transition-transform ${steelSpecDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <svg
+              className={`w-4 h-4 text-gray-400 transition-transform ${steelSpecDropdownOpen ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
           {steelSpecDropdownOpen && (
             <div className="absolute z-[10000] mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
               {groups.map((group, groupIdx) => {
-                const specs = masterData.steelSpecs?.filter((spec) => group.filter(spec.steelSpecName || '')) || [];
-                const suitableSpecs = specs.filter((spec) => isSpecSuitable(spec.steelSpecName || ''));
-                const unsuitableSpecs = specs.filter((spec) => !isSpecSuitable(spec.steelSpecName || ''));
+                const specs =
+                  masterData.steelSpecs?.filter((spec) => group.filter(spec.steelSpecName || "")) ||
+                  [];
+                const suitableSpecs = specs.filter((spec) =>
+                  isSpecSuitable(spec.steelSpecName || ""),
+                );
+                const unsuitableSpecs = specs.filter(
+                  (spec) => !isSpecSuitable(spec.steelSpecName || ""),
+                );
 
                 if (specs.length === 0) return null;
 
@@ -337,7 +415,9 @@ export function MaterialSpecificationsSection({
                       {suitableSpecs.length > 0 ? group.label : `${group.label} (Not Suitable)`}
                     </div>
                     {suitableSpecs.map((spec) => {
-                      const isAllowedForUnregistered = isSteelSpecAllowedForUnregistered(spec.steelSpecName || '');
+                      const isAllowedForUnregistered = isSteelSpecAllowedForUnregistered(
+                        spec.steelSpecName || "",
+                      );
                       const isRestricted = isUnregisteredCustomer && !isAllowedForUnregistered;
 
                       if (isRestricted) {
@@ -349,8 +429,18 @@ export function MaterialSpecificationsSection({
                             className="w-full px-3 py-1.5 text-sm text-left text-gray-400 cursor-not-allowed hover:bg-gray-100 flex items-center justify-between"
                           >
                             <span>{spec.steelSpecName}</span>
-                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            <svg
+                              className="w-3.5 h-3.5 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                              />
                             </svg>
                           </div>
                         );
@@ -362,7 +452,9 @@ export function MaterialSpecificationsSection({
                           type="button"
                           onClick={() => handleSpecSelect(spec.id)}
                           className={`w-full px-3 py-1.5 text-sm text-left hover:bg-blue-50 ${
-                            globalSpecs?.steelSpecificationId === spec.id ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
+                            globalSpecs?.steelSpecificationId === spec.id
+                              ? "bg-blue-100 text-blue-800"
+                              : "text-gray-900"
                           }`}
                         >
                           {spec.steelSpecName}
@@ -370,7 +462,9 @@ export function MaterialSpecificationsSection({
                       );
                     })}
                     {unsuitableSpecs.map((spec) => {
-                      const isAllowedForUnregistered = isSteelSpecAllowedForUnregistered(spec.steelSpecName || '');
+                      const isAllowedForUnregistered = isSteelSpecAllowedForUnregistered(
+                        spec.steelSpecName || "",
+                      );
                       const isRestricted = isUnregisteredCustomer && !isAllowedForUnregistered;
 
                       return (
@@ -380,10 +474,23 @@ export function MaterialSpecificationsSection({
                           onMouseEnter={isRestricted ? showRestrictionPopup : undefined}
                           className="w-full px-3 py-1.5 text-sm text-left text-gray-400 cursor-not-allowed flex items-center justify-between"
                         >
-                          <span>{spec.steelSpecName}{getLimitsText(spec.steelSpecName)} - NOT SUITABLE</span>
+                          <span>
+                            {spec.steelSpecName}
+                            {getLimitsText(spec.steelSpecName)} - NOT SUITABLE
+                          </span>
                           {isRestricted && (
-                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            <svg
+                              className="w-3.5 h-3.5 text-gray-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                              />
                             </svg>
                           )}
                         </div>
@@ -394,57 +501,89 @@ export function MaterialSpecificationsSection({
               })}
             </div>
           )}
-          {globalSpecs?.steelSpecificationId && (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC) && (() => {
-            const currentSpec = masterData.steelSpecs?.find((s) => s.id === globalSpecs.steelSpecificationId);
-            if (!currentSpec) return null;
-            const suitability = checkMaterialSuitability(currentSpec.steelSpecName, globalSpecs?.workingTemperatureC, globalSpecs?.workingPressureBar);
-            if (suitability.isSuitable) {
-              return (
-                <p className="mt-1 text-xs text-green-600 flex items-center">
-                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Suitable for {globalSpecs.workingTemperatureC}°C / {globalSpecs.workingPressureBar} bar
-                </p>
+          {globalSpecs?.steelSpecificationId &&
+            (globalSpecs?.workingPressureBar || globalSpecs?.workingTemperatureC) &&
+            (() => {
+              const currentSpec = masterData.steelSpecs?.find(
+                (s) => s.id === globalSpecs.steelSpecificationId,
               );
-            } else {
-              return (
-                <p className="mt-1 text-xs text-red-600 flex items-center">
-                  <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  Not recommended for current conditions
-                </p>
+              if (!currentSpec) return null;
+              const suitability = checkMaterialSuitability(
+                currentSpec.steelSpecName,
+                globalSpecs?.workingTemperatureC,
+                globalSpecs?.workingPressureBar,
               );
-            }
-          })()}
+              if (suitability.isSuitable) {
+                return (
+                  <p className="mt-1 text-xs text-green-600 flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Suitable for {globalSpecs.workingTemperatureC}°C /{" "}
+                    {globalSpecs.workingPressureBar} bar
+                  </p>
+                );
+              } else {
+                return (
+                  <p className="mt-1 text-xs text-red-600 flex items-center">
+                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Not recommended for current conditions
+                  </p>
+                );
+              }
+            })()}
         </div>
 
         <div ref={flangeStandardDropdownRef} className="relative">
-          <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Standard <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-semibold text-gray-900 mb-1">
+            Flange Standard <span className="text-red-500">*</span>
+          </label>
           <button
             type="button"
             onClick={() => setFlangeStandardDropdownOpen(!flangeStandardDropdownOpen)}
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-left flex items-center justify-between bg-white"
           >
-            <span className={globalSpecs?.flangeStandardId ? 'text-gray-900' : 'text-gray-400'}>
-              {globalSpecs?.flangeStandardId === 'PE'
-                ? 'Plain Ended (No Flanges)'
+            <span className={globalSpecs?.flangeStandardId ? "text-gray-900" : "text-gray-400"}>
+              {globalSpecs?.flangeStandardId === "PE"
+                ? "Plain Ended (No Flanges)"
                 : globalSpecs?.flangeStandardId
-                  ? masterData.flangeStandards?.find((s) => s.id === globalSpecs.flangeStandardId)?.code || 'Select flange standard...'
-                  : 'Select flange standard...'}
+                  ? masterData.flangeStandards?.find((s) => s.id === globalSpecs.flangeStandardId)
+                      ?.code || "Select flange standard..."
+                  : "Select flange standard..."}
             </span>
-            <svg className={`w-4 h-4 text-gray-400 transition-transform ${flangeStandardDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <svg
+              className={`w-4 h-4 text-gray-400 transition-transform ${flangeStandardDropdownOpen ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
           {flangeStandardDropdownOpen && (
             <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
               <button
                 type="button"
-                onClick={() => handleFlangeStandardSelect('PE')}
+                onClick={() => handleFlangeStandardSelect("PE")}
                 className={`w-full px-3 py-2 text-sm text-left hover:bg-blue-50 ${
-                  globalSpecs?.flangeStandardId === 'PE' ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
+                  globalSpecs?.flangeStandardId === "PE"
+                    ? "bg-blue-100 text-blue-800"
+                    : "text-gray-900"
                 }`}
               >
                 Plain Ended (No Flanges)
@@ -462,8 +601,18 @@ export function MaterialSpecificationsSection({
                       className="w-full px-3 py-2 text-sm text-left text-gray-400 cursor-not-allowed hover:bg-gray-100 flex items-center justify-between"
                     >
                       <span>{standard.code}</span>
-                      <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      <svg
+                        className="w-3.5 h-3.5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
                       </svg>
                     </div>
                   );
@@ -475,7 +624,9 @@ export function MaterialSpecificationsSection({
                     type="button"
                     onClick={() => handleFlangeStandardSelect(standard.id)}
                     className={`w-full px-3 py-2 text-sm text-left hover:bg-blue-50 ${
-                      globalSpecs?.flangeStandardId === standard.id ? 'bg-blue-100 text-blue-800' : 'text-gray-900'
+                      globalSpecs?.flangeStandardId === standard.id
+                        ? "bg-blue-100 text-blue-800"
+                        : "text-gray-900"
                     }`}
                   >
                     {standard.code}
@@ -489,42 +640,46 @@ export function MaterialSpecificationsSection({
         <div>
           <label className="block text-xs font-semibold text-gray-900 mb-1">
             Pressure Class <span className="text-red-500">*</span>
-            {globalSpecs?.workingPressureBar && globalSpecs?.flangeStandardId !== 'PE' && (
-              pressureClassOverrideStatus.isOverride ? (
-                <span className={`ml-1 text-xs font-normal ${
-                  pressureClassOverrideStatus.isLower || isPressureClassUnsuitable
-                    ? 'text-red-600'
-                    : pressureClassOverrideStatus.isHigher
-                      ? 'text-orange-500'
-                      : 'text-blue-600'
-                }`}>
+            {globalSpecs?.workingPressureBar &&
+              globalSpecs?.flangeStandardId !== "PE" &&
+              (pressureClassOverrideStatus.isOverride ? (
+                <span
+                  className={`ml-1 text-xs font-normal ${
+                    pressureClassOverrideStatus.isLower || isPressureClassUnsuitable
+                      ? "text-red-600"
+                      : pressureClassOverrideStatus.isHigher
+                        ? "text-orange-500"
+                        : "text-blue-600"
+                  }`}
+                >
                   (Override)
                 </span>
               ) : (
                 <span className="ml-1 text-xs text-blue-600 font-normal">(auto)</span>
-              )
-            )}
+              ))}
           </label>
-          {globalSpecs?.flangeStandardId === 'PE' ? (
+          {globalSpecs?.flangeStandardId === "PE" ? (
             <div className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 text-gray-700">
               P/E (Plain Ended)
             </div>
           ) : (
             <>
               <select
-                value={globalSpecs?.flangePressureClassId || ''}
-                onChange={(e) => onUpdateGlobalSpecs({
-                  ...globalSpecs,
-                  flangePressureClassId: e.target.value ? Number(e.target.value) : undefined
-                })}
+                value={globalSpecs?.flangePressureClassId || ""}
+                onChange={(e) =>
+                  onUpdateGlobalSpecs({
+                    ...globalSpecs,
+                    flangePressureClassId: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
                 className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 ${
                   isPressureClassUnsuitable
-                    ? 'border-red-500 bg-red-50'
+                    ? "border-red-500 bg-red-50"
                     : isPressureClassMissingPTData
-                      ? 'border-amber-500 bg-amber-50'
+                      ? "border-amber-500 bg-amber-50"
                       : ptRecommendations?.validation && !ptRecommendations.validation.isValid
-                        ? 'border-amber-500 bg-amber-50'
-                        : 'border-gray-300'
+                        ? "border-amber-500 bg-amber-50"
+                        : "border-gray-300"
                 }`}
                 disabled={!globalSpecs?.flangeStandardId}
                 required
@@ -541,10 +696,10 @@ export function MaterialSpecificationsSection({
                       const numA = extractNumeric(a.designation);
                       const numB = extractNumeric(b.designation);
                       if (numA !== numB) return numA - numB;
-                      return (a.designation || '').localeCompare(b.designation || '');
+                      return (a.designation || "").localeCompare(b.designation || "");
                     })
                     .map((pc) => {
-                      const displayValue = pc.designation.replace(/\/\d+$/, '');
+                      const displayValue = pc.designation.replace(/\/\d+$/, "");
                       return { ...pc, displayValue };
                     })
                     .filter((pc) => {
@@ -554,14 +709,22 @@ export function MaterialSpecificationsSection({
                     })
                     .map((pc) => {
                       const classInfo = pressureClassInfoMap.get(pc.id);
-                      const hasPtData = ptRecommendations && ptRecommendations.validPressureClasses.length > 0;
+                      const hasPtData =
+                        ptRecommendations && ptRecommendations.validPressureClasses.length > 0;
                       const suffix = classInfo
-                        ? (ptRecommendations?.recommendedPressureClassId === pc.id
-                            ? ' (Recommended)'
-                            : (!classInfo.isAdequate ? ' (Inadequate for P-T)' : ''))
-                        : (hasPtData ? ' (No P-T data)' : '');
+                        ? ptRecommendations?.recommendedPressureClassId === pc.id
+                          ? " (Recommended)"
+                          : !classInfo.isAdequate
+                            ? " (Inadequate for P-T)"
+                            : ""
+                        : hasPtData
+                          ? " (No P-T data)"
+                          : "";
                       return (
-                        <option key={pc.id} value={pc.id}>{pc.displayValue}{suffix}</option>
+                        <option key={pc.id} value={pc.id}>
+                          {pc.displayValue}
+                          {suffix}
+                        </option>
                       );
                     });
                 })()}
@@ -569,20 +732,31 @@ export function MaterialSpecificationsSection({
               {isPressureClassUnsuitable && (
                 <div className="mt-1.5 p-2 bg-red-50 border border-red-300 rounded text-xs">
                   <div className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    <svg
+                      className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     <div className="flex-1">
                       <p className="text-red-800 font-medium">
-                        The selected pressure class is unsuitable for the operating conditions (P-T rating inadequate).
+                        The selected pressure class is unsuitable for the operating conditions (P-T
+                        rating inadequate).
                       </p>
                       {autoPressureClassId && (
                         <button
                           type="button"
-                          onClick={() => onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            flangePressureClassId: autoPressureClassId
-                          })}
+                          onClick={() =>
+                            onUpdateGlobalSpecs({
+                              ...globalSpecs,
+                              flangePressureClassId: autoPressureClassId,
+                            })
+                          }
                           className="mt-1 px-2 py-0.5 bg-red-600 text-white rounded text-xs hover:bg-red-700"
                         >
                           Revert to Recommended Class
@@ -595,20 +769,31 @@ export function MaterialSpecificationsSection({
               {!isPressureClassUnsuitable && isPressureClassMissingPTData && (
                 <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded text-xs">
                   <div className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    <svg
+                      className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     <div className="flex-1">
                       <p className="text-amber-800 font-medium">
-                        No P-T rating data available for this pressure class. Cannot verify suitability for operating conditions.
+                        No P-T rating data available for this pressure class. Cannot verify
+                        suitability for operating conditions.
                       </p>
                       {autoPressureClassId && (
                         <button
                           type="button"
-                          onClick={() => onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            flangePressureClassId: autoPressureClassId
-                          })}
+                          onClick={() =>
+                            onUpdateGlobalSpecs({
+                              ...globalSpecs,
+                              flangePressureClassId: autoPressureClassId,
+                            })
+                          }
                           className="mt-1 px-2 py-0.5 bg-amber-600 text-white rounded text-xs hover:bg-amber-700"
                         >
                           Use Recommended Class
@@ -618,54 +803,71 @@ export function MaterialSpecificationsSection({
                   </div>
                 </div>
               )}
-              {!isPressureClassUnsuitable && !isPressureClassMissingPTData && ptRecommendations?.validation && !ptRecommendations.validation.isValid && (
-                <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded text-xs">
-                  <div className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                    <div className="flex-1">
-                      <p className="text-amber-800 font-medium">{ptRecommendations.validation.warningMessage}</p>
-                      {ptRecommendations.recommendedPressureClassId && (
-                        <button
-                          type="button"
-                          onClick={() => onUpdateGlobalSpecs({
-                            ...globalSpecs,
-                            flangePressureClassId: ptRecommendations.recommendedPressureClassId
-                          })}
-                          className="mt-1 px-2 py-0.5 bg-amber-600 text-white rounded text-xs hover:bg-amber-700"
-                        >
-                          Use Recommended Class
-                        </button>
-                      )}
+              {!isPressureClassUnsuitable &&
+                !isPressureClassMissingPTData &&
+                ptRecommendations?.validation &&
+                !ptRecommendations.validation.isValid && (
+                  <div className="mt-1.5 p-2 bg-amber-50 border border-amber-300 rounded text-xs">
+                    <div className="flex items-start gap-2">
+                      <svg
+                        className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-amber-800 font-medium">
+                          {ptRecommendations.validation.warningMessage}
+                        </p>
+                        {ptRecommendations.recommendedPressureClassId && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                flangePressureClassId: ptRecommendations.recommendedPressureClassId,
+                              })
+                            }
+                            className="mt-1 px-2 py-0.5 bg-amber-600 text-white rounded text-xs hover:bg-amber-700"
+                          >
+                            Use Recommended Class
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
             </>
           )}
         </div>
 
         {flangeTypesForStandard && (
           <div>
-            <label className="block text-xs font-semibold text-gray-900 mb-1">
-              Flange Type *
-            </label>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Type *</label>
             <select
-              value={globalSpecs?.flangeTypeCode || ''}
+              value={globalSpecs?.flangeTypeCode || ""}
               onChange={(e) => {
                 const newFlangeTypeCode = e.target.value || undefined;
                 let newPressureClassId = globalSpecs?.flangePressureClassId;
 
-                if (newFlangeTypeCode && globalSpecs?.flangePressureClassId && availablePressureClasses?.length > 0) {
+                if (
+                  newFlangeTypeCode &&
+                  globalSpecs?.flangePressureClassId &&
+                  availablePressureClasses?.length > 0
+                ) {
                   const currentPressureClass = availablePressureClasses.find(
-                    (pc) => pc.id === globalSpecs.flangePressureClassId
+                    (pc) => pc.id === globalSpecs.flangePressureClassId,
                   );
                   if (currentPressureClass?.designation) {
-                    const basePressure = currentPressureClass.designation.replace(/\/\d+$/, '');
+                    const basePressure = currentPressureClass.designation.replace(/\/\d+$/, "");
                     const targetDesignation = `${basePressure}/${newFlangeTypeCode}`;
                     const matchingClass = availablePressureClasses.find(
-                      (pc) => pc.designation === targetDesignation
+                      (pc) => pc.designation === targetDesignation,
                     );
                     if (matchingClass) {
                       newPressureClassId = matchingClass.id;
@@ -676,7 +878,7 @@ export function MaterialSpecificationsSection({
                 onUpdateGlobalSpecs({
                   ...globalSpecs,
                   flangeTypeCode: newFlangeTypeCode,
-                  flangePressureClassId: newPressureClassId
+                  flangePressureClassId: newPressureClassId,
                 });
               }}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
@@ -684,7 +886,9 @@ export function MaterialSpecificationsSection({
             >
               <option value="">Select type...</option>
               {flangeTypesForStandard.map((ft) => (
-                <option key={ft.code} value={ft.code}>{ft.code} - {ft.name}</option>
+                <option key={ft.code} value={ft.code}>
+                  {ft.code} - {ft.name}
+                </option>
               ))}
             </select>
           </div>

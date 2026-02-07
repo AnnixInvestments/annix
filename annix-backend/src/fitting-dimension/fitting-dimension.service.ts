@@ -24,18 +24,14 @@
 //     return `This action removes a #${id} fittingDimension`;
 //   }
 // }
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { FittingDimension } from './entities/fitting-dimension.entity';
-import { CreateFittingDimensionDto } from './dto/create-fitting-dimension.dto';
-import { UpdateFittingDimensionDto } from './dto/update-fitting-dimension.dto';
-import { FittingVariant } from 'src/fitting-variant/entities/fitting-variant.entity';
-import { AngleRange } from 'src/angle-range/entities/angle-range.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { AngleRange } from "src/angle-range/entities/angle-range.entity";
+import { FittingVariant } from "src/fitting-variant/entities/fitting-variant.entity";
+import { Repository } from "typeorm";
+import { CreateFittingDimensionDto } from "./dto/create-fitting-dimension.dto";
+import { UpdateFittingDimensionDto } from "./dto/update-fitting-dimension.dto";
+import { FittingDimension } from "./entities/fitting-dimension.entity";
 
 @Injectable()
 export class FittingDimensionService {
@@ -52,16 +48,14 @@ export class FittingDimensionService {
     const variant = await this.variantRepo.findOne({
       where: { id: dto.variantId },
     });
-    if (!variant)
-      throw new NotFoundException(`FittingVariant ${dto.variantId} not found`);
+    if (!variant) throw new NotFoundException(`FittingVariant ${dto.variantId} not found`);
 
     let angleRange: AngleRange | null = null;
     if (dto.angleRangeId) {
       angleRange = await this.angleRangeRepo.findOne({
         where: { id: dto.angleRangeId },
       });
-      if (!angleRange)
-        throw new NotFoundException(`AngleRange ${dto.angleRangeId} not found`);
+      if (!angleRange) throw new NotFoundException(`AngleRange ${dto.angleRangeId} not found`);
     }
 
     // const dim = this.dimRepo.create({ variant, angleRange, ...dto });
@@ -76,22 +70,19 @@ export class FittingDimensionService {
   }
 
   async findAll(): Promise<FittingDimension[]> {
-    return this.dimRepo.find({ relations: ['variant', 'angleRange'] });
+    return this.dimRepo.find({ relations: ["variant", "angleRange"] });
   }
 
   async findOne(id: number): Promise<FittingDimension> {
     const dim = await this.dimRepo.findOne({
       where: { id },
-      relations: ['variant', 'angleRange'],
+      relations: ["variant", "angleRange"],
     });
     if (!dim) throw new NotFoundException(`FittingDimension ${id} not found`);
     return dim;
   }
 
-  async update(
-    id: number,
-    dto: UpdateFittingDimensionDto,
-  ): Promise<FittingDimension> {
+  async update(id: number, dto: UpdateFittingDimensionDto): Promise<FittingDimension> {
     const dim = await this.findOne(id);
     Object.assign(dim, dto);
     return this.dimRepo.save(dim);

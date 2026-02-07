@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateFlangeTypeWeightsTable1778000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -20,7 +20,7 @@ export class CreateFlangeTypeWeightsTable1778000000000 implements MigrationInter
       ON flange_type_weights(flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm)
     `);
 
-    const sans1123Id = await this.flangeStandardId(queryRunner, 'SANS 1123');
+    const sans1123Id = await this.flangeStandardId(queryRunner, "SANS 1123");
 
     await queryRunner.query(`
       INSERT INTO flange_type_weights (flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm, weight_kg)
@@ -339,19 +339,15 @@ export class CreateFlangeTypeWeightsTable1778000000000 implements MigrationInter
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS flange_type_weights`);
+    await queryRunner.query("DROP TABLE IF EXISTS flange_type_weights");
   }
 
-  private async flangeStandardId(
-    queryRunner: QueryRunner,
-    code: string,
-  ): Promise<string> {
-    const result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = $1`,
-      [code],
-    );
+  private async flangeStandardId(queryRunner: QueryRunner, code: string): Promise<string> {
+    const result = await queryRunner.query("SELECT id FROM flange_standards WHERE code = $1", [
+      code,
+    ]);
     if (result.length === 0) {
-      return 'NULL';
+      return "NULL";
     }
     return result[0].id.toString();
   }

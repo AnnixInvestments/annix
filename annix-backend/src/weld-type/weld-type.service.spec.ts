@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { WeldTypeService } from './weld-type.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { WeldType } from './entities/weld-type.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { WeldType } from "./entities/weld-type.entity";
+import { WeldTypeService } from "./weld-type.service";
 
-describe('WeldTypeService', () => {
+describe("WeldTypeService", () => {
   let service: WeldTypeService;
 
   const mockRepo = {
@@ -17,10 +17,7 @@ describe('WeldTypeService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        WeldTypeService,
-        { provide: getRepositoryToken(WeldType), useValue: mockRepo },
-      ],
+      providers: [WeldTypeService, { provide: getRepositoryToken(WeldType), useValue: mockRepo }],
     }).compile();
 
     service = module.get<WeldTypeService>(WeldTypeService);
@@ -28,13 +25,13 @@ describe('WeldTypeService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new weld type', async () => {
-      const dto = { weld_code: 'BW', weld_name: 'Butt Weld', category: 'WELD' };
+  describe("create", () => {
+    it("should create a new weld type", async () => {
+      const dto = { weld_code: "BW", weld_name: "Butt Weld", category: "WELD" };
       const entity = { id: 1, ...dto } as WeldType;
 
       mockRepo.findOne.mockResolvedValue(undefined);
@@ -50,9 +47,9 @@ describe('WeldTypeService', () => {
       expect(mockRepo.save).toHaveBeenCalledWith(dto);
     });
 
-    it('should throw BadRequestException if weld code already exists', async () => {
-      const dto = { weld_code: 'BW', weld_name: 'Butt Weld', category: 'WELD' };
-      mockRepo.findOne.mockResolvedValue({ id: 1, weld_code: 'BW' });
+    it("should throw BadRequestException if weld code already exists", async () => {
+      const dto = { weld_code: "BW", weld_name: "Butt Weld", category: "WELD" };
+      mockRepo.findOne.mockResolvedValue({ id: 1, weld_code: "BW" });
 
       await expect(service.create(dto)).rejects.toThrow(BadRequestException);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
@@ -61,9 +58,9 @@ describe('WeldTypeService', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return array of weld types', async () => {
-      const result = [{ id: 1, weld_code: 'BW' }] as WeldType[];
+  describe("findAll", () => {
+    it("should return array of weld types", async () => {
+      const result = [{ id: 1, weld_code: "BW" }] as WeldType[];
       mockRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
@@ -71,9 +68,9 @@ describe('WeldTypeService', () => {
     });
   });
 
-  describe('findOne', () => {
-    it('should return a weld type by id', async () => {
-      const result = { id: 1, weld_code: 'BW' } as WeldType;
+  describe("findOne", () => {
+    it("should return a weld type by id", async () => {
+      const result = { id: 1, weld_code: "BW" } as WeldType;
       mockRepo.findOne.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
@@ -82,36 +79,34 @@ describe('WeldTypeService', () => {
       });
     });
 
-    it('should throw NotFoundException if weld type not found', async () => {
+    it("should throw NotFoundException if weld type not found", async () => {
       mockRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('findByCode', () => {
-    it('should return a weld type by code', async () => {
-      const result = { id: 1, weld_code: 'BW' } as WeldType;
+  describe("findByCode", () => {
+    it("should return a weld type by code", async () => {
+      const result = { id: 1, weld_code: "BW" } as WeldType;
       mockRepo.findOne.mockResolvedValue(result);
 
-      expect(await service.findByCode('BW')).toEqual(result);
+      expect(await service.findByCode("BW")).toEqual(result);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { weld_code: 'BW' },
+        where: { weld_code: "BW" },
       });
     });
 
-    it('should throw NotFoundException if weld type not found by code', async () => {
+    it("should throw NotFoundException if weld type not found by code", async () => {
       mockRepo.findOne.mockResolvedValue(undefined);
 
-      await expect(service.findByCode('UNKNOWN')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findByCode("UNKNOWN")).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('remove', () => {
-    it('should delete a weld type', async () => {
-      const entity = { id: 1, weld_code: 'BW' } as WeldType;
+  describe("remove", () => {
+    it("should delete a weld type", async () => {
+      const entity = { id: 1, weld_code: "BW" } as WeldType;
       mockRepo.findOne.mockResolvedValue(entity);
       mockRepo.remove.mockResolvedValue(undefined);
 

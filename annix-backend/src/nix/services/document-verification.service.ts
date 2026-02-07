@@ -1,27 +1,31 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
-import { now } from '../../lib/datetime';
-
-import { CustomerDocument } from '../../customer/entities/customer-document.entity';
-import { CustomerDocumentType, CustomerDocumentValidationStatus } from '../../customer/entities/customer-document.entity';
-import { CustomerCompany } from '../../customer/entities/customer-company.entity';
-import { CustomerProfile } from '../../customer/entities/customer-profile.entity';
-import { SupplierDocument } from '../../supplier/entities/supplier-document.entity';
-import { SupplierDocumentType, SupplierDocumentValidationStatus } from '../../supplier/entities/supplier-document.entity';
-import { SupplierCompany } from '../../supplier/entities/supplier-company.entity';
-import { SupplierProfile } from '../../supplier/entities/supplier-profile.entity';
-import { S3StorageService } from '../../storage/s3-storage.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CustomerCompany } from "../../customer/entities/customer-company.entity";
 import {
-  RegistrationDocumentVerifierService,
-  RegistrationDocumentType,
+  CustomerDocument,
+  CustomerDocumentType,
+  CustomerDocumentValidationStatus,
+} from "../../customer/entities/customer-document.entity";
+import { CustomerProfile } from "../../customer/entities/customer-profile.entity";
+import { now } from "../../lib/datetime";
+import { S3StorageService } from "../../storage/s3-storage.service";
+import { SupplierCompany } from "../../supplier/entities/supplier-company.entity";
+import {
+  SupplierDocument,
+  SupplierDocumentType,
+  SupplierDocumentValidationStatus,
+} from "../../supplier/entities/supplier-document.entity";
+import { SupplierProfile } from "../../supplier/entities/supplier-profile.entity";
+import {
   ExpectedCompanyData,
+  RegistrationDocumentType,
+  RegistrationDocumentVerifierService,
   RegistrationVerificationResult,
-} from './registration-document-verifier.service';
+} from "./registration-document-verifier.service";
 
 export interface DocumentVerificationRequest {
-  entityType: 'customer' | 'supplier';
+  entityType: "customer" | "supplier";
   entityId: number;
   documentId: number;
 }
@@ -29,7 +33,7 @@ export interface DocumentVerificationRequest {
 export interface DocumentVerificationResponse {
   success: boolean;
   documentId: number;
-  entityType: 'customer' | 'supplier';
+  entityType: "customer" | "supplier";
   verificationResult: RegistrationVerificationResult | null;
   validationStatus: string;
   allFieldsMatch: boolean;
@@ -54,11 +58,13 @@ export class DocumentVerificationService {
     private readonly verifierService: RegistrationDocumentVerifierService,
   ) {}
 
-  async verifyDocument(request: DocumentVerificationRequest): Promise<DocumentVerificationResponse> {
+  async verifyDocument(
+    request: DocumentVerificationRequest,
+  ): Promise<DocumentVerificationResponse> {
     const { entityType, entityId, documentId } = request;
 
     try {
-      if (entityType === 'customer') {
+      if (entityType === "customer") {
         return await this.verifyCustomerDocument(entityId, documentId);
       } else {
         return await this.verifySupplierDocument(entityId, documentId);
@@ -70,7 +76,7 @@ export class DocumentVerificationService {
         documentId,
         entityType,
         verificationResult: null,
-        validationStatus: 'failed',
+        validationStatus: "failed",
         allFieldsMatch: false,
         requiresManualReview: true,
         errorMessage: error.message,
@@ -78,22 +84,25 @@ export class DocumentVerificationService {
     }
   }
 
-  private async verifyCustomerDocument(customerId: number, documentId: number): Promise<DocumentVerificationResponse> {
+  private async verifyCustomerDocument(
+    customerId: number,
+    documentId: number,
+  ): Promise<DocumentVerificationResponse> {
     const document = await this.customerDocumentRepo.findOne({
       where: { id: documentId, customerId },
     });
 
     if (!document) {
-      throw new Error('Customer document not found');
+      throw new Error("Customer document not found");
     }
 
     const profile = await this.customerProfileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile?.company) {
-      throw new Error('Customer company not found');
+      throw new Error("Customer company not found");
     }
 
     const docType = this.mapCustomerDocumentType(document.documentType);
@@ -102,7 +111,7 @@ export class DocumentVerificationService {
       return {
         success: true,
         documentId,
-        entityType: 'customer',
+        entityType: "customer",
         verificationResult: null,
         validationStatus: CustomerDocumentValidationStatus.PENDING,
         allFieldsMatch: true,
@@ -114,16 +123,21 @@ export class DocumentVerificationService {
     const fileBuffer = await this.storageService.download(document.filePath);
     const multerFile = this.bufferToMulterFile(fileBuffer, document.fileName, document.mimeType);
 
-    const verificationResult = await this.verifierService.verifyDocument(multerFile, docType, expectedData);
+    const verificationResult = await this.verifierService.verifyDocument(
+      multerFile,
+      docType,
+      expectedData,
+    );
 
     await this.updateCustomerDocumentWithVerification(document, verificationResult);
 
-    const requiresManualReview = !verificationResult.allFieldsMatch || verificationResult.overallConfidence < 0.7;
+    const requiresManualReview =
+      !verificationResult.allFieldsMatch || verificationResult.overallConfidence < 0.7;
 
     return {
       success: verificationResult.success,
       documentId,
-      entityType: 'customer',
+      entityType: "customer",
       verificationResult,
       validationStatus: document.validationStatus,
       allFieldsMatch: verificationResult.allFieldsMatch,
@@ -131,22 +145,25 @@ export class DocumentVerificationService {
     };
   }
 
-  private async verifySupplierDocument(supplierId: number, documentId: number): Promise<DocumentVerificationResponse> {
+  private async verifySupplierDocument(
+    supplierId: number,
+    documentId: number,
+  ): Promise<DocumentVerificationResponse> {
     const document = await this.supplierDocumentRepo.findOne({
       where: { id: documentId, supplierId },
     });
 
     if (!document) {
-      throw new Error('Supplier document not found');
+      throw new Error("Supplier document not found");
     }
 
     const profile = await this.supplierProfileRepo.findOne({
       where: { id: supplierId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile?.company) {
-      throw new Error('Supplier company not found');
+      throw new Error("Supplier company not found");
     }
 
     const docType = this.mapSupplierDocumentType(document.documentType);
@@ -155,7 +172,7 @@ export class DocumentVerificationService {
       return {
         success: true,
         documentId,
-        entityType: 'supplier',
+        entityType: "supplier",
         verificationResult: null,
         validationStatus: SupplierDocumentValidationStatus.PENDING,
         allFieldsMatch: true,
@@ -167,16 +184,21 @@ export class DocumentVerificationService {
     const fileBuffer = await this.storageService.download(document.filePath);
     const multerFile = this.bufferToMulterFile(fileBuffer, document.fileName, document.mimeType);
 
-    const verificationResult = await this.verifierService.verifyDocument(multerFile, docType, expectedData);
+    const verificationResult = await this.verifierService.verifyDocument(
+      multerFile,
+      docType,
+      expectedData,
+    );
 
     await this.updateSupplierDocumentWithVerification(document, verificationResult);
 
-    const requiresManualReview = !verificationResult.allFieldsMatch || verificationResult.overallConfidence < 0.7;
+    const requiresManualReview =
+      !verificationResult.allFieldsMatch || verificationResult.overallConfidence < 0.7;
 
     return {
       success: verificationResult.success,
       documentId,
-      entityType: 'supplier',
+      entityType: "supplier",
       verificationResult,
       validationStatus: document.validationStatus,
       allFieldsMatch: verificationResult.allFieldsMatch,
@@ -186,18 +208,18 @@ export class DocumentVerificationService {
 
   private mapCustomerDocumentType(docType: CustomerDocumentType): RegistrationDocumentType | null {
     const mapping: Partial<Record<CustomerDocumentType, RegistrationDocumentType>> = {
-      [CustomerDocumentType.VAT_CERT]: 'vat',
-      [CustomerDocumentType.REGISTRATION_CERT]: 'registration',
-      [CustomerDocumentType.BEE_CERT]: 'bee',
+      [CustomerDocumentType.VAT_CERT]: "vat",
+      [CustomerDocumentType.REGISTRATION_CERT]: "registration",
+      [CustomerDocumentType.BEE_CERT]: "bee",
     };
     return mapping[docType] ?? null;
   }
 
   private mapSupplierDocumentType(docType: SupplierDocumentType): RegistrationDocumentType | null {
     const mapping: Partial<Record<SupplierDocumentType, RegistrationDocumentType>> = {
-      [SupplierDocumentType.VAT_CERT]: 'vat',
-      [SupplierDocumentType.REGISTRATION_CERT]: 'registration',
-      [SupplierDocumentType.BEE_CERT]: 'bee',
+      [SupplierDocumentType.VAT_CERT]: "vat",
+      [SupplierDocumentType.REGISTRATION_CERT]: "registration",
+      [SupplierDocumentType.BEE_CERT]: "bee",
     };
     return mapping[docType] ?? null;
   }
@@ -249,18 +271,18 @@ export class DocumentVerificationService {
     document.allFieldsMatch = result.allFieldsMatch;
     document.fieldResults = result.fieldResults.map((fr) => ({
       fieldName: fr.field,
-      expected: String(fr.expected ?? ''),
-      extracted: String(fr.extracted ?? ''),
+      expected: String(fr.expected ?? ""),
+      extracted: String(fr.extracted ?? ""),
       matches: fr.match,
       similarity: fr.similarity ?? (fr.match ? 100 : 0),
     }));
 
     if (!result.success) {
       document.validationStatus = CustomerDocumentValidationStatus.FAILED;
-      document.validationNotes = 'OCR processing failed';
+      document.validationNotes = "OCR processing failed";
     } else if (result.allFieldsMatch && result.overallConfidence >= 0.7) {
       document.validationStatus = CustomerDocumentValidationStatus.VALID;
-      document.validationNotes = 'Automatic validation passed';
+      document.validationNotes = "Automatic validation passed";
     } else {
       document.validationStatus = CustomerDocumentValidationStatus.MANUAL_REVIEW;
       document.validationNotes = this.verifierService.generateMismatchReport(result);
@@ -292,18 +314,18 @@ export class DocumentVerificationService {
     document.allFieldsMatch = result.allFieldsMatch;
     document.fieldResults = result.fieldResults.map((fr) => ({
       fieldName: fr.field,
-      expected: String(fr.expected ?? ''),
-      extracted: String(fr.extracted ?? ''),
+      expected: String(fr.expected ?? ""),
+      extracted: String(fr.extracted ?? ""),
       matches: fr.match,
       similarity: fr.similarity ?? (fr.match ? 100 : 0),
     }));
 
     if (!result.success) {
       document.validationStatus = SupplierDocumentValidationStatus.FAILED;
-      document.validationNotes = 'OCR processing failed';
+      document.validationNotes = "OCR processing failed";
     } else if (result.allFieldsMatch && result.overallConfidence >= 0.7) {
       document.validationStatus = SupplierDocumentValidationStatus.VALID;
-      document.validationNotes = 'Automatic validation passed';
+      document.validationNotes = "Automatic validation passed";
     } else {
       document.validationStatus = SupplierDocumentValidationStatus.MANUAL_REVIEW;
       document.validationNotes = this.verifierService.generateMismatchReport(result);
@@ -312,25 +334,32 @@ export class DocumentVerificationService {
     await this.supplierDocumentRepo.save(document);
   }
 
-  private bufferToMulterFile(buffer: Buffer, filename: string, mimeType: string): Express.Multer.File {
+  private bufferToMulterFile(
+    buffer: Buffer,
+    filename: string,
+    mimeType: string,
+  ): Express.Multer.File {
     return {
-      fieldname: 'file',
+      fieldname: "file",
       originalname: filename,
-      encoding: '7bit',
+      encoding: "7bit",
       mimetype: mimeType,
       size: buffer.length,
       buffer,
       stream: null as any,
-      destination: '',
+      destination: "",
       filename: filename,
-      path: '',
+      path: "",
     };
   }
 
-  async verifyAllPendingDocuments(entityType: 'customer' | 'supplier', entityId: number): Promise<DocumentVerificationResponse[]> {
+  async verifyAllPendingDocuments(
+    entityType: "customer" | "supplier",
+    entityId: number,
+  ): Promise<DocumentVerificationResponse[]> {
     const results: DocumentVerificationResponse[] = [];
 
-    if (entityType === 'customer') {
+    if (entityType === "customer") {
       const documents = await this.customerDocumentRepo.find({
         where: { customerId: entityId, validationStatus: CustomerDocumentValidationStatus.PENDING },
       });

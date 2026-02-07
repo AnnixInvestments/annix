@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateRfqDrafts1767620558975 implements MigrationInterface {
-  name = 'CreateRfqDrafts1767620558975';
+  name = "CreateRfqDrafts1767620558975";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -19,9 +19,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_uploaded_by"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_rfq"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_rfq"`);
     await queryRunner.query(
       `ALTER TABLE "drawing_versions" DROP CONSTRAINT "FK_drawing_versions_uploaded_by"`,
     );
@@ -37,22 +35,12 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "drawing_comments" DROP CONSTRAINT "FK_drawing_comments_drawing"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_uploaded_by"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_rfq"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "boq_line_items" DROP CONSTRAINT "FK_boq_line_items_boq"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_created_by"`,
-    );
+    await queryRunner.query(`ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_uploaded_by"`);
+    await queryRunner.query(`ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_rfq"`);
+    await queryRunner.query(`ALTER TABLE "boq_line_items" DROP CONSTRAINT "FK_boq_line_items_boq"`);
+    await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_created_by"`);
     await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_rfq"`);
-    await queryRunner.query(
-      `ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_drawing"`,
-    );
+    await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_drawing"`);
     await queryRunner.query(
       `ALTER TABLE "review_workflows" DROP CONSTRAINT "FK_review_workflows_decided_by"`,
     );
@@ -104,9 +92,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "pipe_end_configurations" DROP CONSTRAINT "FK_pipe_end_configurations_weld_type"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "sa_mines" DROP CONSTRAINT "FK_sa_mines_commodity"`,
-    );
+    await queryRunner.query(`ALTER TABLE "sa_mines" DROP CONSTRAINT "FK_sa_mines_commodity"`);
     await queryRunner.query(
       `ALTER TABLE "slurry_profiles" DROP CONSTRAINT "FK_slurry_profiles_commodity"`,
     );
@@ -155,9 +141,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "audit_logs" DROP CONSTRAINT "FK_audit_logs_performed_by"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "admin_sessions" DROP CONSTRAINT "fk_admin_session_user"`,
-    );
+    await queryRunner.query(`ALTER TABLE "admin_sessions" DROP CONSTRAINT "fk_admin_session_user"`);
     await queryRunner.query(
       `ALTER TABLE "customer_preferred_suppliers" DROP CONSTRAINT "FK_preferred_suppliers_added_by"`,
     );
@@ -174,78 +158,36 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
       `ALTER TABLE "coating_specifications" DROP CONSTRAINT "FK_coating_spec_env"`,
     );
     await queryRunner.query(`DROP INDEX "public"."IDX_rfq_documents_rfq_id"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_rfq_documents_created_at"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_drawing_versions_drawing_id"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_drawing_comments_drawing_id"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_drawing_comments_user_id"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_rfq_documents_created_at"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_drawing_versions_drawing_id"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_drawing_comments_drawing_id"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_drawing_comments_user_id"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_drawings_rfq_id"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_drawings_status"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_drawings_uploaded_by"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_boq_line_items_boq_id"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_boq_line_items_item_type"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_boq_line_items_item_type"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_boqs_drawing_id"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_boqs_rfq_id"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_boqs_status"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_boqs_created_by"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_review_workflows_entity"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_review_workflows_status"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_review_workflows_submitted_by"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_review_workflows_assigned_reviewer"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_review_workflows_is_active"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_supplier_login_attempts_email"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_supplier_login_attempts_profile"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_supplier_onboarding_status"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_supplier_documents_supplier"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_supplier_documents_type"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."idx_supplier_capabilities_profile_id"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."idx_supplier_capabilities_category"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_review_workflows_entity"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_review_workflows_status"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_review_workflows_submitted_by"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_review_workflows_assigned_reviewer"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_review_workflows_is_active"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_supplier_login_attempts_email"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_supplier_login_attempts_profile"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_supplier_onboarding_status"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_supplier_documents_supplier"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_supplier_documents_type"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_supplier_capabilities_profile_id"`);
+    await queryRunner.query(`DROP INDEX "public"."idx_supplier_capabilities_category"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_supplier_profiles_user"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_supplier_profiles_company"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_supplier_profiles_status"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_supplier_sessions_token"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_supplier_sessions_active"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_supplier_profiles_company"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_supplier_profiles_status"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_supplier_sessions_token"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_supplier_sessions_active"`);
     await queryRunner.query(`DROP INDEX "public"."idx_sections_type_id"`);
     await queryRunner.query(`DROP INDEX "public"."idx_sections_designation"`);
     await queryRunner.query(`DROP INDEX "public"."idx_labor_rates_code"`);
@@ -254,94 +196,48 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX "public"."idx_fab_operations_active"`);
     await queryRunner.query(`DROP INDEX "public"."idx_fab_operations_code"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_sabs719_fitting_type"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_sabs719_nominal_diameter"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_sabs719_nominal_diameter"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_sabs719_fitting_lookup"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_sabs62_fitting_type"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_sabs62_nominal_diameter"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_sabs62_nominal_diameter"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_sabs62_fitting_lookup"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_pvc_pipe_specs_dn"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_pvc_pipe_specs_pn"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_sa_mines_province"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_sa_mines_status"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_sa_mines_commodity"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_hdpe_fitting_types_code"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_hdpe_fitting_types_category"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_hdpe_fitting_weights_nb"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_hdpe_pipe_specifications_nb"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_hdpe_pipe_specifications_sdr"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_hdpe_pipe_specifications_active"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_customer_device_bindings_customer_profile"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_hdpe_fitting_types_code"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_hdpe_fitting_types_category"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_hdpe_fitting_weights_nb"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_hdpe_pipe_specifications_nb"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_hdpe_pipe_specifications_sdr"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_hdpe_pipe_specifications_active"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_customer_device_bindings_customer_profile"`);
     await queryRunner.query(
       `DROP INDEX "public"."IDX_customer_device_bindings_device_fingerprint"`,
     );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_customer_onboarding_status"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_customer_onboarding_customer"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_customer_documents_customer"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_customer_documents_type"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_customer_documents_status"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_customer_onboarding_status"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_customer_onboarding_customer"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_customer_documents_customer"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_customer_documents_type"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_customer_documents_status"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_customer_profiles_role"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_customer_profiles_email_verified"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_customer_sessions_token"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_customer_sessions_profile_active"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_customer_profiles_email_verified"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_customer_sessions_token"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_customer_sessions_profile_active"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_invitations_token"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_invitations_email_status"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_invitations_email_status"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_invitations_company"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_audit_logs_entity"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_audit_logs_timestamp"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_audit_logs_performed_by"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_audit_logs_performed_by"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_audit_logs_action"`);
     await queryRunner.query(`DROP INDEX "public"."idx_admin_session_token"`);
     await queryRunner.query(`DROP INDEX "public"."idx_admin_session_user_id"`);
-    await queryRunner.query(
-      `DROP INDEX "public"."idx_admin_session_expires_at"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_preferred_suppliers_company"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_preferred_suppliers_active"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_bend_center_to_face_unique"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."idx_admin_session_expires_at"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_preferred_suppliers_company"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_preferred_suppliers_active"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_bend_center_to_face_unique"`);
     await queryRunner.query(
       `ALTER TABLE "structural_steel_sections" DROP CONSTRAINT "structural_steel_sections_type_id_designation_key"`,
     );
@@ -390,54 +286,30 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_5d40d7385a0134f48786697e22" ON "customer_login_attempts" ("customer_profile_id", "attempt_time") `,
     );
-    await queryRunner.query(
-      `ALTER TABLE "steel_specifications" DROP COLUMN "density_kg_m3"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "steel_specifications" DROP COLUMN "description"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "steel_specifications" DROP COLUMN "grade_standard"`,
-    );
+    await queryRunner.query(`ALTER TABLE "steel_specifications" DROP COLUMN "density_kg_m3"`);
+    await queryRunner.query(`ALTER TABLE "steel_specifications" DROP COLUMN "description"`);
+    await queryRunner.query(`ALTER TABLE "steel_specifications" DROP COLUMN "grade_standard"`);
     await queryRunner.query(
       `ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "nominal_outside_diameter_id"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "flange_standard_id"`,
-    );
+    await queryRunner.query(`ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "flange_standard_id"`);
     await queryRunner.query(
       `ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "flange_pressure_class_id"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "created_at"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "updated_at"`,
-    );
+    await queryRunner.query(`ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "created_at"`);
+    await queryRunner.query(`ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "updated_at"`);
     await queryRunner.query(`ALTER TABLE "rfq_items" DROP COLUMN "created_at"`);
     await queryRunner.query(`ALTER TABLE "rfq_items" DROP COLUMN "updated_at"`);
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "created_at"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "supplier_invitations" DROP COLUMN "invited_by_id"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "supplier_invitations" DROP COLUMN "updated_at"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "created_at"`);
+    await queryRunner.query(`ALTER TABLE "supplier_invitations" DROP COLUMN "invited_by_id"`);
+    await queryRunner.query(`ALTER TABLE "supplier_invitations" DROP COLUMN "updated_at"`);
     await queryRunner.query(`ALTER TABLE "pipe_steel_grades" ADD "notes" text`);
-    await queryRunner.query(
-      `ALTER TABLE "flange_bolting" ADD "bolt_length_rf" numeric(5,2)`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "supplier_invitations" ADD "invited_by" integer NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "flange_bolting" ADD "bolt_length_rf" numeric(5,2)`);
+    await queryRunner.query(`ALTER TABLE "supplier_invitations" ADD "invited_by" integer NOT NULL`);
     await queryRunner.query(
       `ALTER TABLE "straight_pipe_rfqs" DROP CONSTRAINT "FK_84197f8946daca8330b5d4e0e9d"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "schedule_number"`,
-    );
+    await queryRunner.query(`ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "schedule_number"`);
     await queryRunner.query(
       `ALTER TABLE "straight_pipe_rfqs" ADD "schedule_number" character varying`,
     );
@@ -471,9 +343,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "rfq_items" DROP CONSTRAINT "FK_ef8f022c5f4d9e27e47e03a1202"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_items" DROP COLUMN "description"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_items" DROP COLUMN "description"`);
     await queryRunner.query(
       `ALTER TABLE "rfq_items" ADD "description" character varying NOT NULL DEFAULT ''`,
     );
@@ -486,39 +356,25 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "rfq_items" ALTER COLUMN "item_type" TYPE "public"."rfq_items_item_type_enum" USING "item_type"::"text"::"public"."rfq_items_item_type_enum"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."rfq_items_item_type_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."rfq_items_item_type_enum_old"`);
     await queryRunner.query(
       `ALTER TABLE "rfq_items" ALTER COLUMN "total_weight_kg" TYPE numeric(10,2)`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_items" ALTER COLUMN "unit_price" TYPE numeric(15,2)`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_items" ALTER COLUMN "rfq_id" DROP NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" DROP COLUMN "filename"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_items" ALTER COLUMN "unit_price" TYPE numeric(15,2)`);
+    await queryRunner.query(`ALTER TABLE "rfq_items" ALTER COLUMN "rfq_id" DROP NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "rfq_documents" DROP COLUMN "filename"`);
     await queryRunner.query(
       `ALTER TABLE "rfq_documents" ADD "filename" character varying NOT NULL DEFAULT ''`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" DROP COLUMN "file_path"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_documents" DROP COLUMN "file_path"`);
     await queryRunner.query(
       `ALTER TABLE "rfq_documents" ADD "file_path" character varying NOT NULL DEFAULT ''`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" DROP COLUMN "mime_type"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_documents" DROP COLUMN "mime_type"`);
     await queryRunner.query(
       `ALTER TABLE "rfq_documents" ADD "mime_type" character varying NOT NULL DEFAULT ''`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" ALTER COLUMN "rfq_id" DROP NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_documents" ALTER COLUMN "rfq_id" DROP NOT NULL`);
     await queryRunner.query(
       `ALTER TABLE "drawing_versions" ALTER COLUMN "drawing_id" DROP NOT NULL`,
     );
@@ -544,9 +400,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "drawing_comments" ALTER COLUMN "drawing_id" DROP NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "drawing_comments" ALTER COLUMN "user_id" DROP NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "drawing_comments" ALTER COLUMN "user_id" DROP NOT NULL`);
     await queryRunner.query(
       `ALTER TYPE "public"."drawing_file_type_enum" RENAME TO "drawing_file_type_enum_old"`,
     );
@@ -563,15 +417,11 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `CREATE TYPE "public"."drawings_status_enum" AS ENUM('draft', 'submitted', 'under_review', 'changes_requested', 'approved', 'rejected')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "drawings" ALTER COLUMN "status" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "drawings" ALTER COLUMN "status" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "drawings" ALTER COLUMN "status" TYPE "public"."drawings_status_enum" USING "status"::"text"::"public"."drawings_status_enum"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "drawings" ALTER COLUMN "status" SET DEFAULT 'draft'`,
-    );
+    await queryRunner.query(`ALTER TABLE "drawings" ALTER COLUMN "status" SET DEFAULT 'draft'`);
     await queryRunner.query(`DROP TYPE "public"."drawing_status_enum_old"`);
     await queryRunner.query(
       `ALTER TABLE "drawings" ALTER COLUMN "uploaded_by_user_id" DROP NOT NULL`,
@@ -586,31 +436,21 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
       `ALTER TABLE "boq_line_items" ALTER COLUMN "item_type" TYPE "public"."boq_line_items_item_type_enum" USING "item_type"::"text"::"public"."boq_line_items_item_type_enum"`,
     );
     await queryRunner.query(`DROP TYPE "public"."boq_item_type_enum_old"`);
-    await queryRunner.query(
-      `ALTER TABLE "boq_line_items" ALTER COLUMN "boq_id" DROP NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "boq_line_items" ALTER COLUMN "boq_id" DROP NOT NULL`);
     await queryRunner.query(
       `ALTER TYPE "public"."boq_status_enum" RENAME TO "boq_status_enum_old"`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."boqs_status_enum" AS ENUM('draft', 'submitted', 'under_review', 'changes_requested', 'approved', 'rejected')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" ALTER COLUMN "status" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "boqs" ALTER COLUMN "status" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "boqs" ALTER COLUMN "status" TYPE "public"."boqs_status_enum" USING "status"::"text"::"public"."boqs_status_enum"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" ALTER COLUMN "status" SET DEFAULT 'draft'`,
-    );
+    await queryRunner.query(`ALTER TABLE "boqs" ALTER COLUMN "status" SET DEFAULT 'draft'`);
     await queryRunner.query(`DROP TYPE "public"."boq_status_enum_old"`);
-    await queryRunner.query(
-      `ALTER TABLE "boqs" ALTER COLUMN "created_by_user_id" DROP NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" DROP CONSTRAINT "UQ_b19e346f96ffd54c4d436a95869"`,
-    );
+    await queryRunner.query(`ALTER TABLE "boqs" ALTER COLUMN "created_by_user_id" DROP NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "rfqs" DROP CONSTRAINT "UQ_b19e346f96ffd54c4d436a95869"`);
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "rfq_number"`);
     await queryRunner.query(
       `ALTER TABLE "rfqs" ADD "rfq_number" character varying NOT NULL DEFAULT ''`,
@@ -628,39 +468,25 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "description"`);
     await queryRunner.query(`ALTER TABLE "rfqs" ADD "description" text`);
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "customer_name"`);
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ADD "customer_name" character varying`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ADD "customer_name" character varying`);
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "customer_email"`);
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ADD "customer_email" character varying`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ADD "customer_email" character varying`);
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "customer_phone"`);
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ADD "customer_phone" character varying`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ADD "customer_phone" character varying`);
     await queryRunner.query(
       `ALTER TYPE "public"."rfqs_status_enum" RENAME TO "rfqs_status_enum_old"`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."rfqs_status_enum" AS ENUM('draft', 'pending', 'quoted', 'accepted', 'rejected', 'cancelled')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ALTER COLUMN "status" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ALTER COLUMN "status" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "rfqs" ALTER COLUMN "status" TYPE "public"."rfqs_status_enum" USING "status"::"text"::"public"."rfqs_status_enum"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ALTER COLUMN "status" SET DEFAULT 'draft'`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ALTER COLUMN "status" SET DEFAULT 'draft'`);
     await queryRunner.query(`DROP TYPE "public"."rfqs_status_enum_old"`);
-    await queryRunner.query(
-      `ALTER TABLE "user" ALTER COLUMN "salt" DROP NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "user" ALTER COLUMN "status" SET NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "user" ALTER COLUMN "salt" DROP NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "user" ALTER COLUMN "status" SET NOT NULL`);
     await queryRunner.query(
       `ALTER TYPE "public"."workflow_type_enum" RENAME TO "workflow_type_enum_old"`,
     );
@@ -718,9 +544,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_login_attempts" ALTER COLUMN "failure_reason" TYPE "public"."supplier_login_attempts_failure_reason_enum" USING "failure_reason"::"text"::"public"."supplier_login_attempts_failure_reason_enum"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_login_failure_reason_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_login_failure_reason_enum_old"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_document_type_enum" RENAME TO "supplier_document_type_enum_old"`,
     );
@@ -730,9 +554,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_documents" ALTER COLUMN "document_type" TYPE "public"."supplier_documents_document_type_enum" USING "document_type"::"text"::"public"."supplier_documents_document_type_enum"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_document_type_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_document_type_enum_old"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_document_validation_status_enum" RENAME TO "supplier_document_validation_status_enum_old"`,
     );
@@ -748,9 +570,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_documents" ALTER COLUMN "validation_status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_document_validation_status_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_document_validation_status_enum_old"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_capabilities_product_category_enum" RENAME TO "supplier_capabilities_product_category_enum_old"`,
     );
@@ -760,9 +580,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_capabilities" ALTER COLUMN "product_category" TYPE "public"."supplier_capabilities_product_category_enum" USING "product_category"::"text"::"public"."supplier_capabilities_product_category_enum"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_capabilities_product_category_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_capabilities_product_category_enum_old"`);
     await queryRunner.query(
       `ALTER TABLE "supplier_capabilities" DROP COLUMN "material_specializations"`,
     );
@@ -772,9 +590,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_capabilities" ADD "material_specializations" "public"."supplier_capabilities_material_specializations_enum" array NOT NULL DEFAULT '{}'`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "supplier_capabilities" DROP COLUMN "certifications"`,
-    );
+    await queryRunner.query(`ALTER TABLE "supplier_capabilities" DROP COLUMN "certifications"`);
     await queryRunner.query(
       `CREATE TYPE "public"."supplier_capabilities_certifications_enum" AS ENUM('iso_9001', 'iso_14001', 'iso_45001', 'asme', 'api', 'sabs', 'ce_marked', 'none')`,
     );
@@ -802,9 +618,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_profiles" ALTER COLUMN "account_status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_account_status_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_account_status_enum_old"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_session_invalidation_reason_enum" RENAME TO "supplier_session_invalidation_reason_enum_old"`,
     );
@@ -814,9 +628,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_sessions" ALTER COLUMN "invalidation_reason" TYPE "public"."supplier_sessions_invalidation_reason_enum" USING "invalidation_reason"::"text"::"public"."supplier_sessions_invalidation_reason_enum"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_session_invalidation_reason_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_session_invalidation_reason_enum_old"`);
     await queryRunner.query(
       `ALTER TABLE "structural_steel_types" ALTER COLUMN "display_order" SET NOT NULL`,
     );
@@ -859,12 +671,8 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "structural_steel_grades" ALTER COLUMN "created_at" SET DEFAULT now()`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "shop_labor_rates" ALTER COLUMN "currency" SET NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "shop_labor_rates" ALTER COLUMN "is_active" SET NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "shop_labor_rates" ALTER COLUMN "currency" SET NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "shop_labor_rates" ALTER COLUMN "is_active" SET NOT NULL`);
     await queryRunner.query(
       `ALTER TABLE "shop_labor_rates" ALTER COLUMN "created_at" SET NOT NULL`,
     );
@@ -925,9 +733,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "fabrication_operations" ALTER COLUMN "updated_at" SET DEFAULT now()`,
     );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "sabs719_fitting_dimension"."fitting_type" IS NULL`,
-    );
+    await queryRunner.query(`COMMENT ON COLUMN "sabs719_fitting_dimension"."fitting_type" IS NULL`);
     await queryRunner.query(
       `COMMENT ON COLUMN "sabs719_fitting_dimension"."nominal_diameter_mm" IS NULL`,
     );
@@ -967,18 +773,14 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `COMMENT ON COLUMN "sabs719_fitting_dimension"."dimension_h_mm" IS NULL`,
     );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "sabs719_fitting_dimension"."radius_r_mm" IS NULL`,
-    );
+    await queryRunner.query(`COMMENT ON COLUMN "sabs719_fitting_dimension"."radius_r_mm" IS NULL`);
     await queryRunner.query(
       `ALTER TABLE "sabs719_fitting_dimension" ALTER COLUMN "created_at" SET DEFAULT now()`,
     );
     await queryRunner.query(
       `ALTER TABLE "sabs719_fitting_dimension" ALTER COLUMN "updated_at" SET DEFAULT now()`,
     );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "sabs62_fitting_dimension"."fitting_type" IS NULL`,
-    );
+    await queryRunner.query(`COMMENT ON COLUMN "sabs62_fitting_dimension"."fitting_type" IS NULL`);
     await queryRunner.query(
       `COMMENT ON COLUMN "sabs62_fitting_dimension"."nominal_diameter_mm" IS NULL`,
     );
@@ -997,9 +799,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `COMMENT ON COLUMN "sabs62_fitting_dimension"."outside_diameter_d_mm" IS NULL`,
     );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "sabs62_fitting_dimension"."angle_range" IS NULL`,
-    );
+    await queryRunner.query(`COMMENT ON COLUMN "sabs62_fitting_dimension"."angle_range" IS NULL`);
     await queryRunner.query(
       `COMMENT ON COLUMN "sabs62_fitting_dimension"."dimension_a_mm" IS NULL`,
     );
@@ -1012,9 +812,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `COMMENT ON COLUMN "sabs62_fitting_dimension"."centre_to_face_d_mm" IS NULL`,
     );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "sabs62_fitting_dimension"."radius_r_mm" IS NULL`,
-    );
+    await queryRunner.query(`COMMENT ON COLUMN "sabs62_fitting_dimension"."radius_r_mm" IS NULL`);
     await queryRunner.query(
       `ALTER TABLE "sabs62_fitting_dimension" ALTER COLUMN "created_at" SET DEFAULT now()`,
     );
@@ -1054,9 +852,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" DROP CONSTRAINT "pipe_steel_grades_code_key"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "code"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "code"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" ADD "code" character varying NOT NULL DEFAULT ''`,
     );
@@ -1066,36 +862,24 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" ADD CONSTRAINT "UQ_b6799f7aed70897801673c40487" UNIQUE ("code")`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "name"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "name"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" ADD "name" character varying NOT NULL DEFAULT ''`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "category"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" ADD "category" character varying`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "equivalent_grade"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "category"`);
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" ADD "category" character varying`);
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "equivalent_grade"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" ADD "equivalent_grade" character varying`,
     );
     await queryRunner.query(
       `ALTER TABLE "pipe_allowable_stresses" ALTER COLUMN "allowable_stress_ksi" TYPE numeric(6,2)`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_schedule_walls" DROP COLUMN "nps"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_schedule_walls" DROP COLUMN "nps"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_schedule_walls" ADD "nps" character varying NOT NULL DEFAULT ''`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_schedule_walls" DROP COLUMN "schedule"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_schedule_walls" DROP COLUMN "schedule"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_schedule_walls" ADD "schedule" character varying NOT NULL DEFAULT ''`,
     );
@@ -1105,9 +889,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "pipe_schedule_walls" ALTER COLUMN "wall_thickness_mm" TYPE numeric(6,2)`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_nps_od" DROP CONSTRAINT "pipe_nps_od_nps_key"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_nps_od" DROP CONSTRAINT "pipe_nps_od_nps_key"`);
     await queryRunner.query(`ALTER TABLE "pipe_nps_od" DROP COLUMN "nps"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_nps_od" ADD "nps" character varying NOT NULL DEFAULT ''`,
@@ -1118,27 +900,19 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "pipe_nps_od" ADD CONSTRAINT "UQ_b49ee2390bf098a5ed94cbd3d2e" UNIQUE ("nps")`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_nps_od" ALTER COLUMN "od_inch" TYPE numeric(7,4)`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_nps_od" ALTER COLUMN "od_mm" TYPE numeric(7,2)`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_nps_od" ALTER COLUMN "od_inch" TYPE numeric(7,4)`);
+    await queryRunner.query(`ALTER TABLE "pipe_nps_od" ALTER COLUMN "od_mm" TYPE numeric(7,2)`);
     await queryRunner.query(
       `ALTER TABLE "pipe_schedules" ALTER COLUMN "standard_code" SET NOT NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE "material_allowable_stresses" ALTER COLUMN "source_standard" SET NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TYPE "public"."mine_type_enum" RENAME TO "mine_type_enum_old"`,
-    );
+    await queryRunner.query(`ALTER TYPE "public"."mine_type_enum" RENAME TO "mine_type_enum_old"`);
     await queryRunner.query(
       `CREATE TYPE "public"."sa_mines_mine_type_enum" AS ENUM('Underground', 'Open Cast', 'Both')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "sa_mines" ALTER COLUMN "mine_type" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "sa_mines" ALTER COLUMN "mine_type" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "sa_mines" ALTER COLUMN "mine_type" TYPE "public"."sa_mines_mine_type_enum" USING "mine_type"::"text"::"public"."sa_mines_mine_type_enum"`,
     );
@@ -1211,9 +985,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customer_documents" ALTER COLUMN "document_type" TYPE "public"."customer_documents_document_type_enum" USING "document_type"::"text"::"public"."customer_documents_document_type_enum"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."customer_document_type_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."customer_document_type_enum_old"`);
     await queryRunner.query(
       `ALTER TYPE "public"."customer_document_validation_status_enum" RENAME TO "customer_document_validation_status_enum_old"`,
     );
@@ -1229,27 +1001,17 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customer_documents" ALTER COLUMN "validation_status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."customer_document_validation_status_enum_old"`,
-    );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "customer_documents"."ocr_extracted_data" IS NULL`,
-    );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "customer_documents"."ocr_processed_at" IS NULL`,
-    );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "customer_documents"."ocr_failed" IS NULL`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."customer_document_validation_status_enum_old"`);
+    await queryRunner.query(`COMMENT ON COLUMN "customer_documents"."ocr_extracted_data" IS NULL`);
+    await queryRunner.query(`COMMENT ON COLUMN "customer_documents"."ocr_processed_at" IS NULL`);
+    await queryRunner.query(`COMMENT ON COLUMN "customer_documents"."ocr_failed" IS NULL`);
     await queryRunner.query(
       `ALTER TYPE "public"."customer_role_enum" RENAME TO "customer_role_enum_old"`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."customer_profiles_role_enum" AS ENUM('customer_admin', 'customer_standard')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "customer_profiles" ALTER COLUMN "role" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "customer_profiles" ALTER COLUMN "role" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "customer_profiles" ALTER COLUMN "role" TYPE "public"."customer_profiles_role_enum" USING "role"::"text"::"public"."customer_profiles_role_enum"`,
     );
@@ -1272,9 +1034,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customer_profiles" ALTER COLUMN "account_status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."customer_account_status_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."customer_account_status_enum_old"`);
     await queryRunner.query(
       `ALTER TYPE "public"."session_invalidation_reason_enum" RENAME TO "session_invalidation_reason_enum_old"`,
     );
@@ -1284,15 +1044,11 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customer_sessions" ALTER COLUMN "invalidation_reason" TYPE "public"."customer_sessions_invalidation_reason_enum" USING "invalidation_reason"::"text"::"public"."customer_sessions_invalidation_reason_enum"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."session_invalidation_reason_enum_old"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."session_invalidation_reason_enum_old"`);
     await queryRunner.query(
       `ALTER TABLE "supplier_invitations" DROP CONSTRAINT "supplier_invitations_token_key"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "supplier_invitations" DROP COLUMN "token"`,
-    );
+    await queryRunner.query(`ALTER TABLE "supplier_invitations" DROP COLUMN "token"`);
     await queryRunner.query(
       `ALTER TABLE "supplier_invitations" ADD "token" character varying(100) NOT NULL`,
     );
@@ -1314,12 +1070,8 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_invitations" ALTER COLUMN "status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_invitation_status_enum_old"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "audit_logs" ALTER COLUMN "entity_id" DROP NOT NULL`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_invitation_status_enum_old"`);
+    await queryRunner.query(`ALTER TABLE "audit_logs" ALTER COLUMN "entity_id" DROP NOT NULL`);
     await queryRunner.query(
       `ALTER TYPE "public"."audit_action_enum" RENAME TO "audit_action_enum_old"`,
     );
@@ -1333,27 +1085,19 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" DROP CONSTRAINT "admin_sessions_session_token_key"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "admin_sessions" DROP COLUMN "session_token"`,
-    );
+    await queryRunner.query(`ALTER TABLE "admin_sessions" DROP COLUMN "session_token"`);
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" ADD "session_token" character varying NOT NULL DEFAULT ''`,
     );
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" ADD CONSTRAINT "UQ_217b3c792fd4140ae675a0c08df" UNIQUE ("session_token")`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "admin_sessions" DROP COLUMN "client_ip"`,
-    );
+    await queryRunner.query(`ALTER TABLE "admin_sessions" DROP COLUMN "client_ip"`);
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" ADD "client_ip" character varying NOT NULL DEFAULT ''`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "admin_sessions" ALTER COLUMN "is_revoked" SET NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "admin_sessions" ALTER COLUMN "created_at" SET NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "admin_sessions" ALTER COLUMN "is_revoked" SET NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "admin_sessions" ALTER COLUMN "created_at" SET NOT NULL`);
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" ALTER COLUMN "created_at" SET DEFAULT now()`,
     );
@@ -1393,9 +1137,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_09d59890663bd495356c7aca8f" ON "boq_line_items" ("boq_id") `,
     );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_529a7bd839594468268b1a1e0b" ON "boqs" ("status") `,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_529a7bd839594468268b1a1e0b" ON "boqs" ("status") `);
     await queryRunner.query(
       `CREATE INDEX "IDX_2485f0b7997eb2e4a2f38cb091" ON "review_workflows" ("is_active") `,
     );
@@ -1777,15 +1519,9 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "review_workflows" DROP CONSTRAINT "FK_8397cd409023a2347257e28749b"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" DROP CONSTRAINT "FK_2e84cbcb09dda547de643c0ae2f"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" DROP CONSTRAINT "FK_249789437facc5a9018406fc360"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" DROP CONSTRAINT "FK_7a42fa84540e56e12de19955545"`,
-    );
+    await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_2e84cbcb09dda547de643c0ae2f"`);
+    await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_249789437facc5a9018406fc360"`);
+    await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_7a42fa84540e56e12de19955545"`);
     await queryRunner.query(
       `ALTER TABLE "boq_line_items" DROP CONSTRAINT "FK_09d59890663bd495356c7aca8f6"`,
     );
@@ -1852,87 +1588,33 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "pipe_allowable_stresses" DROP CONSTRAINT "UQ_47ecbc85918dffdff35dcfe0424"`,
     );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_9bb55bf371d7c77d3432ec66b7"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_e4517f63e95323dee0f04e7ba9"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_7421efc125d95e413657efa3c6"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_88dcc148d532384790ab874c3d"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_6e17329953ae78fccc11a73af3"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_d544125bb1f9c5dcdbf7e30894"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_3a67cc81fa14717b64c74f21fa"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_d7e78669f5aabbdf1770b49a2b"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_1451fe87b33e4cf8b4c19bbb3f"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_de0e9585e58c43c8ac8bbb6b03"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_bf7e0210018d49b7e813d1fd88"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_3c48192c9a3210dbd4eeff9d34"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_106f793c2dbeb03955e528c25f"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_35fe9978f874b7b5cf4bc974b7"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_bd02cb91c4afe32ab86d8f7c24"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_2485f0b7997eb2e4a2f38cb091"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_529a7bd839594468268b1a1e0b"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_09d59890663bd495356c7aca8f"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_97b4e5b09effba0411e74326c2"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_3b406fd463b11bc339c22a708a"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_9fda443afadeb493b9c31fc21a"`,
-    );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "bend_center_to_face"."radians" IS NULL`,
-    );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "bend_center_to_face"."radiusMm" IS NULL`,
-    );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "bend_center_to_face"."centerToFaceMm" IS NULL`,
-    );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "bend_center_to_face"."degrees" IS NULL`,
-    );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "bend_center_to_face"."nominalBoreMm" IS NULL`,
-    );
-    await queryRunner.query(
-      `COMMENT ON COLUMN "bend_center_to_face"."bendType" IS NULL`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_9bb55bf371d7c77d3432ec66b7"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_e4517f63e95323dee0f04e7ba9"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_7421efc125d95e413657efa3c6"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_88dcc148d532384790ab874c3d"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_6e17329953ae78fccc11a73af3"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_d544125bb1f9c5dcdbf7e30894"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_3a67cc81fa14717b64c74f21fa"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_d7e78669f5aabbdf1770b49a2b"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_1451fe87b33e4cf8b4c19bbb3f"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_de0e9585e58c43c8ac8bbb6b03"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_bf7e0210018d49b7e813d1fd88"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_3c48192c9a3210dbd4eeff9d34"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_106f793c2dbeb03955e528c25f"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_35fe9978f874b7b5cf4bc974b7"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_bd02cb91c4afe32ab86d8f7c24"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_2485f0b7997eb2e4a2f38cb091"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_529a7bd839594468268b1a1e0b"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_09d59890663bd495356c7aca8f"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_97b4e5b09effba0411e74326c2"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_3b406fd463b11bc339c22a708a"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_9fda443afadeb493b9c31fc21a"`);
+    await queryRunner.query(`COMMENT ON COLUMN "bend_center_to_face"."radians" IS NULL`);
+    await queryRunner.query(`COMMENT ON COLUMN "bend_center_to_face"."radiusMm" IS NULL`);
+    await queryRunner.query(`COMMENT ON COLUMN "bend_center_to_face"."centerToFaceMm" IS NULL`);
+    await queryRunner.query(`COMMENT ON COLUMN "bend_center_to_face"."degrees" IS NULL`);
+    await queryRunner.query(`COMMENT ON COLUMN "bend_center_to_face"."nominalBoreMm" IS NULL`);
+    await queryRunner.query(`COMMENT ON COLUMN "bend_center_to_face"."bendType" IS NULL`);
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" ALTER COLUMN "last_active_at" SET DEFAULT CURRENT_TIMESTAMP`,
     );
@@ -1942,24 +1624,16 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" ALTER COLUMN "created_at" SET DEFAULT CURRENT_TIMESTAMP`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "admin_sessions" ALTER COLUMN "created_at" DROP NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "admin_sessions" ALTER COLUMN "is_revoked" DROP NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "admin_sessions" DROP COLUMN "client_ip"`,
-    );
+    await queryRunner.query(`ALTER TABLE "admin_sessions" ALTER COLUMN "created_at" DROP NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "admin_sessions" ALTER COLUMN "is_revoked" DROP NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "admin_sessions" DROP COLUMN "client_ip"`);
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" ADD "client_ip" character varying(45) NOT NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" DROP CONSTRAINT "UQ_217b3c792fd4140ae675a0c08df"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "admin_sessions" DROP COLUMN "session_token"`,
-    );
+    await queryRunner.query(`ALTER TABLE "admin_sessions" DROP COLUMN "session_token"`);
     await queryRunner.query(
       `ALTER TABLE "admin_sessions" ADD "session_token" character varying(255) NOT NULL`,
     );
@@ -1976,9 +1650,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TYPE "public"."audit_action_enum_old" RENAME TO "audit_action_enum"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "audit_logs" ALTER COLUMN "entity_id" SET NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "audit_logs" ALTER COLUMN "entity_id" SET NOT NULL`);
     await queryRunner.query(
       `CREATE TYPE "public"."supplier_invitation_status_enum_old" AS ENUM('pending', 'accepted', 'expired', 'cancelled')`,
     );
@@ -1991,18 +1663,14 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_invitations" ALTER COLUMN "status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_invitations_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_invitations_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_invitation_status_enum_old" RENAME TO "supplier_invitation_status_enum"`,
     );
     await queryRunner.query(
       `ALTER TABLE "supplier_invitations" DROP CONSTRAINT "UQ_6e17329953ae78fccc11a73af34"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "supplier_invitations" DROP COLUMN "token"`,
-    );
+    await queryRunner.query(`ALTER TABLE "supplier_invitations" DROP COLUMN "token"`);
     await queryRunner.query(
       `ALTER TABLE "supplier_invitations" ADD "token" character varying(500) NOT NULL`,
     );
@@ -2015,9 +1683,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customer_sessions" ALTER COLUMN "invalidation_reason" TYPE "public"."session_invalidation_reason_enum_old" USING "invalidation_reason"::"text"::"public"."session_invalidation_reason_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."customer_sessions_invalidation_reason_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."customer_sessions_invalidation_reason_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."session_invalidation_reason_enum_old" RENAME TO "session_invalidation_reason_enum"`,
     );
@@ -2033,18 +1699,14 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customer_profiles" ALTER COLUMN "account_status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."customer_profiles_account_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."customer_profiles_account_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."customer_account_status_enum_old" RENAME TO "customer_account_status_enum"`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."customer_role_enum_old" AS ENUM('customer_admin', 'customer_standard')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "customer_profiles" ALTER COLUMN "role" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "customer_profiles" ALTER COLUMN "role" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "customer_profiles" ALTER COLUMN "role" TYPE "public"."customer_role_enum_old" USING "role"::"text"::"public"."customer_role_enum_old"`,
     );
@@ -2076,9 +1738,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customer_documents" ALTER COLUMN "validation_status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."customer_documents_validation_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."customer_documents_validation_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."customer_document_validation_status_enum_old" RENAME TO "customer_document_validation_status_enum"`,
     );
@@ -2088,9 +1748,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "customer_documents" ALTER COLUMN "document_type" TYPE "public"."customer_document_type_enum_old" USING "document_type"::"text"::"public"."customer_document_type_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."customer_documents_document_type_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."customer_documents_document_type_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."customer_document_type_enum_old" RENAME TO "customer_document_type_enum"`,
     );
@@ -2100,9 +1758,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "lining_coating_rules" ALTER COLUMN "corrosion_level" TYPE "public"."risk_level_enum_old" USING "corrosion_level"::"text"::"public"."risk_level_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."lining_coating_rules_corrosion_level_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."lining_coating_rules_corrosion_level_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."risk_level_enum_old" RENAME TO "risk_level_enum"`,
     );
@@ -2112,9 +1768,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "lining_coating_rules" ALTER COLUMN "abrasion_level" TYPE "public"."risk_level_enum_old" USING "abrasion_level"::"text"::"public"."risk_level_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."lining_coating_rules_abrasion_level_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."lining_coating_rules_abrasion_level_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."risk_level_enum_old" RENAME TO "risk_level_enum"`,
     );
@@ -2130,9 +1784,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "slurry_profiles" ALTER COLUMN "corrosion_risk" SET DEFAULT 'Medium'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."slurry_profiles_corrosion_risk_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."slurry_profiles_corrosion_risk_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."risk_level_enum_old" RENAME TO "risk_level_enum"`,
     );
@@ -2148,9 +1800,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "slurry_profiles" ALTER COLUMN "abrasion_risk" SET DEFAULT 'Medium'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."slurry_profiles_abrasion_risk_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."slurry_profiles_abrasion_risk_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."risk_level_enum_old" RENAME TO "risk_level_enum"`,
     );
@@ -2166,18 +1816,14 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "sa_mines" ALTER COLUMN "operational_status" SET DEFAULT 'Active'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."sa_mines_operational_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."sa_mines_operational_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."operational_status_enum_old" RENAME TO "operational_status_enum"`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."mine_type_enum_old" AS ENUM('Underground', 'Open Cast', 'Both')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "sa_mines" ALTER COLUMN "mine_type" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "sa_mines" ALTER COLUMN "mine_type" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "sa_mines" ALTER COLUMN "mine_type" TYPE "public"."mine_type_enum_old" USING "mine_type"::"text"::"public"."mine_type_enum_old"`,
     );
@@ -2185,28 +1831,20 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
       `ALTER TABLE "sa_mines" ALTER COLUMN "mine_type" SET DEFAULT 'Underground'`,
     );
     await queryRunner.query(`DROP TYPE "public"."sa_mines_mine_type_enum"`);
-    await queryRunner.query(
-      `ALTER TYPE "public"."mine_type_enum_old" RENAME TO "mine_type_enum"`,
-    );
+    await queryRunner.query(`ALTER TYPE "public"."mine_type_enum_old" RENAME TO "mine_type_enum"`);
     await queryRunner.query(
       `ALTER TABLE "material_allowable_stresses" ALTER COLUMN "source_standard" DROP NOT NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE "pipe_schedules" ALTER COLUMN "standard_code" DROP NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_nps_od" ALTER COLUMN "od_mm" TYPE numeric(10,2)`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_nps_od" ALTER COLUMN "od_inch" TYPE numeric(10,4)`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_nps_od" ALTER COLUMN "od_mm" TYPE numeric(10,2)`);
+    await queryRunner.query(`ALTER TABLE "pipe_nps_od" ALTER COLUMN "od_inch" TYPE numeric(10,4)`);
     await queryRunner.query(
       `ALTER TABLE "pipe_nps_od" DROP CONSTRAINT "UQ_b49ee2390bf098a5ed94cbd3d2e"`,
     );
     await queryRunner.query(`ALTER TABLE "pipe_nps_od" DROP COLUMN "nps"`);
-    await queryRunner.query(
-      `ALTER TABLE "pipe_nps_od" ADD "nps" character varying(20) NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_nps_od" ADD "nps" character varying(20) NOT NULL`);
     await queryRunner.query(
       `ALTER TABLE "pipe_nps_od" ADD CONSTRAINT "pipe_nps_od_nps_key" UNIQUE ("nps")`,
     );
@@ -2216,45 +1854,33 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "pipe_schedule_walls" ALTER COLUMN "wall_thickness_inch" TYPE numeric(10,4)`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_schedule_walls" DROP COLUMN "schedule"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_schedule_walls" DROP COLUMN "schedule"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_schedule_walls" ADD "schedule" character varying(20) NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_schedule_walls" DROP COLUMN "nps"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_schedule_walls" DROP COLUMN "nps"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_schedule_walls" ADD "nps" character varying(20) NOT NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE "pipe_allowable_stresses" ALTER COLUMN "allowable_stress_ksi" TYPE numeric(10,2)`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "equivalent_grade"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "equivalent_grade"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" ADD "equivalent_grade" character varying(100)`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "category"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "category"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" ADD "category" character varying(100) NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "name"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "name"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" ADD "name" character varying(255) NOT NULL`,
     );
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" DROP CONSTRAINT "UQ_b6799f7aed70897801673c40487"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "code"`,
-    );
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "code"`);
     await queryRunner.query(
       `ALTER TABLE "pipe_steel_grades" ADD "code" character varying(100) NOT NULL`,
     );
@@ -2450,9 +2076,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "shop_labor_rates" ALTER COLUMN "is_active" DROP NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "shop_labor_rates" ALTER COLUMN "currency" DROP NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "shop_labor_rates" ALTER COLUMN "currency" DROP NOT NULL`);
     await queryRunner.query(
       `ALTER TABLE "structural_steel_grades" ALTER COLUMN "created_at" SET DEFAULT CURRENT_TIMESTAMP`,
     );
@@ -2501,9 +2125,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_sessions" ALTER COLUMN "invalidation_reason" TYPE "public"."supplier_session_invalidation_reason_enum_old" USING "invalidation_reason"::"text"::"public"."supplier_session_invalidation_reason_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_sessions_invalidation_reason_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_sessions_invalidation_reason_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_session_invalidation_reason_enum_old" RENAME TO "supplier_session_invalidation_reason_enum"`,
     );
@@ -2519,9 +2141,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_profiles" ALTER COLUMN "account_status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_profiles_account_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_profiles_account_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_account_status_enum_old" RENAME TO "supplier_account_status_enum"`,
     );
@@ -2531,12 +2151,8 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_capabilities" ALTER COLUMN "created_at" SET DEFAULT CURRENT_TIMESTAMP`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "supplier_capabilities" DROP COLUMN "certifications"`,
-    );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_capabilities_certifications_enum"`,
-    );
+    await queryRunner.query(`ALTER TABLE "supplier_capabilities" DROP COLUMN "certifications"`);
+    await queryRunner.query(`DROP TYPE "public"."supplier_capabilities_certifications_enum"`);
     await queryRunner.query(
       `ALTER TABLE "supplier_capabilities" ADD "certifications" text array NOT NULL DEFAULT '{}'`,
     );
@@ -2555,9 +2171,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_capabilities" ALTER COLUMN "product_category" TYPE "public"."supplier_capabilities_product_category_enum_old" USING "product_category"::"text"::"public"."supplier_capabilities_product_category_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_capabilities_product_category_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_capabilities_product_category_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_capabilities_product_category_enum_old" RENAME TO "supplier_capabilities_product_category_enum"`,
     );
@@ -2573,9 +2187,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_documents" ALTER COLUMN "validation_status" SET DEFAULT 'pending'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_documents_validation_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_documents_validation_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_document_validation_status_enum_old" RENAME TO "supplier_document_validation_status_enum"`,
     );
@@ -2585,9 +2197,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_documents" ALTER COLUMN "document_type" TYPE "public"."supplier_document_type_enum_old" USING "document_type"::"text"::"public"."supplier_document_type_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_documents_document_type_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_documents_document_type_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_document_type_enum_old" RENAME TO "supplier_document_type_enum"`,
     );
@@ -2597,9 +2207,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_login_attempts" ALTER COLUMN "failure_reason" TYPE "public"."supplier_login_failure_reason_enum_old" USING "failure_reason"::"text"::"public"."supplier_login_failure_reason_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."supplier_login_attempts_failure_reason_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."supplier_login_attempts_failure_reason_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."supplier_login_failure_reason_enum_old" RENAME TO "supplier_login_failure_reason_enum"`,
     );
@@ -2615,9 +2223,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "review_workflows" ALTER COLUMN "previous_status" TYPE "public"."review_status_enum_old" USING "previous_status"::"text"::"public"."review_status_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."review_workflows_previous_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."review_workflows_previous_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."review_status_enum_old" RENAME TO "review_status_enum"`,
     );
@@ -2633,9 +2239,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "review_workflows" ALTER COLUMN "current_status" SET DEFAULT 'draft'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."review_workflows_current_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."review_workflows_current_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."review_status_enum_old" RENAME TO "review_status_enum"`,
     );
@@ -2645,9 +2249,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "review_workflows" ALTER COLUMN "entity_type" TYPE "public"."review_entity_type_enum_old" USING "entity_type"::"text"::"public"."review_entity_type_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."review_workflows_entity_type_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."review_workflows_entity_type_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."review_entity_type_enum_old" RENAME TO "review_entity_type_enum"`,
     );
@@ -2657,95 +2259,63 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "review_workflows" ALTER COLUMN "workflow_type" TYPE "public"."workflow_type_enum_old" USING "workflow_type"::"text"::"public"."workflow_type_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."review_workflows_workflow_type_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."review_workflows_workflow_type_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."workflow_type_enum_old" RENAME TO "workflow_type_enum"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "user" ALTER COLUMN "status" DROP NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "user" ALTER COLUMN "salt" SET NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "user" ALTER COLUMN "status" DROP NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "user" ALTER COLUMN "salt" SET NOT NULL`);
     await queryRunner.query(
       `CREATE TYPE "public"."rfqs_status_enum_old" AS ENUM('draft', 'submitted', 'in_review', 'quoted', 'accepted', 'rejected')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ALTER COLUMN "status" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ALTER COLUMN "status" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "rfqs" ALTER COLUMN "status" TYPE "public"."rfqs_status_enum_old" USING "status"::"text"::"public"."rfqs_status_enum_old"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ALTER COLUMN "status" SET DEFAULT 'draft'`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ALTER COLUMN "status" SET DEFAULT 'draft'`);
     await queryRunner.query(`DROP TYPE "public"."rfqs_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."rfqs_status_enum_old" RENAME TO "rfqs_status_enum"`,
     );
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "customer_phone"`);
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ADD "customer_phone" character varying(50)`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ADD "customer_phone" character varying(50)`);
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "customer_email"`);
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ADD "customer_email" character varying(255)`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ADD "customer_email" character varying(255)`);
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "customer_name"`);
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ADD "customer_name" character varying(255)`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ADD "customer_name" character varying(255)`);
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "description"`);
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ADD "description" character varying(500)`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ADD "description" character varying(500)`);
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "project_name"`);
     await queryRunner.query(
       `ALTER TABLE "rfqs" ADD "project_name" character varying(255) NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" DROP CONSTRAINT "UQ_b19e346f96ffd54c4d436a95869"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" DROP CONSTRAINT "UQ_b19e346f96ffd54c4d436a95869"`);
     await queryRunner.query(`ALTER TABLE "rfqs" DROP COLUMN "rfq_number"`);
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" ADD "rfq_number" character varying(100) NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" ADD "rfq_number" character varying(100) NOT NULL`);
     await queryRunner.query(
       `ALTER TABLE "rfqs" ADD CONSTRAINT "UQ_b19e346f96ffd54c4d436a95869" UNIQUE ("rfq_number")`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" ALTER COLUMN "created_by_user_id" SET NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "boqs" ALTER COLUMN "created_by_user_id" SET NOT NULL`);
     await queryRunner.query(
       `CREATE TYPE "public"."boq_status_enum_old" AS ENUM('draft', 'submitted', 'under_review', 'changes_requested', 'approved', 'rejected')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" ALTER COLUMN "status" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "boqs" ALTER COLUMN "status" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "boqs" ALTER COLUMN "status" TYPE "public"."boq_status_enum_old" USING "status"::"text"::"public"."boq_status_enum_old"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" ALTER COLUMN "status" SET DEFAULT 'draft'`,
-    );
+    await queryRunner.query(`ALTER TABLE "boqs" ALTER COLUMN "status" SET DEFAULT 'draft'`);
     await queryRunner.query(`DROP TYPE "public"."boqs_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."boq_status_enum_old" RENAME TO "boq_status_enum"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "boq_line_items" ALTER COLUMN "boq_id" SET NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "boq_line_items" ALTER COLUMN "boq_id" SET NOT NULL`);
     await queryRunner.query(
       `CREATE TYPE "public"."boq_item_type_enum_old" AS ENUM('straight_pipe', 'bend', 'fitting', 'flange', 'valve', 'support', 'coating', 'lining', 'custom')`,
     );
     await queryRunner.query(
       `ALTER TABLE "boq_line_items" ALTER COLUMN "item_type" TYPE "public"."boq_item_type_enum_old" USING "item_type"::"text"::"public"."boq_item_type_enum_old"`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."boq_line_items_item_type_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."boq_line_items_item_type_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."boq_item_type_enum_old" RENAME TO "boq_item_type_enum"`,
     );
@@ -2755,15 +2325,11 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `CREATE TYPE "public"."drawing_status_enum_old" AS ENUM('draft', 'submitted', 'under_review', 'changes_requested', 'approved', 'rejected')`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "drawings" ALTER COLUMN "status" DROP DEFAULT`,
-    );
+    await queryRunner.query(`ALTER TABLE "drawings" ALTER COLUMN "status" DROP DEFAULT`);
     await queryRunner.query(
       `ALTER TABLE "drawings" ALTER COLUMN "status" TYPE "public"."drawing_status_enum_old" USING "status"::"text"::"public"."drawing_status_enum_old"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "drawings" ALTER COLUMN "status" SET DEFAULT 'draft'`,
-    );
+    await queryRunner.query(`ALTER TABLE "drawings" ALTER COLUMN "status" SET DEFAULT 'draft'`);
     await queryRunner.query(`DROP TYPE "public"."drawings_status_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."drawing_status_enum_old" RENAME TO "drawing_status_enum"`,
@@ -2778,9 +2344,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TYPE "public"."drawing_file_type_enum_old" RENAME TO "drawing_file_type_enum"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "drawing_comments" ALTER COLUMN "user_id" SET NOT NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE "drawing_comments" ALTER COLUMN "user_id" SET NOT NULL`);
     await queryRunner.query(
       `ALTER TABLE "drawing_comments" ALTER COLUMN "drawing_id" SET NOT NULL`,
     );
@@ -2796,9 +2360,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "drawing_comments" ALTER COLUMN "comment_type" SET DEFAULT 'general'`,
     );
-    await queryRunner.query(
-      `DROP TYPE "public"."drawing_comments_comment_type_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."drawing_comments_comment_type_enum"`);
     await queryRunner.query(
       `ALTER TYPE "public"."comment_type_enum_old" RENAME TO "comment_type_enum"`,
     );
@@ -2808,33 +2370,21 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "drawing_versions" ALTER COLUMN "drawing_id" SET NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" ALTER COLUMN "rfq_id" SET NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" DROP COLUMN "mime_type"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_documents" ALTER COLUMN "rfq_id" SET NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "rfq_documents" DROP COLUMN "mime_type"`);
     await queryRunner.query(
       `ALTER TABLE "rfq_documents" ADD "mime_type" character varying(100) NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" DROP COLUMN "file_path"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_documents" DROP COLUMN "file_path"`);
     await queryRunner.query(
       `ALTER TABLE "rfq_documents" ADD "file_path" character varying(500) NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" DROP COLUMN "filename"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_documents" DROP COLUMN "filename"`);
     await queryRunner.query(
       `ALTER TABLE "rfq_documents" ADD "filename" character varying(255) NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_items" ALTER COLUMN "rfq_id" SET NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_items" ALTER COLUMN "unit_price" TYPE numeric(10,2)`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_items" ALTER COLUMN "rfq_id" SET NOT NULL`);
+    await queryRunner.query(`ALTER TABLE "rfq_items" ALTER COLUMN "unit_price" TYPE numeric(10,2)`);
     await queryRunner.query(
       `ALTER TABLE "rfq_items" ALTER COLUMN "total_weight_kg" TYPE numeric(10,3)`,
     );
@@ -2848,9 +2398,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TYPE "public"."rfq_items_item_type_enum_old" RENAME TO "rfq_items_item_type_enum"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_items" DROP COLUMN "description"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_items" DROP COLUMN "description"`);
     await queryRunner.query(
       `ALTER TABLE "rfq_items" ADD "description" character varying(255) NOT NULL`,
     );
@@ -2884,24 +2432,16 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "straight_pipe_rfqs" ADD "pipe_end_configuration" character varying(20)`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "schedule_number"`,
-    );
+    await queryRunner.query(`ALTER TABLE "straight_pipe_rfqs" DROP COLUMN "schedule_number"`);
     await queryRunner.query(
       `ALTER TABLE "straight_pipe_rfqs" ADD "schedule_number" character varying(20)`,
     );
     await queryRunner.query(
       `ALTER TABLE "straight_pipe_rfqs" ADD CONSTRAINT "FK_84197f8946daca8330b5d4e0e9d" FOREIGN KEY ("rfq_item_id") REFERENCES "rfq_items"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "supplier_invitations" DROP COLUMN "invited_by"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "flange_bolting" DROP COLUMN "bolt_length_rf"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "pipe_steel_grades" DROP COLUMN "notes"`,
-    );
+    await queryRunner.query(`ALTER TABLE "supplier_invitations" DROP COLUMN "invited_by"`);
+    await queryRunner.query(`ALTER TABLE "flange_bolting" DROP COLUMN "bolt_length_rf"`);
+    await queryRunner.query(`ALTER TABLE "pipe_steel_grades" DROP COLUMN "notes"`);
     await queryRunner.query(
       `ALTER TABLE "supplier_invitations" ADD "updated_at" TIMESTAMP NOT NULL DEFAULT now()`,
     );
@@ -2926,31 +2466,21 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "straight_pipe_rfqs" ADD "flange_pressure_class_id" integer`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "straight_pipe_rfqs" ADD "flange_standard_id" integer`,
-    );
+    await queryRunner.query(`ALTER TABLE "straight_pipe_rfqs" ADD "flange_standard_id" integer`);
     await queryRunner.query(
       `ALTER TABLE "straight_pipe_rfqs" ADD "nominal_outside_diameter_id" integer`,
     );
     await queryRunner.query(
       `ALTER TABLE "steel_specifications" ADD "grade_standard" character varying(100)`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "steel_specifications" ADD "description" text`,
-    );
+    await queryRunner.query(`ALTER TABLE "steel_specifications" ADD "description" text`);
     await queryRunner.query(
       `ALTER TABLE "steel_specifications" ADD "density_kg_m3" numeric(8,2) NOT NULL DEFAULT '7850'`,
     );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_5d40d7385a0134f48786697e22"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_f3376c4ecd3f9fcf45d5ba6478"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_5d40d7385a0134f48786697e22"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_f3376c4ecd3f9fcf45d5ba6478"`);
     await queryRunner.query(`DROP TABLE "customer_login_attempts"`);
-    await queryRunner.query(
-      `DROP TYPE "public"."customer_login_attempts_failure_reason_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."customer_login_attempts_failure_reason_enum"`);
     await queryRunner.query(`DROP TABLE "rfq_drafts"`);
     await queryRunner.query(
       `ALTER TABLE "customer_preferred_suppliers" RENAME COLUMN "added_by" TO "added_by_id"`,
@@ -3003,9 +2533,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "idx_admin_session_token" ON "admin_sessions" ("session_token") `,
     );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_audit_logs_action" ON "audit_logs" ("action") `,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_audit_logs_action" ON "audit_logs" ("action") `);
     await queryRunner.query(
       `CREATE INDEX "IDX_audit_logs_performed_by" ON "audit_logs" ("performed_by_user_id") `,
     );
@@ -3081,9 +2609,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_sa_mines_status" ON "sa_mines" ("operational_status") `,
     );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_sa_mines_province" ON "sa_mines" ("province") `,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_sa_mines_province" ON "sa_mines" ("province") `);
     await queryRunner.query(
       `CREATE INDEX "IDX_pvc_pipe_specs_pn" ON "pvc_pipe_specifications" ("pressure_rating") `,
     );
@@ -3120,9 +2646,7 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "idx_labor_rates_active" ON "shop_labor_rates" ("is_active") `,
     );
-    await queryRunner.query(
-      `CREATE INDEX "idx_labor_rates_code" ON "shop_labor_rates" ("code") `,
-    );
+    await queryRunner.query(`CREATE INDEX "idx_labor_rates_code" ON "shop_labor_rates" ("code") `);
     await queryRunner.query(
       `CREATE INDEX "idx_sections_designation" ON "structural_steel_sections" ("designation") `,
     );
@@ -3180,18 +2704,10 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_review_workflows_entity" ON "review_workflows" ("entity_type", "entity_id") `,
     );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_boqs_created_by" ON "boqs" ("created_by_user_id") `,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_boqs_status" ON "boqs" ("status") `,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_boqs_rfq_id" ON "boqs" ("rfq_id") `,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_boqs_drawing_id" ON "boqs" ("drawing_id") `,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_boqs_created_by" ON "boqs" ("created_by_user_id") `);
+    await queryRunner.query(`CREATE INDEX "IDX_boqs_status" ON "boqs" ("status") `);
+    await queryRunner.query(`CREATE INDEX "IDX_boqs_rfq_id" ON "boqs" ("rfq_id") `);
+    await queryRunner.query(`CREATE INDEX "IDX_boqs_drawing_id" ON "boqs" ("drawing_id") `);
     await queryRunner.query(
       `CREATE INDEX "IDX_boq_line_items_item_type" ON "boq_line_items" ("item_type") `,
     );
@@ -3201,12 +2717,8 @@ export class CreateRfqDrafts1767620558975 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_drawings_uploaded_by" ON "drawings" ("uploaded_by_user_id") `,
     );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_drawings_status" ON "drawings" ("status") `,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_drawings_rfq_id" ON "drawings" ("rfq_id") `,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_drawings_status" ON "drawings" ("status") `);
+    await queryRunner.query(`CREATE INDEX "IDX_drawings_rfq_id" ON "drawings" ("rfq_id") `);
     await queryRunner.query(
       `CREATE INDEX "IDX_drawing_comments_user_id" ON "drawing_comments" ("user_id") `,
     );

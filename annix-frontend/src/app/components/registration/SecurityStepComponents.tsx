@@ -1,6 +1,4 @@
-'use client';
-
-import React from 'react';
+"use client";
 
 interface DeviceInfoDisplayProps {
   fingerprint: string | null;
@@ -164,24 +162,24 @@ export function ErrorDisplay({ error }: ErrorDisplayProps) {
 interface InfoBannerProps {
   title: string;
   message: string;
-  variant?: 'info' | 'warning';
+  variant?: "info" | "warning";
 }
 
-export function InfoBanner({ title, message, variant = 'info' }: InfoBannerProps) {
+export function InfoBanner({ title, message, variant = "info" }: InfoBannerProps) {
   const colorClasses = {
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      icon: 'text-blue-600',
-      title: 'text-blue-800',
-      message: 'text-blue-700',
+      bg: "bg-blue-50",
+      border: "border-blue-200",
+      icon: "text-blue-600",
+      title: "text-blue-800",
+      message: "text-blue-700",
     },
     warning: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      icon: 'text-yellow-600',
-      title: 'text-yellow-800',
-      message: 'text-yellow-700',
+      bg: "bg-yellow-50",
+      border: "border-yellow-200",
+      icon: "text-yellow-600",
+      title: "text-yellow-800",
+      message: "text-yellow-700",
     },
   };
 

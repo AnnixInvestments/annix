@@ -1,25 +1,21 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { now } from '../lib/datetime';
-import { Boq, BoqStatus } from './entities/boq.entity';
-import { BoqLineItem, BoqItemType } from './entities/boq-line-item.entity';
-import { CreateBoqDto } from './dto/create-boq.dto';
-import { UpdateBoqDto } from './dto/update-boq.dto';
-import { CreateBoqLineItemDto } from './dto/create-boq-line-item.dto';
-import { UpdateBoqLineItemDto } from './dto/update-boq-line-item.dto';
-import { BoqQueryDto } from './dto/boq-query.dto';
-import { ReorderLineItemsDto } from './dto/reorder-line-items.dto';
-import { User } from '../user/entities/user.entity';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/entities/audit-log.entity';
-import { Rfq } from '../rfq/entities/rfq.entity';
-import { RfqItem } from '../rfq/entities/rfq-item.entity';
-import { PaginatedResponse } from '../shared/dto';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
+import { now } from "../lib/datetime";
+import { Rfq } from "../rfq/entities/rfq.entity";
+import { RfqItem } from "../rfq/entities/rfq-item.entity";
+import { PaginatedResponse } from "../shared/dto";
+import { User } from "../user/entities/user.entity";
+import { BoqQueryDto } from "./dto/boq-query.dto";
+import { CreateBoqDto } from "./dto/create-boq.dto";
+import { CreateBoqLineItemDto } from "./dto/create-boq-line-item.dto";
+import { ReorderLineItemsDto } from "./dto/reorder-line-items.dto";
+import { UpdateBoqDto } from "./dto/update-boq.dto";
+import { UpdateBoqLineItemDto } from "./dto/update-boq-line-item.dto";
+import { Boq, BoqStatus } from "./entities/boq.entity";
+import { BoqItemType, BoqLineItem } from "./entities/boq-line-item.entity";
 
 export type PaginatedResult<T> = PaginatedResponse<T>;
 
@@ -39,25 +35,25 @@ export class BoqService {
 
   private async generateBoqNumber(rfqNumber?: string): Promise<string> {
     if (rfqNumber) {
-      return rfqNumber.replace('RFQ-', 'BOQ-');
+      return rfqNumber.replace("RFQ-", "BOQ-");
     }
 
     const year = now().year;
     const prefix = `BOQ-${year}-`;
 
     const lastBoq = await this.boqRepository
-      .createQueryBuilder('boq')
-      .where('boq.boq_number LIKE :prefix', { prefix: `${prefix}%` })
-      .orderBy('boq.boq_number', 'DESC')
+      .createQueryBuilder("boq")
+      .where("boq.boq_number LIKE :prefix", { prefix: `${prefix}%` })
+      .orderBy("boq.boq_number", "DESC")
       .getOne();
 
     let nextNumber = 1;
     if (lastBoq) {
-      const lastNumber = parseInt(lastBoq.boqNumber.replace(prefix, ''), 10);
+      const lastNumber = parseInt(lastBoq.boqNumber.replace(prefix, ""), 10);
       nextNumber = lastNumber + 1;
     }
 
-    return `${prefix}${String(nextNumber).padStart(4, '0')}`;
+    return `${prefix}${String(nextNumber).padStart(4, "0")}`;
   }
 
   async create(dto: CreateBoqDto, user: User): Promise<Boq> {
@@ -73,7 +69,7 @@ export class BoqService {
       }
       rfqItems = await this.rfqItemRepository.find({
         where: { rfq: { id: dto.rfqId } },
-        order: { lineNumber: 'ASC' },
+        order: { lineNumber: "ASC" },
       });
     }
 
@@ -99,14 +95,12 @@ export class BoqService {
         lineItem.itemCode = this.generateItemCode(rfqItem.itemType, index + 1);
         lineItem.description = rfqItem.description;
         lineItem.itemType = this.mapRfqItemTypeToBoqItemType(rfqItem.itemType);
-        lineItem.unitOfMeasure = 'EA';
+        lineItem.unitOfMeasure = "EA";
         lineItem.quantity = rfqItem.quantity || 1;
         lineItem.unitWeightKg = rfqItem.weightPerUnitKg
           ? Number(rfqItem.weightPerUnitKg)
           : undefined;
-        lineItem.totalWeightKg = rfqItem.totalWeightKg
-          ? Number(rfqItem.totalWeightKg)
-          : undefined;
+        lineItem.totalWeightKg = rfqItem.totalWeightKg ? Number(rfqItem.totalWeightKg) : undefined;
         lineItem.notes = rfqItem.notes;
         return lineItem;
       });
@@ -116,7 +110,7 @@ export class BoqService {
     }
 
     await this.auditService.log({
-      entityType: 'boq',
+      entityType: "boq",
       entityId: savedBoq.id,
       action: AuditAction.CREATE,
       newValues: {
@@ -133,13 +127,13 @@ export class BoqService {
   private generateItemCode(itemType: string, lineNumber: number): string {
     const typePrefix =
       {
-        straight_pipe: 'PIPE',
-        bend: 'BEND',
-        fitting: 'FIT',
-        flange: 'FLG',
-        custom: 'CUST',
-      }[itemType] || 'ITEM';
-    return `${typePrefix}-${String(lineNumber).padStart(3, '0')}`;
+        straight_pipe: "PIPE",
+        bend: "BEND",
+        fitting: "FIT",
+        flange: "FLG",
+        custom: "CUST",
+      }[itemType] || "ITEM";
+    return `${typePrefix}-${String(lineNumber).padStart(3, "0")}`;
   }
 
   private mapRfqItemTypeToBoqItemType(rfqItemType: string): BoqItemType {
@@ -159,44 +153,44 @@ export class BoqService {
     const skip = (page - 1) * limit;
 
     let queryBuilder = this.boqRepository
-      .createQueryBuilder('boq')
-      .leftJoinAndSelect('boq.createdBy', 'createdBy')
-      .leftJoinAndSelect('boq.drawing', 'drawing')
-      .leftJoinAndSelect('boq.rfq', 'rfq');
+      .createQueryBuilder("boq")
+      .leftJoinAndSelect("boq.createdBy", "createdBy")
+      .leftJoinAndSelect("boq.drawing", "drawing")
+      .leftJoinAndSelect("boq.rfq", "rfq");
 
     if (query.status) {
-      queryBuilder = queryBuilder.andWhere('boq.status = :status', {
+      queryBuilder = queryBuilder.andWhere("boq.status = :status", {
         status: query.status,
       });
     }
 
     if (query.drawingId) {
-      queryBuilder = queryBuilder.andWhere('boq.drawing_id = :drawingId', {
+      queryBuilder = queryBuilder.andWhere("boq.drawing_id = :drawingId", {
         drawingId: query.drawingId,
       });
     }
 
     if (query.rfqId) {
-      queryBuilder = queryBuilder.andWhere('boq.rfq_id = :rfqId', {
+      queryBuilder = queryBuilder.andWhere("boq.rfq_id = :rfqId", {
         rfqId: query.rfqId,
       });
     }
 
     if (query.createdByUserId) {
-      queryBuilder = queryBuilder.andWhere('boq.created_by_user_id = :userId', {
+      queryBuilder = queryBuilder.andWhere("boq.created_by_user_id = :userId", {
         userId: query.createdByUserId,
       });
     }
 
     if (query.search) {
       queryBuilder = queryBuilder.andWhere(
-        '(boq.title ILIKE :search OR boq.description ILIKE :search OR boq.boq_number ILIKE :search)',
+        "(boq.title ILIKE :search OR boq.description ILIKE :search OR boq.boq_number ILIKE :search)",
         { search: `%${query.search}%` },
       );
     }
 
     const [data, total] = await queryBuilder
-      .orderBy('boq.updated_at', 'DESC')
+      .orderBy("boq.updated_at", "DESC")
       .skip(skip)
       .take(limit)
       .getManyAndCount();
@@ -213,9 +207,9 @@ export class BoqService {
   async findOne(id: number): Promise<Boq> {
     const boq = await this.boqRepository.findOne({
       where: { id },
-      relations: ['createdBy', 'drawing', 'rfq', 'lineItems'],
+      relations: ["createdBy", "drawing", "rfq", "lineItems"],
       order: {
-        lineItems: { lineNumber: 'ASC' },
+        lineItems: { lineNumber: "ASC" },
       },
     });
 
@@ -230,7 +224,7 @@ export class BoqService {
     const boq = await this.findOne(id);
 
     if (boq.status === BoqStatus.APPROVED) {
-      throw new BadRequestException('Cannot modify approved BOQ');
+      throw new BadRequestException("Cannot modify approved BOQ");
     }
 
     const oldValues = {
@@ -250,7 +244,7 @@ export class BoqService {
     await this.boqRepository.save(boq);
 
     await this.auditService.log({
-      entityType: 'boq',
+      entityType: "boq",
       entityId: boq.id,
       action: AuditAction.UPDATE,
       oldValues,
@@ -265,11 +259,11 @@ export class BoqService {
     const boq = await this.findOne(id);
 
     if (boq.status === BoqStatus.APPROVED) {
-      throw new BadRequestException('Cannot delete approved BOQ');
+      throw new BadRequestException("Cannot delete approved BOQ");
     }
 
     await this.auditService.log({
-      entityType: 'boq',
+      entityType: "boq",
       entityId: boq.id,
       action: AuditAction.DELETE,
       oldValues: {
@@ -283,22 +277,18 @@ export class BoqService {
   }
 
   // Line Items
-  async addLineItem(
-    boqId: number,
-    dto: CreateBoqLineItemDto,
-    user: User,
-  ): Promise<BoqLineItem> {
+  async addLineItem(boqId: number, dto: CreateBoqLineItemDto, user: User): Promise<BoqLineItem> {
     const boq = await this.findOne(boqId);
 
     if (boq.status === BoqStatus.APPROVED) {
-      throw new BadRequestException('Cannot modify approved BOQ');
+      throw new BadRequestException("Cannot modify approved BOQ");
     }
 
     // Get next line number
     const maxLineNumber = await this.lineItemRepository
-      .createQueryBuilder('item')
-      .where('item.boq_id = :boqId', { boqId })
-      .select('MAX(item.line_number)', 'max')
+      .createQueryBuilder("item")
+      .where("item.boq_id = :boqId", { boqId })
+      .select("MAX(item.line_number)", "max")
       .getRawOne();
 
     const lineNumber = (maxLineNumber?.max || 0) + 1;
@@ -312,13 +302,9 @@ export class BoqService {
     lineItem.unitOfMeasure = dto.unitOfMeasure;
     lineItem.quantity = dto.quantity;
     lineItem.unitWeightKg = dto.unitWeightKg;
-    lineItem.totalWeightKg = dto.unitWeightKg
-      ? dto.quantity * dto.unitWeightKg
-      : undefined;
+    lineItem.totalWeightKg = dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : undefined;
     lineItem.unitPrice = dto.unitPrice;
-    lineItem.totalPrice = dto.unitPrice
-      ? dto.quantity * dto.unitPrice
-      : undefined;
+    lineItem.totalPrice = dto.unitPrice ? dto.quantity * dto.unitPrice : undefined;
     lineItem.notes = dto.notes;
     lineItem.drawingReference = dto.drawingReference;
     lineItem.specifications = dto.specifications;
@@ -328,7 +314,7 @@ export class BoqService {
     await this.recalculateTotals(boqId);
 
     await this.auditService.log({
-      entityType: 'boq',
+      entityType: "boq",
       entityId: boqId,
       action: AuditAction.UPDATE,
       newValues: { addedLineItem: savedItem.id, description: dto.description },
@@ -346,14 +332,14 @@ export class BoqService {
     const boq = await this.findOne(boqId);
 
     if (boq.status === BoqStatus.APPROVED) {
-      throw new BadRequestException('Cannot modify approved BOQ');
+      throw new BadRequestException("Cannot modify approved BOQ");
     }
 
     // Get next line number
     const maxLineNumber = await this.lineItemRepository
-      .createQueryBuilder('item')
-      .where('item.boq_id = :boqId', { boqId })
-      .select('MAX(item.line_number)', 'max')
+      .createQueryBuilder("item")
+      .where("item.boq_id = :boqId", { boqId })
+      .select("MAX(item.line_number)", "max")
       .getRawOne();
 
     let lineNumber = (maxLineNumber?.max || 0) + 1;
@@ -368,9 +354,7 @@ export class BoqService {
         unitOfMeasure: dto.unitOfMeasure,
         quantity: dto.quantity,
         unitWeightKg: dto.unitWeightKg,
-        totalWeightKg: dto.unitWeightKg
-          ? dto.quantity * dto.unitWeightKg
-          : undefined,
+        totalWeightKg: dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : undefined,
         unitPrice: dto.unitPrice,
         totalPrice: dto.unitPrice ? dto.quantity * dto.unitPrice : undefined,
         notes: dto.notes,
@@ -385,7 +369,7 @@ export class BoqService {
     await this.recalculateTotals(boqId);
 
     await this.auditService.log({
-      entityType: 'boq',
+      entityType: "boq",
       entityId: boqId,
       action: AuditAction.UPDATE,
       newValues: { addedLineItems: savedItems.map((i) => i.id) },
@@ -404,7 +388,7 @@ export class BoqService {
     const boq = await this.findOne(boqId);
 
     if (boq.status === BoqStatus.APPROVED) {
-      throw new BadRequestException('Cannot modify approved BOQ');
+      throw new BadRequestException("Cannot modify approved BOQ");
     }
 
     const lineItem = await this.lineItemRepository.findOne({
@@ -412,7 +396,7 @@ export class BoqService {
     });
 
     if (!lineItem) {
-      throw new NotFoundException('Line item not found');
+      throw new NotFoundException("Line item not found");
     }
 
     const oldValues = { ...lineItem };
@@ -423,28 +407,23 @@ export class BoqService {
     if (dto.itemType) lineItem.itemType = dto.itemType;
     if (dto.unitOfMeasure) lineItem.unitOfMeasure = dto.unitOfMeasure;
     if (dto.quantity !== undefined) lineItem.quantity = dto.quantity;
-    if (dto.unitWeightKg !== undefined)
-      lineItem.unitWeightKg = dto.unitWeightKg;
+    if (dto.unitWeightKg !== undefined) lineItem.unitWeightKg = dto.unitWeightKg;
     if (dto.unitPrice !== undefined) lineItem.unitPrice = dto.unitPrice;
     if (dto.notes !== undefined) lineItem.notes = dto.notes;
-    if (dto.drawingReference !== undefined)
-      lineItem.drawingReference = dto.drawingReference;
-    if (dto.specifications !== undefined)
-      lineItem.specifications = dto.specifications;
+    if (dto.drawingReference !== undefined) lineItem.drawingReference = dto.drawingReference;
+    if (dto.specifications !== undefined) lineItem.specifications = dto.specifications;
 
     // Recalculate totals
     lineItem.totalWeightKg = lineItem.unitWeightKg
       ? lineItem.quantity * lineItem.unitWeightKg
       : undefined;
-    lineItem.totalPrice = lineItem.unitPrice
-      ? lineItem.quantity * lineItem.unitPrice
-      : undefined;
+    lineItem.totalPrice = lineItem.unitPrice ? lineItem.quantity * lineItem.unitPrice : undefined;
 
     const updated = await this.lineItemRepository.save(lineItem);
     await this.recalculateTotals(boqId);
 
     await this.auditService.log({
-      entityType: 'boq',
+      entityType: "boq",
       entityId: boqId,
       action: AuditAction.UPDATE,
       oldValues: { lineItemId, ...oldValues },
@@ -455,15 +434,11 @@ export class BoqService {
     return updated;
   }
 
-  async removeLineItem(
-    boqId: number,
-    lineItemId: number,
-    user: User,
-  ): Promise<void> {
+  async removeLineItem(boqId: number, lineItemId: number, user: User): Promise<void> {
     const boq = await this.findOne(boqId);
 
     if (boq.status === BoqStatus.APPROVED) {
-      throw new BadRequestException('Cannot modify approved BOQ');
+      throw new BadRequestException("Cannot modify approved BOQ");
     }
 
     const lineItem = await this.lineItemRepository.findOne({
@@ -471,7 +446,7 @@ export class BoqService {
     });
 
     if (!lineItem) {
-      throw new NotFoundException('Line item not found');
+      throw new NotFoundException("Line item not found");
     }
 
     await this.lineItemRepository.remove(lineItem);
@@ -479,7 +454,7 @@ export class BoqService {
     await this.recalculateTotals(boqId);
 
     await this.auditService.log({
-      entityType: 'boq',
+      entityType: "boq",
       entityId: boqId,
       action: AuditAction.UPDATE,
       oldValues: { deletedLineItem: lineItemId },
@@ -495,7 +470,7 @@ export class BoqService {
     const boq = await this.findOne(boqId);
 
     if (boq.status === BoqStatus.APPROVED) {
-      throw new BadRequestException('Cannot modify approved BOQ');
+      throw new BadRequestException("Cannot modify approved BOQ");
     }
 
     // Validate all IDs belong to this BOQ
@@ -506,9 +481,7 @@ export class BoqService {
     const existingIds = new Set(existingItems.map((i) => i.id));
     for (const id of dto.itemIds) {
       if (!existingIds.has(id)) {
-        throw new BadRequestException(
-          `Line item ${id} does not belong to this BOQ`,
-        );
+        throw new BadRequestException(`Line item ${id} does not belong to this BOQ`);
       }
     }
 
@@ -520,7 +493,7 @@ export class BoqService {
     }
 
     await this.auditService.log({
-      entityType: 'boq',
+      entityType: "boq",
       entityId: boqId,
       action: AuditAction.UPDATE,
       newValues: { reorderedItems: dto.itemIds },
@@ -531,22 +504,18 @@ export class BoqService {
     return boqUpdated.lineItems;
   }
 
-  async linkToDrawing(
-    boqId: number,
-    drawingId: number,
-    user: User,
-  ): Promise<Boq> {
+  async linkToDrawing(boqId: number, drawingId: number, user: User): Promise<Boq> {
     const boq = await this.findOne(boqId);
 
     if (boq.status === BoqStatus.APPROVED) {
-      throw new BadRequestException('Cannot modify approved BOQ');
+      throw new BadRequestException("Cannot modify approved BOQ");
     }
 
     boq.drawing = { id: drawingId } as any;
     await this.boqRepository.save(boq);
 
     await this.auditService.log({
-      entityType: 'boq',
+      entityType: "boq",
       entityId: boqId,
       action: AuditAction.UPDATE,
       newValues: { linkedDrawingId: drawingId },
@@ -566,12 +535,12 @@ export class BoqService {
   // Private helpers
   private async recalculateTotals(boqId: number): Promise<void> {
     const result = await this.lineItemRepository
-      .createQueryBuilder('item')
-      .where('item.boq_id = :boqId', { boqId })
+      .createQueryBuilder("item")
+      .where("item.boq_id = :boqId", { boqId })
       .select([
-        'SUM(item.quantity) as totalQuantity',
-        'SUM(item.total_weight_kg) as totalWeightKg',
-        'SUM(item.total_price) as totalEstimatedCost',
+        "SUM(item.quantity) as totalQuantity",
+        "SUM(item.total_weight_kg) as totalWeightKg",
+        "SUM(item.total_price) as totalEstimatedCost",
       ])
       .getRawOne();
 
@@ -585,7 +554,7 @@ export class BoqService {
   private async reorderLineNumbers(boqId: number): Promise<void> {
     const items = await this.lineItemRepository.find({
       where: { boq: { id: boqId } },
-      order: { lineNumber: 'ASC' },
+      order: { lineNumber: "ASC" },
     });
 
     for (let i = 0; i < items.length; i++) {

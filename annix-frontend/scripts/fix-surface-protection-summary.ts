@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content: string = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content: string = fs.readFileSync(filePath, "utf8");
 
 // Fix the Surface Protection confirmed summary condition
 // Old: requires externalCoatingRecommendation || externalCoatingType (fails for internal lining only)
@@ -83,10 +83,10 @@ const newSummary = `            {/* Confirmed Surface Protection Summary - Show 
 
 if (content.includes(oldSummary)) {
   content = content.replace(oldSummary, newSummary);
-  console.log('Fixed Surface Protection confirmed summary condition');
+  console.log("Fixed Surface Protection confirmed summary condition");
 } else {
-  console.log('Could not find old Surface Protection summary pattern');
+  console.log("Could not find old Surface Protection summary pattern");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('File saved');
+console.log("File saved");

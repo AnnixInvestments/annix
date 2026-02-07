@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
 
 interface PressureClassSuitabilityModalProps {
   isOpen: boolean;
@@ -27,7 +27,7 @@ export function PressureClassSuitabilityModal({
   warningMessage,
   itemDescription,
 }: PressureClassSuitabilityModalProps) {
-  const [overrideReason, setOverrideReason] = React.useState('');
+  const [overrideReason, setOverrideReason] = React.useState("");
   const [showReasonInput, setShowReasonInput] = React.useState(false);
 
   if (!isOpen) return null;
@@ -35,19 +35,19 @@ export function PressureClassSuitabilityModal({
   const handleConfirmWithReason = () => {
     if (overrideReason.trim()) {
       onConfirmOverride(overrideReason.trim());
-      setOverrideReason('');
+      setOverrideReason("");
       setShowReasonInput(false);
     }
   };
 
   const handleRevert = () => {
-    setOverrideReason('');
+    setOverrideReason("");
     setShowReasonInput(false);
     onRevertToRecommended();
   };
 
   const handleClose = () => {
-    setOverrideReason('');
+    setOverrideReason("");
     setShowReasonInput(false);
     onClose();
   };
@@ -58,8 +58,18 @@ export function PressureClassSuitabilityModal({
       <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
         <div className="flex items-start gap-3 mb-4">
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <svg
+              className="w-6 h-6 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
           </div>
           <div>
@@ -67,9 +77,7 @@ export function PressureClassSuitabilityModal({
               Unsuitable Pressure Class Selected
             </h3>
             {itemDescription && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                {itemDescription}
-              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{itemDescription}</p>
             )}
           </div>
         </div>
@@ -79,15 +87,23 @@ export function PressureClassSuitabilityModal({
             {warningMessage}
           </p>
           <div className="text-xs text-red-700 dark:text-red-300 space-y-1">
-            <p><strong>Selected:</strong> {selectedClassName}</p>
+            <p>
+              <strong>Selected:</strong> {selectedClassName}
+            </p>
             {recommendedClassName && (
-              <p><strong>Recommended:</strong> {recommendedClassName}</p>
+              <p>
+                <strong>Recommended:</strong> {recommendedClassName}
+              </p>
             )}
             {workingPressure !== undefined && (
-              <p><strong>Working Pressure:</strong> {workingPressure} bar</p>
+              <p>
+                <strong>Working Pressure:</strong> {workingPressure} bar
+              </p>
             )}
             {workingTemperature !== undefined && (
-              <p><strong>Working Temperature:</strong> {workingTemperature}°C</p>
+              <p>
+                <strong>Working Temperature:</strong> {workingTemperature}°C
+              </p>
             )}
           </div>
         </div>
@@ -95,7 +111,8 @@ export function PressureClassSuitabilityModal({
         {!showReasonInput ? (
           <div className="space-y-3">
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              The selected pressure class may not provide adequate pressure-temperature rating for the specified operating conditions.
+              The selected pressure class may not provide adequate pressure-temperature rating for
+              the specified operating conditions.
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-300">
               Would you like to use the recommended class or confirm your selection?
@@ -130,7 +147,8 @@ export function PressureClassSuitabilityModal({
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-gray-600 dark:text-gray-300">
-              Please provide a reason for using an unsuitable pressure class. This will be logged for this RFQ item.
+              Please provide a reason for using an unsuitable pressure class. This will be logged
+              for this RFQ item.
             </p>
             <textarea
               value={overrideReason}

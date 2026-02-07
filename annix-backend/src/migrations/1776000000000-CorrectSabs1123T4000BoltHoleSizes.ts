@@ -1,16 +1,16 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements MigrationInterface {
-  name = 'CorrectSabs1123T4000BoltHoleSizes1776000000000';
+  name = "CorrectSabs1123T4000BoltHoleSizes1776000000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Correcting SABS 1123 T4000 bolt hole sizes...');
+    console.warn("Correcting SABS 1123 T4000 bolt hole sizes...");
 
     const sabs1123Result = await queryRunner.query(
       `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`,
     );
     if (sabs1123Result.length === 0) {
-      console.warn('SABS 1123 standard not found, skipping...');
+      console.warn("SABS 1123 standard not found, skipping...");
       return;
     }
     const sabs1123Id = sabs1123Result[0].id;
@@ -33,9 +33,7 @@ export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements Migration
     };
 
     const getTypeId = async (code: string) => {
-      const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`,
-      );
+      const result = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '${code}'`);
       return result[0]?.id;
     };
 
@@ -48,11 +46,11 @@ export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements Migration
     };
 
     const typeIds: Record<string, number | undefined> = {
-      '/1': await getTypeId('/1'),
-      '/2': await getTypeId('/2'),
-      '/3': await getTypeId('/3'),
-      '/7': await getTypeId('/7'),
-      '/8': await getTypeId('/8'),
+      "/1": await getTypeId("/1"),
+      "/2": await getTypeId("/2"),
+      "/3": await getTypeId("/3"),
+      "/7": await getTypeId("/7"),
+      "/8": await getTypeId("/8"),
     };
 
     const updateFlange = async (
@@ -65,22 +63,16 @@ export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements Migration
       const nominalId = await getNominalId(nb);
       const typeId = typeIds[typeCode];
       const pressureClassDesignation = `${pressureClass}${typeCode}`;
-      const pressureClassId = await getPressureClassId(
-        pressureClassDesignation,
-      );
+      const pressureClassId = await getPressureClassId(pressureClassDesignation);
       const boltId = bolt ? await getBoltId(bolt) : null;
 
       if (!nominalId || !typeId || !pressureClassId) {
-        console.warn(
-          `Skipping ${nb}NB ${pressureClass}${typeCode} - missing IDs`,
-        );
+        console.warn(`Skipping ${nb}NB ${pressureClass}${typeCode} - missing IDs`);
         return;
       }
 
       if (!boltId) {
-        console.warn(
-          `Bolt ${bolt} not found, skipping ${nb}NB ${pressureClass}${typeCode}`,
-        );
+        console.warn(`Bolt ${bolt} not found, skipping ${nb}NB ${pressureClass}${typeCode}`);
         return;
       }
 
@@ -94,9 +86,7 @@ export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements Migration
           AND "flangeTypeId" = ${typeId}
       `);
 
-      console.warn(
-        `Updated ${nb}NB T${pressureClass}${typeCode}: d1=${d1}, bolt=${bolt}`,
-      );
+      console.warn(`Updated ${nb}NB T${pressureClass}${typeCode}: d1=${d1}, bolt=${bolt}`);
     };
 
     // CORRECTED SABS 1123 T4000 BOLT HOLE SIZES
@@ -109,17 +99,17 @@ export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements Migration
 
     // ===== 500NB T4000 CORRECTIONS =====
     // Correct bolt hole diameter from 42mm to 39mm, bolt from M39 to M36
-    await updateFlange(500, '/1', 4000, 39, 'M36');
-    await updateFlange(500, '/2', 4000, 39, 'M36');
-    await updateFlange(500, '/3', 4000, 39, 'M36');
-    await updateFlange(500, '/7', 4000, 39, 'M36');
-    await updateFlange(500, '/8', 4000, 39, 'M36');
+    await updateFlange(500, "/1", 4000, 39, "M36");
+    await updateFlange(500, "/2", 4000, 39, "M36");
+    await updateFlange(500, "/3", 4000, 39, "M36");
+    await updateFlange(500, "/7", 4000, 39, "M36");
+    await updateFlange(500, "/8", 4000, 39, "M36");
 
-    console.warn('SABS 1123 T4000 bolt hole size corrections complete');
+    console.warn("SABS 1123 T4000 bolt hole size corrections complete");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Reverting SABS 1123 T4000 bolt hole size corrections...');
+    console.warn("Reverting SABS 1123 T4000 bolt hole size corrections...");
 
     const sabs1123Result = await queryRunner.query(
       `SELECT id FROM flange_standards WHERE code = 'SABS 1123'`,
@@ -145,9 +135,7 @@ export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements Migration
     };
 
     const getTypeId = async (code: string) => {
-      const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`,
-      );
+      const result = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '${code}'`);
       return result[0]?.id;
     };
 
@@ -160,11 +148,11 @@ export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements Migration
     };
 
     const typeIds: Record<string, number | undefined> = {
-      '/1': await getTypeId('/1'),
-      '/2': await getTypeId('/2'),
-      '/3': await getTypeId('/3'),
-      '/7': await getTypeId('/7'),
-      '/8': await getTypeId('/8'),
+      "/1": await getTypeId("/1"),
+      "/2": await getTypeId("/2"),
+      "/3": await getTypeId("/3"),
+      "/7": await getTypeId("/7"),
+      "/8": await getTypeId("/8"),
     };
 
     const revertFlange = async (
@@ -177,9 +165,7 @@ export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements Migration
       const nominalId = await getNominalId(nb);
       const typeId = typeIds[typeCode];
       const pressureClassDesignation = `${pressureClass}${typeCode}`;
-      const pressureClassId = await getPressureClassId(
-        pressureClassDesignation,
-      );
+      const pressureClassId = await getPressureClassId(pressureClassDesignation);
       const boltId = bolt ? await getBoltId(bolt) : null;
 
       if (!nominalId || !typeId || !pressureClassId || !boltId) return;
@@ -196,10 +182,10 @@ export class CorrectSabs1123T4000BoltHoleSizes1776000000000 implements Migration
     };
 
     // Revert to previous (incorrect) values
-    await revertFlange(500, '/1', 4000, 42, 'M39');
-    await revertFlange(500, '/2', 4000, 42, 'M39');
-    await revertFlange(500, '/3', 4000, 42, 'M39');
-    await revertFlange(500, '/7', 4000, 42, 'M39');
-    await revertFlange(500, '/8', 4000, 42, 'M39');
+    await revertFlange(500, "/1", 4000, 42, "M39");
+    await revertFlange(500, "/2", 4000, 42, "M39");
+    await revertFlange(500, "/3", 4000, 42, "M39");
+    await revertFlange(500, "/7", 4000, 42, "M39");
+    await revertFlange(500, "/8", 4000, 42, "M39");
   }
 }

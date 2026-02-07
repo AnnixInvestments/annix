@@ -1,9 +1,9 @@
-import { IsNumber, IsOptional, Min } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsNumber, IsOptional, Min } from "class-validator";
 
 export class RecommendPipeSpecsDto {
   @ApiProperty({
-    description: 'Nominal bore in mm',
+    description: "Nominal bore in mm",
     example: 100,
     minimum: 1,
   })
@@ -12,7 +12,7 @@ export class RecommendPipeSpecsDto {
   nominalBore: number;
 
   @ApiProperty({
-    description: 'Working pressure in MPa',
+    description: "Working pressure in MPa",
     example: 1.6,
     minimum: 0,
   })
@@ -21,7 +21,7 @@ export class RecommendPipeSpecsDto {
   workingPressure: number;
 
   @ApiPropertyOptional({
-    description: 'Working temperature in Celsius',
+    description: "Working temperature in Celsius",
     example: 20,
     default: 20,
   })
@@ -30,7 +30,7 @@ export class RecommendPipeSpecsDto {
   temperature?: number;
 
   @ApiPropertyOptional({
-    description: 'Steel specification ID (optional)',
+    description: "Steel specification ID (optional)",
     example: 1,
   })
   @IsOptional()

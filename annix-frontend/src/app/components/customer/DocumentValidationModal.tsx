@@ -1,6 +1,4 @@
-'use client';
-
-import React from 'react';
+"use client";
 
 interface ValidationMismatch {
   field: string;
@@ -13,15 +11,15 @@ interface DocumentValidationModalProps {
   isOpen: boolean;
   onClose: () => void;
   mismatches: ValidationMismatch[];
-  documentType: 'vat' | 'registration';
+  documentType: "vat" | "registration";
   onAcceptExtracted: () => void;
   onReupload: () => void;
 }
 
 const FIELD_LABELS: Record<string, string> = {
-  vatNumber: 'VAT Number',
-  registrationNumber: 'Registration Number',
-  companyName: 'Company Name',
+  vatNumber: "VAT Number",
+  registrationNumber: "Registration Number",
+  companyName: "Company Name",
 };
 
 export default function DocumentValidationModal({
@@ -34,7 +32,7 @@ export default function DocumentValidationModal({
 }: DocumentValidationModalProps) {
   if (!isOpen) return null;
 
-  const documentLabel = documentType === 'vat' ? 'VAT Registration' : 'Company Registration';
+  const documentLabel = documentType === "vat" ? "VAT Registration" : "Company Registration";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -60,7 +58,8 @@ export default function DocumentValidationModal({
             <div className="flex-1">
               <h2 className="text-xl font-bold text-gray-900">Document Validation Alert</h2>
               <p className="text-sm text-gray-600">
-                The information extracted from your {documentLabel} document doesn't match what you entered
+                The information extracted from your {documentLabel} document doesn't match what you
+                entered
               </p>
             </div>
             <button
@@ -68,7 +67,12 @@ export default function DocumentValidationModal({
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -95,8 +99,8 @@ export default function DocumentValidationModal({
               <div className="text-sm text-blue-800">
                 <p className="font-medium mb-1">What happens next?</p>
                 <p>
-                  You can either update your information to match what's in the document, or upload a
-                  different document that matches what you entered.
+                  You can either update your information to match what's in the document, or upload
+                  a different document that matches what you entered.
                 </p>
               </div>
             </div>
@@ -133,7 +137,9 @@ export default function DocumentValidationModal({
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-700">
                         <div className="font-mono bg-red-50 border border-red-200 rounded px-2 py-1 inline-block">
-                          {mismatch.expected || <span className="text-gray-400 italic">Not provided</span>}
+                          {mismatch.expected || (
+                            <span className="text-gray-400 italic">Not provided</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-700">
@@ -167,8 +173,8 @@ export default function DocumentValidationModal({
               <div className="text-sm text-yellow-800">
                 <p className="font-medium mb-1">Important for Security</p>
                 <p>
-                  We verify your documents to ensure the {documentLabel.toLowerCase()} certificate belongs to
-                  your company and prevent fraudulent registrations.
+                  We verify your documents to ensure the {documentLabel.toLowerCase()} certificate
+                  belongs to your company and prevent fraudulent registrations.
                 </p>
               </div>
             </div>
@@ -209,8 +215,11 @@ export default function DocumentValidationModal({
           {/* Additional Help Text */}
           <div className="mt-4 text-center text-sm text-gray-600">
             <p>
-              Need help?{' '}
-              <a href="mailto:info@annix.co.za" className="text-blue-600 hover:text-blue-700 font-medium">
+              Need help?{" "}
+              <a
+                href="mailto:info@annix.co.za"
+                className="text-blue-600 hover:text-blue-700 font-medium"
+              >
                 Contact Support
               </a>
             </p>

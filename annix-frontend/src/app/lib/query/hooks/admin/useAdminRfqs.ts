@@ -1,23 +1,23 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 import {
-  adminApiClient,
-  type AdminRfqQueryDto,
-  type AdminRfqListResponse,
   type AdminRfqListItem,
+  type AdminRfqListResponse,
+  type AdminRfqQueryDto,
+  adminApiClient,
   type RfqFullDraftResponse,
-} from '@/app/lib/api/adminApi'
-import { adminKeys } from '../../keys'
+} from "@/app/lib/api/adminApi";
+import { adminKeys } from "../../keys";
 
 export function useAdminRfqs(params?: AdminRfqQueryDto) {
   return useQuery<AdminRfqListResponse>({
     queryKey: adminKeys.rfqs.list(params),
     queryFn: () => adminApiClient.listRfqs(params),
-  })
+  });
 }
 
 interface AdminRfqDetailData {
-  rfq: AdminRfqListItem
-  fullDraft: RfqFullDraftResponse
+  rfq: AdminRfqListItem;
+  fullDraft: RfqFullDraftResponse;
 }
 
 export function useAdminRfqDetail(id: number) {
@@ -27,9 +27,9 @@ export function useAdminRfqDetail(id: number) {
       const [rfq, fullDraft] = await Promise.all([
         adminApiClient.getRfqDetail(id),
         adminApiClient.getRfqFullDraft(id),
-      ])
-      return { rfq, fullDraft }
+      ]);
+      return { rfq, fullDraft };
     },
     enabled: id > 0,
-  })
+  });
 }

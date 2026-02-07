@@ -1,16 +1,8 @@
-import {
-  IsEmail,
-  IsNotEmpty,
-  IsString,
-  IsEnum,
-  IsOptional,
-  IsNumber,
-  Min,
-} from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export enum AdminUserRole {
-  ADMIN = 'admin',
-  EMPLOYEE = 'employee',
+  ADMIN = "admin",
+  EMPLOYEE = "employee",
 }
 
 export class AdminUserQueryDto {

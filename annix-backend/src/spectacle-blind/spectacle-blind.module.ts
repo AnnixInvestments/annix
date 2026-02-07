@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { SpectacleBlind } from './entities/spectacle-blind.entity';
-import { SpectacleBlindService } from './spectacle-blind.service';
-import { SpectacleBlindController } from './spectacle-blind.controller';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { SpectacleBlind } from "./entities/spectacle-blind.entity";
+import { SpectacleBlindController } from "./spectacle-blind.controller";
+import { SpectacleBlindService } from "./spectacle-blind.service";
 
 @Module({
   imports: [TypeOrmModule.forFeature([SpectacleBlind])],

@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { BoltService } from './bolt.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Bolt } from './entities/bolt.entity';
-import { UBoltEntity } from './entities/u-bolt.entity';
-import { PipeClampEntity } from './entities/pipe-clamp.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { BoltService } from "./bolt.service";
+import { Bolt } from "./entities/bolt.entity";
+import { PipeClampEntity } from "./entities/pipe-clamp.entity";
+import { UBoltEntity } from "./entities/u-bolt.entity";
 
-describe('BoltService', () => {
+describe("BoltService", () => {
   let service: BoltService;
 
   const mockRepo = {
@@ -73,13 +73,13 @@ describe('BoltService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new bolt', async () => {
-      const dto = { designation: 'M20' };
+  describe("create", () => {
+    it("should create a new bolt", async () => {
+      const dto = { designation: "M20" };
       const entity = { id: 1, ...dto } as Bolt;
 
       mockRepo.findOne.mockResolvedValue(undefined);
@@ -95,9 +95,9 @@ describe('BoltService', () => {
       expect(mockRepo.save).toHaveBeenCalledWith(dto);
     });
 
-    it('should throw BadRequestException if bolt already exists', async () => {
-      const dto = { designation: 'M20' };
-      mockRepo.findOne.mockResolvedValue({ id: 1, designation: 'M20' });
+    it("should throw BadRequestException if bolt already exists", async () => {
+      const dto = { designation: "M20" };
+      mockRepo.findOne.mockResolvedValue({ id: 1, designation: "M20" });
 
       await expect(service.create(dto)).rejects.toThrow(BadRequestException);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
@@ -106,9 +106,9 @@ describe('BoltService', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return array of bolts', async () => {
-      const result = [{ id: 1, designation: 'M20' }] as Bolt[];
+  describe("findAll", () => {
+    it("should return array of bolts", async () => {
+      const result = [{ id: 1, designation: "M20" }] as Bolt[];
       const queryBuilder = {
         andWhere: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
@@ -124,13 +124,13 @@ describe('BoltService', () => {
       mockRepo.createQueryBuilder.mockReturnValue(queryBuilder);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockRepo.createQueryBuilder).toHaveBeenCalledWith('bolt');
+      expect(mockRepo.createQueryBuilder).toHaveBeenCalledWith("bolt");
     });
   });
 
-  describe('findOne', () => {
-    it('should return a bolt by id', async () => {
-      const result = { id: 1, designation: 'M20' } as Bolt;
+  describe("findOne", () => {
+    it("should return a bolt by id", async () => {
+      const result = { id: 1, designation: "M20" } as Bolt;
       mockRepo.findOne.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
@@ -139,22 +139,20 @@ describe('BoltService', () => {
       });
     });
 
-    it('should throw NotFoundException if bolt not found', async () => {
+    it("should throw NotFoundException if bolt not found", async () => {
       mockRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('update', () => {
-    it('should update a bolt', async () => {
-      const dto = { designation: 'M24' };
-      const existing = { id: 1, designation: 'M20' } as Bolt;
-      const updated = { id: 1, designation: 'M24' } as Bolt;
+  describe("update", () => {
+    it("should update a bolt", async () => {
+      const dto = { designation: "M24" };
+      const existing = { id: 1, designation: "M20" } as Bolt;
+      const updated = { id: 1, designation: "M24" } as Bolt;
 
-      mockRepo.findOne
-        .mockResolvedValueOnce(existing)
-        .mockResolvedValueOnce(undefined);
+      mockRepo.findOne.mockResolvedValueOnce(existing).mockResolvedValueOnce(undefined);
       mockRepo.save.mockResolvedValue(updated);
 
       const result = await service.update(1, dto);
@@ -162,14 +160,14 @@ describe('BoltService', () => {
       expect(mockRepo.save).toHaveBeenCalledWith({ ...existing, ...dto });
     });
 
-    it('should throw BadRequestException if duplicate designation exists', async () => {
-      const dto = { designation: 'M24' };
-      const current = { id: 1, designation: 'M20' } as Bolt;
-      const existing = { id: 2, designation: 'M24' } as Bolt;
+    it("should throw BadRequestException if duplicate designation exists", async () => {
+      const dto = { designation: "M24" };
+      const current = { id: 1, designation: "M20" } as Bolt;
+      const existing = { id: 2, designation: "M24" } as Bolt;
 
       mockRepo.findOne.mockImplementation(({ where }) => {
         if (where.id === 1) return Promise.resolve(current);
-        if (where.designation === 'M24') return Promise.resolve(existing);
+        if (where.designation === "M24") return Promise.resolve(existing);
         return Promise.resolve(null);
       });
 
@@ -177,9 +175,9 @@ describe('BoltService', () => {
     });
   });
 
-  describe('remove', () => {
-    it('should delete a bolt', async () => {
-      const entity = { id: 1, designation: 'M20' } as Bolt;
+  describe("remove", () => {
+    it("should delete a bolt", async () => {
+      const entity = { id: 1, designation: "M20" } as Bolt;
       mockRepo.findOne.mockResolvedValue(entity);
       mockRepo.remove.mockResolvedValue(undefined);
 

@@ -1,29 +1,19 @@
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import * as bcrypt from "bcrypt";
+import { Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
+import { Rfq, RfqStatus } from "../rfq/entities/rfq.entity";
+import { RfqDraft } from "../rfq/entities/rfq-draft.entity";
+import { User } from "../user/entities/user.entity";
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-
-import { User } from '../user/entities/user.entity';
-import {
-  CustomerCompany,
-  CustomerProfile,
-  CustomerDeviceBinding,
-} from './entities';
-import {
-  UpdateCustomerProfileDto,
-  UpdateCompanyAddressDto,
   ChangePasswordDto,
   CustomerProfileResponseDto,
-} from './dto';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/entities/audit-log.entity';
-import { Rfq, RfqStatus } from '../rfq/entities/rfq.entity';
-import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
+  UpdateCompanyAddressDto,
+  UpdateCustomerProfileDto,
+} from "./dto";
+import { CustomerCompany, CustomerDeviceBinding, CustomerProfile } from "./entities";
 
 @Injectable()
 export class CustomerService {
@@ -49,16 +39,14 @@ export class CustomerService {
   async getProfile(customerId: number): Promise<CustomerProfileResponseDto> {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company', 'deviceBindings', 'user'],
+      relations: ["company", "deviceBindings", "user"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
-    const activeBinding = profile.deviceBindings.find(
-      (b) => b.isActive && b.isPrimary,
-    );
+    const activeBinding = profile.deviceBindings.find((b) => b.isActive && b.isPrimary);
 
     return {
       id: profile.id,
@@ -83,7 +71,7 @@ export class CustomerService {
       },
       security: {
         deviceBound: !!activeBinding,
-        registeredIp: activeBinding?.registeredIp || 'N/A',
+        registeredIp: activeBinding?.registeredIp || "N/A",
         registeredAt: activeBinding?.createdAt || profile.createdAt,
       },
     };
@@ -95,11 +83,11 @@ export class CustomerService {
   async getCompany(customerId: number) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     return profile.company;
@@ -118,7 +106,7 @@ export class CustomerService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     const oldValues = {
@@ -135,7 +123,7 @@ export class CustomerService {
     await this.profileRepo.save(profile);
 
     await this.auditService.log({
-      entityType: 'customer_profile',
+      entityType: "customer_profile",
       entityId: customerId,
       action: AuditAction.UPDATE,
       oldValues,
@@ -149,18 +137,14 @@ export class CustomerService {
   /**
    * Update company address (limited fields)
    */
-  async updateCompanyAddress(
-    customerId: number,
-    dto: UpdateCompanyAddressDto,
-    clientIp: string,
-  ) {
+  async updateCompanyAddress(customerId: number, dto: UpdateCompanyAddressDto, clientIp: string) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     const company = profile.company;
@@ -173,18 +157,16 @@ export class CustomerService {
     };
 
     // Update allowed fields only
-    if (dto.streetAddress !== undefined)
-      company.streetAddress = dto.streetAddress;
+    if (dto.streetAddress !== undefined) company.streetAddress = dto.streetAddress;
     if (dto.city !== undefined) company.city = dto.city;
-    if (dto.provinceState !== undefined)
-      company.provinceState = dto.provinceState;
+    if (dto.provinceState !== undefined) company.provinceState = dto.provinceState;
     if (dto.postalCode !== undefined) company.postalCode = dto.postalCode;
     if (dto.primaryPhone !== undefined) company.primaryPhone = dto.primaryPhone;
 
     await this.companyRepo.save(company);
 
     await this.auditService.log({
-      entityType: 'customer_company',
+      entityType: "customer_company",
       entityId: company.id,
       action: AuditAction.UPDATE,
       oldValues,
@@ -205,26 +187,23 @@ export class CustomerService {
   ): Promise<{ success: boolean; message: string }> {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['user'],
+      relations: ["user"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     const user = await this.userRepo.findOne({ where: { id: profile.userId } });
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(
-      dto.currentPassword,
-      user.password,
-    );
+    const isCurrentPasswordValid = await bcrypt.compare(dto.currentPassword, user.password);
 
     if (!isCurrentPasswordValid) {
-      throw new BadRequestException('Current password is incorrect');
+      throw new BadRequestException("Current password is incorrect");
     }
 
     // Hash new password
@@ -236,16 +215,16 @@ export class CustomerService {
     await this.userRepo.save(user);
 
     await this.auditService.log({
-      entityType: 'customer_profile',
+      entityType: "customer_profile",
       entityId: customerId,
       action: AuditAction.UPDATE,
-      newValues: { event: 'password_changed' },
+      newValues: { event: "password_changed" },
       ipAddress: clientIp,
     });
 
     return {
       success: true,
-      message: 'Password changed successfully',
+      message: "Password changed successfully",
     };
   }
 
@@ -255,23 +234,18 @@ export class CustomerService {
   async getDashboard(customerId: number) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company', 'deviceBindings', 'sessions', 'user'],
+      relations: ["company", "deviceBindings", "sessions", "user"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
-    const activeBinding = profile.deviceBindings.find(
-      (b) => b.isActive && b.isPrimary,
-    );
+    const activeBinding = profile.deviceBindings.find((b) => b.isActive && b.isPrimary);
 
     const lastSession = profile.sessions
       .filter((s) => s.isActive || s.invalidatedAt)
-      .sort(
-        (a, b) =>
-          (b.lastActivity?.getTime() || 0) - (a.lastActivity?.getTime() || 0),
-      )[0];
+      .sort((a, b) => (b.lastActivity?.getTime() || 0) - (a.lastActivity?.getTime() || 0))[0];
 
     const rfqStats = await this.rfqStatsForUser(profile.userId);
     const draftInfo = await this.activeDraftForUser(profile.userId);
@@ -309,7 +283,7 @@ export class CustomerService {
   }> {
     const rfqs = await this.rfqRepo.find({
       where: { createdBy: { id: userId } },
-      select: ['id', 'status'],
+      select: ["id", "status"],
     });
 
     const statusCounts = rfqs.reduce(
@@ -342,7 +316,7 @@ export class CustomerService {
   } | null> {
     const draft = await this.rfqDraftRepo.findOne({
       where: { createdBy: { id: userId }, isConverted: false },
-      order: { updatedAt: 'DESC' },
+      order: { updatedAt: "DESC" },
     });
 
     if (!draft) {

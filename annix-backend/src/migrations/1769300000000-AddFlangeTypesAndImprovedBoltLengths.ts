@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements MigrationInterface {
-  name = 'AddFlangeTypesAndImprovedBoltLengths1769300000000';
+  name = "AddFlangeTypesAndImprovedBoltLengths1769300000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create flange_types table with ASME/industry standard codes
@@ -57,26 +57,26 @@ export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements Migrat
 
       // Class 150 WN bolt lengths and BL lengths
       const class150Data = [
-        { nps: '0.5', wnLength: 2.5, blLength: 2.25 },
-        { nps: '0.75', wnLength: 2.5, blLength: 2.25 },
-        { nps: '1', wnLength: 2.5, blLength: 2.25 },
-        { nps: '1.25', wnLength: 2.75, blLength: 2.5 },
-        { nps: '1.5', wnLength: 2.75, blLength: 2.5 },
-        { nps: '2', wnLength: 3.0, blLength: 2.75 },
-        { nps: '2.5', wnLength: 3.25, blLength: 3.0 },
-        { nps: '3', wnLength: 3.25, blLength: 3.0 },
-        { nps: '3.5', wnLength: 3.25, blLength: 3.0 },
-        { nps: '4', wnLength: 3.5, blLength: 3.25 },
-        { nps: '5', wnLength: 3.75, blLength: 3.5 },
-        { nps: '6', wnLength: 3.75, blLength: 3.5 },
-        { nps: '8', wnLength: 4.25, blLength: 4.0 },
-        { nps: '10', wnLength: 4.5, blLength: 4.25 },
-        { nps: '12', wnLength: 4.75, blLength: 4.5 },
-        { nps: '14', wnLength: 5.25, blLength: 5.0 },
-        { nps: '16', wnLength: 5.5, blLength: 5.25 },
-        { nps: '18', wnLength: 5.75, blLength: 5.5 },
-        { nps: '20', wnLength: 6.0, blLength: 5.75 },
-        { nps: '24', wnLength: 6.5, blLength: 6.25 },
+        { nps: "0.5", wnLength: 2.5, blLength: 2.25 },
+        { nps: "0.75", wnLength: 2.5, blLength: 2.25 },
+        { nps: "1", wnLength: 2.5, blLength: 2.25 },
+        { nps: "1.25", wnLength: 2.75, blLength: 2.5 },
+        { nps: "1.5", wnLength: 2.75, blLength: 2.5 },
+        { nps: "2", wnLength: 3.0, blLength: 2.75 },
+        { nps: "2.5", wnLength: 3.25, blLength: 3.0 },
+        { nps: "3", wnLength: 3.25, blLength: 3.0 },
+        { nps: "3.5", wnLength: 3.25, blLength: 3.0 },
+        { nps: "4", wnLength: 3.5, blLength: 3.25 },
+        { nps: "5", wnLength: 3.75, blLength: 3.5 },
+        { nps: "6", wnLength: 3.75, blLength: 3.5 },
+        { nps: "8", wnLength: 4.25, blLength: 4.0 },
+        { nps: "10", wnLength: 4.5, blLength: 4.25 },
+        { nps: "12", wnLength: 4.75, blLength: 4.5 },
+        { nps: "14", wnLength: 5.25, blLength: 5.0 },
+        { nps: "16", wnLength: 5.5, blLength: 5.25 },
+        { nps: "18", wnLength: 5.75, blLength: 5.5 },
+        { nps: "20", wnLength: 6.0, blLength: 5.75 },
+        { nps: "24", wnLength: 6.5, blLength: 6.25 },
       ];
 
       for (const row of class150Data) {
@@ -89,26 +89,26 @@ export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements Migrat
 
       // Class 300 WN and BL bolt lengths
       const class300Data = [
-        { nps: '0.5', wnLength: 2.75, blLength: 2.5 },
-        { nps: '0.75', wnLength: 3.0, blLength: 2.75 },
-        { nps: '1', wnLength: 3.25, blLength: 3.0 },
-        { nps: '1.25', wnLength: 3.25, blLength: 3.0 },
-        { nps: '1.5', wnLength: 3.5, blLength: 3.25 },
-        { nps: '2', wnLength: 3.75, blLength: 3.5 },
-        { nps: '2.5', wnLength: 4.0, blLength: 3.75 },
-        { nps: '3', wnLength: 4.25, blLength: 4.0 },
-        { nps: '3.5', wnLength: 4.25, blLength: 4.0 },
-        { nps: '4', wnLength: 4.5, blLength: 4.25 },
-        { nps: '5', wnLength: 4.75, blLength: 4.5 },
-        { nps: '6', wnLength: 5.0, blLength: 4.75 },
-        { nps: '8', wnLength: 5.75, blLength: 5.5 },
-        { nps: '10', wnLength: 6.25, blLength: 6.0 },
-        { nps: '12', wnLength: 6.5, blLength: 6.25 },
-        { nps: '14', wnLength: 7.0, blLength: 6.75 },
-        { nps: '16', wnLength: 7.25, blLength: 7.0 },
-        { nps: '18', wnLength: 7.75, blLength: 7.5 },
-        { nps: '20', wnLength: 8.25, blLength: 8.0 },
-        { nps: '24', wnLength: 9.0, blLength: 8.75 },
+        { nps: "0.5", wnLength: 2.75, blLength: 2.5 },
+        { nps: "0.75", wnLength: 3.0, blLength: 2.75 },
+        { nps: "1", wnLength: 3.25, blLength: 3.0 },
+        { nps: "1.25", wnLength: 3.25, blLength: 3.0 },
+        { nps: "1.5", wnLength: 3.5, blLength: 3.25 },
+        { nps: "2", wnLength: 3.75, blLength: 3.5 },
+        { nps: "2.5", wnLength: 4.0, blLength: 3.75 },
+        { nps: "3", wnLength: 4.25, blLength: 4.0 },
+        { nps: "3.5", wnLength: 4.25, blLength: 4.0 },
+        { nps: "4", wnLength: 4.5, blLength: 4.25 },
+        { nps: "5", wnLength: 4.75, blLength: 4.5 },
+        { nps: "6", wnLength: 5.0, blLength: 4.75 },
+        { nps: "8", wnLength: 5.75, blLength: 5.5 },
+        { nps: "10", wnLength: 6.25, blLength: 6.0 },
+        { nps: "12", wnLength: 6.5, blLength: 6.25 },
+        { nps: "14", wnLength: 7.0, blLength: 6.75 },
+        { nps: "16", wnLength: 7.25, blLength: 7.0 },
+        { nps: "18", wnLength: 7.75, blLength: 7.5 },
+        { nps: "20", wnLength: 8.25, blLength: 8.0 },
+        { nps: "24", wnLength: 9.0, blLength: 8.75 },
       ];
 
       for (const row of class300Data) {
@@ -121,25 +121,25 @@ export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements Migrat
 
       // Class 400 WN and BL bolt lengths
       const class400Data = [
-        { nps: '0.5', wnLength: 3.0, blLength: 2.75 },
-        { nps: '0.75', wnLength: 3.25, blLength: 3.0 },
-        { nps: '1', wnLength: 3.5, blLength: 3.25 },
-        { nps: '1.25', wnLength: 3.5, blLength: 3.25 },
-        { nps: '1.5', wnLength: 3.75, blLength: 3.5 },
-        { nps: '2', wnLength: 4.0, blLength: 3.75 },
-        { nps: '2.5', wnLength: 4.25, blLength: 4.0 },
-        { nps: '3', wnLength: 4.5, blLength: 4.25 },
-        { nps: '4', wnLength: 4.75, blLength: 4.5 },
-        { nps: '5', wnLength: 5.25, blLength: 5.0 },
-        { nps: '6', wnLength: 5.5, blLength: 5.25 },
-        { nps: '8', wnLength: 6.0, blLength: 5.75 },
-        { nps: '10', wnLength: 6.75, blLength: 6.5 },
-        { nps: '12', wnLength: 7.25, blLength: 7.0 },
-        { nps: '14', wnLength: 7.5, blLength: 7.25 },
-        { nps: '16', wnLength: 8.0, blLength: 7.75 },
-        { nps: '18', wnLength: 8.5, blLength: 8.25 },
-        { nps: '20', wnLength: 9.0, blLength: 8.75 },
-        { nps: '24', wnLength: 9.75, blLength: 9.5 },
+        { nps: "0.5", wnLength: 3.0, blLength: 2.75 },
+        { nps: "0.75", wnLength: 3.25, blLength: 3.0 },
+        { nps: "1", wnLength: 3.5, blLength: 3.25 },
+        { nps: "1.25", wnLength: 3.5, blLength: 3.25 },
+        { nps: "1.5", wnLength: 3.75, blLength: 3.5 },
+        { nps: "2", wnLength: 4.0, blLength: 3.75 },
+        { nps: "2.5", wnLength: 4.25, blLength: 4.0 },
+        { nps: "3", wnLength: 4.5, blLength: 4.25 },
+        { nps: "4", wnLength: 4.75, blLength: 4.5 },
+        { nps: "5", wnLength: 5.25, blLength: 5.0 },
+        { nps: "6", wnLength: 5.5, blLength: 5.25 },
+        { nps: "8", wnLength: 6.0, blLength: 5.75 },
+        { nps: "10", wnLength: 6.75, blLength: 6.5 },
+        { nps: "12", wnLength: 7.25, blLength: 7.0 },
+        { nps: "14", wnLength: 7.5, blLength: 7.25 },
+        { nps: "16", wnLength: 8.0, blLength: 7.75 },
+        { nps: "18", wnLength: 8.5, blLength: 8.25 },
+        { nps: "20", wnLength: 9.0, blLength: 8.75 },
+        { nps: "24", wnLength: 9.75, blLength: 9.5 },
       ];
 
       for (const row of class400Data) {
@@ -152,25 +152,25 @@ export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements Migrat
 
       // Class 600 WN and BL bolt lengths
       const class600Data = [
-        { nps: '0.5', wnLength: 3.0, blLength: 2.75 },
-        { nps: '0.75', wnLength: 3.25, blLength: 3.0 },
-        { nps: '1', wnLength: 3.5, blLength: 3.25 },
-        { nps: '1.25', wnLength: 3.5, blLength: 3.25 },
-        { nps: '1.5', wnLength: 3.75, blLength: 3.5 },
-        { nps: '2', wnLength: 4.0, blLength: 3.75 },
-        { nps: '2.5', wnLength: 4.25, blLength: 4.0 },
-        { nps: '3', wnLength: 4.5, blLength: 4.25 },
-        { nps: '4', wnLength: 4.75, blLength: 4.5 },
-        { nps: '5', wnLength: 5.25, blLength: 5.0 },
-        { nps: '6', wnLength: 5.5, blLength: 5.25 },
-        { nps: '8', wnLength: 6.0, blLength: 5.75 },
-        { nps: '10', wnLength: 6.75, blLength: 6.5 },
-        { nps: '12', wnLength: 7.25, blLength: 7.0 },
-        { nps: '14', wnLength: 7.75, blLength: 7.5 },
-        { nps: '16', wnLength: 8.25, blLength: 8.0 },
-        { nps: '18', wnLength: 8.75, blLength: 8.5 },
-        { nps: '20', wnLength: 9.25, blLength: 9.0 },
-        { nps: '24', wnLength: 10.25, blLength: 10.0 },
+        { nps: "0.5", wnLength: 3.0, blLength: 2.75 },
+        { nps: "0.75", wnLength: 3.25, blLength: 3.0 },
+        { nps: "1", wnLength: 3.5, blLength: 3.25 },
+        { nps: "1.25", wnLength: 3.5, blLength: 3.25 },
+        { nps: "1.5", wnLength: 3.75, blLength: 3.5 },
+        { nps: "2", wnLength: 4.0, blLength: 3.75 },
+        { nps: "2.5", wnLength: 4.25, blLength: 4.0 },
+        { nps: "3", wnLength: 4.5, blLength: 4.25 },
+        { nps: "4", wnLength: 4.75, blLength: 4.5 },
+        { nps: "5", wnLength: 5.25, blLength: 5.0 },
+        { nps: "6", wnLength: 5.5, blLength: 5.25 },
+        { nps: "8", wnLength: 6.0, blLength: 5.75 },
+        { nps: "10", wnLength: 6.75, blLength: 6.5 },
+        { nps: "12", wnLength: 7.25, blLength: 7.0 },
+        { nps: "14", wnLength: 7.75, blLength: 7.5 },
+        { nps: "16", wnLength: 8.25, blLength: 8.0 },
+        { nps: "18", wnLength: 8.75, blLength: 8.5 },
+        { nps: "20", wnLength: 9.25, blLength: 9.0 },
+        { nps: "24", wnLength: 10.25, blLength: 10.0 },
       ];
 
       for (const row of class600Data) {
@@ -183,22 +183,22 @@ export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements Migrat
 
       // Class 900 WN and BL bolt lengths
       const class900Data = [
-        { nps: '0.5', wnLength: 3.5, blLength: 3.25 },
-        { nps: '0.75', wnLength: 3.75, blLength: 3.5 },
-        { nps: '1', wnLength: 4.0, blLength: 3.75 },
-        { nps: '1.5', wnLength: 4.5, blLength: 4.25 },
-        { nps: '2', wnLength: 4.75, blLength: 4.5 },
-        { nps: '3', wnLength: 5.5, blLength: 5.25 },
-        { nps: '4', wnLength: 6.0, blLength: 5.75 },
-        { nps: '6', wnLength: 6.75, blLength: 6.5 },
-        { nps: '8', wnLength: 7.75, blLength: 7.5 },
-        { nps: '10', wnLength: 8.5, blLength: 8.25 },
-        { nps: '12', wnLength: 9.0, blLength: 8.75 },
-        { nps: '14', wnLength: 9.75, blLength: 9.5 },
-        { nps: '16', wnLength: 10.25, blLength: 10.0 },
-        { nps: '18', wnLength: 11.0, blLength: 10.75 },
-        { nps: '20', wnLength: 11.75, blLength: 11.5 },
-        { nps: '24', wnLength: 13.25, blLength: 13.0 },
+        { nps: "0.5", wnLength: 3.5, blLength: 3.25 },
+        { nps: "0.75", wnLength: 3.75, blLength: 3.5 },
+        { nps: "1", wnLength: 4.0, blLength: 3.75 },
+        { nps: "1.5", wnLength: 4.5, blLength: 4.25 },
+        { nps: "2", wnLength: 4.75, blLength: 4.5 },
+        { nps: "3", wnLength: 5.5, blLength: 5.25 },
+        { nps: "4", wnLength: 6.0, blLength: 5.75 },
+        { nps: "6", wnLength: 6.75, blLength: 6.5 },
+        { nps: "8", wnLength: 7.75, blLength: 7.5 },
+        { nps: "10", wnLength: 8.5, blLength: 8.25 },
+        { nps: "12", wnLength: 9.0, blLength: 8.75 },
+        { nps: "14", wnLength: 9.75, blLength: 9.5 },
+        { nps: "16", wnLength: 10.25, blLength: 10.0 },
+        { nps: "18", wnLength: 11.0, blLength: 10.75 },
+        { nps: "20", wnLength: 11.75, blLength: 11.5 },
+        { nps: "24", wnLength: 13.25, blLength: 13.0 },
       ];
 
       for (const row of class900Data) {
@@ -211,24 +211,24 @@ export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements Migrat
 
       // Class 1500 WN and BL bolt lengths
       const class1500Data = [
-        { nps: '0.5', wnLength: 4.0, blLength: 3.75 },
-        { nps: '0.75', wnLength: 4.25, blLength: 4.0 },
-        { nps: '1', wnLength: 4.5, blLength: 4.25 },
-        { nps: '1.5', wnLength: 5.25, blLength: 5.0 },
-        { nps: '2', wnLength: 5.75, blLength: 5.5 },
-        { nps: '2.5', wnLength: 6.25, blLength: 6.0 },
-        { nps: '3', wnLength: 6.75, blLength: 6.5 },
-        { nps: '4', wnLength: 7.5, blLength: 7.25 },
-        { nps: '5', wnLength: 8.25, blLength: 8.0 },
-        { nps: '6', wnLength: 8.75, blLength: 8.5 },
-        { nps: '8', wnLength: 10.0, blLength: 9.75 },
-        { nps: '10', wnLength: 11.25, blLength: 11.0 },
-        { nps: '12', wnLength: 12.25, blLength: 12.0 },
-        { nps: '14', wnLength: 13.25, blLength: 13.0 },
-        { nps: '16', wnLength: 14.25, blLength: 14.0 },
-        { nps: '18', wnLength: 15.25, blLength: 15.0 },
-        { nps: '20', wnLength: 16.75, blLength: 16.5 },
-        { nps: '24', wnLength: 19.25, blLength: 19.0 },
+        { nps: "0.5", wnLength: 4.0, blLength: 3.75 },
+        { nps: "0.75", wnLength: 4.25, blLength: 4.0 },
+        { nps: "1", wnLength: 4.5, blLength: 4.25 },
+        { nps: "1.5", wnLength: 5.25, blLength: 5.0 },
+        { nps: "2", wnLength: 5.75, blLength: 5.5 },
+        { nps: "2.5", wnLength: 6.25, blLength: 6.0 },
+        { nps: "3", wnLength: 6.75, blLength: 6.5 },
+        { nps: "4", wnLength: 7.5, blLength: 7.25 },
+        { nps: "5", wnLength: 8.25, blLength: 8.0 },
+        { nps: "6", wnLength: 8.75, blLength: 8.5 },
+        { nps: "8", wnLength: 10.0, blLength: 9.75 },
+        { nps: "10", wnLength: 11.25, blLength: 11.0 },
+        { nps: "12", wnLength: 12.25, blLength: 12.0 },
+        { nps: "14", wnLength: 13.25, blLength: 13.0 },
+        { nps: "16", wnLength: 14.25, blLength: 14.0 },
+        { nps: "18", wnLength: 15.25, blLength: 15.0 },
+        { nps: "20", wnLength: 16.75, blLength: 16.5 },
+        { nps: "24", wnLength: 19.25, blLength: 19.0 },
       ];
 
       for (const row of class1500Data) {
@@ -241,19 +241,19 @@ export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements Migrat
 
       // Class 2500 WN and BL bolt lengths
       const class2500Data = [
-        { nps: '0.5', wnLength: 4.75, blLength: 4.5 },
-        { nps: '0.75', wnLength: 5.0, blLength: 4.75 },
-        { nps: '1', wnLength: 5.5, blLength: 5.25 },
-        { nps: '1.5', wnLength: 6.25, blLength: 6.0 },
-        { nps: '2', wnLength: 7.0, blLength: 6.75 },
-        { nps: '2.5', wnLength: 7.75, blLength: 7.5 },
-        { nps: '3', wnLength: 8.25, blLength: 8.0 },
-        { nps: '4', wnLength: 9.25, blLength: 9.0 },
-        { nps: '5', wnLength: 10.5, blLength: 10.25 },
-        { nps: '6', wnLength: 11.75, blLength: 11.5 },
-        { nps: '8', wnLength: 13.75, blLength: 13.5 },
-        { nps: '10', wnLength: 15.75, blLength: 15.5 },
-        { nps: '12', wnLength: 18.25, blLength: 18.0 },
+        { nps: "0.5", wnLength: 4.75, blLength: 4.5 },
+        { nps: "0.75", wnLength: 5.0, blLength: 4.75 },
+        { nps: "1", wnLength: 5.5, blLength: 5.25 },
+        { nps: "1.5", wnLength: 6.25, blLength: 6.0 },
+        { nps: "2", wnLength: 7.0, blLength: 6.75 },
+        { nps: "2.5", wnLength: 7.75, blLength: 7.5 },
+        { nps: "3", wnLength: 8.25, blLength: 8.0 },
+        { nps: "4", wnLength: 9.25, blLength: 9.0 },
+        { nps: "5", wnLength: 10.5, blLength: 10.25 },
+        { nps: "6", wnLength: 11.75, blLength: 11.5 },
+        { nps: "8", wnLength: 13.75, blLength: 13.5 },
+        { nps: "10", wnLength: 15.75, blLength: 15.5 },
+        { nps: "12", wnLength: 18.25, blLength: 18.0 },
       ];
 
       for (const row of class2500Data) {
@@ -355,9 +355,7 @@ export class AddFlangeTypesAndImprovedBoltLengths1769300000000 implements Migrat
         ('24', '600', 37.5, 37.5, 2.75, 0.125, 2.75, 2.75, 75.5, 4.5, 225.0)
     `);
 
-    console.warn(
-      'Flange types and improved bolt lengths migration completed successfully',
-    );
+    console.warn("Flange types and improved bolt lengths migration completed successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

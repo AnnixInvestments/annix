@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class ExpandPipeEndConfigurations1768600000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {

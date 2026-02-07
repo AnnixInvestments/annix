@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content: string = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content: string = fs.readFileSync(filePath, "utf8");
 
 // The Steel confirm button needs to be moved from after Surface Protection to before Surface Protection
 // And we need to close the Steel unconfirmed block before Surface Protection
@@ -25,10 +25,10 @@ const steelButtonOld = `            {/* Confirm Button for Steel Pipe Specificat
             )}`;
 
 if (content.includes(steelButtonOld)) {
-  content = content.replace(steelButtonOld, '</>\\n            )}');
-  console.log('✅ Removed Steel button from wrong location');
+  content = content.replace(steelButtonOld, "</>\\n            )}");
+  console.log("✅ Removed Steel button from wrong location");
 } else {
-  console.log('❌ Could not find Steel button at wrong location');
+  console.log("❌ Could not find Steel button at wrong location");
 }
 
 // Step 2: Insert Steel confirm button before Surface Protection
@@ -58,10 +58,10 @@ const steelButtonAndClosing = `        {/* Confirm Button for Steel Pipe Specifi
 
 if (content.includes(surfaceProtectionStart)) {
   content = content.replace(surfaceProtectionStart, steelButtonAndClosing);
-  console.log('✅ Added Steel button before Surface Protection');
+  console.log("✅ Added Steel button before Surface Protection");
 } else {
-  console.log('❌ Could not find Surface Protection start');
+  console.log("❌ Could not find Surface Protection start");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

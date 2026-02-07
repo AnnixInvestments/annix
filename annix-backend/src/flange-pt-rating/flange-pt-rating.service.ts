@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { FlangePtRating } from './entities/flange-pt-rating.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import {
-  CreateFlangePtRatingDto,
   BulkCreateFlangePtRatingDto,
-} from './dto/create-flange-pt-rating.dto';
+  CreateFlangePtRatingDto,
+} from "./dto/create-flange-pt-rating.dto";
+import { FlangePtRating } from "./entities/flange-pt-rating.entity";
 
 export interface PtValidationResult {
   isValid: boolean;
@@ -46,9 +46,7 @@ export class FlangePtRatingService {
     return this.ptRatingRepo.save(entity);
   }
 
-  async bulkCreate(
-    dto: BulkCreateFlangePtRatingDto,
-  ): Promise<FlangePtRating[]> {
+  async bulkCreate(dto: BulkCreateFlangePtRatingDto): Promise<FlangePtRating[]> {
     const entities = dto.ratings.map((rating) =>
       this.ptRatingRepo.create({
         pressureClassId: dto.pressureClassId,
@@ -63,37 +61,33 @@ export class FlangePtRatingService {
 
   async findAll(): Promise<FlangePtRating[]> {
     return this.ptRatingRepo.find({
-      relations: ['pressureClass', 'pressureClass.standard'],
-      order: { pressureClassId: 'ASC', temperatureCelsius: 'ASC' },
+      relations: ["pressureClass", "pressureClass.standard"],
+      order: { pressureClassId: "ASC", temperatureCelsius: "ASC" },
     });
   }
 
-  async findByPressureClass(
-    pressureClassId: number,
-  ): Promise<FlangePtRating[]> {
+  async findByPressureClass(pressureClassId: number): Promise<FlangePtRating[]> {
     return this.ptRatingRepo.find({
       where: { pressureClassId },
-      order: { temperatureCelsius: 'ASC' },
+      order: { temperatureCelsius: "ASC" },
     });
   }
 
   /**
    * Get available material groups with P-T rating data
    */
-  async getAvailableMaterialGroups(): Promise<
-    { name: string; description: string }[]
-  > {
+  async getAvailableMaterialGroups(): Promise<{ name: string; description: string }[]> {
     const distinctGroups = await this.ptRatingRepo
-      .createQueryBuilder('rating')
-      .select('DISTINCT rating.material_group', 'materialGroup')
+      .createQueryBuilder("rating")
+      .select("DISTINCT rating.material_group", "materialGroup")
       .getRawMany();
 
     // Map to user-friendly names with descriptions
     const materialGroupInfo: { [key: string]: string } = {
-      'Carbon Steel A105 (Group 1.1)': 'General service carbon steel',
-      'Stainless Steel 304 (Group 2.1)':
-        'Austenitic SS - slightly higher ratings at elevated temps',
-      'Stainless Steel 316 (Group 2.2)': 'Corrosion-resistant austenitic SS',
+      "Carbon Steel A105 (Group 1.1)": "General service carbon steel",
+      "Stainless Steel 304 (Group 2.1)":
+        "Austenitic SS - slightly higher ratings at elevated temps",
+      "Stainless Steel 316 (Group 2.2)": "Corrosion-resistant austenitic SS",
     };
 
     return distinctGroups.map((g) => ({
@@ -111,8 +105,8 @@ export class FlangePtRatingService {
         pressureClass: { standard: { id: standardId } },
         materialGroup,
       },
-      relations: ['pressureClass', 'pressureClass.standard'],
-      order: { pressureClassId: 'ASC', temperatureCelsius: 'ASC' },
+      relations: ["pressureClass", "pressureClass.standard"],
+      order: { pressureClassId: "ASC", temperatureCelsius: "ASC" },
     });
   }
 
@@ -123,11 +117,11 @@ export class FlangePtRatingService {
   async getMaxPressureAtTemperature(
     pressureClassId: number,
     temperatureCelsius: number,
-    materialGroup: string = 'Carbon Steel A105',
+    materialGroup: string = "Carbon Steel A105",
   ): Promise<number | null> {
     const ratings = await this.ptRatingRepo.find({
       where: { pressureClassId, materialGroup },
-      order: { temperatureCelsius: 'ASC' },
+      order: { temperatureCelsius: "ASC" },
     });
 
     if (ratings.length === 0) return null;
@@ -157,10 +151,8 @@ export class FlangePtRatingService {
     }
 
     // Linear interpolation
-    const tempRange =
-      Number(upper.temperatureCelsius) - Number(lower.temperatureCelsius);
-    const pressureRange =
-      Number(upper.maxPressureBar) - Number(lower.maxPressureBar);
+    const tempRange = Number(upper.temperatureCelsius) - Number(lower.temperatureCelsius);
+    const pressureRange = Number(upper.maxPressureBar) - Number(lower.maxPressureBar);
     const tempOffset = temperatureCelsius - Number(lower.temperatureCelsius);
     const interpolatedPressure =
       Number(lower.maxPressureBar) + (pressureRange * tempOffset) / tempRange;
@@ -175,15 +167,15 @@ export class FlangePtRatingService {
     standardId: number,
     workingPressureBar: number,
     temperatureCelsius: number,
-    materialGroup: string = 'Carbon Steel A105',
+    materialGroup: string = "Carbon Steel A105",
   ): Promise<number | null> {
     const ratings = await this.ptRatingRepo.find({
       where: {
         pressureClass: { standard: { id: standardId } },
         materialGroup,
       },
-      relations: ['pressureClass'],
-      order: { pressureClassId: 'ASC', temperatureCelsius: 'ASC' },
+      relations: ["pressureClass"],
+      order: { pressureClassId: "ASC", temperatureCelsius: "ASC" },
     });
 
     if (ratings.length === 0) return null;
@@ -211,7 +203,7 @@ export class FlangePtRatingService {
         materialGroup,
       );
       if (maxPressure !== null) {
-        const designation = classRatings[0]?.pressureClass?.designation || '';
+        const designation = classRatings[0]?.pressureClass?.designation || "";
         classCapacities.push({ classId, maxPressure, designation });
       }
     }
@@ -245,7 +237,7 @@ export class FlangePtRatingService {
     standardId: number,
     workingPressureBar: number,
     temperatureCelsius: number,
-    materialGroup: string = 'Carbon Steel A105 (Group 1.1)',
+    materialGroup: string = "Carbon Steel A105 (Group 1.1)",
     currentPressureClassId?: number,
   ): Promise<PtRecommendationResult> {
     const ratings = await this.ptRatingRepo.find({
@@ -253,8 +245,8 @@ export class FlangePtRatingService {
         pressureClass: { standard: { id: standardId } },
         materialGroup,
       },
-      relations: ['pressureClass', 'pressureClass.standard'],
-      order: { pressureClassId: 'ASC', temperatureCelsius: 'ASC' },
+      relations: ["pressureClass", "pressureClass.standard"],
+      order: { pressureClassId: "ASC", temperatureCelsius: "ASC" },
     });
 
     const ratingsByClass = new Map<number, FlangePtRating[]>();
@@ -278,7 +270,7 @@ export class FlangePtRatingService {
       );
 
       if (maxPressure !== null) {
-        const designation = classRatings[0]?.pressureClass?.designation || '';
+        const designation = classRatings[0]?.pressureClass?.designation || "";
         const isAdequate = maxPressure >= workingPressureBar;
 
         validPressureClasses.push({
@@ -295,9 +287,7 @@ export class FlangePtRatingService {
       }
     }
 
-    validPressureClasses.sort(
-      (a, b) => a.maxPressureAtTemp - b.maxPressureAtTemp,
-    );
+    validPressureClasses.sort((a, b) => a.maxPressureAtTemp - b.maxPressureAtTemp);
 
     const validation: PtValidationResult = {
       isValid: true,
@@ -314,14 +304,9 @@ export class FlangePtRatingService {
 
       validation.maxPressureAtTemp = currentMaxPressure;
 
-      if (
-        currentMaxPressure !== null &&
-        currentMaxPressure < workingPressureBar
-      ) {
-        const currentClass = validPressureClasses.find(
-          (c) => c.id === currentPressureClassId,
-        );
-        const designation = currentClass?.designation || 'Selected';
+      if (currentMaxPressure !== null && currentMaxPressure < workingPressureBar) {
+        const currentClass = validPressureClasses.find((c) => c.id === currentPressureClassId);
+        const designation = currentClass?.designation || "Selected";
 
         validation.isValid = false;
         validation.warningMessage =

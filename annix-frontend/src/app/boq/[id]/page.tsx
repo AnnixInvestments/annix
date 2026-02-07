@@ -1,34 +1,34 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useToast } from '@/app/components/Toast';
-import { formatDateZA } from '@/app/lib/datetime';
+import { useParams, useRouter } from "next/navigation";
+import React, { useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import { formatDateZA } from "@/app/lib/datetime";
 import {
-  useBoqDetail,
+  type BoqLineItem,
   useAddBoqLineItem,
-  useUpdateBoqLineItem,
+  useBoqDetail,
   useDeleteBoqLineItem,
   useSubmitBoqForReview,
-  type BoqLineItem,
-} from '@/app/lib/query/hooks';
+  useUpdateBoqLineItem,
+} from "@/app/lib/query/hooks";
 
 const ITEM_TYPES = [
-  { value: 'straight_pipe', label: 'Straight Pipe' },
-  { value: 'bend', label: 'Bend' },
-  { value: 'fitting', label: 'Fitting' },
-  { value: 'flange', label: 'Flange' },
-  { value: 'valve', label: 'Valve' },
-  { value: 'support', label: 'Support' },
-  { value: 'coating', label: 'Coating' },
-  { value: 'lining', label: 'Lining' },
-  { value: 'custom', label: 'Custom' },
+  { value: "straight_pipe", label: "Straight Pipe" },
+  { value: "bend", label: "Bend" },
+  { value: "fitting", label: "Fitting" },
+  { value: "flange", label: "Flange" },
+  { value: "valve", label: "Valve" },
+  { value: "support", label: "Support" },
+  { value: "coating", label: "Coating" },
+  { value: "lining", label: "Lining" },
+  { value: "custom", label: "Custom" },
 ];
 
 export default function BoqDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const boqId = parseInt(params?.id as string);
+  const boqId = parseInt(params?.id as string, 10);
   const { showToast } = useToast();
 
   const { data: boq, isLoading, error } = useBoqDetail(boqId);
@@ -45,7 +45,7 @@ export default function BoqDetailPage() {
       await addLineItemMutation.mutateAsync(item);
       setShowAddModal(false);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to add line item', 'error');
+      showToast(err instanceof Error ? err.message : "Failed to add line item", "error");
     }
   };
 
@@ -54,51 +54,51 @@ export default function BoqDetailPage() {
       await updateLineItemMutation.mutateAsync({ itemId, updates });
       setEditingItem(null);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to update line item', 'error');
+      showToast(err instanceof Error ? err.message : "Failed to update line item", "error");
     }
   };
 
   const handleDeleteLineItem = async (itemId: number) => {
-    if (!confirm('Are you sure you want to delete this line item?')) return;
+    if (!confirm("Are you sure you want to delete this line item?")) return;
 
     try {
       await deleteLineItemMutation.mutateAsync(itemId);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to delete line item', 'error');
+      showToast(err instanceof Error ? err.message : "Failed to delete line item", "error");
     }
   };
 
   const handleSubmitForReview = async () => {
     try {
       await submitForReviewMutation.mutateAsync();
-      showToast('BOQ submitted for review', 'success');
+      showToast("BOQ submitted for review", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to submit', 'error');
+      showToast(err instanceof Error ? err.message : "Failed to submit", "error");
     }
   };
 
   const statusColorClass = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'under_review':
-        return 'bg-blue-100 text-blue-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'changes_requested':
-        return 'bg-orange-100 text-orange-800';
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "submitted":
+        return "bg-yellow-100 text-yellow-800";
+      case "under_review":
+        return "bg-blue-100 text-blue-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
+      case "changes_requested":
+        return "bg-orange-100 text-orange-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const formatNumber = (num?: number) => {
-    if (num === undefined || num === null) return '-';
-    return new Intl.NumberFormat('en-ZA', {
+    if (num === undefined || num === null) return "-";
+    return new Intl.NumberFormat("en-ZA", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(num);
@@ -120,9 +120,9 @@ export default function BoqDetailPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error?.message || 'BOQ not found'}</p>
+          <p className="text-gray-600 mb-6">{error?.message || "BOQ not found"}</p>
           <button
-            onClick={() => router.push('/boq')}
+            onClick={() => router.push("/boq")}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Back to BOQs
@@ -132,7 +132,7 @@ export default function BoqDetailPage() {
     );
   }
 
-  const canEdit = boq.status === 'draft' || boq.status === 'changes_requested';
+  const canEdit = boq.status === "draft" || boq.status === "changes_requested";
   const canSubmit = canEdit && boq.lineItems.length > 0;
 
   return (
@@ -141,7 +141,7 @@ export default function BoqDetailPage() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => router.push('/boq')}
+            onClick={() => router.push("/boq")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <span>←</span>
@@ -154,10 +154,10 @@ export default function BoqDetailPage() {
                 <h1 className="text-3xl font-bold text-gray-900">{boq.boqNumber}</h1>
                 <span
                   className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColorClass(
-                    boq.status
+                    boq.status,
                   )}`}
                 >
-                  {boq.status.replace('_', ' ').toUpperCase()}
+                  {boq.status.replace("_", " ").toUpperCase()}
                 </span>
               </div>
               <p className="text-xl text-gray-700">{boq.title}</p>
@@ -178,7 +178,7 @@ export default function BoqDetailPage() {
                   disabled={submitForReviewMutation.isPending}
                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-medium shadow-lg transition-all disabled:opacity-50"
                 >
-                  {submitForReviewMutation.isPending ? 'Submitting...' : 'Submit for Review'}
+                  {submitForReviewMutation.isPending ? "Submitting..." : "Submit for Review"}
                 </button>
               )}
             </div>
@@ -202,7 +202,7 @@ export default function BoqDetailPage() {
           <div className="bg-white rounded-xl shadow-md p-4">
             <p className="text-sm text-gray-500 mb-1">Estimated Cost (ZAR)</p>
             <p className="text-2xl font-bold text-green-600">
-              {boq.totalEstimatedCost ? `R ${formatNumber(boq.totalEstimatedCost)}` : 'TBD'}
+              {boq.totalEstimatedCost ? `R ${formatNumber(boq.totalEstimatedCost)}` : "TBD"}
             </p>
           </div>
         </div>
@@ -272,7 +272,7 @@ export default function BoqDetailPage() {
                   {boq.lineItems.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-900">{item.lineNumber}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{item.itemCode || '-'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">{item.itemCode || "-"}</td>
                       <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
                         {item.description}
                       </td>
@@ -287,10 +287,10 @@ export default function BoqDetailPage() {
                         {formatNumber(item.totalWeightKg)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 text-right">
-                        {item.unitPrice ? `R ${formatNumber(item.unitPrice)}` : '-'}
+                        {item.unitPrice ? `R ${formatNumber(item.unitPrice)}` : "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 text-right font-medium">
-                        {item.totalPrice ? `R ${formatNumber(item.totalPrice)}` : '-'}
+                        {item.totalPrice ? `R ${formatNumber(item.totalPrice)}` : "-"}
                       </td>
                       {canEdit && (
                         <td className="px-4 py-3 text-center">
@@ -415,15 +415,15 @@ function LineItemModal({
   onSave: (item: Partial<BoqLineItem>) => void;
 }) {
   const [formData, setFormData] = useState({
-    itemCode: item?.itemCode || '',
-    description: item?.description || '',
-    itemType: item?.itemType || 'straight_pipe',
-    unitOfMeasure: item?.unitOfMeasure || 'meters',
-    quantity: item?.quantity?.toString() || '',
-    unitWeightKg: item?.unitWeightKg?.toString() || '',
-    unitPrice: item?.unitPrice?.toString() || '',
-    notes: item?.notes || '',
-    drawingReference: item?.drawingReference || '',
+    itemCode: item?.itemCode || "",
+    description: item?.description || "",
+    itemType: item?.itemType || "straight_pipe",
+    unitOfMeasure: item?.unitOfMeasure || "meters",
+    quantity: item?.quantity?.toString() || "",
+    unitWeightKg: item?.unitWeightKg?.toString() || "",
+    unitPrice: item?.unitPrice?.toString() || "",
+    notes: item?.notes || "",
+    drawingReference: item?.drawingReference || "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -453,7 +453,7 @@ function LineItemModal({
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">
-            {item ? 'Edit Line Item' : 'Add Line Item'}
+            {item ? "Edit Line Item" : "Add Line Item"}
           </h2>
         </div>
 
@@ -589,7 +589,7 @@ function LineItemModal({
               disabled={!formData.description || !formData.quantity || saving}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
             >
-              {saving ? 'Saving...' : item ? 'Update' : 'Add'}
+              {saving ? "Saving..." : item ? "Update" : "Add"}
             </button>
           </div>
         </form>

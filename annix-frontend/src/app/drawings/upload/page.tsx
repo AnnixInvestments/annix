@@ -1,26 +1,26 @@
-'use client';
+"use client";
 
-import React, { useState, useCallback, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useUploadDrawing } from '@/app/lib/query/hooks';
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
+import { useUploadDrawing } from "@/app/lib/query/hooks";
 
-const ACCEPTED_FILE_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-const ACCEPTED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.dwg', '.dxf'];
+const ACCEPTED_FILE_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
+const ACCEPTED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".dwg", ".dxf"];
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 function UploadDrawingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [file, setFile] = useState<File | null>(null);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [rfqId, setRfqId] = useState<string>('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [rfqId, setRfqId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const uploadDrawingMutation = useUploadDrawing();
 
   useEffect(() => {
-    const rfqIdParam = searchParams.get('rfqId');
+    const rfqIdParam = searchParams.get("rfqId");
     if (rfqIdParam) {
       setRfqId(rfqIdParam);
     }
@@ -28,12 +28,12 @@ function UploadDrawingContent() {
 
   const validateFile = (file: File): string | null => {
     if (file.size > MAX_FILE_SIZE) {
-      return 'File size exceeds 50MB limit';
+      return "File size exceeds 50MB limit";
     }
 
-    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    const ext = `.${file.name.split(".").pop()?.toLowerCase()}`;
     if (!ACCEPTED_EXTENSIONS.includes(ext)) {
-      return 'Invalid file type. Supported: PDF, DWG, DXF, PNG, JPG';
+      return "Invalid file type. Supported: PDF, DWG, DXF, PNG, JPG";
     }
 
     return null;
@@ -42,37 +42,40 @@ function UploadDrawingContent() {
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
+    if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive(true);
-    } else if (e.type === 'dragleave') {
+    } else if (e.type === "dragleave") {
       setDragActive(false);
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const droppedFile = e.dataTransfer.files[0];
-      const validationError = validateFile(droppedFile);
-      if (validationError) {
-        setError(validationError);
-        return;
-      }
-      setFile(droppedFile);
-      setError(null);
+      if (e.dataTransfer.files?.[0]) {
+        const droppedFile = e.dataTransfer.files[0];
+        const validationError = validateFile(droppedFile);
+        if (validationError) {
+          setError(validationError);
+          return;
+        }
+        setFile(droppedFile);
+        setError(null);
 
-      // Auto-fill title from filename if empty
-      if (!title) {
-        setTitle(droppedFile.name.replace(/\.[^/.]+$/, ''));
+        // Auto-fill title from filename if empty
+        if (!title) {
+          setTitle(droppedFile.name.replace(/\.[^/.]+$/, ""));
+        }
       }
-    }
-  }, [title]);
+    },
+    [title],
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files?.[0]) {
       const selectedFile = e.target.files[0];
       const validationError = validateFile(selectedFile);
       if (validationError) {
@@ -84,7 +87,7 @@ function UploadDrawingContent() {
 
       // Auto-fill title from filename if empty
       if (!title) {
-        setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''));
+        setTitle(selectedFile.name.replace(/\.[^/.]+$/, ""));
       }
     }
   };
@@ -104,7 +107,7 @@ function UploadDrawingContent() {
       });
       router.push(`/drawings/${drawing.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError(err instanceof Error ? err.message : "Upload failed");
     }
   };
 
@@ -141,17 +144,17 @@ function UploadDrawingContent() {
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${
               dragActive
-                ? 'border-blue-500 bg-blue-50'
+                ? "border-blue-500 bg-blue-50"
                 : file
-                ? 'border-green-500 bg-green-50'
-                : 'border-gray-300 hover:border-gray-400'
+                  ? "border-green-500 bg-green-50"
+                  : "border-gray-300 hover:border-gray-400"
             }`}
-            onClick={() => document.getElementById('file-input')?.click()}
+            onClick={() => document.getElementById("file-input")?.click()}
           >
             <input
               id="file-input"
               type="file"
-              accept={ACCEPTED_EXTENSIONS.join(',')}
+              accept={ACCEPTED_EXTENSIONS.join(",")}
               onChange={handleFileChange}
               className="hidden"
             />
@@ -180,7 +183,7 @@ function UploadDrawingContent() {
                   <span className="text-3xl text-gray-400">📁</span>
                 </div>
                 <p className="text-gray-600 text-lg">
-                  {dragActive ? 'Drop the file here...' : 'Drag and drop a drawing file'}
+                  {dragActive ? "Drop the file here..." : "Drag and drop a drawing file"}
                 </p>
                 <p className="text-gray-400 text-sm mt-2">or click to browse</p>
                 <p className="text-gray-400 text-xs mt-4">
@@ -207,9 +210,7 @@ function UploadDrawingContent() {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -263,7 +264,7 @@ function UploadDrawingContent() {
                   Uploading...
                 </span>
               ) : (
-                'Upload Drawing'
+                "Upload Drawing"
               )}
             </button>
           </div>

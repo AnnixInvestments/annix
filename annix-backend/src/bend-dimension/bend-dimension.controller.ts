@@ -1,15 +1,15 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { BendDimensionService } from './bend-dimension.service';
+import { Controller, Get, Query } from "@nestjs/common";
+import { BendDimensionService } from "./bend-dimension.service";
 
-@Controller('bend-dimension')
+@Controller("bend-dimension")
 export class BendDimensionController {
   constructor(private readonly service: BendDimensionService) {}
 
-  @Get('calculate')
+  @Get("calculate")
   async calculate(
-    @Query('nbMm') nbMm: number,
-    @Query('degree') degree: number,
-    @Query('multiplier') multiplier: number,
+    @Query("nbMm") nbMm: number,
+    @Query("degree") degree: number,
+    @Query("multiplier") multiplier: number,
   ) {
     const value = await this.service.calculate(nbMm, degree, multiplier);
     return { nbMm, degree, multiplier, value };

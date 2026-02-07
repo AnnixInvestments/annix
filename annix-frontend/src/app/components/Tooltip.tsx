@@ -1,17 +1,15 @@
-'use client';
+"use client";
 
-import React, { ReactNode } from 'react';
+import { ReactNode } from "react";
 
 interface TooltipProps {
   children: ReactNode;
   text: string;
-  position?: 'top' | 'bottom';
+  position?: "top" | "bottom";
 }
 
-export function Tooltip({ children, text, position = 'bottom' }: TooltipProps) {
-  const positionClasses = position === 'top'
-    ? 'bottom-full mb-2'
-    : 'top-full mt-2';
+export function Tooltip({ children, text, position = "bottom" }: TooltipProps) {
+  const positionClasses = position === "top" ? "bottom-full mb-2" : "top-full mt-2";
 
   return (
     <div className="relative group">

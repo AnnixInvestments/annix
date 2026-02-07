@@ -1,16 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, Between, In } from 'typeorm';
-import { PumpOrder, PumpOrderStatus, PumpOrderType } from './entities/pump-order.entity';
-import { PumpOrderItem } from './entities/pump-order-item.entity';
-import { CreatePumpOrderDto, CreatePumpOrderItemDto } from './dto/create-pump-order.dto';
-import { UpdatePumpOrderDto, UpdatePumpOrderItemDto } from './dto/update-pump-order.dto';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { nowISO } from "../lib/datetime";
+import { CreatePumpOrderDto, CreatePumpOrderItemDto } from "./dto/create-pump-order.dto";
 import {
-  PumpOrderResponseDto,
   PumpOrderListResponseDto,
+  PumpOrderResponseDto,
   PumpOrderSummaryDto,
-} from './dto/pump-order-response.dto';
-import { nowISO } from '../lib/datetime';
+} from "./dto/pump-order-response.dto";
+import { UpdatePumpOrderDto, UpdatePumpOrderItemDto } from "./dto/update-pump-order.dto";
+import { PumpOrder, PumpOrderStatus, PumpOrderType } from "./entities/pump-order.entity";
+import { PumpOrderItem } from "./entities/pump-order-item.entity";
 
 export interface PumpOrderQueryParams {
   page?: number;
@@ -47,7 +47,11 @@ export class PumpOrderService {
     return quantity * unitPrice * (1 - discount / 100);
   }
 
-  private calculateOrderTotals(items: PumpOrderItem[]): { subtotal: number; vatAmount: number; totalAmount: number } {
+  private calculateOrderTotals(items: PumpOrderItem[]): {
+    subtotal: number;
+    vatAmount: number;
+    totalAmount: number;
+  } {
     const subtotal = items.reduce((sum, item) => sum + Number(item.lineTotal), 0);
     const vatAmount = subtotal * VAT_RATE;
     const totalAmount = subtotal + vatAmount;
@@ -70,32 +74,33 @@ export class PumpOrderService {
       requestedDeliveryDate: order.requestedDeliveryDate,
       confirmedDeliveryDate: order.confirmedDeliveryDate,
       supplierId: order.supplierId,
-      items: order.items?.map((item) => ({
-        id: item.id,
-        orderId: item.orderId,
-        productId: item.productId,
-        itemType: item.itemType,
-        description: item.description,
-        pumpType: item.pumpType,
-        manufacturer: item.manufacturer,
-        modelNumber: item.modelNumber,
-        partNumber: item.partNumber,
-        flowRate: item.flowRate ? Number(item.flowRate) : null,
-        head: item.head ? Number(item.head) : null,
-        motorPowerKw: item.motorPowerKw ? Number(item.motorPowerKw) : null,
-        casingMaterial: item.casingMaterial,
-        impellerMaterial: item.impellerMaterial,
-        sealType: item.sealType,
-        quantity: item.quantity,
-        unitPrice: Number(item.unitPrice),
-        discountPercent: Number(item.discountPercent),
-        lineTotal: Number(item.lineTotal),
-        leadTimeDays: item.leadTimeDays,
-        notes: item.notes,
-        specifications: item.specifications,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-      })) ?? [],
+      items:
+        order.items?.map((item) => ({
+          id: item.id,
+          orderId: item.orderId,
+          productId: item.productId,
+          itemType: item.itemType,
+          description: item.description,
+          pumpType: item.pumpType,
+          manufacturer: item.manufacturer,
+          modelNumber: item.modelNumber,
+          partNumber: item.partNumber,
+          flowRate: item.flowRate ? Number(item.flowRate) : null,
+          head: item.head ? Number(item.head) : null,
+          motorPowerKw: item.motorPowerKw ? Number(item.motorPowerKw) : null,
+          casingMaterial: item.casingMaterial,
+          impellerMaterial: item.impellerMaterial,
+          sealType: item.sealType,
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+          discountPercent: Number(item.discountPercent),
+          lineTotal: Number(item.lineTotal),
+          leadTimeDays: item.leadTimeDays,
+          notes: item.notes,
+          specifications: item.specifications,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        })) ?? [],
       subtotal: Number(order.subtotal),
       vatAmount: Number(order.vatAmount),
       totalAmount: Number(order.totalAmount),
@@ -121,9 +126,11 @@ export class PumpOrderService {
       customerEmail: createDto.customerEmail ?? null,
       customerPhone: createDto.customerPhone ?? null,
       deliveryAddress: createDto.deliveryAddress ?? null,
-      requestedDeliveryDate: createDto.requestedDeliveryDate ? new Date(createDto.requestedDeliveryDate) : null,
+      requestedDeliveryDate: createDto.requestedDeliveryDate
+        ? new Date(createDto.requestedDeliveryDate)
+        : null,
       supplierId: createDto.supplierId ?? null,
-      currency: createDto.currency ?? 'ZAR',
+      currency: createDto.currency ?? "ZAR",
       specialInstructions: createDto.specialInstructions ?? null,
       internalNotes: createDto.internalNotes ?? null,
       createdBy: createDto.createdBy ?? null,
@@ -173,35 +180,35 @@ export class PumpOrderService {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.orderRepository
-      .createQueryBuilder('order')
-      .leftJoinAndSelect('order.items', 'items')
-      .orderBy('order.createdAt', 'DESC');
+      .createQueryBuilder("order")
+      .leftJoinAndSelect("order.items", "items")
+      .orderBy("order.createdAt", "DESC");
 
     if (params.search) {
       queryBuilder.andWhere(
-        '(order.orderNumber ILIKE :search OR order.customerCompany ILIKE :search OR order.customerReference ILIKE :search)',
+        "(order.orderNumber ILIKE :search OR order.customerCompany ILIKE :search OR order.customerReference ILIKE :search)",
         { search: `%${params.search}%` },
       );
     }
 
     if (params.status) {
-      queryBuilder.andWhere('order.status = :status', { status: params.status });
+      queryBuilder.andWhere("order.status = :status", { status: params.status });
     }
 
     if (params.orderType) {
-      queryBuilder.andWhere('order.orderType = :orderType', { orderType: params.orderType });
+      queryBuilder.andWhere("order.orderType = :orderType", { orderType: params.orderType });
     }
 
     if (params.supplierId) {
-      queryBuilder.andWhere('order.supplierId = :supplierId', { supplierId: params.supplierId });
+      queryBuilder.andWhere("order.supplierId = :supplierId", { supplierId: params.supplierId });
     }
 
     if (params.fromDate) {
-      queryBuilder.andWhere('order.createdAt >= :fromDate', { fromDate: params.fromDate });
+      queryBuilder.andWhere("order.createdAt >= :fromDate", { fromDate: params.fromDate });
     }
 
     if (params.toDate) {
-      queryBuilder.andWhere('order.createdAt <= :toDate', { toDate: params.toDate });
+      queryBuilder.andWhere("order.createdAt <= :toDate", { toDate: params.toDate });
     }
 
     const [orders, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
@@ -218,7 +225,7 @@ export class PumpOrderService {
   async findOne(id: number): Promise<PumpOrderResponseDto> {
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['items'],
+      relations: ["items"],
     });
 
     if (!order) {
@@ -231,7 +238,7 @@ export class PumpOrderService {
   async findByOrderNumber(orderNumber: string): Promise<PumpOrderResponseDto> {
     const order = await this.orderRepository.findOne({
       where: { orderNumber },
-      relations: ['items'],
+      relations: ["items"],
     });
 
     if (!order) {
@@ -244,7 +251,7 @@ export class PumpOrderService {
   async update(id: number, updateDto: UpdatePumpOrderDto): Promise<PumpOrderResponseDto> {
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['items'],
+      relations: ["items"],
     });
 
     if (!order) {
@@ -263,24 +270,38 @@ export class PumpOrderService {
     }
 
     Object.assign(order, {
-      ...(updateDto.customerReference !== undefined && { customerReference: updateDto.customerReference }),
+      ...(updateDto.customerReference !== undefined && {
+        customerReference: updateDto.customerReference,
+      }),
       ...(updateDto.status !== undefined && { status: updateDto.status }),
       ...(updateDto.orderType !== undefined && { orderType: updateDto.orderType }),
       ...(updateDto.rfqId !== undefined && { rfqId: updateDto.rfqId }),
-      ...(updateDto.customerCompany !== undefined && { customerCompany: updateDto.customerCompany }),
-      ...(updateDto.customerContact !== undefined && { customerContact: updateDto.customerContact }),
+      ...(updateDto.customerCompany !== undefined && {
+        customerCompany: updateDto.customerCompany,
+      }),
+      ...(updateDto.customerContact !== undefined && {
+        customerContact: updateDto.customerContact,
+      }),
       ...(updateDto.customerEmail !== undefined && { customerEmail: updateDto.customerEmail }),
       ...(updateDto.customerPhone !== undefined && { customerPhone: updateDto.customerPhone }),
-      ...(updateDto.deliveryAddress !== undefined && { deliveryAddress: updateDto.deliveryAddress }),
+      ...(updateDto.deliveryAddress !== undefined && {
+        deliveryAddress: updateDto.deliveryAddress,
+      }),
       ...(updateDto.requestedDeliveryDate !== undefined && {
-        requestedDeliveryDate: updateDto.requestedDeliveryDate ? new Date(updateDto.requestedDeliveryDate) : null,
+        requestedDeliveryDate: updateDto.requestedDeliveryDate
+          ? new Date(updateDto.requestedDeliveryDate)
+          : null,
       }),
       ...(updateDto.confirmedDeliveryDate !== undefined && {
-        confirmedDeliveryDate: updateDto.confirmedDeliveryDate ? new Date(updateDto.confirmedDeliveryDate) : null,
+        confirmedDeliveryDate: updateDto.confirmedDeliveryDate
+          ? new Date(updateDto.confirmedDeliveryDate)
+          : null,
       }),
       ...(updateDto.supplierId !== undefined && { supplierId: updateDto.supplierId }),
       ...(updateDto.currency !== undefined && { currency: updateDto.currency }),
-      ...(updateDto.specialInstructions !== undefined && { specialInstructions: updateDto.specialInstructions }),
+      ...(updateDto.specialInstructions !== undefined && {
+        specialInstructions: updateDto.specialInstructions,
+      }),
       ...(updateDto.internalNotes !== undefined && { internalNotes: updateDto.internalNotes }),
       ...(updateDto.updatedBy !== undefined && { updatedBy: updateDto.updatedBy }),
     });
@@ -347,15 +368,21 @@ export class PumpOrderService {
   async summary(): Promise<PumpOrderSummaryDto> {
     const orders = await this.orderRepository.find();
 
-    const byStatus = orders.reduce((acc, order) => {
-      acc[order.status] = (acc[order.status] ?? 0) + 1;
-      return acc;
-    }, {} as Record<PumpOrderStatus, number>);
+    const byStatus = orders.reduce(
+      (acc, order) => {
+        acc[order.status] = (acc[order.status] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<PumpOrderStatus, number>,
+    );
 
-    const byType = orders.reduce((acc, order) => {
-      acc[order.orderType] = (acc[order.orderType] ?? 0) + 1;
-      return acc;
-    }, {} as Record<PumpOrderType, number>);
+    const byType = orders.reduce(
+      (acc, order) => {
+        acc[order.orderType] = (acc[order.orderType] ?? 0) + 1;
+        return acc;
+      },
+      {} as Record<PumpOrderType, number>,
+    );
 
     const totalRevenue = orders.reduce((sum, order) => sum + Number(order.totalAmount), 0);
     const averageOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;

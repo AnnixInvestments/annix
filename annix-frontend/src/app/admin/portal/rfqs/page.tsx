@@ -1,30 +1,30 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { type RfqDraftStatus } from '@/app/lib/api/adminApi';
-import { formatDateZA } from '@/app/lib/datetime';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
-  StatusBadge,
-  StatCard,
-  Pagination,
-  LoadingSpinner,
-  ErrorDisplay,
   EmptyState,
-  SearchBar,
+  ErrorDisplay,
   Icons,
-} from '@/app/admin/components';
-import { useAdminRfqs } from '@/app/lib/query/hooks';
+  LoadingSpinner,
+  Pagination,
+  SearchBar,
+  StatCard,
+  StatusBadge,
+} from "@/app/admin/components";
+import { type RfqDraftStatus } from "@/app/lib/api/adminApi";
+import { formatDateZA } from "@/app/lib/datetime";
+import { useAdminRfqs } from "@/app/lib/query/hooks";
 
 export default function AdminRfqsPage() {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
-  const [search, setSearch] = useState('');
-  const [activeSearch, setActiveSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<RfqDraftStatus | ''>('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [search, setSearch] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<RfqDraftStatus | "">("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const rfqQuery = useAdminRfqs({
     search: activeSearch || undefined,
@@ -33,17 +33,17 @@ export default function AdminRfqsPage() {
     dateTo: dateTo || undefined,
     page,
     limit,
-    sortBy: 'createdAt',
-    sortOrder: 'DESC',
+    sortBy: "createdAt",
+    sortOrder: "DESC",
   });
 
   const rfqs = rfqQuery.data?.items ?? [];
   const total = rfqQuery.data?.total ?? 0;
   const totalPages = rfqQuery.data?.totalPages ?? 0;
 
-  const pendingCount = rfqs.filter(r => r.status.toLowerCase() === 'pending').length;
-  const quotedCount = rfqs.filter(r => r.status.toLowerCase() === 'quoted').length;
-  const acceptedCount = rfqs.filter(r => r.status.toLowerCase() === 'accepted').length;
+  const pendingCount = rfqs.filter((r) => r.status.toLowerCase() === "pending").length;
+  const quotedCount = rfqs.filter((r) => r.status.toLowerCase() === "quoted").length;
+  const acceptedCount = rfqs.filter((r) => r.status.toLowerCase() === "accepted").length;
 
   const handleSearch = () => {
     setActiveSearch(search);
@@ -55,7 +55,13 @@ export default function AdminRfqsPage() {
   };
 
   if (rfqQuery.error) {
-    return <ErrorDisplay title="Error Loading RFQs" message={rfqQuery.error.message} onRetry={() => rfqQuery.refetch()} />;
+    return (
+      <ErrorDisplay
+        title="Error Loading RFQs"
+        message={rfqQuery.error.message}
+        onRetry={() => rfqQuery.refetch()}
+      />
+    );
   }
 
   return (
@@ -115,7 +121,7 @@ export default function AdminRfqsPage() {
             <select
               value={statusFilter}
               onChange={(e) => {
-                setStatusFilter(e.target.value as RfqDraftStatus | '');
+                setStatusFilter(e.target.value as RfqDraftStatus | "");
                 setPage(1);
               }}
               className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
@@ -166,32 +172,57 @@ export default function AdminRfqsPage() {
           <EmptyState
             icon={<Icons.NoData />}
             title="No RFQs found"
-            description={search || statusFilter ? 'Try adjusting your search or filter' : 'No RFQs have been submitted yet'}
+            description={
+              search || statusFilter
+                ? "Try adjusting your search or filter"
+                : "No RFQs have been submitted yet"
+            }
           />
         ) : (
           <>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Project
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Customer
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Status
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Items
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Deadline
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Created
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Updated
                   </th>
                   <th scope="col" className="relative px-6 py-3">
@@ -222,17 +253,21 @@ export default function AdminRfqsPage() {
                       <StatusBadge status={rfq.status} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {rfq.itemCount} item{rfq.itemCount !== 1 ? 's' : ''}
+                      {rfq.itemCount} item{rfq.itemCount !== 1 ? "s" : ""}
                       {rfq.documentCount && rfq.documentCount > 0 && (
                         <span className="ml-2 text-gray-400">
-                          ({rfq.documentCount} doc{rfq.documentCount !== 1 ? 's' : ''})
+                          ({rfq.documentCount} doc{rfq.documentCount !== 1 ? "s" : ""})
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {rfq.requiredDate ? (
                         <div className="flex items-center">
-                          <span className={rfq.isPastDeadline ? 'text-red-600 font-medium' : 'text-gray-500'}>
+                          <span
+                            className={
+                              rfq.isPastDeadline ? "text-red-600 font-medium" : "text-gray-500"
+                            }
+                          >
                             {formatDateZA(rfq.requiredDate)}
                           </span>
                           {rfq.isPastDeadline && (
@@ -261,9 +296,24 @@ export default function AdminRfqsPage() {
                           title="View a read-only summary of this RFQ draft"
                           className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
                         >
-                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          <svg
+                            className="w-4 h-4 mr-1.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
                           </svg>
                           View
                         </button>
@@ -275,8 +325,18 @@ export default function AdminRfqsPage() {
                           title="Edit this RFQ draft"
                           className="inline-flex items-center px-3 py-1.5 text-sm text-green-600 hover:text-green-800 hover:bg-green-50 rounded-md transition-colors"
                         >
-                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          <svg
+                            className="w-4 h-4 mr-1.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            />
                           </svg>
                           Edit
                         </button>

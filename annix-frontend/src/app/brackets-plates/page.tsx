@@ -1,9 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useCallback } from 'react';
-import BracketsAndPlatesSection from '@/app/components/rfq/BracketsAndPlatesSection';
-import { BracketEntry, CompensationPlateEntry } from '@/app/lib/config/rfq/bracketsAndPlates';
-import { summarizeBracketsAndPlates, formatCurrency, formatWeight } from '@/app/lib/utils/bracketCalculations';
+import { useCallback, useState } from "react";
+import BracketsAndPlatesSection from "@/app/components/rfq/BracketsAndPlatesSection";
+import { BracketEntry, CompensationPlateEntry } from "@/app/lib/config/rfq/bracketsAndPlates";
+import {
+  formatCurrency,
+  formatWeight,
+  summarizeBracketsAndPlates,
+} from "@/app/lib/utils/bracketCalculations";
 
 export default function BracketsAndPlatesTestPage() {
   const [brackets, setBrackets] = useState<BracketEntry[]>([]);
@@ -15,7 +19,7 @@ export default function BracketsAndPlatesTestPage() {
       setBrackets(newBrackets);
       setPlates(newPlates);
     },
-    []
+    [],
   );
 
   const summary = summarizeBracketsAndPlates(brackets, plates);
@@ -42,7 +46,7 @@ export default function BracketsAndPlatesTestPage() {
                 onClick={() => setShowJson(!showJson)}
                 className="px-4 py-2 text-sm font-medium bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-colors"
               >
-                {showJson ? 'Hide' : 'Show'} JSON Data
+                {showJson ? "Hide" : "Show"} JSON Data
               </button>
             </div>
           </div>
@@ -58,11 +62,15 @@ export default function BracketsAndPlatesTestPage() {
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
               <p className="text-sm text-slate-500">Combined Weight</p>
-              <p className="text-2xl font-bold text-slate-900">{formatWeight(summary.grandTotalWeight)}</p>
+              <p className="text-2xl font-bold text-slate-900">
+                {formatWeight(summary.grandTotalWeight)}
+              </p>
             </div>
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
               <p className="text-sm text-slate-500">Combined Cost</p>
-              <p className="text-2xl font-bold text-green-600">{formatCurrency(summary.grandTotalCost)}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {formatCurrency(summary.grandTotalCost)}
+              </p>
             </div>
           </div>
         </div>
@@ -81,13 +89,17 @@ export default function BracketsAndPlatesTestPage() {
             <div className="p-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Brackets ({brackets.length})</h4>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                    Brackets ({brackets.length})
+                  </h4>
                   <pre className="bg-slate-50 rounded-lg p-4 text-xs overflow-auto max-h-96 border border-slate-200">
                     {JSON.stringify(brackets, null, 2)}
                   </pre>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Compensation Plates ({plates.length})</h4>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                    Compensation Plates ({plates.length})
+                  </h4>
                   <pre className="bg-slate-50 rounded-lg p-4 text-xs overflow-auto max-h-96 border border-slate-200">
                     {JSON.stringify(plates, null, 2)}
                   </pre>
@@ -123,7 +135,8 @@ export default function BracketsAndPlatesTestPage() {
           </div>
           <div className="mt-4 pt-4 border-t border-amber-200">
             <p className="text-xs text-amber-700">
-              <strong>Weight Calculation:</strong> Volume (m³) × Density (kg/m³) | <strong>Cost Calculation:</strong> Weight (kg) × Cost per kg (ZAR)
+              <strong>Weight Calculation:</strong> Volume (m³) × Density (kg/m³) |{" "}
+              <strong>Cost Calculation:</strong> Weight (kg) × Cost per kg (ZAR)
             </p>
           </div>
         </div>

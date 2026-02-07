@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { ObjectLiteral, Repository } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import { now } from '../../lib/datetime';
-import { AUTH_CONSTANTS } from './auth.constants';
+import { Injectable } from "@nestjs/common";
+import { ObjectLiteral, Repository } from "typeorm";
+import { v4 as uuidv4 } from "uuid";
+import { now } from "../../lib/datetime";
+import { AUTH_CONSTANTS } from "./auth.constants";
 
 export interface CreateSessionResult<T> {
   session: T;
@@ -26,9 +26,7 @@ export class SessionService {
   ): CreateSessionResult<T> {
     const sessionToken = uuidv4();
     const refreshToken = uuidv4();
-    const expiresAt = now()
-      .plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS })
-      .toJSDate();
+    const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
 
     const sessionData: Record<string, any> = {
       [data.profileIdField]: data.profileId,
@@ -63,7 +61,7 @@ export class SessionService {
     if (now().toJSDate() > sessionAny.expiresAt) {
       sessionAny.isActive = false;
       sessionAny.invalidatedAt = now().toJSDate();
-      sessionAny.invalidationReason = 'EXPIRED';
+      sessionAny.invalidationReason = "EXPIRED";
       await repo.save(session);
       return null;
     }
@@ -116,9 +114,7 @@ export class SessionService {
     profileIdField: string,
     newSessionToken: string,
   ): Promise<void> {
-    const expiresAt = now()
-      .plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS })
-      .toJSDate();
+    const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
 
     await repo.update(
       { [profileIdField]: profileId, isActive: true } as any,

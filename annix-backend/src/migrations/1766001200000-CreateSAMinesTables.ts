@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateSAMinesTables1766001200000 implements MigrationInterface {
-  name = 'CreateSAMinesTables1766001200000';
+  name = "CreateSAMinesTables1766001200000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create enums
@@ -115,15 +115,11 @@ export class CreateSAMinesTables1766001200000 implements MigrationInterface {
         `);
 
     // Create indexes
-    await queryRunner.query(
-      `CREATE INDEX "IDX_sa_mines_province" ON "sa_mines" ("province")`,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_sa_mines_province" ON "sa_mines" ("province")`);
     await queryRunner.query(
       `CREATE INDEX "IDX_sa_mines_status" ON "sa_mines" ("operational_status")`,
     );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_sa_mines_commodity" ON "sa_mines" ("commodity_id")`,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_sa_mines_commodity" ON "sa_mines" ("commodity_id")`);
 
     // Seed commodities data
     await queryRunner.query(`

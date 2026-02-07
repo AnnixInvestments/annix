@@ -1,0 +1,104 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.14/schema.json",
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "parser": {
+      "unsafeParameterDecoratorsEnabled": true
+    },
+    "formatter": {
+      "quoteStyle": "double",
+      "trailingCommas": "all",
+      "semicolons": "always",
+      "arrowParentheses": "always",
+      "quoteProperties": "asNeeded",
+      "bracketSpacing": true
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "useLiteralKeys": "off",
+        "noUselessFragments": "warn",
+        "useOptionalChain": "warn"
+      },
+      "correctness": {
+        "noUnusedVariables": "off",
+        "noUnusedImports": "warn",
+        "noUnusedFunctionParameters": "off",
+        "noUnusedPrivateClassMembers": "off",
+        "noInvalidUseBeforeDeclaration": "off",
+        "useExhaustiveDependencies": "off",
+        "useHookAtTopLevel": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noEmptyBlockStatements": "off",
+        "noArrayIndexKey": "off",
+        "noImplicitAnyLet": "off",
+        "noAssignInExpressions": "off",
+        "noGlobalIsNan": "warn",
+        "noGlobalIsFinite": "warn",
+        "noApproximativeNumericConstant": "off",
+        "noControlCharactersInRegex": "off",
+        "useIterableCallbackReturn": "off",
+        "noCommentText": "off"
+      },
+      "style": {
+        "noInferrableTypes": "off",
+        "useConst": "error",
+        "noUnusedTemplateLiteral": "warn",
+        "noNonNullAssertion": "off",
+        "useTemplate": "warn",
+        "useNodejsImportProtocol": "warn",
+        "useImportType": "off"
+      },
+      "performance": {
+        "noAccumulatingSpread": "off",
+        "noImgElement": "off"
+      },
+      "a11y": {
+        "recommended": false
+      },
+      "security": {
+        "noGlobalEval": "off"
+      }
+    }
+  },
+  "css": {
+    "parser": {
+      "cssModules": true,
+      "tailwindDirectives": true
+    },
+    "linter": {
+      "enabled": false
+    }
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.next",
+      "!**/coverage",
+      "!**/*.config.js",
+      "!**/*.config.mjs",
+      "!**/*.config.ts",
+      "!**/scripts/test-pipe-calculations.ts"
+    ]
+  }
+}

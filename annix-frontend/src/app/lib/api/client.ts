@@ -1,32 +1,32 @@
-import { API_BASE_URL, browserBaseUrl } from '@/lib/api-config';
-import { sessionExpiredEvent } from '@/app/components/SessionExpiredModal';
-import { log } from '@/app/lib/logger';
+import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
+import { log } from "@/app/lib/logger";
+import { API_BASE_URL } from "@/lib/api-config";
 
 export class SessionExpiredError extends Error {
   constructor() {
-    super('Session expired');
-    this.name = 'SessionExpiredError';
+    super("Session expired");
+    this.name = "SessionExpiredError";
   }
 }
 
 function authToken(): string | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
 
-  const customerToken = localStorage.getItem('customerAccessToken');
+  const customerToken = localStorage.getItem("customerAccessToken");
   if (customerToken) return customerToken;
 
-  const supplierToken = localStorage.getItem('supplierAccessToken');
+  const supplierToken = localStorage.getItem("supplierAccessToken");
   if (supplierToken) return supplierToken;
 
-  const adminToken = localStorage.getItem('adminAccessToken');
+  const adminToken = localStorage.getItem("adminAccessToken");
   if (adminToken) return adminToken;
 
-  return localStorage.getItem('authToken') || localStorage.getItem('token');
+  return localStorage.getItem("authToken") || localStorage.getItem("token");
 }
 
 function authHeaders(): Record<string, string> {
   const token = authToken();
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 // Types based on our backend DTOs
@@ -37,19 +37,19 @@ export interface CreateRfqDto {
   customerEmail?: string;
   customerPhone?: string;
   requiredDate?: string;
-  status?: 'draft' | 'submitted' | 'pending' | 'quoted' | 'accepted' | 'rejected' | 'cancelled';
+  status?: "draft" | "submitted" | "pending" | "quoted" | "accepted" | "rejected" | "cancelled";
   notes?: string;
 }
 
 export interface CreateStraightPipeRfqDto {
   nominalBoreMm: number;
-  scheduleType: 'schedule' | 'wall_thickness';
+  scheduleType: "schedule" | "wall_thickness";
   scheduleNumber?: string;
   wallThicknessMm?: number;
-  pipeEndConfiguration?: 'FBE' | 'FOE' | 'PE' | 'FOE_LF' | 'FOE_RF' | '2X_RF'; // NEW FIELD
+  pipeEndConfiguration?: "FBE" | "FOE" | "PE" | "FOE_LF" | "FOE_RF" | "2X_RF"; // NEW FIELD
   individualPipeLength: number;
-  lengthUnit: 'meters' | 'feet';
-  quantityType: 'total_length' | 'number_of_pipes';
+  lengthUnit: "meters" | "feet";
+  quantityType: "total_length" | "number_of_pipes";
   quantityValue: number;
   workingPressureBar: number;
   workingTemperatureC?: number;
@@ -93,7 +93,7 @@ export interface CreateBendRfqDto {
   numberOfTangents: number;
   tangentLengths: number[];
   quantityValue: number;
-  quantityType: 'number_of_items';
+  quantityType: "number_of_items";
   workingPressureBar: number;
   workingTemperatureC: number;
   steelSpecificationId: number;
@@ -107,12 +107,15 @@ export interface CreateBendRfqWithItemDto {
 }
 
 export interface UnifiedRfqItemDto {
-  itemType: 'straight_pipe' | 'bend' | 'fitting';
+  itemType: "straight_pipe" | "bend" | "fitting";
   description: string;
   notes?: string;
   totalWeightKg?: number;
   straightPipe?: CreateStraightPipeRfqDto;
-  bend?: Omit<CreateBendRfqDto, 'workingPressureBar' | 'workingTemperatureC' | 'steelSpecificationId'> & {
+  bend?: Omit<
+    CreateBendRfqDto,
+    "workingPressureBar" | "workingTemperatureC" | "steelSpecificationId"
+  > & {
     workingPressureBar?: number;
     workingTemperatureC?: number;
     steelSpecificationId?: number;
@@ -208,7 +211,15 @@ export interface SaveRfqDraftDto {
   pendingDocuments?: Record<string, any>[];
 }
 
-export type RfqDraftStatus = 'draft' | 'submitted' | 'pending' | 'in_review' | 'quoted' | 'accepted' | 'rejected' | 'cancelled';
+export type RfqDraftStatus =
+  | "draft"
+  | "submitted"
+  | "pending"
+  | "in_review"
+  | "quoted"
+  | "accepted"
+  | "rejected"
+  | "cancelled";
 
 export interface SupplierCounts {
   pending: number;
@@ -340,8 +351,8 @@ export interface SaMine {
   province: string;
   district: string | null;
   physicalAddress: string | null;
-  mineType: 'Underground' | 'Open Cast' | 'Both';
-  operationalStatus: 'Active' | 'Care and Maintenance' | 'Closed';
+  mineType: "Underground" | "Open Cast" | "Both";
+  operationalStatus: "Active" | "Care and Maintenance" | "Closed";
   latitude: number | null;
   longitude: number | null;
 }
@@ -359,16 +370,16 @@ export interface SlurryProfile {
   phMax: number;
   tempMin: number;
   tempMax: number;
-  abrasionRisk: 'Low' | 'Medium' | 'High' | 'Very High';
-  corrosionRisk: 'Low' | 'Medium' | 'High' | 'Very High';
+  abrasionRisk: "Low" | "Medium" | "High" | "Very High";
+  corrosionRisk: "Low" | "Medium" | "High" | "Very High";
   primaryFailureMode: string | null;
   notes: string | null;
 }
 
 export interface LiningCoatingRule {
   id: number;
-  abrasionLevel: 'Low' | 'Medium' | 'High' | 'Very High';
-  corrosionLevel: 'Low' | 'Medium' | 'High' | 'Very High';
+  abrasionLevel: "Low" | "Medium" | "High" | "Very High";
+  corrosionLevel: "Low" | "Medium" | "High" | "Very High";
   recommendedLining: string;
   recommendedCoating: string | null;
   applicationNotes: string | null;
@@ -388,8 +399,8 @@ export interface CreateSaMineDto {
   province: string;
   district?: string;
   physicalAddress?: string;
-  mineType?: 'Underground' | 'Open Cast' | 'Both';
-  operationalStatus?: 'Active' | 'Care and Maintenance' | 'Closed';
+  mineType?: "Underground" | "Open Cast" | "Both";
+  operationalStatus?: "Active" | "Care and Maintenance" | "Closed";
   latitude?: number;
   longitude?: number;
 }
@@ -490,42 +501,42 @@ class ApiClient {
   }
 
   setToken(token: string) {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', token);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("authToken", token);
     }
   }
 
   clearToken() {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("authToken");
     }
   }
 
   // Attempt to refresh the customer access token using the refresh token
   private async refreshCustomerToken(): Promise<boolean> {
-    if (typeof window === 'undefined') return false;
+    if (typeof window === "undefined") return false;
 
-    const refreshToken = localStorage.getItem('customerRefreshToken');
+    const refreshToken = localStorage.getItem("customerRefreshToken");
     if (!refreshToken) return false;
 
     try {
       const response = await fetch(`${this.baseURL}/customer/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),
       });
 
       if (!response.ok) {
         // Refresh failed - clear tokens
-        localStorage.removeItem('customerAccessToken');
-        localStorage.removeItem('customerRefreshToken');
+        localStorage.removeItem("customerAccessToken");
+        localStorage.removeItem("customerRefreshToken");
         return false;
       }
 
       const data = await response.json();
       if (data.access_token && data.refresh_token) {
-        localStorage.setItem('customerAccessToken', data.access_token);
-        localStorage.setItem('customerRefreshToken', data.refresh_token);
+        localStorage.setItem("customerAccessToken", data.access_token);
+        localStorage.setItem("customerRefreshToken", data.refresh_token);
         return true;
       }
       return false;
@@ -534,21 +545,18 @@ class ApiClient {
     }
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
     };
 
     // Include auth token if available
     const token = this.getAuthToken();
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const config: RequestInit = {
@@ -589,7 +597,7 @@ class ApiClient {
 
       // Handle empty responses gracefully
       const text = await response.text();
-      if (!text || text.trim() === '') {
+      if (!text || text.trim() === "") {
         // Return empty object/null for empty responses - caller should handle
         return {} as T;
       }
@@ -597,13 +605,13 @@ class ApiClient {
       try {
         return JSON.parse(text) as T;
       } catch (parseError) {
-        log.warn('Failed to parse JSON response:', text.substring(0, 100));
+        log.warn("Failed to parse JSON response:", text.substring(0, 100));
         return {} as T;
       }
     } catch (error) {
       // Silently handle network errors (backend unavailable)
-      if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        throw new Error('Backend unavailable');
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error("Backend unavailable");
       }
       throw error;
     }
@@ -611,27 +619,27 @@ class ApiClient {
 
   // Auth endpoints
   async login(email: string, password: string): Promise<{ access_token: string }> {
-    const result = await this.request<{ access_token: string }>('/auth/login', {
-      method: 'POST',
+    const result = await this.request<{ access_token: string }>("/auth/login", {
+      method: "POST",
       body: JSON.stringify({ email, password }),
     });
-    
+
     this.setToken(result.access_token);
     return result;
   }
 
   // RFQ endpoints
   async calculateStraightPipe(
-    data: CreateStraightPipeRfqDto
+    data: CreateStraightPipeRfqDto,
   ): Promise<StraightPipeCalculationResult> {
     // Normalize schedule format before sending to backend
     const normalizedData = {
       ...data,
-      scheduleNumber: this.normalizeScheduleNumber(data.scheduleNumber)
+      scheduleNumber: this.normalizeScheduleNumber(data.scheduleNumber),
     };
-    
-    return this.request<StraightPipeCalculationResult>('/rfq/straight-pipe/calculate', {
-      method: 'POST',
+
+    return this.request<StraightPipeCalculationResult>("/rfq/straight-pipe/calculate", {
+      method: "POST",
       body: JSON.stringify(normalizedData),
     });
   }
@@ -639,74 +647,70 @@ class ApiClient {
   // Helper function to normalize schedule numbers
   private normalizeScheduleNumber(scheduleNumber?: string): string | undefined {
     if (!scheduleNumber) return scheduleNumber;
-    
+
     // Convert "Sch40" -> "40", "Sch80" -> "80", etc.
     const schMatch = scheduleNumber.match(/^[Ss]ch(\d+)$/);
     if (schMatch) {
       return schMatch[1];
     }
-    
+
     // Return as-is for other formats (STD, XS, XXS, MEDIUM, HEAVY, etc.)
     return scheduleNumber;
   }
 
   async createStraightPipeRfq(
-    data: CreateStraightPipeRfqWithItemDto
+    data: CreateStraightPipeRfqWithItemDto,
   ): Promise<{ rfq: any; calculation: StraightPipeCalculationResult }> {
     // Normalize schedule format in straightPipe data
     const normalizedData = {
       ...data,
       straightPipe: {
         ...data.straightPipe,
-        scheduleNumber: this.normalizeScheduleNumber(data.straightPipe.scheduleNumber)
-      }
+        scheduleNumber: this.normalizeScheduleNumber(data.straightPipe.scheduleNumber),
+      },
     };
-    
-    return this.request('/rfq/straight-pipe', {
-      method: 'POST',
+
+    return this.request("/rfq/straight-pipe", {
+      method: "POST",
       body: JSON.stringify(normalizedData),
     });
   }
 
-  async calculateBendRfq(
-    data: CreateBendRfqDto
-  ): Promise<BendCalculationResult> {
-    return this.request('/rfq/bend/calculate', {
-      method: 'POST',
+  async calculateBendRfq(data: CreateBendRfqDto): Promise<BendCalculationResult> {
+    return this.request("/rfq/bend/calculate", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async createBendRfq(
-    data: CreateBendRfqWithItemDto
+    data: CreateBendRfqWithItemDto,
   ): Promise<{ rfq: any; calculation: BendCalculationResult }> {
-    return this.request('/rfq/bend', {
-      method: 'POST',
+    return this.request("/rfq/bend", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
-  async createUnifiedRfq(
-    data: CreateUnifiedRfqDto
-  ): Promise<{ rfq: any; itemsCreated: number }> {
-    return this.request('/rfq/unified', {
-      method: 'POST',
+  async createUnifiedRfq(data: CreateUnifiedRfqDto): Promise<{ rfq: any; itemsCreated: number }> {
+    return this.request("/rfq/unified", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async updateUnifiedRfq(
     id: number,
-    data: CreateUnifiedRfqDto
+    data: CreateUnifiedRfqDto,
   ): Promise<{ rfq: any; itemsUpdated: number }> {
     return this.request(`/rfq/unified/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async getRfqs(): Promise<RfqResponse[]> {
-    return this.request<RfqResponse[]>('/rfq');
+    return this.request<RfqResponse[]>("/rfq");
   }
 
   async getRfqById(id: number): Promise<any> {
@@ -717,10 +721,10 @@ class ApiClient {
   async uploadRfqDocument(rfqId: number, file: File): Promise<RfqDocument> {
     const url = `${this.baseURL}/rfq/${rfqId}/documents`;
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       body: formData,
       // Don't set Content-Type header - browser will set it with boundary for multipart
     });
@@ -732,14 +736,14 @@ class ApiClient {
 
     // Handle empty responses gracefully
     const text = await response.text();
-    if (!text || text.trim() === '') {
+    if (!text || text.trim() === "") {
       return {} as RfqDocument;
     }
 
     try {
       return JSON.parse(text) as RfqDocument;
     } catch {
-      log.warn('Failed to parse JSON response:', text.substring(0, 100));
+      log.warn("Failed to parse JSON response:", text.substring(0, 100));
       return {} as RfqDocument;
     }
   }
@@ -762,21 +766,21 @@ class ApiClient {
 
   async deleteRfqDocument(documentId: number): Promise<void> {
     await this.request(`/rfq/documents/${documentId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   // Master data endpoints
   async getSteelSpecifications(): Promise<SteelSpecification[]> {
-    return this.request<SteelSpecification[]>('/steel-specification');
+    return this.request<SteelSpecification[]>("/steel-specification");
   }
 
   async getFlangeStandards(): Promise<FlangeStandard[]> {
-    return this.request<FlangeStandard[]>('/flange-standard');
+    return this.request<FlangeStandard[]>("/flange-standard");
   }
 
   async getFlangePressureClasses(): Promise<FlangePressureClass[]> {
-    return this.request<FlangePressureClass[]>('/flange-pressure-class');
+    return this.request<FlangePressureClass[]>("/flange-pressure-class");
   }
 
   async getFlangePressureClassesByStandard(standardId: number): Promise<FlangePressureClass[]> {
@@ -784,7 +788,7 @@ class ApiClient {
   }
 
   async getFlangeTypes(): Promise<FlangeType[]> {
-    return this.request<FlangeType[]>('/flange-types');
+    return this.request<FlangeType[]>("/flange-types");
   }
 
   async getFlangeTypeByCode(code: string): Promise<FlangeType | null> {
@@ -795,7 +799,7 @@ class ApiClient {
     nominalBoreMm: number,
     standardId: number,
     pressureClassId: number,
-    flangeTypeId?: number
+    flangeTypeId?: number,
   ): Promise<FlangeDimensionLookup | null> {
     const params = new URLSearchParams({
       nominalBoreMm: nominalBoreMm.toString(),
@@ -803,9 +807,11 @@ class ApiClient {
       pressureClassId: pressureClassId.toString(),
     });
     if (flangeTypeId) {
-      params.append('flangeTypeId', flangeTypeId.toString());
+      params.append("flangeTypeId", flangeTypeId.toString());
     }
-    return this.request<FlangeDimensionLookup | null>(`/flange-dimension/lookup?${params.toString()}`);
+    return this.request<FlangeDimensionLookup | null>(
+      `/flange-dimension/lookup?${params.toString()}`,
+    );
   }
 
   // Pipe data endpoints
@@ -813,15 +819,15 @@ class ApiClient {
     nominalBore?: number,
     steelSpecId?: number,
     minPressure?: number,
-    temperature?: number
+    temperature?: number,
   ): Promise<PipeDimension[]> {
     const params = new URLSearchParams();
-    if (nominalBore) params.append('nominalBore', nominalBore.toString());
-    if (steelSpecId) params.append('steelSpecId', steelSpecId.toString());
-    if (minPressure) params.append('minPressure', minPressure.toString());
-    if (temperature) params.append('temperature', temperature.toString());
-    
-    const query = params.toString() ? `?${params.toString()}` : '';
+    if (nominalBore) params.append("nominalBore", nominalBore.toString());
+    if (steelSpecId) params.append("steelSpecId", steelSpecId.toString());
+    if (minPressure) params.append("minPressure", minPressure.toString());
+    if (temperature) params.append("temperature", temperature.toString());
+
+    const query = params.toString() ? `?${params.toString()}` : "";
     return this.request<PipeDimension[]>(`/pipe-dimensions${query}`);
   }
 
@@ -834,7 +840,7 @@ class ApiClient {
   }
 
   async getNominalBores(steelSpecId?: number): Promise<NominalOutsideDiameter[]> {
-    const query = steelSpecId ? `?steelSpecId=${steelSpecId}` : '';
+    const query = steelSpecId ? `?steelSpecId=${steelSpecId}` : "";
     return this.request<NominalOutsideDiameter[]>(`/nominal-outside-diameter-mm${query}`);
   }
 
@@ -842,7 +848,7 @@ class ApiClient {
     nominalBore: number,
     workingPressure: number,
     temperature?: number,
-    steelSpecId?: number
+    steelSpecId?: number,
   ): Promise<{
     pipeDimension: PipeDimension;
     schedule?: string;
@@ -850,13 +856,13 @@ class ApiClient {
     maxPressure: number;
     availableUpgrades?: PipeDimension[];
   }> {
-    return this.request('/pipe-dimensions/recommend', {
-      method: 'POST',
+    return this.request("/pipe-dimensions/recommend", {
+      method: "POST",
       body: JSON.stringify({
         nominalBore,
         workingPressure,
         temperature: temperature || 20,
-        steelSpecId
+        steelSpecId,
       }),
     });
   }
@@ -866,7 +872,7 @@ class ApiClient {
     currentWallThickness: number,
     workingPressure: number,
     temperature: number = 20,
-    steelSpecId?: number
+    steelSpecId?: number,
   ): Promise<PipeDimension[]> {
     const params = new URLSearchParams({
       nominalBore: nominalBore.toString(),
@@ -874,9 +880,9 @@ class ApiClient {
       workingPressure: workingPressure.toString(),
       temperature: temperature.toString(),
     });
-    
+
     if (steelSpecId) {
-      params.append('steelSpecId', steelSpecId.toString());
+      params.append("steelSpecId", steelSpecId.toString());
     }
 
     return this.request<PipeDimension[]>(`/pipe-dimensions/higher-schedules?${params}`);
@@ -884,7 +890,7 @@ class ApiClient {
 
   // Pipe end configuration endpoints
   async getPipeEndConfigurations(): Promise<PipeEndConfiguration[]> {
-    return this.request<PipeEndConfiguration[]>('/pipe-end-configurations');
+    return this.request<PipeEndConfiguration[]>("/pipe-end-configurations");
   }
 
   async getPipeEndConfigurationByCode(configCode: string): Promise<PipeEndConfiguration> {
@@ -916,14 +922,14 @@ class ApiClient {
     totalFlangeWeldLength: number;
     totalButtWeldLength: number;
   }> {
-    return this.request('/bend-center-to-face/calculate', {
-      method: 'POST',
-      body: JSON.stringify(params)
+    return this.request("/bend-center-to-face/calculate", {
+      method: "POST",
+      body: JSON.stringify(params),
     });
   }
 
   async getBendTypes(): Promise<string[]> {
-    return this.request<string[]>('/bend-center-to-face/bend-types');
+    return this.request<string[]>("/bend-center-to-face/bend-types");
   }
 
   async getNominalBoresForBendType(bendType: string): Promise<number[]> {
@@ -931,20 +937,31 @@ class ApiClient {
   }
 
   async getDegreesForBendType(bendType: string, nominalBoreMm?: number): Promise<number[]> {
-    const query = nominalBoreMm ? `?nominalBoreMm=${nominalBoreMm}` : '';
+    const query = nominalBoreMm ? `?nominalBoreMm=${nominalBoreMm}` : "";
     return this.request<number[]>(`/bend-center-to-face/degrees/${bendType}${query}`);
   }
 
   async getBendOptions(bendType: string): Promise<{ nominalBores: number[]; degrees: number[] }> {
-    return this.request<{ nominalBores: number[]; degrees: number[] }>(`/bend-center-to-face/options/${bendType}`);
+    return this.request<{ nominalBores: number[]; degrees: number[] }>(
+      `/bend-center-to-face/options/${bendType}`,
+    );
   }
 
-  async getBendCenterToFace(bendType: string, nominalBoreMm: number, degrees: number): Promise<any> {
-    return this.request(`/bend-center-to-face/lookup?bendType=${bendType}&nominalBoreMm=${nominalBoreMm}&degrees=${degrees}`);
+  async getBendCenterToFace(
+    bendType: string,
+    nominalBoreMm: number,
+    degrees: number,
+  ): Promise<any> {
+    return this.request(
+      `/bend-center-to-face/lookup?bendType=${bendType}&nominalBoreMm=${nominalBoreMm}&degrees=${degrees}`,
+    );
   }
 
   // Sweep tee dimension endpoints
-  async getSweepTeeDimension(nominalBoreMm: number, radiusType: string): Promise<{
+  async getSweepTeeDimension(
+    nominalBoreMm: number,
+    radiusType: string,
+  ): Promise<{
     id: number;
     nominalBoreMm: number;
     outsideDiameterMm: number;
@@ -953,12 +970,14 @@ class ApiClient {
     pipeALengthMm: number;
     elbowEMm: number | null;
   } | null> {
-    return this.request(`/sweep-tee-dimension/lookup?nominalBoreMm=${nominalBoreMm}&radiusType=${radiusType}`);
+    return this.request(
+      `/sweep-tee-dimension/lookup?nominalBoreMm=${nominalBoreMm}&radiusType=${radiusType}`,
+    );
   }
 
   // Weld type endpoints
   async getWeldTypes(): Promise<WeldType[]> {
-    return this.request<WeldType[]>('/weld-type');
+    return this.request<WeldType[]>("/weld-type");
   }
 
   async getWeldTypeById(id: number): Promise<WeldType> {
@@ -967,10 +986,10 @@ class ApiClient {
 
   // Fitting endpoints
   async getFittingDimensions(
-    standard: 'SABS62' | 'SABS719',
+    standard: "SABS62" | "SABS719",
     fittingType: string,
     nominalDiameterMm: number,
-    angleRange?: string
+    angleRange?: string,
   ): Promise<any> {
     const params = new URLSearchParams({
       standard,
@@ -978,43 +997,50 @@ class ApiClient {
       nominalDiameterMm: nominalDiameterMm.toString(),
     });
     if (angleRange) {
-      params.append('angleRange', angleRange);
+      params.append("angleRange", angleRange);
     }
     return this.request(`/fittings/dimensions?${params.toString()}`);
   }
 
-  async getAvailableFittingTypes(standard: 'SABS62' | 'SABS719'): Promise<string[]> {
+  async getAvailableFittingTypes(standard: "SABS62" | "SABS719"): Promise<string[]> {
     return this.request<string[]>(`/fittings/types?standard=${standard}`);
   }
 
-  async getAvailableFittingSizes(standard: 'SABS62' | 'SABS719', fittingType: string): Promise<number[]> {
-    return this.request<number[]>(`/fittings/sizes?standard=${standard}&fittingType=${fittingType}`);
+  async getAvailableFittingSizes(
+    standard: "SABS62" | "SABS719",
+    fittingType: string,
+  ): Promise<number[]> {
+    return this.request<number[]>(
+      `/fittings/sizes?standard=${standard}&fittingType=${fittingType}`,
+    );
   }
 
   async getAvailableAngleRanges(fittingType: string, nominalDiameterMm: number): Promise<string[]> {
-    return this.request<string[]>(`/fittings/angle-ranges?fittingType=${fittingType}&nominalDiameterMm=${nominalDiameterMm}`);
+    return this.request<string[]>(
+      `/fittings/angle-ranges?fittingType=${fittingType}&nominalDiameterMm=${nominalDiameterMm}`,
+    );
   }
 
   // Mines endpoints
   async getCommodities(): Promise<Commodity[]> {
-    return this.request<Commodity[]>('/mines/commodities');
+    return this.request<Commodity[]>("/mines/commodities");
   }
 
   async getProvinces(): Promise<string[]> {
-    return this.request<string[]>('/mines/provinces');
+    return this.request<string[]>("/mines/provinces");
   }
 
   async getMines(commodityId?: number, province?: string, status?: string): Promise<SaMine[]> {
     const params = new URLSearchParams();
-    if (commodityId) params.append('commodityId', commodityId.toString());
-    if (province) params.append('province', province);
-    if (status) params.append('status', status);
-    const query = params.toString() ? `?${params.toString()}` : '';
+    if (commodityId) params.append("commodityId", commodityId.toString());
+    if (province) params.append("province", province);
+    if (status) params.append("status", status);
+    const query = params.toString() ? `?${params.toString()}` : "";
     return this.request<SaMine[]>(`/mines${query}`);
   }
 
   async getActiveMines(): Promise<SaMine[]> {
-    return this.request<SaMine[]>('/mines/active');
+    return this.request<SaMine[]>("/mines/active");
   }
 
   async getMineById(id: number): Promise<SaMine> {
@@ -1026,22 +1052,22 @@ class ApiClient {
   }
 
   async getSlurryProfiles(): Promise<SlurryProfile[]> {
-    return this.request<SlurryProfile[]>('/mines/slurry-profiles');
+    return this.request<SlurryProfile[]>("/mines/slurry-profiles");
   }
 
   async getLiningRules(): Promise<LiningCoatingRule[]> {
-    return this.request<LiningCoatingRule[]>('/mines/lining-rules');
+    return this.request<LiningCoatingRule[]>("/mines/lining-rules");
   }
 
   async createMine(mineData: CreateSaMineDto): Promise<SaMine> {
-    return this.request<SaMine>('/mines', {
-      method: 'POST',
+    return this.request<SaMine>("/mines", {
+      method: "POST",
       body: JSON.stringify(mineData),
     });
   }
 
   async calculateFitting(data: {
-    fittingStandard: 'SABS62' | 'SABS719';
+    fittingStandard: "SABS62" | "SABS719";
     fittingType: string;
     nominalDiameterMm: number;
     angleRange?: string;
@@ -1070,10 +1096,10 @@ class ApiClient {
     outsideDiameterMm: number;
     wallThicknessMm: number;
   }> {
-    return this.request('/fittings/calculate', {
-      method: 'POST',
+    return this.request("/fittings/calculate", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
     });
@@ -1098,51 +1124,74 @@ class ApiClient {
 
     // Convert NB mm to NPS (approximate)
     const nbToNps: { [key: number]: string } = {
-      15: '1/2', 20: '3/4', 25: '1', 32: '1-1/4', 40: '1-1/2',
-      50: '2', 65: '2-1/2', 80: '3', 100: '4', 125: '5', 150: '6',
-      200: '8', 250: '10', 300: '12', 350: '14', 400: '16',
-      450: '18', 500: '20', 600: '24', 700: '28', 750: '30',
-      800: '32', 900: '36', 1000: '40', 1050: '42', 1200: '48'
+      15: "1/2",
+      20: "3/4",
+      25: "1",
+      32: "1-1/4",
+      40: "1-1/2",
+      50: "2",
+      65: "2-1/2",
+      80: "3",
+      100: "4",
+      125: "5",
+      150: "6",
+      200: "8",
+      250: "10",
+      300: "12",
+      350: "14",
+      400: "16",
+      450: "18",
+      500: "20",
+      600: "24",
+      700: "28",
+      750: "30",
+      800: "32",
+      900: "36",
+      1000: "40",
+      1050: "42",
+      1200: "48",
     };
 
     const nps = nbToNps[params.nbMm] || `${Math.round(params.nbMm / 25.4)}`;
 
-    queryParams.append('nps', nps);
-    queryParams.append('pressureBar', params.pressureBar.toString());
-    queryParams.append('temperatureCelsius', params.temperatureCelsius.toString());
-    queryParams.append('materialCode', params.materialCode || 'ASTM_A106_Grade_B');
+    queryParams.append("nps", nps);
+    queryParams.append("pressureBar", params.pressureBar.toString());
+    queryParams.append("temperatureCelsius", params.temperatureCelsius.toString());
+    queryParams.append("materialCode", params.materialCode || "ASTM_A106_Grade_B");
     if (params.corrosionAllowanceMm) {
-      queryParams.append('corrosionAllowanceMm', params.corrosionAllowanceMm.toString());
+      queryParams.append("corrosionAllowanceMm", params.corrosionAllowanceMm.toString());
     }
 
     return this.request(`/pipe-schedules/recommend?${queryParams.toString()}`);
   }
 
   // Get available schedules for a given NB
-  async getSchedulesByNb(nbMm: number): Promise<Array<{
-    id: number;
-    nps: string;
-    nbMm: number;
-    schedule: string;
-    wallThicknessInch: number;
-    wallThicknessMm: number;
-    outsideDiameterInch: number;
-    standardCode: string;
-  }>> {
+  async getSchedulesByNb(nbMm: number): Promise<
+    Array<{
+      id: number;
+      nps: string;
+      nbMm: number;
+      schedule: string;
+      wallThicknessInch: number;
+      wallThicknessMm: number;
+      outsideDiameterInch: number;
+      standardCode: string;
+    }>
+  > {
     return this.request(`/pipe-schedules/by-nb?nbMm=${nbMm}`);
   }
 
   // ==================== Draft Methods ====================
 
   async saveDraft(dto: SaveRfqDraftDto): Promise<RfqDraftResponse> {
-    return this.request('/rfq/drafts', {
-      method: 'POST',
+    return this.request("/rfq/drafts", {
+      method: "POST",
       body: JSON.stringify(dto),
     });
   }
 
   async getDrafts(): Promise<RfqDraftResponse[]> {
-    return this.request('/rfq/drafts');
+    return this.request("/rfq/drafts");
   }
 
   async getDraftById(id: number): Promise<RfqDraftFullResponse> {
@@ -1155,14 +1204,14 @@ class ApiClient {
 
   async deleteDraft(id: number): Promise<void> {
     return this.request(`/rfq/drafts/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   // ==================== Material Validation Methods ====================
 
   async getAllMaterialLimits(): Promise<MaterialLimit[]> {
-    return this.request('/material-validation');
+    return this.request("/material-validation");
   }
 
   async getMaterialLimitsBySpecName(specName: string): Promise<MaterialLimit | null> {
@@ -1172,18 +1221,18 @@ class ApiClient {
   async checkMaterialSuitability(
     specName: string,
     temperature?: number,
-    pressure?: number
+    pressure?: number,
   ): Promise<MaterialSuitabilityResult> {
     const params = new URLSearchParams({ specName });
-    if (temperature !== undefined) params.append('temperature', temperature.toString());
-    if (pressure !== undefined) params.append('pressure', pressure.toString());
+    if (temperature !== undefined) params.append("temperature", temperature.toString());
+    if (pressure !== undefined) params.append("pressure", pressure.toString());
     return this.request(`/material-validation/check-suitability?${params.toString()}`);
   }
 
   async getSuitableMaterials(temperature?: number, pressure?: number): Promise<string[]> {
     const params = new URLSearchParams();
-    if (temperature !== undefined) params.append('temperature', temperature.toString());
-    if (pressure !== undefined) params.append('pressure', pressure.toString());
+    if (temperature !== undefined) params.append("temperature", temperature.toString());
+    if (pressure !== undefined) params.append("pressure", pressure.toString());
     return this.request(`/material-validation/suitable-materials?${params.toString()}`);
   }
 
@@ -1192,45 +1241,48 @@ class ApiClient {
   async getWeldThickness(
     dn: number,
     schedule: string,
-    temperature?: number
+    temperature?: number,
   ): Promise<WeldThicknessResult> {
     const params = new URLSearchParams({
       dn: dn.toString(),
       schedule,
     });
-    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    if (temperature !== undefined) params.append("temperature", temperature.toString());
     return this.request(`/weld-thickness/lookup?${params.toString()}`);
   }
 
   async getRecommendedWeldThickness(
     dn: number,
     pressure: number,
-    temperature?: number
+    temperature?: number,
   ): Promise<WeldThicknessResult> {
     const params = new URLSearchParams({
       dn: dn.toString(),
       pressure: pressure.toString(),
     });
-    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    if (temperature !== undefined) params.append("temperature", temperature.toString());
     return this.request(`/weld-thickness/recommend?${params.toString()}`);
   }
 
-  async getAllWeldThicknessesForDn(dn: number, temperature?: number): Promise<WeldThicknessResult[]> {
+  async getAllWeldThicknessesForDn(
+    dn: number,
+    temperature?: number,
+  ): Promise<WeldThicknessResult[]> {
     const params = new URLSearchParams({ dn: dn.toString() });
-    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    if (temperature !== undefined) params.append("temperature", temperature.toString());
     return this.request(`/weld-thickness/all-for-dn?${params.toString()}`);
   }
 
   async getPipeWallThickness(
     dn: number,
     schedule: string,
-    temperature?: number
+    temperature?: number,
   ): Promise<PipeWallThicknessResult> {
     const params = new URLSearchParams({
       dn: dn.toString(),
       schedule,
     });
-    if (temperature !== undefined) params.append('temperature', temperature.toString());
+    if (temperature !== undefined) params.append("temperature", temperature.toString());
     return this.request(`/weld-thickness/pipe-wall?${params.toString()}`);
   }
 
@@ -1240,7 +1292,7 @@ class ApiClient {
     nominalBoreMm: number,
     pressureClass: string,
     flangeStandardCode: string | null,
-    flangeTypeCode: string
+    flangeTypeCode: string,
   ): Promise<FlangeTypeWeightResult> {
     const params = new URLSearchParams({
       nominalBoreMm: nominalBoreMm.toString(),
@@ -1248,14 +1300,14 @@ class ApiClient {
       flangeTypeCode,
     });
     if (flangeStandardCode) {
-      params.append('flangeStandardCode', flangeStandardCode);
+      params.append("flangeStandardCode", flangeStandardCode);
     }
     return this.request(`/flange-type-weight/lookup?${params.toString()}`);
   }
 
   async blankFlangeWeight(
     nominalBoreMm: number,
-    pressureClass: string
+    pressureClass: string,
   ): Promise<FlangeTypeWeightResult> {
     const params = new URLSearchParams({
       nominalBoreMm: nominalBoreMm.toString(),
@@ -1264,10 +1316,7 @@ class ApiClient {
     return this.request(`/flange-type-weight/blank?${params.toString()}`);
   }
 
-  async bnwSetInfo(
-    nominalBoreMm: number,
-    pressureClass: string
-  ): Promise<BnwSetInfoResult> {
+  async bnwSetInfo(nominalBoreMm: number, pressureClass: string): Promise<BnwSetInfoResult> {
     const params = new URLSearchParams({
       nominalBoreMm: nominalBoreMm.toString(),
       pressureClass,
@@ -1289,53 +1338,75 @@ export const apiClient = new ApiClient();
 
 // Export individual API functions for convenience
 export const rfqApi = {
-  calculate: (data: CreateStraightPipeRfqDto) => 
-    apiClient.calculateStraightPipe(data),
-  create: (data: CreateStraightPipeRfqWithItemDto) => 
-    apiClient.createStraightPipeRfq(data),
+  calculate: (data: CreateStraightPipeRfqDto) => apiClient.calculateStraightPipe(data),
+  create: (data: CreateStraightPipeRfqWithItemDto) => apiClient.createStraightPipeRfq(data),
   getAll: () => apiClient.getRfqs(),
   getById: (id: number) => apiClient.getRfqById(id),
 };
 
 export const bendRfqApi = {
-  calculate: (data: CreateBendRfqDto) =>
-    apiClient.calculateBendRfq(data),
-  create: (data: CreateBendRfqWithItemDto) =>
-    apiClient.createBendRfq(data),
+  calculate: (data: CreateBendRfqDto) => apiClient.calculateBendRfq(data),
+  create: (data: CreateBendRfqWithItemDto) => apiClient.createBendRfq(data),
 };
 
 export const unifiedRfqApi = {
-  create: (data: CreateUnifiedRfqDto) =>
-    apiClient.createUnifiedRfq(data),
-  update: (id: number, data: CreateUnifiedRfqDto) =>
-    apiClient.updateUnifiedRfq(id, data),
+  create: (data: CreateUnifiedRfqDto) => apiClient.createUnifiedRfq(data),
+  update: (id: number, data: CreateUnifiedRfqDto) => apiClient.updateUnifiedRfq(id, data),
 };
 
 export const masterDataApi = {
   getSteelSpecifications: () => apiClient.getSteelSpecifications(),
   getFlangeStandards: () => apiClient.getFlangeStandards(),
   getFlangePressureClasses: () => apiClient.getFlangePressureClasses(),
-  getFlangePressureClassesByStandard: (standardId: number) => apiClient.getFlangePressureClassesByStandard(standardId),
+  getFlangePressureClassesByStandard: (standardId: number) =>
+    apiClient.getFlangePressureClassesByStandard(standardId),
   getFlangeTypes: () => apiClient.getFlangeTypes(),
   getFlangeTypeByCode: (code: string) => apiClient.getFlangeTypeByCode(code),
-  lookupFlangeDimension: (nominalBoreMm: number, standardId: number, pressureClassId: number, flangeTypeId?: number) =>
-    apiClient.lookupFlangeDimension(nominalBoreMm, standardId, pressureClassId, flangeTypeId),
-  getPipeDimensions: (nominalBore?: number, steelSpecId?: number, minPressure?: number, temperature?: number) => 
-    apiClient.getPipeDimensions(nominalBore, steelSpecId, minPressure, temperature),
+  lookupFlangeDimension: (
+    nominalBoreMm: number,
+    standardId: number,
+    pressureClassId: number,
+    flangeTypeId?: number,
+  ) => apiClient.lookupFlangeDimension(nominalBoreMm, standardId, pressureClassId, flangeTypeId),
+  getPipeDimensions: (
+    nominalBore?: number,
+    steelSpecId?: number,
+    minPressure?: number,
+    temperature?: number,
+  ) => apiClient.getPipeDimensions(nominalBore, steelSpecId, minPressure, temperature),
   getNominalBores: (steelSpecId?: number) => apiClient.getNominalBores(steelSpecId),
-  getRecommendedSpecs: (nominalBore: number, workingPressure: number, temperature?: number, steelSpecId?: number) =>
-    apiClient.getRecommendedSpecs(nominalBore, workingPressure, temperature, steelSpecId),
-  getHigherSchedules: (nominalBore: number, currentWallThickness: number, workingPressure: number, temperature?: number, steelSpecId?: number) =>
-    apiClient.getHigherSchedules(nominalBore, currentWallThickness, workingPressure, temperature, steelSpecId),
+  getRecommendedSpecs: (
+    nominalBore: number,
+    workingPressure: number,
+    temperature?: number,
+    steelSpecId?: number,
+  ) => apiClient.getRecommendedSpecs(nominalBore, workingPressure, temperature, steelSpecId),
+  getHigherSchedules: (
+    nominalBore: number,
+    currentWallThickness: number,
+    workingPressure: number,
+    temperature?: number,
+    steelSpecId?: number,
+  ) =>
+    apiClient.getHigherSchedules(
+      nominalBore,
+      currentWallThickness,
+      workingPressure,
+      temperature,
+      steelSpecId,
+    ),
   getPipeEndConfigurations: () => apiClient.getPipeEndConfigurations(),
-  getPipeEndConfigurationByCode: (configCode: string) => apiClient.getPipeEndConfigurationByCode(configCode),
-  getPipeDimensionsAll: (steelSpecId: number, nominalId: number) => apiClient.getPipeDimensionsAll(steelSpecId, nominalId),
+  getPipeEndConfigurationByCode: (configCode: string) =>
+    apiClient.getPipeEndConfigurationByCode(configCode),
+  getPipeDimensionsAll: (steelSpecId: number, nominalId: number) =>
+    apiClient.getPipeDimensionsAll(steelSpecId, nominalId),
 
-  // Bend calculations  
+  // Bend calculations
   calculateBendSpecifications: (params: any) => apiClient.calculateBendSpecifications(params),
   getBendTypes: () => apiClient.getBendTypes(),
   getBendNominalBores: (bendType: string) => apiClient.getNominalBoresForBendType(bendType),
-  getBendDegrees: (bendType: string, nominalBoreMm?: number) => apiClient.getDegreesForBendType(bendType, nominalBoreMm),
+  getBendDegrees: (bendType: string, nominalBoreMm?: number) =>
+    apiClient.getDegreesForBendType(bendType, nominalBoreMm),
   getBendOptions: (bendType: string) => apiClient.getBendOptions(bendType),
   getBendCenterToFace: (bendType: string, nominalBoreMm: number, degrees: number) =>
     apiClient.getBendCenterToFace(bendType, nominalBoreMm, degrees),
@@ -1345,14 +1416,19 @@ export const masterDataApi = {
   getWeldTypeById: (id: number) => apiClient.getWeldTypeById(id),
 
   // Fitting API
-  getFittingDimensions: (standard: 'SABS62' | 'SABS719', fittingType: string, nominalDiameterMm: number, angleRange?: string) =>
-    apiClient.getFittingDimensions(standard, fittingType, nominalDiameterMm, angleRange),
-  getAvailableFittingTypes: (standard: 'SABS62' | 'SABS719') => apiClient.getAvailableFittingTypes(standard),
-  getAvailableFittingSizes: (standard: 'SABS62' | 'SABS719', fittingType: string) => 
+  getFittingDimensions: (
+    standard: "SABS62" | "SABS719",
+    fittingType: string,
+    nominalDiameterMm: number,
+    angleRange?: string,
+  ) => apiClient.getFittingDimensions(standard, fittingType, nominalDiameterMm, angleRange),
+  getAvailableFittingTypes: (standard: "SABS62" | "SABS719") =>
+    apiClient.getAvailableFittingTypes(standard),
+  getAvailableFittingSizes: (standard: "SABS62" | "SABS719", fittingType: string) =>
     apiClient.getAvailableFittingSizes(standard, fittingType),
-  getAvailableAngleRanges: (fittingType: string, nominalDiameterMm: number) => 
+  getAvailableAngleRanges: (fittingType: string, nominalDiameterMm: number) =>
     apiClient.getAvailableAngleRanges(fittingType, nominalDiameterMm),
-  calculateFitting: (data: Parameters<typeof apiClient.calculateFitting>[0]) => 
+  calculateFitting: (data: Parameters<typeof apiClient.calculateFitting>[0]) =>
     apiClient.calculateFitting(data),
 };
 
@@ -1369,7 +1445,8 @@ export const pipeScheduleApi = {
 
 export const materialValidationApi = {
   getAllMaterialLimits: () => apiClient.getAllMaterialLimits(),
-  getMaterialLimitsBySpecName: (specName: string) => apiClient.getMaterialLimitsBySpecName(specName),
+  getMaterialLimitsBySpecName: (specName: string) =>
+    apiClient.getMaterialLimitsBySpecName(specName),
   checkMaterialSuitability: (specName: string, temperature?: number, pressure?: number) =>
     apiClient.checkMaterialSuitability(specName, temperature, pressure),
   getSuitableMaterials: (temperature?: number, pressure?: number) =>
@@ -1388,16 +1465,18 @@ export const weldThicknessApi = {
 };
 
 export const flangeWeightApi = {
-  flangeTypeWeight: (nominalBoreMm: number, pressureClass: string, flangeStandardCode: string | null, flangeTypeCode: string) =>
-    apiClient.flangeTypeWeight(nominalBoreMm, pressureClass, flangeStandardCode, flangeTypeCode),
+  flangeTypeWeight: (
+    nominalBoreMm: number,
+    pressureClass: string,
+    flangeStandardCode: string | null,
+    flangeTypeCode: string,
+  ) => apiClient.flangeTypeWeight(nominalBoreMm, pressureClass, flangeStandardCode, flangeTypeCode),
   blankFlangeWeight: (nominalBoreMm: number, pressureClass: string) =>
     apiClient.blankFlangeWeight(nominalBoreMm, pressureClass),
   bnwSetInfo: (nominalBoreMm: number, pressureClass: string) =>
     apiClient.bnwSetInfo(nominalBoreMm, pressureClass),
-  retainingRingWeight: (nominalBoreMm: number) =>
-    apiClient.retainingRingWeight(nominalBoreMm),
-  nbToOd: (nominalBoreMm: number) =>
-    apiClient.nbToOd(nominalBoreMm),
+  retainingRingWeight: (nominalBoreMm: number) => apiClient.retainingRingWeight(nominalBoreMm),
+  nbToOd: (nominalBoreMm: number) => apiClient.nbToOd(nominalBoreMm),
 };
 
 // ISO 12944-5 Coating Specification Types
@@ -1430,42 +1509,42 @@ export interface ISO12944DurabilityOption {
 export const coatingSpecificationApi = {
   getCorrosivityCategories: async (): Promise<{ category: string; description: string }[]> => {
     const response = await fetch(`${API_BASE_URL}/coating-specifications/corrosivity-categories`);
-    if (!response.ok) throw new Error('Failed to fetch corrosivity categories');
+    if (!response.ok) throw new Error("Failed to fetch corrosivity categories");
     return response.json();
   },
 
   systemsByDurability: async (
     category: string,
-    durability: 'L' | 'M' | 'H' | 'VH'
+    durability: "L" | "M" | "H" | "VH",
   ): Promise<ISO12944SystemsByDurabilityResult> => {
     const response = await fetch(
-      `${API_BASE_URL}/coating-specifications/iso12944/systems-by-durability?category=${category}&durability=${durability}`
+      `${API_BASE_URL}/coating-specifications/iso12944/systems-by-durability?category=${category}&durability=${durability}`,
     );
-    if (!response.ok) throw new Error('Failed to fetch systems by durability');
+    if (!response.ok) throw new Error("Failed to fetch systems by durability");
     return response.json();
   },
 
   systemsByCategory: async (category: string): Promise<ISO12944System[]> => {
     const response = await fetch(
-      `${API_BASE_URL}/coating-specifications/iso12944/systems-by-category?category=${category}`
+      `${API_BASE_URL}/coating-specifications/iso12944/systems-by-category?category=${category}`,
     );
-    if (!response.ok) throw new Error('Failed to fetch systems by category');
+    if (!response.ok) throw new Error("Failed to fetch systems by category");
     return response.json();
   },
 
   availableDurabilities: async (category: string): Promise<ISO12944DurabilityOption[]> => {
     const response = await fetch(
-      `${API_BASE_URL}/coating-specifications/iso12944/durabilities?category=${category}`
+      `${API_BASE_URL}/coating-specifications/iso12944/durabilities?category=${category}`,
     );
-    if (!response.ok) throw new Error('Failed to fetch available durabilities');
+    if (!response.ok) throw new Error("Failed to fetch available durabilities");
     return response.json();
   },
 
   systemByCode: async (systemCode: string): Promise<ISO12944System | null> => {
     const response = await fetch(
-      `${API_BASE_URL}/coating-specifications/iso12944/system-by-code?systemCode=${systemCode}`
+      `${API_BASE_URL}/coating-specifications/iso12944/system-by-code?systemCode=${systemCode}`,
     );
-    if (!response.ok) throw new Error('Failed to fetch system by code');
+    if (!response.ok) throw new Error("Failed to fetch system by code");
     return response.json();
   },
 };
@@ -1498,15 +1577,15 @@ export const draftsApi = {
   delete: (id: number) => apiClient.deleteDraft(id),
   markAsConverted: async (draftId: number, rfqId: number): Promise<void> => {
     const response = await fetch(`${API_BASE_URL}/rfq/drafts/${draftId}/convert`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders(),
       },
       body: JSON.stringify({ rfqId }),
     });
     if (!response.ok) {
-      throw new Error('Failed to mark draft as converted');
+      throw new Error("Failed to mark draft as converted");
     }
   },
 };
@@ -1548,57 +1627,63 @@ export interface RecoveryEmailResponse {
 export const anonymousDraftsApi = {
   save: async (dto: SaveAnonymousDraftDto): Promise<AnonymousDraftResponse> => {
     const response = await fetch(`${API_BASE_URL}/rfq/anonymous-drafts`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(dto),
     });
     if (!response.ok) {
-      throw new Error('Failed to save anonymous draft');
+      throw new Error("Failed to save anonymous draft");
     }
     return response.json();
   },
 
   getByToken: async (token: string): Promise<AnonymousDraftFullResponse> => {
     const response = await fetch(`${API_BASE_URL}/rfq/anonymous-drafts/token/${token}`, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error('Draft not found or expired');
+        throw new Error("Draft not found or expired");
       }
-      throw new Error('Failed to retrieve anonymous draft');
+      throw new Error("Failed to retrieve anonymous draft");
     }
     return response.json();
   },
 
   requestRecoveryEmail: async (customerEmail: string): Promise<RecoveryEmailResponse> => {
     const response = await fetch(`${API_BASE_URL}/rfq/anonymous-drafts/request-recovery`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ customerEmail }),
     });
     if (!response.ok) {
-      throw new Error('Failed to request recovery email');
+      throw new Error("Failed to request recovery email");
     }
     return response.json();
   },
 
-  claimDraft: async (token: string, userId: number): Promise<{ message: string; draftId: number }> => {
-    const response = await fetch(`${API_BASE_URL}/rfq/anonymous-drafts/token/${token}/claim/${userId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+  claimDraft: async (
+    token: string,
+    userId: number,
+  ): Promise<{ message: string; draftId: number }> => {
+    const response = await fetch(
+      `${API_BASE_URL}/rfq/anonymous-drafts/token/${token}/claim/${userId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
     if (!response.ok) {
-      throw new Error('Failed to claim draft');
+      throw new Error("Failed to claim draft");
     }
     return response.json();
   },
@@ -1692,9 +1777,9 @@ export interface BoqResponse {
 export const boqApi = {
   create: async (dto: CreateBoqDto): Promise<BoqResponse> => {
     const response = await fetch(`${API_BASE_URL}/boq`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders(),
       },
       body: JSON.stringify(dto),
@@ -1710,9 +1795,9 @@ export const boqApi = {
 
   submitForQuotation: async (boqId: number, dto: SubmitBoqDto): Promise<SubmitBoqResponseDto> => {
     const response = await fetch(`${API_BASE_URL}/boq/${boqId}/submit`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders(),
       },
       body: JSON.stringify(dto),
@@ -1728,9 +1813,9 @@ export const boqApi = {
 
   updateSubmittedBoq: async (boqId: number, dto: SubmitBoqDto): Promise<SubmitBoqResponseDto> => {
     const response = await fetch(`${API_BASE_URL}/boq/${boqId}/update-submitted`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders(),
       },
       body: JSON.stringify(dto),
@@ -1746,9 +1831,9 @@ export const boqApi = {
 
   getByRfqId: async (rfqId: number): Promise<BoqResponse | null> => {
     const response = await fetch(`${API_BASE_URL}/boq?rfqId=${rfqId}&limit=1`, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders(),
       },
     });
@@ -1797,21 +1882,20 @@ export const ptRatingApi = {
     });
 
     if (params.materialGroup) {
-      queryParams.append('materialGroup', params.materialGroup);
+      queryParams.append("materialGroup", params.materialGroup);
     }
     if (params.currentPressureClassId) {
-      queryParams.append('currentPressureClassId', params.currentPressureClassId.toString());
+      queryParams.append("currentPressureClassId", params.currentPressureClassId.toString());
     }
 
     const response = await fetch(
-      `${API_BASE_URL}/flange-pt-ratings/recommendations?${queryParams.toString()}`
+      `${API_BASE_URL}/flange-pt-ratings/recommendations?${queryParams.toString()}`,
     );
 
     if (!response.ok) {
-      throw new Error('Failed to fetch P-T recommendations');
+      throw new Error("Failed to fetch P-T recommendations");
     }
 
     return response.json();
   },
 };
-

@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { customerPortalApi, type CustomerProfileResponse } from '@/app/lib/api/customerApi';
-import { formatDateTimeZA } from '@/app/lib/datetime';
-import { useCustomerProfile } from '@/app/lib/query/hooks';
+import { useEffect, useState } from "react";
+import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
+import { customerPortalApi } from "@/app/lib/api/customerApi";
+import { formatDateTimeZA } from "@/app/lib/datetime";
+import { useCustomerProfile } from "@/app/lib/query/hooks";
 
 export default function CustomerProfilePage() {
   const { refreshProfile } = useCustomerAuth();
@@ -18,24 +18,24 @@ export default function CustomerProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [profileForm, setProfileForm] = useState({
-    jobTitle: '',
-    directPhone: '',
-    mobilePhone: '',
+    jobTitle: "",
+    directPhone: "",
+    mobilePhone: "",
   });
 
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
 
   useEffect(() => {
     if (profile) {
       setProfileForm({
-        jobTitle: profile.jobTitle || '',
-        directPhone: profile.directPhone || '',
-        mobilePhone: profile.mobilePhone || '',
+        jobTitle: profile.jobTitle || "",
+        directPhone: profile.directPhone || "",
+        mobilePhone: profile.mobilePhone || "",
       });
     }
   }, [profile]);
@@ -43,19 +43,19 @@ export default function CustomerProfilePage() {
   const validatePassword = (password: string): string[] => {
     const errors: string[] = [];
     if (password.length < 12) {
-      errors.push('Password must be at least 12 characters');
+      errors.push("Password must be at least 12 characters");
     }
     if (!/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter');
+      errors.push("Password must contain at least one uppercase letter");
     }
     if (!/[a-z]/.test(password)) {
-      errors.push('Password must contain at least one lowercase letter');
+      errors.push("Password must contain at least one lowercase letter");
     }
     if (!/[0-9]/.test(password)) {
-      errors.push('Password must contain at least one number');
+      errors.push("Password must contain at least one number");
     }
     if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      errors.push('Password must contain at least one special character');
+      errors.push("Password must contain at least one special character");
     }
     return errors;
   };
@@ -77,10 +77,10 @@ export default function CustomerProfilePage() {
       await customerPortalApi.updateProfile(profileForm);
       await profileQuery.refetch();
       setIsEditingProfile(false);
-      setSuccessMessage('Profile updated successfully');
+      setSuccessMessage("Profile updated successfully");
       await refreshProfile();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update profile');
+      setError(e instanceof Error ? e.message : "Failed to update profile");
     } finally {
       setIsSaving(false);
     }
@@ -88,12 +88,12 @@ export default function CustomerProfilePage() {
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
 
     if (passwordErrors.length > 0) {
-      setError('Please fix password requirements');
+      setError("Please fix password requirements");
       return;
     }
 
@@ -104,13 +104,13 @@ export default function CustomerProfilePage() {
     try {
       await customerPortalApi.changePassword(
         passwordForm.currentPassword,
-        passwordForm.newPassword
+        passwordForm.newPassword,
       );
       setIsChangingPassword(false);
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setSuccessMessage('Password changed successfully');
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setSuccessMessage("Password changed successfully");
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to change password');
+      setError(e instanceof Error ? e.message : "Failed to change password");
     } finally {
       setIsSaving(false);
     }
@@ -166,7 +166,7 @@ export default function CustomerProfilePage() {
                   <label className="block text-sm font-medium text-gray-700">First Name</label>
                   <input
                     type="text"
-                    value={profile?.firstName || ''}
+                    value={profile?.firstName || ""}
                     disabled
                     className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
                   />
@@ -176,7 +176,7 @@ export default function CustomerProfilePage() {
                   <label className="block text-sm font-medium text-gray-700">Last Name</label>
                   <input
                     type="text"
-                    value={profile?.lastName || ''}
+                    value={profile?.lastName || ""}
                     disabled
                     className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
                   />
@@ -185,7 +185,7 @@ export default function CustomerProfilePage() {
                   <label className="block text-sm font-medium text-gray-700">Email</label>
                   <input
                     type="email"
-                    value={profile?.email || ''}
+                    value={profile?.email || ""}
                     disabled
                     className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
                   />
@@ -205,7 +205,9 @@ export default function CustomerProfilePage() {
                   <input
                     type="tel"
                     value={profileForm.directPhone}
-                    onChange={(e) => setProfileForm({ ...profileForm, directPhone: e.target.value })}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, directPhone: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -214,7 +216,9 @@ export default function CustomerProfilePage() {
                   <input
                     type="tel"
                     value={profileForm.mobilePhone}
-                    onChange={(e) => setProfileForm({ ...profileForm, mobilePhone: e.target.value })}
+                    onChange={(e) =>
+                      setProfileForm({ ...profileForm, mobilePhone: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -224,9 +228,9 @@ export default function CustomerProfilePage() {
                   onClick={() => {
                     setIsEditingProfile(false);
                     setProfileForm({
-                      jobTitle: profile?.jobTitle || '',
-                      directPhone: profile?.directPhone || '',
-                      mobilePhone: profile?.mobilePhone || '',
+                      jobTitle: profile?.jobTitle || "",
+                      directPhone: profile?.directPhone || "",
+                      mobilePhone: profile?.mobilePhone || "",
                     });
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
@@ -238,7 +242,7 @@ export default function CustomerProfilePage() {
                   disabled={isSaving}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </div>
@@ -256,24 +260,26 @@ export default function CustomerProfilePage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Job Title</dt>
-                <dd className="mt-1 text-sm text-gray-900">{profile?.jobTitle || 'Not set'}</dd>
+                <dd className="mt-1 text-sm text-gray-900">{profile?.jobTitle || "Not set"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Direct Phone</dt>
-                <dd className="mt-1 text-sm text-gray-900">{profile?.directPhone || 'Not set'}</dd>
+                <dd className="mt-1 text-sm text-gray-900">{profile?.directPhone || "Not set"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Mobile Phone</dt>
-                <dd className="mt-1 text-sm text-gray-900">{profile?.mobilePhone || 'Not set'}</dd>
+                <dd className="mt-1 text-sm text-gray-900">{profile?.mobilePhone || "Not set"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Account Status</dt>
                 <dd className="mt-1">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    profile?.accountStatus === 'active'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      profile?.accountStatus === "active"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
                     {profile?.accountStatus}
                   </span>
                 </dd>
@@ -304,7 +310,9 @@ export default function CustomerProfilePage() {
                 <input
                   type="password"
                   value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  onChange={(e) =>
+                    setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -313,7 +321,9 @@ export default function CustomerProfilePage() {
                 <input
                   type="password"
                   value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  onChange={(e) =>
+                    setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
                 {passwordErrors.length > 0 && (
@@ -325,22 +335,27 @@ export default function CustomerProfilePage() {
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Confirm New Password
+                </label>
                 <input
                   type="password"
                   value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  onChange={(e) =>
+                    setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                  }
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
-                {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
-                  <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
-                )}
+                {passwordForm.confirmPassword &&
+                  passwordForm.newPassword !== passwordForm.confirmPassword && (
+                    <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
+                  )}
               </div>
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => {
                     setIsChangingPassword(false);
-                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
                 >
@@ -348,10 +363,14 @@ export default function CustomerProfilePage() {
                 </button>
                 <button
                   onClick={handleChangePassword}
-                  disabled={isSaving || passwordErrors.length > 0 || passwordForm.newPassword !== passwordForm.confirmPassword}
+                  disabled={
+                    isSaving ||
+                    passwordErrors.length > 0 ||
+                    passwordForm.newPassword !== passwordForm.confirmPassword
+                  }
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {isSaving ? 'Changing...' : 'Change Password'}
+                  {isSaving ? "Changing..." : "Change Password"}
                 </button>
               </div>
             </div>
@@ -370,12 +389,14 @@ export default function CustomerProfilePage() {
                     Registered IP: {profile?.security.registeredIp}
                   </p>
                 </div>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  profile?.security.deviceBound
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
-                }`}>
-                  {profile?.security.deviceBound ? 'Active' : 'Inactive'}
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    profile?.security.deviceBound
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {profile?.security.deviceBound ? "Active" : "Inactive"}
                 </span>
               </div>
               <div className="flex items-center justify-between py-2">
@@ -384,7 +405,7 @@ export default function CustomerProfilePage() {
                   <p className="text-sm text-gray-500">
                     {profile?.security.registeredAt
                       ? formatDateTimeZA(profile.security.registeredAt)
-                      : 'N/A'}
+                      : "N/A"}
                   </p>
                 </div>
               </div>

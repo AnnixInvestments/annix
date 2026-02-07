@@ -1,25 +1,21 @@
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CalculateFittingCostDto } from "./dto/calculate-fitting-cost.dto";
+import { CalculatePipeCostDto } from "./dto/calculate-pipe-cost.dto";
+import { CalculateTotalTransportDto } from "./dto/calculate-total-transport.dto";
+import { FittingCostResponseDto } from "./dto/fitting-cost-response.dto";
+import { PipeCostResponseDto } from "./dto/pipe-cost-response.dto";
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { HdpePipeSpecification } from './entities/hdpe-pipe-specification.entity';
-import { HdpeFittingType } from './entities/hdpe-fitting-type.entity';
-import { HdpeFittingWeight } from './entities/hdpe-fitting-weight.entity';
-import { HdpeButtweldPrice } from './entities/hdpe-buttweld-price.entity';
-import { HdpeStubPrice } from './entities/hdpe-stub-price.entity';
-import { HdpeStandard } from './entities/hdpe-standard.entity';
-import { CalculatePipeCostDto } from './dto/calculate-pipe-cost.dto';
-import { CalculateFittingCostDto } from './dto/calculate-fitting-cost.dto';
-import { CalculateTotalTransportDto } from './dto/calculate-total-transport.dto';
-import { PipeCostResponseDto } from './dto/pipe-cost-response.dto';
-import { FittingCostResponseDto } from './dto/fitting-cost-response.dto';
-import {
-  TransportWeightResponseDto,
   TransportItemWeightDto,
-} from './dto/transport-weight-response.dto';
+  TransportWeightResponseDto,
+} from "./dto/transport-weight-response.dto";
+import { HdpeButtweldPrice } from "./entities/hdpe-buttweld-price.entity";
+import { HdpeFittingType } from "./entities/hdpe-fitting-type.entity";
+import { HdpeFittingWeight } from "./entities/hdpe-fitting-weight.entity";
+import { HdpePipeSpecification } from "./entities/hdpe-pipe-specification.entity";
+import { HdpeStandard } from "./entities/hdpe-standard.entity";
+import { HdpeStubPrice } from "./entities/hdpe-stub-price.entity";
 
 @Injectable()
 export class HdpeService {
@@ -44,7 +40,7 @@ export class HdpeService {
   async getAllStandards() {
     return this.standardRepo.find({
       where: { isActive: true },
-      order: { displayOrder: 'ASC', name: 'ASC' },
+      order: { displayOrder: "ASC", name: "ASC" },
     });
   }
 
@@ -62,14 +58,14 @@ export class HdpeService {
   async getAllPipeSpecifications() {
     return this.pipeSpecRepo.find({
       where: { isActive: true },
-      order: { nominalBore: 'ASC', sdr: 'ASC' },
+      order: { nominalBore: "ASC", sdr: "ASC" },
     });
   }
 
   async getPipeSpecificationsByNB(nominalBore: number) {
     return this.pipeSpecRepo.find({
       where: { nominalBore, isActive: true },
-      order: { sdr: 'ASC' },
+      order: { sdr: "ASC" },
     });
   }
 
@@ -89,7 +85,7 @@ export class HdpeService {
   async getAllFittingTypes() {
     return this.fittingTypeRepo.find({
       where: { isActive: true },
-      order: { displayOrder: 'ASC', name: 'ASC' },
+      order: { displayOrder: "ASC", name: "ASC" },
     });
   }
 
@@ -107,7 +103,7 @@ export class HdpeService {
   async getFittingWeights(fittingTypeId: number) {
     return this.fittingWeightRepo.find({
       where: { fittingTypeId, isActive: true },
-      order: { nominalBore: 'ASC' },
+      order: { nominalBore: "ASC" },
     });
   }
 
@@ -181,12 +177,9 @@ export class HdpeService {
   }
 
   // Calculation: Pipe Cost
-  async calculatePipeCost(
-    dto: CalculatePipeCostDto,
-  ): Promise<PipeCostResponseDto> {
+  async calculatePipeCost(dto: CalculatePipeCostDto): Promise<PipeCostResponseDto> {
     const spec = await this.getPipeSpecification(dto.nominalBore, dto.sdr);
-    const buttweldPrice =
-      dto.buttweldPrice ?? (await this.buttweldPrice(dto.nominalBore));
+    const buttweldPrice = dto.buttweldPrice ?? (await this.buttweldPrice(dto.nominalBore));
 
     const totalWeight = Number(spec.weightKgPerM) * dto.length;
     const numButtwelds = 0; // Straight pipe has no welds
@@ -213,16 +206,10 @@ export class HdpeService {
   }
 
   // Calculation: Fitting Cost
-  async calculateFittingCost(
-    dto: CalculateFittingCostDto,
-  ): Promise<FittingCostResponseDto> {
+  async calculateFittingCost(dto: CalculateFittingCostDto): Promise<FittingCostResponseDto> {
     const fittingType = await this.getFittingTypeByCode(dto.fittingTypeCode);
-    const weightData = await this.getFittingWeight(
-      dto.fittingTypeCode,
-      dto.nominalBore,
-    );
-    const buttweldPrice =
-      dto.buttweldPrice ?? (await this.buttweldPrice(dto.nominalBore));
+    const weightData = await this.getFittingWeight(dto.fittingTypeCode, dto.nominalBore);
+    const buttweldPrice = dto.buttweldPrice ?? (await this.buttweldPrice(dto.nominalBore));
 
     const weightKg = Number(weightData.weightKg);
     const numButtwelds = fittingType.numButtwelds;
@@ -230,7 +217,7 @@ export class HdpeService {
     const buttweldCost = numButtwelds * buttweldPrice;
 
     let stubCost = 0;
-    if (dto.fittingTypeCode === 'stub_end') {
+    if (dto.fittingTypeCode === "stub_end") {
       stubCost = dto.stubPrice ?? (await this.stubPrice(dto.nominalBore));
     }
 
@@ -263,22 +250,14 @@ export class HdpeService {
     for (const item of dto.items) {
       let weightKg = 0;
 
-      if (item.type === 'straight_pipe') {
+      if (item.type === "straight_pipe") {
         if (!item.sdr || !item.length) {
-          throw new BadRequestException(
-            'SDR and length are required for straight_pipe items',
-          );
+          throw new BadRequestException("SDR and length are required for straight_pipe items");
         }
-        const spec = await this.getPipeSpecification(
-          item.nominalBore,
-          item.sdr,
-        );
+        const spec = await this.getPipeSpecification(item.nominalBore, item.sdr);
         weightKg = Number(spec.weightKgPerM) * item.length;
       } else {
-        const weightData = await this.getFittingWeight(
-          item.type,
-          item.nominalBore,
-        );
+        const weightData = await this.getFittingWeight(item.type, item.nominalBore);
         weightKg = Number(weightData.weightKg);
       }
 
@@ -303,10 +282,10 @@ export class HdpeService {
   // Available Nominal Bores
   async getAvailableNominalBores(): Promise<number[]> {
     const pipes = await this.pipeSpecRepo
-      .createQueryBuilder('pipe')
-      .select('DISTINCT pipe.nominalBore', 'nb')
-      .where('pipe.isActive = :active', { active: true })
-      .orderBy('pipe.nominalBore', 'ASC')
+      .createQueryBuilder("pipe")
+      .select("DISTINCT pipe.nominalBore", "nb")
+      .where("pipe.isActive = :active", { active: true })
+      .orderBy("pipe.nominalBore", "ASC")
       .getRawMany();
 
     return pipes.map((p) => p.nb);
@@ -316,7 +295,7 @@ export class HdpeService {
   async getAvailableSDRs(nominalBore: number): Promise<number[]> {
     const pipes = await this.pipeSpecRepo.find({
       where: { nominalBore, isActive: true },
-      order: { sdr: 'ASC' },
+      order: { sdr: "ASC" },
     });
 
     return pipes.map((p) => Number(p.sdr));

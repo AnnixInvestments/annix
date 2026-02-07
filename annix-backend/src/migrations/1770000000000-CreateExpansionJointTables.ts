@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateExpansionJointTables1770000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -99,10 +99,10 @@ export class CreateExpansionJointTables1770000000000 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS expansion_joint_rfqs`);
-    await queryRunner.query(`DROP TYPE IF EXISTS fabricated_loop_type`);
-    await queryRunner.query(`DROP TYPE IF EXISTS bellows_material`);
-    await queryRunner.query(`DROP TYPE IF EXISTS bellows_joint_type`);
-    await queryRunner.query(`DROP TYPE IF EXISTS expansion_joint_type`);
+    await queryRunner.query("DROP TABLE IF EXISTS expansion_joint_rfqs");
+    await queryRunner.query("DROP TYPE IF EXISTS fabricated_loop_type");
+    await queryRunner.query("DROP TYPE IF EXISTS bellows_material");
+    await queryRunner.query("DROP TYPE IF EXISTS bellows_joint_type");
+    await queryRunner.query("DROP TYPE IF EXISTS expansion_joint_type");
   }
 }

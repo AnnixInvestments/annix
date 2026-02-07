@@ -1,1 +1,1 @@
-export * from './hdpe-chemical-resistance.entity';
+export * from "./hdpe-chemical-resistance.entity";

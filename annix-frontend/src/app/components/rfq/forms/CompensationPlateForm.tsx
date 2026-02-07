@@ -1,20 +1,24 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { generateUniqueId } from '@/app/lib/datetime';
+import { useEffect, useMemo, useState } from "react";
 import {
   CompensationPlateEntry,
   defaultPlateDimensions,
   StandardPlateSize,
-} from '@/app/lib/config/rfq/bracketsAndPlates';
-import { useStandardPlateSizes } from '@/app/lib/hooks/useStandardPlateSizes';
-import { STEEL_MATERIALS, STEEL_MATERIAL_CATEGORIES, steelMaterialById } from '@/app/lib/config/rfq/steelMaterials';
+} from "@/app/lib/config/rfq/bracketsAndPlates";
+import {
+  STEEL_MATERIAL_CATEGORIES,
+  STEEL_MATERIALS,
+  steelMaterialById,
+} from "@/app/lib/config/rfq/steelMaterials";
+import { generateUniqueId } from "@/app/lib/datetime";
+import { useStandardPlateSizes } from "@/app/lib/hooks/useStandardPlateSizes";
 import {
   calculateCompensationPlate,
-  validatePlateDimensions,
   formatCurrency,
   formatWeight,
-} from '@/app/lib/utils/bracketCalculations';
+  validatePlateDimensions,
+} from "@/app/lib/utils/bracketCalculations";
 
 interface CompensationPlateFormProps {
   entries: CompensationPlateEntry[];
@@ -39,7 +43,11 @@ export default function CompensationPlateForm({
     const defaultMaterial = STEEL_MATERIALS[0];
     const standardSize = standardSizeId ? lookupPlateSizeById(standardSizeId) : null;
     const dimensions = standardSize
-      ? { lengthMm: standardSize.lengthMm, widthMm: standardSize.widthMm, thicknessMm: standardSize.thicknessMm }
+      ? {
+          lengthMm: standardSize.lengthMm,
+          widthMm: standardSize.widthMm,
+          thicknessMm: standardSize.thicknessMm,
+        }
       : defaultPlateDimensions();
 
     const result = calculateCompensationPlate(dimensions, defaultMaterial.id, null, 1);
@@ -70,8 +78,19 @@ export default function CompensationPlateForm({
             onClick={() => addNewPlate()}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
             Add Custom Plate
           </button>
@@ -99,11 +118,24 @@ export default function CompensationPlateForm({
 
       {entries.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-12 w-12 mx-auto text-gray-400 mb-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+            />
           </svg>
           <p className="text-gray-500 mb-2">No compensation plates added yet</p>
-          <p className="text-sm text-gray-400">Select a standard size above or click "Add Custom Plate"</p>
+          <p className="text-sm text-gray-400">
+            Select a standard size above or click "Add Custom Plate"
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -135,25 +167,37 @@ interface PlateEntryCardProps {
   onDuplicate: () => void;
 }
 
-function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onRemove, onDuplicate }: PlateEntryCardProps) {
+function PlateEntryCard({
+  entry,
+  index,
+  plateSizes,
+  plateSizeById,
+  onUpdate,
+  onRemove,
+  onDuplicate,
+}: PlateEntryCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [showCostOverride, setShowCostOverride] = useState(entry.costPerKgOverride !== null);
 
   const material = useMemo(() => steelMaterialById(entry.materialId), [entry.materialId]);
   const standardSize = useMemo(
     () => (entry.standardSizeId ? plateSizeById(entry.standardSizeId) : null),
-    [entry.standardSizeId, plateSizeById]
+    [entry.standardSizeId, plateSizeById],
   );
-  const validationErrors = useMemo(() => validatePlateDimensions(entry.dimensions), [entry.dimensions]);
+  const validationErrors = useMemo(
+    () => validatePlateDimensions(entry.dimensions),
+    [entry.dimensions],
+  );
 
-  const effectiveCostPerKg = entry.costPerKgOverride !== null ? entry.costPerKgOverride : (material?.defaultCostPerKg || 0);
+  const effectiveCostPerKg =
+    entry.costPerKgOverride !== null ? entry.costPerKgOverride : material?.defaultCostPerKg || 0;
 
   useEffect(() => {
     const result = calculateCompensationPlate(
       entry.dimensions,
       entry.materialId,
       entry.costPerKgOverride,
-      entry.quantity
+      entry.quantity,
     );
 
     if (
@@ -197,7 +241,7 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
 
   const sizeLabel = entry.isCustomSize
     ? `Custom ${entry.dimensions.lengthMm}×${entry.dimensions.widthMm}×${entry.dimensions.thicknessMm}mm`
-    : standardSize?.name || 'Unknown';
+    : standardSize?.name || "Unknown";
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -211,7 +255,7 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
           </span>
           <div>
             <h4 className="font-semibold text-gray-900">
-              Compensation Plate - {material?.code || 'Unknown'}
+              Compensation Plate - {material?.code || "Unknown"}
             </h4>
             <p className="text-sm text-gray-500">
               {sizeLabel} | Qty: {entry.quantity}
@@ -220,12 +264,16 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm font-medium text-gray-900">{formatWeight(entry.calculatedWeightKg)}</p>
-            <p className="text-sm font-bold text-green-600">{formatCurrency(entry.calculatedTotalCost)}</p>
+            <p className="text-sm font-medium text-gray-900">
+              {formatWeight(entry.calculatedWeightKg)}
+            </p>
+            <p className="text-sm font-bold text-green-600">
+              {formatCurrency(entry.calculatedTotalCost)}
+            </p>
           </div>
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className={`h-5 w-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`h-5 w-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -242,8 +290,19 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
               <ul className="text-sm text-red-700 space-y-1">
                 {validationErrors.map((error, i) => (
                   <li key={i} className="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                     {error}
                   </li>
@@ -256,9 +315,9 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Standard Size</label>
               <select
-                value={entry.standardSizeId || 'custom'}
+                value={entry.standardSizeId || "custom"}
                 onChange={(e) => {
-                  if (e.target.value === 'custom') {
+                  if (e.target.value === "custom") {
                     onUpdate({ isCustomSize: true, standardSizeId: null });
                   } else {
                     selectStandardSize(e.target.value);
@@ -268,25 +327,31 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
               >
                 <option value="custom">Custom Size</option>
                 <optgroup label="Small (100-150mm)">
-                  {plateSizes.filter((s) => s.category === 'small').map((size) => (
-                    <option key={size.id} value={size.id}>
-                      {size.name}
-                    </option>
-                  ))}
+                  {plateSizes
+                    .filter((s) => s.category === "small")
+                    .map((size) => (
+                      <option key={size.id} value={size.id}>
+                        {size.name}
+                      </option>
+                    ))}
                 </optgroup>
                 <optgroup label="Medium (200-250mm)">
-                  {plateSizes.filter((s) => s.category === 'medium').map((size) => (
-                    <option key={size.id} value={size.id}>
-                      {size.name}
-                    </option>
-                  ))}
+                  {plateSizes
+                    .filter((s) => s.category === "medium")
+                    .map((size) => (
+                      <option key={size.id} value={size.id}>
+                        {size.name}
+                      </option>
+                    ))}
                 </optgroup>
                 <optgroup label="Large (300-500mm)">
-                  {plateSizes.filter((s) => s.category === 'large').map((size) => (
-                    <option key={size.id} value={size.id}>
-                      {size.name}
-                    </option>
-                  ))}
+                  {plateSizes
+                    .filter((s) => s.category === "large")
+                    .map((size) => (
+                      <option key={size.id} value={size.id}>
+                        {size.name}
+                      </option>
+                    ))}
                 </optgroup>
               </select>
             </div>
@@ -310,7 +375,8 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
               </select>
               {material && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Density: {material.densityKgM3} kg/m³ | Default cost: R{material.defaultCostPerKg}/kg
+                  Density: {material.densityKgM3} kg/m³ | Default cost: R{material.defaultCostPerKg}
+                  /kg
                 </p>
               )}
             </div>
@@ -320,7 +386,9 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
             <h5 className="text-sm font-semibold text-gray-800 mb-3">
               Dimensions (mm)
               {!entry.isCustomSize && (
-                <span className="ml-2 text-xs font-normal text-purple-600">Standard size selected</span>
+                <span className="ml-2 text-xs font-normal text-purple-600">
+                  Standard size selected
+                </span>
               )}
             </h5>
             <div className="grid grid-cols-3 gap-3">
@@ -329,9 +397,9 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                 <input
                   type="number"
                   value={entry.dimensions.lengthMm}
-                  onChange={(e) => updateDimension('lengthMm', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => updateDimension("lengthMm", parseFloat(e.target.value) || 0)}
                   className={`w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    entry.isCustomSize ? 'border-gray-300' : 'border-purple-200 bg-purple-50'
+                    entry.isCustomSize ? "border-gray-300" : "border-purple-200 bg-purple-50"
                   }`}
                   min={1}
                   max={1000}
@@ -342,9 +410,9 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                 <input
                   type="number"
                   value={entry.dimensions.widthMm}
-                  onChange={(e) => updateDimension('widthMm', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => updateDimension("widthMm", parseFloat(e.target.value) || 0)}
                   className={`w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    entry.isCustomSize ? 'border-gray-300' : 'border-purple-200 bg-purple-50'
+                    entry.isCustomSize ? "border-gray-300" : "border-purple-200 bg-purple-50"
                   }`}
                   min={1}
                   max={1000}
@@ -355,9 +423,9 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                 <input
                   type="number"
                   value={entry.dimensions.thicknessMm}
-                  onChange={(e) => updateDimension('thicknessMm', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => updateDimension("thicknessMm", parseFloat(e.target.value) || 0)}
                   className={`w-full px-2 py-1.5 border rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                    entry.isCustomSize ? 'border-gray-300' : 'border-purple-200 bg-purple-50'
+                    entry.isCustomSize ? "border-gray-300" : "border-purple-200 bg-purple-50"
                   }`}
                   min={1}
                   max={50}
@@ -371,17 +439,17 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
               <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
               <input
                 type="number"
-                value={entry.quantity ?? ''}
+                value={entry.quantity ?? ""}
                 onChange={(e) => {
                   const rawValue = e.target.value;
-                  if (rawValue === '') {
+                  if (rawValue === "") {
                     onUpdate({ quantity: undefined });
                     return;
                   }
-                  onUpdate({ quantity: parseInt(rawValue) });
+                  onUpdate({ quantity: parseInt(rawValue, 10) });
                 }}
                 onBlur={(e) => {
-                  if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                  if (e.target.value === "" || parseInt(e.target.value, 10) < 1) {
                     onUpdate({ quantity: 1 });
                   }
                 }}
@@ -403,14 +471,16 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                   }}
                   className="text-xs text-purple-600 hover:text-purple-800"
                 >
-                  {showCostOverride ? 'Use default' : 'Override'}
+                  {showCostOverride ? "Use default" : "Override"}
                 </button>
               </div>
               {showCostOverride ? (
                 <input
                   type="number"
-                  value={entry.costPerKgOverride || ''}
-                  onChange={(e) => onUpdate({ costPerKgOverride: parseFloat(e.target.value) || null })}
+                  value={entry.costPerKgOverride || ""}
+                  onChange={(e) =>
+                    onUpdate({ costPerKgOverride: parseFloat(e.target.value) || null })
+                  }
                   placeholder={`Default: R${material?.defaultCostPerKg || 0}`}
                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
                   min={0}
@@ -424,10 +494,12 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notes (optional)
+              </label>
               <input
                 type="text"
-                value={entry.notes || ''}
+                value={entry.notes || ""}
                 onChange={(e) => onUpdate({ notes: e.target.value })}
                 placeholder="e.g., Purpose, location..."
                 className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -442,8 +514,19 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                 onClick={onDuplicate}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"
+                  />
                 </svg>
                 Duplicate
               </button>
@@ -452,8 +535,19 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
                 onClick={onRemove}
                 className="flex items-center gap-1 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
                 Remove
               </button>
@@ -463,15 +557,21 @@ function PlateEntryCard({ entry, index, plateSizes, plateSizeById, onUpdate, onR
               <div className="grid grid-cols-3 gap-4 text-right">
                 <div>
                   <p className="text-xs text-gray-500">Unit Weight</p>
-                  <p className="text-sm font-semibold text-gray-900">{formatWeight(entry.calculatedWeightKg)}</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {formatWeight(entry.calculatedWeightKg)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Unit Cost</p>
-                  <p className="text-sm font-semibold text-gray-900">{formatCurrency(entry.calculatedCostPerUnit)}</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {formatCurrency(entry.calculatedCostPerUnit)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Total Cost</p>
-                  <p className="text-sm font-bold text-green-600">{formatCurrency(entry.calculatedTotalCost)}</p>
+                  <p className="text-sm font-bold text-green-600">
+                    {formatCurrency(entry.calculatedTotalCost)}
+                  </p>
                 </div>
               </div>
             </div>

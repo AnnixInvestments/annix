@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class FixBoqNumberToMatchRfq1766000360000 implements MigrationInterface {
-  name = 'FixBoqNumberToMatchRfq1766000360000';
+  name = "FixBoqNumberToMatchRfq1766000360000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

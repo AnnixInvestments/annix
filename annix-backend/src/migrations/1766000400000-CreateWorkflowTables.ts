@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateWorkflowTables1766000400000 implements MigrationInterface {
-  name = 'CreateWorkflowTables1766000400000';
+  name = "CreateWorkflowTables1766000400000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create workflow_type enum
@@ -103,9 +103,7 @@ export class CreateWorkflowTables1766000400000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes
     await queryRunner.query(`DROP INDEX "IDX_review_workflows_is_active"`);
-    await queryRunner.query(
-      `DROP INDEX "IDX_review_workflows_assigned_reviewer"`,
-    );
+    await queryRunner.query(`DROP INDEX "IDX_review_workflows_assigned_reviewer"`);
     await queryRunner.query(`DROP INDEX "IDX_review_workflows_submitted_by"`);
     await queryRunner.query(`DROP INDEX "IDX_review_workflows_status"`);
     await queryRunner.query(`DROP INDEX "IDX_review_workflows_entity"`);

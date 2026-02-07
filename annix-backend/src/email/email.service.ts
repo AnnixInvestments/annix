@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-import { Transporter } from 'nodemailer';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as nodemailer from "nodemailer";
+import { Transporter } from "nodemailer";
 
 export interface EmailOptions {
   to: string;
@@ -21,10 +21,10 @@ export class EmailService {
   }
 
   private initializeTransporter(): void {
-    const host = this.configService.get<string>('SMTP_HOST');
-    const port = this.configService.get<number>('SMTP_PORT');
-    const user = this.configService.get<string>('SMTP_USER');
-    const pass = this.configService.get<string>('SMTP_PASS');
+    const host = this.configService.get<string>("SMTP_HOST");
+    const port = this.configService.get<number>("SMTP_PORT");
+    const user = this.configService.get<string>("SMTP_USER");
+    const pass = this.configService.get<string>("SMTP_PASS");
 
     if (host && port && user && pass) {
       this.transporter = nodemailer.createTransport({
@@ -37,25 +37,22 @@ export class EmailService {
         },
       });
       this.isConfigured = true;
-      this.logger.log('Email transporter configured successfully');
+      this.logger.log("Email transporter configured successfully");
     } else {
-      this.logger.warn(
-        'SMTP not configured - emails will be logged to console',
-      );
+      this.logger.warn("SMTP not configured - emails will be logged to console");
     }
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    const from =
-      this.configService.get<string>('EMAIL_FROM') || 'noreply@annix.com';
+    const from = this.configService.get<string>("EMAIL_FROM") || "noreply@annix.com";
 
     if (!this.isConfigured) {
-      this.logger.log('=== EMAIL (Console Mode) ===');
+      this.logger.log("=== EMAIL (Console Mode) ===");
       this.logger.log(`To: ${options.to}`);
       this.logger.log(`From: ${from}`);
       this.logger.log(`Subject: ${options.subject}`);
       this.logger.log(`Body: ${options.text || options.html}`);
-      this.logger.log('=== END EMAIL ===');
+      this.logger.log("=== END EMAIL ===");
       return true;
     }
 
@@ -75,12 +72,8 @@ export class EmailService {
     }
   }
 
-  async sendSupplierVerificationEmail(
-    email: string,
-    verificationToken: string,
-  ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+  async sendSupplierVerificationEmail(email: string, verificationToken: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/supplier/verify-email?token=${verificationToken}`;
 
     const html = `
@@ -126,18 +119,14 @@ export class EmailService {
 
     return this.sendEmail({
       to: email,
-      subject: 'Verify Your Email - Annix Supplier Portal',
+      subject: "Verify Your Email - Annix Supplier Portal",
       html,
       text,
     });
   }
 
-  async sendSupplierApprovalEmail(
-    email: string,
-    companyName: string,
-  ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+  async sendSupplierApprovalEmail(email: string, companyName: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const portalLink = `${frontendUrl}/supplier/portal/dashboard`;
 
     const html = `
@@ -174,7 +163,7 @@ export class EmailService {
 
     return this.sendEmail({
       to: email,
-      subject: 'Onboarding Approved - Annix Supplier Portal',
+      subject: "Onboarding Approved - Annix Supplier Portal",
       html,
     });
   }
@@ -185,8 +174,7 @@ export class EmailService {
     reason: string,
     remediationSteps: string,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const onboardingLink = `${frontendUrl}/supplier/portal/onboarding`;
 
     const html = `
@@ -228,19 +216,15 @@ export class EmailService {
 
     return this.sendEmail({
       to: email,
-      subject: 'Action Required - Annix Supplier Onboarding',
+      subject: "Action Required - Annix Supplier Onboarding",
       html,
     });
   }
 
   // Customer Portal Email Methods
 
-  async sendCustomerVerificationEmail(
-    email: string,
-    verificationToken: string,
-  ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+  async sendCustomerVerificationEmail(email: string, verificationToken: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/customer/verify-email?token=${verificationToken}`;
 
     const html = `
@@ -286,18 +270,14 @@ export class EmailService {
 
     return this.sendEmail({
       to: email,
-      subject: 'Verify Your Email - Annix Customer Portal',
+      subject: "Verify Your Email - Annix Customer Portal",
       html,
       text,
     });
   }
 
-  async sendCustomerOnboardingApprovalEmail(
-    email: string,
-    companyName: string,
-  ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+  async sendCustomerOnboardingApprovalEmail(email: string, companyName: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const portalLink = `${frontendUrl}/customer/portal/dashboard`;
 
     const html = `
@@ -334,7 +314,7 @@ export class EmailService {
 
     return this.sendEmail({
       to: email,
-      subject: 'Onboarding Approved - Annix Customer Portal',
+      subject: "Onboarding Approved - Annix Customer Portal",
       html,
     });
   }
@@ -345,8 +325,7 @@ export class EmailService {
     reason: string,
     remediationSteps: string,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const onboardingLink = `${frontendUrl}/customer/portal/onboarding`;
 
     const html = `
@@ -388,7 +367,7 @@ export class EmailService {
 
     return this.sendEmail({
       to: email,
-      subject: 'Action Required - Annix Customer Onboarding',
+      subject: "Action Required - Annix Customer Onboarding",
       html,
     });
   }
@@ -399,8 +378,7 @@ export class EmailService {
     invitationToken: string,
     message?: string,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const registerLink = `${frontendUrl}/supplier/register?invitation=${invitationToken}`;
 
     const html = `
@@ -422,7 +400,7 @@ export class EmailService {
             <p style="margin: 5px 0 0 0;">${message}</p>
           </div>
           `
-              : ''
+              : ""
           }
           <p>As a registered supplier, you'll be able to:</p>
           <ul>
@@ -462,11 +440,9 @@ export class EmailService {
     documentType: string,
     reason: string,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const adminLink = `${frontendUrl}/admin/customers/${customerId}`;
-    const supportEmail =
-      this.configService.get<string>('SUPPORT_EMAIL') || 'info@annix.co.za';
+    const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "info@annix.co.za";
 
     const html = `
       <!DOCTYPE html>
@@ -527,11 +503,9 @@ export class EmailService {
     documentType: string,
     reason: string,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const adminLink = `${frontendUrl}/admin/suppliers/${supplierId}`;
-    const supportEmail =
-      this.configService.get<string>('SUPPORT_EMAIL') || 'info@annix.co.za';
+    const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "info@annix.co.za";
 
     const html = `
       <!DOCTYPE html>
@@ -592,8 +566,7 @@ export class EmailService {
     inviterName: string,
     message?: string,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const registerLink = `${frontendUrl}/customer/register?email=${encodeURIComponent(email)}`;
 
     const html = `
@@ -615,7 +588,7 @@ export class EmailService {
             <p style="margin: 5px 0 0 0;">${message}</p>
           </div>
           `
-              : ''
+              : ""
           }
           <p>As a registered customer, you'll be able to:</p>
           <ul>
@@ -652,8 +625,7 @@ export class EmailService {
     inviterName: string,
     message?: string,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const registerLink = `${frontendUrl}/supplier/register?email=${encodeURIComponent(email)}`;
 
     const html = `
@@ -675,7 +647,7 @@ export class EmailService {
             <p style="margin: 5px 0 0 0;">${message}</p>
           </div>
           `
-              : ''
+              : ""
           }
           <p>As a registered supplier, you'll be able to:</p>
           <ul>
@@ -722,25 +694,24 @@ export class EmailService {
       company?: string;
     },
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const boqLink = `${frontendUrl}/supplier/portal/boqs`;
 
-    const sectionsList = sections.map((s) => `<li>${s}</li>`).join('');
+    const sectionsList = sections.map((s) => `<li>${s}</li>`).join("");
 
     const customerSection = customerDetails
       ? `
         <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
           <strong>Customer Details:</strong>
           <p style="margin: 5px 0 0 0;">
-            ${customerDetails.company ? `<strong>Company:</strong> ${customerDetails.company}<br/>` : ''}
+            ${customerDetails.company ? `<strong>Company:</strong> ${customerDetails.company}<br/>` : ""}
             <strong>Contact:</strong> ${customerDetails.name}<br/>
             <strong>Email:</strong> ${customerDetails.email}
-            ${customerDetails.phone ? `<br/><strong>Phone:</strong> ${customerDetails.phone}` : ''}
+            ${customerDetails.phone ? `<br/><strong>Phone:</strong> ${customerDetails.phone}` : ""}
           </p>
         </div>
       `
-      : '';
+      : "";
 
     const html = `
       <!DOCTYPE html>
@@ -797,9 +768,9 @@ export class EmailService {
       BOQ Number: ${boqNumber}
 
       Sections you can quote on:
-      ${sections.map((s) => `- ${s}`).join('\n')}
+      ${sections.map((s) => `- ${s}`).join("\n")}
 
-      ${customerDetails ? `Customer: ${customerDetails.company || customerDetails.name}` : ''}
+      ${customerDetails ? `Customer: ${customerDetails.company || customerDetails.name}` : ""}
 
       View the BOQ at: ${boqLink}
     `;
@@ -819,11 +790,10 @@ export class EmailService {
     boqNumber: string,
     sections: string[],
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const boqLink = `${frontendUrl}/supplier/portal/boqs`;
 
-    const sectionsList = sections.map((s) => `<li>${s}</li>`).join('');
+    const sectionsList = sections.map((s) => `<li>${s}</li>`).join("");
 
     const html = `
       <!DOCTYPE html>
@@ -879,8 +849,7 @@ export class EmailService {
     name: string,
     temporaryPassword: string,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const adminLoginLink = `${frontendUrl}/admin/login`;
 
     const html = `
@@ -951,7 +920,7 @@ export class EmailService {
 
     return this.sendEmail({
       to: email,
-      subject: 'Welcome to Annix Admin Portal - Your Account Details',
+      subject: "Welcome to Annix Admin Portal - Your Account Details",
       html,
       text,
     });
@@ -963,8 +932,7 @@ export class EmailService {
     projectName: string,
     rfqNumber: string,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const rfqLink = `${frontendUrl}/supplier/portal/boqs`;
 
     const html = `
@@ -1020,8 +988,7 @@ export class EmailService {
     expiryDate: string,
     beeLevel: number | null,
   ): Promise<boolean> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const documentsLink = `${frontendUrl}/customer/portal/documents`;
 
     const html = `
@@ -1050,7 +1017,7 @@ export class EmailService {
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #6b7280;">Current BEE Level:</td>
-                <td style="padding: 8px 0; font-weight: bold;">${beeLevel !== null ? `Level ${beeLevel}` : 'Not specified'}</td>
+                <td style="padding: 8px 0; font-weight: bold;">${beeLevel !== null ? `Level ${beeLevel}` : "Not specified"}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #6b7280;">Expiry Date:</td>
@@ -1090,7 +1057,7 @@ Dear ${contactName},
 This is a reminder that the BEE certificate for ${companyName} has reached its expiry date.
 
 Company: ${companyName}
-Current BEE Level: ${beeLevel !== null ? `Level ${beeLevel}` : 'Not specified'}
+Current BEE Level: ${beeLevel !== null ? `Level ${beeLevel}` : "Not specified"}
 Expiry Date: ${expiryDate}
 
 Action Required:

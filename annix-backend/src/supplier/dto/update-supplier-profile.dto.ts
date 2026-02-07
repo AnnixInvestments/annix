@@ -1,23 +1,23 @@
-import { IsString, IsOptional, IsBoolean, MaxLength } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsZAPhone } from '../../shared/validators';
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsBoolean, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsZAPhone } from "../../shared/validators";
 
 export class UpdateSupplierProfileDto {
-  @ApiPropertyOptional({ description: 'First name', example: 'John' })
+  @ApiPropertyOptional({ description: "First name", example: "John" })
   @IsString()
   @IsOptional()
   @MaxLength(100)
   firstName?: string;
 
-  @ApiPropertyOptional({ description: 'Last name', example: 'Smith' })
+  @ApiPropertyOptional({ description: "Last name", example: "Smith" })
   @IsString()
   @IsOptional()
   @MaxLength(100)
   lastName?: string;
 
   @ApiPropertyOptional({
-    description: 'Job title or role',
-    example: 'Sales Manager',
+    description: "Job title or role",
+    example: "Sales Manager",
   })
   @IsString()
   @IsOptional()
@@ -25,8 +25,8 @@ export class UpdateSupplierProfileDto {
   jobTitle?: string;
 
   @ApiPropertyOptional({
-    description: 'Direct phone number',
-    example: '+27 21 555 0125',
+    description: "Direct phone number",
+    example: "+27 21 555 0125",
   })
   @IsString()
   @IsOptional()
@@ -35,8 +35,8 @@ export class UpdateSupplierProfileDto {
   directPhone?: string;
 
   @ApiPropertyOptional({
-    description: 'Mobile phone number',
-    example: '+27 82 555 0123',
+    description: "Mobile phone number",
+    example: "+27 82 555 0123",
   })
   @IsString()
   @IsOptional()
@@ -44,12 +44,12 @@ export class UpdateSupplierProfileDto {
   @IsZAPhone()
   mobilePhone?: string;
 
-  @ApiPropertyOptional({ description: 'Accept terms and conditions' })
+  @ApiPropertyOptional({ description: "Accept terms and conditions" })
   @IsBoolean()
   @IsOptional()
   acceptTerms?: boolean;
 
-  @ApiPropertyOptional({ description: 'Accept security policy' })
+  @ApiPropertyOptional({ description: "Accept security policy" })
   @IsBoolean()
   @IsOptional()
   acceptSecurityPolicy?: boolean;

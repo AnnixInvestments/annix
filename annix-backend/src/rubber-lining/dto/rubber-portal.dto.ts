@@ -1,20 +1,17 @@
+import { Type } from "class-transformer";
 import {
-  IsString,
-  IsNumber,
-  IsOptional,
   IsArray,
   IsBoolean,
   IsEnum,
+  IsNumber,
   IsObject,
+  IsOptional,
+  IsString,
   ValidateNested,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { ProductCodingType } from '../entities/rubber-product-coding.entity';
-import {
-  RubberOrderStatus,
-  StatusHistoryEvent,
-} from '../entities/rubber-order.entity';
-import { CallOff } from '../entities/rubber-order-item.entity';
+} from "class-validator";
+import { RubberOrderStatus, StatusHistoryEvent } from "../entities/rubber-order.entity";
+import { CallOff } from "../entities/rubber-order-item.entity";
+import { ProductCodingType } from "../entities/rubber-product-coding.entity";
 
 export class RubberProductCodingDto {
   id: number;
@@ -527,7 +524,7 @@ export class ImportProductsRequestDto {
 
 export class ImportProductRowResultDto {
   rowIndex: number;
-  status: 'created' | 'updated' | 'failed' | 'skipped';
+  status: "created" | "updated" | "failed" | "skipped";
   title: string | null;
   errors: string[];
   productId?: number;

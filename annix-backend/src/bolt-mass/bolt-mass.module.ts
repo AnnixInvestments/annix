@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { BoltMassService } from './bolt-mass.service';
-import { BoltMassController } from './bolt-mass.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { BoltMass } from './entities/bolt-mass.entity';
-import { Bolt } from 'src/bolt/entities/bolt.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { Bolt } from "src/bolt/entities/bolt.entity";
+import { BoltMassController } from "./bolt-mass.controller";
+import { BoltMassService } from "./bolt-mass.service";
+import { BoltMass } from "./entities/bolt-mass.entity";
 
 @Module({
   imports: [TypeOrmModule.forFeature([BoltMass, Bolt])],

@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content: string = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content: string = fs.readFileSync(filePath, "utf8");
 
 // Problem: Surface Protection is nested inside !steelPipesSpecsConfirmed block
 // The closures at lines 6969-6972 should be BEFORE Surface Protection at line 3865
@@ -21,9 +21,9 @@ const newClosuresRemoved = `
 
 if (content.includes(oldClosures)) {
   content = content.replace(oldClosures, newClosuresRemoved);
-  console.log('Step 1: Removed closures from after Surface Protection');
+  console.log("Step 1: Removed closures from after Surface Protection");
 } else {
-  console.log('Step 1: Could not find closures to remove');
+  console.log("Step 1: Could not find closures to remove");
 }
 
 // Step 2: Add closures BEFORE Surface Protection section starts
@@ -74,10 +74,10 @@ const withClosuresBeforeSurfaceProtection = `            </>
 
 if (content.includes(beforeSurfaceProtection)) {
   content = content.replace(beforeSurfaceProtection, withClosuresBeforeSurfaceProtection);
-  console.log('Step 2: Added closures before Surface Protection section');
+  console.log("Step 2: Added closures before Surface Protection section");
 } else {
-  console.log('Step 2: Could not find Surface Protection section to add closures');
+  console.log("Step 2: Could not find Surface Protection section to add closures");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('File saved');
+console.log("File saved");

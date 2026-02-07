@@ -1,13 +1,9 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { CreateNbNpsLookupDto } from './dto/create-nb-nps-lookup.dto';
-import { UpdateNbNpsLookupDto } from './dto/update-nb-nps-lookup.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NbNpsLookup } from './entities/nb-nps-lookup.entity';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CreateNbNpsLookupDto } from "./dto/create-nb-nps-lookup.dto";
+import { UpdateNbNpsLookupDto } from "./dto/update-nb-nps-lookup.dto";
+import { NbNpsLookup } from "./entities/nb-nps-lookup.entity";
 
 @Injectable()
 export class NbNpsLookupService {

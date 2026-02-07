@@ -1,33 +1,29 @@
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CalculatePvcFittingCostDto } from "./dto/calculate-fitting-cost.dto";
+import { CalculatePvcPipeCostDto } from "./dto/calculate-pipe-cost.dto";
+import { CalculatePvcTotalTransportDto } from "./dto/calculate-total-transport.dto";
+import { PvcFittingCostResponseDto } from "./dto/fitting-cost-response.dto";
+import { PvcPipeCostResponseDto } from "./dto/pipe-cost-response.dto";
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PvcPipeSpecification } from './entities/pvc-pipe-specification.entity';
-import { PvcFittingType } from './entities/pvc-fitting-type.entity';
-import { PvcFittingWeight } from './entities/pvc-fitting-weight.entity';
-import { PvcCementPrice } from './entities/pvc-cement-price.entity';
-import { PvcStandard } from './entities/pvc-standard.entity';
-import { CalculatePvcPipeCostDto } from './dto/calculate-pipe-cost.dto';
-import { CalculatePvcFittingCostDto } from './dto/calculate-fitting-cost.dto';
-import { CalculatePvcTotalTransportDto } from './dto/calculate-total-transport.dto';
-import { PvcPipeCostResponseDto } from './dto/pipe-cost-response.dto';
-import { PvcFittingCostResponseDto } from './dto/fitting-cost-response.dto';
-import {
-  PvcTransportWeightResponseDto,
   PvcTransportItemWeightDto,
-} from './dto/transport-weight-response.dto';
+  PvcTransportWeightResponseDto,
+} from "./dto/transport-weight-response.dto";
+import { PvcCementPrice } from "./entities/pvc-cement-price.entity";
+import { PvcFittingType } from "./entities/pvc-fitting-type.entity";
+import { PvcFittingWeight } from "./entities/pvc-fitting-weight.entity";
+import { PvcPipeSpecification } from "./entities/pvc-pipe-specification.entity";
+import { PvcStandard } from "./entities/pvc-standard.entity";
 
 /**
  * PVC Type densities in kg/m³
  */
 const PVC_DENSITIES: { [key: string]: number } = {
-  'PVC-U': 1400,
+  "PVC-U": 1400,
   CPVC: 1520,
-  'PVC-O': 1420,
-  'PVC-M': 1400,
+  "PVC-O": 1420,
+  "PVC-M": 1400,
 };
 
 /**
@@ -105,17 +101,13 @@ export class PvcService {
    * @param pvcType - PVC material type ('PVC-U' or 'PVC-C'), defaults to 'PVC-U'
    * @returns Weight in kg per meter, rounded to 2 decimal places. Returns 0 if wall thickness not found.
    */
-  private calculateWeightKgPerM(
-    dn: number,
-    pn: number,
-    pvcType: string = 'PVC-U',
-  ): number {
+  private calculateWeightKgPerM(dn: number, pn: number, pvcType: string = "PVC-U"): number {
     const wall = this.getWallThickness(dn, pn, pvcType);
     if (wall === 0) return 0;
 
     const od = dn; // For PVC-U, OD = DN
     const id = od - 2 * wall;
-    const density = PVC_DENSITIES[pvcType] || PVC_DENSITIES['PVC-U'];
+    const density = PVC_DENSITIES[pvcType] || PVC_DENSITIES["PVC-U"];
 
     // Area = π/4 * (OD² - ID²) in mm², convert to m² (* 1e-6)
     const area = (Math.PI / 4) * (od ** 2 - id ** 2) * 1e-6;
@@ -125,12 +117,8 @@ export class PvcService {
   /**
    * Get wall thickness from EN 1452 lookup table
    */
-  private getWallThickness(
-    dn: number,
-    pn: number,
-    pvcType: string = 'PVC-U',
-  ): number {
-    if (pvcType === 'PVC-U' && PVC_U_WALL_THICKNESS[dn]) {
+  private getWallThickness(dn: number, pn: number, pvcType: string = "PVC-U"): number {
+    if (pvcType === "PVC-U" && PVC_U_WALL_THICKNESS[dn]) {
       return PVC_U_WALL_THICKNESS[dn][pn] || 0;
     }
     // For other PVC types, approximate using SDR formula (to be expanded)
@@ -141,7 +129,7 @@ export class PvcService {
   async getAllStandards() {
     return this.standardRepo.find({
       where: { isActive: true },
-      order: { displayOrder: 'ASC', name: 'ASC' },
+      order: { displayOrder: "ASC", name: "ASC" },
     });
   }
 
@@ -159,21 +147,21 @@ export class PvcService {
   async getAllPipeSpecifications() {
     return this.pipeSpecRepo.find({
       where: { isActive: true },
-      order: { nominalDiameter: 'ASC', pressureRating: 'ASC' },
+      order: { nominalDiameter: "ASC", pressureRating: "ASC" },
     });
   }
 
   async getPipeSpecificationsByDN(nominalDiameter: number) {
     return this.pipeSpecRepo.find({
       where: { nominalDiameter, isActive: true },
-      order: { pressureRating: 'ASC' },
+      order: { pressureRating: "ASC" },
     });
   }
 
   async getPipeSpecification(
     nominalDiameter: number,
     pressureRating: number,
-    pvcType: string = 'PVC-U',
+    pvcType: string = "PVC-U",
   ) {
     const spec = await this.pipeSpecRepo.findOne({
       where: { nominalDiameter, pressureRating, pvcType, isActive: true },
@@ -182,11 +170,7 @@ export class PvcService {
     if (spec) return spec;
 
     // If not in database, calculate from EN 1452 lookup table
-    const wallThickness = this.getWallThickness(
-      nominalDiameter,
-      pressureRating,
-      pvcType,
-    );
+    const wallThickness = this.getWallThickness(nominalDiameter, pressureRating, pvcType);
     if (wallThickness === 0) {
       throw new NotFoundException(
         `Pipe specification for DN ${nominalDiameter} and PN ${pressureRating} (${pvcType}) is not available`,
@@ -194,11 +178,7 @@ export class PvcService {
     }
 
     const innerDiameter = nominalDiameter - 2 * wallThickness;
-    const weightKgPerM = this.calculateWeightKgPerM(
-      nominalDiameter,
-      pressureRating,
-      pvcType,
-    );
+    const weightKgPerM = this.calculateWeightKgPerM(nominalDiameter, pressureRating, pvcType);
 
     return {
       nominalDiameter,
@@ -208,7 +188,7 @@ export class PvcService {
       innerDiameter,
       weightKgPerM,
       pvcType,
-      standard: 'EN_1452',
+      standard: "EN_1452",
     };
   }
 
@@ -216,7 +196,7 @@ export class PvcService {
   async getAllFittingTypes() {
     return this.fittingTypeRepo.find({
       where: { isActive: true },
-      order: { displayOrder: 'ASC', name: 'ASC' },
+      order: { displayOrder: "ASC", name: "ASC" },
     });
   }
 
@@ -234,7 +214,7 @@ export class PvcService {
   async getFittingWeights(fittingTypeId: number) {
     return this.fittingWeightRepo.find({
       where: { fittingTypeId, isActive: true },
-      order: { nominalDiameter: 'ASC' },
+      order: { nominalDiameter: "ASC" },
     });
   }
 
@@ -278,18 +258,11 @@ export class PvcService {
   }
 
   // ========== Calculations ==========
-  async calculatePipeCost(
-    dto: CalculatePvcPipeCostDto,
-  ): Promise<PvcPipeCostResponseDto> {
-    const pvcType = dto.pvcType || 'PVC-U';
-    const spec = await this.getPipeSpecification(
-      dto.nominalDiameter,
-      dto.pressureRating,
-      pvcType,
-    );
+  async calculatePipeCost(dto: CalculatePvcPipeCostDto): Promise<PvcPipeCostResponseDto> {
+    const pvcType = dto.pvcType || "PVC-U";
+    const spec = await this.getPipeSpecification(dto.nominalDiameter, dto.pressureRating, pvcType);
     const cementJointPrice =
-      dto.cementJointPrice ??
-      (await this.getCementJointPrice(dto.nominalDiameter));
+      dto.cementJointPrice ?? (await this.getCementJointPrice(dto.nominalDiameter));
 
     const weightKgPerM = Number(spec.weightKgPerM);
     const totalWeight = weightKgPerM * dto.length;
@@ -317,9 +290,7 @@ export class PvcService {
     };
   }
 
-  async calculateFittingCost(
-    dto: CalculatePvcFittingCostDto,
-  ): Promise<PvcFittingCostResponseDto> {
+  async calculateFittingCost(dto: CalculatePvcFittingCostDto): Promise<PvcFittingCostResponseDto> {
     const fittingType = await this.getFittingTypeByCode(dto.fittingTypeCode);
     const weightData = await this.getFittingWeight(
       dto.fittingTypeCode,
@@ -327,8 +298,7 @@ export class PvcService {
       dto.pressureRating,
     );
     const cementJointPrice =
-      dto.cementJointPrice ??
-      (await this.getCementJointPrice(dto.nominalDiameter));
+      dto.cementJointPrice ?? (await this.getCementJointPrice(dto.nominalDiameter));
 
     const weightKg = Number(weightData.weightKg);
     const numJoints = fittingType.numJoints;
@@ -363,16 +333,13 @@ export class PvcService {
       let weightKg = 0;
       const quantity = item.quantity || 1;
 
-      if (item.type === 'straight_pipe') {
+      if (item.type === "straight_pipe") {
         if (!item.pressureRating || !item.length) {
           throw new BadRequestException(
-            'pressureRating and length are required for straight_pipe items',
+            "pressureRating and length are required for straight_pipe items",
           );
         }
-        const spec = await this.getPipeSpecification(
-          item.nominalDiameter,
-          item.pressureRating,
-        );
+        const spec = await this.getPipeSpecification(item.nominalDiameter, item.pressureRating);
         weightKg = Number(spec.weightKgPerM) * item.length * quantity;
       } else {
         const weightData = await this.getFittingWeight(
@@ -406,22 +373,18 @@ export class PvcService {
   async getAvailableNominalDiameters(): Promise<number[]> {
     // Return from static list first, then merge with database
     const dbPipes = await this.pipeSpecRepo
-      .createQueryBuilder('pipe')
-      .select('DISTINCT pipe.nominalDiameter', 'dn')
-      .where('pipe.isActive = :active', { active: true })
-      .orderBy('pipe.nominalDiameter', 'ASC')
+      .createQueryBuilder("pipe")
+      .select("DISTINCT pipe.nominalDiameter", "dn")
+      .where("pipe.isActive = :active", { active: true })
+      .orderBy("pipe.nominalDiameter", "ASC")
       .getRawMany();
 
     const dbDNs = dbPipes.map((p) => p.dn);
-    const allDNs = [...new Set([...PVC_U_SIZES, ...dbDNs])].sort(
-      (a, b) => a - b,
-    );
+    const allDNs = [...new Set([...PVC_U_SIZES, ...dbDNs])].sort((a, b) => a - b);
     return allDNs;
   }
 
-  async getAvailablePressureRatings(
-    nominalDiameter: number,
-  ): Promise<number[]> {
+  async getAvailablePressureRatings(nominalDiameter: number): Promise<number[]> {
     // Get available PN values for a given DN from EN 1452 table
     const pns: number[] = [];
 
@@ -436,7 +399,7 @@ export class PvcService {
     // Also check database
     const dbPipes = await this.pipeSpecRepo.find({
       where: { nominalDiameter, isActive: true },
-      order: { pressureRating: 'ASC' },
+      order: { pressureRating: "ASC" },
     });
 
     const dbPNs = dbPipes.map((p) => Number(p.pressureRating));
@@ -447,13 +410,13 @@ export class PvcService {
    * Get EN 1452 specification directly (without database lookup)
    */
   getEN1452Specification(dn: number, pn: number) {
-    const wallThickness = this.getWallThickness(dn, pn, 'PVC-U');
+    const wallThickness = this.getWallThickness(dn, pn, "PVC-U");
     if (wallThickness === 0) {
       return null;
     }
 
     const innerDiameter = dn - 2 * wallThickness;
-    const weightKgPerM = this.calculateWeightKgPerM(dn, pn, 'PVC-U');
+    const weightKgPerM = this.calculateWeightKgPerM(dn, pn, "PVC-U");
 
     return {
       nominalDiameter: dn,
@@ -462,8 +425,8 @@ export class PvcService {
       wallThickness,
       innerDiameter,
       weightKgPerM,
-      pvcType: 'PVC-U',
-      standard: 'EN_1452',
+      pvcType: "PVC-U",
+      standard: "EN_1452",
     };
   }
 

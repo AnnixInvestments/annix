@@ -1,33 +1,33 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { RfqService } from './rfq.service';
-import { NotFoundException } from '@nestjs/common';
-import { Rfq } from './entities/rfq.entity';
-import { RfqItem } from './entities/rfq-item.entity';
-import { StraightPipeRfq } from './entities/straight-pipe-rfq.entity';
-import { BendRfq } from './entities/bend-rfq.entity';
-import { FittingRfq } from './entities/fitting-rfq.entity';
-import { ExpansionJointRfq } from './entities/expansion-joint-rfq.entity';
-import { ValveRfq } from './entities/valve-rfq.entity';
-import { InstrumentRfq } from './entities/instrument-rfq.entity';
-import { PumpRfq } from './entities/pump-rfq.entity';
-import { RfqDocument } from './entities/rfq-document.entity';
-import { RfqDraft } from './entities/rfq-draft.entity';
-import { RfqSequence } from './entities/rfq-sequence.entity';
-import { User } from '../user/entities/user.entity';
-import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
-import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
-import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
-import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
-import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
-import { NutMass } from '../nut-mass/entities/nut-mass.entity';
-import { Boq } from '../boq/entities/boq.entity';
-import { BoqSupplierAccess } from '../boq/entities/boq-supplier-access.entity';
-import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
-import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
-import { EmailService } from '../email/email.service';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
+import { Boq } from "../boq/entities/boq.entity";
+import { BoqSupplierAccess } from "../boq/entities/boq-supplier-access.entity";
+import { EmailService } from "../email/email.service";
+import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
+import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
+import { NutMass } from "../nut-mass/entities/nut-mass.entity";
+import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
+import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
+import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
+import { User } from "../user/entities/user.entity";
+import { BendRfq } from "./entities/bend-rfq.entity";
+import { ExpansionJointRfq } from "./entities/expansion-joint-rfq.entity";
+import { FittingRfq } from "./entities/fitting-rfq.entity";
+import { InstrumentRfq } from "./entities/instrument-rfq.entity";
+import { PumpRfq } from "./entities/pump-rfq.entity";
+import { Rfq } from "./entities/rfq.entity";
+import { RfqDocument } from "./entities/rfq-document.entity";
+import { RfqDraft } from "./entities/rfq-draft.entity";
+import { RfqItem } from "./entities/rfq-item.entity";
+import { RfqSequence } from "./entities/rfq-sequence.entity";
+import { StraightPipeRfq } from "./entities/straight-pipe-rfq.entity";
+import { ValveRfq } from "./entities/valve-rfq.entity";
+import { RfqService } from "./rfq.service";
 
-describe('RfqService', () => {
+describe("RfqService", () => {
   let service: RfqService;
 
   const mockRfqRepo = {
@@ -294,13 +294,13 @@ describe('RfqService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('findAllRfqs', () => {
-    it('should return array of RFQs', async () => {
-      const rfqs = [{ id: 1, rfqNumber: 'RFQ-2024-0001' }] as Rfq[];
+  describe("findAllRfqs", () => {
+    it("should return array of RFQs", async () => {
+      const rfqs = [{ id: 1, rfqNumber: "RFQ-2024-0001" }] as Rfq[];
       mockRfqRepo.find.mockResolvedValue(rfqs);
 
       const result = await service.findAllRfqs();
@@ -308,14 +308,14 @@ describe('RfqService', () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         id: 1,
-        rfqNumber: 'RFQ-2024-0001',
+        rfqNumber: "RFQ-2024-0001",
       });
     });
   });
 
-  describe('findRfqById', () => {
-    it('should return an RFQ by id', async () => {
-      const rfq = { id: 1, rfqNumber: 'RFQ-2024-0001' } as Rfq;
+  describe("findRfqById", () => {
+    it("should return an RFQ by id", async () => {
+      const rfq = { id: 1, rfqNumber: "RFQ-2024-0001" } as Rfq;
       mockRfqRepo.findOne.mockResolvedValue(rfq);
 
       const result = await service.findRfqById(1);
@@ -324,22 +324,22 @@ describe('RfqService', () => {
       expect(mockRfqRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
         relations: [
-          'items',
-          'items.straightPipeDetails',
-          'items.straightPipeDetails.steelSpecification',
-          'items.bendDetails',
-          'items.fittingDetails',
-          'items.expansionJointDetails',
-          'items.valveDetails',
-          'items.instrumentDetails',
-          'items.pumpDetails',
-          'drawings',
-          'boqs',
+          "items",
+          "items.straightPipeDetails",
+          "items.straightPipeDetails.steelSpecification",
+          "items.bendDetails",
+          "items.fittingDetails",
+          "items.expansionJointDetails",
+          "items.valveDetails",
+          "items.instrumentDetails",
+          "items.pumpDetails",
+          "drawings",
+          "boqs",
         ],
       });
     });
 
-    it('should throw NotFoundException if RFQ not found', async () => {
+    it("should throw NotFoundException if RFQ not found", async () => {
       mockRfqRepo.findOne.mockResolvedValue(null);
 
       await expect(service.findRfqById(1)).rejects.toThrow(NotFoundException);

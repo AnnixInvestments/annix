@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddExtendedMaterialsAndWashers1770700000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -25,70 +25,52 @@ export class AddExtendedMaterialsAndWashers1770700000000 implements MigrationInt
 
     const newMaterials = [
       [
-        'Carbon Steel A350 LF2 (Group 1.2)',
-        'ASTM A320 L7',
-        'ASTM A320 L7',
-        'ASTM A194 4',
-        'ASTM F436',
+        "Carbon Steel A350 LF2 (Group 1.2)",
+        "ASTM A320 L7",
+        "ASTM A320 L7",
+        "ASTM A194 4",
+        "ASTM F436",
       ],
       [
-        'Alloy Steel A182 F11 (Group 2.3)',
-        'ASTM A193 B7',
-        'ASTM A193 B7',
-        'ASTM A194 2H',
-        'ASTM F436',
+        "Alloy Steel A182 F11 (Group 2.3)",
+        "ASTM A193 B7",
+        "ASTM A193 B7",
+        "ASTM A194 2H",
+        "ASTM F436",
       ],
       [
-        'Alloy Steel A182 F22 (Group 2.4)',
-        'ASTM A193 B7',
-        'ASTM A193 B7',
-        'ASTM A194 2H',
-        'ASTM F436',
+        "Alloy Steel A182 F22 (Group 2.4)",
+        "ASTM A193 B7",
+        "ASTM A193 B7",
+        "ASTM A194 2H",
+        "ASTM F436",
       ],
       [
-        'Duplex SS A182 F51 (Group 3.1)',
-        'ASTM A193 B8M',
-        'ASTM A193 B8M',
-        'ASTM A194 8M',
-        'ASTM F844',
+        "Duplex SS A182 F51 (Group 3.1)",
+        "ASTM A193 B8M",
+        "ASTM A193 B8M",
+        "ASTM A194 8M",
+        "ASTM F844",
       ],
       [
-        'Super Duplex SS A182 F55 (Group 3.2)',
-        'ASTM A193 B8M',
-        'ASTM A193 B8M',
-        'ASTM A194 8M',
-        'ASTM F844',
+        "Super Duplex SS A182 F55 (Group 3.2)",
+        "ASTM A193 B8M",
+        "ASTM A193 B8M",
+        "ASTM A194 8M",
+        "ASTM F844",
       ],
+      ["Inconel 625 (Group 4.1)", "ASTM A453 660", "ASTM A453 660", "ASTM A453 660", "Inconel"],
+      ["Monel 400 (Group 4.2)", "ASTM A453 660", "ASTM A453 660", "ASTM A453 660", "Monel"],
       [
-        'Inconel 625 (Group 4.1)',
-        'ASTM A453 660',
-        'ASTM A453 660',
-        'ASTM A453 660',
-        'Inconel',
-      ],
-      [
-        'Monel 400 (Group 4.2)',
-        'ASTM A453 660',
-        'ASTM A453 660',
-        'ASTM A453 660',
-        'Monel',
-      ],
-      [
-        'Hastelloy C276 (Group 4.3)',
-        'ASTM A453 660',
-        'ASTM A453 660',
-        'ASTM A453 660',
-        'Hastelloy',
+        "Hastelloy C276 (Group 4.3)",
+        "ASTM A453 660",
+        "ASTM A453 660",
+        "ASTM A453 660",
+        "Hastelloy",
       ],
     ];
 
-    for (const [
-      materialGroup,
-      studSpec,
-      machineBoltSpec,
-      nutSpec,
-      washerSpec,
-    ] of newMaterials) {
+    for (const [materialGroup, studSpec, machineBoltSpec, nutSpec, washerSpec] of newMaterials) {
       const existing = await queryRunner.query(
         `SELECT id FROM flange_bolting_materials WHERE material_group = '${materialGroup}'`,
       );
@@ -100,47 +82,39 @@ export class AddExtendedMaterialsAndWashers1770700000000 implements MigrationInt
       }
     }
 
-    const washerData: [
-      string,
-      string,
-      number,
-      number,
-      number,
-      number,
-      string,
-    ][] = [
-      ['M10', 'ASTM F436', 10.5, 21, 3, 0.008, 'Carbon Steel'],
-      ['M12', 'ASTM F436', 13, 24, 3, 0.01, 'Carbon Steel'],
-      ['M16', 'ASTM F436', 17, 30, 3, 0.017, 'Carbon Steel'],
-      ['M20', 'ASTM F436', 21, 37, 3, 0.027, 'Carbon Steel'],
-      ['M24', 'ASTM F436', 25, 44, 4, 0.044, 'Carbon Steel'],
-      ['M27', 'ASTM F436', 28, 50, 4, 0.058, 'Carbon Steel'],
-      ['M30', 'ASTM F436', 31, 56, 4, 0.072, 'Carbon Steel'],
-      ['M33', 'ASTM F436', 34, 60, 5, 0.094, 'Carbon Steel'],
-      ['M36', 'ASTM F436', 37, 66, 5, 0.115, 'Carbon Steel'],
-      ['M39', 'ASTM F436', 40, 72, 6, 0.15, 'Carbon Steel'],
-      ['M42', 'ASTM F436', 43, 78, 6, 0.18, 'Carbon Steel'],
-      ['M45', 'ASTM F436', 46, 85, 7, 0.23, 'Carbon Steel'],
-      ['M48', 'ASTM F436', 50, 92, 8, 0.3, 'Carbon Steel'],
-      ['M52', 'ASTM F436', 54, 98, 8, 0.35, 'Carbon Steel'],
-      ['M56', 'ASTM F436', 58, 105, 9, 0.42, 'Carbon Steel'],
-      ['M64', 'ASTM F436', 66, 115, 9, 0.5, 'Carbon Steel'],
-      ['M10', 'ASTM F844', 10.5, 21, 3, 0.007, 'Stainless Steel'],
-      ['M12', 'ASTM F844', 13, 24, 3, 0.009, 'Stainless Steel'],
-      ['M16', 'ASTM F844', 17, 30, 3, 0.015, 'Stainless Steel'],
-      ['M20', 'ASTM F844', 21, 37, 3, 0.024, 'Stainless Steel'],
-      ['M24', 'ASTM F844', 25, 44, 4, 0.039, 'Stainless Steel'],
-      ['M27', 'ASTM F844', 28, 50, 4, 0.052, 'Stainless Steel'],
-      ['M30', 'ASTM F844', 31, 56, 4, 0.064, 'Stainless Steel'],
-      ['M33', 'ASTM F844', 34, 60, 5, 0.084, 'Stainless Steel'],
-      ['M36', 'ASTM F844', 37, 66, 5, 0.103, 'Stainless Steel'],
-      ['M39', 'ASTM F844', 40, 72, 6, 0.134, 'Stainless Steel'],
-      ['M42', 'ASTM F844', 43, 78, 6, 0.161, 'Stainless Steel'],
-      ['M45', 'ASTM F844', 46, 85, 7, 0.205, 'Stainless Steel'],
-      ['M48', 'ASTM F844', 50, 92, 8, 0.268, 'Stainless Steel'],
-      ['M52', 'ASTM F844', 54, 98, 8, 0.313, 'Stainless Steel'],
-      ['M56', 'ASTM F844', 58, 105, 9, 0.375, 'Stainless Steel'],
-      ['M64', 'ASTM F844', 66, 115, 9, 0.447, 'Stainless Steel'],
+    const washerData: [string, string, number, number, number, number, string][] = [
+      ["M10", "ASTM F436", 10.5, 21, 3, 0.008, "Carbon Steel"],
+      ["M12", "ASTM F436", 13, 24, 3, 0.01, "Carbon Steel"],
+      ["M16", "ASTM F436", 17, 30, 3, 0.017, "Carbon Steel"],
+      ["M20", "ASTM F436", 21, 37, 3, 0.027, "Carbon Steel"],
+      ["M24", "ASTM F436", 25, 44, 4, 0.044, "Carbon Steel"],
+      ["M27", "ASTM F436", 28, 50, 4, 0.058, "Carbon Steel"],
+      ["M30", "ASTM F436", 31, 56, 4, 0.072, "Carbon Steel"],
+      ["M33", "ASTM F436", 34, 60, 5, 0.094, "Carbon Steel"],
+      ["M36", "ASTM F436", 37, 66, 5, 0.115, "Carbon Steel"],
+      ["M39", "ASTM F436", 40, 72, 6, 0.15, "Carbon Steel"],
+      ["M42", "ASTM F436", 43, 78, 6, 0.18, "Carbon Steel"],
+      ["M45", "ASTM F436", 46, 85, 7, 0.23, "Carbon Steel"],
+      ["M48", "ASTM F436", 50, 92, 8, 0.3, "Carbon Steel"],
+      ["M52", "ASTM F436", 54, 98, 8, 0.35, "Carbon Steel"],
+      ["M56", "ASTM F436", 58, 105, 9, 0.42, "Carbon Steel"],
+      ["M64", "ASTM F436", 66, 115, 9, 0.5, "Carbon Steel"],
+      ["M10", "ASTM F844", 10.5, 21, 3, 0.007, "Stainless Steel"],
+      ["M12", "ASTM F844", 13, 24, 3, 0.009, "Stainless Steel"],
+      ["M16", "ASTM F844", 17, 30, 3, 0.015, "Stainless Steel"],
+      ["M20", "ASTM F844", 21, 37, 3, 0.024, "Stainless Steel"],
+      ["M24", "ASTM F844", 25, 44, 4, 0.039, "Stainless Steel"],
+      ["M27", "ASTM F844", 28, 50, 4, 0.052, "Stainless Steel"],
+      ["M30", "ASTM F844", 31, 56, 4, 0.064, "Stainless Steel"],
+      ["M33", "ASTM F844", 34, 60, 5, 0.084, "Stainless Steel"],
+      ["M36", "ASTM F844", 37, 66, 5, 0.103, "Stainless Steel"],
+      ["M39", "ASTM F844", 40, 72, 6, 0.134, "Stainless Steel"],
+      ["M42", "ASTM F844", 43, 78, 6, 0.161, "Stainless Steel"],
+      ["M45", "ASTM F844", 46, 85, 7, 0.205, "Stainless Steel"],
+      ["M48", "ASTM F844", 50, 92, 8, 0.268, "Stainless Steel"],
+      ["M52", "ASTM F844", 54, 98, 8, 0.313, "Stainless Steel"],
+      ["M56", "ASTM F844", 58, 105, 9, 0.375, "Stainless Steel"],
+      ["M64", "ASTM F844", 66, 115, 9, 0.447, "Stainless Steel"],
     ];
 
     for (const [
@@ -164,31 +138,25 @@ export class AddExtendedMaterialsAndWashers1770700000000 implements MigrationInt
     }
 
     const imperialBolts = [
-      ['1/2"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['5/8"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['3/4"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['7/8"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['1"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['1-1/8"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['1-1/4"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['1-3/8"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['1-1/2"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['1-5/8"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['1-3/4"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['2"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['2-1/4"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['2-1/2"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['2-3/4"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
-      ['3"', '8.8', 'Carbon Steel', 'hex', 'coarse'],
+      ['1/2"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['5/8"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['3/4"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['7/8"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['1"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['1-1/8"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['1-1/4"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['1-3/8"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['1-1/2"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['1-5/8"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['1-3/4"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['2"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['2-1/4"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['2-1/2"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['2-3/4"', "8.8", "Carbon Steel", "hex", "coarse"],
+      ['3"', "8.8", "Carbon Steel", "hex", "coarse"],
     ];
 
-    for (const [
-      designation,
-      grade,
-      material,
-      headStyle,
-      threadType,
-    ] of imperialBolts) {
+    for (const [designation, grade, material, headStyle, threadType] of imperialBolts) {
       const existing = await queryRunner.query(
         `SELECT id FROM bolts WHERE designation = '${designation}'`,
       );
@@ -353,17 +321,17 @@ export class AddExtendedMaterialsAndWashers1770700000000 implements MigrationInt
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS washers`);
+    await queryRunner.query("DROP TABLE IF EXISTS washers");
 
     const materialGroups = [
-      'Carbon Steel A350 LF2 (Group 1.2)',
-      'Alloy Steel A182 F11 (Group 2.3)',
-      'Alloy Steel A182 F22 (Group 2.4)',
-      'Duplex SS A182 F51 (Group 3.1)',
-      'Super Duplex SS A182 F55 (Group 3.2)',
-      'Inconel 625 (Group 4.1)',
-      'Monel 400 (Group 4.2)',
-      'Hastelloy C276 (Group 4.3)',
+      "Carbon Steel A350 LF2 (Group 1.2)",
+      "Alloy Steel A182 F11 (Group 2.3)",
+      "Alloy Steel A182 F22 (Group 2.4)",
+      "Duplex SS A182 F51 (Group 3.1)",
+      "Super Duplex SS A182 F55 (Group 3.2)",
+      "Inconel 625 (Group 4.1)",
+      "Monel 400 (Group 4.2)",
+      "Hastelloy C276 (Group 4.3)",
     ];
 
     for (const mg of materialGroups) {
@@ -396,12 +364,8 @@ export class AddExtendedMaterialsAndWashers1770700000000 implements MigrationInt
       );
       if (boltResult.length > 0) {
         const boltId = boltResult[0].id;
-        await queryRunner.query(
-          `DELETE FROM bolt_masses WHERE "boltId" = ${boltId}`,
-        );
-        await queryRunner.query(
-          `DELETE FROM nut_masses WHERE bolt_id = ${boltId}`,
-        );
+        await queryRunner.query(`DELETE FROM bolt_masses WHERE "boltId" = ${boltId}`);
+        await queryRunner.query(`DELETE FROM nut_masses WHERE bolt_id = ${boltId}`);
         await queryRunner.query(`DELETE FROM bolts WHERE id = ${boltId}`);
       }
     }

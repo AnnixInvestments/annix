@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { draftsApi, anonymousDraftsApi } from '@/app/lib/api/client';
-import { useRfqDraftStorage } from '@/app/lib/hooks/useRfqDraftStorage';
-import { log } from '@/app/lib/logger';
-import type { RfqFormData, GlobalSpecs, PipeItem } from '@/app/lib/hooks/useRfqForm';
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { anonymousDraftsApi, draftsApi } from "@/app/lib/api/client";
+import { useRfqDraftStorage } from "@/app/lib/hooks/useRfqDraftStorage";
+import type { GlobalSpecs, PipeItem, RfqFormData } from "@/app/lib/hooks/useRfqForm";
+import { log } from "@/app/lib/logger";
 
 export interface DraftFormData {
   projectName?: string;
@@ -40,7 +40,7 @@ export interface UseDraftManagementProps {
     straightPipeEntries?: PipeItem[];
     currentStep?: number;
   }) => void;
-  showToast: (message: string, type: 'success' | 'error' | 'info' | 'warning') => void;
+  showToast: (message: string, type: "success" | "error" | "info" | "warning") => void;
 }
 
 export interface UseDraftManagementReturn {
@@ -52,7 +52,7 @@ export interface UseDraftManagementReturn {
   pendingLocalDraft: any;
   showSaveProgressDialog: boolean;
   isSavingProgress: boolean;
-  saveProgressStep: 'confirm' | 'success';
+  saveProgressStep: "confirm" | "success";
   initialDraftDataRef: React.MutableRefObject<string | null>;
   localDraftLastSaved: Date | null;
   localDraftEmail: string | null;
@@ -108,19 +108,19 @@ export function useDraftManagement({
 
   const [showSaveProgressDialog, setShowSaveProgressDialog] = useState(false);
   const [isSavingProgress, setIsSavingProgress] = useState(false);
-  const [saveProgressStep, setSaveProgressStep] = useState<'confirm' | 'success'>('confirm');
+  const [saveProgressStep, setSaveProgressStep] = useState<"confirm" | "success">("confirm");
 
   useEffect(() => {
-    const draftId = searchParams?.get('draft') || searchParams?.get('draftId');
+    const draftId = searchParams?.get("draft") || searchParams?.get("draftId");
     if (!draftId) return;
 
-    log.debug('Draft parameter detected:', draftId);
+    log.debug("Draft parameter detected:", draftId);
 
     const loadDraft = async () => {
       setIsLoadingDraft(true);
       try {
         const draft = await draftsApi.getById(parseInt(draftId, 10));
-        log.debug('Loading draft:', draft);
+        log.debug("Loading draft:", draft);
 
         restoreFromDraft({
           formData: draft.formData,
@@ -135,8 +135,8 @@ export function useDraftManagement({
 
         log.debug(`Loaded draft ${draft.draftNumber}`);
       } catch (error) {
-        log.error('Failed to load draft:', error);
-        showToast('Failed to load the saved draft. Starting with a new form.', 'error');
+        log.error("Failed to load draft:", error);
+        showToast("Failed to load the saved draft. Starting with a new form.", "error");
       } finally {
         setIsLoadingDraft(false);
       }
@@ -148,7 +148,7 @@ export function useDraftManagement({
   const handleRestoreLocalDraft = useCallback(() => {
     if (!pendingLocalDraft) return;
 
-    log.debug('Restoring localStorage draft:', pendingLocalDraft);
+    log.debug("Restoring localStorage draft:", pendingLocalDraft);
 
     restoreFromDraft({
       formData: pendingLocalDraft.rfqData,
@@ -160,19 +160,19 @@ export function useDraftManagement({
 
     setShowDraftRestorePrompt(false);
     setPendingLocalDraft(null);
-    showToast('Draft restored successfully', 'success');
+    showToast("Draft restored successfully", "success");
   }, [pendingLocalDraft, restoreFromDraft, showToast]);
 
   const handleDiscardLocalDraft = useCallback(() => {
     clearLocalDraft();
     setShowDraftRestorePrompt(false);
     setPendingLocalDraft(null);
-    showToast('Starting fresh', 'info');
+    showToast("Starting fresh", "info");
   }, [clearLocalDraft, showToast]);
 
   const handleSaveProgressToServer = useCallback(async () => {
     if (!rfqData.customerEmail) {
-      showToast('Please enter your email address to save progress', 'error');
+      showToast("Please enter your email address to save progress", "error");
       return;
     }
 
@@ -210,16 +210,16 @@ export function useDraftManagement({
 
       await anonymousDraftsApi.requestRecoveryEmail(rfqData.customerEmail);
 
-      setSaveProgressStep('success');
-      log.debug('Progress saved and recovery email sent to:', rfqData.customerEmail);
+      setSaveProgressStep("success");
+      log.debug("Progress saved and recovery email sent to:", rfqData.customerEmail);
     } catch (error) {
-      log.error('Failed to save progress:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      log.error("Failed to save progress:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-      if (errorMessage === 'Backend unavailable') {
-        showToast('Server unavailable. Your progress is saved locally on this browser.', 'warning');
+      if (errorMessage === "Backend unavailable") {
+        showToast("Server unavailable. Your progress is saved locally on this browser.", "warning");
       } else {
-        showToast('Failed to save progress. Your data is still saved locally.', 'error');
+        showToast("Failed to save progress. Your data is still saved locally.", "error");
       }
       setShowSaveProgressDialog(false);
     } finally {
@@ -228,13 +228,13 @@ export function useDraftManagement({
   }, [rfqData, currentStep, showToast]);
 
   const handleOpenSaveProgressDialog = useCallback(() => {
-    setSaveProgressStep('confirm');
+    setSaveProgressStep("confirm");
     setShowSaveProgressDialog(true);
   }, []);
 
   const handleCloseSaveProgressDialog = useCallback(() => {
     setShowSaveProgressDialog(false);
-    setSaveProgressStep('confirm');
+    setSaveProgressStep("confirm");
   }, []);
 
   const saveAndSendRecoveryEmailInBackground = useCallback(async () => {
@@ -273,9 +273,9 @@ export function useDraftManagement({
       });
 
       await anonymousDraftsApi.requestRecoveryEmail(rfqData.customerEmail);
-      log.debug('Background save and recovery email sent');
+      log.debug("Background save and recovery email sent");
     } catch (error) {
-      log.warn('Background save failed:', error);
+      log.warn("Background save failed:", error);
     }
   }, [isAuthenticated, rfqData, currentStep]);
 

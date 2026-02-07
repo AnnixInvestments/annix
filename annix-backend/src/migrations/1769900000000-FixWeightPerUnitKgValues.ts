@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class FixWeightPerUnitKgValues1769900000000 implements MigrationInterface {
-  name = 'FixWeightPerUnitKgValues1769900000000';
+  name = "FixWeightPerUnitKgValues1769900000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Fix weight_per_unit_kg for straight pipes
@@ -17,7 +17,7 @@ export class FixWeightPerUnitKgValues1769900000000 implements MigrationInterface
     `);
 
     console.log(
-      'Updated rfq_items weight_per_unit_kg values using formula: total_weight_kg / quantity',
+      "Updated rfq_items weight_per_unit_kg values using formula: total_weight_kg / quantity",
     );
 
     // Also fix BOQ line items that were created from incorrect RFQ data
@@ -36,12 +36,10 @@ export class FixWeightPerUnitKgValues1769900000000 implements MigrationInterface
              OR bli.total_weight_kg IS DISTINCT FROM ri.total_weight_kg)
     `);
 
-    console.log('Updated boq_line_items weights to match corrected rfq_items');
+    console.log("Updated boq_line_items weights to match corrected rfq_items");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      'Cannot revert weight_per_unit_kg values - would need original values stored',
-    );
+    console.warn("Cannot revert weight_per_unit_kg values - would need original values stored");
   }
 }

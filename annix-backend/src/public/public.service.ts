@@ -1,14 +1,14 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { now, fromJSDate } from '../lib/datetime';
-import { Rfq, RfqStatus } from '../rfq/entities/rfq.entity';
-import { CustomerProfile } from '../customer/entities';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CustomerProfile } from "../customer/entities";
+import { fromJSDate, now } from "../lib/datetime";
+import { Rfq, RfqStatus } from "../rfq/entities/rfq.entity";
 import {
-  SupplierProfile,
   SupplierAccountStatus,
-} from '../supplier/entities/supplier-profile.entity';
-import { PublicStatsDto, UpcomingRfqDto } from './dto/public-stats.dto';
+  SupplierProfile,
+} from "../supplier/entities/supplier-profile.entity";
+import { PublicStatsDto, UpcomingRfqDto } from "./dto/public-stats.dto";
 
 @Injectable()
 export class PublicService {
@@ -34,27 +34,24 @@ export class PublicService {
     });
 
     // Get upcoming RFQs (next 30 days) sorted by nearest closing date
-    const today = now().startOf('day').toJSDate();
-    const thirtyDaysFromNow = now()
-      .startOf('day')
-      .plus({ days: 30 })
-      .toJSDate();
+    const today = now().startOf("day").toJSDate();
+    const thirtyDaysFromNow = now().startOf("day").plus({ days: 30 }).toJSDate();
 
     const upcomingRfqsRaw = await this.rfqRepository
-      .createQueryBuilder('rfq')
-      .where('rfq.requiredDate >= :today', { today })
-      .andWhere('rfq.requiredDate <= :thirtyDaysFromNow', { thirtyDaysFromNow })
-      .andWhere('rfq.status NOT IN (:...excludedStatuses)', {
+      .createQueryBuilder("rfq")
+      .where("rfq.requiredDate >= :today", { today })
+      .andWhere("rfq.requiredDate <= :thirtyDaysFromNow", { thirtyDaysFromNow })
+      .andWhere("rfq.status NOT IN (:...excludedStatuses)", {
         excludedStatuses: [RfqStatus.REJECTED],
       })
-      .orderBy('rfq.requiredDate', 'ASC')
+      .orderBy("rfq.requiredDate", "ASC")
       .limit(10)
       .getMany();
 
     const upcomingRfqs: UpcomingRfqDto[] = upcomingRfqsRaw.map((rfq) => {
       const requiredDate = fromJSDate(rfq.requiredDate!);
-      const todayDt = now().startOf('day');
-      const daysRemaining = Math.ceil(requiredDate.diff(todayDt, 'days').days);
+      const todayDt = now().startOf("day");
+      const daysRemaining = Math.ceil(requiredDate.diff(todayDt, "days").days);
 
       return {
         id: rfq.id,

@@ -1,15 +1,15 @@
-import { AppDataSource } from '../src/config/data-source';
-import { BoqSection } from '../src/boq/entities/boq-section.entity';
+import { BoqSection } from "../src/boq/entities/boq-section.entity";
+import { AppDataSource } from "../src/config/data-source";
 
 async function fixFlangeDescriptions() {
-  console.log('Connecting to database...');
+  console.log("Connecting to database...");
   await AppDataSource.initialize();
-  console.log('Connected!\n');
+  console.log("Connected!\n");
 
   const sectionRepo = AppDataSource.getRepository(BoqSection);
 
   const flangeSections = await sectionRepo.find({
-    where: { sectionType: 'flanges' }
+    where: { sectionType: "flanges" },
   });
 
   console.log(`Found ${flangeSections.length} flange sections to update\n`);
@@ -21,11 +21,11 @@ async function fixFlangeDescriptions() {
     const items = section.items || [];
 
     const updatedItems = items.map((item: any) => {
-      if (item.description && item.description.includes('Weld Neck Flange')) {
+      if (item.description?.includes("Weld Neck Flange")) {
         updated = true;
         return {
           ...item,
-          description: item.description.replace('Weld Neck Flange', 'Slip On Flange')
+          description: item.description.replace("Weld Neck Flange", "Slip On Flange"),
         };
       }
       return item;

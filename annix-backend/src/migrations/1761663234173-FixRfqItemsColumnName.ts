@@ -1,10 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class FixRfqItemsColumnName1761663234173 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      '🔧 Renaming unit_weight_kg to weight_per_unit_kg in rfq_items table...',
-    );
+    console.warn("🔧 Renaming unit_weight_kg to weight_per_unit_kg in rfq_items table...");
 
     // Check if column needs to be renamed
     const columnExists = await queryRunner.query(`
@@ -18,14 +16,14 @@ export class FixRfqItemsColumnName1761663234173 implements MigrationInterface {
                 ALTER TABLE "rfq_items" 
                 RENAME COLUMN "unit_weight_kg" TO "weight_per_unit_kg"
             `);
-      console.warn('✅ Column renamed successfully');
+      console.warn("✅ Column renamed successfully");
     } else {
-      console.warn('✅ Column already has correct name');
+      console.warn("✅ Column already has correct name");
     }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('⏮️ Renaming weight_per_unit_kg back to unit_weight_kg...');
+    console.warn("⏮️ Renaming weight_per_unit_kg back to unit_weight_kg...");
     await queryRunner.query(`
             ALTER TABLE "rfq_items" 
             RENAME COLUMN "weight_per_unit_kg" TO "unit_weight_kg"

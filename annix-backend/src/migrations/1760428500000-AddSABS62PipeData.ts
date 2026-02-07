@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddSABS62PipeData1760428500000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -23,7 +23,7 @@ export class AddSABS62PipeData1760428500000 implements MigrationInterface {
     const heavySteelId = heavySteelResult[0]?.id;
 
     if (!mediumSteelId || !heavySteelId) {
-      throw new Error('Failed to find SABS 62 steel specifications');
+      throw new Error("Failed to find SABS 62 steel specifications");
     }
 
     // SABS 62 Medium grade pipe data

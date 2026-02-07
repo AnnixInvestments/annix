@@ -1,8 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Image from 'next/image';
-import AmixLogo from '@/app/components/AmixLogo';
+import Image from "next/image";
+import AmixLogo from "@/app/components/AmixLogo";
 
 interface NixAiPopupProps {
   isVisible: boolean;
@@ -23,7 +22,7 @@ export default function NixAiPopup({ isVisible, onYes, onNo }: NixAiPopupProps) 
       <div className="relative bg-white rounded-xl shadow-2xl max-w-xl w-full overflow-hidden animate-in fade-in zoom-in duration-300">
         <div
           className="px-4 py-3 flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: '#323288' }}
+          style={{ backgroundColor: "#323288" }}
         >
           <AmixLogo size="md" showText useSignatureFont />
         </div>
@@ -61,7 +60,7 @@ export default function NixAiPopup({ isVisible, onYes, onNo }: NixAiPopupProps) 
             <button
               onClick={onYes}
               className="flex-1 py-2.5 px-4 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg active:scale-[0.98] text-sm"
-              style={{ backgroundColor: '#FFA500' }}
+              style={{ backgroundColor: "#FFA500" }}
             >
               Yes, Use Nix
             </button>
@@ -72,10 +71,7 @@ export default function NixAiPopup({ isVisible, onYes, onNo }: NixAiPopupProps) 
           </p>
         </div>
 
-        <div
-          className="h-1 flex-shrink-0"
-          style={{ backgroundColor: '#FFA500' }}
-        />
+        <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FFA500" }} />
       </div>
     </div>
   );

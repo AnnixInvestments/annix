@@ -1,7 +1,7 @@
-import { AppDataSource } from '../src/config/data-source';
+import { AppDataSource } from "../src/config/data-source";
 
 async function checkData() {
-  console.log('Connecting to database...');
+  console.log("Connecting to database...");
   await AppDataSource.initialize();
 
   try {
@@ -20,7 +20,7 @@ async function checkData() {
       ORDER BY ri.line_number
     `);
 
-    console.log('RFQ Items for BOQ-2026-0003:');
+    console.log("RFQ Items for BOQ-2026-0003:");
     console.log(JSON.stringify(items, null, 2));
 
     const sections = await AppDataSource.query(`
@@ -29,7 +29,7 @@ async function checkData() {
       WHERE boq_id = 1
     `);
 
-    console.log('\nCurrent BOQ Sections:');
+    console.log("\nCurrent BOQ Sections:");
     for (const s of sections) {
       console.log(`\n${s.section_type} - ${s.section_title}:`);
       console.log(JSON.stringify(s.items, null, 2));

@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { pipeSteelWorkApi } from './api';
+import { useCallback, useEffect, useState } from "react";
+import { log } from "@/app/lib/logger";
+import { pipeSteelWorkApi } from "./api";
 import type {
-  SupportSpacingResponse,
-  BracketTypeResponse,
   BracketDimensionResponse,
+  BracketTypeResponse,
   CalculationResponse,
-} from './types';
-import { log } from '@/app/lib/logger';
+  SupportSpacingResponse,
+} from "./types";
 
 interface UsePipeSteelWorkCalculationsProps {
   workType: string;
@@ -29,17 +29,42 @@ interface UsePipeSteelWorkCalculationsResult {
 }
 
 const NB_TO_OD_MAP: Record<number, number> = {
-  15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3,
-  50: 60.3, 65: 73.0, 80: 88.9, 100: 114.3, 125: 141.3,
-  150: 168.3, 200: 219.1, 250: 273.1, 300: 323.9,
-  350: 355.6, 400: 406.4, 450: 457.0, 500: 508.0,
-  600: 610.0, 750: 762.0, 900: 914.0,
+  15: 21.3,
+  20: 26.7,
+  25: 33.4,
+  32: 42.2,
+  40: 48.3,
+  50: 60.3,
+  65: 73.0,
+  80: 88.9,
+  100: 114.3,
+  125: 141.3,
+  150: 168.3,
+  200: 219.1,
+  250: 273.1,
+  300: 323.9,
+  350: 355.6,
+  400: 406.4,
+  450: 457.0,
+  500: 508.0,
+  600: 610.0,
+  750: 762.0,
+  900: 914.0,
 };
 
 const estimateWallThickness = (nbMm: number): number => {
   const stdWalls: Record<number, number> = {
-    50: 3.91, 80: 5.49, 100: 6.02, 150: 7.11, 200: 8.18,
-    250: 9.27, 300: 9.53, 350: 9.53, 400: 9.53, 500: 9.53, 600: 9.53,
+    50: 3.91,
+    80: 5.49,
+    100: 6.02,
+    150: 7.11,
+    200: 8.18,
+    250: 9.27,
+    300: 9.53,
+    350: 9.53,
+    400: 9.53,
+    500: 9.53,
+    600: 9.53,
   };
   return stdWalls[nbMm] || 6.0;
 };
@@ -64,17 +89,80 @@ export function usePipeSteelWorkCalculations({
       const types = await pipeSteelWorkApi.bracketTypes(nominalDiameterMm || undefined);
       setBracketTypes(types);
     } catch (err) {
-      log.error('Failed to fetch bracket types:', err);
+      log.error("Failed to fetch bracket types:", err);
       setBracketTypes([
-        { typeCode: 'clevis_hanger', displayName: 'Clevis Hanger', isSuitable: true, allowsExpansion: true, isAnchorType: false, baseCostPerUnit: 150 },
-        { typeCode: 'three_bolt_clamp', displayName: 'Three-Bolt Clamp', isSuitable: true, allowsExpansion: false, isAnchorType: false, baseCostPerUnit: 250 },
-        { typeCode: 'welded_bracket', displayName: 'Welded Bracket', isSuitable: true, allowsExpansion: false, isAnchorType: true, baseCostPerUnit: 180 },
-        { typeCode: 'pipe_saddle', displayName: 'Pipe Saddle', isSuitable: true, allowsExpansion: true, isAnchorType: false, baseCostPerUnit: 280 },
-        { typeCode: 'u_bolt', displayName: 'U-Bolt Clamp', isSuitable: true, allowsExpansion: false, isAnchorType: false, baseCostPerUnit: 80 },
-        { typeCode: 'roller_support', displayName: 'Roller Support', isSuitable: true, allowsExpansion: true, isAnchorType: false, baseCostPerUnit: 450 },
-        { typeCode: 'slide_plate', displayName: 'Slide Plate', isSuitable: true, allowsExpansion: true, isAnchorType: false, baseCostPerUnit: 350 },
-        { typeCode: 'spring_hanger', displayName: 'Spring Hanger', isSuitable: true, allowsExpansion: true, isAnchorType: false, baseCostPerUnit: 650 },
-        { typeCode: 'riser_clamp', displayName: 'Riser Clamp', isSuitable: true, allowsExpansion: false, isAnchorType: false, baseCostPerUnit: 200 },
+        {
+          typeCode: "clevis_hanger",
+          displayName: "Clevis Hanger",
+          isSuitable: true,
+          allowsExpansion: true,
+          isAnchorType: false,
+          baseCostPerUnit: 150,
+        },
+        {
+          typeCode: "three_bolt_clamp",
+          displayName: "Three-Bolt Clamp",
+          isSuitable: true,
+          allowsExpansion: false,
+          isAnchorType: false,
+          baseCostPerUnit: 250,
+        },
+        {
+          typeCode: "welded_bracket",
+          displayName: "Welded Bracket",
+          isSuitable: true,
+          allowsExpansion: false,
+          isAnchorType: true,
+          baseCostPerUnit: 180,
+        },
+        {
+          typeCode: "pipe_saddle",
+          displayName: "Pipe Saddle",
+          isSuitable: true,
+          allowsExpansion: true,
+          isAnchorType: false,
+          baseCostPerUnit: 280,
+        },
+        {
+          typeCode: "u_bolt",
+          displayName: "U-Bolt Clamp",
+          isSuitable: true,
+          allowsExpansion: false,
+          isAnchorType: false,
+          baseCostPerUnit: 80,
+        },
+        {
+          typeCode: "roller_support",
+          displayName: "Roller Support",
+          isSuitable: true,
+          allowsExpansion: true,
+          isAnchorType: false,
+          baseCostPerUnit: 450,
+        },
+        {
+          typeCode: "slide_plate",
+          displayName: "Slide Plate",
+          isSuitable: true,
+          allowsExpansion: true,
+          isAnchorType: false,
+          baseCostPerUnit: 350,
+        },
+        {
+          typeCode: "spring_hanger",
+          displayName: "Spring Hanger",
+          isSuitable: true,
+          allowsExpansion: true,
+          isAnchorType: false,
+          baseCostPerUnit: 650,
+        },
+        {
+          typeCode: "riser_clamp",
+          displayName: "Riser Clamp",
+          isSuitable: true,
+          allowsExpansion: false,
+          isAnchorType: false,
+          baseCostPerUnit: 200,
+        },
       ]);
     }
   }, [nominalDiameterMm]);
@@ -92,7 +180,7 @@ export function usePipeSteelWorkCalculations({
       });
       setSupportSpacing(spacing);
     } catch (err) {
-      log.error('Failed to fetch support spacing:', err);
+      log.error("Failed to fetch support spacing:", err);
       setSupportSpacing(null);
     }
   }, [nominalDiameterMm]);
@@ -106,7 +194,7 @@ export function usePipeSteelWorkCalculations({
     try {
       const dimensions = await pipeSteelWorkApi.bracketDimensions(
         bracketType.toUpperCase(),
-        nominalDiameterMm
+        nominalDiameterMm,
       );
       if (Array.isArray(dimensions)) {
         setBracketDimensions(dimensions[0] || null);
@@ -114,7 +202,7 @@ export function usePipeSteelWorkCalculations({
         setBracketDimensions(dimensions);
       }
     } catch (err) {
-      log.error('Failed to fetch bracket dimensions:', err);
+      log.error("Failed to fetch bracket dimensions:", err);
       setBracketDimensions(null);
     }
   }, [bracketType, nominalDiameterMm]);
@@ -129,16 +217,16 @@ export function usePipeSteelWorkCalculations({
     setError(null);
 
     try {
-      if (workType === 'pipe_support' && pipelineLengthM) {
+      if (workType === "pipe_support" && pipelineLengthM) {
         const result = await pipeSteelWorkApi.calculate({
-          workType: 'pipe_support',
+          workType: "pipe_support",
           nominalDiameterMm,
           bracketType,
           pipelineLengthM,
           quantity,
         });
         setCalculationResults(result);
-      } else if (workType === 'reinforcement_pad' && branchDiameterMm) {
+      } else if (workType === "reinforcement_pad" && branchDiameterMm) {
         const headerOd = NB_TO_OD_MAP[nominalDiameterMm] || nominalDiameterMm * 1.05;
         const branchOd = NB_TO_OD_MAP[branchDiameterMm] || branchDiameterMm * 1.05;
 
@@ -150,7 +238,7 @@ export function usePipeSteelWorkCalculations({
         });
 
         setCalculationResults({
-          workType: 'reinforcement_pad',
+          workType: "reinforcement_pad",
           reinforcementPad: padResult,
           weightPerUnitKg: padResult.padWeightKg,
           totalWeightKg: padResult.padWeightKg * quantity,
@@ -160,8 +248,8 @@ export function usePipeSteelWorkCalculations({
         });
       }
     } catch (err) {
-      log.error('Failed to perform calculation:', err);
-      setError(err instanceof Error ? err.message : 'Calculation failed');
+      log.error("Failed to perform calculation:", err);
+      setError(err instanceof Error ? err.message : "Calculation failed");
     } finally {
       setIsLoading(false);
     }
@@ -172,7 +260,7 @@ export function usePipeSteelWorkCalculations({
   }, [fetchBracketTypes]);
 
   useEffect(() => {
-    if (workType === 'pipe_support') {
+    if (workType === "pipe_support") {
       fetchSupportSpacing();
       fetchBracketDimensions();
     }

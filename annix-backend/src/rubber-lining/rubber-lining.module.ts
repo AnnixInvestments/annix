@@ -1,21 +1,21 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { RubberLiningController } from './rubber-lining.controller';
-import { RubberLiningService } from './rubber-lining.service';
-import { AdminModule } from '../admin/admin.module';
-import { RubberType } from './entities/rubber-type.entity';
-import { RubberSpecification } from './entities/rubber-specification.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { AdminModule } from "../admin/admin.module";
 import {
+  RubberAdhesionRequirement,
   RubberApplicationRating,
   RubberThicknessRecommendation,
-  RubberAdhesionRequirement,
-} from './entities/rubber-application.entity';
-import { RubberProductCoding } from './entities/rubber-product-coding.entity';
-import { RubberPricingTier } from './entities/rubber-pricing-tier.entity';
-import { RubberCompany } from './entities/rubber-company.entity';
-import { RubberProduct } from './entities/rubber-product.entity';
-import { RubberOrder } from './entities/rubber-order.entity';
-import { RubberOrderItem } from './entities/rubber-order-item.entity';
+} from "./entities/rubber-application.entity";
+import { RubberCompany } from "./entities/rubber-company.entity";
+import { RubberOrder } from "./entities/rubber-order.entity";
+import { RubberOrderItem } from "./entities/rubber-order-item.entity";
+import { RubberPricingTier } from "./entities/rubber-pricing-tier.entity";
+import { RubberProduct } from "./entities/rubber-product.entity";
+import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { RubberSpecification } from "./entities/rubber-specification.entity";
+import { RubberType } from "./entities/rubber-type.entity";
+import { RubberLiningController } from "./rubber-lining.controller";
+import { RubberLiningService } from "./rubber-lining.service";
 
 @Module({
   imports: [

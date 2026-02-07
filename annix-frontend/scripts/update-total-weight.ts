@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content: string = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content: string = fs.readFileSync(filePath, "utf8");
 
 // 1. Update getTotalWeight to include BNW weights
 const oldGetTotalWeight = `const getTotalWeight = () => {
@@ -43,10 +43,10 @@ const newGetTotalWeight = `const getTotalWeight = () => {
 
 if (content.includes(oldGetTotalWeight)) {
   content = content.replace(oldGetTotalWeight, newGetTotalWeight);
-  console.log('✅ Updated getTotalWeight to include BNW weights');
+  console.log("✅ Updated getTotalWeight to include BNW weights");
 } else {
-  console.log('❌ Could not find getTotalWeight function');
+  console.log("❌ Could not find getTotalWeight function");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

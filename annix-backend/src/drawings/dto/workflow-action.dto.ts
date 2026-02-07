@@ -1,8 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, MaxLength, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
 export class ApprovalDto {
-  @ApiPropertyOptional({ description: 'Approval notes' })
+  @ApiPropertyOptional({ description: "Approval notes" })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
@@ -10,7 +10,7 @@ export class ApprovalDto {
 }
 
 export class RejectionDto {
-  @ApiProperty({ description: 'Reason for rejection' })
+  @ApiProperty({ description: "Reason for rejection" })
   @IsString()
   @MinLength(10)
   @MaxLength(2000)
@@ -18,7 +18,7 @@ export class RejectionDto {
 }
 
 export class ChangeRequestDto {
-  @ApiProperty({ description: 'Description of changes required' })
+  @ApiProperty({ description: "Description of changes required" })
   @IsString()
   @MinLength(10)
   @MaxLength(2000)

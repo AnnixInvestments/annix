@@ -1,12 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
-import * as bcrypt from 'bcrypt';
-import { UserRole } from '../user-roles/entities/user-role.entity';
-import { plainToInstance } from 'class-transformer';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import * as bcrypt from "bcrypt";
+import { plainToInstance } from "class-transformer";
+import { Repository } from "typeorm";
+import { UserRole } from "../user-roles/entities/user-role.entity";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { User } from "./entities/user.entity";
 
 @Injectable()
 export class UserService {
@@ -28,10 +28,10 @@ export class UserService {
     });
 
     let employeeRole = await this.userRoleRepo.findOne({
-      where: { name: 'employee' },
+      where: { name: "employee" },
     });
     if (!employeeRole) {
-      employeeRole = this.userRoleRepo.create({ name: 'employee' });
+      employeeRole = this.userRoleRepo.create({ name: "employee" });
       await this.userRoleRepo.save(employeeRole);
     }
 
@@ -43,9 +43,7 @@ export class UserService {
   }
 
   findAll() {
-    return this.userRepo
-      .find()
-      .then((users) => users.map((user) => plainToInstance(User, user)));
+    return this.userRepo.find().then((users) => users.map((user) => plainToInstance(User, user)));
   }
 
   async findOne(id: number) {

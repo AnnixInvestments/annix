@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FlangeStandardController } from './flange-standard.controller';
-import { FlangeStandardService } from './flange-standard.service';
-import { FlangeStandard } from './entities/flange-standard.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { FlangeStandard } from "./entities/flange-standard.entity";
+import { FlangeStandardController } from "./flange-standard.controller";
+import { FlangeStandardService } from "./flange-standard.service";
 
-describe('FlangeStandardController', () => {
+describe("FlangeStandardController", () => {
   let controller: FlangeStandardController;
   let service: FlangeStandardService;
 
@@ -42,7 +42,7 @@ describe('FlangeStandardController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

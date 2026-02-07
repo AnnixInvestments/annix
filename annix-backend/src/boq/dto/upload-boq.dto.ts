@@ -1,25 +1,25 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsNumber, IsOptional, IsString } from "class-validator";
 
 export class UploadBoqDto {
   @ApiProperty({
-    description: 'BOQ title',
-    example: 'Pipeline Section A - Materials',
+    description: "BOQ title",
+    example: "Pipeline Section A - Materials",
   })
   @IsString()
   title: string;
 
-  @ApiProperty({ description: 'BOQ description', required: false })
+  @ApiProperty({ description: "BOQ description", required: false })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'Drawing ID to link', required: false })
+  @ApiProperty({ description: "Drawing ID to link", required: false })
   @IsOptional()
   @IsNumber()
   drawingId?: number;
 
-  @ApiProperty({ description: 'RFQ ID to link', required: false })
+  @ApiProperty({ description: "RFQ ID to link", required: false })
   @IsOptional()
   @IsNumber()
   rfqId?: number;

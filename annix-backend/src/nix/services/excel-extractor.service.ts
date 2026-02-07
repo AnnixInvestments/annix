@@ -1,28 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
-import * as ExcelJS from 'exceljs';
+import { Injectable, Logger } from "@nestjs/common";
+import * as ExcelJS from "exceljs";
 
 export interface ExtractedItem {
   rowNumber: number;
   itemNumber: string;
   description: string;
-  itemType:
-    | 'pipe'
-    | 'bend'
-    | 'reducer'
-    | 'tee'
-    | 'flange'
-    | 'expansion_joint'
-    | 'unknown';
+  itemType: "pipe" | "bend" | "reducer" | "tee" | "flange" | "expansion_joint" | "unknown";
   material: string | null;
   materialGrade: string | null;
   diameter: number | null;
-  diameterUnit: 'mm' | 'inch';
+  diameterUnit: "mm" | "inch";
   secondaryDiameter: number | null;
   length: number | null;
   wallThickness: number | null;
   schedule: string | null;
   angle: number | null;
-  flangeConfig: 'none' | 'one_end' | 'both_ends' | 'puddle' | 'blind' | null;
+  flangeConfig: "none" | "one_end" | "both_ends" | "puddle" | "blind" | null;
   quantity: number;
   unit: string;
   confidence: number;
@@ -70,66 +63,66 @@ export class ExcelExtractorService {
   private readonly materialPatterns = [
     {
       pattern: /\bS\.?S\.?\b|\bstainless\s*steel\b/i,
-      material: 'Stainless Steel',
-      grade: '316',
+      material: "Stainless Steel",
+      grade: "316",
     },
     {
       pattern: /\bM\.?S\.?\b|\bmild\s*steel\b/i,
-      material: 'Mild Steel',
+      material: "Mild Steel",
       grade: null,
     },
     {
       pattern: /\bAPI\s*5L[-\s]?[A-Z]?\b/i,
-      material: 'Carbon Steel',
-      grade: 'API 5L',
+      material: "Carbon Steel",
+      grade: "API 5L",
     },
     {
       pattern: /\bSABS\s*719\b/i,
-      material: 'Stainless Steel',
-      grade: 'SABS 719',
+      material: "Stainless Steel",
+      grade: "SABS 719",
     },
-    { pattern: /\bcarbon\s*steel\b/i, material: 'Carbon Steel', grade: null },
+    { pattern: /\bcarbon\s*steel\b/i, material: "Carbon Steel", grade: null },
     {
       pattern: /\bASTM\s*A234\s*WPB\b/i,
-      material: 'Carbon Steel',
-      grade: 'A234 WPB',
+      material: "Carbon Steel",
+      grade: "A234 WPB",
     },
-    { pattern: /\bASTM\s*A105\b/i, material: 'Carbon Steel', grade: 'A105' },
-    { pattern: /\bERW\b/i, material: 'Carbon Steel', grade: 'ERW' },
+    { pattern: /\bASTM\s*A105\b/i, material: "Carbon Steel", grade: "A105" },
+    { pattern: /\bERW\b/i, material: "Carbon Steel", grade: "ERW" },
   ];
 
   private readonly itemTypePatterns = [
-    { pattern: /\belbow\b/i, type: 'bend' as const },
-    { pattern: /\bs[-\s]?bend\b/i, type: 'bend' as const },
-    { pattern: /\bbend\b|\bdeg\b|\bdegree\b/i, type: 'bend' as const },
+    { pattern: /\belbow\b/i, type: "bend" as const },
+    { pattern: /\bs[-\s]?bend\b/i, type: "bend" as const },
+    { pattern: /\bbend\b|\bdeg\b|\bdegree\b/i, type: "bend" as const },
     {
       pattern: /\breducer\b|\breducing\b(?!\s*tee)/i,
-      type: 'reducer' as const,
+      type: "reducer" as const,
     },
-    { pattern: /\btee\b/i, type: 'tee' as const },
-    { pattern: /\bflange\b(?!.*gasket)/i, type: 'flange' as const },
-    { pattern: /\bexpansion\s*joint\b/i, type: 'expansion_joint' as const },
-    { pattern: /\b\d+\s*NB\s+PIPE\b/i, type: 'pipe' as const },
-    { pattern: /\bpipe\b|\bdia\s*pipe\b/i, type: 'pipe' as const },
-    { pattern: /\d+\s*mm\s*(steel|stainless)/i, type: 'pipe' as const },
+    { pattern: /\btee\b/i, type: "tee" as const },
+    { pattern: /\bflange\b(?!.*gasket)/i, type: "flange" as const },
+    { pattern: /\bexpansion\s*joint\b/i, type: "expansion_joint" as const },
+    { pattern: /\b\d+\s*NB\s+PIPE\b/i, type: "pipe" as const },
+    { pattern: /\bpipe\b|\bdia\s*pipe\b/i, type: "pipe" as const },
+    { pattern: /\d+\s*mm\s*(steel|stainless)/i, type: "pipe" as const },
   ];
 
   private readonly flangePatterns = [
     {
       pattern:
         /\bboth\s*ends?\s*flange[d]?\b|\bfully\s*flange[d]?\b|\bflange[d]?\s*both\s*ends?\b/i,
-      config: 'both_ends' as const,
+      config: "both_ends" as const,
     },
     {
       pattern: /\bone\s*end\s*flange[d]?\b|\bflange[d]?\s*one\s*end\b/i,
-      config: 'one_end' as const,
+      config: "one_end" as const,
     },
-    { pattern: /\bno\s*flange[s]?\b/i, config: 'none' as const },
+    { pattern: /\bno\s*flange[s]?\b/i, config: "none" as const },
     {
       pattern: /\bpuddle\s*flange\b|\bpaddle\s*flange\b/i,
-      config: 'puddle' as const,
+      config: "puddle" as const,
     },
-    { pattern: /\bblind\s*flange\b/i, config: 'blind' as const },
+    { pattern: /\bblind\s*flange\b/i, config: "blind" as const },
   ];
 
   async extractFromExcel(filePath: string): Promise<ExtractionResult> {
@@ -140,13 +133,11 @@ export class ExcelExtractorService {
 
     const worksheet = workbook.worksheets[0];
     if (!worksheet) {
-      throw new Error('No worksheets found in Excel file');
+      throw new Error("No worksheets found in Excel file");
     }
 
     const specificationCells = this.extractSpecificationCells(worksheet);
-    this.logger.log(
-      `📋 Found ${specificationCells.length} specification header(s)`,
-    );
+    this.logger.log(`📋 Found ${specificationCells.length} specification header(s)`);
 
     const specDefaults = this.consolidateSpecificationData(specificationCells);
     this.logger.log(
@@ -190,9 +181,7 @@ export class ExcelExtractorService {
             this.logger.debug(`📍 Found project location: ${projectLocation}`);
           }
 
-          const projectMatch = headerText.match(
-            /(?:project|contract|tender)[:\s]+(.+)/i,
-          );
+          const projectMatch = headerText.match(/(?:project|contract|tender)[:\s]+(.+)/i);
           if (projectMatch && !projectName) {
             projectName = projectMatch[1].trim();
             this.logger.debug(`📋 Found project name: ${projectName}`);
@@ -206,9 +195,7 @@ export class ExcelExtractorService {
             const match = headerText.match(pattern);
             if (match && !projectLocation) {
               projectLocation = match[1].trim();
-              this.logger.debug(
-                `📍 Found location from city/province: ${projectLocation}`,
-              );
+              this.logger.debug(`📍 Found location from city/province: ${projectLocation}`);
               break;
             }
           }
@@ -218,15 +205,13 @@ export class ExcelExtractorService {
       if (rowNumber <= 4) return;
 
       const rowData = this.extractRowData(row);
-      const description = rowData.description?.toString() || '';
+      const description = rowData.description?.toString() || "";
 
-      const col3Value = row.getCell(3).value?.toString().trim() || '';
+      const col3Value = row.getCell(3).value?.toString().trim() || "";
       const lNumberMatch = col3Value.match(/^L\d+(?:\.\d+)?$/i);
       if (lNumberMatch) {
         currentLNumber = lNumberMatch[0].toUpperCase();
-        this.logger.debug(
-          `📋 Found L number at row ${rowNumber}: ${currentLNumber}`,
-        );
+        this.logger.debug(`📋 Found L number at row ${rowNumber}: ${currentLNumber}`);
       }
 
       if (!description || description.trim().length < 3) return;
@@ -234,9 +219,7 @@ export class ExcelExtractorService {
       const isSpecificationHeader =
         /^SP\d+\s+Specification\s*[-–]\s*/i.test(description.trim()) ||
         /^(Bill|Section)\s+\d+.*Specification/i.test(description.trim()) ||
-        /Specification\s*[-–]\s*(CARBON|STAINLESS|MILD)\s*STEEL/i.test(
-          description,
-        );
+        /Specification\s*[-–]\s*(CARBON|STAINLESS|MILD)\s*STEEL/i.test(description);
 
       if (isSpecificationHeader) {
         currentSpecHeader = description.trim();
@@ -253,11 +236,9 @@ export class ExcelExtractorService {
           `📋 Context updated - Material: ${contextUpdate.material}, Grade: ${contextUpdate.materialGrade}`,
         );
       }
-      if (contextUpdate.standard)
-        currentContext.standard = contextUpdate.standard;
+      if (contextUpdate.standard) currentContext.standard = contextUpdate.standard;
       if (contextUpdate.coating) currentContext.coating = contextUpdate.coating;
-      if (contextUpdate.wallThickness)
-        currentContext.wallThickness = contextUpdate.wallThickness;
+      if (contextUpdate.wallThickness) currentContext.wallThickness = contextUpdate.wallThickness;
       if (contextUpdate.lining) currentContext.lining = contextUpdate.lining;
 
       if (rowData.paymentReference && !projectReference) {
@@ -267,10 +248,7 @@ export class ExcelExtractorService {
       if (rowData._isDescriptionRow) {
         const descText = description.trim();
         const hasDiameter = /\d+\s*(NB|mm|dia)/i.test(descText);
-        if (
-          hasDiameter &&
-          !/^(Carried|Brought)\s+(Forward|Back)/i.test(descText)
-        ) {
+        if (hasDiameter && !/^(Carried|Brought)\s+(Forward|Back)/i.test(descText)) {
           currentDescription = descText;
           currentDescriptionRow = rowNumber;
           this.logger.debug(
@@ -282,7 +260,7 @@ export class ExcelExtractorService {
 
       if (rowData._isQuantityRow && currentDescription) {
         const actionType = description.toLowerCase();
-        if (actionType === 'supply') {
+        if (actionType === "supply") {
           const itemData = {
             ...rowData,
             description: currentDescription,
@@ -298,7 +276,7 @@ export class ExcelExtractorService {
           if (item) {
             items.push(item);
             this.logger.debug(
-              `Extracted item from row ${currentDescriptionRow}: ${item.itemType} ${item.diameter}mm (${item.material || 'no material'})`,
+              `Extracted item from row ${currentDescriptionRow}: ${item.itemType} ${item.diameter}mm (${item.material || "no material"})`,
             );
           }
         }
@@ -321,9 +299,7 @@ export class ExcelExtractorService {
       }
     });
 
-    const clarificationsNeeded = items.filter(
-      (i) => i.needsClarification,
-    ).length;
+    const clarificationsNeeded = items.filter((i) => i.needsClarification).length;
 
     return {
       sheetName: worksheet.name,
@@ -344,9 +320,7 @@ export class ExcelExtractorService {
     };
   }
 
-  private extractSpecificationCells(
-    worksheet: ExcelJS.Worksheet,
-  ): SpecificationCellData[] {
+  private extractSpecificationCells(worksheet: ExcelJS.Worksheet): SpecificationCellData[] {
     const specCells: SpecificationCellData[] = [];
 
     const specHeaderPatterns = [
@@ -377,13 +351,9 @@ export class ExcelExtractorService {
       const rowText = this.extractFullRowText(row);
       if (rowText.length < 15) return;
 
-      const isSpecHeader = specHeaderPatterns.some((pattern) =>
-        pattern.test(rowText),
-      );
+      const isSpecHeader = specHeaderPatterns.some((pattern) => pattern.test(rowText));
 
-      const specDataMatches = specDataPatterns.filter((pattern) =>
-        pattern.test(rowText),
-      ).length;
+      const specDataMatches = specDataPatterns.filter((pattern) => pattern.test(rowText)).length;
       const hasSpecData = specDataMatches >= 2;
 
       if ((isSpecHeader || hasSpecData) && rowText.length > 10) {
@@ -453,7 +423,7 @@ export class ExcelExtractorService {
         texts.push(text.trim());
       }
     });
-    return texts.join(' ');
+    return texts.join(" ");
   }
 
   private consolidateSpecificationData(specCells: SpecificationCellData[]): {
@@ -483,29 +453,23 @@ export class ExcelExtractorService {
       if (parsed.materialGrade && !result.materialGrade) {
         result.materialGrade = parsed.materialGrade;
         const rawText = specCell.rawText.toLowerCase();
-        if (
-          rawText.includes('stainless') ||
-          rawText.includes('s.s') ||
-          rawText.includes('ss ')
-        ) {
-          result.material = 'Stainless Steel';
+        if (rawText.includes("stainless") || rawText.includes("s.s") || rawText.includes("ss ")) {
+          result.material = "Stainless Steel";
         } else if (
-          rawText.includes('carbon') ||
-          rawText.includes('mild') ||
-          rawText.includes('m.s')
+          rawText.includes("carbon") ||
+          rawText.includes("mild") ||
+          rawText.includes("m.s")
         ) {
-          result.material = 'Carbon Steel';
-        } else if (rawText.includes('api') || rawText.includes('erw')) {
-          result.material = 'Carbon Steel';
+          result.material = "Carbon Steel";
+        } else if (rawText.includes("api") || rawText.includes("erw")) {
+          result.material = "Carbon Steel";
         }
       }
 
       if (parsed.wallThickness && !result.wallThickness) {
         result.wallThickness = parsed.wallThickness;
-        const thicknessNum = parseFloat(
-          parsed.wallThickness.replace(/[^\d.]/g, ''),
-        );
-        if (!isNaN(thicknessNum)) {
+        const thicknessNum = parseFloat(parsed.wallThickness.replace(/[^\d.]/g, ""));
+        if (!Number.isNaN(thicknessNum)) {
           result.wallThicknessNum = thicknessNum;
         }
       }
@@ -532,27 +496,25 @@ export class ExcelExtractorService {
 
   private getCellText(cell: ExcelJS.Cell): string {
     const value = cell.value;
-    if (!value) return '';
+    if (!value) return "";
 
-    if (typeof value === 'string') return value;
-    if (typeof value === 'number') return value.toString();
+    if (typeof value === "string") return value;
+    if (typeof value === "number") return value.toString();
 
-    if (typeof value === 'object') {
-      if ('text' in value) return (value as any).text;
-      if ('richText' in value) {
+    if (typeof value === "object") {
+      if ("text" in value) return (value as any).text;
+      if ("richText" in value) {
         const richText = (value as any).richText as Array<{ text: string }>;
-        return richText.map((rt) => rt.text).join('');
+        return richText.map((rt) => rt.text).join("");
       }
-      if ('result' in value) return (value as any).result?.toString() || '';
+      if ("result" in value) return (value as any).result?.toString() || "";
     }
 
     return value.toString();
   }
 
-  private parseSpecificationText(
-    text: string,
-  ): SpecificationCellData['parsedData'] {
-    const result: SpecificationCellData['parsedData'] = {
+  private parseSpecificationText(text: string): SpecificationCellData["parsedData"] {
+    const result: SpecificationCellData["parsedData"] = {
       materialGrade: null,
       wallThickness: null,
       lining: null,
@@ -625,9 +587,7 @@ export class ExcelExtractorService {
       const match = text.match(pattern);
       if (match) {
         result.externalCoating = match[1]?.trim() || match[0].trim();
-        this.logger.debug(
-          `  Found external coating: ${result.externalCoating}`,
-        );
+        this.logger.debug(`  Found external coating: ${result.externalCoating}`);
         break;
       }
     }
@@ -644,7 +604,7 @@ export class ExcelExtractorService {
     for (const pattern of standardPatterns) {
       const match = text.match(pattern);
       if (match) {
-        result.standard = match[1].toUpperCase().replace(/\s+/g, ' ');
+        result.standard = match[1].toUpperCase().replace(/\s+/g, " ");
         this.logger.debug(`  Found standard: ${result.standard}`);
         break;
       }
@@ -672,16 +632,16 @@ export class ExcelExtractorService {
     const texts: string[] = [];
     row.eachCell((cell) => {
       const value = cell.value;
-      if (value && typeof value === 'string' && value.trim().length > 3) {
+      if (value && typeof value === "string" && value.trim().length > 3) {
         texts.push(value.trim());
-      } else if (value && typeof value === 'object' && 'text' in value) {
+      } else if (value && typeof value === "object" && "text" in value) {
         const richText = value as { text: string };
         if (richText.text && richText.text.trim().length > 3) {
           texts.push(richText.text.trim());
         }
       }
     });
-    return texts.length > 0 ? texts.join(' ') : null;
+    return texts.length > 0 ? texts.join(" ") : null;
   }
 
   private extractRowData(row: ExcelJS.Row): Record<string, any> {
@@ -695,10 +655,9 @@ export class ExcelExtractorService {
     const col8 = row.getCell(8).value;
     const col9 = row.getCell(9).value;
 
-    const col3Str = col3?.toString() || '';
+    const col3Str = col3?.toString() || "";
     const isSupplyInstallRow = /^(Supply|Install)$/i.test(col3Str.trim());
-    const isItemNoDescUnitQty =
-      col1 !== null && typeof col1 === 'number' && isSupplyInstallRow;
+    const isItemNoDescUnitQty = col1 !== null && typeof col1 === "number" && isSupplyInstallRow;
 
     if (isItemNoDescUnitQty) {
       return {
@@ -713,8 +672,8 @@ export class ExcelExtractorService {
       };
     }
 
-    const col1Str = col1?.toString() || '';
-    const col5Str = col5?.toString() || '';
+    const col1Str = col1?.toString() || "";
+    const col5Str = col5?.toString() || "";
     if (col5Str.length > 3) {
       return {
         trade: col1,
@@ -768,11 +727,9 @@ export class ExcelExtractorService {
       lining: null as string | null,
     };
 
-    const standardMatch = description.match(
-      /\b(API\s*5L|SABS\s*\d+|ASTM\s*\w+)/i,
-    );
+    const standardMatch = description.match(/\b(API\s*5L|SABS\s*\d+|ASTM\s*\w+)/i);
     if (standardMatch) {
-      result.standard = standardMatch[1].toUpperCase().replace(/\s+/g, ' ');
+      result.standard = standardMatch[1].toUpperCase().replace(/\s+/g, " ");
     }
 
     const liningPatterns = [
@@ -791,14 +748,11 @@ export class ExcelExtractorService {
       }
     }
 
-    const coatingMatch = description.match(
-      /\b(polyurethane|epoxy|bitumen|galvani[sz]ed)\b/i,
-    );
+    const coatingMatch = description.match(/\b(polyurethane|epoxy|bitumen|galvani[sz]ed)\b/i);
     if (coatingMatch) {
       result.coating =
-        description.match(
-          /(polyurethane\s*coating|epoxy\s*coating|bitumen|galvani[sz]ed)/i,
-        )?.[0] || coatingMatch[1];
+        description.match(/(polyurethane\s*coating|epoxy\s*coating|bitumen|galvani[sz]ed)/i)?.[0] ||
+        coatingMatch[1];
     }
 
     const thicknessMatch = description.match(/(\d+(?:\.\d+)?)\s*mm\s*thick/i);
@@ -817,22 +771,12 @@ export class ExcelExtractorService {
     return result;
   }
 
-  private isLineItem(
-    rowData: Record<string, any>,
-    description: string,
-  ): boolean {
+  private isLineItem(rowData: Record<string, any>, description: string): boolean {
     const hasQuantity =
-      rowData.quantity !== null &&
-      rowData.quantity !== undefined &&
-      rowData.quantity !== '';
-    const hasUnit =
-      rowData.unit !== null &&
-      rowData.unit !== undefined &&
-      rowData.unit !== '';
+      rowData.quantity !== null && rowData.quantity !== undefined && rowData.quantity !== "";
+    const hasUnit = rowData.unit !== null && rowData.unit !== undefined && rowData.unit !== "";
     const hasDiameter = /\d+\s*mm\s*(dia|diameter)?/i.test(description);
-    const hasItemRef =
-      /item\s*\d+\.\d+/i.test(description) ||
-      /^\s*\([a-z]\)/i.test(description);
+    const hasItemRef = /item\s*\d+\.\d+/i.test(description) || /^\s*\([a-z]\)/i.test(description);
 
     return (hasQuantity || hasUnit) && (hasDiameter || hasItemRef);
   }
@@ -861,11 +805,10 @@ export class ExcelExtractorService {
     currentLNumber: string | null,
     rowNumber: number,
   ): string {
-    const itemLetterOrNumber =
-      this.extractItemNumberFromDescription(description);
+    const itemLetterOrNumber = this.extractItemNumberFromDescription(description);
     const rowDataItemNumber = rowData.itemNumber?.toString().trim();
 
-    let baseNumber = '';
+    let baseNumber = "";
 
     if (rowDataItemNumber && /^L\d/i.test(rowDataItemNumber)) {
       baseNumber = rowDataItemNumber.toUpperCase();
@@ -913,20 +856,14 @@ export class ExcelExtractorService {
     const directMaterial = this.extractMaterial(description);
     const material = directMaterial || context.material;
     const materialFromContext = !directMaterial && !!context.material;
-    const materialGrade =
-      this.extractMaterialGrade(description) || context.materialGrade;
+    const materialGrade = this.extractMaterialGrade(description) || context.materialGrade;
     const diameter = this.extractDiameter(description);
     const secondaryDiameter = this.extractSecondaryDiameter(description);
     const length = this.extractLength(description);
     const angle = this.extractAngle(description);
     const flangeConfig = this.extractFlangeConfig(description);
     const quantity = this.parseQuantity(rowData.quantity);
-    const itemNumber = this.buildItemNumber(
-      rowData,
-      description,
-      currentLNumber,
-      rowNumber,
-    );
+    const itemNumber = this.buildItemNumber(rowData, description, currentLNumber, rowNumber);
 
     let confidence = 0.5;
     let needsClarification = false;
@@ -934,14 +871,13 @@ export class ExcelExtractorService {
 
     if (material) confidence += 0.15;
     if (diameter) confidence += 0.15;
-    if (itemType !== 'unknown') confidence += 0.1;
+    if (itemType !== "unknown") confidence += 0.1;
     if (quantity > 0) confidence += 0.1;
     if (materialFromContext) confidence += 0.05;
 
     if (!material) {
       needsClarification = true;
-      clarificationReason =
-        'Could not determine material type from item or specification header';
+      clarificationReason = "Could not determine material type from item or specification header";
       confidence -= 0.2;
     }
 
@@ -949,22 +885,22 @@ export class ExcelExtractorService {
       needsClarification = true;
       clarificationReason = clarificationReason
         ? `${clarificationReason}; Could not determine pipe diameter`
-        : 'Could not determine pipe diameter';
+        : "Could not determine pipe diameter";
       confidence -= 0.2;
     }
 
-    if (itemType === 'bend' && !angle) {
+    if (itemType === "bend" && !angle) {
       needsClarification = true;
       clarificationReason = clarificationReason
         ? `${clarificationReason}; Could not determine bend angle`
-        : 'Could not determine bend angle';
+        : "Could not determine bend angle";
     }
 
-    if (itemType === 'reducer' && !secondaryDiameter) {
+    if (itemType === "reducer" && !secondaryDiameter) {
       needsClarification = true;
       clarificationReason = clarificationReason
         ? `${clarificationReason}; Could not determine reducer outlet diameter`
-        : 'Could not determine reducer outlet diameter';
+        : "Could not determine reducer outlet diameter";
     }
 
     confidence = Math.max(0.1, Math.min(1.0, confidence));
@@ -991,7 +927,7 @@ export class ExcelExtractorService {
       material,
       materialGrade,
       diameter,
-      diameterUnit: 'mm',
+      diameterUnit: "mm",
       secondaryDiameter,
       length,
       wallThickness: context.wallThickness,
@@ -999,7 +935,7 @@ export class ExcelExtractorService {
       angle,
       flangeConfig,
       quantity,
-      unit: rowData.unit?.toString() || 'No',
+      unit: rowData.unit?.toString() || "No",
       confidence,
       needsClarification,
       clarificationReason,
@@ -1007,13 +943,13 @@ export class ExcelExtractorService {
     };
   }
 
-  private detectItemType(description: string): ExtractedItem['itemType'] {
+  private detectItemType(description: string): ExtractedItem["itemType"] {
     for (const pattern of this.itemTypePatterns) {
       if (pattern.pattern.test(description)) {
         return pattern.type;
       }
     }
-    return 'unknown';
+    return "unknown";
   }
 
   private extractMaterial(description: string): string | null {
@@ -1093,9 +1029,7 @@ export class ExcelExtractorService {
     return null;
   }
 
-  private extractFlangeConfig(
-    description: string,
-  ): ExtractedItem['flangeConfig'] {
+  private extractFlangeConfig(description: string): ExtractedItem["flangeConfig"] {
     for (const fp of this.flangePatterns) {
       if (fp.pattern.test(description)) {
         return fp.config;
@@ -1103,17 +1037,17 @@ export class ExcelExtractorService {
     }
 
     if (/flange/i.test(description)) {
-      return 'one_end';
+      return "one_end";
     }
 
     return null;
   }
 
   private parseQuantity(value: any): number {
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string') {
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
       const parsed = parseFloat(value);
-      return isNaN(parsed) ? 0 : parsed;
+      return Number.isNaN(parsed) ? 0 : parsed;
     }
     return 0;
   }

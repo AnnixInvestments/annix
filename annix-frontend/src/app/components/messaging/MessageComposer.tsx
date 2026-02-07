@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useRef, KeyboardEvent } from 'react';
+import { KeyboardEvent, useRef, useState } from "react";
 
 interface MessageComposerProps {
   onSend: (content: string, attachments?: File[]) => Promise<void>;
@@ -11,11 +11,11 @@ interface MessageComposerProps {
 
 export function MessageComposer({
   onSend,
-  placeholder = 'Type a message...',
+  placeholder = "Type a message...",
   disabled = false,
   showAttachments = true,
 }: MessageComposerProps) {
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,10 +29,10 @@ export function MessageComposer({
     try {
       setIsSending(true);
       await onSend(trimmedContent, attachments.length > 0 ? attachments : undefined);
-      setContent('');
+      setContent("");
       setAttachments([]);
       if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = "auto";
       }
     } finally {
       setIsSending(false);
@@ -40,7 +40,7 @@ export function MessageComposer({
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -50,7 +50,7 @@ export function MessageComposer({
     const files = Array.from(e.target.files || []);
     setAttachments((prev) => [...prev, ...files]);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -60,7 +60,7 @@ export function MessageComposer({
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
-    e.target.style.height = 'auto';
+    e.target.style.height = "auto";
     e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
   };
 
@@ -124,12 +124,7 @@ export function MessageComposer({
               disabled={disabled || isSending}
               className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 disabled:opacity-50"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -151,26 +146,18 @@ export function MessageComposer({
             disabled={disabled || isSending}
             rows={1}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-2xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
-            style={{ minHeight: '40px', maxHeight: '150px' }}
+            style={{ minHeight: "40px", maxHeight: "150px" }}
           />
         </div>
 
         <button
           type="button"
           onClick={handleSend}
-          disabled={
-            disabled ||
-            isSending ||
-            (!content.trim() && attachments.length === 0)
-          }
+          disabled={disabled || isSending || (!content.trim() && attachments.length === 0)}
           className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isSending ? (
-            <svg
-              className="w-5 h-5 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle
                 className="opacity-25"
                 cx="12"
@@ -186,11 +173,7 @@ export function MessageComposer({
               />
             </svg>
           ) : (
-            <svg
-              className="w-5 h-5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
             </svg>
           )}

@@ -60,11 +60,11 @@ export const isSabsStandard = (steelSpecId: number | undefined | null): boolean 
   isSabs719(steelSpecId) || isSabs62(steelSpecId);
 
 export const isAsmeStandard = (standardId: number | undefined | null): boolean =>
-  standardId === FLANGE_STANDARD_IDS.ASME_B16_5 ||
-  standardId === FLANGE_STANDARD_IDS.ASME_B16_47;
+  standardId === FLANGE_STANDARD_IDS.ASME_B16_5 || standardId === FLANGE_STANDARD_IDS.ASME_B16_47;
 
-export const derivedSabsStandard = (steelSpecId: number | undefined | null): 'SABS719' | 'SABS62' =>
-  isSabs719(steelSpecId) ? 'SABS719' : 'SABS62';
+export const derivedSabsStandard = (
+  steelSpecId: number | undefined | null,
+): "SABS719" | "SABS62" => (isSabs719(steelSpecId) ? "SABS719" : "SABS62");
 
 export type SteelSpecId = (typeof STEEL_SPEC_IDS)[keyof typeof STEEL_SPEC_IDS];
 export type FlangeStandardId = (typeof FLANGE_STANDARD_IDS)[keyof typeof FLANGE_STANDARD_IDS];

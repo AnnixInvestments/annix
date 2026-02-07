@@ -1,10 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import * as mammoth from 'mammoth';
-import {
-  ExtractionResult,
-  ExtractedItem,
-  SpecificationCellData,
-} from './excel-extractor.service';
+import { Injectable, Logger } from "@nestjs/common";
+import * as mammoth from "mammoth";
+import { ExtractedItem, ExtractionResult, SpecificationCellData } from "./excel-extractor.service";
 
 export interface WordExtractionResult extends ExtractionResult {
   rawText: string;
@@ -18,43 +14,43 @@ export class WordExtractorService {
   private readonly materialPatterns = [
     {
       pattern: /\bS\.?S\.?\b|\bstainless\s*steel\b/i,
-      material: 'Stainless Steel',
-      grade: '316',
+      material: "Stainless Steel",
+      grade: "316",
     },
     {
       pattern: /\bM\.?S\.?\b|\bmild\s*steel\b/i,
-      material: 'Mild Steel',
+      material: "Mild Steel",
       grade: null,
     },
     {
       pattern: /\bAPI\s*5L[-\s]?[A-Z]?\b/i,
-      material: 'Carbon Steel',
-      grade: 'API 5L',
+      material: "Carbon Steel",
+      grade: "API 5L",
     },
-    { pattern: /\bSABS\s*719\b/i, material: 'Carbon Steel', grade: 'SABS 719' },
-    { pattern: /\bcarbon\s*steel\b/i, material: 'Carbon Steel', grade: null },
+    { pattern: /\bSABS\s*719\b/i, material: "Carbon Steel", grade: "SABS 719" },
+    { pattern: /\bcarbon\s*steel\b/i, material: "Carbon Steel", grade: null },
     {
       pattern: /\bASTM\s*A234\s*WPB\b/i,
-      material: 'Carbon Steel',
-      grade: 'A234 WPB',
+      material: "Carbon Steel",
+      grade: "A234 WPB",
     },
-    { pattern: /\bASTM\s*A105\b/i, material: 'Carbon Steel', grade: 'A105' },
-    { pattern: /\bERW\b/i, material: 'Carbon Steel', grade: 'ERW' },
+    { pattern: /\bASTM\s*A105\b/i, material: "Carbon Steel", grade: "A105" },
+    { pattern: /\bERW\b/i, material: "Carbon Steel", grade: "ERW" },
   ];
 
   private readonly itemTypePatterns = [
-    { pattern: /\belbow\b/i, type: 'bend' as const },
-    { pattern: /\bs[-\s]?bend\b/i, type: 'bend' as const },
-    { pattern: /\bbend\b|\bdeg\b|\bdegree\b/i, type: 'bend' as const },
+    { pattern: /\belbow\b/i, type: "bend" as const },
+    { pattern: /\bs[-\s]?bend\b/i, type: "bend" as const },
+    { pattern: /\bbend\b|\bdeg\b|\bdegree\b/i, type: "bend" as const },
     {
       pattern: /\breducer\b|\breducing\b(?!\s*tee)/i,
-      type: 'reducer' as const,
+      type: "reducer" as const,
     },
-    { pattern: /\btee\b/i, type: 'tee' as const },
-    { pattern: /\bflange\b(?!.*gasket)/i, type: 'flange' as const },
-    { pattern: /\bexpansion\s*joint\b/i, type: 'expansion_joint' as const },
-    { pattern: /\b\d+\s*NB\s+PIPE\b/i, type: 'pipe' as const },
-    { pattern: /\bpipe\b|\bdia\s*pipe\b/i, type: 'pipe' as const },
+    { pattern: /\btee\b/i, type: "tee" as const },
+    { pattern: /\bflange\b(?!.*gasket)/i, type: "flange" as const },
+    { pattern: /\bexpansion\s*joint\b/i, type: "expansion_joint" as const },
+    { pattern: /\b\d+\s*NB\s+PIPE\b/i, type: "pipe" as const },
+    { pattern: /\bpipe\b|\bdia\s*pipe\b/i, type: "pipe" as const },
   ];
 
   async extractFromWord(filePath: string): Promise<WordExtractionResult> {
@@ -72,11 +68,9 @@ export class WordExtractorService {
       });
     }
 
-    this.logger.log(
-      `Extracted ${rawText.length} characters from Word document`,
-    );
+    this.logger.log(`Extracted ${rawText.length} characters from Word document`);
 
-    const lines = rawText.split('\n').filter((line) => line.trim().length > 0);
+    const lines = rawText.split("\n").filter((line) => line.trim().length > 0);
     this.logger.log(`Word document has ${lines.length} non-empty lines`);
 
     const specificationCells = this.extractSpecificationData(lines);
@@ -87,7 +81,7 @@ export class WordExtractorService {
     this.logger.log(`Extracted ${items.length} items from Word document`);
 
     return {
-      sheetName: 'Word Document',
+      sheetName: "Word Document",
       totalRows: lines.length,
       items,
       clarificationsNeeded: items.filter((i) => i.needsClarification).length,
@@ -128,12 +122,8 @@ export class WordExtractorService {
       const lineText = line.trim();
       if (lineText.length < 15) return;
 
-      const isSpecHeader = specHeaderPatterns.some((pattern) =>
-        pattern.test(lineText),
-      );
-      const specDataMatches = specDataPatterns.filter((pattern) =>
-        pattern.test(lineText),
-      ).length;
+      const isSpecHeader = specHeaderPatterns.some((pattern) => pattern.test(lineText));
+      const specDataMatches = specDataPatterns.filter((pattern) => pattern.test(lineText)).length;
 
       if ((isSpecHeader || specDataMatches >= 2) && lineText.length > 10) {
         const parsed = this.parseSpecificationText(lineText);
@@ -158,10 +148,8 @@ export class WordExtractorService {
     return specCells;
   }
 
-  private parseSpecificationText(
-    text: string,
-  ): SpecificationCellData['parsedData'] {
-    const result: SpecificationCellData['parsedData'] = {
+  private parseSpecificationText(text: string): SpecificationCellData["parsedData"] {
+    const result: SpecificationCellData["parsedData"] = {
       materialGrade: null,
       wallThickness: null,
       lining: null,
@@ -203,14 +191,13 @@ export class WordExtractorService {
         result.materialGrade = parsed.materialGrade;
       if (parsed.wallThickness && !result.wallThickness) {
         result.wallThickness = parsed.wallThickness;
-        const num = parseFloat(parsed.wallThickness.replace(/[^\d.]/g, ''));
-        if (!isNaN(num)) result.wallThicknessNum = num;
+        const num = parseFloat(parsed.wallThickness.replace(/[^\d.]/g, ""));
+        if (!Number.isNaN(num)) result.wallThicknessNum = num;
       }
       if (parsed.lining && !result.lining) result.lining = parsed.lining;
       if (parsed.externalCoating && !result.externalCoating)
         result.externalCoating = parsed.externalCoating;
-      if (parsed.standard && !result.standard)
-        result.standard = parsed.standard;
+      if (parsed.standard && !result.standard) result.standard = parsed.standard;
     }
 
     return result;
@@ -234,11 +221,7 @@ export class WordExtractorService {
       if (lineText.length < 5) return;
 
       if (this.isItemLine(lineText)) {
-        const item = this.extractItemFromLine(
-          index + 1,
-          lineText,
-          currentContext,
-        );
+        const item = this.extractItemFromLine(index + 1, lineText, currentContext);
         if (item) {
           itemNumber++;
           item.itemNumber = `WORD-${itemNumber}`;
@@ -253,10 +236,9 @@ export class WordExtractorService {
   private isItemLine(text: string): boolean {
     const hasDiameter = /\b\d+\s*(NB|mm|DN|dia)/i.test(text);
     const hasItemType = this.itemTypePatterns.some((p) => p.pattern.test(text));
-    const isHeader =
-      /^(item|description|qty|quantity|unit|total|bill|section|page)/i.test(
-        text.trim(),
-      );
+    const isHeader = /^(item|description|qty|quantity|unit|total|bill|section|page)/i.test(
+      text.trim(),
+    );
 
     return (hasDiameter || hasItemType) && !isHeader;
   }
@@ -274,19 +256,19 @@ export class WordExtractorService {
     const diameter = this.extractDiameter(text);
     const material = this.extractMaterial(text);
 
-    if (!diameter && itemType === 'unknown') return null;
+    if (!diameter && itemType === "unknown") return null;
 
     const needsClarification = !diameter || !material.material;
 
     return {
       rowNumber: lineNumber,
-      itemNumber: '',
+      itemNumber: "",
       description: text.substring(0, 200),
       itemType,
       material: material.material || context.material,
       materialGrade: material.grade || context.materialGrade,
       diameter,
-      diameterUnit: 'mm',
+      diameterUnit: "mm",
       secondaryDiameter: null,
       length: null,
       wallThickness: context.wallThickness,
@@ -294,29 +276,23 @@ export class WordExtractorService {
       angle: null,
       flangeConfig: null,
       quantity: 1,
-      unit: 'ea',
+      unit: "ea",
       confidence: needsClarification ? 0.6 : 0.85,
       needsClarification,
-      clarificationReason: needsClarification
-        ? 'Missing diameter or material information'
-        : null,
+      clarificationReason: needsClarification ? "Missing diameter or material information" : null,
       rawData: { originalLine: text },
     };
   }
 
-  private detectItemType(text: string): ExtractedItem['itemType'] {
+  private detectItemType(text: string): ExtractedItem["itemType"] {
     for (const { pattern, type } of this.itemTypePatterns) {
       if (pattern.test(text)) return type;
     }
-    return 'unknown';
+    return "unknown";
   }
 
   private extractDiameter(text: string): number | null {
-    const patterns = [
-      /(\d+)\s*NB\b/i,
-      /(\d+)\s*mm\s*(?:dia|diameter|NB|DN)/i,
-      /DN\s*(\d+)/i,
-    ];
+    const patterns = [/(\d+)\s*NB\b/i, /(\d+)\s*mm\s*(?:dia|diameter|NB|DN)/i, /DN\s*(\d+)/i];
 
     for (const pattern of patterns) {
       const match = text.match(pattern);
@@ -347,7 +323,7 @@ export class WordExtractorService {
 
     for (const line of headerLines) {
       const refMatch = line.match(
-        /(?:ref(?:erence)?|tender|contract|project)\s*(?:no|number)?[:\s]+([A-Z0-9\-\/]+)/i,
+        /(?:ref(?:erence)?|tender|contract|project)\s*(?:no|number)?[:\s]+([A-Z0-9\-/]+)/i,
       );
       if (refMatch && !projectReference) projectReference = refMatch[1].trim();
 
@@ -356,8 +332,7 @@ export class WordExtractorService {
         projectLocation = locationMatch[1].trim().substring(0, 100);
 
       const projectMatch = line.match(/(?:project|contract|tender)[:\s]+(.+)/i);
-      if (projectMatch && !projectName)
-        projectName = projectMatch[1].trim().substring(0, 100);
+      if (projectMatch && !projectName) projectName = projectMatch[1].trim().substring(0, 100);
     }
 
     return { projectReference, projectLocation, projectName };

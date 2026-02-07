@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
-import { Select } from '@/app/components/ui/Select';
-import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
-import { SmartNotesDropdown } from '@/app/components/rfq/SmartNotesDropdown';
-import { usePipeSteelWorkCalculations } from '@/app/lib/pipe-steel-work/usePipeSteelWorkCalculations';
+import { useEffect } from "react";
+import { SmartNotesDropdown } from "@/app/components/rfq/SmartNotesDropdown";
+import SplitPaneLayout from "@/app/components/rfq/SplitPaneLayout";
+import { Select } from "@/app/components/ui/Select";
+import { usePipeSteelWorkCalculations } from "@/app/lib/pipe-steel-work/usePipeSteelWorkCalculations";
 
 export interface PipeSteelWorkFormProps {
   entry: any;
@@ -19,13 +19,15 @@ export interface PipeSteelWorkFormProps {
 }
 
 const WORK_TYPES = [
-  { value: 'pipe_support', label: 'Pipe Support' },
-  { value: 'reinforcement_pad', label: 'Reinforcement Pad (Compensation Plate)' },
-  { value: 'saddle_support', label: 'Saddle Support' },
-  { value: 'shoe_support', label: 'Shoe Support' },
+  { value: "pipe_support", label: "Pipe Support" },
+  { value: "reinforcement_pad", label: "Reinforcement Pad (Compensation Plate)" },
+  { value: "saddle_support", label: "Saddle Support" },
+  { value: "shoe_support", label: "Shoe Support" },
 ];
 
-const NB_OPTIONS = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 750, 900];
+const NB_OPTIONS = [
+  15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 750, 900,
+];
 
 export default function PipeSteelWorkForm({
   entry,
@@ -38,28 +40,23 @@ export default function PipeSteelWorkForm({
   generateItemDescription,
   requiredProducts = [],
 }: PipeSteelWorkFormProps) {
-  const workType = entry.specs?.workType || 'pipe_support';
-  const nominalDiameterMm = entry.specs?.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
-  const bracketType = entry.specs?.bracketType || 'clevis_hanger';
+  const workType = entry.specs?.workType || "pipe_support";
+  const nominalDiameterMm =
+    entry.specs?.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
+  const bracketType = entry.specs?.bracketType || "clevis_hanger";
   const pipelineLengthM = entry.specs?.pipelineLengthM || null;
   const branchDiameterMm = entry.specs?.branchDiameterMm || null;
   const quantity = entry.specs?.quantity;
 
-  const {
-    supportSpacing,
-    bracketTypes,
-    bracketDimensions,
-    calculationResults,
-    isLoading,
-    error,
-  } = usePipeSteelWorkCalculations({
-    workType,
-    nominalDiameterMm,
-    bracketType,
-    pipelineLengthM,
-    branchDiameterMm,
-    quantity,
-  });
+  const { supportSpacing, bracketTypes, bracketDimensions, calculationResults, isLoading, error } =
+    usePipeSteelWorkCalculations({
+      workType,
+      nominalDiameterMm,
+      bracketType,
+      pipelineLengthM,
+      branchDiameterMm,
+      quantity,
+    });
 
   useEffect(() => {
     if (calculationResults) {
@@ -119,7 +116,7 @@ export default function PipeSteelWorkForm({
                       value: wt.value,
                       label: wt.label,
                     }))}
-                                        placeholder="Select work type"
+                    placeholder="Select work type"
                     className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                   />
                 </div>
@@ -130,22 +127,22 @@ export default function PipeSteelWorkForm({
                   </label>
                   <Select
                     id={`nb-${entry.id}`}
-                    value={nominalDiameterMm?.toString() || ''}
+                    value={nominalDiameterMm?.toString() || ""}
                     onChange={(value) => {
                       onUpdateEntry(entry.id, {
-                        specs: { ...entry.specs, nominalDiameterMm: parseInt(value) },
+                        specs: { ...entry.specs, nominalDiameterMm: parseInt(value, 10) },
                       });
                     }}
                     options={NB_OPTIONS.map((nb) => ({
                       value: nb.toString(),
                       label: `${nb} NB`,
                     }))}
-                                        placeholder="Select NB"
+                    placeholder="Select NB"
                     className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                   />
                 </div>
 
-                {workType === 'pipe_support' && (
+                {workType === "pipe_support" && (
                   <div>
                     <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
                       Bracket Type *
@@ -164,30 +161,32 @@ export default function PipeSteelWorkForm({
                           value: bt.typeCode,
                           label: bt.displayName,
                         }))}
-                                            placeholder="Select bracket type"
+                      placeholder="Select bracket type"
                       className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                     />
                   </div>
                 )}
 
-                {workType === 'reinforcement_pad' && (
+                {workType === "reinforcement_pad" && (
                   <div>
                     <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
                       Branch Diameter (mm) *
                     </label>
                     <Select
                       id={`branch-nb-${entry.id}`}
-                      value={branchDiameterMm?.toString() || ''}
+                      value={branchDiameterMm?.toString() || ""}
                       onChange={(value) => {
                         onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, branchDiameterMm: parseInt(value) },
+                          specs: { ...entry.specs, branchDiameterMm: parseInt(value, 10) },
                         });
                       }}
-                      options={NB_OPTIONS.filter((nb) => nb < (nominalDiameterMm || 999)).map((nb) => ({
-                        value: nb.toString(),
-                        label: `${nb} NB`,
-                      }))}
-                                            placeholder="Select Branch NB"
+                      options={NB_OPTIONS.filter((nb) => nb < (nominalDiameterMm || 999)).map(
+                        (nb) => ({
+                          value: nb.toString(),
+                          label: `${nb} NB`,
+                        }),
+                      )}
+                      placeholder="Select Branch NB"
                       className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                     />
                   </div>
@@ -195,7 +194,7 @@ export default function PipeSteelWorkForm({
               </div>
             </div>
 
-            {workType === 'pipe_support' && (
+            {workType === "pipe_support" && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 dark:bg-blue-900/20 dark:border-blue-700">
                 <h4 className="text-sm font-bold text-blue-900 border-b border-blue-400 pb-1.5 mb-3 dark:text-blue-100 dark:border-blue-600">
                   Pipeline Details
@@ -207,10 +206,13 @@ export default function PipeSteelWorkForm({
                     </label>
                     <input
                       type="number"
-                      value={pipelineLengthM || ''}
+                      value={pipelineLengthM || ""}
                       onChange={(e) => {
                         onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, pipelineLengthM: parseFloat(e.target.value) || null },
+                          specs: {
+                            ...entry.specs,
+                            pipelineLengthM: parseFloat(e.target.value) || null,
+                          },
                         });
                       }}
                       className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
@@ -225,17 +227,17 @@ export default function PipeSteelWorkForm({
                     </label>
                     <Select
                       id={`media-type-${entry.id}`}
-                      value={entry.specs?.mediaType || 'water_filled'}
+                      value={entry.specs?.mediaType || "water_filled"}
                       onChange={(value) => {
                         onUpdateEntry(entry.id, {
                           specs: { ...entry.specs, mediaType: value },
                         });
                       }}
                       options={[
-                        { value: 'water_filled', label: 'Water Filled' },
-                        { value: 'vapor_gas', label: 'Vapor/Gas' },
+                        { value: "water_filled", label: "Water Filled" },
+                        { value: "vapor_gas", label: "Vapor/Gas" },
                       ]}
-                                            placeholder="Select media"
+                      placeholder="Select media"
                       className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
                     />
                   </div>
@@ -254,19 +256,19 @@ export default function PipeSteelWorkForm({
                   </label>
                   <input
                     type="number"
-                    value={quantity ?? ''}
+                    value={quantity ?? ""}
                     onChange={(e) => {
                       const rawValue = e.target.value;
-                      if (rawValue === '') {
+                      if (rawValue === "") {
                         onUpdateEntry(entry.id, { specs: { ...entry.specs, quantity: undefined } });
                         return;
                       }
                       onUpdateEntry(entry.id, {
-                        specs: { ...entry.specs, quantity: parseInt(rawValue) },
+                        specs: { ...entry.specs, quantity: parseInt(rawValue, 10) },
                       });
                     }}
                     onBlur={(e) => {
-                      if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                      if (e.target.value === "" || parseInt(e.target.value, 10) < 1) {
                         onUpdateEntry(entry.id, { specs: { ...entry.specs, quantity: 1 } });
                       }
                     }}
@@ -283,8 +285,12 @@ export default function PipeSteelWorkForm({
                 Notes
               </h4>
               <SmartNotesDropdown
-                selectedNotes={entry.notes ? (Array.isArray(entry.notes) ? entry.notes : [entry.notes]) : []}
-                onNotesChange={(newNotes) => onUpdateEntry(entry.id, { notes: newNotes.join('\n') })}
+                selectedNotes={
+                  entry.notes ? (Array.isArray(entry.notes) ? entry.notes : [entry.notes]) : []
+                }
+                onNotesChange={(newNotes) =>
+                  onUpdateEntry(entry.id, { notes: newNotes.join("\n") })
+                }
                 placeholder="Add notes for this item..."
               />
             </div>
@@ -292,23 +298,29 @@ export default function PipeSteelWorkForm({
         }
         previewContent={
           <div className="space-y-4">
-            {supportSpacing && workType === 'pipe_support' && (
+            {supportSpacing && workType === "pipe_support" && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 dark:bg-blue-900/20 dark:border-blue-700">
                 <h5 className="text-sm font-bold text-blue-900 mb-2 dark:text-blue-100">
                   Support Spacing ({supportSpacing.standard})
                 </h5>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="text-blue-800 dark:text-blue-200">Water Filled:</div>
-                  <div className="font-semibold text-blue-900 dark:text-blue-100">{supportSpacing.waterFilledSpacingM}m</div>
+                  <div className="font-semibold text-blue-900 dark:text-blue-100">
+                    {supportSpacing.waterFilledSpacingM}m
+                  </div>
                   <div className="text-blue-800 dark:text-blue-200">Vapor/Gas:</div>
-                  <div className="font-semibold text-blue-900 dark:text-blue-100">{supportSpacing.vaporGasSpacingM}m</div>
+                  <div className="font-semibold text-blue-900 dark:text-blue-100">
+                    {supportSpacing.vaporGasSpacingM}m
+                  </div>
                   <div className="text-blue-800 dark:text-blue-200">Rod Size:</div>
-                  <div className="font-semibold text-blue-900 dark:text-blue-100">{supportSpacing.rodSizeMm}mm</div>
+                  <div className="font-semibold text-blue-900 dark:text-blue-100">
+                    {supportSpacing.rodSizeMm}mm
+                  </div>
                 </div>
               </div>
             )}
 
-            {selectedBracketType && workType === 'pipe_support' && (
+            {selectedBracketType && workType === "pipe_support" && (
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 dark:bg-purple-900/20 dark:border-purple-700">
                 <h5 className="text-sm font-bold text-purple-900 mb-2 dark:text-purple-100">
                   {selectedBracketType.displayName}
@@ -317,19 +329,29 @@ export default function PipeSteelWorkForm({
                   {selectedBracketType.description && (
                     <>
                       <div className="text-purple-800 dark:text-purple-200">Description:</div>
-                      <div className="font-semibold text-purple-900 dark:text-purple-100">{selectedBracketType.description}</div>
+                      <div className="font-semibold text-purple-900 dark:text-purple-100">
+                        {selectedBracketType.description}
+                      </div>
                     </>
                   )}
                   <div className="text-purple-800 dark:text-purple-200">Allows Expansion:</div>
-                  <div className="font-semibold text-purple-900 dark:text-purple-100">{selectedBracketType.allowsExpansion ? 'Yes' : 'No'}</div>
+                  <div className="font-semibold text-purple-900 dark:text-purple-100">
+                    {selectedBracketType.allowsExpansion ? "Yes" : "No"}
+                  </div>
                   <div className="text-purple-800 dark:text-purple-200">Anchor Type:</div>
-                  <div className="font-semibold text-purple-900 dark:text-purple-100">{selectedBracketType.isAnchorType ? 'Yes' : 'No'}</div>
+                  <div className="font-semibold text-purple-900 dark:text-purple-100">
+                    {selectedBracketType.isAnchorType ? "Yes" : "No"}
+                  </div>
                   {bracketDimensions && (
                     <>
                       <div className="text-purple-800 dark:text-purple-200">Unit Weight:</div>
-                      <div className="font-semibold text-purple-900 dark:text-purple-100">{bracketDimensions.unitWeightKg} kg</div>
+                      <div className="font-semibold text-purple-900 dark:text-purple-100">
+                        {bracketDimensions.unitWeightKg} kg
+                      </div>
                       <div className="text-purple-800 dark:text-purple-200">Max Load:</div>
-                      <div className="font-semibold text-purple-900 dark:text-purple-100">{bracketDimensions.maxLoadKg} kg</div>
+                      <div className="font-semibold text-purple-900 dark:text-purple-100">
+                        {bracketDimensions.maxLoadKg} kg
+                      </div>
                     </>
                   )}
                 </div>
@@ -357,34 +379,50 @@ export default function PipeSteelWorkForm({
                   {calculationResults.numberOfSupports && (
                     <>
                       <div className="text-green-800 dark:text-green-200">Number of Supports:</div>
-                      <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.numberOfSupports}</div>
+                      <div className="font-semibold text-green-900 dark:text-green-100">
+                        {calculationResults.numberOfSupports}
+                      </div>
                     </>
                   )}
                   {calculationResults.reinforcementPad && (
                     <>
                       <div className="text-green-800 dark:text-green-200">Pad OD:</div>
-                      <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.reinforcementPad.padOuterDiameterMm}mm</div>
+                      <div className="font-semibold text-green-900 dark:text-green-100">
+                        {calculationResults.reinforcementPad.padOuterDiameterMm}mm
+                      </div>
                       <div className="text-green-800 dark:text-green-200">Pad Thickness:</div>
-                      <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.reinforcementPad.padThicknessMm}mm</div>
+                      <div className="font-semibold text-green-900 dark:text-green-100">
+                        {calculationResults.reinforcementPad.padThicknessMm}mm
+                      </div>
                       <div className="text-green-800 dark:text-green-200">Required:</div>
                       <div className="font-semibold text-green-900 dark:text-green-100">
-                        {calculationResults.reinforcementPad.reinforcementRequired ? 'Yes' : 'No'}
+                        {calculationResults.reinforcementPad.reinforcementRequired ? "Yes" : "No"}
                       </div>
                     </>
                   )}
                   <div className="text-green-800 dark:text-green-200">Weight per Unit:</div>
                   <div className="font-semibold text-green-900 dark:text-green-100">
-                    {calculationResults.weightPerUnitKg || calculationResults.reinforcementPad?.padWeightKg} kg
+                    {calculationResults.weightPerUnitKg ||
+                      calculationResults.reinforcementPad?.padWeightKg}{" "}
+                    kg
                   </div>
                   <div className="text-green-800 dark:text-green-200">Total Weight:</div>
-                  <div className="font-semibold text-green-900 dark:text-green-100">{calculationResults.totalWeightKg} kg</div>
+                  <div className="font-semibold text-green-900 dark:text-green-100">
+                    {calculationResults.totalWeightKg} kg
+                  </div>
                   <div className="text-green-800 dark:text-green-200">Unit Cost:</div>
-                  <div className="font-semibold text-green-900 dark:text-green-100">R {calculationResults.unitCost?.toLocaleString()}</div>
+                  <div className="font-semibold text-green-900 dark:text-green-100">
+                    R {calculationResults.unitCost?.toLocaleString()}
+                  </div>
                   <div className="text-green-800 dark:text-green-200">Total Cost:</div>
-                  <div className="font-semibold text-green-900 dark:text-green-100">R {calculationResults.totalCost?.toLocaleString()}</div>
+                  <div className="font-semibold text-green-900 dark:text-green-100">
+                    R {calculationResults.totalCost?.toLocaleString()}
+                  </div>
                 </div>
                 {calculationResults.notes && (
-                  <p className="mt-2 text-xs text-green-700 dark:text-green-300">{calculationResults.notes}</p>
+                  <p className="mt-2 text-xs text-green-700 dark:text-green-300">
+                    {calculationResults.notes}
+                  </p>
                 )}
               </div>
             )}

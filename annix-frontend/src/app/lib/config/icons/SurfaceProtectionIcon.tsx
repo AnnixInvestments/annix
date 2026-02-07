@@ -1,24 +1,16 @@
-'use client';
-
-import React from 'react';
+"use client";
 
 interface SurfaceProtectionIconProps {
   className?: string;
   size?: number;
 }
 
-export function SurfaceProtectionIcon({ className = '', size = 24 }: SurfaceProtectionIconProps) {
+export function SurfaceProtectionIcon({ className = "", size = 24 }: SurfaceProtectionIconProps) {
   const width = size * 2;
   const height = size * 1.2;
 
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 52 30"
-      fill="none"
-      className={className}
-    >
+    <svg width={width} height={height} viewBox="0 0 52 30" fill="none" className={className}>
       <defs>
         {/* Spray gun body - dark grey metal */}
         <linearGradient id="gunBody" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -114,7 +106,15 @@ export function SurfaceProtectionIcon({ className = '', size = 24 }: SurfaceProt
 
       {/* Nozzle tip */}
       <rect x="15" y="12" width="4" height="3" rx="0.5" fill="#505050" />
-      <ellipse cx="19" cy="13.5" rx="1" ry="1.2" fill="#606060" stroke="#404040" strokeWidth="0.3" />
+      <ellipse
+        cx="19"
+        cy="13.5"
+        rx="1"
+        ry="1.2"
+        fill="#606060"
+        stroke="#404040"
+        strokeWidth="0.3"
+      />
       {/* Nozzle opening */}
       <ellipse cx="19" cy="13.5" rx="0.5" ry="0.7" fill="#1A1A1A" />
 
@@ -125,7 +125,12 @@ export function SurfaceProtectionIcon({ className = '', size = 24 }: SurfaceProt
       <line x1="3" y1="12" x2="14" y2="12" stroke="#707070" strokeWidth="0.5" opacity="0.6" />
 
       {/* Trigger */}
-      <path d="M 7 16 L 8 18 L 6 20 L 5 20 L 6 17 Z" fill="url(#gunGrip)" stroke="#303030" strokeWidth="0.3" />
+      <path
+        d="M 7 16 L 8 18 L 6 20 L 5 20 L 6 17 Z"
+        fill="url(#gunGrip)"
+        stroke="#303030"
+        strokeWidth="0.3"
+      />
 
       {/* Handle/grip */}
       <rect x="4" y="16" width="5" height="10" rx="1" fill="url(#gunGrip)" />
@@ -137,11 +142,25 @@ export function SurfaceProtectionIcon({ className = '', size = 24 }: SurfaceProt
       <line x1="4.5" y1="23" x2="8.5" y2="23" stroke="#252525" strokeWidth="0.3" />
 
       {/* Paint cup (gravity feed) */}
-      <path d="M 6 6 L 5 11 L 10 11 L 9 6 Z" fill="url(#paintCup)" stroke="#606870" strokeWidth="0.3" />
+      <path
+        d="M 6 6 L 5 11 L 10 11 L 9 6 Z"
+        fill="url(#paintCup)"
+        stroke="#606870"
+        strokeWidth="0.3"
+      />
       {/* Paint level visible in cup */}
       <path d="M 5.5 8 L 5.2 10.5 L 9.8 10.5 L 9.5 8 Z" fill="url(#blueCoating)" opacity="0.8" />
       {/* Cup lid */}
-      <rect x="5.5" y="5" width="4" height="1.5" rx="0.3" fill="#909090" stroke="#707070" strokeWidth="0.3" />
+      <rect
+        x="5.5"
+        y="5"
+        width="4"
+        height="1.5"
+        rx="0.3"
+        fill="#909090"
+        stroke="#707070"
+        strokeWidth="0.3"
+      />
       {/* Cup highlight */}
       <line x1="6" y1="6.5" x2="6" y2="10" stroke="#C0C8D0" strokeWidth="0.4" opacity="0.5" />
 

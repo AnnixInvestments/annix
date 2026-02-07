@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { customerApiClient, CustomerProfileResponse } from '@/app/lib/api/customerApi';
-import { log } from '@/app/lib/logger';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { CustomerProfileResponse, customerApiClient } from "@/app/lib/api/customerApi";
+import { log } from "@/app/lib/logger";
 
 interface CustomerInfo {
   id: number;
@@ -21,7 +21,12 @@ interface CustomerAuthState {
 }
 
 interface CustomerAuthContextType extends CustomerAuthState {
-  login: (email: string, password: string, deviceFingerprint: string, browserInfo?: Record<string, any>) => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+    deviceFingerprint: string,
+    browserInfo?: Record<string, any>,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -68,7 +73,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       setAuthenticatedWithProfile(profile);
     } catch (error) {
       // Profile fetch failed - try refreshing the token before giving up
-      log.debug('[CustomerAuth] Profile fetch failed, attempting token refresh...');
+      log.debug("[CustomerAuth] Profile fetch failed, attempting token refresh...");
       const refreshed = await customerApiClient.refreshAccessToken();
 
       if (refreshed) {
@@ -79,10 +84,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           return;
         } catch {
           // Still failed after refresh - clear tokens
-          log.debug('[CustomerAuth] Profile fetch failed even after token refresh');
+          log.debug("[CustomerAuth] Profile fetch failed even after token refresh");
         }
       } else {
-        log.debug('[CustomerAuth] Token refresh failed');
+        log.debug("[CustomerAuth] Token refresh failed");
       }
 
       // Both attempts failed - user is not authenticated
@@ -104,7 +109,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     deviceFingerprint: string,
-    browserInfo?: Record<string, any>
+    browserInfo?: Record<string, any>,
   ) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
@@ -126,7 +131,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           email: profile.email,
           firstName: profile.firstName,
           lastName: profile.lastName,
-          companyName: profile.company?.tradingName || profile.company?.legalName || response.companyName,
+          companyName:
+            profile.company?.tradingName || profile.company?.legalName || response.companyName,
           accountStatus: profile.accountStatus,
         },
         profile,
@@ -190,7 +196,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 export function useCustomerAuth() {
   const context = useContext(CustomerAuthContext);
   if (context === undefined) {
-    throw new Error('useCustomerAuth must be used within a CustomerAuthProvider');
+    throw new Error("useCustomerAuth must be used within a CustomerAuthProvider");
   }
   return context;
 }
@@ -209,9 +215,15 @@ export function useOptionalCustomerAuth(): CustomerAuthContextType {
       isLoading: false,
       customer: null,
       profile: null,
-      login: async () => { throw new Error('Customer login not available in this context'); },
-      logout: async () => { /* no-op */ },
-      refreshProfile: async () => { /* no-op */ },
+      login: async () => {
+        throw new Error("Customer login not available in this context");
+      },
+      logout: async () => {
+        /* no-op */
+      },
+      refreshProfile: async () => {
+        /* no-op */
+      },
     };
   }
   return context;

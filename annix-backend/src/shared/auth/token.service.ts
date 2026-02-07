@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { AUTH_CONSTANTS } from './auth.constants';
-import { TokenPair, JwtTokenPayload } from './auth.interfaces';
+import { Injectable } from "@nestjs/common";
+import { JwtService, JwtSignOptions } from "@nestjs/jwt";
+import { AUTH_CONSTANTS } from "./auth.constants";
+import { JwtTokenPayload, TokenPair } from "./auth.interfaces";
 
 export interface TokenOptions {
   accessTokenExpiry?: string;
@@ -12,14 +12,9 @@ export interface TokenOptions {
 export class TokenService {
   constructor(private readonly jwtService: JwtService) {}
 
-  async generateTokenPair(
-    payload: JwtTokenPayload,
-    options?: TokenOptions,
-  ): Promise<TokenPair> {
-    const accessTokenExpiry =
-      options?.accessTokenExpiry || AUTH_CONSTANTS.ACCESS_TOKEN_EXPIRY;
-    const refreshTokenExpiry =
-      options?.refreshTokenExpiry || AUTH_CONSTANTS.REFRESH_TOKEN_EXPIRY;
+  async generateTokenPair(payload: JwtTokenPayload, options?: TokenOptions): Promise<TokenPair> {
+    const accessTokenExpiry = options?.accessTokenExpiry || AUTH_CONSTANTS.ACCESS_TOKEN_EXPIRY;
+    const refreshTokenExpiry = options?.refreshTokenExpiry || AUTH_CONSTANTS.REFRESH_TOKEN_EXPIRY;
 
     const payloadObj: Record<string, any> = { ...payload };
 
@@ -39,10 +34,7 @@ export class TokenService {
     return this.jwtService.verifyAsync<T>(token);
   }
 
-  generateVerificationToken(
-    payload: Record<string, any>,
-    expiresInHours: number,
-  ): string {
+  generateVerificationToken(payload: Record<string, any>, expiresInHours: number): string {
     return this.jwtService.sign(payload, { expiresIn: `${expiresInHours}h` });
   }
 }

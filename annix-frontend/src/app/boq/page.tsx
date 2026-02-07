@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import React, { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { formatDateZA } from '@/app/lib/datetime';
-import { useBoqs, useUploadBoq } from '@/app/lib/query/hooks';
-import type { Boq } from '@/app/lib/query/hooks';
+import { useRouter } from "next/navigation";
+import React, { useRef, useState } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
+import type { Boq } from "@/app/lib/query/hooks";
+import { useBoqs, useUploadBoq } from "@/app/lib/query/hooks";
 
 export default function BoqListPage() {
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
-  const [activeSearch, setActiveSearch] = useState('');
+  const [activeSearch, setActiveSearch] = useState("");
 
   const boqQuery = useBoqs({
-    status: statusFilter !== 'all' ? statusFilter : undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
     search: activeSearch || undefined,
     page,
     limit: 20,
@@ -31,8 +31,8 @@ export default function BoqListPage() {
 
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadDescription, setUploadDescription] = useState('');
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadDescription, setUploadDescription] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSearch = () => {
@@ -46,26 +46,26 @@ export default function BoqListPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'under_review':
-        return 'bg-blue-100 text-blue-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'changes_requested':
-        return 'bg-orange-100 text-orange-800';
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "submitted":
+        return "bg-yellow-100 text-yellow-800";
+      case "under_review":
+        return "bg-blue-100 text-blue-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
+      case "changes_requested":
+        return "bg-orange-100 text-orange-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const formatNumber = (num?: number) => {
-    if (num === undefined || num === null) return 'N/A';
-    return new Intl.NumberFormat('en-ZA', {
+    if (num === undefined || num === null) return "N/A";
+    return new Intl.NumberFormat("en-ZA", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(num);
@@ -78,7 +78,7 @@ export default function BoqListPage() {
     if (file) {
       setUploadFile(file);
       if (!uploadTitle) {
-        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
         setUploadTitle(nameWithoutExt);
       }
     }
@@ -87,19 +87,17 @@ export default function BoqListPage() {
   const handleUpload = async () => {
     if (!uploadFile || !uploadTitle.trim()) return;
 
-    uploadMutation.mutate(
-      { file: uploadFile, title: uploadTitle, description: uploadDescription },
-    );
+    uploadMutation.mutate({ file: uploadFile, title: uploadTitle, description: uploadDescription });
   };
 
   const closeUploadModal = () => {
     setShowUploadModal(false);
     setUploadFile(null);
-    setUploadTitle('');
-    setUploadDescription('');
+    setUploadTitle("");
+    setUploadDescription("");
     uploadMutation.reset();
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -152,12 +150,17 @@ export default function BoqListPage() {
                 className="px-6 py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 font-semibold shadow-md hover:shadow-lg transition-all flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                  />
                 </svg>
                 Upload BOQ
               </button>
               <button
-                onClick={() => router.push('/boq/create')}
+                onClick={() => router.push("/boq/create")}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-lg hover:shadow-xl transition-all"
               >
                 + Create BOQ
@@ -173,7 +176,7 @@ export default function BoqListPage() {
                 placeholder="Search by BOQ number, title..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 className="flex-1 px-4 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button
@@ -207,7 +210,7 @@ export default function BoqListPage() {
         {/* BOQ Count */}
         <div className="mb-4">
           <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{boqs.length}</span> of{' '}
+            Showing <span className="font-semibold">{boqs.length}</span> of{" "}
             <span className="font-semibold">{pagination.total}</span> BOQs
           </p>
         </div>
@@ -220,13 +223,13 @@ export default function BoqListPage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No BOQs Found</h3>
             <p className="text-gray-600 mb-6">
-              {searchTerm || statusFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Get started by creating your first BOQ'}
+              {searchTerm || statusFilter !== "all"
+                ? "Try adjusting your filters"
+                : "Get started by creating your first BOQ"}
             </p>
-            {!searchTerm && statusFilter === 'all' && (
+            {!searchTerm && statusFilter === "all" && (
               <button
-                onClick={() => router.push('/boq/create')}
+                onClick={() => router.push("/boq/create")}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold transition-all"
               >
                 Create Your First BOQ
@@ -249,10 +252,10 @@ export default function BoqListPage() {
                           <h3 className="text-lg font-bold text-gray-900">{boq.boqNumber}</h3>
                           <span
                             className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(
-                              boq.status
+                              boq.status,
                             )}`}
                           >
-                            {boq.status.replace('_', ' ').toUpperCase()}
+                            {boq.status.replace("_", " ").toUpperCase()}
                           </span>
                         </div>
                         <p className="text-gray-700 font-medium">{boq.title}</p>
@@ -299,7 +302,7 @@ export default function BoqListPage() {
                         <p className="text-xl font-bold text-green-600">
                           {boq.totalEstimatedCost
                             ? `R ${formatNumber(boq.totalEstimatedCost)}`
-                            : 'TBD'}
+                            : "TBD"}
                         </p>
                       </div>
                     </div>
@@ -346,7 +349,12 @@ export default function BoqListPage() {
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -357,21 +365,38 @@ export default function BoqListPage() {
               <div className="p-6">
                 <div className="flex items-center justify-center mb-4">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-8 h-8 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-xl font-bold text-center text-gray-900 mb-2">BOQ Imported Successfully!</h3>
+                <h3 className="text-xl font-bold text-center text-gray-900 mb-2">
+                  BOQ Imported Successfully!
+                </h3>
                 <p className="text-center text-gray-600 mb-4">
-                  Created BOQ: <span className="font-semibold">{uploadMutation.data.boq.boqNumber}</span>
+                  Created BOQ:{" "}
+                  <span className="font-semibold">{uploadMutation.data.boq.boqNumber}</span>
                 </p>
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
                   <p className="font-semibold text-gray-700 mb-2">Import Summary:</p>
                   <ul className="text-sm text-gray-600 space-y-1">
                     {uploadMutation.data.warnings.map((warning, index) => (
-                      <li key={index} className={warning.startsWith('Error:') ? 'text-orange-600' : ''}>
-                        {warning.startsWith('Error:') ? '! ' : '- '}{warning}
+                      <li
+                        key={index}
+                        className={warning.startsWith("Error:") ? "text-orange-600" : ""}
+                      >
+                        {warning.startsWith("Error:") ? "! " : "- "}
+                        {warning}
                       </li>
                     ))}
                   </ul>
@@ -411,18 +436,40 @@ export default function BoqListPage() {
                     >
                       {uploadFile ? (
                         <div className="flex items-center justify-center gap-2">
-                          <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <svg
+                            className="w-8 h-8 text-green-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
                           </svg>
                           <span className="text-gray-700 font-medium">{uploadFile.name}</span>
                         </div>
                       ) : (
                         <>
-                          <svg className="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          <svg
+                            className="w-12 h-12 mx-auto text-gray-400 mb-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                            />
                           </svg>
                           <p className="text-gray-600">Click to select or drag and drop</p>
-                          <p className="text-sm text-gray-400 mt-1">Excel (.xlsx, .xls) or PDF files</p>
+                          <p className="text-sm text-gray-400 mt-1">
+                            Excel (.xlsx, .xls) or PDF files
+                          </p>
                         </>
                       )}
                     </div>
@@ -488,8 +535,18 @@ export default function BoqListPage() {
                       </>
                     ) : (
                       <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                          />
                         </svg>
                         Upload & Import
                       </>

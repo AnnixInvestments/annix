@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FittingBoreController } from './fitting-bore.controller';
-import { FittingBoreService } from './fitting-bore.service';
-import { FittingBore } from './entities/fitting-bore.entity';
-import { FittingVariant } from '../fitting-variant/entities/fitting-variant.entity';
-import { NominalOutsideDiameterMm } from '../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { FittingVariant } from "../fitting-variant/entities/fitting-variant.entity";
+import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
+import { FittingBore } from "./entities/fitting-bore.entity";
+import { FittingBoreController } from "./fitting-bore.controller";
+import { FittingBoreService } from "./fitting-bore.service";
 
-describe('FittingBoreController', () => {
+describe("FittingBoreController", () => {
   let controller: FittingBoreController;
   let service: FittingBoreService;
 
@@ -57,7 +57,7 @@ describe('FittingBoreController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

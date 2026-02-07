@@ -10,6 +10,7 @@
     "start": "next start",
     "codegen": "openapi-typescript http://localhost:4001/swagger-yaml -o src/app/lib/api/schema.ts",
     "type-check": "tsc --noEmit",
+    "format": "biome format --write src",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "test": "vitest run",
@@ -42,7 +43,6 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
     "@openapitools/openapi-generator-cli": "^2.8.0",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query-devtools": "^5.91.3",

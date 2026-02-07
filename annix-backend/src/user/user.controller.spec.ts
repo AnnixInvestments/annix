@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { UserController } from '../user/user.controller';
-import { UserService } from '../user/user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { Test, TestingModule } from "@nestjs/testing";
+import { UserController } from "../user/user.controller";
+import { UserService } from "../user/user.service";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { User } from "./entities/user.entity";
 
 const mockUserService = {
   create: jest.fn(),
@@ -13,7 +13,7 @@ const mockUserService = {
   remove: jest.fn(),
 };
 
-describe('UserController', () => {
+describe("UserController", () => {
   let controller: UserController;
 
   beforeEach(async () => {
@@ -30,21 +30,21 @@ describe('UserController', () => {
     controller = module.get<UserController>(UserController);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new user', async () => {
+  describe("create", () => {
+    it("should create a new user", async () => {
       const dto: CreateUserDto = {
-        username: 'john',
-        email: 'john@test.com',
-        password: '123456',
+        username: "john",
+        email: "john@test.com",
+        password: "123456",
       };
       const result: Partial<User> = {
         id: 1,
-        username: 'john',
-        email: 'john@test.com',
+        username: "john",
+        email: "john@test.com",
         roles: [],
       };
 
@@ -55,10 +55,10 @@ describe('UserController', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return an array of users', async () => {
+  describe("findAll", () => {
+    it("should return an array of users", async () => {
       const users: Partial<User>[] = [
-        { id: 1, username: 'john', email: 'john@test.com', roles: [] },
+        { id: 1, username: "john", email: "john@test.com", roles: [] },
       ];
       mockUserService.findAll.mockResolvedValue(users);
 
@@ -67,12 +67,12 @@ describe('UserController', () => {
     });
   });
 
-  describe('findOne', () => {
-    it('should return a single user', async () => {
+  describe("findOne", () => {
+    it("should return a single user", async () => {
       const user: Partial<User> = {
         id: 1,
-        username: 'john',
-        email: 'john@test.com',
+        username: "john",
+        email: "john@test.com",
         roles: [],
       };
       mockUserService.findOne.mockResolvedValue(user);
@@ -82,13 +82,13 @@ describe('UserController', () => {
     });
   });
 
-  describe('update', () => {
-    it('should update a user', async () => {
-      const dto: UpdateUserDto = { username: 'john_updated' };
+  describe("update", () => {
+    it("should update a user", async () => {
+      const dto: UpdateUserDto = { username: "john_updated" };
       const updatedUser: Partial<User> = {
         id: 1,
-        username: 'john_updated',
-        email: 'john@test.com',
+        username: "john_updated",
+        email: "john@test.com",
         roles: [],
       };
 
@@ -99,8 +99,8 @@ describe('UserController', () => {
     });
   });
 
-  describe('remove', () => {
-    it('should delete a user', async () => {
+  describe("remove", () => {
+    it("should delete a user", async () => {
       mockUserService.remove.mockResolvedValue({ deleted: true });
 
       expect(await controller.remove(1)).toEqual({ deleted: true });

@@ -1,51 +1,50 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useDeviceFingerprint } from '@/app/hooks/useDeviceFingerprint';
-import { supplierAuthApi, SupplierCompanyDto, SupplierProfileDto } from '@/app/lib/api/supplierApi';
-import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
-import { currencyCodeForCountry } from '@/app/lib/currencies';
-import { log } from '@/app/lib/logger';
-import NixRegistrationVerifier, {
-  VerificationResult,
-  AutoCorrection,
-  RegistrationDocumentType,
-} from '@/app/lib/nix/components/NixRegistrationVerifier';
-import { nixApi } from '@/app/lib/nix/api';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import {
-  RegistrationTopToolbar,
   RegistrationBottomToolbar,
+  RegistrationTopToolbar,
   StepConfig,
-} from '@/app/components/RegistrationToolbar';
+} from "@/app/components/RegistrationToolbar";
 import {
+  AcceptanceCheckbox,
+  ConfirmPasswordInput,
+  DeviceInfoDisplay,
+  DocumentStorageNotice,
+  ErrorDisplay,
+  PasswordInput,
+  SecurityNotice,
+  TermsAndConditions,
+} from "@/app/components/registration";
+import { CurrencySelect, DEFAULT_CURRENCY } from "@/app/components/ui/CurrencySelect";
+import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
+import { SupplierCompanyDto, SupplierProfileDto, supplierAuthApi } from "@/app/lib/api/supplierApi";
+import {
+  BEE_LEVELS,
   COMPANY_SIZE_OPTIONS,
   SOUTH_AFRICAN_PROVINCES,
   SUPPLIER_INDUSTRY_OPTIONS,
-  BEE_LEVELS,
-} from '@/app/lib/config/registration/constants';
-import { validatePassword } from '@/app/lib/utils/passwordValidation';
-import {
-  PasswordInput,
-  ConfirmPasswordInput,
-  DeviceInfoDisplay,
-  SecurityNotice,
-  DocumentStorageNotice,
-  TermsAndConditions,
-  AcceptanceCheckbox,
-  ErrorDisplay,
-  InfoBanner,
-} from '@/app/components/registration';
+} from "@/app/lib/config/registration/constants";
+import { currencyCodeForCountry } from "@/app/lib/currencies";
+import { log } from "@/app/lib/logger";
+import { nixApi } from "@/app/lib/nix/api";
+import NixRegistrationVerifier, {
+  AutoCorrection,
+  RegistrationDocumentType,
+  VerificationResult,
+} from "@/app/lib/nix/components/NixRegistrationVerifier";
+import { validatePassword } from "@/app/lib/utils/passwordValidation";
 
-type Step = 'company' | 'bee' | 'documents' | 'profile' | 'security' | 'complete';
+type Step = "company" | "bee" | "documents" | "profile" | "security" | "complete";
 
 const REGISTRATION_STEPS: StepConfig[] = [
-  { id: 'company', label: 'Company' },
-  { id: 'bee', label: 'BEE' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'profile', label: 'Profile' },
-  { id: 'security', label: 'Security' },
+  { id: "company", label: "Company" },
+  { id: "bee", label: "BEE" },
+  { id: "documents", label: "Documents" },
+  { id: "profile", label: "Profile" },
+  { id: "security", label: "Security" },
 ];
 
 const INDUSTRY_OPTIONS = SUPPLIER_INDUSTRY_OPTIONS;
@@ -54,13 +53,13 @@ export default function SupplierRegistrationPage() {
   const router = useRouter();
   const { fingerprint, browserInfo, isLoading: isFingerprintLoading } = useDeviceFingerprint();
 
-  const [currentStep, setCurrentStep] = useState<Step>('company');
+  const [currentStep, setCurrentStep] = useState<Step>("company");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Company data
   const [company, setCompany] = useState<Partial<SupplierCompanyDto>>({
-    country: 'South Africa',
+    country: "South Africa",
     currencyCode: DEFAULT_CURRENCY,
   });
 
@@ -76,9 +75,9 @@ export default function SupplierRegistrationPage() {
     securityPolicyAccepted: boolean;
     documentStorageAccepted: boolean;
   }>({
-    email: '',
-    password: '',
-    confirmPassword: '',
+    email: "",
+    password: "",
+    confirmPassword: "",
     termsAccepted: false,
     securityPolicyAccepted: false,
     documentStorageAccepted: false,
@@ -105,7 +104,7 @@ export default function SupplierRegistrationPage() {
   }>({
     isVisible: false,
     isProcessing: false,
-    currentDocumentType: 'vat',
+    currentDocumentType: "vat",
     result: null,
   });
 
@@ -146,7 +145,7 @@ export default function SupplierRegistrationPage() {
   const handleCompanyChange = (field: keyof SupplierCompanyDto, value: any) => {
     setCompany((prev) => {
       const updates: Partial<SupplierCompanyDto> = { [field]: value };
-      if (field === 'country') {
+      if (field === "country") {
         const suggestedCurrency = currencyCodeForCountry(value);
         if (suggestedCurrency) {
           updates.currencyCode = suggestedCurrency;
@@ -164,15 +163,23 @@ export default function SupplierRegistrationPage() {
     setSecurity((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleFileSelect = async (file: File | null, documentType: 'vat' | 'registration' | 'bee') => {
-    const key = documentType === 'vat' ? 'vatDocument' : documentType === 'registration' ? 'companyRegDocument' : 'beeDocument';
+  const handleFileSelect = async (
+    file: File | null,
+    documentType: "vat" | "registration" | "bee",
+  ) => {
+    const key =
+      documentType === "vat"
+        ? "vatDocument"
+        : documentType === "registration"
+          ? "companyRegDocument"
+          : "beeDocument";
     setDocuments((prev) => ({ ...prev, [key]: file }));
 
     if (!file) return;
 
-    if (documentType === 'vat') {
-      setPendingManualReview(prev => ({ ...prev, vat: true }));
-      setDocumentsValidated(prev => ({ ...prev, vat: true }));
+    if (documentType === "vat") {
+      setPendingManualReview((prev) => ({ ...prev, vat: true }));
+      setDocumentsValidated((prev) => ({ ...prev, vat: true }));
       return;
     }
 
@@ -186,7 +193,7 @@ export default function SupplierRegistrationPage() {
     try {
       let expectedData: any;
 
-      if (documentType === 'registration') {
+      if (documentType === "registration") {
         expectedData = {
           registrationNumber: company.registrationNumber,
           companyName: company.legalName,
@@ -204,26 +211,26 @@ export default function SupplierRegistrationPage() {
 
       const result = await nixApi.verifyRegistrationDocument(file, documentType, expectedData);
 
-      log.debug('=== NIX VERIFICATION RESULT ===');
-      log.debug('Document Type:', documentType);
-      log.debug('Expected Data:', expectedData);
-      log.debug('Result:', result);
-      log.debug('===============================');
+      log.debug("=== NIX VERIFICATION RESULT ===");
+      log.debug("Document Type:", documentType);
+      log.debug("Expected Data:", expectedData);
+      log.debug("Result:", result);
+      log.debug("===============================");
 
-      setNixVerification(prev => ({
+      setNixVerification((prev) => ({
         ...prev,
         isProcessing: false,
         result,
       }));
 
-      setStoredVerificationResults(prev => ({ ...prev, [documentType]: result }));
+      setStoredVerificationResults((prev) => ({ ...prev, [documentType]: result }));
 
       if (result.allFieldsMatch) {
-        setDocumentsValidated(prev => ({ ...prev, [documentType]: true }));
+        setDocumentsValidated((prev) => ({ ...prev, [documentType]: true }));
       }
     } catch (err) {
-      log.error('Nix verification failed:', err);
-      setNixVerification(prev => ({
+      log.error("Nix verification failed:", err);
+      setNixVerification((prev) => ({
         ...prev,
         isProcessing: false,
         result: {
@@ -234,8 +241,8 @@ export default function SupplierRegistrationPage() {
           overallConfidence: 0,
           allFieldsMatch: false,
           autoCorrections: [],
-          warnings: [err instanceof Error ? err.message : 'Verification failed'],
-          ocrMethod: 'none',
+          warnings: [err instanceof Error ? err.message : "Verification failed"],
+          ocrMethod: "none",
           processingTimeMs: 0,
         },
       }));
@@ -244,46 +251,51 @@ export default function SupplierRegistrationPage() {
 
   const handleNixApplyCorrections = (corrections: AutoCorrection[]) => {
     corrections.forEach(({ field, value }) => {
-      if (field in company || field === 'companyName') {
-        const companyField = field === 'companyName' ? 'legalName' : field;
-        if (companyField === 'beeLevel') {
+      if (field in company || field === "companyName") {
+        const companyField = field === "companyName" ? "legalName" : field;
+        if (companyField === "beeLevel") {
           const levelMatch = String(value).match(/\d+/);
           if (levelMatch) {
-            setCompany(prev => ({ ...prev, beeLevel: parseInt(levelMatch[0], 10) }));
+            setCompany((prev) => ({ ...prev, beeLevel: parseInt(levelMatch[0], 10) }));
           }
         } else {
-          setCompany(prev => ({ ...prev, [companyField]: value }));
+          setCompany((prev) => ({ ...prev, [companyField]: value }));
         }
       }
     });
 
     if (nixVerification.result) {
-      setDocumentsValidated(prev => ({ ...prev, [nixVerification.currentDocumentType]: true }));
+      setDocumentsValidated((prev) => ({ ...prev, [nixVerification.currentDocumentType]: true }));
     }
 
-    setNixVerification(prev => ({ ...prev, isVisible: false, result: null }));
+    setNixVerification((prev) => ({ ...prev, isVisible: false, result: null }));
   };
 
   const handleNixProceedWithMismatch = () => {
-    setPendingManualReview(prev => ({ ...prev, [nixVerification.currentDocumentType]: true }));
-    setDocumentsValidated(prev => ({ ...prev, [nixVerification.currentDocumentType]: true }));
-    setNixVerification(prev => ({ ...prev, isVisible: false, result: null }));
+    setPendingManualReview((prev) => ({ ...prev, [nixVerification.currentDocumentType]: true }));
+    setDocumentsValidated((prev) => ({ ...prev, [nixVerification.currentDocumentType]: true }));
+    setNixVerification((prev) => ({ ...prev, isVisible: false, result: null }));
   };
 
   const handleNixRetryUpload = () => {
     const docType = nixVerification.currentDocumentType;
-    const key = docType === 'vat' ? 'vatDocument' : docType === 'registration' ? 'companyRegDocument' : 'beeDocument';
-    setDocuments(prev => ({ ...prev, [key]: null }));
-    setDocumentsValidated(prev => ({ ...prev, [docType]: false }));
-    setStoredVerificationResults(prev => ({ ...prev, [docType]: undefined }));
-    setNixVerification(prev => ({ ...prev, isVisible: false, result: null }));
+    const key =
+      docType === "vat"
+        ? "vatDocument"
+        : docType === "registration"
+          ? "companyRegDocument"
+          : "beeDocument";
+    setDocuments((prev) => ({ ...prev, [key]: null }));
+    setDocumentsValidated((prev) => ({ ...prev, [docType]: false }));
+    setStoredVerificationResults((prev) => ({ ...prev, [docType]: undefined }));
+    setNixVerification((prev) => ({ ...prev, isVisible: false, result: null }));
   };
 
   const handleNixClose = () => {
     if (nixVerification.result?.allFieldsMatch) {
-      setDocumentsValidated(prev => ({ ...prev, [nixVerification.currentDocumentType]: true }));
+      setDocumentsValidated((prev) => ({ ...prev, [nixVerification.currentDocumentType]: true }));
     }
-    setNixVerification(prev => ({ ...prev, isVisible: false, result: null }));
+    setNixVerification((prev) => ({ ...prev, isVisible: false, result: null }));
   };
 
   const isCompanyValid = (): boolean => {
@@ -310,7 +322,8 @@ export default function SupplierRegistrationPage() {
   const isDocumentsValid = (): boolean => {
     // VAT and Company Reg are required, BEE is required if BEE level > 0
     if (!documents.vatDocument || !documents.companyRegDocument) return false;
-    if (company.beeLevel && !documents.beeDocument && !company.isExemptMicroEnterprise) return false;
+    if (company.beeLevel && !documents.beeDocument && !company.isExemptMicroEnterprise)
+      return false;
     return true;
   };
 
@@ -336,11 +349,12 @@ export default function SupplierRegistrationPage() {
     const currentIndex = REGISTRATION_STEPS.findIndex((s) => s.id === currentStep);
 
     if (stepIndex <= currentIndex) return true;
-    if (step === 'company') return true;
-    if (step === 'bee') return isCompanyValid();
-    if (step === 'documents') return isCompanyValid() && isBeeValid();
-    if (step === 'profile') return isCompanyValid() && isBeeValid() && isDocumentsValid();
-    if (step === 'security') return isCompanyValid() && isBeeValid() && isDocumentsValid() && isProfileValid();
+    if (step === "company") return true;
+    if (step === "bee") return isCompanyValid();
+    if (step === "documents") return isCompanyValid() && isBeeValid();
+    if (step === "profile") return isCompanyValid() && isBeeValid() && isDocumentsValid();
+    if (step === "security")
+      return isCompanyValid() && isBeeValid() && isDocumentsValid() && isProfileValid();
     return false;
   };
 
@@ -352,7 +366,7 @@ export default function SupplierRegistrationPage() {
 
   const handleSubmit = async () => {
     if (!fingerprint || !browserInfo) {
-      setError('Device fingerprint not available. Please refresh the page.');
+      setError("Device fingerprint not available. Please refresh the page.");
       return;
     }
 
@@ -364,7 +378,7 @@ export default function SupplierRegistrationPage() {
 
       // Sanitize beeLevel to ensure it's a number
       let sanitizedBeeLevel: number | null = null;
-      if (typeof company.beeLevel === 'number') {
+      if (typeof company.beeLevel === "number") {
         sanitizedBeeLevel = company.beeLevel;
       } else if (company.beeLevel) {
         const beeLevelStr = String(company.beeLevel);
@@ -379,59 +393,65 @@ export default function SupplierRegistrationPage() {
       };
 
       // Add company data
-      formData.append('company', JSON.stringify(sanitizedCompany));
+      formData.append("company", JSON.stringify(sanitizedCompany));
 
       // Add profile data
-      formData.append('profile', JSON.stringify({
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        jobTitle: profile.jobTitle,
-        directPhone: profile.directPhone,
-        mobilePhone: profile.mobilePhone,
-      }));
+      formData.append(
+        "profile",
+        JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          jobTitle: profile.jobTitle,
+          directPhone: profile.directPhone,
+          mobilePhone: profile.mobilePhone,
+        }),
+      );
 
       // Add security data
-      formData.append('security', JSON.stringify({
-        email: security.email,
-        password: security.password,
-        deviceFingerprint: fingerprint,
-        browserInfo,
-        termsAccepted: security.termsAccepted,
-        securityPolicyAccepted: security.securityPolicyAccepted,
-        documentStorageAccepted: security.documentStorageAccepted,
-      }));
+      formData.append(
+        "security",
+        JSON.stringify({
+          email: security.email,
+          password: security.password,
+          deviceFingerprint: fingerprint,
+          browserInfo,
+          termsAccepted: security.termsAccepted,
+          securityPolicyAccepted: security.securityPolicyAccepted,
+          documentStorageAccepted: security.documentStorageAccepted,
+        }),
+      );
 
       // Add document verification results from Nix
       if (Object.keys(storedVerificationResults).length > 0) {
-        formData.append('documentVerificationResults', JSON.stringify(storedVerificationResults));
+        formData.append("documentVerificationResults", JSON.stringify(storedVerificationResults));
       }
 
       // Add document files
       if (documents.vatDocument) {
-        formData.append('vatDocument', documents.vatDocument);
+        formData.append("vatDocument", documents.vatDocument);
       }
       if (documents.companyRegDocument) {
-        formData.append('companyRegDocument', documents.companyRegDocument);
+        formData.append("companyRegDocument", documents.companyRegDocument);
       }
       if (documents.beeDocument) {
-        formData.append('beeDocument', documents.beeDocument);
+        formData.append("beeDocument", documents.beeDocument);
       }
 
       // Call API with FormData - this will auto-login and store tokens
       await supplierAuthApi.registerFull(formData);
 
       // Redirect directly to dashboard (email verification disabled for development)
-      router.push('/supplier/portal/dashboard');
+      router.push("/supplier/portal/dashboard");
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Registration failed. Please try again.');
+      setError(e instanceof Error ? e.message : "Registration failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const renderStepIndicator = () => {
-    const steps = ['company', 'bee', 'documents', 'profile', 'security'];
-    const stepLabels = ['Company', 'BEE', 'Documents', 'Profile', 'Security'];
+    const steps = ["company", "bee", "documents", "profile", "security"];
+    const stepLabels = ["Company", "BEE", "Documents", "Profile", "Security"];
 
     return (
       <div className="mb-8">
@@ -441,15 +461,20 @@ export default function SupplierRegistrationPage() {
               <div
                 className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
                   currentStep === step
-                    ? 'border-blue-600 bg-blue-600 text-white'
+                    ? "border-blue-600 bg-blue-600 text-white"
                     : steps.indexOf(currentStep) > index
-                    ? 'border-green-500 bg-green-500 text-white'
-                    : 'border-gray-300 text-gray-500'
+                      ? "border-green-500 bg-green-500 text-white"
+                      : "border-gray-300 text-gray-500"
                 }`}
               >
                 {steps.indexOf(currentStep) > index ? (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 ) : (
                   index + 1
@@ -458,9 +483,7 @@ export default function SupplierRegistrationPage() {
               {index < steps.length - 1 && (
                 <div
                   className={`w-12 h-1 ${
-                    steps.indexOf(currentStep) > index
-                      ? 'bg-green-500'
-                      : 'bg-gray-300'
+                    steps.indexOf(currentStep) > index ? "bg-green-500" : "bg-gray-300"
                   }`}
                 />
               )}
@@ -472,9 +495,9 @@ export default function SupplierRegistrationPage() {
             <React.Fragment key={`label-${step}`}>
               <div
                 className={`font-medium ${
-                  currentStep === step ? 'text-blue-600' : 'text-gray-500'
+                  currentStep === step ? "text-blue-600" : "text-gray-500"
                 }`}
-                style={{ width: index < steps.length - 1 ? '72px' : '40px', textAlign: 'center' }}
+                style={{ width: index < steps.length - 1 ? "72px" : "40px", textAlign: "center" }}
               >
                 {stepLabels[index]}
               </div>
@@ -496,8 +519,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.legalName || ''}
-            onChange={(e) => handleCompanyChange('legalName', e.target.value)}
+            value={company.legalName || ""}
+            onChange={(e) => handleCompanyChange("legalName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="Full legal company name"
           />
@@ -507,8 +530,8 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Trading Name</label>
           <input
             type="text"
-            value={company.tradingName || ''}
-            onChange={(e) => handleCompanyChange('tradingName', e.target.value)}
+            value={company.tradingName || ""}
+            onChange={(e) => handleCompanyChange("tradingName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="Trading name (if different)"
           />
@@ -520,8 +543,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.registrationNumber || ''}
-            onChange={(e) => handleCompanyChange('registrationNumber', e.target.value)}
+            value={company.registrationNumber || ""}
+            onChange={(e) => handleCompanyChange("registrationNumber", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g., 2023/123456/07"
           />
@@ -531,8 +554,8 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">VAT Number</label>
           <input
             type="text"
-            value={company.vatNumber || ''}
-            onChange={(e) => handleCompanyChange('vatNumber', e.target.value)}
+            value={company.vatNumber || ""}
+            onChange={(e) => handleCompanyChange("vatNumber", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="VAT registration number"
           />
@@ -541,13 +564,15 @@ export default function SupplierRegistrationPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Industry</label>
           <select
-            value={company.industryType || ''}
-            onChange={(e) => handleCompanyChange('industryType', e.target.value)}
+            value={company.industryType || ""}
+            onChange={(e) => handleCompanyChange("industryType", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">Select industry</option>
             {INDUSTRY_OPTIONS.map((ind) => (
-              <option key={ind} value={ind}>{ind}</option>
+              <option key={ind} value={ind}>
+                {ind}
+              </option>
             ))}
           </select>
         </div>
@@ -555,13 +580,15 @@ export default function SupplierRegistrationPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Company Size</label>
           <select
-            value={company.companySize || ''}
-            onChange={(e) => handleCompanyChange('companySize', e.target.value)}
+            value={company.companySize || ""}
+            onChange={(e) => handleCompanyChange("companySize", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">Select size</option>
             {COMPANY_SIZE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
         </div>
@@ -575,8 +602,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.streetAddress || ''}
-            onChange={(e) => handleCompanyChange('streetAddress', e.target.value)}
+            value={company.streetAddress || ""}
+            onChange={(e) => handleCompanyChange("streetAddress", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -587,8 +614,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.city || ''}
-            onChange={(e) => handleCompanyChange('city', e.target.value)}
+            value={company.city || ""}
+            onChange={(e) => handleCompanyChange("city", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -598,13 +625,15 @@ export default function SupplierRegistrationPage() {
             Province <span className="text-red-500">*</span>
           </label>
           <select
-            value={company.provinceState || ''}
-            onChange={(e) => handleCompanyChange('provinceState', e.target.value)}
+            value={company.provinceState || ""}
+            onChange={(e) => handleCompanyChange("provinceState", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">Select a province...</option>
             {SOUTH_AFRICAN_PROVINCES.map((province) => (
-              <option key={province} value={province}>{province}</option>
+              <option key={province} value={province}>
+                {province}
+              </option>
             ))}
           </select>
         </div>
@@ -615,8 +644,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.postalCode || ''}
-            onChange={(e) => handleCompanyChange('postalCode', e.target.value)}
+            value={company.postalCode || ""}
+            onChange={(e) => handleCompanyChange("postalCode", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -625,8 +654,8 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Country</label>
           <input
             type="text"
-            value={company.country || 'South Africa'}
-            onChange={(e) => handleCompanyChange('country', e.target.value)}
+            value={company.country || "South Africa"}
+            onChange={(e) => handleCompanyChange("country", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -635,7 +664,7 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Preferred Currency</label>
           <CurrencySelect
             value={company.currencyCode || DEFAULT_CURRENCY}
-            onChange={(value) => handleCompanyChange('currencyCode', value)}
+            onChange={(value) => handleCompanyChange("currencyCode", value)}
             className="mt-1"
           />
         </div>
@@ -649,8 +678,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.primaryContactName || ''}
-            onChange={(e) => handleCompanyChange('primaryContactName', e.target.value)}
+            value={company.primaryContactName || ""}
+            onChange={(e) => handleCompanyChange("primaryContactName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -661,8 +690,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="email"
-            value={company.primaryContactEmail || ''}
-            onChange={(e) => handleCompanyChange('primaryContactEmail', e.target.value)}
+            value={company.primaryContactEmail || ""}
+            onChange={(e) => handleCompanyChange("primaryContactEmail", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -673,8 +702,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="tel"
-            value={company.primaryContactPhone || ''}
-            onChange={(e) => handleCompanyChange('primaryContactPhone', e.target.value)}
+            value={company.primaryContactPhone || ""}
+            onChange={(e) => handleCompanyChange("primaryContactPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 12 345 6789"
           />
@@ -684,8 +713,8 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Website</label>
           <input
             type="url"
-            value={company.website || ''}
-            onChange={(e) => handleCompanyChange('website', e.target.value)}
+            value={company.website || ""}
+            onChange={(e) => handleCompanyChange("website", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="https://www.company.co.za"
           />
@@ -694,7 +723,7 @@ export default function SupplierRegistrationPage() {
 
       <div className="flex justify-end mt-8">
         <button
-          onClick={() => setCurrentStep('bee')}
+          onClick={() => setCurrentStep("bee")}
           disabled={!isCompanyValid()}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
@@ -708,18 +737,30 @@ export default function SupplierRegistrationPage() {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">B-BBEE Information</h2>
       <p className="text-sm text-gray-600">
-        Broad-Based Black Economic Empowerment (B-BBEE) certification details. This information helps us match you with customers who have preferential procurement requirements.
+        Broad-Based Black Economic Empowerment (B-BBEE) certification details. This information
+        helps us match you with customers who have preferential procurement requirements.
       </p>
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex">
-          <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div>
             <h3 className="text-sm font-medium text-yellow-800">EME Status</h3>
             <p className="mt-1 text-sm text-yellow-700">
-              If your company has an annual turnover of R10 million or less, you may qualify as an Exempted Micro Enterprise (EME) and automatically receive Level 4 status.
+              If your company has an annual turnover of R10 million or less, you may qualify as an
+              Exempted Micro Enterprise (EME) and automatically receive Level 4 status.
             </p>
           </div>
         </div>
@@ -731,7 +772,7 @@ export default function SupplierRegistrationPage() {
             type="checkbox"
             id="eme"
             checked={company.isExemptMicroEnterprise || false}
-            onChange={(e) => handleCompanyChange('isExemptMicroEnterprise', e.target.checked)}
+            onChange={(e) => handleCompanyChange("isExemptMicroEnterprise", e.target.checked)}
             className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
           <label htmlFor="eme" className="ml-2 text-sm text-gray-700">
@@ -744,13 +785,20 @@ export default function SupplierRegistrationPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700">B-BBEE Level</label>
               <select
-                value={company.beeLevel || ''}
-                onChange={(e) => handleCompanyChange('beeLevel', e.target.value ? parseInt(e.target.value) : null)}
+                value={company.beeLevel || ""}
+                onChange={(e) =>
+                  handleCompanyChange(
+                    "beeLevel",
+                    e.target.value ? parseInt(e.target.value, 10) : null,
+                  )
+                }
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">Select B-BBEE level</option>
                 {BEE_LEVELS.map((level) => (
-                  <option key={level.value} value={level.value}>{level.label}</option>
+                  <option key={level.value} value={level.value}>
+                    {level.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -763,18 +811,20 @@ export default function SupplierRegistrationPage() {
                   </label>
                   <input
                     type="date"
-                    value={company.beeCertificateExpiry || ''}
-                    onChange={(e) => handleCompanyChange('beeCertificateExpiry', e.target.value)}
+                    value={company.beeCertificateExpiry || ""}
+                    onChange={(e) => handleCompanyChange("beeCertificateExpiry", e.target.value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Verification Agency</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Verification Agency
+                  </label>
                   <input
                     type="text"
-                    value={company.beeVerificationAgency || ''}
-                    onChange={(e) => handleCompanyChange('beeVerificationAgency', e.target.value)}
+                    value={company.beeVerificationAgency || ""}
+                    onChange={(e) => handleCompanyChange("beeVerificationAgency", e.target.value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Name of SANAS accredited verification agency"
                   />
@@ -787,13 +837,13 @@ export default function SupplierRegistrationPage() {
 
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('company')}
+          onClick={() => setCurrentStep("company")}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
         </button>
         <button
-          onClick={() => setCurrentStep('documents')}
+          onClick={() => setCurrentStep("documents")}
           disabled={!isBeeValid()}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
@@ -807,18 +857,30 @@ export default function SupplierRegistrationPage() {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">Upload Company Documents</h2>
       <p className="text-sm text-gray-600">
-        Please upload the required documents. These will be reviewed by our admin team before your account is fully activated.
+        Please upload the required documents. These will be reviewed by our admin team before your
+        account is fully activated.
       </p>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <div className="flex">
-          <svg className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div>
             <h3 className="text-sm font-medium text-blue-800">Limited Access Until Verified</h3>
             <p className="mt-1 text-sm text-blue-700">
-              Your account will have limited access until all documents have been verified by our admin team. You will receive an email once your account is fully activated.
+              Your account will have limited access until all documents have been verified by our
+              admin team. You will receive an email once your account is fully activated.
             </p>
           </div>
         </div>
@@ -831,12 +893,13 @@ export default function SupplierRegistrationPage() {
             VAT Registration Certificate <span className="text-red-500">*</span>
           </label>
           <p className="text-xs text-gray-500 mb-3">
-            Upload your official VAT registration certificate. This document will be verified manually by our admin team.
+            Upload your official VAT registration certificate. This document will be verified
+            manually by our admin team.
           </p>
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => handleFileSelect(e.target.files?.[0] || null, 'vat')}
+            onChange={(e) => handleFileSelect(e.target.files?.[0] || null, "vat")}
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
           {documents.vatDocument && (
@@ -858,30 +921,35 @@ export default function SupplierRegistrationPage() {
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => handleFileSelect(e.target.files?.[0] || null, 'registration')}
+            onChange={(e) => handleFileSelect(e.target.files?.[0] || null, "registration")}
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
           {documents.companyRegDocument && (
-            <p className="mt-2 text-sm text-green-600">Selected: {documents.companyRegDocument.name}</p>
+            <p className="mt-2 text-sm text-green-600">
+              Selected: {documents.companyRegDocument.name}
+            </p>
           )}
         </div>
 
         {/* B-BBEE Certificate */}
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            B-BBEE Certificate {company.beeLevel && !company.isExemptMicroEnterprise && <span className="text-red-500">*</span>}
+            B-BBEE Certificate{" "}
+            {company.beeLevel && !company.isExemptMicroEnterprise && (
+              <span className="text-red-500">*</span>
+            )}
           </label>
           <p className="text-xs text-gray-500 mb-3">
             {company.isExemptMicroEnterprise
-              ? 'Optional for EME - Upload sworn affidavit if available.'
+              ? "Optional for EME - Upload sworn affidavit if available."
               : company.beeLevel
-              ? 'Required - Upload your valid B-BBEE certificate.'
-              : 'Optional - Upload if you have a B-BBEE certificate.'}
+                ? "Required - Upload your valid B-BBEE certificate."
+                : "Optional - Upload if you have a B-BBEE certificate."}
           </p>
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => handleFileSelect(e.target.files?.[0] || null, 'bee')}
+            onChange={(e) => handleFileSelect(e.target.files?.[0] || null, "bee")}
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
           {documents.beeDocument && (
@@ -902,13 +970,13 @@ export default function SupplierRegistrationPage() {
 
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('bee')}
+          onClick={() => setCurrentStep("bee")}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
         </button>
         <button
-          onClick={() => setCurrentStep('profile')}
+          onClick={() => setCurrentStep("profile")}
           disabled={!isDocumentsValid()}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
@@ -930,8 +998,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={profile.firstName || ''}
-            onChange={(e) => handleProfileChange('firstName', e.target.value)}
+            value={profile.firstName || ""}
+            onChange={(e) => handleProfileChange("firstName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -942,8 +1010,8 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={profile.lastName || ''}
-            onChange={(e) => handleProfileChange('lastName', e.target.value)}
+            value={profile.lastName || ""}
+            onChange={(e) => handleProfileChange("lastName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -952,8 +1020,8 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Job Title</label>
           <input
             type="text"
-            value={profile.jobTitle || ''}
-            onChange={(e) => handleProfileChange('jobTitle', e.target.value)}
+            value={profile.jobTitle || ""}
+            onChange={(e) => handleProfileChange("jobTitle", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g., Sales Manager"
           />
@@ -963,8 +1031,8 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Direct Phone</label>
           <input
             type="tel"
-            value={profile.directPhone || ''}
-            onChange={(e) => handleProfileChange('directPhone', e.target.value)}
+            value={profile.directPhone || ""}
+            onChange={(e) => handleProfileChange("directPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 12 345 6789"
           />
@@ -974,8 +1042,8 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Mobile Phone</label>
           <input
             type="tel"
-            value={profile.mobilePhone || ''}
-            onChange={(e) => handleProfileChange('mobilePhone', e.target.value)}
+            value={profile.mobilePhone || ""}
+            onChange={(e) => handleProfileChange("mobilePhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 82 123 4567"
           />
@@ -984,13 +1052,13 @@ export default function SupplierRegistrationPage() {
 
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('documents')}
+          onClick={() => setCurrentStep("documents")}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
         </button>
         <button
-          onClick={() => setCurrentStep('security')}
+          onClick={() => setCurrentStep("security")}
           disabled={!isProfileValid()}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
@@ -1014,7 +1082,7 @@ export default function SupplierRegistrationPage() {
           <input
             type="email"
             value={security.email}
-            onChange={(e) => handleSecurityChange('email', e.target.value)}
+            onChange={(e) => handleSecurityChange("email", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="your.email@company.co.za"
           />
@@ -1024,7 +1092,7 @@ export default function SupplierRegistrationPage() {
           id="password"
           label="Password"
           value={security.password}
-          onChange={(value) => handleSecurityChange('password', value)}
+          onChange={(value) => handleSecurityChange("password", value)}
           required
           showToggle
           errors={passwordErrors}
@@ -1036,7 +1104,7 @@ export default function SupplierRegistrationPage() {
           label="Confirm Password"
           value={security.confirmPassword}
           password={security.password}
-          onChange={(value) => handleSecurityChange('confirmPassword', value)}
+          onChange={(value) => handleSecurityChange("confirmPassword", value)}
           required
           showToggle
         />
@@ -1048,7 +1116,7 @@ export default function SupplierRegistrationPage() {
         <AcceptanceCheckbox
           id="terms"
           checked={security.termsAccepted}
-          onChange={(checked) => handleSecurityChange('termsAccepted', checked)}
+          onChange={(checked) => handleSecurityChange("termsAccepted", checked)}
           label="I have read and agree to the Terms and Conditions"
           required
         />
@@ -1056,7 +1124,7 @@ export default function SupplierRegistrationPage() {
         <AcceptanceCheckbox
           id="securityPolicy"
           checked={security.securityPolicyAccepted}
-          onChange={(checked) => handleSecurityChange('securityPolicyAccepted', checked)}
+          onChange={(checked) => handleSecurityChange("securityPolicyAccepted", checked)}
           label="I understand and accept that my account will be locked to this device for security purposes"
           required
         />
@@ -1066,7 +1134,7 @@ export default function SupplierRegistrationPage() {
         <AcceptanceCheckbox
           id="documentStorage"
           checked={security.documentStorageAccepted}
-          onChange={(checked) => handleSecurityChange('documentStorageAccepted', checked)}
+          onChange={(checked) => handleSecurityChange("documentStorageAccepted", checked)}
           label="I agree to the secure storage of my documents as described above"
           required
         />
@@ -1076,7 +1144,7 @@ export default function SupplierRegistrationPage() {
 
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('profile')}
+          onClick={() => setCurrentStep("profile")}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
@@ -1086,7 +1154,7 @@ export default function SupplierRegistrationPage() {
           disabled={!isSecurityValid() || isSubmitting}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? 'Creating Account...' : 'Create Account'}
+          {isSubmitting ? "Creating Account..." : "Create Account"}
         </button>
       </div>
     </div>
@@ -1095,8 +1163,18 @@ export default function SupplierRegistrationPage() {
   const renderCompleteStep = () => (
     <div className="text-center py-12">
       <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-        <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        <svg
+          className="w-8 h-8 text-blue-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          />
         </svg>
       </div>
       <h2 className="text-2xl font-semibold text-gray-900 mb-2">Verify Your Email</h2>
@@ -1104,31 +1182,44 @@ export default function SupplierRegistrationPage() {
         We&apos;ve sent a verification email to <strong>{security.email}</strong>.
       </p>
       <p className="text-gray-600 mb-8">
-        Please check your inbox and click the verification link to activate your account.
-        The link will expire in 24 hours.
+        Please check your inbox and click the verification link to activate your account. The link
+        will expire in 24 hours.
       </p>
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md mx-auto mb-6">
         <div className="flex items-start">
-          <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <svg
+            className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
           </svg>
           <p className="text-sm text-yellow-700 text-left">
-            <strong>Pending Verification:</strong> Your documents will be reviewed by our admin team. You will have limited access until your account is fully verified.
+            <strong>Pending Verification:</strong> Your documents will be reviewed by our admin
+            team. You will have limited access until your account is fully verified.
           </p>
         </div>
       </div>
 
       <div className="space-y-3">
         <button
-          onClick={() => router.push('/supplier/login')}
+          onClick={() => router.push("/supplier/login")}
           className="px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
           Go to Login
         </button>
         <p className="text-sm text-gray-500">
-          Need help?{' '}
-          <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">Contact support</a>
+          Need help?{" "}
+          <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">
+            Contact support
+          </a>
         </p>
       </div>
     </div>
@@ -1142,9 +1233,18 @@ export default function SupplierRegistrationPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              <svg
+                className="w-10 h-10 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                />
               </svg>
             </div>
             <h1 className="text-3xl font-bold text-white">Supplier Registration</h1>
@@ -1152,17 +1252,17 @@ export default function SupplierRegistrationPage() {
           </div>
 
           <div className="bg-white shadow rounded-lg p-8">
-            {currentStep === 'company' && renderCompanyStep()}
-            {currentStep === 'bee' && renderBeeStep()}
-            {currentStep === 'documents' && renderDocumentsStep()}
-            {currentStep === 'profile' && renderProfileStep()}
-            {currentStep === 'security' && renderSecurityStep()}
-            {currentStep === 'complete' && renderCompleteStep()}
+            {currentStep === "company" && renderCompanyStep()}
+            {currentStep === "bee" && renderBeeStep()}
+            {currentStep === "documents" && renderDocumentsStep()}
+            {currentStep === "profile" && renderProfileStep()}
+            {currentStep === "security" && renderSecurityStep()}
+            {currentStep === "complete" && renderCompleteStep()}
           </div>
 
-          {currentStep !== 'complete' && (
+          {currentStep !== "complete" && (
             <p className="text-center mt-6 text-blue-200">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Link href="/supplier/login" className="text-white hover:underline font-medium">
                 Sign in
               </Link>

@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateBoqTables1766000300000 implements MigrationInterface {
-  name = 'CreateBoqTables1766000300000';
+  name = "CreateBoqTables1766000300000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create boq_status enum
@@ -111,18 +111,10 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
         `);
 
     // Create indexes
-    await queryRunner.query(
-      `CREATE INDEX "IDX_boqs_drawing_id" ON "boqs" ("drawing_id")`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_boqs_rfq_id" ON "boqs" ("rfq_id")`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_boqs_status" ON "boqs" ("status")`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_boqs_created_by" ON "boqs" ("created_by_user_id")`,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_boqs_drawing_id" ON "boqs" ("drawing_id")`);
+    await queryRunner.query(`CREATE INDEX "IDX_boqs_rfq_id" ON "boqs" ("rfq_id")`);
+    await queryRunner.query(`CREATE INDEX "IDX_boqs_status" ON "boqs" ("status")`);
+    await queryRunner.query(`CREATE INDEX "IDX_boqs_created_by" ON "boqs" ("created_by_user_id")`);
     await queryRunner.query(
       `CREATE INDEX "IDX_boq_line_items_boq_id" ON "boq_line_items" ("boq_id")`,
     );
@@ -141,16 +133,10 @@ export class CreateBoqTables1766000300000 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX "IDX_boqs_drawing_id"`);
 
     // Drop foreign key constraints
-    await queryRunner.query(
-      `ALTER TABLE "boq_line_items" DROP CONSTRAINT "FK_boq_line_items_boq"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_created_by"`,
-    );
+    await queryRunner.query(`ALTER TABLE "boq_line_items" DROP CONSTRAINT "FK_boq_line_items_boq"`);
+    await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_created_by"`);
     await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_rfq"`);
-    await queryRunner.query(
-      `ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_drawing"`,
-    );
+    await queryRunner.query(`ALTER TABLE "boqs" DROP CONSTRAINT "FK_boqs_drawing"`);
 
     // Drop tables
     await queryRunner.query(`DROP TABLE "boq_line_items"`);

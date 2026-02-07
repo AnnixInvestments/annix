@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import * as Popover from '@radix-ui/react-popover';
+import * as Popover from "@radix-ui/react-popover";
+import * as React from "react";
 
 export interface SearchableSelectOption {
   value: string;
@@ -38,18 +38,18 @@ const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectPro
       value,
       onChange,
       options,
-      placeholder = 'Select...',
-      searchPlaceholder = 'Search...',
+      placeholder = "Select...",
+      searchPlaceholder = "Search...",
       className,
       disabled,
       open: controlledOpen,
       onOpenChange,
       filterFn = defaultFilterFn,
     },
-    ref
+    ref,
   ) => {
     const [internalOpen, setInternalOpen] = React.useState(false);
-    const [searchTerm, setSearchTerm] = React.useState('');
+    const [searchTerm, setSearchTerm] = React.useState("");
     const [highlightedIndex, setHighlightedIndex] = React.useState(0);
     const searchInputRef = React.useRef<HTMLInputElement>(null);
     const listRef = React.useRef<HTMLDivElement>(null);
@@ -63,7 +63,7 @@ const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectPro
       }
       onOpenChange?.(newOpen);
       if (newOpen) {
-        setSearchTerm('');
+        setSearchTerm("");
         setHighlightedIndex(0);
         setTimeout(() => searchInputRef.current?.focus(), 0);
       }
@@ -86,16 +86,16 @@ const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectPro
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
+      if (e.key === "ArrowDown") {
         e.preventDefault();
         setHighlightedIndex((prev) => Math.min(prev + 1, filteredOptions.length - 1));
-      } else if (e.key === 'ArrowUp') {
+      } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setHighlightedIndex((prev) => Math.max(prev - 1, 0));
-      } else if (e.key === 'Enter' && filteredOptions[highlightedIndex]) {
+      } else if (e.key === "Enter" && filteredOptions[highlightedIndex]) {
         e.preventDefault();
         handleSelect(filteredOptions[highlightedIndex].value);
-      } else if (e.key === 'Escape') {
+      } else if (e.key === "Escape") {
         handleOpenChange(false);
       }
     };
@@ -104,7 +104,7 @@ const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectPro
       if (listRef.current && highlightedIndex >= 0) {
         const highlightedElement = listRef.current.children[highlightedIndex] as HTMLElement;
         if (highlightedElement) {
-          highlightedElement.scrollIntoView({ block: 'nearest' });
+          highlightedElement.scrollIntoView({ block: "nearest" });
         }
       }
     }, [highlightedIndex]);
@@ -117,9 +117,9 @@ const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectPro
             id={id}
             type="button"
             disabled={disabled}
-            className={`flex items-center justify-between w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-left ${className || ''}`}
+            className={`flex items-center justify-between w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-left ${className || ""}`}
           >
-            <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
+            <span className={selectedOption ? "text-gray-900" : "text-gray-400"}>
               {selectedOption?.label || placeholder}
             </span>
             <ChevronDownIcon />
@@ -154,8 +154,8 @@ const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectPro
                     onClick={() => handleSelect(option.value)}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     className={`relative flex items-center w-full px-8 py-2 text-sm rounded cursor-pointer select-none text-left ${
-                      index === highlightedIndex ? 'bg-green-50' : ''
-                    } ${option.value === value ? 'text-green-700 font-medium' : 'text-gray-900'} hover:bg-green-50`}
+                      index === highlightedIndex ? "bg-green-50" : ""
+                    } ${option.value === value ? "text-green-700 font-medium" : "text-gray-900"} hover:bg-green-50`}
                   >
                     {option.value === value && (
                       <span className="absolute left-2 inline-flex items-center">
@@ -171,10 +171,10 @@ const SearchableSelect = React.forwardRef<HTMLButtonElement, SearchableSelectPro
         </Popover.Portal>
       </Popover.Root>
     );
-  }
+  },
 );
 
-SearchableSelect.displayName = 'SearchableSelect';
+SearchableSelect.displayName = "SearchableSelect";
 
 function ChevronDownIcon() {
   return (

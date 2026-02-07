@@ -1,41 +1,34 @@
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
+import { EmailService } from "../email/email.service";
+import { now } from "../lib/datetime";
+import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
+import { S3StorageService } from "../storage/s3-storage.service";
+import { User } from "../user/entities/user.entity";
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, ILike, In } from 'typeorm';
-
-import { now } from '../lib/datetime';
-
-import {
-  CustomerCompany,
-  CustomerProfile,
-  CustomerDeviceBinding,
-  CustomerLoginAttempt,
-  CustomerSession,
-  CustomerAccountStatus,
-  CustomerOnboarding,
-  CustomerDocument,
-} from './entities';
-import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity';
-import { CustomerDocumentValidationStatus } from './entities/customer-document.entity';
-import { SessionInvalidationReason } from './entities/customer-session.entity';
-import {
+  CustomerDetailDto,
+  CustomerListResponseDto,
   CustomerQueryDto,
-  SuspendCustomerDto,
   ReactivateCustomerDto,
   ResetDeviceBindingDto,
-  CustomerListResponseDto,
-  CustomerDetailDto,
-} from './dto';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/entities/audit-log.entity';
-import { User } from '../user/entities/user.entity';
-import { EmailService } from '../email/email.service';
-import { S3StorageService } from '../storage/s3-storage.service';
-import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
+  SuspendCustomerDto,
+} from "./dto";
+import {
+  CustomerAccountStatus,
+  CustomerCompany,
+  CustomerDeviceBinding,
+  CustomerDocument,
+  CustomerLoginAttempt,
+  CustomerOnboarding,
+  CustomerProfile,
+  CustomerSession,
+} from "./entities";
+import { CustomerDocumentValidationStatus } from "./entities/customer-document.entity";
+import { CustomerOnboardingStatus } from "./entities/customer-onboarding.entity";
+import { SessionInvalidationReason } from "./entities/customer-session.entity";
 
 @Injectable()
 export class CustomerAdminService {
@@ -67,54 +60,47 @@ export class CustomerAdminService {
   /**
    * List all customers with filtering and pagination
    */
-  async listCustomers(
-    query: CustomerQueryDto,
-  ): Promise<CustomerListResponseDto> {
+  async listCustomers(query: CustomerQueryDto): Promise<CustomerListResponseDto> {
     const {
       search,
       status,
       page = 1,
       limit = 20,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC',
+      sortBy = "createdAt",
+      sortOrder = "DESC",
     } = query;
 
     const queryBuilder = this.profileRepo
-      .createQueryBuilder('profile')
-      .leftJoinAndSelect('profile.company', 'company')
-      .leftJoinAndSelect('profile.user', 'user')
+      .createQueryBuilder("profile")
+      .leftJoinAndSelect("profile.company", "company")
+      .leftJoinAndSelect("profile.user", "user")
       .leftJoinAndSelect(
-        'profile.deviceBindings',
-        'deviceBinding',
-        'deviceBinding.isActive = true AND deviceBinding.isPrimary = true',
+        "profile.deviceBindings",
+        "deviceBinding",
+        "deviceBinding.isActive = true AND deviceBinding.isPrimary = true",
       )
       .leftJoin(
-        'profile.sessions',
-        'session',
-        'session.isActive = true OR session.invalidatedAt IS NOT NULL',
+        "profile.sessions",
+        "session",
+        "session.isActive = true OR session.invalidatedAt IS NOT NULL",
       );
 
     // Search filter
     if (search) {
       queryBuilder.andWhere(
-        '(company.legalName ILIKE :search OR company.tradingName ILIKE :search OR user.email ILIKE :search OR profile.firstName ILIKE :search OR profile.lastName ILIKE :search)',
+        "(company.legalName ILIKE :search OR company.tradingName ILIKE :search OR user.email ILIKE :search OR profile.firstName ILIKE :search OR profile.lastName ILIKE :search)",
         { search: `%${search}%` },
       );
     }
 
     // Status filter
     if (status) {
-      queryBuilder.andWhere('profile.accountStatus = :status', { status });
+      queryBuilder.andWhere("profile.accountStatus = :status", { status });
     }
 
     // Sorting
-    const validSortFields = [
-      'createdAt',
-      'firstName',
-      'lastName',
-      'accountStatus',
-    ];
-    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+    const validSortFields = ["createdAt", "firstName", "lastName", "accountStatus"];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : "createdAt";
     queryBuilder.orderBy(`profile.${sortField}`, sortOrder);
 
     // Pagination
@@ -127,9 +113,8 @@ export class CustomerAdminService {
       id: profile.id,
       firstName: profile.firstName,
       lastName: profile.lastName,
-      email: profile.user?.email || '',
-      companyName:
-        profile.company?.tradingName || profile.company?.legalName || '',
+      email: profile.user?.email || "",
+      companyName: profile.company?.tradingName || profile.company?.legalName || "",
       accountStatus: profile.accountStatus,
       createdAt: profile.createdAt,
       lastLoginAt: null as Date | null, // Would need to query separately
@@ -151,34 +136,32 @@ export class CustomerAdminService {
   async getCustomerDetail(customerId: number): Promise<CustomerDetailDto> {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company', 'user', 'deviceBindings'],
+      relations: ["company", "user", "deviceBindings"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException("Customer not found");
     }
 
     // Get recent login attempts
     const recentLogins = await this.loginAttemptRepo.find({
       where: { customerProfileId: customerId },
-      order: { attemptTime: 'DESC' },
+      order: { attemptTime: "DESC" },
       take: 10,
     });
 
-    const activeBinding = profile.deviceBindings.find(
-      (b) => b.isActive && b.isPrimary,
-    );
+    const activeBinding = profile.deviceBindings.find((b) => b.isActive && b.isPrimary);
 
     const onboarding = await this.onboardingRepo.findOne({
       where: { customerId },
-      relations: ['reviewedBy'],
+      relations: ["reviewedBy"],
     });
 
     return {
       id: profile.id,
       firstName: profile.firstName,
       lastName: profile.lastName,
-      email: profile.user?.email || '',
+      email: profile.user?.email || "",
       jobTitle: profile.jobTitle,
       directPhone: profile.directPhone,
       mobilePhone: profile.mobilePhone,
@@ -250,11 +233,11 @@ export class CustomerAdminService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException("Customer not found");
     }
 
     if (profile.accountStatus === CustomerAccountStatus.SUSPENDED) {
-      throw new BadRequestException('Account is already suspended');
+      throw new BadRequestException("Account is already suspended");
     }
 
     const oldStatus = profile.accountStatus;
@@ -280,7 +263,7 @@ export class CustomerAdminService {
       where: { id: adminUserId },
     });
     await this.auditService.log({
-      entityType: 'customer_profile',
+      entityType: "customer_profile",
       entityId: customerId,
       action: AuditAction.UPDATE,
       performedBy: adminUser || undefined,
@@ -288,20 +271,20 @@ export class CustomerAdminService {
       newValues: {
         accountStatus: CustomerAccountStatus.SUSPENDED,
         suspensionReason: dto.reason,
-        event: 'account_suspended',
+        event: "account_suspended",
       },
       ipAddress: clientIp,
     });
 
     await this.secureDocumentsService.deactivateEntityFolder(
-      'customer',
+      "customer",
       customerId,
       `Account suspended: ${dto.reason}`,
     );
 
     return {
       success: true,
-      message: 'Customer account suspended successfully',
+      message: "Customer account suspended successfully",
     };
   }
 
@@ -319,11 +302,11 @@ export class CustomerAdminService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException("Customer not found");
     }
 
     if (profile.accountStatus === CustomerAccountStatus.ACTIVE) {
-      throw new BadRequestException('Account is already active');
+      throw new BadRequestException("Account is already active");
     }
 
     const oldStatus = profile.accountStatus;
@@ -339,7 +322,7 @@ export class CustomerAdminService {
       where: { id: adminUserId },
     });
     await this.auditService.log({
-      entityType: 'customer_profile',
+      entityType: "customer_profile",
       entityId: customerId,
       action: AuditAction.UPDATE,
       performedBy: adminUser || undefined,
@@ -347,16 +330,16 @@ export class CustomerAdminService {
       newValues: {
         accountStatus: CustomerAccountStatus.ACTIVE,
         note: dto.note,
-        event: 'account_reactivated',
+        event: "account_reactivated",
       },
       ipAddress: clientIp,
     });
 
-    await this.secureDocumentsService.reactivateEntityFolder('customer', customerId);
+    await this.secureDocumentsService.reactivateEntityFolder("customer", customerId);
 
     return {
       success: true,
-      message: 'Customer account reactivated successfully',
+      message: "Customer account reactivated successfully",
     };
   }
 
@@ -371,19 +354,17 @@ export class CustomerAdminService {
   ): Promise<{ success: boolean; message: string }> {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['deviceBindings'],
+      relations: ["deviceBindings"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException("Customer not found");
     }
 
-    const activeBinding = profile.deviceBindings.find(
-      (b) => b.isActive && b.isPrimary,
-    );
+    const activeBinding = profile.deviceBindings.find((b) => b.isActive && b.isPrimary);
 
     if (!activeBinding) {
-      throw new BadRequestException('No active device binding found');
+      throw new BadRequestException("No active device binding found");
     }
 
     // Deactivate the current binding
@@ -412,15 +393,14 @@ export class CustomerAdminService {
       where: { id: adminUserId },
     });
     await this.auditService.log({
-      entityType: 'customer_profile',
+      entityType: "customer_profile",
       entityId: customerId,
       action: AuditAction.UPDATE,
       performedBy: adminUser || undefined,
       newValues: {
-        event: 'device_binding_reset',
+        event: "device_binding_reset",
         reason: dto.reason,
-        oldDeviceFingerprint:
-          activeBinding.deviceFingerprint.substring(0, 20) + '...',
+        oldDeviceFingerprint: `${activeBinding.deviceFingerprint.substring(0, 20)}...`,
       },
       ipAddress: clientIp,
     });
@@ -428,7 +408,7 @@ export class CustomerAdminService {
     return {
       success: true,
       message:
-        'Device binding reset successfully. Customer will need to register new device on next login.',
+        "Device binding reset successfully. Customer will need to register new device on next login.",
     };
   }
 
@@ -438,7 +418,7 @@ export class CustomerAdminService {
   async getLoginHistory(customerId: number, limit: number = 50) {
     const attempts = await this.loginAttemptRepo.find({
       where: { customerProfileId: customerId },
-      order: { attemptTime: 'DESC' },
+      order: { attemptTime: "DESC" },
       take: limit,
     });
 
@@ -449,7 +429,7 @@ export class CustomerAdminService {
       failureReason: attempt.failureReason,
       ipAddress: attempt.ipAddress,
       userAgent: attempt.userAgent,
-      deviceFingerprint: attempt.deviceFingerprint?.substring(0, 20) + '...',
+      deviceFingerprint: `${attempt.deviceFingerprint?.substring(0, 20)}...`,
       ipMismatchWarning: attempt.ipMismatchWarning,
     }));
   }
@@ -462,13 +442,10 @@ export class CustomerAdminService {
   async getPendingReviewCustomers() {
     const onboardings = await this.onboardingRepo.find({
       where: {
-        status: In([
-          CustomerOnboardingStatus.SUBMITTED,
-          CustomerOnboardingStatus.UNDER_REVIEW,
-        ]),
+        status: In([CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW]),
       },
-      relations: ['customer', 'customer.company', 'customer.user'],
-      order: { submittedAt: 'ASC' },
+      relations: ["customer", "customer.company", "customer.user"],
+      order: { submittedAt: "ASC" },
     });
 
     return onboardings.map((onb) => ({
@@ -481,8 +458,7 @@ export class CustomerAdminService {
         id: onb.customer.id,
         name: `${onb.customer.firstName} ${onb.customer.lastName}`,
         email: onb.customer.user?.email,
-        companyName:
-          onb.customer.company?.tradingName || onb.customer.company?.legalName,
+        companyName: onb.customer.company?.tradingName || onb.customer.company?.legalName,
       },
     }));
   }
@@ -493,16 +469,11 @@ export class CustomerAdminService {
   async getOnboardingForReview(onboardingId: number) {
     const onboarding = await this.onboardingRepo.findOne({
       where: { id: onboardingId },
-      relations: [
-        'customer',
-        'customer.company',
-        'customer.user',
-        'reviewedBy',
-      ],
+      relations: ["customer", "customer.company", "customer.user", "reviewedBy"],
     });
 
     if (!onboarding) {
-      throw new NotFoundException('Onboarding not found');
+      throw new NotFoundException("Onboarding not found");
     }
 
     const documents = await this.documentRepo.find({
@@ -514,9 +485,7 @@ export class CustomerAdminService {
       status: onboarding.status,
       submittedAt: onboarding.submittedAt,
       reviewedAt: onboarding.reviewedAt,
-      reviewedBy: onboarding.reviewedBy
-        ? `${onboarding.reviewedBy.username}`
-        : null,
+      reviewedBy: onboarding.reviewedBy ? `${onboarding.reviewedBy.username}` : null,
       rejectionReason: onboarding.rejectionReason,
       remediationSteps: onboarding.remediationSteps,
       resubmissionCount: onboarding.resubmissionCount,
@@ -561,27 +530,22 @@ export class CustomerAdminService {
   /**
    * Approve customer onboarding
    */
-  async approveOnboarding(
-    onboardingId: number,
-    adminUserId: number,
-    clientIp: string,
-  ) {
+  async approveOnboarding(onboardingId: number, adminUserId: number, clientIp: string) {
     const onboarding = await this.onboardingRepo.findOne({
       where: { id: onboardingId },
-      relations: ['customer', 'customer.company', 'customer.user'],
+      relations: ["customer", "customer.company", "customer.user"],
     });
 
     if (!onboarding) {
-      throw new NotFoundException('Onboarding not found');
+      throw new NotFoundException("Onboarding not found");
     }
 
     if (
-      ![
-        CustomerOnboardingStatus.SUBMITTED,
-        CustomerOnboardingStatus.UNDER_REVIEW,
-      ].includes(onboarding.status)
+      ![CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW].includes(
+        onboarding.status,
+      )
     ) {
-      throw new BadRequestException('Onboarding is not in a reviewable state');
+      throw new BadRequestException("Onboarding is not in a reviewable state");
     }
 
     // Validate all required documents are in acceptable state
@@ -595,8 +559,7 @@ export class CustomerAdminService {
         return false; // Valid documents are OK
       }
       if (
-        doc.validationStatus ===
-          CustomerDocumentValidationStatus.MANUAL_REVIEW &&
+        doc.validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW &&
         doc.reviewedById &&
         doc.reviewedAt
       ) {
@@ -608,10 +571,10 @@ export class CustomerAdminService {
     if (invalidDocuments.length > 0) {
       const docList = invalidDocuments
         .map((doc) => `${doc.documentType} (${doc.validationStatus})`)
-        .join(', ');
+        .join(", ");
       throw new BadRequestException(
         `Cannot approve onboarding. The following documents require review: ${docList}. ` +
-          `Please review each document individually using the document review endpoint.`,
+          "Please review each document individually using the document review endpoint.",
       );
     }
 
@@ -649,7 +612,7 @@ export class CustomerAdminService {
       where: { id: adminUserId },
     });
     await this.auditService.log({
-      entityType: 'customer_onboarding',
+      entityType: "customer_onboarding",
       entityId: onboardingId,
       action: AuditAction.APPROVE,
       performedBy: adminUser || undefined,
@@ -662,7 +625,7 @@ export class CustomerAdminService {
 
     return {
       success: true,
-      message: 'Customer onboarding approved successfully',
+      message: "Customer onboarding approved successfully",
     };
   }
 
@@ -678,20 +641,19 @@ export class CustomerAdminService {
   ) {
     const onboarding = await this.onboardingRepo.findOne({
       where: { id: onboardingId },
-      relations: ['customer', 'customer.company', 'customer.user'],
+      relations: ["customer", "customer.company", "customer.user"],
     });
 
     if (!onboarding) {
-      throw new NotFoundException('Onboarding not found');
+      throw new NotFoundException("Onboarding not found");
     }
 
     if (
-      ![
-        CustomerOnboardingStatus.SUBMITTED,
-        CustomerOnboardingStatus.UNDER_REVIEW,
-      ].includes(onboarding.status)
+      ![CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW].includes(
+        onboarding.status,
+      )
     ) {
-      throw new BadRequestException('Onboarding is not in a reviewable state');
+      throw new BadRequestException("Onboarding is not in a reviewable state");
     }
 
     // Update onboarding
@@ -715,7 +677,7 @@ export class CustomerAdminService {
       where: { id: adminUserId },
     });
     await this.auditService.log({
-      entityType: 'customer_onboarding',
+      entityType: "customer_onboarding",
       entityId: onboardingId,
       action: AuditAction.REJECT,
       performedBy: adminUser || undefined,
@@ -730,7 +692,7 @@ export class CustomerAdminService {
 
     return {
       success: true,
-      message: 'Customer onboarding rejected. Customer has been notified.',
+      message: "Customer onboarding rejected. Customer has been notified.",
     };
   }
 
@@ -746,11 +708,11 @@ export class CustomerAdminService {
   ) {
     const document = await this.documentRepo.findOne({
       where: { id: documentId },
-      relations: ['customer', 'customer.user', 'customer.company'],
+      relations: ["customer", "customer.user", "customer.company"],
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     document.validationStatus = validationStatus;
@@ -763,14 +725,14 @@ export class CustomerAdminService {
       where: { id: adminUserId },
     });
     await this.auditService.log({
-      entityType: 'customer_document',
+      entityType: "customer_document",
       entityId: documentId,
       action: AuditAction.UPDATE,
       performedBy: adminUser || undefined,
       newValues: {
         validationStatus,
         validationNotes,
-        event: 'document_reviewed',
+        event: "document_reviewed",
       },
       ipAddress: clientIp,
     });
@@ -783,37 +745,38 @@ export class CustomerAdminService {
       if (onboarding && onboarding.status !== CustomerOnboardingStatus.REJECTED) {
         onboarding.status = CustomerOnboardingStatus.REJECTED;
         onboarding.rejectionReason = `Document rejected: ${document.documentType}`;
-        onboarding.remediationSteps = validationNotes || 'Please re-upload the rejected document with the correct information.';
+        onboarding.remediationSteps =
+          validationNotes || "Please re-upload the rejected document with the correct information.";
         onboarding.reviewedAt = now().toJSDate();
         onboarding.reviewedById = adminUserId;
         await this.onboardingRepo.save(onboarding);
 
         await this.auditService.log({
-          entityType: 'customer_onboarding',
+          entityType: "customer_onboarding",
           entityId: onboarding.id,
           action: AuditAction.UPDATE,
           performedBy: adminUser || undefined,
           newValues: {
             status: CustomerOnboardingStatus.REJECTED,
             rejectionReason: onboarding.rejectionReason,
-            event: 'onboarding_rejected_due_to_document',
+            event: "onboarding_rejected_due_to_document",
           },
           ipAddress: clientIp,
         });
 
         if (document.customer?.user?.email) {
           const documentTypeLabels: Record<string, string> = {
-            company_registration: 'Company Registration (CIPC)',
-            vat_registration: 'VAT Registration',
-            bee_certificate: 'B-BBEE Certificate',
-            proof_of_banking: 'Proof of Banking',
+            company_registration: "Company Registration (CIPC)",
+            vat_registration: "VAT Registration",
+            bee_certificate: "B-BBEE Certificate",
+            proof_of_banking: "Proof of Banking",
           };
           const docLabel = documentTypeLabels[document.documentType] || document.documentType;
-          const actionUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/customer/portal/documents`;
+          const actionUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/customer/portal/documents`;
 
           await this.emailService.sendEmail({
             to: document.customer.user.email,
-            subject: 'Document Review - Action Required',
+            subject: "Document Review - Action Required",
             html: `
               <!DOCTYPE html>
               <html>
@@ -824,11 +787,11 @@ export class CustomerAdminService {
               <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
                   <h1 style="color: #dc2626;">Document Review - Action Required</h1>
-                  <p>Dear ${document.customer.firstName || 'Customer'},</p>
+                  <p>Dear ${document.customer.firstName || "Customer"},</p>
                   <p>Your <strong>${docLabel}</strong> document has been reviewed and requires attention.</p>
                   <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 20px 0;">
                     <p style="margin: 0; color: #991b1b;"><strong>Reason:</strong></p>
-                    <p style="margin: 8px 0 0 0; color: #7f1d1d;">${validationNotes || 'The document could not be verified. Please upload a valid document.'}</p>
+                    <p style="margin: 8px 0 0 0; color: #7f1d1d;">${validationNotes || "The document could not be verified. Please upload a valid document."}</p>
                   </div>
                   <p>Please log in to your account and upload a corrected version of the document.</p>
                   <p style="margin: 30px 0;">
@@ -863,8 +826,8 @@ export class CustomerAdminService {
   async getCustomerDocuments(customerId: number) {
     const documents = await this.documentRepo.find({
       where: { customerId },
-      relations: ['reviewedBy'],
-      order: { uploadedAt: 'DESC' },
+      relations: ["reviewedBy"],
+      order: { uploadedAt: "DESC" },
     });
 
     return documents.map((doc) => ({
@@ -889,7 +852,7 @@ export class CustomerAdminService {
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     const url = await this.storageService.getPresignedUrl(document.filePath);
@@ -907,7 +870,7 @@ export class CustomerAdminService {
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     return document;
@@ -916,11 +879,11 @@ export class CustomerAdminService {
   async getDocumentReviewData(documentId: number) {
     const document = await this.documentRepo.findOne({
       where: { id: documentId },
-      relations: ['customer', 'customer.company', 'reviewedBy'],
+      relations: ["customer", "customer.company", "reviewedBy"],
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     const url = await this.storageService.getPresignedUrl(document.filePath);
@@ -942,7 +905,11 @@ export class CustomerAdminService {
 
     const extractedData = document.ocrExtractedData ?? {};
 
-    const fieldComparison = this.buildFieldComparison(expectedData, extractedData, document.fieldResults ?? []);
+    const fieldComparison = this.buildFieldComparison(
+      expectedData,
+      extractedData,
+      document.fieldResults ?? [],
+    );
 
     return {
       documentId: document.id,
@@ -974,11 +941,26 @@ export class CustomerAdminService {
   private buildFieldComparison(
     expected: Record<string, any>,
     extracted: Record<string, any>,
-    fieldResults: { fieldName: string; expected: string; extracted: string; matches: boolean; similarity: number }[],
+    fieldResults: {
+      fieldName: string;
+      expected: string;
+      extracted: string;
+      matches: boolean;
+      similarity: number;
+    }[],
   ) {
     const fieldResultsMap = new Map(fieldResults.map((fr) => [fr.fieldName, fr]));
 
-    const fields = ['companyName', 'registrationNumber', 'vatNumber', 'streetAddress', 'city', 'provinceState', 'postalCode', 'beeLevel'];
+    const fields = [
+      "companyName",
+      "registrationNumber",
+      "vatNumber",
+      "streetAddress",
+      "city",
+      "provinceState",
+      "postalCode",
+      "beeLevel",
+    ];
 
     return fields.map((field) => {
       const storedResult = fieldResultsMap.get(field);
@@ -1012,16 +994,18 @@ export class CustomerAdminService {
     return String(expected).toUpperCase().trim() === String(extracted).toUpperCase().trim();
   }
 
-  async getDocumentPreviewImages(documentId: number): Promise<{ pages: string[]; totalPages: number }> {
+  async getDocumentPreviewImages(
+    documentId: number,
+  ): Promise<{ pages: string[]; totalPages: number }> {
     const document = await this.documentRepo.findOne({
       where: { id: documentId },
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
-    if (document.mimeType !== 'application/pdf') {
+    if (document.mimeType !== "application/pdf") {
       const url = await this.storageService.getPresignedUrl(document.filePath);
       return {
         pages: [url],
@@ -1039,64 +1023,65 @@ export class CustomerAdminService {
   }
 
   private async convertPdfToImages(pdfBuffer: Buffer): Promise<string[]> {
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
-    const fs = await import('fs/promises');
-    const path = await import('path');
-    const os = await import('os');
+    const { exec } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const os = await import("node:os");
 
     const execAsync = promisify(exec);
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pdf-preview-'));
-    const inputPath = path.join(tempDir, 'input.pdf');
-    const outputPattern = path.join(tempDir, 'page-%d.png');
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pdf-preview-"));
+    const inputPath = path.join(tempDir, "input.pdf");
+    const outputPattern = path.join(tempDir, "page-%d.png");
 
-    this.logger.debug('[PDF Preview] Starting conversion');
-    this.logger.debug('[PDF Preview] Temp dir:', tempDir);
-    this.logger.debug('[PDF Preview] PDF buffer size:', pdfBuffer.length);
+    this.logger.debug("[PDF Preview] Starting conversion");
+    this.logger.debug("[PDF Preview] Temp dir:", tempDir);
+    this.logger.debug("[PDF Preview] PDF buffer size:", pdfBuffer.length);
 
     try {
       await fs.writeFile(inputPath, pdfBuffer);
-      this.logger.debug('[PDF Preview] Wrote input PDF to:', inputPath);
+      this.logger.debug("[PDF Preview] Wrote input PDF to:", inputPath);
 
-      const gsCommand = process.platform === 'win32'
-        ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
-        : 'gs';
+      const gsCommand =
+        process.platform === "win32"
+          ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
+          : "gs";
       const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r150 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "-sOutputFile=${outputPattern}" "${inputPath}"`;
 
-      this.logger.debug('[PDF Preview] Running command:', command);
+      this.logger.debug("[PDF Preview] Running command:", command);
 
       const { stdout, stderr } = await execAsync(command, { timeout: 60000 });
-      this.logger.debug('[PDF Preview] GS stdout:', stdout);
+      this.logger.debug("[PDF Preview] GS stdout:", stdout);
       if (stderr) {
-        this.logger.debug('[PDF Preview] GS stderr:', stderr);
+        this.logger.debug("[PDF Preview] GS stderr:", stderr);
       }
 
       const files = await fs.readdir(tempDir);
-      this.logger.debug('[PDF Preview] Files in temp dir:', files);
+      this.logger.debug("[PDF Preview] Files in temp dir:", files);
 
       const pngFiles = files
-        .filter((f) => f.startsWith('page-') && f.endsWith('.png'))
+        .filter((f) => f.startsWith("page-") && f.endsWith(".png"))
         .sort((a, b) => {
-          const numA = parseInt(a.match(/page-(\d+)\.png/)?.[1] || '0');
-          const numB = parseInt(b.match(/page-(\d+)\.png/)?.[1] || '0');
+          const numA = parseInt(a.match(/page-(\d+)\.png/)?.[1] || "0", 10);
+          const numB = parseInt(b.match(/page-(\d+)\.png/)?.[1] || "0", 10);
           return numA - numB;
         });
 
-      this.logger.debug('[PDF Preview] PNG files found:', pngFiles);
+      this.logger.debug("[PDF Preview] PNG files found:", pngFiles);
 
       const pages: string[] = [];
       for (const file of pngFiles) {
         const filePath = path.join(tempDir, file);
         const imageBuffer = await fs.readFile(filePath);
-        const base64 = imageBuffer.toString('base64');
+        const base64 = imageBuffer.toString("base64");
         pages.push(`data:image/png;base64,${base64}`);
-        this.logger.debug('[PDF Preview] Converted', file, 'size:', imageBuffer.length);
+        this.logger.debug("[PDF Preview] Converted", file, "size:", imageBuffer.length);
       }
 
-      this.logger.debug('[PDF Preview] Total pages converted:', pages.length);
+      this.logger.debug("[PDF Preview] Total pages converted:", pages.length);
       return pages;
     } catch (error) {
-      this.logger.error('[PDF Preview] Error during conversion:', error);
+      this.logger.error("[PDF Preview] Error during conversion:", error);
       throw error;
     } finally {
       try {

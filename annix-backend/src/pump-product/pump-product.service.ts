@@ -1,14 +1,17 @@
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Like, Repository } from "typeorm";
+import { CreatePumpProductDto } from "./dto/create-pump-product.dto";
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, In } from 'typeorm';
-import { PumpProduct, PumpProductCategory, PumpProductStatus } from './entities/pump-product.entity';
-import { CreatePumpProductDto } from './dto/create-pump-product.dto';
-import { UpdatePumpProductDto } from './dto/update-pump-product.dto';
-import { PumpProductResponseDto, PumpProductListResponseDto } from './dto/pump-product-response.dto';
+  PumpProductListResponseDto,
+  PumpProductResponseDto,
+} from "./dto/pump-product-response.dto";
+import { UpdatePumpProductDto } from "./dto/update-pump-product.dto";
+import {
+  PumpProduct,
+  PumpProductCategory,
+  PumpProductStatus,
+} from "./entities/pump-product.entity";
 
 export interface PumpProductQueryParams {
   page?: number;
@@ -63,49 +66,49 @@ export class PumpProductService {
       maxHead,
     } = params;
 
-    const queryBuilder = this.productRepository.createQueryBuilder('product');
+    const queryBuilder = this.productRepository.createQueryBuilder("product");
 
     if (search) {
       queryBuilder.andWhere(
-        '(product.title ILIKE :search OR product.sku ILIKE :search OR product.manufacturer ILIKE :search)',
+        "(product.title ILIKE :search OR product.sku ILIKE :search OR product.manufacturer ILIKE :search)",
         { search: `%${search}%` },
       );
     }
 
     if (category) {
-      queryBuilder.andWhere('product.category = :category', { category });
+      queryBuilder.andWhere("product.category = :category", { category });
     }
 
     if (manufacturer) {
-      queryBuilder.andWhere('product.manufacturer ILIKE :manufacturer', {
+      queryBuilder.andWhere("product.manufacturer ILIKE :manufacturer", {
         manufacturer: `%${manufacturer}%`,
       });
     }
 
     if (status) {
-      queryBuilder.andWhere('product.status = :status', { status });
+      queryBuilder.andWhere("product.status = :status", { status });
     }
 
     if (minFlowRate !== undefined) {
-      queryBuilder.andWhere('product.flow_rate_max >= :minFlowRate', { minFlowRate });
+      queryBuilder.andWhere("product.flow_rate_max >= :minFlowRate", { minFlowRate });
     }
 
     if (maxFlowRate !== undefined) {
-      queryBuilder.andWhere('product.flow_rate_min <= :maxFlowRate', { maxFlowRate });
+      queryBuilder.andWhere("product.flow_rate_min <= :maxFlowRate", { maxFlowRate });
     }
 
     if (minHead !== undefined) {
-      queryBuilder.andWhere('product.head_max >= :minHead', { minHead });
+      queryBuilder.andWhere("product.head_max >= :minHead", { minHead });
     }
 
     if (maxHead !== undefined) {
-      queryBuilder.andWhere('product.head_min <= :maxHead', { maxHead });
+      queryBuilder.andWhere("product.head_min <= :maxHead", { maxHead });
     }
 
     const total = await queryBuilder.getCount();
 
     queryBuilder
-      .orderBy('product.title', 'ASC')
+      .orderBy("product.title", "ASC")
       .skip((page - 1) * limit)
       .take(limit);
 
@@ -122,7 +125,7 @@ export class PumpProductService {
   async findOne(id: number): Promise<PumpProductResponseDto> {
     const product = await this.productRepository.findOne({
       where: { id },
-      relations: ['supplier'],
+      relations: ["supplier"],
     });
 
     if (!product) {
@@ -135,7 +138,7 @@ export class PumpProductService {
   async findBySku(sku: string): Promise<PumpProductResponseDto | null> {
     const product = await this.productRepository.findOne({
       where: { sku },
-      relations: ['supplier'],
+      relations: ["supplier"],
     });
 
     return product ? this.mapToResponseDto(product) : null;
@@ -176,7 +179,7 @@ export class PumpProductService {
   async findByCategory(category: PumpProductCategory): Promise<PumpProductResponseDto[]> {
     const products = await this.productRepository.find({
       where: { category, status: PumpProductStatus.ACTIVE },
-      order: { title: 'ASC' },
+      order: { title: "ASC" },
     });
 
     return products.map((p) => this.mapToResponseDto(p));
@@ -188,7 +191,7 @@ export class PumpProductService {
         manufacturer: Like(`%${manufacturer}%`),
         status: PumpProductStatus.ACTIVE,
       },
-      order: { title: 'ASC' },
+      order: { title: "ASC" },
     });
 
     return products.map((p) => this.mapToResponseDto(p));
@@ -196,10 +199,10 @@ export class PumpProductService {
 
   async manufacturers(): Promise<string[]> {
     const result = await this.productRepository
-      .createQueryBuilder('product')
-      .select('DISTINCT product.manufacturer', 'manufacturer')
-      .where('product.status = :status', { status: PumpProductStatus.ACTIVE })
-      .orderBy('product.manufacturer', 'ASC')
+      .createQueryBuilder("product")
+      .select("DISTINCT product.manufacturer", "manufacturer")
+      .where("product.status = :status", { status: PumpProductStatus.ACTIVE })
+      .orderBy("product.manufacturer", "ASC")
       .getRawMany();
 
     return result.map((r) => r.manufacturer);

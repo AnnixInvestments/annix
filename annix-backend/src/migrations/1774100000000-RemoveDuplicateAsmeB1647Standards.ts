@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class RemoveDuplicateAsmeB1647Standards1774100000000 implements MigrationInterface {
-  name = 'RemoveDuplicateAsmeB1647Standards1774100000000';
+  name = "RemoveDuplicateAsmeB1647Standards1774100000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Removing duplicate ASME B16.47 A & B standards...');
+    console.warn("Removing duplicate ASME B16.47 A & B standards...");
 
     const withSpaceA = await queryRunner.query(
       `SELECT id FROM flange_standards WHERE code = 'ASME B16.47 A'`,
@@ -24,18 +24,10 @@ export class RemoveDuplicateAsmeB1647Standards1774100000000 implements Migration
     const noSpaceAId = noSpaceA.length > 0 ? noSpaceA[0].id : null;
     const noSpaceBId = noSpaceB.length > 0 ? noSpaceB[0].id : null;
 
-    console.warn(
-      `Found standards - With space A: ${withSpaceAId}, B: ${withSpaceBId}`,
-    );
-    console.warn(
-      `Found standards - No space A: ${noSpaceAId}, B: ${noSpaceBId}`,
-    );
+    console.warn(`Found standards - With space A: ${withSpaceAId}, B: ${withSpaceBId}`);
+    console.warn(`Found standards - No space A: ${noSpaceAId}, B: ${noSpaceBId}`);
 
-    const migrateData = async (
-      fromId: number,
-      toId: number,
-      standardName: string,
-    ) => {
+    const migrateData = async (fromId: number, toId: number, standardName: string) => {
       if (!fromId || !toId) return;
 
       const pressureClassesFrom = await queryRunner.query(
@@ -71,24 +63,16 @@ export class RemoveDuplicateAsmeB1647Standards1774100000000 implements Migration
         `DELETE FROM flange_pt_ratings WHERE pressure_class_id IN
          (SELECT id FROM flange_pressure_classes WHERE "standardId" = ${fromId})`,
       );
-      await queryRunner.query(
-        `DELETE FROM flange_pressure_classes WHERE "standardId" = ${fromId}`,
-      );
-      await queryRunner.query(
-        `DELETE FROM flange_dimensions WHERE "standardId" = ${fromId}`,
-      );
-      await queryRunner.query(
-        `DELETE FROM flange_bolting WHERE standard_id = ${fromId}`,
-      );
-      await queryRunner.query(
-        `DELETE FROM flange_standards WHERE id = ${fromId}`,
-      );
+      await queryRunner.query(`DELETE FROM flange_pressure_classes WHERE "standardId" = ${fromId}`);
+      await queryRunner.query(`DELETE FROM flange_dimensions WHERE "standardId" = ${fromId}`);
+      await queryRunner.query(`DELETE FROM flange_bolting WHERE standard_id = ${fromId}`);
+      await queryRunner.query(`DELETE FROM flange_standards WHERE id = ${fromId}`);
 
       console.warn(`Removed duplicate standard: ${standardName}`);
     };
 
     if (withSpaceAId && noSpaceAId) {
-      await migrateData(withSpaceAId, noSpaceAId, 'ASME B16.47 A (with space)');
+      await migrateData(withSpaceAId, noSpaceAId, "ASME B16.47 A (with space)");
     } else if (withSpaceAId && !noSpaceAId) {
       await queryRunner.query(
         `UPDATE flange_standards SET code = 'ASME B16.47A' WHERE id = ${withSpaceAId}`,
@@ -97,7 +81,7 @@ export class RemoveDuplicateAsmeB1647Standards1774100000000 implements Migration
     }
 
     if (withSpaceBId && noSpaceBId) {
-      await migrateData(withSpaceBId, noSpaceBId, 'ASME B16.47 B (with space)');
+      await migrateData(withSpaceBId, noSpaceBId, "ASME B16.47 B (with space)");
     } else if (withSpaceBId && !noSpaceBId) {
       await queryRunner.query(
         `UPDATE flange_standards SET code = 'ASME B16.47B' WHERE id = ${withSpaceBId}`,
@@ -108,11 +92,11 @@ export class RemoveDuplicateAsmeB1647Standards1774100000000 implements Migration
     const finalStandards = await queryRunner.query(
       `SELECT id, code FROM flange_standards WHERE code LIKE 'ASME B16.47%' ORDER BY code`,
     );
-    console.warn('Final ASME B16.47 standards:', finalStandards);
-    console.warn('Duplicate ASME B16.47 standards removal complete.');
+    console.warn("Final ASME B16.47 standards:", finalStandards);
+    console.warn("Duplicate ASME B16.47 standards removal complete.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Rollback not supported - data consolidation is one-way');
+    console.warn("Rollback not supported - data consolidation is one-way");
   }
 }

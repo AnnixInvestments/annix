@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
-  name = 'AddAsmeB31Tolerances1777800000000';
+  name = "AddAsmeB31Tolerances1777800000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding ASME B31.1/B31.3 tolerances...');
+    console.warn("Adding ASME B31.1/B31.3 tolerances...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS bend_ovality_tolerances (
@@ -66,56 +66,35 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
     `);
 
     const ovalityData = [
+      ["5D", 5.0, "internal_only", 10.0, "ASME B31.3", "Internal pressure service only"],
+      ["3D", 3.0, "internal_only", 21.0, "ASME B31.3", "Internal pressure service only"],
       [
-        '5D',
+        "5D",
         5.0,
-        'internal_only',
-        10.0,
-        'ASME B31.3',
-        'Internal pressure service only',
-      ],
-      [
-        '3D',
-        3.0,
-        'internal_only',
-        21.0,
-        'ASME B31.3',
-        'Internal pressure service only',
-      ],
-      [
-        '5D',
-        5.0,
-        'internal_external',
+        "internal_external",
         12.0,
-        'ASME B31.3',
-        'Internal and external pressure service',
+        "ASME B31.3",
+        "Internal and external pressure service",
       ],
       [
-        '3D',
+        "3D",
         3.0,
-        'internal_external',
+        "internal_external",
         22.0,
-        'ASME B31.3',
-        'Internal and external pressure service',
+        "ASME B31.3",
+        "Internal and external pressure service",
       ],
       [
-        '1.5D',
+        "1.5D",
         1.5,
-        'internal_external',
+        "internal_external",
         37.0,
-        'ASME B31.3',
-        'Internal and external pressure service',
+        "ASME B31.3",
+        "Internal and external pressure service",
       ],
     ];
 
-    for (const [
-      radiusType,
-      radiusFactor,
-      service,
-      ovality,
-      standard,
-      notes,
-    ] of ovalityData) {
+    for (const [radiusType, radiusFactor, service, ovality, standard, notes] of ovalityData) {
       await queryRunner.query(
         `
         INSERT INTO bend_ovality_tolerances (bend_radius_type, bend_radius_factor, pressure_service, max_ovality_percent, standard, notes)
@@ -131,18 +110,12 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
     }
 
     const wallThinningData = [
-      ['5D', 5.0, 10.0, 'ASME B31.3', 'Bend radius >= 5 pipe diameters'],
-      ['3D', 3.0, 21.0, 'ASME B31.3', 'Bend radius = 3 pipe diameters'],
-      ['1.5D', 1.5, 12.5, 'ASME B16.49', 'Induction bends per B16.49'],
+      ["5D", 5.0, 10.0, "ASME B31.3", "Bend radius >= 5 pipe diameters"],
+      ["3D", 3.0, 21.0, "ASME B31.3", "Bend radius = 3 pipe diameters"],
+      ["1.5D", 1.5, 12.5, "ASME B16.49", "Induction bends per B16.49"],
     ];
 
-    for (const [
-      radiusType,
-      radiusFactor,
-      thinning,
-      standard,
-      notes,
-    ] of wallThinningData) {
+    for (const [radiusType, radiusFactor, thinning, standard, notes] of wallThinningData) {
       await queryRunner.query(
         `
         INSERT INTO bend_wall_thinning_tolerances (bend_radius_type, bend_radius_factor, max_thinning_percent, standard, notes)
@@ -157,7 +130,7 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
     }
 
     const flangeAlignmentData = [
-      [0, 4, 0.8, '1/32"', 'Small bore flanges'],
+      [0, 4, 0.8, '1/32"', "Small bore flanges"],
       [6, 8, 1.6, '1/16"', null],
       [10, 14, 2.4, '3/32"', null],
       [16, 24, 3.2, '1/8"', null],
@@ -175,32 +148,32 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
     }
 
     const standardPipeSizes = [
-      ['1/4', 0.25, true, null],
-      ['3/8', 0.375, false, '1/2'],
-      ['1/2', 0.5, true, null],
-      ['3/4', 0.75, true, null],
-      ['1', 1.0, true, null],
-      ['1-1/4', 1.25, false, '1-1/2'],
-      ['1-1/2', 1.5, true, null],
-      ['2', 2.0, true, null],
-      ['2-1/2', 2.5, true, null],
-      ['3', 3.0, true, null],
-      ['3-1/2', 3.5, false, '4'],
-      ['4', 4.0, true, null],
-      ['5', 5.0, false, '6'],
-      ['6', 6.0, true, null],
-      ['8', 8.0, true, null],
-      ['10', 10.0, true, null],
-      ['12', 12.0, true, null],
-      ['14', 14.0, true, null],
-      ['16', 16.0, true, null],
-      ['18', 18.0, true, null],
-      ['20', 20.0, true, null],
-      ['24', 24.0, true, null],
-      ['30', 30.0, true, null],
-      ['36', 36.0, true, null],
-      ['42', 42.0, true, null],
-      ['48', 48.0, true, null],
+      ["1/4", 0.25, true, null],
+      ["3/8", 0.375, false, "1/2"],
+      ["1/2", 0.5, true, null],
+      ["3/4", 0.75, true, null],
+      ["1", 1.0, true, null],
+      ["1-1/4", 1.25, false, "1-1/2"],
+      ["1-1/2", 1.5, true, null],
+      ["2", 2.0, true, null],
+      ["2-1/2", 2.5, true, null],
+      ["3", 3.0, true, null],
+      ["3-1/2", 3.5, false, "4"],
+      ["4", 4.0, true, null],
+      ["5", 5.0, false, "6"],
+      ["6", 6.0, true, null],
+      ["8", 8.0, true, null],
+      ["10", 10.0, true, null],
+      ["12", 12.0, true, null],
+      ["14", 14.0, true, null],
+      ["16", 16.0, true, null],
+      ["18", 18.0, true, null],
+      ["20", 20.0, true, null],
+      ["24", 24.0, true, null],
+      ["30", 30.0, true, null],
+      ["36", 36.0, true, null],
+      ["42", 42.0, true, null],
+      ["48", 48.0, true, null],
     ];
 
     for (const [nps, npsDecimal, isTypical, alternative] of standardPipeSizes) {
@@ -219,28 +192,28 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
 
     const reducerRules = [
       [
-        'max_single_reduction',
+        "max_single_reduction",
         1,
         null,
-        'A reducer should not reduce by more than one pipe size in a single step',
+        "A reducer should not reduce by more than one pipe size in a single step",
       ],
       [
-        'fabricated_max_angle',
+        "fabricated_max_angle",
         null,
         60.0,
-        'For greater reduction, use fabricated reducer with maximum 60° included angle',
+        "For greater reduction, use fabricated reducer with maximum 60° included angle",
       ],
       [
-        'eccentric_horizontal',
+        "eccentric_horizontal",
         null,
         null,
-        'Eccentric reducers in horizontal runs: flat side up to prevent air pockets',
+        "Eccentric reducers in horizontal runs: flat side up to prevent air pockets",
       ],
       [
-        'eccentric_suction',
+        "eccentric_suction",
         null,
         null,
-        'Eccentric reducers in suction lines: flat side up (horizontal) or at centerline (vertical)',
+        "Eccentric reducers in suction lines: flat side up (horizontal) or at centerline (vertical)",
       ],
     ];
 
@@ -254,16 +227,14 @@ export class AddAsmeB31Tolerances1777800000000 implements MigrationInterface {
       );
     }
 
-    console.warn('ASME B31.1/B31.3 tolerances added successfully');
+    console.warn("ASME B31.1/B31.3 tolerances added successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS reducer_rules`);
-    await queryRunner.query(`DROP TABLE IF EXISTS standard_pipe_sizes`);
-    await queryRunner.query(`DROP TABLE IF EXISTS flange_alignment_tolerances`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS bend_wall_thinning_tolerances`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS bend_ovality_tolerances`);
+    await queryRunner.query("DROP TABLE IF EXISTS reducer_rules");
+    await queryRunner.query("DROP TABLE IF EXISTS standard_pipe_sizes");
+    await queryRunner.query("DROP TABLE IF EXISTS flange_alignment_tolerances");
+    await queryRunner.query("DROP TABLE IF EXISTS bend_wall_thinning_tolerances");
+    await queryRunner.query("DROP TABLE IF EXISTS bend_ovality_tolerances");
   }
 }

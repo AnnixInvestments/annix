@@ -1,60 +1,60 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddComprehensivePipeAndMaterialData1774400000000 implements MigrationInterface {
-  name = 'AddComprehensivePipeAndMaterialData1774400000000';
+  name = "AddComprehensivePipeAndMaterialData1774400000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding comprehensive pipe schedule and material data...');
+    console.warn("Adding comprehensive pipe schedule and material data...");
 
     // ============================================================
     // PART 1: MISSING SMALL BORE PIPE SCHEDULES (NPS 1/8, 1/4, 3/8)
     // ============================================================
-    console.warn('Adding small bore pipe schedules...');
+    console.warn("Adding small bore pipe schedules...");
 
     const smallBoreData = [
       // NPS 1/8" (DN 6) - OD 0.405" / 10.29mm
       {
-        nps: '1/8',
+        nps: "1/8",
         odInch: 0.405,
         odMm: 10.29,
         nbMm: 6,
         schedules: {
-          '5S': 0.035,
-          '10S': 0.049,
-          '40': 0.068,
-          '40S': 0.068,
-          '80': 0.095,
-          '80S': 0.095,
+          "5S": 0.035,
+          "10S": 0.049,
+          "40": 0.068,
+          "40S": 0.068,
+          "80": 0.095,
+          "80S": 0.095,
         },
       },
       // NPS 1/4" (DN 8) - OD 0.540" / 13.72mm
       {
-        nps: '1/4',
+        nps: "1/4",
         odInch: 0.54,
         odMm: 13.72,
         nbMm: 8,
         schedules: {
-          '5S': 0.049,
-          '10S': 0.065,
-          '40': 0.088,
-          '40S': 0.088,
-          '80': 0.119,
-          '80S': 0.119,
+          "5S": 0.049,
+          "10S": 0.065,
+          "40": 0.088,
+          "40S": 0.088,
+          "80": 0.119,
+          "80S": 0.119,
         },
       },
       // NPS 3/8" (DN 10) - OD 0.675" / 17.15mm
       {
-        nps: '3/8',
+        nps: "3/8",
         odInch: 0.675,
         odMm: 17.15,
         nbMm: 10,
         schedules: {
-          '5S': 0.049,
-          '10S': 0.065,
-          '40': 0.091,
-          '40S': 0.091,
-          '80': 0.126,
-          '80S': 0.126,
+          "5S": 0.049,
+          "10S": 0.065,
+          "40": 0.091,
+          "40S": 0.091,
+          "80": 0.126,
+          "80S": 0.126,
         },
       },
     ];
@@ -70,15 +70,7 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
             wall_thickness_inch = $4, wall_thickness_mm = $5,
             outside_diameter_inch = $6, outside_diameter_mm = $7
         `,
-          [
-            pipe.nps,
-            pipe.nbMm,
-            schedule,
-            wallInch,
-            wallMm,
-            pipe.odInch,
-            pipe.odMm,
-          ],
+          [pipe.nps, pipe.nbMm, schedule, wallInch, wallMm, pipe.odInch, pipe.odMm],
         );
       }
     }
@@ -86,7 +78,7 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
     // ============================================================
     // PART 2: MISSING MEDIUM/LARGE BORE SCHEDULES (Sch 10, 20, 30, 60, 100, 120, 140)
     // ============================================================
-    console.warn('Adding additional schedules for medium/large bore...');
+    console.warn("Adding additional schedules for medium/large bore...");
 
     const additionalSchedules: {
       [nps: string]: {
@@ -96,228 +88,228 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
         schedules: { [sch: string]: number };
       };
     } = {
-      '4': {
+      "4": {
         od: 4.5,
         odMm: 114.3,
         nbMm: 100,
         schedules: {
-          '10': 0.12,
-          '20': 0.188,
-          '30': 0.237,
-          '60': 0.337,
-          '100': 0.438,
-          '120': 0.531,
-          '140': 0.674,
+          "10": 0.12,
+          "20": 0.188,
+          "30": 0.237,
+          "60": 0.337,
+          "100": 0.438,
+          "120": 0.531,
+          "140": 0.674,
         },
       },
-      '5': {
+      "5": {
         od: 5.563,
         odMm: 141.3,
         nbMm: 125,
         schedules: {
-          '10': 0.134,
-          '20': 0.188,
-          '30': 0.258,
-          '60': 0.375,
-          '100': 0.5,
-          '120': 0.625,
-          '140': 0.75,
+          "10": 0.134,
+          "20": 0.188,
+          "30": 0.258,
+          "60": 0.375,
+          "100": 0.5,
+          "120": 0.625,
+          "140": 0.75,
         },
       },
-      '6': {
+      "6": {
         od: 6.625,
         odMm: 168.28,
         nbMm: 150,
         schedules: {
-          '10': 0.134,
-          '20': 0.188,
-          '30': 0.28,
-          '60': 0.432,
-          '100': 0.562,
-          '120': 0.719,
-          '140': 0.864,
+          "10": 0.134,
+          "20": 0.188,
+          "30": 0.28,
+          "60": 0.432,
+          "100": 0.562,
+          "120": 0.719,
+          "140": 0.864,
         },
       },
-      '8': {
+      "8": {
         od: 8.625,
         odMm: 219.08,
         nbMm: 200,
         schedules: {
-          '10': 0.148,
-          '20': 0.25,
-          '30': 0.277,
-          '60': 0.406,
-          '100': 0.594,
-          '120': 0.719,
-          '140': 0.812,
+          "10": 0.148,
+          "20": 0.25,
+          "30": 0.277,
+          "60": 0.406,
+          "100": 0.594,
+          "120": 0.719,
+          "140": 0.812,
         },
       },
-      '10': {
+      "10": {
         od: 10.75,
         odMm: 273.05,
         nbMm: 250,
         schedules: {
-          '10': 0.165,
-          '20': 0.25,
-          '30': 0.307,
-          '60': 0.5,
-          '100': 0.719,
-          '120': 0.844,
-          '140': 1.0,
+          "10": 0.165,
+          "20": 0.25,
+          "30": 0.307,
+          "60": 0.5,
+          "100": 0.719,
+          "120": 0.844,
+          "140": 1.0,
         },
       },
-      '12': {
+      "12": {
         od: 12.75,
         odMm: 323.85,
         nbMm: 300,
         schedules: {
-          '10': 0.18,
-          '20': 0.25,
-          '30': 0.33,
-          '60': 0.562,
-          '100': 0.844,
-          '120': 1.0,
-          '140': 1.125,
+          "10": 0.18,
+          "20": 0.25,
+          "30": 0.33,
+          "60": 0.562,
+          "100": 0.844,
+          "120": 1.0,
+          "140": 1.125,
         },
       },
-      '14': {
+      "14": {
         od: 14.0,
         odMm: 355.6,
         nbMm: 350,
         schedules: {
-          '10': 0.188,
-          '20': 0.312,
-          '30': 0.375,
-          '60': 0.594,
-          '100': 0.938,
-          '120': 1.094,
-          '140': 1.25,
+          "10": 0.188,
+          "20": 0.312,
+          "30": 0.375,
+          "60": 0.594,
+          "100": 0.938,
+          "120": 1.094,
+          "140": 1.25,
         },
       },
-      '16': {
+      "16": {
         od: 16.0,
         odMm: 406.4,
         nbMm: 400,
         schedules: {
-          '10': 0.188,
-          '20': 0.312,
-          '30': 0.375,
-          '60': 0.656,
-          '100': 1.031,
-          '120': 1.219,
-          '140': 1.438,
+          "10": 0.188,
+          "20": 0.312,
+          "30": 0.375,
+          "60": 0.656,
+          "100": 1.031,
+          "120": 1.219,
+          "140": 1.438,
         },
       },
-      '18': {
+      "18": {
         od: 18.0,
         odMm: 457.2,
         nbMm: 450,
         schedules: {
-          '10': 0.188,
-          '20': 0.312,
-          '30': 0.438,
-          '60': 0.75,
-          '100': 1.156,
-          '120': 1.375,
-          '140': 1.562,
+          "10": 0.188,
+          "20": 0.312,
+          "30": 0.438,
+          "60": 0.75,
+          "100": 1.156,
+          "120": 1.375,
+          "140": 1.562,
         },
       },
-      '20': {
+      "20": {
         od: 20.0,
         odMm: 508.0,
         nbMm: 500,
         schedules: {
-          '10': 0.218,
-          '20': 0.375,
-          '30': 0.5,
-          '60': 0.812,
-          '100': 1.281,
-          '120': 1.5,
-          '140': 1.75,
+          "10": 0.218,
+          "20": 0.375,
+          "30": 0.5,
+          "60": 0.812,
+          "100": 1.281,
+          "120": 1.5,
+          "140": 1.75,
         },
       },
-      '24': {
+      "24": {
         od: 24.0,
         odMm: 609.6,
         nbMm: 600,
         schedules: {
-          '10': 0.25,
-          '20': 0.375,
-          '30': 0.562,
-          '60': 0.969,
-          '100': 1.531,
-          '120': 1.812,
-          '140': 2.062,
+          "10": 0.25,
+          "20": 0.375,
+          "30": 0.562,
+          "60": 0.969,
+          "100": 1.531,
+          "120": 1.812,
+          "140": 2.062,
         },
       },
-      '26': {
+      "26": {
         od: 26.0,
         odMm: 660.4,
         nbMm: 650,
-        schedules: { '10': 0.312, '20': 0.5, STD: 0.375, XS: 0.5 },
+        schedules: { "10": 0.312, "20": 0.5, STD: 0.375, XS: 0.5 },
       },
-      '28': {
+      "28": {
         od: 28.0,
         odMm: 711.2,
         nbMm: 700,
-        schedules: { '10': 0.312, '20': 0.5, '30': 0.625, STD: 0.375, XS: 0.5 },
+        schedules: { "10": 0.312, "20": 0.5, "30": 0.625, STD: 0.375, XS: 0.5 },
       },
-      '30': {
+      "30": {
         od: 30.0,
         odMm: 762.0,
         nbMm: 750,
-        schedules: { '10': 0.312, '20': 0.5, '30': 0.625, STD: 0.375, XS: 0.5 },
+        schedules: { "10": 0.312, "20": 0.5, "30": 0.625, STD: 0.375, XS: 0.5 },
       },
-      '32': {
+      "32": {
         od: 32.0,
         odMm: 812.8,
         nbMm: 800,
         schedules: {
-          '10': 0.312,
-          '20': 0.5,
-          '30': 0.625,
-          '40': 0.688,
+          "10": 0.312,
+          "20": 0.5,
+          "30": 0.625,
+          "40": 0.688,
           STD: 0.375,
           XS: 0.5,
         },
       },
-      '34': {
+      "34": {
         od: 34.0,
         odMm: 863.6,
         nbMm: 850,
         schedules: {
-          '10': 0.312,
-          '20': 0.5,
-          '30': 0.625,
-          '40': 0.688,
+          "10": 0.312,
+          "20": 0.5,
+          "30": 0.625,
+          "40": 0.688,
           STD: 0.375,
           XS: 0.5,
         },
       },
-      '36': {
+      "36": {
         od: 36.0,
         odMm: 914.4,
         nbMm: 900,
         schedules: {
-          '10': 0.312,
-          '20': 0.5,
-          '30': 0.625,
-          '40': 0.75,
+          "10": 0.312,
+          "20": 0.5,
+          "30": 0.625,
+          "40": 0.75,
           STD: 0.375,
           XS: 0.5,
         },
       },
-      '42': {
+      "42": {
         od: 42.0,
         odMm: 1066.8,
         nbMm: 1050,
-        schedules: { '20': 0.5, '30': 0.625, '40': 0.75, STD: 0.375, XS: 0.5 },
+        schedules: { "20": 0.5, "30": 0.625, "40": 0.75, STD: 0.375, XS: 0.5 },
       },
-      '48': {
+      "48": {
         od: 48.0,
         odMm: 1219.2,
         nbMm: 1200,
-        schedules: { '20': 0.5, '30': 0.625, '40': 0.75, STD: 0.375, XS: 0.5 },
+        schedules: { "20": 0.5, "30": 0.625, "40": 0.75, STD: 0.375, XS: 0.5 },
       },
     };
 
@@ -339,13 +331,13 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
     // ============================================================
     // PART 3: LOW TEMPERATURE CARBON STEEL GRADES (A333)
     // ============================================================
-    console.warn('Adding low temperature carbon steel grades...');
+    console.warn("Adding low temperature carbon steel grades...");
 
     const a333Grades = [
       // A333 Grade 1 - Carbon-Manganese, min temp -46°C
       {
-        code: 'A333_GR1',
-        name: 'ASTM A333 Grade 1 (Carbon-Manganese, -46°C)',
+        code: "A333_GR1",
+        name: "ASTM A333 Grade 1 (Carbon-Manganese, -46°C)",
         stressData: [
           { tempC: -46, tempF: -50, ksi: 17.1, mpa: 117.9 },
           { tempC: -29, tempF: -20, ksi: 17.1, mpa: 117.9 },
@@ -360,8 +352,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
       },
       // A333 Grade 6 - Carbon-Manganese-Silicon, min temp -46°C
       {
-        code: 'A333_GR6',
-        name: 'ASTM A333 Grade 6 (Carbon-Mn-Si, -46°C)',
+        code: "A333_GR6",
+        name: "ASTM A333 Grade 6 (Carbon-Mn-Si, -46°C)",
         stressData: [
           { tempC: -46, tempF: -50, ksi: 20.0, mpa: 137.9 },
           { tempC: -29, tempF: -20, ksi: 20.0, mpa: 137.9 },
@@ -376,8 +368,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
       },
       // A333 Grade 3 - 3.5% Nickel, min temp -101°C
       {
-        code: 'A333_GR3',
-        name: 'ASTM A333 Grade 3 (3.5Ni, -101°C)',
+        code: "A333_GR3",
+        name: "ASTM A333 Grade 3 (3.5Ni, -101°C)",
         stressData: [
           { tempC: -101, tempF: -150, ksi: 21.7, mpa: 149.6 },
           { tempC: -73, tempF: -100, ksi: 21.7, mpa: 149.6 },
@@ -391,8 +383,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
       },
       // A333 Grade 8 - 9% Nickel, min temp -196°C (cryogenic)
       {
-        code: 'A333_GR8',
-        name: 'ASTM A333 Grade 8 (9Ni Cryogenic, -196°C)',
+        code: "A333_GR8",
+        name: "ASTM A333 Grade 8 (9Ni Cryogenic, -196°C)",
         stressData: [
           { tempC: -196, tempF: -320, ksi: 23.3, mpa: 160.6 },
           { tempC: -162, tempF: -260, ksi: 23.3, mpa: 160.6 },
@@ -415,14 +407,7 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
           ON CONFLICT (material_code, temperature_celsius) DO UPDATE SET
             allowable_stress_ksi = $5, allowable_stress_mpa = $6
         `,
-          [
-            grade.code,
-            grade.name,
-            stress.tempC,
-            stress.tempF,
-            stress.ksi,
-            stress.mpa,
-          ],
+          [grade.code, grade.name, stress.tempC, stress.tempF, stress.ksi, stress.mpa],
         );
       }
     }
@@ -430,12 +415,12 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
     // ============================================================
     // PART 4: API 5L HIGH STRENGTH PIPELINE GRADES
     // ============================================================
-    console.warn('Adding API 5L high strength grades...');
+    console.warn("Adding API 5L high strength grades...");
 
     const api5lGrades = [
       {
-        code: 'API5L_X42',
-        name: 'API 5L X42 (42 ksi SMYS)',
+        code: "API5L_X42",
+        name: "API 5L X42 (42 ksi SMYS)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 21.0, mpa: 144.8 },
           { tempC: 38, tempF: 100, ksi: 21.0, mpa: 144.8 },
@@ -447,8 +432,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
         ],
       },
       {
-        code: 'API5L_X52',
-        name: 'API 5L X52 (52 ksi SMYS)',
+        code: "API5L_X52",
+        name: "API 5L X52 (52 ksi SMYS)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 26.0, mpa: 179.3 },
           { tempC: 38, tempF: 100, ksi: 26.0, mpa: 179.3 },
@@ -460,8 +445,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
         ],
       },
       {
-        code: 'API5L_X60',
-        name: 'API 5L X60 (60 ksi SMYS)',
+        code: "API5L_X60",
+        name: "API 5L X60 (60 ksi SMYS)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 30.0, mpa: 206.8 },
           { tempC: 38, tempF: 100, ksi: 30.0, mpa: 206.8 },
@@ -473,8 +458,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
         ],
       },
       {
-        code: 'API5L_X65',
-        name: 'API 5L X65 (65 ksi SMYS)',
+        code: "API5L_X65",
+        name: "API 5L X65 (65 ksi SMYS)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 32.5, mpa: 224.1 },
           { tempC: 38, tempF: 100, ksi: 32.5, mpa: 224.1 },
@@ -485,8 +470,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
         ],
       },
       {
-        code: 'API5L_X70',
-        name: 'API 5L X70 (70 ksi SMYS)',
+        code: "API5L_X70",
+        name: "API 5L X70 (70 ksi SMYS)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 35.0, mpa: 241.3 },
           { tempC: 38, tempF: 100, ksi: 35.0, mpa: 241.3 },
@@ -507,14 +492,7 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
           ON CONFLICT (material_code, temperature_celsius) DO UPDATE SET
             allowable_stress_ksi = $5, allowable_stress_mpa = $6
         `,
-          [
-            grade.code,
-            grade.name,
-            stress.tempC,
-            stress.tempF,
-            stress.ksi,
-            stress.mpa,
-          ],
+          [grade.code, grade.name, stress.tempC, stress.tempF, stress.ksi, stress.mpa],
         );
       }
     }
@@ -522,13 +500,13 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
     // ============================================================
     // PART 5: CHROME-MOLY ALLOY STEEL GRADES (A335)
     // ============================================================
-    console.warn('Adding chrome-moly alloy steel grades...');
+    console.warn("Adding chrome-moly alloy steel grades...");
 
     const chromeMolyGrades = [
       // A335 P1 - 0.5Mo
       {
-        code: 'A335_P1',
-        name: 'ASTM A335 P1 (0.5Mo)',
+        code: "A335_P1",
+        name: "ASTM A335 P1 (0.5Mo)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 16.6, mpa: 114.4 },
           { tempC: 38, tempF: 100, ksi: 16.6, mpa: 114.4 },
@@ -549,8 +527,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
       },
       // A335 P5 - 5Cr-0.5Mo
       {
-        code: 'A335_P5',
-        name: 'ASTM A335 P5 (5Cr-0.5Mo)',
+        code: "A335_P5",
+        name: "ASTM A335 P5 (5Cr-0.5Mo)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 20.0, mpa: 137.9 },
           { tempC: 38, tempF: 100, ksi: 20.0, mpa: 137.9 },
@@ -573,8 +551,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
       },
       // A335 P9 - 9Cr-1Mo
       {
-        code: 'A335_P9',
-        name: 'ASTM A335 P9 (9Cr-1Mo)',
+        code: "A335_P9",
+        name: "ASTM A335 P9 (9Cr-1Mo)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 20.0, mpa: 137.9 },
           { tempC: 38, tempF: 100, ksi: 20.0, mpa: 137.9 },
@@ -597,8 +575,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
       },
       // A335 P12 - 1Cr-0.5Mo
       {
-        code: 'A335_P12',
-        name: 'ASTM A335 P12 (1Cr-0.5Mo)',
+        code: "A335_P12",
+        name: "ASTM A335 P12 (1Cr-0.5Mo)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 20.0, mpa: 137.9 },
           { tempC: 38, tempF: 100, ksi: 20.0, mpa: 137.9 },
@@ -621,8 +599,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
       },
       // A335 P91 - 9Cr-1Mo-V (Advanced)
       {
-        code: 'A335_P91',
-        name: 'ASTM A335 P91 (9Cr-1Mo-V Advanced)',
+        code: "A335_P91",
+        name: "ASTM A335 P91 (9Cr-1Mo-V Advanced)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 24.3, mpa: 167.5 },
           { tempC: 38, tempF: 100, ksi: 24.3, mpa: 167.5 },
@@ -647,8 +625,8 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
       },
       // A335 P92 - 9Cr-2W (Advanced)
       {
-        code: 'A335_P92',
-        name: 'ASTM A335 P92 (9Cr-2W Advanced)',
+        code: "A335_P92",
+        name: "ASTM A335 P92 (9Cr-2W Advanced)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 25.7, mpa: 177.2 },
           { tempC: 38, tempF: 100, ksi: 25.7, mpa: 177.2 },
@@ -682,22 +660,15 @@ export class AddComprehensivePipeAndMaterialData1774400000000 implements Migrati
           ON CONFLICT (material_code, temperature_celsius) DO UPDATE SET
             allowable_stress_ksi = $5, allowable_stress_mpa = $6
         `,
-          [
-            grade.code,
-            grade.name,
-            stress.tempC,
-            stress.tempF,
-            stress.ksi,
-            stress.mpa,
-          ],
+          [grade.code, grade.name, stress.tempC, stress.tempF, stress.ksi, stress.mpa],
         );
       }
     }
 
-    console.warn('Comprehensive pipe and material data migration complete.');
+    console.warn("Comprehensive pipe and material data migration complete.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Rollback not implemented for comprehensive data migration');
+    console.warn("Rollback not implemented for comprehensive data migration");
   }
 }

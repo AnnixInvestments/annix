@@ -1,15 +1,14 @@
 export {
-  IsZAPhone,
-  IsZAPhoneConstraint,
-  IsPhone,
-  IsInternationalPhoneConstraint,
-} from './phone.validator';
-
-export {
   IsFutureDate,
   IsFutureDateConstraint,
   IsFutureOrTodayDate,
   IsFutureOrTodayDateConstraint,
   IsPastDate,
   IsPastDateConstraint,
-} from './date.validator';
+} from "./date.validator";
+export {
+  IsInternationalPhoneConstraint,
+  IsPhone,
+  IsZAPhone,
+  IsZAPhoneConstraint,
+} from "./phone.validator";

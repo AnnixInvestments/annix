@@ -1,11 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
-import { User } from '../user/entities/user.entity';
-import { JwtPayload } from './jwt.strategy';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { InjectRepository } from "@nestjs/typeorm";
+import * as bcrypt from "bcrypt";
+import { Repository } from "typeorm";
+import { User } from "../user/entities/user.entity";
+import { JwtPayload } from "./jwt.strategy";
 
 @Injectable()
 export class AuthService {
@@ -18,10 +18,10 @@ export class AuthService {
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.userRepo.findOne({
       where: { email },
-      relations: ['roles'],
+      relations: ["roles"],
     });
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     // Use bcrypt.compare for password verification instead of hash comparison
@@ -32,7 +32,7 @@ export class AuthService {
       return result;
     }
 
-    throw new UnauthorizedException('Invalid credentials');
+    throw new UnauthorizedException("Invalid credentials");
   }
 
   async login(user: any) {
@@ -45,17 +45,17 @@ export class AuthService {
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        expiresIn: '1h',
+        expiresIn: "1h",
       }),
       this.jwtService.signAsync(payload, {
-        expiresIn: '7d',
+        expiresIn: "7d",
       }),
     ]);
 
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
-      token_type: 'Bearer',
+      token_type: "Bearer",
       expires_in: 3600, // 1 hour in seconds
     };
   }
@@ -64,7 +64,7 @@ export class AuthService {
     try {
       return await this.jwtService.verifyAsync(token);
     } catch (error) {
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException("Invalid token");
     }
   }
 
@@ -75,16 +75,16 @@ export class AuthService {
       // Verify user still exists
       const user = await this.userRepo.findOne({
         where: { id: payload.sub },
-        relations: ['roles'],
+        relations: ["roles"],
       });
 
       if (!user) {
-        throw new UnauthorizedException('User not found');
+        throw new UnauthorizedException("User not found");
       }
 
       return this.login(user);
     } catch (error) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException("Invalid refresh token");
     }
   }
 }

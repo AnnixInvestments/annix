@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class SeedHdpePipeSpecifications1766002400000 implements MigrationInterface {
-  name = 'SeedHdpePipeSpecifications1766002400000';
+  name = "SeedHdpePipeSpecifications1766002400000";
 
   // HDPE density in kg/m³
   private readonly DENSITY = 955;
@@ -65,19 +65,13 @@ export class SeedHdpePipeSpecifications1766002400000 implements MigrationInterfa
 
     // Generate all combinations of NB and SDR
     for (const [nb, od] of Object.entries(this.PIPE_ODS)) {
-      const nominalBore = parseInt(nb);
+      const nominalBore = parseInt(nb, 10);
       const outerDiameter = od;
 
       for (const sdr of this.SDR_LIST) {
         const wallThickness = this.calculateWallThickness(outerDiameter, sdr);
-        const innerDiameter = this.calculateInnerDiameter(
-          outerDiameter,
-          wallThickness,
-        );
-        const weightKgPerM = this.calculateWeightPerMeter(
-          outerDiameter,
-          innerDiameter,
-        );
+        const innerDiameter = this.calculateInnerDiameter(outerDiameter, wallThickness);
+        const weightKgPerM = this.calculateWeightPerMeter(outerDiameter, innerDiameter);
         const pressureRatingPn = this.calculatePressureRating(sdr);
 
         values.push(`
@@ -96,14 +90,14 @@ export class SeedHdpePipeSpecifications1766002400000 implements MigrationInterfa
         INSERT INTO "hdpe_pipe_specifications"
         ("nominal_bore", "outer_diameter", "sdr", "wall_thickness", "inner_diameter",
          "weight_kg_per_m", "pressure_rating_pn", "material_grade", "display_order", "is_active")
-        VALUES ${batch.join(', ')}
+        VALUES ${batch.join(", ")}
       `);
     }
 
     // Insert default buttweld prices (placeholder: $10 + $0.1 per mm NB)
     const buttweldValues: string[] = [];
     for (const [nb] of Object.entries(this.PIPE_ODS)) {
-      const nominalBore = parseInt(nb);
+      const nominalBore = parseInt(nb, 10);
       const pricePerWeld = (10 + nominalBore / 10).toFixed(2);
       buttweldValues.push(`
         (${nominalBore}, ${pricePerWeld}, 'ZAR', true)
@@ -113,13 +107,13 @@ export class SeedHdpePipeSpecifications1766002400000 implements MigrationInterfa
     await queryRunner.query(`
       INSERT INTO "hdpe_buttweld_prices"
       ("nominal_bore", "price_per_weld", "currency", "is_active")
-      VALUES ${buttweldValues.join(', ')}
+      VALUES ${buttweldValues.join(", ")}
     `);
 
     // Insert default stub prices (placeholder: $5 + $0.05 per mm NB)
     const stubValues: string[] = [];
     for (const [nb] of Object.entries(this.PIPE_ODS)) {
-      const nominalBore = parseInt(nb);
+      const nominalBore = parseInt(nb, 10);
       const pricePerStub = (5 + nominalBore / 20).toFixed(2);
       stubValues.push(`
         (${nominalBore}, ${pricePerStub}, 'ZAR', true)
@@ -129,7 +123,7 @@ export class SeedHdpePipeSpecifications1766002400000 implements MigrationInterfa
     await queryRunner.query(`
       INSERT INTO "hdpe_stub_prices"
       ("nominal_bore", "price_per_stub", "currency", "is_active")
-      VALUES ${stubValues.join(', ')}
+      VALUES ${stubValues.join(", ")}
     `);
   }
 

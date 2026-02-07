@@ -1,1 +1,1 @@
-export * from './duckfoot-elbow-dimension.entity';
+export * from "./duckfoot-elbow-dimension.entity";

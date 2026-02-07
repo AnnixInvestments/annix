@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content = fs.readFileSync(filePath, "utf8");
 
 // Add Surface Protection summary box after the section starts
 const oldSectionStart = `        {/* External Coating & Internal Lining - Only show if Surface Protection is selected */}
@@ -49,10 +49,10 @@ const newSectionStart = `        {/* External Coating & Internal Lining - Only s
 
 if (content.includes(oldSectionStart)) {
   content = content.replace(oldSectionStart, newSectionStart);
-  console.log('✅ Added Surface Protection summary box');
+  console.log("✅ Added Surface Protection summary box");
 } else {
-  console.log('❌ Could not find the section start');
+  console.log("❌ Could not find the section start");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

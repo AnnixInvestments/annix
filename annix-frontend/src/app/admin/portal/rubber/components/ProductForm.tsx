@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  rubberPortalApi,
-  RubberProductDto,
-  RubberProductCodingDto,
-  RubberCompanyDto,
   CreateRubberProductDto,
-} from '@/app/lib/api/rubberPortalApi';
-import { log } from '@/app/lib/logger';
+  RubberCompanyDto,
+  RubberProductCodingDto,
+  RubberProductDto,
+  rubberPortalApi,
+} from "@/app/lib/api/rubberPortalApi";
+import { log } from "@/app/lib/logger";
 
 export interface ProductFormData {
   title: string;
@@ -26,34 +26,34 @@ export interface ProductFormData {
 }
 
 export const INITIAL_FORM_DATA: ProductFormData = {
-  title: '',
-  description: '',
-  specificGravity: '',
-  compoundOwnerFirebaseUid: '',
-  compoundFirebaseUid: '',
-  typeFirebaseUid: '',
-  costPerKg: '',
-  colourFirebaseUid: '',
-  hardnessFirebaseUid: '',
-  curingMethodFirebaseUid: '',
-  gradeFirebaseUid: '',
-  markup: '',
+  title: "",
+  description: "",
+  specificGravity: "",
+  compoundOwnerFirebaseUid: "",
+  compoundFirebaseUid: "",
+  typeFirebaseUid: "",
+  costPerKg: "",
+  colourFirebaseUid: "",
+  hardnessFirebaseUid: "",
+  curingMethodFirebaseUid: "",
+  gradeFirebaseUid: "",
+  markup: "",
 };
 
 export function formDataFromProduct(product: RubberProductDto): ProductFormData {
   return {
-    title: product.title || '',
-    description: product.description || '',
-    specificGravity: product.specificGravity?.toString() || '',
-    compoundOwnerFirebaseUid: product.compoundOwnerFirebaseUid || '',
-    compoundFirebaseUid: product.compoundFirebaseUid || '',
-    typeFirebaseUid: product.typeFirebaseUid || '',
-    costPerKg: product.costPerKg?.toString() || '',
-    colourFirebaseUid: product.colourFirebaseUid || '',
-    hardnessFirebaseUid: product.hardnessFirebaseUid || '',
-    curingMethodFirebaseUid: product.curingMethodFirebaseUid || '',
-    gradeFirebaseUid: product.gradeFirebaseUid || '',
-    markup: product.markup?.toString() || '',
+    title: product.title || "",
+    description: product.description || "",
+    specificGravity: product.specificGravity?.toString() || "",
+    compoundOwnerFirebaseUid: product.compoundOwnerFirebaseUid || "",
+    compoundFirebaseUid: product.compoundFirebaseUid || "",
+    typeFirebaseUid: product.typeFirebaseUid || "",
+    costPerKg: product.costPerKg?.toString() || "",
+    colourFirebaseUid: product.colourFirebaseUid || "",
+    hardnessFirebaseUid: product.hardnessFirebaseUid || "",
+    curingMethodFirebaseUid: product.curingMethodFirebaseUid || "",
+    gradeFirebaseUid: product.gradeFirebaseUid || "",
+    markup: product.markup?.toString() || "",
   };
 }
 
@@ -113,8 +113,8 @@ export function ProductForm({
       setCodings(codingsData);
       setCompanies(companiesData.filter((c) => c.isCompoundOwner));
     } catch (err) {
-      log.error('Failed to load reference data:', err);
-      setError('Failed to load form data');
+      log.error("Failed to load reference data:", err);
+      setError("Failed to load form data");
     } finally {
       setIsLoadingData(false);
     }
@@ -131,7 +131,7 @@ export function ProductForm({
     e.preventDefault();
 
     if (!formData.title.trim()) {
-      setError('Title is required');
+      setError("Title is required");
       return;
     }
 
@@ -140,7 +140,7 @@ export function ProductForm({
       const dto = formDataToDto(formData);
       await onSubmit(dto);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save product';
+      const errorMessage = err instanceof Error ? err.message : "Failed to save product";
       setError(errorMessage);
     }
   };
@@ -176,7 +176,7 @@ export function ProductForm({
           <input
             type="text"
             value={formData.title}
-            onChange={(e) => handleChange('title', e.target.value)}
+            onChange={(e) => handleChange("title", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             placeholder="Product title"
           />
@@ -186,7 +186,7 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
           <textarea
             value={formData.description}
-            onChange={(e) => handleChange('description', e.target.value)}
+            onChange={(e) => handleChange("description", e.target.value)}
             rows={2}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             placeholder="Product description"
@@ -197,11 +197,11 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
           <select
             value={formData.typeFirebaseUid}
-            onChange={(e) => handleChange('typeFirebaseUid', e.target.value)}
+            onChange={(e) => handleChange("typeFirebaseUid", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select type...</option>
-            {codingsByType('TYPE').map((c) => (
+            {codingsByType("TYPE").map((c) => (
               <option key={c.id} value={c.firebaseUid}>
                 {c.name}
               </option>
@@ -213,11 +213,11 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">Compound</label>
           <select
             value={formData.compoundFirebaseUid}
-            onChange={(e) => handleChange('compoundFirebaseUid', e.target.value)}
+            onChange={(e) => handleChange("compoundFirebaseUid", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select compound...</option>
-            {codingsByType('COMPOUND').map((c) => (
+            {codingsByType("COMPOUND").map((c) => (
               <option key={c.id} value={c.firebaseUid}>
                 {c.name}
               </option>
@@ -229,11 +229,11 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">Colour</label>
           <select
             value={formData.colourFirebaseUid}
-            onChange={(e) => handleChange('colourFirebaseUid', e.target.value)}
+            onChange={(e) => handleChange("colourFirebaseUid", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select colour...</option>
-            {codingsByType('COLOUR').map((c) => (
+            {codingsByType("COLOUR").map((c) => (
               <option key={c.id} value={c.firebaseUid}>
                 {c.name}
               </option>
@@ -245,11 +245,11 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">Hardness</label>
           <select
             value={formData.hardnessFirebaseUid}
-            onChange={(e) => handleChange('hardnessFirebaseUid', e.target.value)}
+            onChange={(e) => handleChange("hardnessFirebaseUid", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select hardness...</option>
-            {codingsByType('HARDNESS').map((c) => (
+            {codingsByType("HARDNESS").map((c) => (
               <option key={c.id} value={c.firebaseUid}>
                 {c.name}
               </option>
@@ -261,11 +261,11 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
           <select
             value={formData.gradeFirebaseUid}
-            onChange={(e) => handleChange('gradeFirebaseUid', e.target.value)}
+            onChange={(e) => handleChange("gradeFirebaseUid", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select grade...</option>
-            {codingsByType('GRADE').map((c) => (
+            {codingsByType("GRADE").map((c) => (
               <option key={c.id} value={c.firebaseUid}>
                 {c.name}
               </option>
@@ -277,11 +277,11 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">Curing Method</label>
           <select
             value={formData.curingMethodFirebaseUid}
-            onChange={(e) => handleChange('curingMethodFirebaseUid', e.target.value)}
+            onChange={(e) => handleChange("curingMethodFirebaseUid", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select curing method...</option>
-            {codingsByType('CURING_METHOD').map((c) => (
+            {codingsByType("CURING_METHOD").map((c) => (
               <option key={c.id} value={c.firebaseUid}>
                 {c.name}
               </option>
@@ -293,7 +293,7 @@ export function ProductForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">Compound Owner</label>
           <select
             value={formData.compoundOwnerFirebaseUid}
-            onChange={(e) => handleChange('compoundOwnerFirebaseUid', e.target.value)}
+            onChange={(e) => handleChange("compoundOwnerFirebaseUid", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select compound owner...</option>
@@ -311,7 +311,7 @@ export function ProductForm({
             type="number"
             step="0.01"
             value={formData.specificGravity}
-            onChange={(e) => handleChange('specificGravity', e.target.value)}
+            onChange={(e) => handleChange("specificGravity", e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             placeholder="e.g., 1.15"
           />
@@ -327,7 +327,7 @@ export function ProductForm({
               type="number"
               step="0.01"
               value={formData.costPerKg}
-              onChange={(e) => handleChange('costPerKg', e.target.value)}
+              onChange={(e) => handleChange("costPerKg", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               placeholder="0.00"
             />
@@ -338,7 +338,7 @@ export function ProductForm({
               type="number"
               step="0.1"
               value={formData.markup}
-              onChange={(e) => handleChange('markup', e.target.value)}
+              onChange={(e) => handleChange("markup", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               placeholder="100"
             />
@@ -367,9 +367,24 @@ export function ProductForm({
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center"
         >
           {isSaving && (
-            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            <svg
+              className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
             </svg>
           )}
           {submitLabel}

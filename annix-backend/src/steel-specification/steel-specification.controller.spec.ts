@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { SteelSpecificationController } from './steel-specification.controller';
-import { SteelSpecificationService } from './steel-specification.service';
-import { CreateSteelSpecificationDto } from './dto/create-steel-specification.dto';
-import { UpdateSteelSpecificationDto } from './dto/update-steel-specification.dto';
-import { SteelSpecification } from './entities/steel-specification.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { CreateSteelSpecificationDto } from "./dto/create-steel-specification.dto";
+import { UpdateSteelSpecificationDto } from "./dto/update-steel-specification.dto";
+import { SteelSpecification } from "./entities/steel-specification.entity";
+import { SteelSpecificationController } from "./steel-specification.controller";
+import { SteelSpecificationService } from "./steel-specification.service";
 
-describe('SteelSpecificationController', () => {
+describe("SteelSpecificationController", () => {
   let controller: SteelSpecificationController;
   let service: jest.Mocked<SteelSpecificationService>;
 
@@ -39,19 +39,17 @@ describe('SteelSpecificationController', () => {
       ],
     }).compile();
 
-    controller = module.get<SteelSpecificationController>(
-      SteelSpecificationController,
-    );
+    controller = module.get<SteelSpecificationController>(SteelSpecificationController);
     service = module.get(SteelSpecificationService);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should call service.create with dto and return result', async () => {
-      const dto: CreateSteelSpecificationDto = { steelSpecName: 'S355' };
+  describe("create", () => {
+    it("should call service.create with dto and return result", async () => {
+      const dto: CreateSteelSpecificationDto = { steelSpecName: "S355" };
       const result: SteelSpecification = {
         id: 1,
         steelSpecName: dto.steelSpecName,
@@ -66,10 +64,10 @@ describe('SteelSpecificationController', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return an array of steel specifications', async () => {
+  describe("findAll", () => {
+    it("should return an array of steel specifications", async () => {
       const result: SteelSpecification[] = [
-        { id: 1, steelSpecName: 'S355', fittings: [], pipeDimensions: [] },
+        { id: 1, steelSpecName: "S355", fittings: [], pipeDimensions: [] },
       ];
       service.findAll.mockResolvedValue(result);
 
@@ -78,11 +76,11 @@ describe('SteelSpecificationController', () => {
     });
   });
 
-  describe('findOne', () => {
-    it('should return a single steel specification by id', async () => {
+  describe("findOne", () => {
+    it("should return a single steel specification by id", async () => {
       const result: SteelSpecification = {
         id: 1,
-        steelSpecName: 'S355',
+        steelSpecName: "S355",
         fittings: [],
         pipeDimensions: [],
       };
@@ -93,9 +91,9 @@ describe('SteelSpecificationController', () => {
     });
   });
 
-  describe('update', () => {
-    it('should call service.update with id and dto', async () => {
-      const dto: UpdateSteelSpecificationDto = { steelSpecName: 'S275' };
+  describe("update", () => {
+    it("should call service.update with id and dto", async () => {
+      const dto: UpdateSteelSpecificationDto = { steelSpecName: "S275" };
       const result: SteelSpecification = {
         id: 1,
         steelSpecName: dto.steelSpecName!,
@@ -110,8 +108,8 @@ describe('SteelSpecificationController', () => {
     });
   });
 
-  describe('remove', () => {
-    it('should call service.remove with id', async () => {
+  describe("remove", () => {
+    it("should call service.remove with id", async () => {
       service.remove.mockResolvedValue(undefined);
 
       expect(await controller.remove(1)).toBeUndefined();

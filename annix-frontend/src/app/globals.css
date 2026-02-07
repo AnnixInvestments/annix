@@ -7,9 +7,9 @@
   --amix-navy: #323288;
   --amix-navy-light: #4a4da3;
   --amix-navy-dark: #252560;
-  --amix-orange: #FFA500;
-  --amix-orange-light: #FFB733;
-  --amix-orange-dark: #CC8400;
+  --amix-orange: #ffa500;
+  --amix-orange-light: #ffb733;
+  --amix-orange-dark: #cc8400;
 
   /* Light mode (default) - soft grey feel */
   --background: #f5f7fa;
@@ -55,7 +55,9 @@ body {
 /* Dark mode overrides for common elements */
 .dark {
   /* Form inputs */
-  input, select, textarea {
+  input,
+  select,
+  textarea {
     background-color: var(--input-bg);
     border-color: var(--input-border);
     color: var(--foreground);
@@ -66,21 +68,26 @@ body {
     background-color: var(--card-bg);
   }
 
-  .bg-gray-50, .bg-gray-100 {
+  .bg-gray-50,
+  .bg-gray-100 {
     background-color: var(--muted-bg);
   }
 
   /* Borders */
-  .border-gray-200, .border-gray-300 {
+  .border-gray-200,
+  .border-gray-300 {
     border-color: var(--card-border);
   }
 
   /* Text colors */
-  .text-gray-900, .text-gray-800, .text-gray-700 {
+  .text-gray-900,
+  .text-gray-800,
+  .text-gray-700 {
     color: var(--foreground);
   }
 
-  .text-gray-600, .text-gray-500 {
+  .text-gray-600,
+  .text-gray-500 {
     color: var(--muted-text);
   }
 
@@ -93,7 +100,8 @@ body {
     background-color: rgba(59, 130, 246, 0.15);
   }
 
-  .bg-orange-50, .bg-yellow-50 {
+  .bg-orange-50,
+  .bg-yellow-50 {
     background-color: rgba(251, 146, 60, 0.15);
   }
 
@@ -106,7 +114,9 @@ body {
   }
 
   /* Shadows for dark mode */
-  .shadow, .shadow-md, .shadow-lg {
+  .shadow,
+  .shadow-md,
+  .shadow-lg {
     --tw-shadow-color: rgba(0, 0, 0, 0.4);
   }
 
@@ -159,7 +169,7 @@ body {
 
 /* Amix Signature Font Utility */
 .font-amix-signature {
-  font-family: var(--font-great-vibes), 'Great Vibes', cursive;
+  font-family: var(--font-great-vibes), "Great Vibes", cursive;
 }
 
 /* Brand-specific utility classes */
@@ -278,7 +288,13 @@ button:not(:disabled):active {
 
 /* Ensure buttons have a base transition for smooth feedback */
 button {
-  transition: transform 0.1s ease, filter 0.1s ease, box-shadow 0.1s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
+  transition:
+    transform 0.1s ease,
+    filter 0.1s ease,
+    box-shadow 0.1s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease !important;
 }
 
 /* Enhanced active state for primary colored buttons */

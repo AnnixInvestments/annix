@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class Annix1699374000000 implements MigrationInterface {
-  name = 'Annix1699374000000';
+  name = "Annix1699374000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`CREATE TABLE "weld_types" (
@@ -198,12 +198,8 @@ export class Annix1699374000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "pipe_pressures" DROP CONSTRAINT "FK_afdf522b94b8539f60340513f79"`,
     );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_4698620c2fcf96fdbabb09f384"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "public"."IDX_dc94447a3cabad70eb2c96f5e1"`,
-    );
+    await queryRunner.query(`DROP INDEX "public"."IDX_4698620c2fcf96fdbabb09f384"`);
+    await queryRunner.query(`DROP INDEX "public"."IDX_dc94447a3cabad70eb2c96f5e1"`);
     await queryRunner.query(`DROP TABLE "user_roles_user_role"`);
     await queryRunner.query(`DROP TABLE "nb_nps_lookup"`);
     await queryRunner.query(`DROP TABLE "steel_specifications"`);

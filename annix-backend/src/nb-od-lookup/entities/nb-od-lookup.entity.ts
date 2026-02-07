@@ -1,22 +1,22 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
   Index,
-} from 'typeorm';
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
 
-@Entity('nb_od_lookup')
-@Index(['nominal_bore_mm'], { unique: true })
+@Entity("nb_od_lookup")
+@Index(["nominal_bore_mm"], { unique: true })
 export class NbOdLookup {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: "integer" })
   nominal_bore_mm: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: "decimal", precision: 10, scale: 2 })
   outside_diameter_mm: number;
 
   @CreateDateColumn()

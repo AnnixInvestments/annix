@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateSupplierTables1766001000000 implements MigrationInterface {
-  name = 'CreateSupplierTables1766001000000';
+  name = "CreateSupplierTables1766001000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create enums
@@ -387,12 +387,8 @@ export class CreateSupplierTables1766001000000 implements MigrationInterface {
 
     // Drop enums
     await queryRunner.query(`DROP TYPE "supplier_login_failure_reason_enum"`);
-    await queryRunner.query(
-      `DROP TYPE "supplier_session_invalidation_reason_enum"`,
-    );
-    await queryRunner.query(
-      `DROP TYPE "supplier_document_validation_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "supplier_session_invalidation_reason_enum"`);
+    await queryRunner.query(`DROP TYPE "supplier_document_validation_status_enum"`);
     await queryRunner.query(`DROP TYPE "supplier_document_type_enum"`);
     await queryRunner.query(`DROP TYPE "supplier_onboarding_status_enum"`);
     await queryRunner.query(`DROP TYPE "supplier_account_status_enum"`);

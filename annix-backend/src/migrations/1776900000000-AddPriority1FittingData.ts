@@ -1,20 +1,20 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddPriority1FittingData1776900000000 implements MigrationInterface {
-  name = 'AddPriority1FittingData1776900000000';
+  name = "AddPriority1FittingData1776900000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding Priority 1 fitting data from MPS manual...');
+    console.warn("Adding Priority 1 fitting data from MPS manual...");
 
     await this.populateAnsiB169Tees(queryRunner);
     await this.populateForgedFittingMissingTypes(queryRunner);
     await this.populateAnsiB169XsElbows(queryRunner);
 
-    console.warn('Priority 1 fitting data migration complete.');
+    console.warn("Priority 1 fitting data migration complete.");
   }
 
   private async populateAnsiB169Tees(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Populating ANSI B16.9 tee data...');
+    console.warn("Populating ANSI B16.9 tee data...");
 
     const straightTeeResult = await queryRunner.query(
       `SELECT id FROM ansi_b16_9_fitting_types WHERE code = 'TEE_STRAIGHT'`,
@@ -27,15 +27,15 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
     const reducingTeeId = reducingTeeResult[0]?.id;
 
     if (!straightTeeId || !reducingTeeId) {
-      console.warn('Tee fitting types not found, skipping tee data');
+      console.warn("Tee fitting types not found, skipping tee data");
       return;
     }
 
     const teeData = [
       {
-        runNps: '1/2',
+        runNps: "1/2",
         runOdMm: 21.3,
-        branchNps: '1/2',
+        branchNps: "1/2",
         branchOdMm: 21.3,
         cMm: 25.4,
         mMm: 25.4,
@@ -45,9 +45,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.093,
       },
       {
-        runNps: '1/2',
+        runNps: "1/2",
         runOdMm: 21.3,
-        branchNps: '3/8',
+        branchNps: "3/8",
         branchOdMm: 17.1,
         cMm: 25.4,
         mMm: 25.4,
@@ -57,9 +57,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.058,
       },
       {
-        runNps: '3/4',
+        runNps: "3/4",
         runOdMm: 26.7,
-        branchNps: '3/4',
+        branchNps: "3/4",
         branchOdMm: 26.7,
         cMm: 28.58,
         mMm: 28.58,
@@ -69,9 +69,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.123,
       },
       {
-        runNps: '3/4',
+        runNps: "3/4",
         runOdMm: 26.7,
-        branchNps: '1/2',
+        branchNps: "1/2",
         branchOdMm: 21.3,
         cMm: 28.58,
         mMm: 28.58,
@@ -81,9 +81,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.103,
       },
       {
-        runNps: '1',
+        runNps: "1",
         runOdMm: 33.4,
-        branchNps: '1',
+        branchNps: "1",
         branchOdMm: 33.4,
         cMm: 38.1,
         mMm: 38.1,
@@ -93,9 +93,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.161,
       },
       {
-        runNps: '1',
+        runNps: "1",
         runOdMm: 33.4,
-        branchNps: '3/4',
+        branchNps: "3/4",
         branchOdMm: 26.7,
         cMm: 38.1,
         mMm: 38.1,
@@ -105,9 +105,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.15,
       },
       {
-        runNps: '1',
+        runNps: "1",
         runOdMm: 33.4,
-        branchNps: '1/2',
+        branchNps: "1/2",
         branchOdMm: 21.3,
         cMm: 38.1,
         mMm: 38.1,
@@ -117,9 +117,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.151,
       },
       {
-        runNps: '1-1/4',
+        runNps: "1-1/4",
         runOdMm: 42.2,
-        branchNps: '1-1/4',
+        branchNps: "1-1/4",
         branchOdMm: 42.2,
         cMm: 47.62,
         mMm: 47.62,
@@ -129,9 +129,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.296,
       },
       {
-        runNps: '1-1/4',
+        runNps: "1-1/4",
         runOdMm: 42.2,
-        branchNps: '1',
+        branchNps: "1",
         branchOdMm: 33.4,
         cMm: 47.62,
         mMm: 47.62,
@@ -141,9 +141,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.274,
       },
       {
-        runNps: '1-1/4',
+        runNps: "1-1/4",
         runOdMm: 42.2,
-        branchNps: '3/4',
+        branchNps: "3/4",
         branchOdMm: 26.7,
         cMm: 47.62,
         mMm: 47.62,
@@ -153,9 +153,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.268,
       },
       {
-        runNps: '1-1/4',
+        runNps: "1-1/4",
         runOdMm: 42.2,
-        branchNps: '1/2',
+        branchNps: "1/2",
         branchOdMm: 21.3,
         cMm: 47.62,
         mMm: 47.62,
@@ -165,9 +165,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.261,
       },
       {
-        runNps: '1-1/2',
+        runNps: "1-1/2",
         runOdMm: 48.3,
-        branchNps: '1-1/2',
+        branchNps: "1-1/2",
         branchOdMm: 48.3,
         cMm: 57.15,
         mMm: 57.15,
@@ -177,9 +177,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.437,
       },
       {
-        runNps: '1-1/2',
+        runNps: "1-1/2",
         runOdMm: 48.3,
-        branchNps: '1-1/4',
+        branchNps: "1-1/4",
         branchOdMm: 42.2,
         cMm: 57.15,
         mMm: 57.15,
@@ -189,9 +189,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.412,
       },
       {
-        runNps: '1-1/2',
+        runNps: "1-1/2",
         runOdMm: 48.3,
-        branchNps: '1',
+        branchNps: "1",
         branchOdMm: 33.4,
         cMm: 57.15,
         mMm: 57.15,
@@ -201,9 +201,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.397,
       },
       {
-        runNps: '1-1/2',
+        runNps: "1-1/2",
         runOdMm: 48.3,
-        branchNps: '3/4',
+        branchNps: "3/4",
         branchOdMm: 26.7,
         cMm: 57.15,
         mMm: 57.15,
@@ -213,9 +213,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.397,
       },
       {
-        runNps: '1-1/2',
+        runNps: "1-1/2",
         runOdMm: 48.3,
-        branchNps: '1/2',
+        branchNps: "1/2",
         branchOdMm: 21.3,
         cMm: 57.15,
         mMm: 57.15,
@@ -225,9 +225,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.383,
       },
       {
-        runNps: '2',
+        runNps: "2",
         runOdMm: 60.3,
-        branchNps: '2',
+        branchNps: "2",
         branchOdMm: 60.3,
         cMm: 63.5,
         mMm: 63.5,
@@ -237,9 +237,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.849,
       },
       {
-        runNps: '2',
+        runNps: "2",
         runOdMm: 60.3,
-        branchNps: '1-1/2',
+        branchNps: "1-1/2",
         branchOdMm: 48.3,
         cMm: 63.5,
         mMm: 60.32,
@@ -249,9 +249,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.849,
       },
       {
-        runNps: '2',
+        runNps: "2",
         runOdMm: 60.3,
-        branchNps: '1-1/4',
+        branchNps: "1-1/4",
         branchOdMm: 42.2,
         cMm: 63.5,
         mMm: 57.15,
@@ -261,9 +261,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.849,
       },
       {
-        runNps: '2',
+        runNps: "2",
         runOdMm: 60.3,
-        branchNps: '1',
+        branchNps: "1",
         branchOdMm: 33.4,
         cMm: 63.5,
         mMm: 50.8,
@@ -273,9 +273,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.849,
       },
       {
-        runNps: '2',
+        runNps: "2",
         runOdMm: 60.3,
-        branchNps: '3/4',
+        branchNps: "3/4",
         branchOdMm: 26.7,
         cMm: 63.5,
         mMm: 44.45,
@@ -285,9 +285,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 0.849,
       },
       {
-        runNps: '2-1/2',
+        runNps: "2-1/2",
         runOdMm: 73.0,
-        branchNps: '2-1/2',
+        branchNps: "2-1/2",
         branchOdMm: 73.0,
         cMm: 76.2,
         mMm: 76.2,
@@ -297,9 +297,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 1.397,
       },
       {
-        runNps: '2-1/2',
+        runNps: "2-1/2",
         runOdMm: 73.0,
-        branchNps: '2',
+        branchNps: "2",
         branchOdMm: 60.3,
         cMm: 76.2,
         mMm: 69.85,
@@ -309,9 +309,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 1.397,
       },
       {
-        runNps: '2-1/2',
+        runNps: "2-1/2",
         runOdMm: 73.0,
-        branchNps: '1-1/2',
+        branchNps: "1-1/2",
         branchOdMm: 48.3,
         cMm: 76.2,
         mMm: 66.68,
@@ -321,9 +321,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 1.397,
       },
       {
-        runNps: '2-1/2',
+        runNps: "2-1/2",
         runOdMm: 73.0,
-        branchNps: '1-1/4',
+        branchNps: "1-1/4",
         branchOdMm: 42.2,
         cMm: 76.2,
         mMm: 63.5,
@@ -333,9 +333,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 1.397,
       },
       {
-        runNps: '2-1/2',
+        runNps: "2-1/2",
         runOdMm: 73.0,
-        branchNps: '1',
+        branchNps: "1",
         branchOdMm: 33.4,
         cMm: 76.2,
         mMm: 57.15,
@@ -345,9 +345,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 1.397,
       },
       {
-        runNps: '3',
+        runNps: "3",
         runOdMm: 88.9,
-        branchNps: '3',
+        branchNps: "3",
         branchOdMm: 88.9,
         cMm: 85.72,
         mMm: 85.72,
@@ -357,9 +357,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.041,
       },
       {
-        runNps: '3',
+        runNps: "3",
         runOdMm: 88.9,
-        branchNps: '2-1/2',
+        branchNps: "2-1/2",
         branchOdMm: 73.0,
         cMm: 85.72,
         mMm: 82.55,
@@ -369,9 +369,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.041,
       },
       {
-        runNps: '3',
+        runNps: "3",
         runOdMm: 88.9,
-        branchNps: '2',
+        branchNps: "2",
         branchOdMm: 60.3,
         cMm: 85.72,
         mMm: 76.2,
@@ -381,9 +381,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.041,
       },
       {
-        runNps: '3',
+        runNps: "3",
         runOdMm: 88.9,
-        branchNps: '1-1/2',
+        branchNps: "1-1/2",
         branchOdMm: 48.3,
         cMm: 85.72,
         mMm: 73.02,
@@ -393,9 +393,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.041,
       },
       {
-        runNps: '3',
+        runNps: "3",
         runOdMm: 88.9,
-        branchNps: '1-1/4',
+        branchNps: "1-1/4",
         branchOdMm: 42.2,
         cMm: 85.72,
         mMm: 69.85,
@@ -405,9 +405,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.041,
       },
       {
-        runNps: '3',
+        runNps: "3",
         runOdMm: 88.9,
-        branchNps: '1',
+        branchNps: "1",
         branchOdMm: 33.4,
         cMm: 85.72,
         mMm: 66.68,
@@ -417,9 +417,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.041,
       },
       {
-        runNps: '3-1/2',
+        runNps: "3-1/2",
         runOdMm: 101.6,
-        branchNps: '3-1/2',
+        branchNps: "3-1/2",
         branchOdMm: 101.6,
         cMm: 95.25,
         mMm: 95.25,
@@ -429,9 +429,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.799,
       },
       {
-        runNps: '3-1/2',
+        runNps: "3-1/2",
         runOdMm: 101.6,
-        branchNps: '3',
+        branchNps: "3",
         branchOdMm: 88.9,
         cMm: 95.25,
         mMm: 92.08,
@@ -441,9 +441,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.799,
       },
       {
-        runNps: '3-1/2',
+        runNps: "3-1/2",
         runOdMm: 101.6,
-        branchNps: '2-1/2',
+        branchNps: "2-1/2",
         branchOdMm: 73.0,
         cMm: 95.25,
         mMm: 88.9,
@@ -453,9 +453,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.799,
       },
       {
-        runNps: '3-1/2',
+        runNps: "3-1/2",
         runOdMm: 101.6,
-        branchNps: '2',
+        branchNps: "2",
         branchOdMm: 60.3,
         cMm: 95.25,
         mMm: 82.55,
@@ -465,9 +465,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.799,
       },
       {
-        runNps: '3-1/2',
+        runNps: "3-1/2",
         runOdMm: 101.6,
-        branchNps: '1-1/2',
+        branchNps: "1-1/2",
         branchOdMm: 48.3,
         cMm: 95.25,
         mMm: 79.38,
@@ -477,9 +477,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 2.799,
       },
       {
-        runNps: '4',
+        runNps: "4",
         runOdMm: 114.3,
-        branchNps: '4',
+        branchNps: "4",
         branchOdMm: 114.3,
         cMm: 104.78,
         mMm: 104.78,
@@ -489,9 +489,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 3.829,
       },
       {
-        runNps: '4',
+        runNps: "4",
         runOdMm: 114.3,
-        branchNps: '3-1/2',
+        branchNps: "3-1/2",
         branchOdMm: 101.6,
         cMm: 104.78,
         mMm: 101.6,
@@ -501,9 +501,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 3.829,
       },
       {
-        runNps: '4',
+        runNps: "4",
         runOdMm: 114.3,
-        branchNps: '3',
+        branchNps: "3",
         branchOdMm: 88.9,
         cMm: 104.78,
         mMm: 98.42,
@@ -513,9 +513,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 3.829,
       },
       {
-        runNps: '4',
+        runNps: "4",
         runOdMm: 114.3,
-        branchNps: '2-1/2',
+        branchNps: "2-1/2",
         branchOdMm: 73.0,
         cMm: 104.78,
         mMm: 95.25,
@@ -525,9 +525,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 3.829,
       },
       {
-        runNps: '4',
+        runNps: "4",
         runOdMm: 114.3,
-        branchNps: '2',
+        branchNps: "2",
         branchOdMm: 60.3,
         cMm: 104.78,
         mMm: 88.9,
@@ -537,9 +537,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 3.806,
       },
       {
-        runNps: '4',
+        runNps: "4",
         runOdMm: 114.3,
-        branchNps: '1-1/2',
+        branchNps: "1-1/2",
         branchOdMm: 48.3,
         cMm: 104.78,
         mMm: 85.72,
@@ -549,9 +549,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 3.806,
       },
       {
-        runNps: '5',
+        runNps: "5",
         runOdMm: 141.3,
-        branchNps: '5',
+        branchNps: "5",
         branchOdMm: 141.3,
         cMm: 123.83,
         mMm: 123.83,
@@ -561,9 +561,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 5.851,
       },
       {
-        runNps: '5',
+        runNps: "5",
         runOdMm: 141.3,
-        branchNps: '4',
+        branchNps: "4",
         branchOdMm: 114.3,
         cMm: 123.83,
         mMm: 117.48,
@@ -573,9 +573,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 5.851,
       },
       {
-        runNps: '5',
+        runNps: "5",
         runOdMm: 141.3,
-        branchNps: '3-1/2',
+        branchNps: "3-1/2",
         branchOdMm: 101.6,
         cMm: 123.83,
         mMm: 114.3,
@@ -585,9 +585,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 5.851,
       },
       {
-        runNps: '5',
+        runNps: "5",
         runOdMm: 141.3,
-        branchNps: '3',
+        branchNps: "3",
         branchOdMm: 88.9,
         cMm: 123.83,
         mMm: 111.13,
@@ -597,9 +597,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 5.851,
       },
       {
-        runNps: '5',
+        runNps: "5",
         runOdMm: 141.3,
-        branchNps: '2-1/2',
+        branchNps: "2-1/2",
         branchOdMm: 73.0,
         cMm: 123.83,
         mMm: 107.95,
@@ -609,9 +609,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 5.851,
       },
       {
-        runNps: '5',
+        runNps: "5",
         runOdMm: 141.3,
-        branchNps: '2',
+        branchNps: "2",
         branchOdMm: 60.3,
         cMm: 123.83,
         mMm: 104.78,
@@ -621,9 +621,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 5.851,
       },
       {
-        runNps: '6',
+        runNps: "6",
         runOdMm: 168.3,
-        branchNps: '6',
+        branchNps: "6",
         branchOdMm: 168.3,
         cMm: 142.9,
         mMm: 142.9,
@@ -633,9 +633,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 8.754,
       },
       {
-        runNps: '6',
+        runNps: "6",
         runOdMm: 168.3,
-        branchNps: '5',
+        branchNps: "5",
         branchOdMm: 141.3,
         cMm: 142.9,
         mMm: 136.5,
@@ -645,9 +645,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 8.754,
       },
       {
-        runNps: '6',
+        runNps: "6",
         runOdMm: 168.3,
-        branchNps: '4',
+        branchNps: "4",
         branchOdMm: 114.3,
         cMm: 142.9,
         mMm: 130.2,
@@ -657,9 +657,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 8.754,
       },
       {
-        runNps: '6',
+        runNps: "6",
         runOdMm: 168.3,
-        branchNps: '3-1/2',
+        branchNps: "3-1/2",
         branchOdMm: 101.6,
         cMm: 142.9,
         mMm: 127.0,
@@ -669,9 +669,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 8.754,
       },
       {
-        runNps: '6',
+        runNps: "6",
         runOdMm: 168.3,
-        branchNps: '3',
+        branchNps: "3",
         branchOdMm: 88.9,
         cMm: 142.9,
         mMm: 123.83,
@@ -681,9 +681,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 8.754,
       },
       {
-        runNps: '6',
+        runNps: "6",
         runOdMm: 168.3,
-        branchNps: '2-1/2',
+        branchNps: "2-1/2",
         branchOdMm: 73.0,
         cMm: 142.9,
         mMm: 120.65,
@@ -693,9 +693,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 8.754,
       },
       {
-        runNps: '8',
+        runNps: "8",
         runOdMm: 219.1,
-        branchNps: '8',
+        branchNps: "8",
         branchOdMm: 219.1,
         cMm: 177.8,
         mMm: 177.8,
@@ -705,9 +705,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 15.649,
       },
       {
-        runNps: '8',
+        runNps: "8",
         runOdMm: 219.1,
-        branchNps: '6',
+        branchNps: "6",
         branchOdMm: 168.3,
         cMm: 177.8,
         mMm: 168.3,
@@ -717,9 +717,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 15.649,
       },
       {
-        runNps: '8',
+        runNps: "8",
         runOdMm: 219.1,
-        branchNps: '5',
+        branchNps: "5",
         branchOdMm: 141.3,
         cMm: 177.8,
         mMm: 161.9,
@@ -729,9 +729,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 15.649,
       },
       {
-        runNps: '8',
+        runNps: "8",
         runOdMm: 219.1,
-        branchNps: '4',
+        branchNps: "4",
         branchOdMm: 114.3,
         cMm: 177.8,
         mMm: 155.6,
@@ -741,9 +741,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 15.649,
       },
       {
-        runNps: '8',
+        runNps: "8",
         runOdMm: 219.1,
-        branchNps: '3-1/2',
+        branchNps: "3-1/2",
         branchOdMm: 101.6,
         cMm: 177.8,
         mMm: 152.4,
@@ -753,9 +753,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 15.649,
       },
       {
-        runNps: '8',
+        runNps: "8",
         runOdMm: 219.1,
-        branchNps: '3',
+        branchNps: "3",
         branchOdMm: 88.9,
         cMm: 177.8,
         mMm: 152.4,
@@ -765,9 +765,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 15.649,
       },
       {
-        runNps: '10',
+        runNps: "10",
         runOdMm: 273.0,
-        branchNps: '10',
+        branchNps: "10",
         branchOdMm: 273.0,
         cMm: 215.9,
         mMm: 215.9,
@@ -777,9 +777,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 26.535,
       },
       {
-        runNps: '10',
+        runNps: "10",
         runOdMm: 273.0,
-        branchNps: '8',
+        branchNps: "8",
         branchOdMm: 219.1,
         cMm: 215.9,
         mMm: 203.2,
@@ -789,9 +789,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 23.859,
       },
       {
-        runNps: '10',
+        runNps: "10",
         runOdMm: 273.0,
-        branchNps: '6',
+        branchNps: "6",
         branchOdMm: 168.3,
         cMm: 215.9,
         mMm: 193.7,
@@ -801,9 +801,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 23.859,
       },
       {
-        runNps: '10',
+        runNps: "10",
         runOdMm: 273.0,
-        branchNps: '5',
+        branchNps: "5",
         branchOdMm: 141.3,
         cMm: 215.9,
         mMm: 190.5,
@@ -813,9 +813,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 23.859,
       },
       {
-        runNps: '10',
+        runNps: "10",
         runOdMm: 273.0,
-        branchNps: '4',
+        branchNps: "4",
         branchOdMm: 114.3,
         cMm: 215.9,
         mMm: 184.2,
@@ -825,9 +825,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 23.859,
       },
       {
-        runNps: '12',
+        runNps: "12",
         runOdMm: 323.9,
-        branchNps: '12',
+        branchNps: "12",
         branchOdMm: 323.9,
         cMm: 254.0,
         mMm: 254.0,
@@ -837,9 +837,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 38.465,
       },
       {
-        runNps: '12',
+        runNps: "12",
         runOdMm: 323.9,
-        branchNps: '10',
+        branchNps: "10",
         branchOdMm: 273.0,
         cMm: 254.0,
         mMm: 241.3,
@@ -849,9 +849,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 38.465,
       },
       {
-        runNps: '12',
+        runNps: "12",
         runOdMm: 323.9,
-        branchNps: '8',
+        branchNps: "8",
         branchOdMm: 219.1,
         cMm: 254.0,
         mMm: 228.6,
@@ -861,9 +861,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 37.013,
       },
       {
-        runNps: '12',
+        runNps: "12",
         runOdMm: 323.9,
-        branchNps: '6',
+        branchNps: "6",
         branchOdMm: 168.3,
         cMm: 254.0,
         mMm: 219.1,
@@ -873,9 +873,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 37.013,
       },
       {
-        runNps: '12',
+        runNps: "12",
         runOdMm: 323.9,
-        branchNps: '5',
+        branchNps: "5",
         branchOdMm: 141.3,
         cMm: 254.0,
         mMm: 215.9,
@@ -885,9 +885,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 37.013,
       },
       {
-        runNps: '14',
+        runNps: "14",
         runOdMm: 355.6,
-        branchNps: '14',
+        branchNps: "14",
         branchOdMm: 355.6,
         cMm: 279.4,
         mMm: 279.4,
@@ -897,9 +897,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 57.606,
       },
       {
-        runNps: '14',
+        runNps: "14",
         runOdMm: 355.6,
-        branchNps: '12',
+        branchNps: "12",
         branchOdMm: 323.9,
         cMm: 279.4,
         mMm: 269.9,
@@ -909,9 +909,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 57.606,
       },
       {
-        runNps: '14',
+        runNps: "14",
         runOdMm: 355.6,
-        branchNps: '10',
+        branchNps: "10",
         branchOdMm: 273.0,
         cMm: 279.4,
         mMm: 257.2,
@@ -921,9 +921,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 55.337,
       },
       {
-        runNps: '14',
+        runNps: "14",
         runOdMm: 355.6,
-        branchNps: '8',
+        branchNps: "8",
         branchOdMm: 219.1,
         cMm: 279.4,
         mMm: 247.6,
@@ -933,9 +933,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 55.337,
       },
       {
-        runNps: '14',
+        runNps: "14",
         runOdMm: 355.6,
-        branchNps: '6',
+        branchNps: "6",
         branchOdMm: 168.3,
         cMm: 279.4,
         mMm: 238.1,
@@ -945,9 +945,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 55.337,
       },
       {
-        runNps: '16',
+        runNps: "16",
         runOdMm: 406.4,
-        branchNps: '16',
+        branchNps: "16",
         branchOdMm: 406.4,
         cMm: 304.8,
         mMm: 304.8,
@@ -957,9 +957,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 75.75,
       },
       {
-        runNps: '16',
+        runNps: "16",
         runOdMm: 406.4,
-        branchNps: '14',
+        branchNps: "14",
         branchOdMm: 355.6,
         cMm: 304.8,
         mMm: 304.8,
@@ -969,9 +969,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 75.75,
       },
       {
-        runNps: '16',
+        runNps: "16",
         runOdMm: 406.4,
-        branchNps: '12',
+        branchNps: "12",
         branchOdMm: 323.9,
         cMm: 304.8,
         mMm: 295.3,
@@ -981,9 +981,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 73.482,
       },
       {
-        runNps: '16',
+        runNps: "16",
         runOdMm: 406.4,
-        branchNps: '10',
+        branchNps: "10",
         branchOdMm: 273.0,
         cMm: 304.8,
         mMm: 282.6,
@@ -993,9 +993,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 72.575,
       },
       {
-        runNps: '16',
+        runNps: "16",
         runOdMm: 406.4,
-        branchNps: '8',
+        branchNps: "8",
         branchOdMm: 219.1,
         cMm: 304.8,
         mMm: 273.0,
@@ -1005,9 +1005,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 72.575,
       },
       {
-        runNps: '16',
+        runNps: "16",
         runOdMm: 406.4,
-        branchNps: '6',
+        branchNps: "6",
         branchOdMm: 168.3,
         cMm: 304.8,
         mMm: 263.5,
@@ -1017,9 +1017,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 72.575,
       },
       {
-        runNps: '18',
+        runNps: "18",
         runOdMm: 457.2,
-        branchNps: '18',
+        branchNps: "18",
         branchOdMm: 457.2,
         cMm: 342.9,
         mMm: 342.9,
@@ -1029,9 +1029,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 87.544,
       },
       {
-        runNps: '18',
+        runNps: "18",
         runOdMm: 457.2,
-        branchNps: '16',
+        branchNps: "16",
         branchOdMm: 406.4,
         cMm: 342.9,
         mMm: 330.2,
@@ -1041,9 +1041,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 87.544,
       },
       {
-        runNps: '18',
+        runNps: "18",
         runOdMm: 457.2,
-        branchNps: '14',
+        branchNps: "14",
         branchOdMm: 355.6,
         cMm: 342.9,
         mMm: 330.2,
@@ -1053,9 +1053,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 87.544,
       },
       {
-        runNps: '18',
+        runNps: "18",
         runOdMm: 457.2,
-        branchNps: '12',
+        branchNps: "12",
         branchOdMm: 323.9,
         cMm: 342.9,
         mMm: 320.7,
@@ -1065,9 +1065,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 69.854,
       },
       {
-        runNps: '18',
+        runNps: "18",
         runOdMm: 457.2,
-        branchNps: '10',
+        branchNps: "10",
         branchOdMm: 273.0,
         cMm: 342.9,
         mMm: 308.0,
@@ -1077,9 +1077,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 66.224,
       },
       {
-        runNps: '18',
+        runNps: "18",
         runOdMm: 457.2,
-        branchNps: '8',
+        branchNps: "8",
         branchOdMm: 219.1,
         cMm: 342.9,
         mMm: 298.5,
@@ -1089,9 +1089,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 66.224,
       },
       {
-        runNps: '20',
+        runNps: "20",
         runOdMm: 508.0,
-        branchNps: '20',
+        branchNps: "20",
         branchOdMm: 508.0,
         cMm: 381.0,
         mMm: 381.0,
@@ -1101,9 +1101,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 119.749,
       },
       {
-        runNps: '20',
+        runNps: "20",
         runOdMm: 508.0,
-        branchNps: '18',
+        branchNps: "18",
         branchOdMm: 457.2,
         cMm: 381.0,
         mMm: 368.3,
@@ -1113,9 +1113,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 103.42,
       },
       {
-        runNps: '20',
+        runNps: "20",
         runOdMm: 508.0,
-        branchNps: '16',
+        branchNps: "16",
         branchOdMm: 406.4,
         cMm: 381.0,
         mMm: 355.6,
@@ -1125,9 +1125,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 103.42,
       },
       {
-        runNps: '20',
+        runNps: "20",
         runOdMm: 508.0,
-        branchNps: '14',
+        branchNps: "14",
         branchOdMm: 355.6,
         cMm: 381.0,
         mMm: 355.6,
@@ -1137,9 +1137,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 101.606,
       },
       {
-        runNps: '20',
+        runNps: "20",
         runOdMm: 508.0,
-        branchNps: '12',
+        branchNps: "12",
         branchOdMm: 323.9,
         cMm: 381.0,
         mMm: 346.1,
@@ -1149,9 +1149,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 101.606,
       },
       {
-        runNps: '20',
+        runNps: "20",
         runOdMm: 508.0,
-        branchNps: '10',
+        branchNps: "10",
         branchOdMm: 273.0,
         cMm: 381.0,
         mMm: 333.4,
@@ -1161,9 +1161,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 99.338,
       },
       {
-        runNps: '20',
+        runNps: "20",
         runOdMm: 508.0,
-        branchNps: '8',
+        branchNps: "8",
         branchOdMm: 219.1,
         cMm: 381.0,
         mMm: 323.8,
@@ -1173,9 +1173,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 99.338,
       },
       {
-        runNps: '22',
+        runNps: "22",
         runOdMm: 558.8,
-        branchNps: '22',
+        branchNps: "22",
         branchOdMm: 558.8,
         cMm: 419.1,
         mMm: 419.1,
@@ -1185,9 +1185,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 166.921,
       },
       {
-        runNps: '22',
+        runNps: "22",
         runOdMm: 558.8,
-        branchNps: '20',
+        branchNps: "20",
         branchOdMm: 508.0,
         cMm: 419.1,
         mMm: 406.4,
@@ -1197,9 +1197,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 166.921,
       },
       {
-        runNps: '22',
+        runNps: "22",
         runOdMm: 558.8,
-        branchNps: '18',
+        branchNps: "18",
         branchOdMm: 457.2,
         cMm: 419.1,
         mMm: 393.7,
@@ -1209,9 +1209,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 137.893,
       },
       {
-        runNps: '22',
+        runNps: "22",
         runOdMm: 558.8,
-        branchNps: '16',
+        branchNps: "16",
         branchOdMm: 406.4,
         cMm: 419.1,
         mMm: 381.0,
@@ -1221,9 +1221,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 137.893,
       },
       {
-        runNps: '22',
+        runNps: "22",
         runOdMm: 558.8,
-        branchNps: '14',
+        branchNps: "14",
         branchOdMm: 355.6,
         cMm: 419.1,
         mMm: 381.0,
@@ -1233,9 +1233,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 106.141,
       },
       {
-        runNps: '22',
+        runNps: "22",
         runOdMm: 558.8,
-        branchNps: '12',
+        branchNps: "12",
         branchOdMm: 323.9,
         cMm: 419.1,
         mMm: 371.5,
@@ -1245,9 +1245,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 106.141,
       },
       {
-        runNps: '22',
+        runNps: "22",
         runOdMm: 558.8,
-        branchNps: '10',
+        branchNps: "10",
         branchOdMm: 273.0,
         cMm: 419.1,
         mMm: 358.8,
@@ -1257,9 +1257,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 106.141,
       },
       {
-        runNps: '24',
+        runNps: "24",
         runOdMm: 609.6,
-        branchNps: '24',
+        branchNps: "24",
         branchOdMm: 609.6,
         cMm: 431.8,
         mMm: 431.8,
@@ -1269,9 +1269,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 191.874,
       },
       {
-        runNps: '24',
+        runNps: "24",
         runOdMm: 609.6,
-        branchNps: '20',
+        branchNps: "20",
         branchOdMm: 508.0,
         cMm: 431.8,
         mMm: 431.8,
@@ -1281,9 +1281,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 140.161,
       },
       {
-        runNps: '24',
+        runNps: "24",
         runOdMm: 609.6,
-        branchNps: '18',
+        branchNps: "18",
         branchOdMm: 457.2,
         cMm: 431.8,
         mMm: 419.1,
@@ -1293,9 +1293,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 140.161,
       },
       {
-        runNps: '24',
+        runNps: "24",
         runOdMm: 609.6,
-        branchNps: '16',
+        branchNps: "16",
         branchOdMm: 406.4,
         cMm: 431.8,
         mMm: 406.4,
@@ -1305,9 +1305,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 104.78,
       },
       {
-        runNps: '24',
+        runNps: "24",
         runOdMm: 609.6,
-        branchNps: '14',
+        branchNps: "14",
         branchOdMm: 355.6,
         cMm: 431.8,
         mMm: 406.4,
@@ -1317,9 +1317,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 104.78,
       },
       {
-        runNps: '24',
+        runNps: "24",
         runOdMm: 609.6,
-        branchNps: '12',
+        branchNps: "12",
         branchOdMm: 323.9,
         cMm: 431.8,
         mMm: 396.9,
@@ -1329,9 +1329,9 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         xsWeightKg: 104.78,
       },
       {
-        runNps: '24',
+        runNps: "24",
         runOdMm: 609.6,
-        branchNps: '10',
+        branchNps: "10",
         branchOdMm: 273.0,
         cMm: 431.8,
         mMm: 384.2,
@@ -1345,8 +1345,8 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
     for (const t of teeData) {
       const isEqual = t.runNps === t.branchNps;
       const fittingTypeId = isEqual ? straightTeeId : reducingTeeId;
-      const branchNpsVal = isEqual ? 'NULL' : `'${t.branchNps}'`;
-      const branchOdVal = isEqual ? 'NULL' : t.branchOdMm;
+      const branchNpsVal = isEqual ? "NULL" : `'${t.branchNps}'`;
+      const branchOdVal = isEqual ? "NULL" : t.branchOdMm;
 
       await queryRunner.query(`
         INSERT INTO ansi_b16_9_fitting_dimensions
@@ -1365,40 +1365,38 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
       `);
     }
 
-    console.warn('ANSI B16.9 tee data populated.');
+    console.warn("ANSI B16.9 tee data populated.");
   }
 
-  private async populateForgedFittingMissingTypes(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Populating forged fitting missing types...');
+  private async populateForgedFittingMissingTypes(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Populating forged fitting missing types...");
 
     const newFittingTypes = [
       {
-        code: 'ELBOW_45',
-        name: '45° Elbow',
-        description: 'Forged steel 45 degree elbow',
+        code: "ELBOW_45",
+        name: "45° Elbow",
+        description: "Forged steel 45 degree elbow",
       },
       {
-        code: 'HALF_COUPLING',
-        name: 'Half Coupling',
-        description: 'Forged steel half coupling',
+        code: "HALF_COUPLING",
+        name: "Half Coupling",
+        description: "Forged steel half coupling",
       },
       {
-        code: 'UNION',
-        name: 'Union',
-        description: 'Forged steel union with nut',
+        code: "UNION",
+        name: "Union",
+        description: "Forged steel union with nut",
       },
-      { code: 'CAP', name: 'Cap', description: 'Forged steel cap' },
+      { code: "CAP", name: "Cap", description: "Forged steel cap" },
       {
-        code: 'PLUG',
-        name: 'Hexagonal Head Plug',
-        description: 'Forged steel hexagonal head plug',
+        code: "PLUG",
+        name: "Hexagonal Head Plug",
+        description: "Forged steel hexagonal head plug",
       },
       {
-        code: 'CROSS',
-        name: 'Cross',
-        description: 'Forged steel cross fitting',
+        code: "CROSS",
+        name: "Cross",
+        description: "Forged steel cross fitting",
       },
     ];
 
@@ -1630,13 +1628,11 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
       }
     }
 
-    console.warn('Forged fitting missing types populated.');
+    console.warn("Forged fitting missing types populated.");
   }
 
-  private async populateAnsiB169XsElbows(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Populating ANSI B16.9 XS schedule elbows...');
+  private async populateAnsiB169XsElbows(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Populating ANSI B16.9 XS schedule elbows...");
 
     const elbow90Result = await queryRunner.query(
       `SELECT id FROM ansi_b16_9_fitting_types WHERE code = 'ELBOW_90_LR'`,
@@ -1654,13 +1650,13 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
     const return180Id = return180Result[0]?.id;
 
     if (!elbow90Id || !elbow45Id || !return180Id) {
-      console.warn('Elbow fitting types not found, skipping XS elbow data');
+      console.warn("Elbow fitting types not found, skipping XS elbow data");
       return;
     }
 
     const xs90ElbowData = [
       {
-        nps: '3/4',
+        nps: "3/4",
         nbMm: 20,
         odMm: 26.67,
         wallMm: 3.91,
@@ -1668,7 +1664,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.045,
       },
       {
-        nps: '1',
+        nps: "1",
         nbMm: 25,
         odMm: 33.4,
         wallMm: 4.55,
@@ -1676,7 +1672,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.091,
       },
       {
-        nps: '1-1/4',
+        nps: "1-1/4",
         nbMm: 32,
         odMm: 42.16,
         wallMm: 4.85,
@@ -1684,7 +1680,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.159,
       },
       {
-        nps: '1-1/2',
+        nps: "1-1/2",
         nbMm: 40,
         odMm: 48.26,
         wallMm: 5.08,
@@ -1692,7 +1688,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.231,
       },
       {
-        nps: '2',
+        nps: "2",
         nbMm: 50,
         odMm: 60.32,
         wallMm: 5.54,
@@ -1700,7 +1696,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.426,
       },
       {
-        nps: '2-1/2',
+        nps: "2-1/2",
         nbMm: 65,
         odMm: 73.02,
         wallMm: 7.01,
@@ -1708,7 +1704,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.812,
       },
       {
-        nps: '3',
+        nps: "3",
         nbMm: 80,
         odMm: 88.9,
         wallMm: 7.62,
@@ -1716,7 +1712,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 1.302,
       },
       {
-        nps: '3-1/2',
+        nps: "3-1/2",
         nbMm: 90,
         odMm: 101.6,
         wallMm: 8.08,
@@ -1724,7 +1720,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 1.86,
       },
       {
-        nps: '4',
+        nps: "4",
         nbMm: 100,
         odMm: 114.3,
         wallMm: 8.56,
@@ -1732,7 +1728,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 2.549,
       },
       {
-        nps: '5',
+        nps: "5",
         nbMm: 125,
         odMm: 141.3,
         wallMm: 9.52,
@@ -1740,7 +1736,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 4.313,
       },
       {
-        nps: '6',
+        nps: "6",
         nbMm: 150,
         odMm: 168.3,
         wallMm: 10.97,
@@ -1748,7 +1744,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 7.257,
       },
       {
-        nps: '8',
+        nps: "8",
         nbMm: 200,
         odMm: 219.1,
         wallMm: 12.7,
@@ -1756,7 +1752,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 14.605,
       },
       {
-        nps: '10',
+        nps: "10",
         nbMm: 250,
         odMm: 273.0,
         wallMm: 12.7,
@@ -1764,7 +1760,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 23.042,
       },
       {
-        nps: '12',
+        nps: "12",
         nbMm: 300,
         odMm: 323.8,
         wallMm: 12.7,
@@ -1772,7 +1768,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 33.339,
       },
       {
-        nps: '14',
+        nps: "14",
         nbMm: 350,
         odMm: 355.6,
         wallMm: 12.7,
@@ -1780,7 +1776,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 42.638,
       },
       {
-        nps: '16',
+        nps: "16",
         nbMm: 400,
         odMm: 406.4,
         wallMm: 12.7,
@@ -1788,7 +1784,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 56.245,
       },
       {
-        nps: '18',
+        nps: "18",
         nbMm: 450,
         odMm: 457.2,
         wallMm: 12.7,
@@ -1796,7 +1792,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 71.213,
       },
       {
-        nps: '20',
+        nps: "20",
         nbMm: 500,
         odMm: 508.0,
         wallMm: 12.7,
@@ -1804,7 +1800,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 88.0,
       },
       {
-        nps: '24',
+        nps: "24",
         nbMm: 600,
         odMm: 609.6,
         wallMm: 12.7,
@@ -1815,7 +1811,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
 
     const xs45ElbowData = [
       {
-        nps: '3/4',
+        nps: "3/4",
         nbMm: 20,
         odMm: 26.67,
         wallMm: 3.91,
@@ -1823,7 +1819,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.023,
       },
       {
-        nps: '1',
+        nps: "1",
         nbMm: 25,
         odMm: 33.4,
         wallMm: 4.55,
@@ -1831,7 +1827,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.045,
       },
       {
-        nps: '1-1/4',
+        nps: "1-1/4",
         nbMm: 32,
         odMm: 42.16,
         wallMm: 4.85,
@@ -1839,7 +1835,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.082,
       },
       {
-        nps: '1-1/2',
+        nps: "1-1/2",
         nbMm: 40,
         odMm: 48.26,
         wallMm: 5.08,
@@ -1847,7 +1843,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.113,
       },
       {
-        nps: '2',
+        nps: "2",
         nbMm: 50,
         odMm: 60.32,
         wallMm: 5.54,
@@ -1855,7 +1851,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.213,
       },
       {
-        nps: '2-1/2',
+        nps: "2-1/2",
         nbMm: 65,
         odMm: 73.02,
         wallMm: 7.01,
@@ -1863,7 +1859,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.408,
       },
       {
-        nps: '3',
+        nps: "3",
         nbMm: 80,
         odMm: 88.9,
         wallMm: 7.62,
@@ -1871,7 +1867,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.653,
       },
       {
-        nps: '3-1/2',
+        nps: "3-1/2",
         nbMm: 90,
         odMm: 101.6,
         wallMm: 8.08,
@@ -1879,7 +1875,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.93,
       },
       {
-        nps: '4',
+        nps: "4",
         nbMm: 100,
         odMm: 114.3,
         wallMm: 8.56,
@@ -1887,7 +1883,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 1.274,
       },
       {
-        nps: '5',
+        nps: "5",
         nbMm: 125,
         odMm: 141.3,
         wallMm: 9.52,
@@ -1895,7 +1891,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 2.2,
       },
       {
-        nps: '6',
+        nps: "6",
         nbMm: 150,
         odMm: 168.3,
         wallMm: 10.97,
@@ -1903,7 +1899,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 3.642,
       },
       {
-        nps: '8',
+        nps: "8",
         nbMm: 200,
         odMm: 219.1,
         wallMm: 12.7,
@@ -1911,7 +1907,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 7.348,
       },
       {
-        nps: '10',
+        nps: "10",
         nbMm: 250,
         odMm: 273.0,
         wallMm: 12.7,
@@ -1919,7 +1915,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 11.521,
       },
       {
-        nps: '12',
+        nps: "12",
         nbMm: 300,
         odMm: 323.8,
         wallMm: 12.7,
@@ -1927,7 +1923,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 16.647,
       },
       {
-        nps: '14',
+        nps: "14",
         nbMm: 350,
         odMm: 355.6,
         wallMm: 12.7,
@@ -1935,7 +1931,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 21.319,
       },
       {
-        nps: '16',
+        nps: "16",
         nbMm: 400,
         odMm: 406.4,
         wallMm: 12.7,
@@ -1943,7 +1939,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 28.168,
       },
       {
-        nps: '18',
+        nps: "18",
         nbMm: 450,
         odMm: 457.2,
         wallMm: 12.7,
@@ -1951,7 +1947,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 35.789,
       },
       {
-        nps: '20',
+        nps: "20",
         nbMm: 500,
         odMm: 508.0,
         wallMm: 12.7,
@@ -1959,7 +1955,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 44.045,
       },
       {
-        nps: '24',
+        nps: "24",
         nbMm: 600,
         odMm: 609.6,
         wallMm: 12.7,
@@ -1970,7 +1966,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
 
     const xs180ReturnData = [
       {
-        nps: '3/4',
+        nps: "3/4",
         nbMm: 20,
         odMm: 26.67,
         wallMm: 3.91,
@@ -1979,7 +1975,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.073,
       },
       {
-        nps: '1',
+        nps: "1",
         nbMm: 25,
         odMm: 33.4,
         wallMm: 4.55,
@@ -1988,7 +1984,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.141,
       },
       {
-        nps: '1-1/4',
+        nps: "1-1/4",
         nbMm: 32,
         odMm: 42.16,
         wallMm: 4.85,
@@ -1997,7 +1993,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.24,
       },
       {
-        nps: '1-1/2',
+        nps: "1-1/2",
         nbMm: 40,
         odMm: 48.26,
         wallMm: 5.08,
@@ -2006,7 +2002,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.345,
       },
       {
-        nps: '2',
+        nps: "2",
         nbMm: 50,
         odMm: 60.32,
         wallMm: 5.54,
@@ -2015,7 +2011,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 0.617,
       },
       {
-        nps: '2-1/2',
+        nps: "2-1/2",
         nbMm: 65,
         odMm: 73.02,
         wallMm: 7.01,
@@ -2024,7 +2020,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 1.224,
       },
       {
-        nps: '3',
+        nps: "3",
         nbMm: 80,
         odMm: 88.9,
         wallMm: 7.62,
@@ -2033,7 +2029,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 1.928,
       },
       {
-        nps: '3-1/2',
+        nps: "3-1/2",
         nbMm: 90,
         odMm: 101.6,
         wallMm: 8.08,
@@ -2042,7 +2038,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 2.695,
       },
       {
-        nps: '4',
+        nps: "4",
         nbMm: 100,
         odMm: 114.3,
         wallMm: 8.56,
@@ -2051,7 +2047,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 3.66,
       },
       {
-        nps: '5',
+        nps: "5",
         nbMm: 125,
         odMm: 141.3,
         wallMm: 9.52,
@@ -2060,7 +2056,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 6.214,
       },
       {
-        nps: '6',
+        nps: "6",
         nbMm: 150,
         odMm: 168.3,
         wallMm: 10.97,
@@ -2069,7 +2065,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 9.661,
       },
       {
-        nps: '8',
+        nps: "8",
         nbMm: 200,
         odMm: 219.1,
         wallMm: 12.7,
@@ -2078,7 +2074,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 19.323,
       },
       {
-        nps: '10',
+        nps: "10",
         nbMm: 250,
         odMm: 273.0,
         wallMm: 12.7,
@@ -2087,7 +2083,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 34.383,
       },
       {
-        nps: '12',
+        nps: "12",
         nbMm: 300,
         odMm: 323.8,
         wallMm: 12.7,
@@ -2096,7 +2092,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 50.802,
       },
       {
-        nps: '14',
+        nps: "14",
         nbMm: 350,
         odMm: 355.6,
         wallMm: 12.7,
@@ -2105,7 +2101,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 64.864,
       },
       {
-        nps: '16',
+        nps: "16",
         nbMm: 400,
         odMm: 406.4,
         wallMm: 12.7,
@@ -2114,7 +2110,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 85.275,
       },
       {
-        nps: '18',
+        nps: "18",
         nbMm: 450,
         odMm: 457.2,
         wallMm: 12.7,
@@ -2123,7 +2119,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 108.408,
       },
       {
-        nps: '20',
+        nps: "20",
         nbMm: 500,
         odMm: 508.0,
         wallMm: 12.7,
@@ -2132,7 +2128,7 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
         weightKg: 132.905,
       },
       {
-        nps: '24',
+        nps: "24",
         nbMm: 600,
         odMm: 609.6,
         wallMm: 12.7,
@@ -2172,38 +2168,38 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
       `);
     }
 
-    console.warn('ANSI B16.9 XS schedule elbows populated.');
+    console.warn("ANSI B16.9 XS schedule elbows populated.");
   }
 
   private npsToNbMm(nps: string): number {
     const npsMap: Record<string, number> = {
-      '1/2': 15,
-      '3/4': 20,
-      '1': 25,
-      '1-1/4': 32,
-      '1-1/2': 40,
-      '2': 50,
-      '2-1/2': 65,
-      '3': 80,
-      '3-1/2': 90,
-      '4': 100,
-      '5': 125,
-      '6': 150,
-      '8': 200,
-      '10': 250,
-      '12': 300,
-      '14': 350,
-      '16': 400,
-      '18': 450,
-      '20': 500,
-      '22': 550,
-      '24': 600,
+      "1/2": 15,
+      "3/4": 20,
+      "1": 25,
+      "1-1/4": 32,
+      "1-1/2": 40,
+      "2": 50,
+      "2-1/2": 65,
+      "3": 80,
+      "3-1/2": 90,
+      "4": 100,
+      "5": 125,
+      "6": 150,
+      "8": 200,
+      "10": 250,
+      "12": 300,
+      "14": 350,
+      "16": 400,
+      "18": 450,
+      "20": 500,
+      "22": 550,
+      "24": 600,
     };
     return npsMap[nps] || 0;
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Reverting Priority 1 fitting data...');
+    console.warn("Reverting Priority 1 fitting data...");
 
     await queryRunner.query(`
       DELETE FROM ansi_b16_9_fitting_dimensions
@@ -2235,6 +2231,6 @@ export class AddPriority1FittingData1776900000000 implements MigrationInterface 
       DELETE FROM forged_fitting_series WHERE pressure_class = 6000 AND connection_type = 'THD'
     `);
 
-    console.warn('Priority 1 fitting data reverted.');
+    console.warn("Priority 1 fitting data reverted.");
   }
 }

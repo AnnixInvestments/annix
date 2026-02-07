@@ -24,18 +24,14 @@
 //     return `This action removes a #${id} fittingBore`;
 //   }
 // }
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { FittingBore } from './entities/fitting-bore.entity';
-import { CreateFittingBoreDto } from './dto/create-fitting-bore.dto';
-import { UpdateFittingBoreDto } from './dto/update-fitting-bore.dto';
-import { FittingVariant } from 'src/fitting-variant/entities/fitting-variant.entity';
-import { NominalOutsideDiameterMm } from 'src/nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { FittingVariant } from "src/fitting-variant/entities/fitting-variant.entity";
+import { NominalOutsideDiameterMm } from "src/nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
+import { Repository } from "typeorm";
+import { CreateFittingBoreDto } from "./dto/create-fitting-bore.dto";
+import { UpdateFittingBoreDto } from "./dto/update-fitting-bore.dto";
+import { FittingBore } from "./entities/fitting-bore.entity";
 
 @Injectable()
 export class FittingBoreService {
@@ -52,16 +48,12 @@ export class FittingBoreService {
     const variant = await this.variantRepo.findOne({
       where: { id: dto.variantId },
     });
-    if (!variant)
-      throw new NotFoundException(`FittingVariant ${dto.variantId} not found`);
+    if (!variant) throw new NotFoundException(`FittingVariant ${dto.variantId} not found`);
 
     const nominal = await this.nominalRepo.findOne({
       where: { id: dto.nominalId },
     });
-    if (!nominal)
-      throw new NotFoundException(
-        `NominalOutsideDiameter ${dto.nominalId} not found`,
-      );
+    if (!nominal) throw new NotFoundException(`NominalOutsideDiameter ${dto.nominalId} not found`);
 
     // Duplicate check: same borePosition in same variant
     const existing = await this.boreRepo.findOne({
@@ -85,14 +77,14 @@ export class FittingBoreService {
 
   async findAll(): Promise<FittingBore[]> {
     return this.boreRepo.find({
-      relations: ['variant', 'nominalOutsideDiameter'],
+      relations: ["variant", "nominalOutsideDiameter"],
     });
   }
 
   async findOne(id: number): Promise<FittingBore> {
     const bore = await this.boreRepo.findOne({
       where: { id },
-      relations: ['variant', 'nominalOutsideDiameter'],
+      relations: ["variant", "nominalOutsideDiameter"],
     });
     if (!bore) throw new NotFoundException(`FittingBore ${id} not found`);
     return bore;

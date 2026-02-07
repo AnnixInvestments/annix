@@ -1,24 +1,28 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { type RubberProductCodingDto } from '@/app/lib/api/rubberPortalApi';
-import { useToast } from '@/app/components/Toast';
-import { CodingType, CODING_TYPES } from '@/app/lib/config/rubber/codingTypes';
-import { useRubberCodings, useSaveRubberCoding, useDeleteRubberCoding } from '@/app/lib/query/hooks';
-import { ConfirmModal } from '../components/ConfirmModal';
-import { Breadcrumb } from '../components/Breadcrumb';
-import { TableLoadingState, Pagination, ITEMS_PER_PAGE } from '../components/TableComponents';
+import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import { type RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
+import { CODING_TYPES, CodingType } from "@/app/lib/config/rubber/codingTypes";
+import {
+  useDeleteRubberCoding,
+  useRubberCodings,
+  useSaveRubberCoding,
+} from "@/app/lib/query/hooks";
+import { Breadcrumb } from "../components/Breadcrumb";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { ITEMS_PER_PAGE, Pagination, TableLoadingState } from "../components/TableComponents";
 
 export default function RubberCodingsPage() {
   const { showToast } = useToast();
-  const [selectedType, setSelectedType] = useState<CodingType>('COMPOUND');
+  const [selectedType, setSelectedType] = useState<CodingType>("COMPOUND");
   const [showModal, setShowModal] = useState(false);
   const [editingCoding, setEditingCoding] = useState<RubberProductCodingDto | null>(null);
   const [deleteCodingId, setDeleteCodingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
-    codingType: 'COMPOUND' as CodingType,
-    code: '',
-    name: '',
+    codingType: "COMPOUND" as CodingType,
+    code: "",
+    name: "",
   });
   const [currentPage, setCurrentPage] = useState(0);
 
@@ -30,15 +34,15 @@ export default function RubberCodingsPage() {
 
   const paginatedCodings = codings.slice(
     currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE
+    (currentPage + 1) * ITEMS_PER_PAGE,
   );
 
   const openNewModal = () => {
     setEditingCoding(null);
     setFormData({
       codingType: selectedType,
-      code: '',
-      name: '',
+      code: "",
+      name: "",
     });
     setShowModal(true);
   };
@@ -67,26 +71,26 @@ export default function RubberCodingsPage() {
       },
       {
         onSuccess: () => {
-          showToast(editingCoding ? 'Coding updated' : 'Coding created', 'success');
+          showToast(editingCoding ? "Coding updated" : "Coding created", "success");
           setShowModal(false);
         },
         onError: (err: unknown) => {
-          const errorMessage = err instanceof Error ? err.message : 'Failed to save coding';
-          showToast(errorMessage, 'error');
+          const errorMessage = err instanceof Error ? err.message : "Failed to save coding";
+          showToast(errorMessage, "error");
         },
-      }
+      },
     );
   };
 
   const handleDelete = (id: number) => {
     deleteMutation.mutate(id, {
       onSuccess: () => {
-        showToast('Coding deleted', 'success');
+        showToast("Coding deleted", "success");
         setDeleteCodingId(null);
       },
       onError: (err: unknown) => {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to delete coding';
-        showToast(errorMessage, 'error');
+        const errorMessage = err instanceof Error ? err.message : "Failed to delete coding";
+        showToast(errorMessage, "error");
       },
     });
   };
@@ -104,7 +108,9 @@ export default function RubberCodingsPage() {
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Codings</div>
           <p className="text-gray-600">
-            {codingsQuery.error instanceof Error ? codingsQuery.error.message : 'Failed to load codings'}
+            {codingsQuery.error instanceof Error
+              ? codingsQuery.error.message
+              : "Failed to load codings"}
           </p>
           <button
             onClick={() => codingsQuery.refetch()}
@@ -119,7 +125,7 @@ export default function RubberCodingsPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: 'Product Codings' }]} />
+      <Breadcrumb items={[{ label: "Product Codings" }]} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Product Codings</h1>
@@ -132,7 +138,7 @@ export default function RubberCodingsPage() {
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Add {currentTypeInfo?.label.slice(0, -1) || 'Coding'}
+          Add {currentTypeInfo?.label.slice(0, -1) || "Coding"}
         </button>
       </div>
 
@@ -144,8 +150,8 @@ export default function RubberCodingsPage() {
               onClick={() => handleTypeChange(type.value)}
               className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
                 selectedType === type.value
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               {type.label}
@@ -154,16 +160,19 @@ export default function RubberCodingsPage() {
         </nav>
       </div>
 
-      {currentTypeInfo && (
-        <p className="text-sm text-gray-500">{currentTypeInfo.description}</p>
-      )}
+      {currentTypeInfo && <p className="text-sm text-gray-500">{currentTypeInfo.description}</p>}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {codingsQuery.isLoading ? (
           <TableLoadingState message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`} />
         ) : codings.length === 0 ? (
           <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -171,26 +180,41 @@ export default function RubberCodingsPage() {
                 d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
               />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No {currentTypeInfo?.label.toLowerCase()} found</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by adding your first {currentTypeInfo?.label.slice(0, -1).toLowerCase()}.</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              No {currentTypeInfo?.label.toLowerCase()} found
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Get started by adding your first {currentTypeInfo?.label.slice(0, -1).toLowerCase()}.
+            </p>
             <button
               onClick={openNewModal}
               className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
-              Add {currentTypeInfo?.label.slice(0, -1) || 'Coding'}
+              Add {currentTypeInfo?.label.slice(0, -1) || "Coding"}
             </button>
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Code
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Name
                 </th>
                 <th scope="col" className="relative px-6 py-3">
@@ -210,10 +234,16 @@ export default function RubberCodingsPage() {
                     <div className="text-sm font-medium text-gray-900">{coding.name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button onClick={() => openEditModal(coding)} className="text-blue-600 hover:text-blue-900">
+                    <button
+                      onClick={() => openEditModal(coding)}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
                       Edit
                     </button>
-                    <button onClick={() => setDeleteCodingId(coding.id)} className="text-red-600 hover:text-red-900 ml-4">
+                    <button
+                      onClick={() => setDeleteCodingId(coding.id)}
+                      className="text-red-600 hover:text-red-900 ml-4"
+                    >
                       Delete
                     </button>
                   </td>
@@ -229,7 +259,7 @@ export default function RubberCodingsPage() {
           currentPage={currentPage}
           totalItems={codings.length}
           itemsPerPage={ITEMS_PER_PAGE}
-          itemName={currentTypeInfo?.label.toLowerCase() ?? 'codings'}
+          itemName={currentTypeInfo?.label.toLowerCase() ?? "codings"}
           onPageChange={setCurrentPage}
         />
       </div>
@@ -237,10 +267,13 @@ export default function RubberCodingsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowModal(false)} />
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              onClick={() => setShowModal(false)}
+            />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingCoding ? 'Edit' : 'Add'} {currentTypeInfo?.label.slice(0, -1)}
+                {editingCoding ? "Edit" : "Add"} {currentTypeInfo?.label.slice(0, -1)}
               </h3>
               <div className="space-y-4">
                 <div>
@@ -278,7 +311,7 @@ export default function RubberCodingsPage() {
                   disabled={saveMutation.isPending || !formData.code || !formData.name}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {saveMutation.isPending ? 'Saving...' : 'Save'}
+                  {saveMutation.isPending ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>

@@ -1,25 +1,30 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { useQueryClient } from '@tanstack/react-query';
-import { adminApiClient, type SecureDocument, type SecureDocumentWithContent, type LocalDocument, type LocalDocumentWithContent } from '@/app/lib/api/adminApi';
-import { formatDateZA, fromISO, nowMillis } from '@/app/lib/datetime';
-import { adminKeys } from '@/app/lib/query/keys';
+import { useQueryClient } from "@tanstack/react-query";
+import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  useSecureDocumentsList,
-  useLocalDocumentsList,
+  adminApiClient,
+  type LocalDocumentWithContent,
+  type SecureDocument,
+  type SecureDocumentWithContent,
+} from "@/app/lib/api/adminApi";
+import { formatDateZA, fromISO, nowMillis } from "@/app/lib/datetime";
+import {
   useCreateSecureDocument,
-  useUpdateSecureDocument,
   useDeleteSecureDocument,
-} from '@/app/lib/query/hooks';
-import SecureDocumentEditor, { EditorPaneMode, EditorState } from './SecureDocumentEditor';
-import SecureDocumentViewer from './SecureDocumentViewer';
+  useLocalDocumentsList,
+  useSecureDocumentsList,
+  useUpdateSecureDocument,
+} from "@/app/lib/query/hooks";
+import { adminKeys } from "@/app/lib/query/keys";
+import SecureDocumentEditor, { EditorPaneMode, EditorState } from "./SecureDocumentEditor";
+import SecureDocumentViewer from "./SecureDocumentViewer";
 
-type ViewMode = 'list' | 'view' | 'edit' | 'create';
-type UrlMode = 'view' | 'edit';
-type DocumentType = 'secure' | 'local';
+type ViewMode = "list" | "view" | "edit" | "create";
+type UrlMode = "view" | "edit";
+type DocumentType = "secure" | "local";
 
 interface UnifiedDocument {
   id: string;
@@ -53,7 +58,7 @@ interface UploadingFile {
   id: string;
   file: File;
   title: string;
-  status: 'pending' | 'uploading' | 'success' | 'error';
+  status: "pending" | "uploading" | "success" | "error";
   progress: number;
   error?: string;
   documentSlug?: string;
@@ -69,18 +74,18 @@ interface NixUploadResult {
 }
 
 function fileTypeIcon(filename: string): { color: string; label: string } {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
   const icons: Record<string, { color: string; label: string }> = {
-    pdf: { color: 'text-red-500', label: 'PDF' },
-    xlsx: { color: 'text-green-600', label: 'XLS' },
-    xls: { color: 'text-green-600', label: 'XLS' },
-    doc: { color: 'text-blue-600', label: 'DOC' },
-    docx: { color: 'text-blue-600', label: 'DOC' },
-    txt: { color: 'text-gray-500', label: 'TXT' },
-    md: { color: 'text-purple-500', label: 'MD' },
-    csv: { color: 'text-green-500', label: 'CSV' },
+    pdf: { color: "text-red-500", label: "PDF" },
+    xlsx: { color: "text-green-600", label: "XLS" },
+    xls: { color: "text-green-600", label: "XLS" },
+    doc: { color: "text-blue-600", label: "DOC" },
+    docx: { color: "text-blue-600", label: "DOC" },
+    txt: { color: "text-gray-500", label: "TXT" },
+    md: { color: "text-purple-500", label: "MD" },
+    csv: { color: "text-green-500", label: "CSV" },
   };
-  return icons[ext] || { color: 'text-gray-400', label: ext.toUpperCase() || 'FILE' };
+  return icons[ext] || { color: "text-gray-400", label: ext.toUpperCase() || "FILE" };
 }
 
 function formatFileSize(bytes: number): string {
@@ -91,12 +96,12 @@ function formatFileSize(bytes: number): string {
 
 function isTextFile(filename: string): boolean {
   const lowerName = filename.toLowerCase();
-  return lowerName.endsWith('.md') || lowerName.endsWith('.markdown') || lowerName.endsWith('.txt');
+  return lowerName.endsWith(".md") || lowerName.endsWith(".markdown") || lowerName.endsWith(".txt");
 }
 
 function isBinaryFile(filename: string): boolean {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
-  return ['pdf', 'xlsx', 'xls', 'doc', 'docx', 'csv'].includes(ext);
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  return ["pdf", "xlsx", "xls", "doc", "docx", "csv"].includes(ext);
 }
 
 function isSupportedFile(filename: string): boolean {
@@ -104,34 +109,37 @@ function isSupportedFile(filename: string): boolean {
 }
 
 function authorDisplay(doc: SecureDocument): string {
-  if (!doc.createdBy) return '-';
+  if (!doc.createdBy) return "-";
   const { firstName, lastName, username, email } = doc.createdBy;
   if (firstName && lastName) return `${firstName} ${lastName}`;
   if (firstName) return firstName;
   if (lastName) return lastName;
   if (username) return username;
   if (email) return email;
-  return '-';
+  return "-";
 }
 
 function extractDescription(content: string): string {
-  const lines = content.split('\n');
+  const lines = content.split("\n");
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    if (trimmed.startsWith('#')) continue;
-    if (trimmed.startsWith('---')) continue;
-    if (trimmed.startsWith('```')) continue;
-    if (trimmed.startsWith('>')) {
-      return trimmed.replace(/^>\s*\*?\*?/, '').replace(/\*?\*?\s*$/, '').slice(0, 150);
+    if (trimmed.startsWith("#")) continue;
+    if (trimmed.startsWith("---")) continue;
+    if (trimmed.startsWith("```")) continue;
+    if (trimmed.startsWith(">")) {
+      return trimmed
+        .replace(/^>\s*\*?\*?/, "")
+        .replace(/\*?\*?\s*$/, "")
+        .slice(0, 150);
     }
     if (trimmed.length > 10) {
       return trimmed.slice(0, 150);
     }
   }
 
-  return '';
+  return "";
 }
 
 export default function SecureDocumentsPage() {
@@ -148,10 +156,14 @@ export default function SecureDocumentsPage() {
   const documents = secureDocsQuery.data ?? [];
   const localDocuments = localDocsQuery.data ?? [];
 
-  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [actionMessage, setActionMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [selectedDocument, setSelectedDocument] = useState<SecureDocumentWithContent | null>(null);
-  const [selectedLocalDocument, setSelectedLocalDocument] = useState<LocalDocumentWithContent | null>(null);
+  const [selectedLocalDocument, setSelectedLocalDocument] =
+    useState<LocalDocumentWithContent | null>(null);
   const [isLoadingDocument, setIsLoadingDocument] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -166,10 +178,12 @@ export default function SecureDocumentsPage() {
   const [pendingBinaryFiles, setPendingBinaryFiles] = useState<File[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
-  const [editorPaneMode, setEditorPaneMode] = useState<EditorPaneMode>('live');
+  const [editorPaneMode, setEditorPaneMode] = useState<EditorPaneMode>("live");
   const [editorFullscreen, setEditorFullscreen] = useState(false);
-  const [sortColumn, setSortColumn] = useState<'title' | 'description' | 'author' | 'updatedAt'>('updatedAt');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortColumn, setSortColumn] = useState<"title" | "description" | "author" | "updatedAt">(
+    "updatedAt",
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isNavigatingBack = useRef(false);
@@ -177,14 +191,14 @@ export default function SecureDocumentsPage() {
   const updateExpandedUrl = (expanded: Set<string>) => {
     const params = new URLSearchParams(searchParams.toString());
     if (expanded.size > 0) {
-      params.set('expanded', Array.from(expanded).join(','));
+      params.set("expanded", Array.from(expanded).join(","));
     } else {
-      params.delete('expanded');
+      params.delete("expanded");
     }
     const queryString = params.toString();
     const url = queryString
       ? `/admin/portal/secure-documents?${queryString}`
-      : '/admin/portal/secure-documents';
+      : "/admin/portal/secure-documents";
     router.replace(url, { scroll: false });
   };
 
@@ -198,87 +212,97 @@ export default function SecureDocumentsPage() {
     setCollapsedFolders(newCollapsed);
 
     const allFolders = [
-      ...sortedSecureFolders.filter(f => f !== '.'),
-      ...sortedLocalFolders.map(f => `local:${f}`),
+      ...sortedSecureFolders.filter((f) => f !== "."),
+      ...sortedLocalFolders.map((f) => `local:${f}`),
     ];
-    const expandedFolders = new Set(allFolders.filter(f => !newCollapsed.has(f)));
+    const expandedFolders = new Set(allFolders.filter((f) => !newCollapsed.has(f)));
     updateExpandedUrl(expandedFolders);
   };
 
-  const handleSort = (column: 'title' | 'description' | 'author' | 'updatedAt') => {
+  const handleSort = (column: "title" | "description" | "author" | "updatedAt") => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
   const unifiedDocuments: UnifiedDocument[] = [
-    ...documents.map((doc): UnifiedDocument => ({
-      id: doc.id,
-      slug: doc.slug,
-      title: doc.title,
-      description: doc.description,
-      updatedAt: doc.updatedAt,
-      type: 'secure',
-      author: authorDisplay(doc),
-      folder: doc.folder,
-    })),
-    ...localDocuments.map((doc): UnifiedDocument => ({
-      id: doc.slug,
-      slug: doc.slug,
-      title: doc.title,
-      description: doc.description,
-      updatedAt: doc.updatedAt,
-      type: 'local',
-      author: 'Codebase',
-      filePath: doc.filePath,
-    })),
+    ...documents.map(
+      (doc): UnifiedDocument => ({
+        id: doc.id,
+        slug: doc.slug,
+        title: doc.title,
+        description: doc.description,
+        updatedAt: doc.updatedAt,
+        type: "secure",
+        author: authorDisplay(doc),
+        folder: doc.folder,
+      }),
+    ),
+    ...localDocuments.map(
+      (doc): UnifiedDocument => ({
+        id: doc.slug,
+        slug: doc.slug,
+        title: doc.title,
+        description: doc.description,
+        updatedAt: doc.updatedAt,
+        type: "local",
+        author: "Codebase",
+        filePath: doc.filePath,
+      }),
+    ),
   ].sort((a, b) => {
-    const direction = sortDirection === 'asc' ? 1 : -1;
-    if (sortColumn === 'updatedAt') {
+    const direction = sortDirection === "asc" ? 1 : -1;
+    if (sortColumn === "updatedAt") {
       return direction * (fromISO(a.updatedAt).toMillis() - fromISO(b.updatedAt).toMillis());
-    } else if (sortColumn === 'title') {
-      return direction * (a.title || '').localeCompare(b.title || '');
-    } else if (sortColumn === 'description') {
-      return direction * (a.description || '').localeCompare(b.description || '');
-    } else if (sortColumn === 'author') {
-      return direction * (a.author || '').localeCompare(b.author || '');
+    } else if (sortColumn === "title") {
+      return direction * (a.title || "").localeCompare(b.title || "");
+    } else if (sortColumn === "description") {
+      return direction * (a.description || "").localeCompare(b.description || "");
+    } else if (sortColumn === "author") {
+      return direction * (a.author || "").localeCompare(b.author || "");
     }
     return 0;
   });
 
-  const secureDocuments = unifiedDocuments.filter(d => d.type === 'secure');
-  const localDocs = unifiedDocuments.filter(d => d.type === 'local');
+  const secureDocuments = unifiedDocuments.filter((d) => d.type === "secure");
+  const localDocs = unifiedDocuments.filter((d) => d.type === "local");
 
-  const secureDocsByFolder = secureDocuments.reduce((acc, doc) => {
-    const folder = doc.folder || '.';
-    if (!acc[folder]) {
-      acc[folder] = [];
-    }
-    acc[folder].push(doc);
-    return acc;
-  }, {} as Record<string, UnifiedDocument[]>);
+  const secureDocsByFolder = secureDocuments.reduce(
+    (acc, doc) => {
+      const folder = doc.folder || ".";
+      if (!acc[folder]) {
+        acc[folder] = [];
+      }
+      acc[folder].push(doc);
+      return acc;
+    },
+    {} as Record<string, UnifiedDocument[]>,
+  );
 
   const sortedSecureFolders = Object.keys(secureDocsByFolder).sort((a, b) => {
-    if (a === '.') return -1;
-    if (b === '.') return 1;
+    if (a === ".") return -1;
+    if (b === ".") return 1;
     return a.localeCompare(b);
   });
 
-  const localDocsByFolder = localDocs.reduce((acc, doc) => {
-    const folder = doc.filePath ? doc.filePath.split('/').slice(0, -1).join('/') || '.' : '.';
-    if (!acc[folder]) {
-      acc[folder] = [];
-    }
-    acc[folder].push(doc);
-    return acc;
-  }, {} as Record<string, UnifiedDocument[]>);
+  const localDocsByFolder = localDocs.reduce(
+    (acc, doc) => {
+      const folder = doc.filePath ? doc.filePath.split("/").slice(0, -1).join("/") || "." : ".";
+      if (!acc[folder]) {
+        acc[folder] = [];
+      }
+      acc[folder].push(doc);
+      return acc;
+    },
+    {} as Record<string, UnifiedDocument[]>,
+  );
 
   const sortedLocalFolders = Object.keys(localDocsByFolder).sort((a, b) => {
-    if (a === '.') return -1;
-    if (b === '.') return 1;
+    if (a === ".") return -1;
+    if (b === ".") return 1;
     return a.localeCompare(b);
   });
 
@@ -289,7 +313,7 @@ export default function SecureDocumentsPage() {
     if (allSelected) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(secureDocuments.map(d => d.id)));
+      setSelectedIds(new Set(secureDocuments.map((d) => d.id)));
     }
   };
 
@@ -323,16 +347,22 @@ export default function SecureDocumentsPage() {
       setSelectedIds(new Set());
 
       if (failCount === 0) {
-        setActionMessage({ type: 'success', text: `${successCount} document${successCount !== 1 ? 's' : ''} deleted successfully` });
+        setActionMessage({
+          type: "success",
+          text: `${successCount} document${successCount !== 1 ? "s" : ""} deleted successfully`,
+        });
       } else {
-        setActionMessage({ type: 'error', text: `Deleted ${successCount}, failed to delete ${failCount} document${failCount !== 1 ? 's' : ''}` });
+        setActionMessage({
+          type: "error",
+          text: `Deleted ${successCount}, failed to delete ${failCount} document${failCount !== 1 ? "s" : ""}`,
+        });
       }
 
       invalidateDocumentList();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to delete documents';
+      const message = err instanceof Error ? err.message : "Failed to delete documents";
       setShowBulkDeleteConfirm(false);
-      setActionMessage({ type: 'error', text: message });
+      setActionMessage({ type: "error", text: message });
     } finally {
       setIsDeleting(false);
     }
@@ -343,22 +373,22 @@ export default function SecureDocumentsPage() {
   };
 
   useEffect(() => {
-    const expandedParam = searchParams.get('expanded');
-    const expandedFromUrl = expandedParam ? new Set(expandedParam.split(',')) : new Set<string>();
+    const expandedParam = searchParams.get("expanded");
+    const expandedFromUrl = expandedParam ? new Set(expandedParam.split(",")) : new Set<string>();
 
     const allFolders = [
-      ...sortedSecureFolders.filter(f => f !== '.'),
-      ...sortedLocalFolders.map(f => `local:${f}`),
+      ...sortedSecureFolders.filter((f) => f !== "."),
+      ...sortedLocalFolders.map((f) => `local:${f}`),
     ];
-    const collapsed = allFolders.filter(f => !expandedFromUrl.has(f));
+    const collapsed = allFolders.filter((f) => !expandedFromUrl.has(f));
     setCollapsedFolders(new Set(collapsed));
   }, [documents, localDocuments, searchParams]);
 
   useEffect(() => {
-    const docSlug = searchParams.get('doc');
-    const urlMode = searchParams.get('mode') as UrlMode | null;
-    const urlPane = searchParams.get('pane') as EditorPaneMode | null;
-    const urlFullscreen = searchParams.get('fullscreen');
+    const docSlug = searchParams.get("doc");
+    const urlMode = searchParams.get("mode") as UrlMode | null;
+    const urlPane = searchParams.get("pane") as EditorPaneMode | null;
+    const urlFullscreen = searchParams.get("fullscreen");
 
     if (!docSlug) {
       isNavigatingBack.current = false;
@@ -369,48 +399,65 @@ export default function SecureDocumentsPage() {
       return;
     }
 
-    if (urlPane && ['edit', 'live', 'preview'].includes(urlPane)) {
+    if (urlPane && ["edit", "live", "preview"].includes(urlPane)) {
       setEditorPaneMode(urlPane);
     }
 
-    if (urlFullscreen === 'true') {
+    if (urlFullscreen === "true") {
       setEditorFullscreen(true);
-    } else if (urlFullscreen === 'false') {
+    } else if (urlFullscreen === "false") {
       setEditorFullscreen(false);
     }
 
-    if (!selectedDocument && !selectedLocalDocument && !isLoadingDocument && !secureDocsQuery.isLoading) {
-      const targetMode = urlMode === 'edit' ? 'edit' : 'view';
+    if (
+      !selectedDocument &&
+      !selectedLocalDocument &&
+      !isLoadingDocument &&
+      !secureDocsQuery.isLoading
+    ) {
+      const targetMode = urlMode === "edit" ? "edit" : "view";
       handleViewDocumentBySlug(docSlug, targetMode);
     }
-  }, [searchParams, selectedDocument, selectedLocalDocument, isLoadingDocument, secureDocsQuery.isLoading, localDocuments]);
+  }, [
+    searchParams,
+    selectedDocument,
+    selectedLocalDocument,
+    isLoadingDocument,
+    secureDocsQuery.isLoading,
+    localDocuments,
+  ]);
 
-  const updateUrl = (slug: string | null, mode?: UrlMode, pane?: EditorPaneMode, fullscreen?: boolean) => {
+  const updateUrl = (
+    slug: string | null,
+    mode?: UrlMode,
+    pane?: EditorPaneMode,
+    fullscreen?: boolean,
+  ) => {
     const params = new URLSearchParams(searchParams.toString());
     if (slug) {
-      params.set('doc', slug);
+      params.set("doc", slug);
     } else {
-      params.delete('doc');
+      params.delete("doc");
     }
     if (mode) {
-      params.set('mode', mode);
+      params.set("mode", mode);
     } else {
-      params.delete('mode');
+      params.delete("mode");
     }
     if (pane) {
-      params.set('pane', pane);
+      params.set("pane", pane);
     } else {
-      params.delete('pane');
+      params.delete("pane");
     }
     if (fullscreen !== undefined) {
-      params.set('fullscreen', String(fullscreen));
+      params.set("fullscreen", String(fullscreen));
     } else {
-      params.delete('fullscreen');
+      params.delete("fullscreen");
     }
     const queryString = params.toString();
     const url = queryString
       ? `/admin/portal/secure-documents?${queryString}`
-      : '/admin/portal/secure-documents';
+      : "/admin/portal/secure-documents";
     router.push(url, { scroll: false });
   };
 
@@ -424,25 +471,25 @@ export default function SecureDocumentsPage() {
     if (selectedDocument) {
       updateUrl(
         selectedDocument.slug,
-        'edit',
+        "edit",
         state.paneMode ?? editorPaneMode,
-        state.fullscreen ?? editorFullscreen
+        state.fullscreen ?? editorFullscreen,
       );
     }
   };
 
-  const handleViewDocumentBySlug = async (slug: string, targetMode: ViewMode = 'view') => {
+  const handleViewDocumentBySlug = async (slug: string, targetMode: ViewMode = "view") => {
     try {
       setIsLoadingDocument(true);
       setActionMessage(null);
 
-      if (slug.startsWith('local:')) {
-        const localDoc = localDocuments.find(d => d.slug === slug);
+      if (slug.startsWith("local:")) {
+        const localDoc = localDocuments.find((d) => d.slug === slug);
         if (localDoc) {
           const doc = await adminApiClient.getLocalDocument(localDoc.filePath);
           setSelectedLocalDocument(doc);
           setSelectedDocument(null);
-          setViewMode('view');
+          setViewMode("view");
         }
       } else {
         const doc = await adminApiClient.getSecureDocument(slug);
@@ -451,8 +498,8 @@ export default function SecureDocumentsPage() {
         setViewMode(targetMode);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load document';
-      setActionMessage({ type: 'error', text: message });
+      const message = err instanceof Error ? err.message : "Failed to load document";
+      setActionMessage({ type: "error", text: message });
     } finally {
       setIsLoadingDocument(false);
     }
@@ -465,11 +512,11 @@ export default function SecureDocumentsPage() {
       const doc = await adminApiClient.getSecureDocument(id);
       setSelectedDocument(doc);
       setSelectedLocalDocument(null);
-      setViewMode('view');
-      updateUrl(slug, 'view');
+      setViewMode("view");
+      updateUrl(slug, "view");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load document';
-      setActionMessage({ type: 'error', text: message });
+      const message = err instanceof Error ? err.message : "Failed to load document";
+      setActionMessage({ type: "error", text: message });
     } finally {
       setIsLoadingDocument(false);
     }
@@ -483,18 +530,18 @@ export default function SecureDocumentsPage() {
       const localDoc = await adminApiClient.getLocalDocument(doc.filePath);
       setSelectedLocalDocument(localDoc);
       setSelectedDocument(null);
-      setViewMode('view');
-      updateUrl(doc.slug, 'view');
+      setViewMode("view");
+      updateUrl(doc.slug, "view");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load document';
-      setActionMessage({ type: 'error', text: message });
+      const message = err instanceof Error ? err.message : "Failed to load document";
+      setActionMessage({ type: "error", text: message });
     } finally {
       setIsLoadingDocument(false);
     }
   };
 
   const handleUnifiedDocumentClick = (doc: UnifiedDocument) => {
-    if (doc.type === 'local') {
+    if (doc.type === "local") {
       handleViewLocalDocument(doc);
     } else {
       handleViewDocument(doc.id, doc.slug);
@@ -507,11 +554,11 @@ export default function SecureDocumentsPage() {
       setActionMessage(null);
       const doc = await adminApiClient.getSecureDocument(id);
       setSelectedDocument(doc);
-      setViewMode('edit');
-      updateUrl(slug, 'edit', editorPaneMode, editorFullscreen);
+      setViewMode("edit");
+      updateUrl(slug, "edit", editorPaneMode, editorFullscreen);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load document';
-      setActionMessage({ type: 'error', text: message });
+      const message = err instanceof Error ? err.message : "Failed to load document";
+      setActionMessage({ type: "error", text: message });
     } finally {
       setIsLoadingDocument(false);
     }
@@ -520,32 +567,37 @@ export default function SecureDocumentsPage() {
   const handleCreateNew = () => {
     setSelectedDocument(null);
     setActionMessage(null);
-    setViewMode('create');
+    setViewMode("create");
   };
 
-  const handleSave = async (data: { title: string; description: string; content: string; folder?: string }): Promise<boolean> => {
+  const handleSave = async (data: {
+    title: string;
+    description: string;
+    content: string;
+    folder?: string;
+  }): Promise<boolean> => {
     try {
       let message: string;
-      if (viewMode === 'create') {
+      if (viewMode === "create") {
         const created = await createMutation.mutateAsync(data);
-        message = 'Document created successfully';
+        message = "Document created successfully";
         const doc = await adminApiClient.getSecureDocument(created.id);
         setSelectedDocument(doc);
-        setViewMode('edit');
-        updateUrl(doc.slug, 'edit', editorPaneMode, editorFullscreen);
+        setViewMode("edit");
+        updateUrl(doc.slug, "edit", editorPaneMode, editorFullscreen);
       } else if (selectedDocument) {
         await updateMutation.mutateAsync({ id: selectedDocument.id, dto: data });
-        message = 'Document saved';
+        message = "Document saved";
         const doc = await adminApiClient.getSecureDocument(selectedDocument.id);
         setSelectedDocument(doc);
       } else {
         return false;
       }
-      setActionMessage({ type: 'success', text: message });
+      setActionMessage({ type: "success", text: message });
       return true;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to save document';
-      setActionMessage({ type: 'error', text: message });
+      const message = err instanceof Error ? err.message : "Failed to save document";
+      setActionMessage({ type: "error", text: message });
       return false;
     }
   };
@@ -555,11 +607,11 @@ export default function SecureDocumentsPage() {
       setIsDeleting(true);
       await deleteMutation.mutateAsync(id);
       setShowDeleteConfirm(null);
-      setActionMessage({ type: 'success', text: 'Document deleted successfully' });
+      setActionMessage({ type: "success", text: "Document deleted successfully" });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to delete document';
+      const message = err instanceof Error ? err.message : "Failed to delete document";
       setShowDeleteConfirm(null);
-      setActionMessage({ type: 'error', text: message });
+      setActionMessage({ type: "error", text: message });
     } finally {
       setIsDeleting(false);
     }
@@ -572,15 +624,15 @@ export default function SecureDocumentsPage() {
     setImportedFile(null);
     setFileError(null);
     setActionMessage(null);
-    setViewMode('list');
-    router.replace('/admin/portal/secure-documents');
+    setViewMode("list");
+    router.replace("/admin/portal/secure-documents");
   };
 
   const readFileAsText = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.onerror = () => reject(new Error("Failed to read file"));
       reader.readAsText(file);
     });
   };
@@ -591,11 +643,11 @@ export default function SecureDocumentsPage() {
       setCopiedPath(true);
       setTimeout(() => setCopiedPath(false), 2000);
     } catch {
-      const textArea = document.createElement('textarea');
+      const textArea = document.createElement("textarea");
       textArea.value = text;
       document.body.appendChild(textArea);
       textArea.select();
-      document.execCommand('copy');
+      document.execCommand("copy");
       document.body.removeChild(textArea);
       setCopiedPath(true);
       setTimeout(() => setCopiedPath(false), 2000);
@@ -603,13 +655,15 @@ export default function SecureDocumentsPage() {
   };
 
   const uploadNixFile = useCallback(async (uploadingFile: UploadingFile) => {
-    setUploadingFiles(prev =>
-      prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'uploading', progress: 10 } : f)
+    setUploadingFiles((prev) =>
+      prev.map((f) =>
+        f.id === uploadingFile.id ? { ...f, status: "uploading", progress: 10 } : f,
+      ),
     );
 
     try {
-      setUploadingFiles(prev =>
-        prev.map(f => f.id === uploadingFile.id ? { ...f, progress: 50 } : f)
+      setUploadingFiles((prev) =>
+        prev.map((f) => (f.id === uploadingFile.id ? { ...f, progress: 50 } : f)),
       );
 
       const result = await adminApiClient.uploadNixDocument(
@@ -620,10 +674,14 @@ export default function SecureDocumentsPage() {
       );
 
       if (result.success) {
-        setUploadingFiles(prev =>
-          prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'success', progress: 100, documentSlug: result.documentSlug } : f)
+        setUploadingFiles((prev) =>
+          prev.map((f) =>
+            f.id === uploadingFile.id
+              ? { ...f, status: "success", progress: 100, documentSlug: result.documentSlug }
+              : f,
+          ),
         );
-        const folder = uploadingFile.processWithNix ? 'Nix' : 'Attachments';
+        const folder = uploadingFile.processWithNix ? "Nix" : "Attachments";
         const documentPath = result.documentSlug
           ? `Secure Documents / ${folder} / ${result.documentSlug}`
           : null;
@@ -635,19 +693,25 @@ export default function SecureDocumentsPage() {
         });
         invalidateDocumentList();
       } else {
-        setUploadingFiles(prev =>
-          prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'error', error: result.error || 'Upload failed' } : f)
+        setUploadingFiles((prev) =>
+          prev.map((f) =>
+            f.id === uploadingFile.id
+              ? { ...f, status: "error", error: result.error || "Upload failed" }
+              : f,
+          ),
         );
         setNixUploadResult({
           fileName: uploadingFile.file.name,
           success: false,
-          error: result.error || 'Upload failed',
+          error: result.error || "Upload failed",
         });
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Upload failed';
-      setUploadingFiles(prev =>
-        prev.map(f => f.id === uploadingFile.id ? { ...f, status: 'error', error: message } : f)
+      const message = err instanceof Error ? err.message : "Upload failed";
+      setUploadingFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadingFile.id ? { ...f, status: "error", error: message } : f,
+        ),
       );
       setNixUploadResult({
         fileName: uploadingFile.file.name,
@@ -658,100 +722,107 @@ export default function SecureDocumentsPage() {
   }, []);
 
   const removeUploadingFile = (id: string) => {
-    setUploadingFiles(prev => prev.filter(f => f.id !== id));
+    setUploadingFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
   const viewNixDocument = (slug: string) => {
-    updateUrl(slug, 'view');
-    handleViewDocumentBySlug(slug, 'view');
+    updateUrl(slug, "view");
+    handleViewDocumentBySlug(slug, "view");
   };
 
-  const processFiles = useCallback(async (files: File[]) => {
-    setFileError(null);
-    setImportResult(null);
+  const processFiles = useCallback(
+    async (files: File[]) => {
+      setFileError(null);
+      setImportResult(null);
 
-    const textFiles = files.filter(f => isTextFile(f.name));
-    const binaryFiles = files.filter(f => isBinaryFile(f.name));
-    const unsupportedFiles = files.filter(f => !isSupportedFile(f.name));
+      const textFiles = files.filter((f) => isTextFile(f.name));
+      const binaryFiles = files.filter((f) => isBinaryFile(f.name));
+      const unsupportedFiles = files.filter((f) => !isSupportedFile(f.name));
 
-    if (unsupportedFiles.length > 0 && textFiles.length === 0 && binaryFiles.length === 0) {
-      const extensions = [...new Set(unsupportedFiles.map(f => f.name.split('.').pop()?.toUpperCase() || 'Unknown'))].join(', ');
-      setFileError({
-        filename: unsupportedFiles.map(f => f.name).join(', '),
-        message: `${extensions} files are not supported. Supported formats: Markdown (.md), Text (.txt), PDF, Excel (.xlsx, .xls), Word (.doc, .docx), CSV`
-      });
-      return;
-    }
-
-    if (binaryFiles.length > 0) {
-      setPendingBinaryFiles(binaryFiles);
-      return;
-    }
-
-    if (textFiles.length === 1 && binaryFiles.length === 0 && unsupportedFiles.length === 0) {
-      const file = textFiles[0];
-      try {
-        const content = await readFileAsText(file);
-        const title = file.name.replace(/\.(md|markdown|txt)$/i, '');
-        const description = extractDescription(content);
-        setImportedFile({ title, description, content });
-        setViewMode('create');
-      } catch {
+      if (unsupportedFiles.length > 0 && textFiles.length === 0 && binaryFiles.length === 0) {
+        const extensions = [
+          ...new Set(
+            unsupportedFiles.map((f) => f.name.split(".").pop()?.toUpperCase() || "Unknown"),
+          ),
+        ].join(", ");
         setFileError({
-          filename: file.name,
-          message: 'Failed to read file. Please try again.'
+          filename: unsupportedFiles.map((f) => f.name).join(", "),
+          message: `${extensions} files are not supported. Supported formats: Markdown (.md), Text (.txt), PDF, Excel (.xlsx, .xls), Word (.doc, .docx), CSV`,
         });
-      }
-      return;
-    }
-
-    if (textFiles.length > 1 || (textFiles.length === 1 && binaryFiles.length > 0)) {
-      setIsImporting(true);
-      const successful: string[] = [];
-      const failed: { filename: string; error: string }[] = [];
-
-      if (unsupportedFiles.length > 0) {
-        unsupportedFiles.forEach(f => {
-          const ext = f.name.split('.').pop()?.toUpperCase() || 'Unknown';
-          failed.push({ filename: f.name, error: `${ext} files not supported` });
-        });
+        return;
       }
 
-      for (const file of textFiles) {
+      if (binaryFiles.length > 0) {
+        setPendingBinaryFiles(binaryFiles);
+        return;
+      }
+
+      if (textFiles.length === 1 && binaryFiles.length === 0 && unsupportedFiles.length === 0) {
+        const file = textFiles[0];
         try {
           const content = await readFileAsText(file);
-          const title = file.name.replace(/\.(md|markdown|txt)$/i, '');
+          const title = file.name.replace(/\.(md|markdown|txt)$/i, "");
           const description = extractDescription(content);
-          await adminApiClient.createSecureDocument({ title, description, content });
-          successful.push(file.name);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : 'Unknown error';
-          failed.push({ filename: file.name, error: message });
+          setImportedFile({ title, description, content });
+          setViewMode("create");
+        } catch {
+          setFileError({
+            filename: file.name,
+            message: "Failed to read file. Please try again.",
+          });
         }
+        return;
       }
 
-      setIsImporting(false);
-      setImportResult({ successful, failed });
-      if (successful.length > 0) {
-        invalidateDocumentList();
+      if (textFiles.length > 1 || (textFiles.length === 1 && binaryFiles.length > 0)) {
+        setIsImporting(true);
+        const successful: string[] = [];
+        const failed: { filename: string; error: string }[] = [];
+
+        if (unsupportedFiles.length > 0) {
+          unsupportedFiles.forEach((f) => {
+            const ext = f.name.split(".").pop()?.toUpperCase() || "Unknown";
+            failed.push({ filename: f.name, error: `${ext} files not supported` });
+          });
+        }
+
+        for (const file of textFiles) {
+          try {
+            const content = await readFileAsText(file);
+            const title = file.name.replace(/\.(md|markdown|txt)$/i, "");
+            const description = extractDescription(content);
+            await adminApiClient.createSecureDocument({ title, description, content });
+            successful.push(file.name);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Unknown error";
+            failed.push({ filename: file.name, error: message });
+          }
+        }
+
+        setIsImporting(false);
+        setImportResult({ successful, failed });
+        if (successful.length > 0) {
+          invalidateDocumentList();
+        }
       }
-    }
-  }, [uploadNixFile]);
+    },
+    [uploadNixFile],
+  );
 
   const handleBinaryUploadChoice = async (processWithNix: boolean) => {
     const files = pendingBinaryFiles;
     setPendingBinaryFiles([]);
 
-    const newUploadingFiles: UploadingFile[] = files.map(file => ({
+    const newUploadingFiles: UploadingFile[] = files.map((file) => ({
       id: `${nowMillis()}-${Math.random().toString(36).substr(2, 9)}`,
       file,
-      title: file.name.replace(/\.[^.]+$/, ''),
-      status: 'pending' as const,
+      title: file.name.replace(/\.[^.]+$/, ""),
+      status: "pending" as const,
       progress: 0,
       processWithNix,
     }));
 
-    setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
+    setUploadingFiles((prev) => [...prev, ...newUploadingFiles]);
 
     for (const uploadingFile of newUploadingFiles) {
       await uploadNixFile(uploadingFile);
@@ -764,7 +835,7 @@ export default function SecureDocumentsPage() {
       processFiles(Array.from(files));
     }
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -778,29 +849,32 @@ export default function SecureDocumentsPage() {
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      processFiles(Array.from(files));
-    }
-  }, [processFiles]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        processFiles(Array.from(files));
+      }
+    },
+    [processFiles],
+  );
 
-  if (viewMode === 'view' && selectedDocument) {
+  if (viewMode === "view" && selectedDocument) {
     return (
       <SecureDocumentViewer
         document={selectedDocument}
         onBack={handleBack}
         onEdit={() => {
-          setViewMode('edit');
-          updateUrl(selectedDocument.slug, 'edit', editorPaneMode, editorFullscreen);
+          setViewMode("edit");
+          updateUrl(selectedDocument.slug, "edit", editorPaneMode, editorFullscreen);
         }}
       />
     );
   }
 
-  if (viewMode === 'view' && selectedLocalDocument) {
+  if (viewMode === "view" && selectedLocalDocument) {
     return (
       <SecureDocumentViewer
         document={{
@@ -809,8 +883,8 @@ export default function SecureDocumentsPage() {
           title: selectedLocalDocument.title,
           description: selectedLocalDocument.description,
           folder: null,
-          storagePath: '',
-          fileType: 'markdown',
+          storagePath: "",
+          fileType: "markdown",
           originalFilename: null,
           attachmentPath: null,
           createdBy: null,
@@ -824,13 +898,18 @@ export default function SecureDocumentsPage() {
     );
   }
 
-  if (viewMode === 'edit' || viewMode === 'create') {
-    const initialData = viewMode === 'create' && importedFile
-      ? { title: importedFile.title, description: importedFile.description, content: importedFile.content }
-      : null;
+  if (viewMode === "edit" || viewMode === "create") {
+    const initialData =
+      viewMode === "create" && importedFile
+        ? {
+            title: importedFile.title,
+            description: importedFile.description,
+            content: importedFile.content,
+          }
+        : null;
     return (
       <SecureDocumentEditor
-        document={viewMode === 'edit' ? selectedDocument : null}
+        document={viewMode === "edit" ? selectedDocument : null}
         initialData={initialData}
         paneMode={editorPaneMode}
         fullscreen={editorFullscreen}
@@ -846,7 +925,11 @@ export default function SecureDocumentsPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Documents</div>
-          <p className="text-gray-600">{secureDocsQuery.error instanceof Error ? secureDocsQuery.error.message : 'Failed to fetch documents'}</p>
+          <p className="text-gray-600">
+            {secureDocsQuery.error instanceof Error
+              ? secureDocsQuery.error.message
+              : "Failed to fetch documents"}
+          </p>
           <button
             onClick={() => secureDocsQuery.refetch()}
             className="mt-4 px-4 py-2 bg-[#323288] text-white rounded-md hover:bg-[#4a4da3]"
@@ -880,7 +963,12 @@ export default function SecureDocumentsPage() {
             className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
             </svg>
             Import File
           </button>
@@ -889,7 +977,12 @@ export default function SecureDocumentsPage() {
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#323288] hover:bg-[#4a4da3]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
             New Document
           </button>
@@ -897,7 +990,7 @@ export default function SecureDocumentsPage() {
       </div>
 
       <div
-        className={`relative bg-white dark:bg-gray-900 shadow rounded-lg overflow-x-auto transition-colors ${isDragging ? 'ring-2 ring-[#323288] ring-offset-2' : ''}`}
+        className={`relative bg-white dark:bg-gray-900 shadow rounded-lg overflow-x-auto transition-colors ${isDragging ? "ring-2 ring-[#323288] ring-offset-2" : ""}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -905,8 +998,18 @@ export default function SecureDocumentsPage() {
         {isDragging && (
           <div className="absolute inset-0 bg-[#323288]/10 flex items-center justify-center z-10 pointer-events-none">
             <div className="bg-white rounded-lg shadow-lg px-6 py-4 text-center">
-              <svg className="mx-auto h-12 w-12 text-[#323288]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              <svg
+                className="mx-auto h-12 w-12 text-[#323288]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
               </svg>
               <p className="mt-2 text-sm font-medium text-[#323288]">Drop file to import</p>
             </div>
@@ -921,15 +1024,27 @@ export default function SecureDocumentsPage() {
           </div>
         ) : unifiedDocuments.length === 0 ? (
           <div
-            className={`text-center py-12 px-6 transition-colors ${isDragging ? 'bg-[#323288]/5 border-2 border-dashed border-[#323288]' : ''}`}
+            className={`text-center py-12 px-6 transition-colors ${isDragging ? "bg-[#323288]/5 border-2 border-dashed border-[#323288]" : ""}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No documents</h3>
+            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+              No documents
+            </h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Create your first secure document or drag and drop a markdown file
             </p>
@@ -939,7 +1054,12 @@ export default function SecureDocumentsPage() {
                 className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
                 </svg>
                 Import File
               </button>
@@ -948,7 +1068,12 @@ export default function SecureDocumentsPage() {
                 className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#323288] hover:bg-[#4a4da3]"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
                 Create Document
               </button>
@@ -959,14 +1084,24 @@ export default function SecureDocumentsPage() {
             {selectedIds.size > 0 && (
               <div className="bg-[#323288]/5 border-b border-[#323288]/20 px-6 py-3 flex items-center justify-between">
                 <span className="text-sm font-medium text-[#323288]">
-                  {selectedIds.size} document{selectedIds.size !== 1 ? 's' : ''} selected
+                  {selectedIds.size} document{selectedIds.size !== 1 ? "s" : ""} selected
                 </span>
                 <button
                   onClick={() => setShowBulkDeleteConfirm(true)}
                   className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
                 >
-                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  <svg
+                    className="w-4 h-4 mr-1.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                   Delete Selected
                 </button>
@@ -979,7 +1114,9 @@ export default function SecureDocumentsPage() {
                     <input
                       type="checkbox"
                       checked={allSelected}
-                      ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected;
+                      }}
                       onChange={toggleSelectAll}
                       className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
                     />
@@ -987,13 +1124,23 @@ export default function SecureDocumentsPage() {
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
-                    onClick={() => handleSort('title')}
+                    onClick={() => handleSort("title")}
                   >
                     <div className="flex items-center gap-1">
                       Title
-                      {sortColumn === 'title' && (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+                      {sortColumn === "title" && (
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+                          />
                         </svg>
                       )}
                     </div>
@@ -1001,13 +1148,23 @@ export default function SecureDocumentsPage() {
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
-                    onClick={() => handleSort('description')}
+                    onClick={() => handleSort("description")}
                   >
                     <div className="flex items-center gap-1">
                       Description
-                      {sortColumn === 'description' && (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+                      {sortColumn === "description" && (
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+                          />
                         </svg>
                       )}
                     </div>
@@ -1015,13 +1172,23 @@ export default function SecureDocumentsPage() {
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
-                    onClick={() => handleSort('author')}
+                    onClick={() => handleSort("author")}
                   >
                     <div className="flex items-center gap-1">
                       Author
-                      {sortColumn === 'author' && (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+                      {sortColumn === "author" && (
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+                          />
                         </svg>
                       )}
                     </div>
@@ -1029,13 +1196,23 @@ export default function SecureDocumentsPage() {
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
-                    onClick={() => handleSort('updatedAt')}
+                    onClick={() => handleSort("updatedAt")}
                   >
                     <div className="flex items-center gap-1">
                       Last Updated
-                      {sortColumn === 'updatedAt' && (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sortDirection === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+                      {sortColumn === "updatedAt" && (
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+                          />
                         </svg>
                       )}
                     </div>
@@ -1048,115 +1225,166 @@ export default function SecureDocumentsPage() {
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {sortedSecureFolders.map((folder) => (
                   <React.Fragment key={`secure-folder-${folder}`}>
-                    {folder !== '.' && (
+                    {folder !== "." && (
                       <tr
                         className="bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 cursor-pointer select-none"
                         onClick={() => toggleFolder(folder)}
                       >
                         <td className="w-12 px-4 py-3">
                           <svg
-                            className={`w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform ${collapsedFolders.has(folder) ? '' : 'rotate-90'}`}
+                            className={`w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform ${collapsedFolders.has(folder) ? "" : "rotate-90"}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                           >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
                           </svg>
                         </td>
                         <td colSpan={5} className="px-6 py-3">
                           <div className="flex items-center">
-                            <svg className="w-5 h-5 text-purple-500 dark:text-purple-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            <svg
+                              className="w-5 h-5 text-purple-500 dark:text-purple-400 mr-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                              />
                             </svg>
-                            <span className="text-sm font-medium text-purple-900 dark:text-purple-200">{folder}</span>
+                            <span className="text-sm font-medium text-purple-900 dark:text-purple-200">
+                              {folder}
+                            </span>
                             <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">
-                              ({secureDocsByFolder[folder].length} document{secureDocsByFolder[folder].length !== 1 ? 's' : ''})
+                              ({secureDocsByFolder[folder].length} document
+                              {secureDocsByFolder[folder].length !== 1 ? "s" : ""})
                             </span>
                           </div>
                         </td>
                       </tr>
                     )}
-                    {(folder === '.' || !collapsedFolders.has(folder)) && secureDocsByFolder[folder].map((doc) => (
-                      <tr
-                        key={doc.id}
-                        onClick={() => handleUnifiedDocumentClick(doc)}
-                        className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${selectedIds.has(doc.id) ? 'bg-[#323288]/5' : ''} ${folder !== '.' ? 'bg-purple-50/30 dark:bg-purple-900/20' : ''}`}
-                      >
-                        <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(doc.id)}
-                            onChange={() => toggleSelect(doc.id)}
-                            className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className={`flex items-center ${folder !== '.' ? 'pl-6' : ''}`}>
-                            <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{doc.title}</span>
-                            {doc.folder === 'Nix' && (
-                              <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
-                                Nix
-                              </span>
-                            )}
-                            {doc.folder === 'Attachments' && (
-                              <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded">
-                                Attachment
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
-                            {doc.description || '-'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {doc.author || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {formatDateZA(doc.updatedAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center gap-2 justify-end">
-                            <div className="relative group">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditDocument(doc.id, doc.slug);
-                                }}
-                                className="p-1.5 text-[#323288] hover:text-[#252560] hover:bg-[#323288]/10 rounded"
+                    {(folder === "." || !collapsedFolders.has(folder)) &&
+                      secureDocsByFolder[folder].map((doc) => (
+                        <tr
+                          key={doc.id}
+                          onClick={() => handleUnifiedDocumentClick(doc)}
+                          className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${selectedIds.has(doc.id) ? "bg-[#323288]/5" : ""} ${folder !== "." ? "bg-purple-50/30 dark:bg-purple-900/20" : ""}`}
+                        >
+                          <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(doc.id)}
+                              onChange={() => toggleSelect(doc.id)}
+                              className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
+                            />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className={`flex items-center ${folder !== "." ? "pl-6" : ""}`}>
+                              <svg
+                                className="w-5 h-5 text-gray-400 mr-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
                               >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
-                                Edit document
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                />
+                              </svg>
+                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {doc.title}
                               </span>
+                              {doc.folder === "Nix" && (
+                                <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
+                                  Nix
+                                </span>
+                              )}
+                              {doc.folder === "Attachments" && (
+                                <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded">
+                                  Attachment
+                                </span>
+                              )}
                             </div>
-                            <div className="relative group">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowDeleteConfirm(doc.id);
-                                }}
-                                className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                              >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
-                                Delete document
-                              </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
+                              {doc.description || "-"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {doc.author || "-"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {formatDateZA(doc.updatedAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center gap-2 justify-end">
+                              <div className="relative group">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditDocument(doc.id, doc.slug);
+                                  }}
+                                  className="p-1.5 text-[#323288] hover:text-[#252560] hover:bg-[#323288]/10 rounded"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                  </svg>
+                                </button>
+                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+                                  Edit document
+                                </span>
+                              </div>
+                              <div className="relative group">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowDeleteConfirm(doc.id);
+                                  }}
+                                  className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                >
+                                  <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                  </svg>
+                                </button>
+                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+                                  Delete document
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      ))}
                   </React.Fragment>
                 ))}
                 {sortedLocalFolders.map((folder) => (
@@ -1167,63 +1395,92 @@ export default function SecureDocumentsPage() {
                     >
                       <td className="w-12 px-4 py-3">
                         <svg
-                          className={`w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform ${collapsedFolders.has(`local:${folder}`) ? '' : 'rotate-90'}`}
+                          className={`w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform ${collapsedFolders.has(`local:${folder}`) ? "" : "rotate-90"}`}
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
                         </svg>
                       </td>
                       <td colSpan={5} className="px-6 py-3">
                         <div className="flex items-center">
-                          <svg className="w-5 h-5 text-blue-500 dark:text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                          <svg
+                            className="w-5 h-5 text-blue-500 dark:text-blue-400 mr-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                            />
                           </svg>
                           <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
-                            {folder === '.' ? 'Codebase Root' : folder}
+                            {folder === "." ? "Codebase Root" : folder}
                           </span>
                           <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
-                            ({localDocsByFolder[folder].length} file{localDocsByFolder[folder].length !== 1 ? 's' : ''})
+                            ({localDocsByFolder[folder].length} file
+                            {localDocsByFolder[folder].length !== 1 ? "s" : ""})
                           </span>
                         </div>
                       </td>
                     </tr>
-                    {!collapsedFolders.has(`local:${folder}`) && localDocsByFolder[folder].map((doc) => (
-                      <tr
-                        key={doc.id}
-                        onClick={() => handleUnifiedDocumentClick(doc)}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors bg-blue-50/30 dark:bg-blue-900/20"
-                      >
-                        <td className="w-12 px-4 py-4">
-                          <span className="w-4 h-4 block" />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center pl-6">
-                            <svg className="w-5 h-5 text-blue-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                              {doc.filePath?.split('/').pop()?.replace('.md', '') || doc.title}
+                    {!collapsedFolders.has(`local:${folder}`) &&
+                      localDocsByFolder[folder].map((doc) => (
+                        <tr
+                          key={doc.id}
+                          onClick={() => handleUnifiedDocumentClick(doc)}
+                          className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors bg-blue-50/30 dark:bg-blue-900/20"
+                        >
+                          <td className="w-12 px-4 py-4">
+                            <span className="w-4 h-4 block" />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center pl-6">
+                              <svg
+                                className="w-5 h-5 text-blue-400 mr-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
+                              </svg>
+                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {doc.filePath?.split("/").pop()?.replace(".md", "") || doc.title}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
+                              {doc.filePath || "-"}
                             </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
-                            {doc.filePath || '-'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          Codebase
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                          {formatDateZA(doc.updatedAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <span className="text-xs text-gray-400 italic whitespace-nowrap">Read-only</span>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            Codebase
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {formatDateZA(doc.updatedAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <span className="text-xs text-gray-400 italic whitespace-nowrap">
+                              Read-only
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
                   </React.Fragment>
                 ))}
               </tbody>
@@ -1235,19 +1492,23 @@ export default function SecureDocumentsPage() {
       {uploadingFiles.length > 0 && (
         <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">Processing Documents</h2>
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              Processing Documents
+            </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Files are being processed by Nix and saved to Secure Documents
             </p>
           </div>
           <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-            {uploadingFiles.map(file => {
+            {uploadingFiles.map((file) => {
               const icon = fileTypeIcon(file.file.name);
               return (
                 <li key={file.id} className="px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center min-w-0 flex-1">
-                      <span className={`flex-shrink-0 w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs font-bold ${icon.color}`}>
+                      <span
+                        className={`flex-shrink-0 w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xs font-bold ${icon.color}`}
+                      >
                         {icon.label}
                       </span>
                       <div className="ml-4 min-w-0 flex-1">
@@ -1260,7 +1521,7 @@ export default function SecureDocumentsPage() {
                       </div>
                     </div>
                     <div className="ml-4 flex items-center space-x-3">
-                      {file.status === 'uploading' && (
+                      {file.status === "uploading" && (
                         <div className="w-24">
                           <div className="bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                             <div
@@ -1270,11 +1531,21 @@ export default function SecureDocumentsPage() {
                           </div>
                         </div>
                       )}
-                      {file.status === 'success' && (
+                      {file.status === "success" && (
                         <>
                           <span className="text-green-500">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
                           </span>
                           {file.documentSlug && (
@@ -1287,15 +1558,25 @@ export default function SecureDocumentsPage() {
                           )}
                         </>
                       )}
-                      {file.status === 'error' && (
+                      {file.status === "error" && (
                         <span className="text-red-500 text-sm">{file.error}</span>
                       )}
                       <button
                         onClick={() => removeUploadingFile(file.id)}
                         className="text-gray-400 hover:text-gray-600"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -1310,8 +1591,18 @@ export default function SecureDocumentsPage() {
       {fileError && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <div className="flex items-start">
-            <svg className="w-5 h-5 text-amber-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <svg
+              className="w-5 h-5 text-amber-500 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
             <div className="ml-3 flex-1">
               <h4 className="text-sm font-medium text-amber-800">
@@ -1324,7 +1615,12 @@ export default function SecureDocumentsPage() {
               className="text-amber-500 hover:text-amber-700"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -1332,26 +1628,59 @@ export default function SecureDocumentsPage() {
       )}
 
       {actionMessage && (
-        <div className={`rounded-lg p-4 ${actionMessage.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+        <div
+          className={`rounded-lg p-4 ${actionMessage.type === "success" ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}
+        >
           <div className="flex items-center">
-            {actionMessage.type === 'success' ? (
-              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            {actionMessage.type === "success" ? (
+              <svg
+                className="w-5 h-5 text-green-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             ) : (
-              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-5 h-5 text-red-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             )}
-            <p className={`ml-3 flex-1 text-sm font-medium ${actionMessage.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+            <p
+              className={`ml-3 flex-1 text-sm font-medium ${actionMessage.type === "success" ? "text-green-800" : "text-red-800"}`}
+            >
               {actionMessage.text}
             </p>
             <button
               onClick={() => setActionMessage(null)}
-              className={actionMessage.type === 'success' ? 'text-green-500 hover:text-green-700' : 'text-red-500 hover:text-red-700'}
+              className={
+                actionMessage.type === "success"
+                  ? "text-green-500 hover:text-green-700"
+                  : "text-red-500 hover:text-red-700"
+              }
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -1361,22 +1690,37 @@ export default function SecureDocumentsPage() {
       {importResult && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
-            <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-5 h-5 text-blue-500 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <div className="ml-3 flex-1">
               <h4 className="text-sm font-medium text-blue-800">Import Complete</h4>
               {importResult.successful.length > 0 && (
                 <p className="mt-1 text-sm text-blue-700">
-                  {importResult.successful.length} file{importResult.successful.length !== 1 ? 's' : ''} imported successfully
+                  {importResult.successful.length} file
+                  {importResult.successful.length !== 1 ? "s" : ""} imported successfully
                 </p>
               )}
               {importResult.failed.length > 0 && (
                 <div className="mt-2">
-                  <p className="text-sm font-medium text-red-700">{importResult.failed.length} failed:</p>
+                  <p className="text-sm font-medium text-red-700">
+                    {importResult.failed.length} failed:
+                  </p>
                   <ul className="mt-1 text-sm text-red-600 list-disc list-inside">
                     {importResult.failed.map((f, i) => (
-                      <li key={i}>{f.filename}: {f.error}</li>
+                      <li key={i}>
+                        {f.filename}: {f.error}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -1387,7 +1731,12 @@ export default function SecureDocumentsPage() {
               className="text-blue-500 hover:text-blue-700"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -1404,13 +1753,23 @@ export default function SecureDocumentsPage() {
       )}
 
       <div
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging ? 'border-[#323288] bg-[#323288]/5' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}`}
+        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging ? "border-[#323288] bg-[#323288]/5" : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <svg className="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        <svg
+          className="mx-auto h-10 w-10 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+          />
         </svg>
         <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           <span className="font-medium">Drop files here</span> to import documents
@@ -1423,9 +1782,14 @@ export default function SecureDocumentsPage() {
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowDeleteConfirm(null)} />
+            <div
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              onClick={() => setShowDeleteConfirm(null)}
+            />
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Delete Document</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                Delete Document
+              </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                 Are you sure you want to delete this document? This action cannot be undone.
               </p>
@@ -1441,7 +1805,7 @@ export default function SecureDocumentsPage() {
                   disabled={isDeleting}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                  {isDeleting ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </div>
@@ -1452,11 +1816,17 @@ export default function SecureDocumentsPage() {
       {showBulkDeleteConfirm && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowBulkDeleteConfirm(false)} />
+            <div
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              onClick={() => setShowBulkDeleteConfirm(false)}
+            />
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Delete {selectedIds.size} Document{selectedIds.size !== 1 ? 's' : ''}</h3>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
+                Delete {selectedIds.size} Document{selectedIds.size !== 1 ? "s" : ""}
+              </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                Are you sure you want to delete {selectedIds.size} selected document{selectedIds.size !== 1 ? 's' : ''}? This action cannot be undone.
+                Are you sure you want to delete {selectedIds.size} selected document
+                {selectedIds.size !== 1 ? "s" : ""}? This action cannot be undone.
               </p>
               <div className="flex justify-end space-x-3">
                 <button
@@ -1470,7 +1840,7 @@ export default function SecureDocumentsPage() {
                   disabled={isDeleting}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
                 >
-                  {isDeleting ? 'Deleting...' : `Delete ${selectedIds.size}`}
+                  {isDeleting ? "Deleting..." : `Delete ${selectedIds.size}`}
                 </button>
               </div>
             </div>
@@ -1481,63 +1851,68 @@ export default function SecureDocumentsPage() {
       {pendingBinaryFiles.length > 0 && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setPendingBinaryFiles([])} />
+            <div
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              onClick={() => setPendingBinaryFiles([])}
+            />
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full overflow-hidden">
               <div className="flex">
                 {/* Left side - Nix avatar */}
                 <div
                   className="w-1/2 flex items-center justify-center p-8 relative overflow-hidden"
                   style={{
-                    background: 'linear-gradient(135deg, #323288 0%, #1e1e5c 100%)',
+                    background: "linear-gradient(135deg, #323288 0%, #1e1e5c 100%)",
                   }}
                 >
                   <div className="relative">
                     {/* Orbiting binary digits - outer ring */}
                     <div
                       className="absolute inset-0 pointer-events-none"
-                      style={{ animation: 'spin 4s linear infinite' }}
+                      style={{ animation: "spin 4s linear infinite" }}
                     >
-                      {['1', '0', '1', '0', '1', '0', '1', '0', '1', '0', '1', '0'].map((digit, i) => {
-                        const angleDeg = i * 30;
-                        return (
-                          <div
-                            key={i}
-                            className="absolute"
-                            style={{
-                              top: '50%',
-                              left: '50%',
-                              transform: `rotate(${angleDeg}deg) translateY(-120px)`,
-                            }}
-                          >
-                            <span
-                              className="block font-mono text-orange-400 font-bold select-none"
+                      {["1", "0", "1", "0", "1", "0", "1", "0", "1", "0", "1", "0"].map(
+                        (digit, i) => {
+                          const angleDeg = i * 30;
+                          return (
+                            <div
+                              key={i}
+                              className="absolute"
                               style={{
-                                fontSize: `${13 + (i % 3) * 2}px`,
-                                opacity: 0.5 + (i % 2) * 0.3,
-                                transform: `rotate(-${angleDeg}deg)`,
-                                animation: 'counterSpin 4s linear infinite',
+                                top: "50%",
+                                left: "50%",
+                                transform: `rotate(${angleDeg}deg) translateY(-120px)`,
                               }}
                             >
-                              {digit}
-                            </span>
-                          </div>
-                        );
-                      })}
+                              <span
+                                className="block font-mono text-orange-400 font-bold select-none"
+                                style={{
+                                  fontSize: `${13 + (i % 3) * 2}px`,
+                                  opacity: 0.5 + (i % 2) * 0.3,
+                                  transform: `rotate(-${angleDeg}deg)`,
+                                  animation: "counterSpin 4s linear infinite",
+                                }}
+                              >
+                                {digit}
+                              </span>
+                            </div>
+                          );
+                        },
+                      )}
                     </div>
                     {/* Orbiting binary digits - inner ring */}
                     <div
                       className="absolute inset-0 pointer-events-none"
-                      style={{ animation: 'spin 3s linear infinite reverse' }}
+                      style={{ animation: "spin 3s linear infinite reverse" }}
                     >
-                      {['0', '1', '0', '1', '0', '1', '0', '1'].map((digit, i) => {
-                        const angleDeg = (i * 45) + 22.5;
+                      {["0", "1", "0", "1", "0", "1", "0", "1"].map((digit, i) => {
+                        const angleDeg = i * 45 + 22.5;
                         return (
                           <div
                             key={i}
                             className="absolute"
                             style={{
-                              top: '50%',
-                              left: '50%',
+                              top: "50%",
+                              left: "50%",
                               transform: `rotate(${angleDeg}deg) translateY(-145px)`,
                             }}
                           >
@@ -1547,7 +1922,7 @@ export default function SecureDocumentsPage() {
                                 fontSize: `${11 + (i % 2) * 3}px`,
                                 opacity: 0.4 + (i % 2) * 0.2,
                                 transform: `rotate(-${angleDeg}deg)`,
-                                animation: 'counterSpin 3s linear infinite reverse',
+                                animation: "counterSpin 3s linear infinite reverse",
                               }}
                             >
                               {digit}
@@ -1569,22 +1944,25 @@ export default function SecureDocumentsPage() {
                     <div
                       className="absolute inset-0 rounded-full animate-ping opacity-20"
                       style={{
-                        background: 'radial-gradient(circle, rgba(251, 146, 60, 0.6) 0%, transparent 70%)',
-                        animationDuration: '2s',
+                        background:
+                          "radial-gradient(circle, rgba(251, 146, 60, 0.6) 0%, transparent 70%)",
+                        animationDuration: "2s",
                       }}
                     />
                     <div
                       className="relative w-48 h-48 rounded-full flex items-center justify-center"
                       style={{
-                        background: 'radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%)',
+                        background:
+                          "radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%)",
                       }}
                     >
                       <div
                         className="w-44 h-44 rounded-full overflow-hidden p-2"
                         style={{
-                          boxShadow: '0 0 30px rgba(251, 146, 60, 0.5), 0 0 60px rgba(99, 102, 241, 0.4)',
-                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                          background: 'rgba(50, 50, 136, 0.8)',
+                          boxShadow:
+                            "0 0 30px rgba(251, 146, 60, 0.5), 0 0 60px rgba(99, 102, 241, 0.4)",
+                          animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                          background: "rgba(50, 50, 136, 0.8)",
                         }}
                       >
                         <div className="w-full h-full rounded-full overflow-hidden">
@@ -1594,7 +1972,7 @@ export default function SecureDocumentsPage() {
                             width={176}
                             height={176}
                             className="object-cover w-full h-full"
-                            style={{ objectPosition: '50% 45%' }}
+                            style={{ objectPosition: "50% 45%" }}
                           />
                         </div>
                       </div>
@@ -1602,14 +1980,14 @@ export default function SecureDocumentsPage() {
                     {/* Orbiting orange indicator */}
                     <div
                       className="absolute inset-0 pointer-events-none"
-                      style={{ animation: 'spin 6s linear infinite' }}
+                      style={{ animation: "spin 6s linear infinite" }}
                     >
                       <div
                         className="absolute w-6 h-6"
                         style={{
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%) translateY(-100px)',
+                          top: "50%",
+                          left: "50%",
+                          transform: "translate(-50%, -50%) translateY(-100px)",
                         }}
                       >
                         <div className="w-6 h-6 bg-orange-500 rounded-full animate-ping" />
@@ -1622,13 +2000,15 @@ export default function SecureDocumentsPage() {
                 {/* Right side - Content */}
                 <div className="w-1/2 p-6 flex flex-col justify-center">
                   <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                    Upload {pendingBinaryFiles.length} {pendingBinaryFiles.length === 1 ? 'File' : 'Files'}
+                    Upload {pendingBinaryFiles.length}{" "}
+                    {pendingBinaryFiles.length === 1 ? "File" : "Files"}
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 truncate">
-                    {pendingBinaryFiles.map(f => f.name).join(', ')}
+                    {pendingBinaryFiles.map((f) => f.name).join(", ")}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
-                    How would you like to handle {pendingBinaryFiles.length === 1 ? 'this file' : 'these files'}?
+                    How would you like to handle{" "}
+                    {pendingBinaryFiles.length === 1 ? "this file" : "these files"}?
                   </p>
                   <div className="space-y-3">
                     <button
@@ -1637,13 +2017,27 @@ export default function SecureDocumentsPage() {
                     >
                       <div className="flex items-center">
                         <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mr-3">
-                          <svg className="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          <svg
+                            className="w-5 h-5 text-orange-600 dark:text-orange-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                            />
                           </svg>
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900 dark:text-gray-100">Process with Nix</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">Extract and convert content to markdown</div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">
+                            Process with Nix
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            Extract and convert content to markdown
+                          </div>
                         </div>
                       </div>
                     </button>
@@ -1653,13 +2047,27 @@ export default function SecureDocumentsPage() {
                     >
                       <div className="flex items-center">
                         <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mr-3">
-                          <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          <svg
+                            className="w-5 h-5 text-gray-600 dark:text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                            />
                           </svg>
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900 dark:text-gray-100">Upload as Attachment</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">Store original file without processing</div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">
+                            Upload as Attachment
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            Store original file without processing
+                          </div>
                         </div>
                       </div>
                     </button>
@@ -1677,66 +2085,72 @@ export default function SecureDocumentsPage() {
         </div>
       )}
 
-      {nixUploadResult && nixUploadResult.success && (
+      {nixUploadResult?.success && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setNixUploadResult(null)} />
+            <div
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              onClick={() => setNixUploadResult(null)}
+            />
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full overflow-hidden">
               <div className="flex">
                 {/* Left side - Nix avatar (done) */}
                 <div
                   className="w-1/2 flex items-center justify-center p-8 relative overflow-hidden"
                   style={{
-                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.7) 0%, rgba(21, 128, 61, 0.8) 100%)',
+                    background:
+                      "linear-gradient(135deg, rgba(34, 197, 94, 0.7) 0%, rgba(21, 128, 61, 0.8) 100%)",
                   }}
                 >
                   <div className="relative">
                     {/* Orbiting binary digits - outer ring */}
                     <div
                       className="absolute inset-0 pointer-events-none"
-                      style={{ animation: 'spinDone 4s linear infinite' }}
+                      style={{ animation: "spinDone 4s linear infinite" }}
                     >
-                      {['1', '0', '1', '0', '1', '0', '1', '0', '1', '0', '1', '0'].map((digit, i) => {
-                        const angleDeg = i * 30;
-                        return (
-                          <div
-                            key={i}
-                            className="absolute"
-                            style={{
-                              top: '50%',
-                              left: '50%',
-                              transform: `rotate(${angleDeg}deg) translateY(-120px)`,
-                            }}
-                          >
-                            <span
-                              className="block font-mono text-green-200 font-bold select-none"
+                      {["1", "0", "1", "0", "1", "0", "1", "0", "1", "0", "1", "0"].map(
+                        (digit, i) => {
+                          const angleDeg = i * 30;
+                          return (
+                            <div
+                              key={i}
+                              className="absolute"
                               style={{
-                                fontSize: `${13 + (i % 3) * 2}px`,
-                                opacity: 0.5 + (i % 2) * 0.3,
-                                transform: `rotate(-${angleDeg}deg)`,
-                                animation: 'counterSpinDone 4s linear infinite',
+                                top: "50%",
+                                left: "50%",
+                                transform: `rotate(${angleDeg}deg) translateY(-120px)`,
                               }}
                             >
-                              {digit}
-                            </span>
-                          </div>
-                        );
-                      })}
+                              <span
+                                className="block font-mono text-green-200 font-bold select-none"
+                                style={{
+                                  fontSize: `${13 + (i % 3) * 2}px`,
+                                  opacity: 0.5 + (i % 2) * 0.3,
+                                  transform: `rotate(-${angleDeg}deg)`,
+                                  animation: "counterSpinDone 4s linear infinite",
+                                }}
+                              >
+                                {digit}
+                              </span>
+                            </div>
+                          );
+                        },
+                      )}
                     </div>
                     {/* Orbiting binary digits - inner ring */}
                     <div
                       className="absolute inset-0 pointer-events-none"
-                      style={{ animation: 'spinDone 3s linear infinite reverse' }}
+                      style={{ animation: "spinDone 3s linear infinite reverse" }}
                     >
-                      {['0', '1', '0', '1', '0', '1', '0', '1'].map((digit, i) => {
-                        const angleDeg = (i * 45) + 22.5;
+                      {["0", "1", "0", "1", "0", "1", "0", "1"].map((digit, i) => {
+                        const angleDeg = i * 45 + 22.5;
                         return (
                           <div
                             key={i}
                             className="absolute"
                             style={{
-                              top: '50%',
-                              left: '50%',
+                              top: "50%",
+                              left: "50%",
                               transform: `rotate(${angleDeg}deg) translateY(-145px)`,
                             }}
                           >
@@ -1746,7 +2160,7 @@ export default function SecureDocumentsPage() {
                                 fontSize: `${11 + (i % 2) * 3}px`,
                                 opacity: 0.4 + (i % 2) * 0.2,
                                 transform: `rotate(-${angleDeg}deg)`,
-                                animation: 'counterSpinDone 3s linear infinite reverse',
+                                animation: "counterSpinDone 3s linear infinite reverse",
                               }}
                             >
                               {digit}
@@ -1768,22 +2182,25 @@ export default function SecureDocumentsPage() {
                     <div
                       className="absolute inset-0 rounded-full animate-ping opacity-10"
                       style={{
-                        background: 'radial-gradient(circle, rgba(134, 239, 172, 0.4) 0%, transparent 70%)',
-                        animationDuration: '2s',
+                        background:
+                          "radial-gradient(circle, rgba(134, 239, 172, 0.4) 0%, transparent 70%)",
+                        animationDuration: "2s",
                       }}
                     />
                     <div
                       className="relative w-48 h-48 rounded-full flex items-center justify-center"
                       style={{
-                        background: 'radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%)',
+                        background:
+                          "radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%)",
                       }}
                     >
                       <div
                         className="w-44 h-44 rounded-full overflow-hidden p-2"
                         style={{
-                          boxShadow: '0 0 20px rgba(134, 239, 172, 0.3), 0 0 40px rgba(34, 197, 94, 0.2)',
-                          animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                          background: 'rgba(21, 128, 61, 0.6)',
+                          boxShadow:
+                            "0 0 20px rgba(134, 239, 172, 0.3), 0 0 40px rgba(34, 197, 94, 0.2)",
+                          animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                          background: "rgba(21, 128, 61, 0.6)",
                         }}
                       >
                         <div className="w-full h-full rounded-full overflow-hidden">
@@ -1793,7 +2210,7 @@ export default function SecureDocumentsPage() {
                             width={176}
                             height={176}
                             className="object-cover w-full h-full"
-                            style={{ objectPosition: '50% 45%' }}
+                            style={{ objectPosition: "50% 45%" }}
                           />
                         </div>
                       </div>
@@ -1801,14 +2218,14 @@ export default function SecureDocumentsPage() {
                     {/* Orbiting green indicator */}
                     <div
                       className="absolute inset-0 pointer-events-none"
-                      style={{ animation: 'spinDone 6s linear infinite' }}
+                      style={{ animation: "spinDone 6s linear infinite" }}
                     >
                       <div
                         className="absolute w-6 h-6"
                         style={{
-                          top: '50%',
-                          left: '50%',
-                          transform: 'translate(-50%, -50%) translateY(-100px)',
+                          top: "50%",
+                          left: "50%",
+                          transform: "translate(-50%, -50%) translateY(-100px)",
                         }}
                       >
                         <div className="w-6 h-6 bg-green-300 rounded-full animate-ping" />
@@ -1825,11 +2242,15 @@ export default function SecureDocumentsPage() {
                   </h3>
                   <div className="mb-4">
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">File Name</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{nixUploadResult.fileName}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      {nixUploadResult.fileName}
+                    </p>
                   </div>
                   {nixUploadResult.documentPath && (
                     <div className="mb-4">
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Saved Location</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                        Saved Location
+                      </p>
                       <div className="flex items-center gap-2">
                         <code className="flex-1 bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded text-xs font-mono text-gray-800 dark:text-gray-200 break-all">
                           {nixUploadResult.documentPath}
@@ -1838,18 +2259,38 @@ export default function SecureDocumentsPage() {
                           onClick={() => copyToClipboard(nixUploadResult.documentPath!)}
                           className={`flex-shrink-0 p-2 rounded text-sm font-medium transition-colors ${
                             copiedPath
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500'
+                              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                              : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
                           }`}
                           title="Copy path to clipboard"
                         >
                           {copiedPath ? (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
                           ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                              />
                             </svg>
                           )}
                         </button>
@@ -1867,14 +2308,33 @@ export default function SecureDocumentsPage() {
                       >
                         <div className="flex items-center">
                           <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-3">
-                            <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            <svg
+                              className="w-5 h-5 text-green-600 dark:text-green-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                              />
                             </svg>
                           </div>
                           <div>
-                            <div className="font-medium text-gray-900 dark:text-gray-100">View Document</div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">Open the processed document</div>
+                            <div className="font-medium text-gray-900 dark:text-gray-100">
+                              View Document
+                            </div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                              Open the processed document
+                            </div>
                           </div>
                         </div>
                       </button>
@@ -1899,8 +2359,18 @@ export default function SecureDocumentsPage() {
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center">
                 <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center mr-3">
-                  <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-6 h-6 text-red-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -1911,7 +2381,9 @@ export default function SecureDocumentsPage() {
             <div className="px-6 py-4">
               <div className="mb-4">
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">File Name</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{nixUploadResult.fileName}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {nixUploadResult.fileName}
+                </p>
               </div>
               {nixUploadResult.error && (
                 <div className="mb-4">

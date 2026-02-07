@@ -1,53 +1,53 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
+  Entity,
   Index,
-} from 'typeorm';
-import { CustomerCompany } from './customer-company.entity';
-import { CustomerProfile } from './customer-profile.entity';
-import { SupplierProfile } from '../../supplier/entities/supplier-profile.entity';
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
+import { SupplierProfile } from "../../supplier/entities/supplier-profile.entity";
+import { CustomerCompany } from "./customer-company.entity";
+import { CustomerProfile } from "./customer-profile.entity";
 
-@Entity('customer_blocked_suppliers')
-@Index(['customerCompanyId', 'supplierProfileId'], { unique: true })
+@Entity("customer_blocked_suppliers")
+@Index(["customerCompanyId", "supplierProfileId"], { unique: true })
 export class CustomerBlockedSupplier {
   @PrimaryGeneratedColumn()
   id: number;
 
   @ManyToOne(() => CustomerCompany)
-  @JoinColumn({ name: 'customer_company_id' })
+  @JoinColumn({ name: "customer_company_id" })
   customerCompany: CustomerCompany;
 
-  @Column({ name: 'customer_company_id' })
+  @Column({ name: "customer_company_id" })
   customerCompanyId: number;
 
   @ManyToOne(() => SupplierProfile)
-  @JoinColumn({ name: 'supplier_profile_id' })
+  @JoinColumn({ name: "supplier_profile_id" })
   supplierProfile: SupplierProfile;
 
-  @Column({ name: 'supplier_profile_id' })
+  @Column({ name: "supplier_profile_id" })
   supplierProfileId: number;
 
   @ManyToOne(() => CustomerProfile)
-  @JoinColumn({ name: 'blocked_by' })
+  @JoinColumn({ name: "blocked_by" })
   blockedBy: CustomerProfile;
 
-  @Column({ name: 'blocked_by' })
+  @Column({ name: "blocked_by" })
   blockedById: number;
 
-  @Column({ name: 'reason', type: 'text', nullable: true })
+  @Column({ name: "reason", type: "text", nullable: true })
   reason: string | null;
 
-  @Column({ name: 'is_active', default: true })
+  @Column({ name: "is_active", default: true })
   isActive: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

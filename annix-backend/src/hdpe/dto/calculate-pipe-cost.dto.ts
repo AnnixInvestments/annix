@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsPositive, Min, IsOptional } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsPositive, Min } from "class-validator";
 
 export class CalculatePipeCostDto {
   @IsInt()

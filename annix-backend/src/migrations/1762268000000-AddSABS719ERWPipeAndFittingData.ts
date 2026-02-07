@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationInterface {
-  name = 'AddSABS719ERWPipeAndFittingData1762268000000';
+  name = "AddSABS719ERWPipeAndFittingData1762268000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('🔧 Adding SABS 719 ERW pipe and fitting data...');
+    console.warn("🔧 Adding SABS 719 ERW pipe and fitting data...");
 
     // Get SABS 719 ERW steel specification ID
     const sabs719Result = await queryRunner.query(`
@@ -12,7 +12,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
         `);
 
     if (!sabs719Result.length) {
-      console.error('SABS 719 ERW steel specification not found');
+      console.error("SABS 719 ERW steel specification not found");
       return;
     }
 
@@ -46,7 +46,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
             WHERE steel_specification_id = ${steelSpecId}
         `);
 
-    console.warn('🗑️  Cleared existing SABS 719 ERW data');
+    console.warn("🗑️  Cleared existing SABS 719 ERW data");
 
     // SABS 719 ERW pipe data: [nominalDiameter, outsideDiameter, wallThickness, massPerMeter]
     const sabs719PipeData = [
@@ -330,9 +330,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
 
     // Insert nominal outside diameters for SABS 719 ERW
     const uniqueDiameters = [
-      ...new Set(
-        sabs719PipeData.map(([nominal, outside]) => [nominal, outside]),
-      ),
+      ...new Set(sabs719PipeData.map(([nominal, outside]) => [nominal, outside])),
     ];
     for (const [nominalDiameter, outsideDiameter] of uniqueDiameters) {
       await queryRunner.query(`
@@ -342,15 +340,10 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
             `);
     }
 
-    console.warn('📏 Ensured all SABS 719 ERW nominal outside diameters exist');
+    console.warn("📏 Ensured all SABS 719 ERW nominal outside diameters exist");
 
     // Insert pipe dimensions
-    for (const [
-      nominalDiameter,
-      outsideDiameter,
-      wallThickness,
-      massPerMeter,
-    ] of sabs719PipeData) {
+    for (const [nominalDiameter, outsideDiameter, wallThickness, massPerMeter] of sabs719PipeData) {
       const nominalResult = await queryRunner.query(`
                 SELECT id FROM nominal_outside_diameters 
                 WHERE nominal_diameter_mm = ${nominalDiameter} AND outside_diameter_mm = ${outsideDiameter}
@@ -382,19 +375,17 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
       }
     }
 
-    console.warn(
-      `✅ Inserted SABS 719 ERW pipe data (${sabs719PipeData.length} entries)`,
-    );
+    console.warn(`✅ Inserted SABS 719 ERW pipe data (${sabs719PipeData.length} entries)`);
 
     // Insert fitting types for SABS 719 ERW
     const fittingTypes = [
-      'Short Tee',
-      'Gusset Tee',
-      'Long Radius Elbow',
-      'Medium Radius Elbow',
-      'Short Radius Elbow',
-      'Reducer',
-      'Bellmouth',
+      "Short Tee",
+      "Gusset Tee",
+      "Long Radius Elbow",
+      "Medium Radius Elbow",
+      "Short Radius Elbow",
+      "Reducer",
+      "Bellmouth",
     ];
 
     for (const fittingType of fittingTypes) {
@@ -405,7 +396,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
             `);
     }
 
-    console.warn('✅ Ensured SABS 719 ERW fitting types exist');
+    console.warn("✅ Ensured SABS 719 ERW fitting types exist");
 
     // Get fitting type IDs
     const fittingTypeIds = {};
@@ -437,7 +428,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
         [800, 813.0, 815.0, 970.0, 405.0],
         [850, 864.0, 865.0, 1020.0, 430.0],
         [900, 914.0, 915.0, 1070.0, 460.0],
-      ].map((row) => ['Short Tee', ...row]),
+      ].map((row) => ["Short Tee", ...row]),
 
       // Long Radius Elbows [nominalDiameter, outsideDiameter, A, B, C, radius]
       ...[
@@ -456,7 +447,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
         [800, 813.0, 2445.0, 3260.0, 1630.0, 2445.0],
         [850, 864.0, 2595.0, 3460.0, 1730.0, 2595.0],
         [900, 914.0, 2745.0, 3660.0, 1830.0, 2745.0],
-      ].map((row) => ['Long Radius Elbow', ...row]),
+      ].map((row) => ["Long Radius Elbow", ...row]),
 
       // Medium Radius Elbows
       ...[
@@ -475,7 +466,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
         [800, 813.0, 1630.0, 815.0, 545.0, 1630.0],
         [850, 864.0, 1730.0, 865.0, 585.0, 1730.0],
         [900, 914.0, 1830.0, 915.0, 610.0, 1830.0],
-      ].map((row) => ['Medium Radius Elbow', ...row]),
+      ].map((row) => ["Medium Radius Elbow", ...row]),
 
       // Short Radius Elbows
       ...[
@@ -494,7 +485,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
         [800, 813.0, 815.0, 460.0, 405.0, 815.0],
         [850, 864.0, 865.0, 485.0, 430.0, 865.0],
         [900, 914.0, 915.0, 510.0, 460.0, 915.0],
-      ].map((row) => ['Short Radius Elbow', ...row]),
+      ].map((row) => ["Short Radius Elbow", ...row]),
     ];
 
     // Insert fitting dimensions
@@ -541,16 +532,12 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
         const variantId = variantResult[0].id;
 
         // Insert dimensions as separate records
-        const dimensionNames = ['A', 'B', 'C'];
-        if (fittingTypeName.includes('Elbow')) {
-          dimensionNames.push('Radius');
+        const dimensionNames = ["A", "B", "C"];
+        if (fittingTypeName.includes("Elbow")) {
+          dimensionNames.push("Radius");
         }
 
-        for (
-          let i = 0;
-          i < dimensions.length && i < dimensionNames.length;
-          i++
-        ) {
+        for (let i = 0; i < dimensions.length && i < dimensionNames.length; i++) {
           if (dimensions[i] != null) {
             await queryRunner.query(`
                             INSERT INTO fitting_dimensions (
@@ -613,7 +600,7 @@ export class AddSABS719ERWPipeAndFittingData1762268000000 implements MigrationIn
                 WHERE steel_specification_id = ${steelSpecId}
             `);
 
-      console.warn('🗑️  Removed SABS 719 ERW pipe and fitting data');
+      console.warn("🗑️  Removed SABS 719 ERW pipe and fitting data");
     }
   }
 }

@@ -1,49 +1,49 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  ParseIntPipe,
-  HttpStatus,
-  Request,
-  UseInterceptors,
-  UploadedFile,
   BadRequestException,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  Request,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
+import { AuthGuard } from "@nestjs/passport";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
-  ApiTags,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
-  ApiConsumes,
-  ApiBody,
-} from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
-import { BoqService, PaginatedResult } from './boq.service';
-import { BoqParserService } from './boq-parser.service';
-import { BoqDistributionService } from './boq-distribution.service';
-import { Boq } from './entities/boq.entity';
-import { BoqLineItem } from './entities/boq-line-item.entity';
-import { CreateBoqDto } from './dto/create-boq.dto';
-import { UpdateBoqDto } from './dto/update-boq.dto';
-import { CreateBoqLineItemDto } from './dto/create-boq-line-item.dto';
-import { UpdateBoqLineItemDto } from './dto/update-boq-line-item.dto';
-import { BoqQueryDto } from './dto/boq-query.dto';
-import { ReorderLineItemsDto } from './dto/reorder-line-items.dto';
-import { UploadBoqDto } from './dto/upload-boq.dto';
-import { SubmitBoqDto, SubmitBoqResponseDto } from './dto/submit-boq.dto';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+  ApiTags,
+} from "@nestjs/swagger";
+import { Roles } from "../auth/roles.decorator";
+import { RolesGuard } from "../auth/roles.guard";
+import { BoqService, PaginatedResult } from "./boq.service";
+import { BoqDistributionService } from "./boq-distribution.service";
+import { BoqParserService } from "./boq-parser.service";
+import { BoqQueryDto } from "./dto/boq-query.dto";
+import { CreateBoqDto } from "./dto/create-boq.dto";
+import { CreateBoqLineItemDto } from "./dto/create-boq-line-item.dto";
+import { ReorderLineItemsDto } from "./dto/reorder-line-items.dto";
+import { SubmitBoqDto, SubmitBoqResponseDto } from "./dto/submit-boq.dto";
+import { UpdateBoqDto } from "./dto/update-boq.dto";
+import { UpdateBoqLineItemDto } from "./dto/update-boq-line-item.dto";
+import { UploadBoqDto } from "./dto/upload-boq.dto";
+import { Boq } from "./entities/boq.entity";
+import { BoqLineItem } from "./entities/boq-line-item.entity";
 
-@ApiTags('BOQ')
-@Controller('boq')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
+@ApiTags("BOQ")
+@Controller("boq")
+@UseGuards(AuthGuard("jwt"), RolesGuard)
 @ApiBearerAuth()
 export class BoqController {
   constructor(
@@ -55,70 +55,67 @@ export class BoqController {
   // === CREATE ===
 
   @Post()
-  @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @ApiOperation({ summary: 'Create a new BOQ' })
+  @Roles("rfq_administrator", "customer", "supplier", "admin")
+  @ApiOperation({ summary: "Create a new BOQ" })
   @ApiResponse({ status: HttpStatus.CREATED, type: Boq })
-  async create(
-    @Body() createBoqDto: CreateBoqDto,
-    @Request() req,
-  ): Promise<Boq> {
+  async create(@Body() createBoqDto: CreateBoqDto, @Request() req): Promise<Boq> {
     return this.boqService.create(createBoqDto, req.user);
   }
 
-  @Post(':id/line-items')
-  @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @ApiOperation({ summary: 'Add a line item to BOQ' })
+  @Post(":id/line-items")
+  @Roles("rfq_administrator", "customer", "supplier", "admin")
+  @ApiOperation({ summary: "Add a line item to BOQ" })
   @ApiResponse({ status: HttpStatus.CREATED, type: BoqLineItem })
   async addLineItem(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() createLineItemDto: CreateBoqLineItemDto,
     @Request() req,
   ): Promise<BoqLineItem> {
     return this.boqService.addLineItem(id, createLineItemDto, req.user);
   }
 
-  @Post(':id/line-items/bulk')
-  @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @ApiOperation({ summary: 'Add multiple line items to BOQ' })
+  @Post(":id/line-items/bulk")
+  @Roles("rfq_administrator", "customer", "supplier", "admin")
+  @ApiOperation({ summary: "Add multiple line items to BOQ" })
   @ApiResponse({ status: HttpStatus.CREATED, type: [BoqLineItem] })
   async addLineItemsBulk(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() createLineItemsDto: CreateBoqLineItemDto[],
     @Request() req,
   ): Promise<BoqLineItem[]> {
     return this.boqService.addLineItemsBulk(id, createLineItemsDto, req.user);
   }
 
-  @Post('upload')
-  @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Upload BOQ from Excel or PDF file' })
-  @ApiConsumes('multipart/form-data')
+  @Post("upload")
+  @Roles("rfq_administrator", "customer", "supplier", "admin")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload BOQ from Excel or PDF file" })
+  @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {
-      type: 'object',
-      required: ['file', 'title'],
+      type: "object",
+      required: ["file", "title"],
       properties: {
         file: {
-          type: 'string',
-          format: 'binary',
-          description: 'Excel (.xlsx, .xls) or PDF file',
+          type: "string",
+          format: "binary",
+          description: "Excel (.xlsx, .xls) or PDF file",
         },
         title: {
-          type: 'string',
-          description: 'BOQ title',
+          type: "string",
+          description: "BOQ title",
         },
         description: {
-          type: 'string',
-          description: 'BOQ description (optional)',
+          type: "string",
+          description: "BOQ description (optional)",
         },
         drawingId: {
-          type: 'number',
-          description: 'Drawing ID to link (optional)',
+          type: "number",
+          description: "Drawing ID to link (optional)",
         },
         rfqId: {
-          type: 'number',
-          description: 'RFQ ID to link (optional)',
+          type: "number",
+          description: "RFQ ID to link (optional)",
         },
       },
     },
@@ -126,7 +123,7 @@ export class BoqController {
   @ApiResponse({ status: HttpStatus.CREATED, type: Boq })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid file or parse error',
+    description: "Invalid file or parse error",
   })
   async uploadBoq(
     @UploadedFile() file: Express.Multer.File,
@@ -134,33 +131,28 @@ export class BoqController {
     @Request() req,
   ): Promise<{ boq: Boq; warnings: string[] }> {
     if (!file) {
-      throw new BadRequestException('No file uploaded');
+      throw new BadRequestException("No file uploaded");
     }
 
     // Validate file type
     const allowedMimeTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-      'application/vnd.ms-excel', // .xls
-      'application/pdf',
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+      "application/vnd.ms-excel", // .xls
+      "application/pdf",
     ];
 
-    const allowedExtensions = ['.xlsx', '.xls', '.pdf'];
-    const fileExtension = file.originalname
-      .toLowerCase()
-      .slice(file.originalname.lastIndexOf('.'));
+    const allowedExtensions = [".xlsx", ".xls", ".pdf"];
+    const fileExtension = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf("."));
 
-    if (
-      !allowedMimeTypes.includes(file.mimetype) &&
-      !allowedExtensions.includes(fileExtension)
-    ) {
+    if (!allowedMimeTypes.includes(file.mimetype) && !allowedExtensions.includes(fileExtension)) {
       throw new BadRequestException(
-        'Invalid file type. Please upload an Excel (.xlsx, .xls) or PDF file.',
+        "Invalid file type. Please upload an Excel (.xlsx, .xls) or PDF file.",
       );
     }
 
     // Parse the file
     let parsedData;
-    if (fileExtension === '.pdf' || file.mimetype === 'application/pdf') {
+    if (fileExtension === ".pdf" || file.mimetype === "application/pdf") {
       parsedData = this.boqParserService.parsePdf(file.buffer);
     } else {
       parsedData = this.boqParserService.parseExcel(file.buffer);
@@ -169,7 +161,7 @@ export class BoqController {
     // Check for critical errors
     if (parsedData.errors.length > 0 && parsedData.lineItems.length === 0) {
       throw new BadRequestException({
-        message: 'Failed to parse file',
+        message: "Failed to parse file",
         errors: parsedData.errors,
         warnings: parsedData.warnings,
       });
@@ -177,10 +169,7 @@ export class BoqController {
 
     // Create the BOQ
     const createBoqDto: CreateBoqDto = {
-      title:
-        uploadDto.title ||
-        parsedData.title ||
-        `Imported BOQ - ${file.originalname}`,
+      title: uploadDto.title || parsedData.title || `Imported BOQ - ${file.originalname}`,
       description: uploadDto.description || parsedData.description,
       drawingId: uploadDto.drawingId,
       rfqId: uploadDto.rfqId,
@@ -190,19 +179,17 @@ export class BoqController {
 
     // Add line items
     if (parsedData.lineItems.length > 0) {
-      const lineItemDtos: CreateBoqLineItemDto[] = parsedData.lineItems.map(
-        (item) => ({
-          itemCode: item.itemCode,
-          description: item.description,
-          itemType: item.itemType,
-          unitOfMeasure: item.unitOfMeasure,
-          quantity: item.quantity,
-          unitWeightKg: item.unitWeightKg,
-          unitPrice: item.unitPrice,
-          notes: item.notes,
-          drawingReference: item.drawingReference,
-        }),
-      );
+      const lineItemDtos: CreateBoqLineItemDto[] = parsedData.lineItems.map((item) => ({
+        itemCode: item.itemCode,
+        description: item.description,
+        itemType: item.itemType,
+        unitOfMeasure: item.unitOfMeasure,
+        quantity: item.quantity,
+        unitWeightKg: item.unitWeightKg,
+        unitPrice: item.unitPrice,
+        notes: item.notes,
+        drawingReference: item.drawingReference,
+      }));
 
       await this.boqService.addLineItemsBulk(boq.id, lineItemDtos, req.user);
     }
@@ -224,76 +211,71 @@ export class BoqController {
 
   @Get()
   @Roles(
-    'rfq_administrator',
-    'reviewer',
-    'approver',
-    'compliance_officer',
-    'customer',
-    'supplier',
-    'admin',
-    'user',
+    "rfq_administrator",
+    "reviewer",
+    "approver",
+    "compliance_officer",
+    "customer",
+    "supplier",
+    "admin",
+    "user",
   )
-  @ApiOperation({ summary: 'Get all BOQs with pagination' })
+  @ApiOperation({ summary: "Get all BOQs with pagination" })
   @ApiResponse({ status: HttpStatus.OK })
   async findAll(@Query() query: BoqQueryDto): Promise<PaginatedResult<Boq>> {
     return this.boqService.findAll(query);
   }
 
-  @Get(':id')
+  @Get(":id")
   @Roles(
-    'rfq_administrator',
-    'reviewer',
-    'approver',
-    'compliance_officer',
-    'customer',
-    'supplier',
-    'admin',
-    'user',
+    "rfq_administrator",
+    "reviewer",
+    "approver",
+    "compliance_officer",
+    "customer",
+    "supplier",
+    "admin",
+    "user",
   )
-  @ApiOperation({ summary: 'Get BOQ by ID with all line items' })
+  @ApiOperation({ summary: "Get BOQ by ID with all line items" })
   @ApiResponse({ status: HttpStatus.OK, type: Boq })
-  async findOne(@Param('id', ParseIntPipe) id: number): Promise<Boq> {
+  async findOne(@Param("id", ParseIntPipe) id: number): Promise<Boq> {
     return this.boqService.findOne(id);
   }
 
   // === UPDATE ===
 
-  @Patch(':id')
-  @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @ApiOperation({ summary: 'Update BOQ metadata' })
+  @Patch(":id")
+  @Roles("rfq_administrator", "customer", "supplier", "admin")
+  @ApiOperation({ summary: "Update BOQ metadata" })
   @ApiResponse({ status: HttpStatus.OK, type: Boq })
   async update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() updateBoqDto: UpdateBoqDto,
     @Request() req,
   ): Promise<Boq> {
     return this.boqService.update(id, updateBoqDto, req.user);
   }
 
-  @Patch(':id/line-items/:lineItemId')
-  @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @ApiOperation({ summary: 'Update a BOQ line item' })
+  @Patch(":id/line-items/:lineItemId")
+  @Roles("rfq_administrator", "customer", "supplier", "admin")
+  @ApiOperation({ summary: "Update a BOQ line item" })
   @ApiResponse({ status: HttpStatus.OK, type: BoqLineItem })
   async updateLineItem(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('lineItemId', ParseIntPipe) lineItemId: number,
+    @Param("id", ParseIntPipe) id: number,
+    @Param("lineItemId", ParseIntPipe) lineItemId: number,
     @Body() updateLineItemDto: UpdateBoqLineItemDto,
     @Request() req,
   ): Promise<BoqLineItem> {
-    return this.boqService.updateLineItem(
-      id,
-      lineItemId,
-      updateLineItemDto,
-      req.user,
-    );
+    return this.boqService.updateLineItem(id, lineItemId, updateLineItemDto, req.user);
   }
 
-  @Patch(':id/line-items/reorder')
-  @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @ApiOperation({ summary: 'Reorder BOQ line items' })
+  @Patch(":id/line-items/reorder")
+  @Roles("rfq_administrator", "customer", "supplier", "admin")
+  @ApiOperation({ summary: "Reorder BOQ line items" })
   @ApiResponse({ status: HttpStatus.OK, type: [BoqLineItem] })
   async reorderLineItems(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() reorderDto: ReorderLineItemsDto,
     @Request() req,
   ): Promise<BoqLineItem[]> {
@@ -302,24 +284,21 @@ export class BoqController {
 
   // === DELETE ===
 
-  @Delete(':id')
-  @Roles('rfq_administrator', 'admin')
-  @ApiOperation({ summary: 'Delete a BOQ (only if in draft status)' })
+  @Delete(":id")
+  @Roles("rfq_administrator", "admin")
+  @ApiOperation({ summary: "Delete a BOQ (only if in draft status)" })
   @ApiResponse({ status: HttpStatus.NO_CONTENT })
-  async remove(
-    @Param('id', ParseIntPipe) id: number,
-    @Request() req,
-  ): Promise<void> {
+  async remove(@Param("id", ParseIntPipe) id: number, @Request() req): Promise<void> {
     await this.boqService.remove(id, req.user);
   }
 
-  @Delete(':id/line-items/:lineItemId')
-  @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @ApiOperation({ summary: 'Remove a line item from BOQ' })
+  @Delete(":id/line-items/:lineItemId")
+  @Roles("rfq_administrator", "customer", "supplier", "admin")
+  @ApiOperation({ summary: "Remove a line item from BOQ" })
   @ApiResponse({ status: HttpStatus.NO_CONTENT })
   async removeLineItem(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('lineItemId', ParseIntPipe) lineItemId: number,
+    @Param("id", ParseIntPipe) id: number,
+    @Param("lineItemId", ParseIntPipe) lineItemId: number,
     @Request() req,
   ): Promise<void> {
     await this.boqService.removeLineItem(id, lineItemId, req.user);
@@ -327,13 +306,13 @@ export class BoqController {
 
   // === LINK TO DRAWING ===
 
-  @Post(':id/link-drawing/:drawingId')
-  @Roles('rfq_administrator', 'customer', 'supplier', 'admin')
-  @ApiOperation({ summary: 'Link BOQ to a drawing' })
+  @Post(":id/link-drawing/:drawingId")
+  @Roles("rfq_administrator", "customer", "supplier", "admin")
+  @ApiOperation({ summary: "Link BOQ to a drawing" })
   @ApiResponse({ status: HttpStatus.OK, type: Boq })
   async linkToDrawing(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('drawingId', ParseIntPipe) drawingId: number,
+    @Param("id", ParseIntPipe) id: number,
+    @Param("drawingId", ParseIntPipe) drawingId: number,
     @Request() req,
   ): Promise<Boq> {
     return this.boqService.linkToDrawing(id, drawingId, req.user);
@@ -341,14 +320,14 @@ export class BoqController {
 
   // === BOQ DISTRIBUTION ===
 
-  @Post(':id/submit')
-  @Roles('rfq_administrator', 'customer', 'admin')
+  @Post(":id/submit")
+  @Roles("rfq_administrator", "customer", "admin")
   @ApiOperation({
-    summary: 'Submit BOQ for quotation (triggers supplier distribution)',
+    summary: "Submit BOQ for quotation (triggers supplier distribution)",
   })
   @ApiResponse({ status: HttpStatus.OK, type: SubmitBoqResponseDto })
   async submitForQuotation(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() submitDto: SubmitBoqDto,
   ): Promise<SubmitBoqResponseDto> {
     const result = await this.distributionService.submitForQuotation(
@@ -367,14 +346,14 @@ export class BoqController {
     };
   }
 
-  @Post(':id/update-submitted')
-  @Roles('rfq_administrator', 'customer', 'admin')
+  @Post(":id/update-submitted")
+  @Roles("rfq_administrator", "customer", "admin")
   @ApiOperation({
-    summary: 'Update submitted BOQ (re-notifies suppliers)',
+    summary: "Update submitted BOQ (re-notifies suppliers)",
   })
   @ApiResponse({ status: HttpStatus.OK, type: SubmitBoqResponseDto })
   async updateSubmittedBoq(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() submitDto: SubmitBoqDto,
   ): Promise<SubmitBoqResponseDto> {
     const result = await this.distributionService.handleBoqUpdate(

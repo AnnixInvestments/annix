@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content = fs.readFileSync(filePath, "utf8");
 
 // Fix 1: Update the Surface Protection summary box to also show for manual confirmation
 // and show external coating type from manual selection if recommendation not available
@@ -83,9 +83,9 @@ const newSummaryBox = `        {/* Surface Protection Section Header */}
 
 if (content.includes(oldSummaryBox)) {
   content = content.replace(oldSummaryBox, newSummaryBox);
-  console.log('✅ Updated Surface Protection section with header and fixed summary box');
+  console.log("✅ Updated Surface Protection section with header and fixed summary box");
 } else {
-  console.log('❌ Could not find the summary box pattern');
+  console.log("❌ Could not find the summary box pattern");
 }
 
 // Fix 2: Close the space-y-4 div after Internal Lining section ends
@@ -94,12 +94,15 @@ const closingPattern = `        </>
         )}`;
 
 // We need to add a closing </div> before </>
-const internalLiningSectionEnd = content.indexOf('        {/* Internal Lining */}');
+const internalLiningSectionEnd = content.indexOf("        {/* Internal Lining */}");
 if (internalLiningSectionEnd > -1) {
   // Find the end of the internal lining section - look for the closing </> of showSurfaceProtection
-  const surfaceProtectionEnd = content.indexOf('        </>\\n        )}', internalLiningSectionEnd);
-  console.log('📍 Found Internal Lining section start at:', internalLiningSectionEnd);
+  const surfaceProtectionEnd = content.indexOf(
+    "        </>\\n        )}",
+    internalLiningSectionEnd,
+  );
+  console.log("📍 Found Internal Lining section start at:", internalLiningSectionEnd);
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

@@ -1,106 +1,106 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddImperialBoltData1772400000000 implements MigrationInterface {
-  name = 'AddImperialBoltData1772400000000';
+  name = "AddImperialBoltData1772400000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding imperial bolt data...');
+    console.warn("Adding imperial bolt data...");
 
     const imperialBolts = [
       {
         designation: '1/2" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 1.954,
       },
       {
         designation: '5/8" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 2.309,
       },
       {
         designation: '3/4" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 2.54,
       },
       {
         designation: '7/8" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 2.822,
       },
       {
         designation: '1" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 3.175,
       },
       {
         designation: '1-1/8" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 3.629,
       },
       {
         designation: '1-1/4" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 3.629,
       },
       {
         designation: '1-3/8" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 4.233,
       },
       {
         designation: '1-1/2" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 4.233,
       },
       {
         designation: '1-5/8" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 5.08,
       },
       {
         designation: '1-3/4" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 5.08,
       },
       {
         designation: '2" UNC',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 5.644,
       },
     ];
@@ -108,98 +108,98 @@ export class AddImperialBoltData1772400000000 implements MigrationInterface {
     const studBolts = [
       {
         designation: '1/2" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 1.954,
       },
       {
         designation: '5/8" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 2.309,
       },
       {
         designation: '3/4" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 2.54,
       },
       {
         designation: '7/8" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 2.822,
       },
       {
         designation: '1" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 3.175,
       },
       {
         designation: '1-1/8" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 3.629,
       },
       {
         designation: '1-1/4" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 3.629,
       },
       {
         designation: '1-3/8" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 4.233,
       },
       {
         designation: '1-1/2" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 4.233,
       },
       {
         designation: '1-5/8" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 5.08,
       },
       {
         designation: '1-3/4" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 5.08,
       },
       {
         designation: '2" B7 Stud',
-        grade: 'B7',
-        material: 'Alloy Steel',
-        headStyle: 'stud',
-        threadType: 'coarse',
+        grade: "B7",
+        material: "Alloy Steel",
+        headStyle: "stud",
+        threadType: "coarse",
         threadPitchMm: 5.644,
       },
     ];
@@ -452,10 +452,9 @@ export class AddImperialBoltData1772400000000 implements MigrationInterface {
     };
 
     for (const [designation, lengths] of Object.entries(boltMassData)) {
-      const boltResult = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = $1`,
-        [designation],
-      );
+      const boltResult = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+        designation,
+      ]);
       if (boltResult.length === 0) continue;
       const boltId = boltResult[0].id;
 
@@ -473,10 +472,9 @@ export class AddImperialBoltData1772400000000 implements MigrationInterface {
     }
 
     for (const [designation, lengths] of Object.entries(studMassData)) {
-      const boltResult = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = $1`,
-        [designation],
-      );
+      const boltResult = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+        designation,
+      ]);
       if (boltResult.length === 0) continue;
       const boltId = boltResult[0].id;
 
@@ -493,7 +491,7 @@ export class AddImperialBoltData1772400000000 implements MigrationInterface {
       }
     }
 
-    console.warn('Imperial bolt data added successfully.');
+    console.warn("Imperial bolt data added successfully.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -525,9 +523,7 @@ export class AddImperialBoltData1772400000000 implements MigrationInterface {
     ];
 
     for (const designation of designations) {
-      await queryRunner.query(`DELETE FROM bolts WHERE designation = $1`, [
-        designation,
-      ]);
+      await queryRunner.query("DELETE FROM bolts WHERE designation = $1", [designation]);
     }
   }
 }

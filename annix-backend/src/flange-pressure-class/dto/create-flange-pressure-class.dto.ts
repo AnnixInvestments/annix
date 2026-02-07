@@ -1,16 +1,16 @@
-import { IsInt, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsInt, IsString } from "class-validator";
 
 export class CreateFlangePressureClassDto {
   @ApiProperty({
-    description: 'Designation of the pressure class',
-    example: 'PN16', // could also be "6/3", "10/3", "T/D"
+    description: "Designation of the pressure class",
+    example: "PN16", // could also be "6/3", "10/3", "T/D"
   })
   @IsString()
   designation: string; // "6/3", "10/3", "T/D"
 
   @ApiProperty({
-    description: 'Reference to the flange standard (FK)',
+    description: "Reference to the flange standard (FK)",
     example: 1, // e.g. SANS 719, ASTM A105, etc.
   })
   @IsInt()

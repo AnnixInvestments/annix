@@ -1,28 +1,32 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, use } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import * as XLSX from 'xlsx';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import React, { use, useEffect, useState } from "react";
+import * as XLSX from "xlsx";
+import { useToast } from "@/app/components/Toast";
 import {
-  supplierPortalApi,
-  SupplierBoqDetailResponse,
-  SupplierBoqStatus,
   BoqSection,
   ConsolidatedItem,
   RfqItemDetail,
-} from '@/app/lib/api/supplierApi';
-import { useToast } from '@/app/components/Toast';
-import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
-import { currencyByCode, DEFAULT_CURRENCY, vatRateForCurrency } from '@/app/lib/currencies';
+  SupplierBoqDetailResponse,
+  SupplierBoqStatus,
+  supplierPortalApi,
+} from "@/app/lib/api/supplierApi";
 import {
-  NB_TO_OD_LOOKUP,
-  flangeWeightSync as flangeWeight,
+  weldCountPerBend,
+  weldCountPerFitting,
+  weldCountPerPipe,
+} from "@/app/lib/config/rfq/pipeEndOptions";
+import { currencyByCode, DEFAULT_CURRENCY, vatRateForCurrency } from "@/app/lib/currencies";
+import { formatDateTimeZA, nowISO } from "@/app/lib/datetime";
+import {
   blankFlangeWeightSync as blankFlangeWeight,
+  flangeWeightSync as flangeWeight,
+  NB_TO_OD_LOOKUP,
   sansBlankFlangeWeightSync as sansBlankFlangeWeight,
-} from '@/app/lib/hooks/useFlangeWeights';
-import { weldCountPerPipe, weldCountPerBend, weldCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
-import { log } from '@/app/lib/logger';
+} from "@/app/lib/hooks/useFlangeWeights";
+import { log } from "@/app/lib/logger";
 
 interface PricingInputs {
   steelSpecs: Record<string, number>;
@@ -65,49 +69,71 @@ interface WeldTotals {
 const normalizeSteelSpec = (spec: string): string => {
   return spec
     .toUpperCase()
-    .replace(/\s+/g, ' ')
-    .replace(/SABS\s*(\d+)/g, 'SABS $1')
+    .replace(/\s+/g, " ")
+    .replace(/SABS\s*(\d+)/g, "SABS $1")
     .trim();
 };
 
 const isRotatingFlange = (config: string): boolean => {
-  return config.includes('RF') || config.includes('R/F');
+  return config.includes("RF") || config.includes("R/F");
 };
 
 const isSlipOnFlange = (config: string): boolean => {
-  return Boolean(config) && config !== 'PE' && !isRotatingFlange(config);
+  return Boolean(config) && config !== "PE" && !isRotatingFlange(config);
 };
 
 const flangeCountFromConfig = (config: string | undefined, itemType: string): number => {
-  if (!config || config === 'PE') return 0;
-  if (itemType === 'bend' || itemType === 'straight_pipe') {
+  if (!config || config === "PE") return 0;
+  if (itemType === "bend" || itemType === "straight_pipe") {
     const counts: Record<string, number> = {
-      'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, '2xLF': 2,
+      FOE: 1,
+      FBE: 2,
+      FOE_LF: 2,
+      FOE_RF: 2,
+      "2X_RF": 2,
+      "2xLF": 2,
     };
     return counts[config] || 0;
   }
-  if (itemType === 'fitting') {
+  if (itemType === "fitting") {
     const counts: Record<string, number> = {
-      'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 3, 'F2E_LF': 3, '3X_RF': 3, '2X_RF_FOE': 3,
-      'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1,
+      FAE: 3,
+      FFF: 3,
+      F2E: 2,
+      F2E_RF: 3,
+      F2E_LF: 3,
+      "3X_RF": 3,
+      "2X_RF_FOE": 3,
+      FFP: 2,
+      PFF: 2,
+      PPF: 1,
+      FPP: 1,
+      PFP: 1,
     };
     return counts[config] || 0;
   }
   return 0;
 };
 
-const recalculateFlangeWeight = (description: string, qty: number, isBlankFlange: boolean): number => {
+const recalculateFlangeWeight = (
+  description: string,
+  qty: number,
+  isBlankFlange: boolean,
+): number => {
   const nbMatch = description.match(/(\d+)\s*NB/i);
-  const nb = nbMatch ? parseInt(nbMatch[1]) : 0;
+  const nb = nbMatch ? parseInt(nbMatch[1], 10) : 0;
   if (nb === 0) return 0;
 
   const pressureClassMatch = description.match(/(\d+\/\d)/);
-  const pressureClass = pressureClassMatch ? pressureClassMatch[1] : 'PN16';
+  const pressureClass = pressureClassMatch ? pressureClassMatch[1] : "PN16";
 
-  const isSans = description.toUpperCase().includes('SABS') || description.toUpperCase().includes('SANS') || pressureClassMatch;
-  const flangeStandard = isSans ? 'SANS 1123' : '';
+  const isSans =
+    description.toUpperCase().includes("SABS") ||
+    description.toUpperCase().includes("SANS") ||
+    pressureClassMatch;
+  const flangeStandard = isSans ? "SANS 1123" : "";
 
-  if (isBlankFlange || description.toUpperCase().includes('BLANK')) {
+  if (isBlankFlange || description.toUpperCase().includes("BLANK")) {
     if (isSans) {
       return sansBlankFlangeWeight(nb, pressureClass) * qty;
     }
@@ -131,7 +157,7 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
         steelSpecs.add(normalizeSteelSpec(straightDetails.pipeStandard));
       }
       const config = straightDetails.pipeEndConfiguration;
-      if (config && config !== 'PE') {
+      if (config && config !== "PE") {
         if (isRotatingFlange(config)) {
           flangeTypes.rotating = true;
         }
@@ -146,7 +172,7 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
         steelSpecs.add(normalizeSteelSpec(bendDetails.pipeStandard));
       }
       const config = bendDetails.bendEndConfiguration;
-      if (config && config !== 'PE') {
+      if (config && config !== "PE") {
         if (isRotatingFlange(config)) {
           flangeTypes.rotating = true;
         }
@@ -161,7 +187,7 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
         steelSpecs.add(normalizeSteelSpec(fittingDetails.fittingStandard));
       }
       const config = fittingDetails.pipeEndConfiguration;
-      if (config && config !== 'PE') {
+      if (config && config !== "PE") {
         if (isRotatingFlange(config)) {
           flangeTypes.rotating = true;
         }
@@ -179,7 +205,7 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
     if (sabsMatch) {
       steelSpecs.add(`SABS ${sabsMatch[1]}`);
     }
-    if (description.includes('BLANK') && description.includes('FLANGE')) {
+    if (description.includes("BLANK") && description.includes("FLANGE")) {
       flangeTypes.blank = true;
     }
   });
@@ -196,12 +222,42 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
 };
 
 const NOMINAL_TO_OD_MM: Record<number, number> = {
-  15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3,
-  65: 73.0, 80: 88.9, 100: 114.3, 125: 141.3, 150: 168.3, 200: 219.1,
-  250: 273.1, 300: 323.9, 350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0,
-  550: 558.8, 600: 609.6, 650: 660.4, 700: 711.2, 750: 762.0, 800: 812.8,
-  850: 863.6, 900: 914.4, 950: 965.2, 1000: 1016.0, 1050: 1066.8, 1100: 1117.6,
-  1200: 1219.2, 1400: 1422.4, 1500: 1524.0, 1600: 1625.6, 1800: 1828.8, 2000: 2032.0,
+  15: 21.3,
+  20: 26.7,
+  25: 33.4,
+  32: 42.2,
+  40: 48.3,
+  50: 60.3,
+  65: 73.0,
+  80: 88.9,
+  100: 114.3,
+  125: 141.3,
+  150: 168.3,
+  200: 219.1,
+  250: 273.1,
+  300: 323.9,
+  350: 355.6,
+  400: 406.4,
+  450: 457.2,
+  500: 508.0,
+  550: 558.8,
+  600: 609.6,
+  650: 660.4,
+  700: 711.2,
+  750: 762.0,
+  800: 812.8,
+  850: 863.6,
+  900: 914.4,
+  950: 965.2,
+  1000: 1016.0,
+  1050: 1066.8,
+  1100: 1117.6,
+  1200: 1219.2,
+  1400: 1422.4,
+  1500: 1524.0,
+  1600: 1625.6,
+  1800: 1828.8,
+  2000: 2032.0,
 };
 
 const nominalToOutsideDiameter = (nominalBoreMm: number | undefined): number => {
@@ -210,9 +266,11 @@ const nominalToOutsideDiameter = (nominalBoreMm: number | undefined): number => 
   if (NOMINAL_TO_OD_MM[roundedNominal]) {
     return NOMINAL_TO_OD_MM[roundedNominal];
   }
-  const keys = Object.keys(NOMINAL_TO_OD_MM).map(Number).sort((a, b) => a - b);
+  const keys = Object.keys(NOMINAL_TO_OD_MM)
+    .map(Number)
+    .sort((a, b) => a - b);
   const closest = keys.reduce((prev, curr) =>
-    Math.abs(curr - roundedNominal) < Math.abs(prev - roundedNominal) ? curr : prev
+    Math.abs(curr - roundedNominal) < Math.abs(prev - roundedNominal) ? curr : prev,
   );
   return NOMINAL_TO_OD_MM[closest] || roundedNominal * 1.05;
 };
@@ -223,19 +281,43 @@ const calculateWeldCircumference = (diameterMm: number | undefined): number => {
 };
 
 const countFlangesFromConfig = (config: string | undefined, itemType: string): number => {
-  if (!config || config === 'PE') return 0;
-  if (itemType === 'straight_pipe') {
-    const counts: Record<string, number> = { 'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, '2xLF': 4 };
-    return counts[config] || 0;
-  }
-  if (itemType === 'bend') {
-    const counts: Record<string, number> = { 'FOE': 1, 'FBE': 2, 'FOE_LF': 2, 'FOE_RF': 2, '2X_RF': 2, '2xLF': 4 };
-    return counts[config] || 0;
-  }
-  if (itemType === 'fitting') {
+  if (!config || config === "PE") return 0;
+  if (itemType === "straight_pipe") {
     const counts: Record<string, number> = {
-      'FAE': 3, 'FFF': 3, 'F2E': 2, 'F2E_RF': 3, 'F2E_LF': 3, '3X_RF': 3, '2X_RF_FOE': 3,
-      'FFP': 2, 'PFF': 2, 'PPF': 1, 'FPP': 1, 'PFP': 1
+      FOE: 1,
+      FBE: 2,
+      FOE_LF: 2,
+      FOE_RF: 2,
+      "2X_RF": 2,
+      "2xLF": 4,
+    };
+    return counts[config] || 0;
+  }
+  if (itemType === "bend") {
+    const counts: Record<string, number> = {
+      FOE: 1,
+      FBE: 2,
+      FOE_LF: 2,
+      FOE_RF: 2,
+      "2X_RF": 2,
+      "2xLF": 4,
+    };
+    return counts[config] || 0;
+  }
+  if (itemType === "fitting") {
+    const counts: Record<string, number> = {
+      FAE: 3,
+      FFF: 3,
+      F2E: 2,
+      F2E_RF: 3,
+      F2E_LF: 3,
+      "3X_RF": 3,
+      "2X_RF_FOE": 3,
+      FFP: 2,
+      PFF: 2,
+      PPF: 1,
+      FPP: 1,
+      PFP: 1,
     };
     return counts[config] || 0;
   }
@@ -244,31 +326,36 @@ const countFlangesFromConfig = (config: string | undefined, itemType: string): n
 
 const hasLooseFlanges = (config: string | undefined): boolean => {
   if (!config) return false;
-  return config.includes('LF') || config.includes('_L') || config === '2xLF';
+  return config.includes("LF") || config.includes("_L") || config === "2xLF";
 };
 
 const countLooseFlanges = (config: string | undefined, itemType: string): number => {
   if (!config) return 0;
-  if (itemType === 'straight_pipe' || itemType === 'bend') {
+  if (itemType === "straight_pipe" || itemType === "bend") {
     const counts: Record<string, number> = {
-      'FOE_LF': 1, '2xLF': 2, '2X_RF': 0,
+      FOE_LF: 1,
+      "2xLF": 2,
+      "2X_RF": 0,
     };
     if (counts[config] !== undefined) return counts[config];
-    if (config.includes('LF')) return 1;
-    if (config.includes('_L')) return 1;
+    if (config.includes("LF")) return 1;
+    if (config.includes("_L")) return 1;
   }
-  if (itemType === 'fitting') {
+  if (itemType === "fitting") {
     const counts: Record<string, number> = {
-      'F2E_LF': 1, 'FAE_LF': 1,
+      F2E_LF: 1,
+      FAE_LF: 1,
     };
     if (counts[config] !== undefined) return counts[config];
-    if (config.includes('LF')) return 1;
-    if (config.includes('_L')) return 1;
+    if (config.includes("LF")) return 1;
+    if (config.includes("_L")) return 1;
   }
   return 0;
 };
 
-const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: ExtractedSpecs['weldTypes']; totals: WeldTotals } => {
+const extractWeldTypesFromRfqItems = (
+  items: RfqItemDetail[],
+): { weldTypes: ExtractedSpecs["weldTypes"]; totals: WeldTotals } => {
   const weldTypes = { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false };
   const totals = { flangeWeld: 0, mitreWeld: 0, teeWeld: 0, tackWeld: 0 };
 
@@ -277,9 +364,10 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
 
     if (item.straightPipeDetails) {
       const details = item.straightPipeDetails;
-      const outsideDiameter = details.calculatedOdMm || nominalToOutsideDiameter(details.nominalBoreMm);
+      const outsideDiameter =
+        details.calculatedOdMm || nominalToOutsideDiameter(details.nominalBoreMm);
       const circumference = calculateWeldCircumference(outsideDiameter);
-      const flangeCount = countFlangesFromConfig(details.pipeEndConfiguration, 'straight_pipe');
+      const flangeCount = countFlangesFromConfig(details.pipeEndConfiguration, "straight_pipe");
       const hasLoose = hasLooseFlanges(details.pipeEndConfiguration);
 
       if (details.totalButtWeldLengthM && details.totalButtWeldLengthM > 0) {
@@ -299,7 +387,7 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
       }
 
       if (hasLoose) {
-        const looseFlangeCount = countLooseFlanges(details.pipeEndConfiguration, 'straight_pipe');
+        const looseFlangeCount = countLooseFlanges(details.pipeEndConfiguration, "straight_pipe");
         if (looseFlangeCount > 0) {
           weldTypes.tackWeld = true;
           totals.tackWeld += 0.08 * looseFlangeCount * qty;
@@ -311,7 +399,7 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
       const details = item.bendDetails;
       const outsideDiameter = nominalToOutsideDiameter(details.nominalBoreMm);
       const circumference = calculateWeldCircumference(outsideDiameter);
-      const flangeCount = countFlangesFromConfig(details.bendEndConfiguration, 'bend');
+      const flangeCount = countFlangesFromConfig(details.bendEndConfiguration, "bend");
       const numberOfTangents = details.numberOfTangents || 0;
       const hasLoose = hasLooseFlanges(details.bendEndConfiguration);
 
@@ -337,7 +425,7 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
       }
 
       if (hasLoose) {
-        const looseFlangeCount = countLooseFlanges(details.bendEndConfiguration, 'bend');
+        const looseFlangeCount = countLooseFlanges(details.bendEndConfiguration, "bend");
         if (looseFlangeCount > 0) {
           weldTypes.tackWeld = true;
           totals.tackWeld += 0.08 * looseFlangeCount * qty;
@@ -348,12 +436,15 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
     if (item.fittingDetails) {
       const details = item.fittingDetails;
       const mainOd = nominalToOutsideDiameter(details.nominalDiameterMm);
-      const branchOd = details.branchNominalDiameterMm ? nominalToOutsideDiameter(details.branchNominalDiameterMm) : mainOd;
+      const branchOd = details.branchNominalDiameterMm
+        ? nominalToOutsideDiameter(details.branchNominalDiameterMm)
+        : mainOd;
       const mainCircumference = calculateWeldCircumference(mainOd);
       const branchCircumference = calculateWeldCircumference(branchOd);
-      const flangeCount = details.numberOfFlanges || countFlangesFromConfig(details.pipeEndConfiguration, 'fitting');
-      const fittingType = (details.fittingType || '').toLowerCase();
-      const isTee = fittingType.includes('tee') || fittingType.includes('stub');
+      const flangeCount =
+        details.numberOfFlanges || countFlangesFromConfig(details.pipeEndConfiguration, "fitting");
+      const fittingType = (details.fittingType || "").toLowerCase();
+      const isTee = fittingType.includes("tee") || fittingType.includes("stub");
       const hasLoose = hasLooseFlanges(details.pipeEndConfiguration);
 
       if (mainCircumference > 0 && flangeCount > 0) {
@@ -370,7 +461,7 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
       }
 
       if (hasLoose) {
-        const looseFlangeCount = countLooseFlanges(details.pipeEndConfiguration, 'fitting');
+        const looseFlangeCount = countLooseFlanges(details.pipeEndConfiguration, "fitting");
         if (looseFlangeCount > 0) {
           weldTypes.tackWeld = true;
           totals.tackWeld += 0.08 * looseFlangeCount * qty;
@@ -383,11 +474,11 @@ const extractWeldTypesFromRfqItems = (items: RfqItemDetail[]): { weldTypes: Extr
 };
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
-  pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
-  viewed: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Viewed' },
-  quoted: { bg: 'bg-green-100', text: 'text-green-800', label: 'Quoted' },
-  declined: { bg: 'bg-red-100', text: 'text-red-800', label: 'Declined' },
-  expired: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Expired' },
+  pending: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Pending" },
+  viewed: { bg: "bg-blue-100", text: "text-blue-800", label: "Viewed" },
+  quoted: { bg: "bg-green-100", text: "text-green-800", label: "Quoted" },
+  declined: { bg: "bg-red-100", text: "text-red-800", label: "Declined" },
+  expired: { bg: "bg-gray-100", text: "text-gray-800", label: "Expired" },
 };
 
 interface PageProps {
@@ -406,11 +497,11 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   const [rfqLoading, setRfqLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
-  const [declineReason, setDeclineReason] = useState('');
+  const [declineReason, setDeclineReason] = useState("");
   const [decliningLoading, setDecliningLoading] = useState(false);
   const [savingProgress, setSavingProgress] = useState(false);
   const [submittingQuote, setSubmittingQuote] = useState(false);
-  const [viewMode, setViewMode] = useState<'boq' | 'rfq'>('boq');
+  const [viewMode, setViewMode] = useState<"boq" | "rfq">("boq");
   const [supplierCurrency, setSupplierCurrency] = useState(DEFAULT_CURRENCY);
   const [unitPrices, setUnitPrices] = useState<Record<string, Record<number, number>>>({});
   const [extractedSpecs, setExtractedSpecs] = useState<ExtractedSpecs>({
@@ -429,8 +520,8 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     tackWeld: 0,
   });
   const [pricingInputs, setPricingInputs] = useState<PricingInputs>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('supplier_pricing_inputs');
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("supplier_pricing_inputs");
       if (saved) {
         const parsed = JSON.parse(saved);
         return {
@@ -459,8 +550,8 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     };
   });
   const [weldUnitPrices, setWeldUnitPrices] = useState<Record<string, number>>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('supplier_weld_unit_prices');
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("supplier_weld_unit_prices");
       if (saved) {
         return JSON.parse(saved);
       }
@@ -475,14 +566,14 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   }, [boqId]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('supplier_pricing_inputs', JSON.stringify(pricingInputs));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("supplier_pricing_inputs", JSON.stringify(pricingInputs));
     }
   }, [pricingInputs]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('supplier_weld_unit_prices', JSON.stringify(weldUnitPrices));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("supplier_weld_unit_prices", JSON.stringify(weldUnitPrices));
     }
   }, [weldUnitPrices]);
 
@@ -497,121 +588,207 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   useEffect(() => {
     if (boqDetail?.sections) {
       const hasBlankFlangesSection = boqDetail.sections.some(
-        (section) => section.sectionType === 'blank_flanges' && section.items.length > 0
+        (section) => section.sectionType === "blank_flanges" && section.items.length > 0,
       );
 
       const hasFlangesSection = boqDetail.sections.some(
-        (section) => (section.sectionType === 'flanges' || section.sectionType === 'blank_flanges') && section.items.length > 0
+        (section) =>
+          (section.sectionType === "flanges" || section.sectionType === "blank_flanges") &&
+          section.items.length > 0,
       );
 
       const bnwSection = boqDetail.sections.find(
-        (section) => section.sectionType === 'bnw_sets' && section.items.length > 0
+        (section) => section.sectionType === "bnw_sets" && section.items.length > 0,
       );
 
       const valveSection = boqDetail.sections.find(
-        (section) => section.sectionType === 'valves' && section.items.length > 0
+        (section) => section.sectionType === "valves" && section.items.length > 0,
       );
 
       const instrumentSections = boqDetail.sections.filter(
-        (section) => ['instruments', 'flow_meters', 'pressure_instruments', 'level_instruments', 'temperature_instruments'].includes(section.sectionType) && section.items.length > 0
+        (section) =>
+          [
+            "instruments",
+            "flow_meters",
+            "pressure_instruments",
+            "level_instruments",
+            "temperature_instruments",
+          ].includes(section.sectionType) && section.items.length > 0,
       );
 
       const pumpSections = boqDetail.sections.filter(
-        (section) => ['pumps', 'pump_parts', 'pump_spares', 'pump_repairs', 'pump_rental'].includes(section.sectionType) && section.items.length > 0
+        (section) =>
+          ["pumps", "pump_parts", "pump_spares", "pump_repairs", "pump_rental"].includes(
+            section.sectionType,
+          ) && section.items.length > 0,
       );
 
       setExtractedSpecs((prev) => {
         let bnwGrade: string | null = null;
         if (bnwSection && bnwSection.items.length > 0) {
           const firstItemDesc = bnwSection.items[0].description.toUpperCase();
-          const gradeMatch = firstItemDesc.match(/GRADE\s*([\d.]+)/i) || firstItemDesc.match(/GR\s*([\d.]+)/i);
-          bnwGrade = gradeMatch ? `Grade ${gradeMatch[1]}` : 'Standard';
+          const gradeMatch =
+            firstItemDesc.match(/GRADE\s*([\d.]+)/i) || firstItemDesc.match(/GR\s*([\d.]+)/i);
+          bnwGrade = gradeMatch ? `Grade ${gradeMatch[1]}` : "Standard";
         }
 
         const valveTypes: string[] = [];
         if (valveSection) {
-          valveSection.items.forEach(item => {
+          valveSection.items.forEach((item) => {
             const desc = item.description.toUpperCase();
-            if (desc.includes('BALL') && !valveTypes.includes('ball_valve')) valveTypes.push('ball_valve');
-            if (desc.includes('GATE') && !valveTypes.includes('gate_valve')) valveTypes.push('gate_valve');
-            if (desc.includes('GLOBE') && !valveTypes.includes('globe_valve')) valveTypes.push('globe_valve');
-            if (desc.includes('BUTTERFLY') && !valveTypes.includes('butterfly_valve')) valveTypes.push('butterfly_valve');
-            if (desc.includes('CHECK') && !valveTypes.includes('check_valve')) valveTypes.push('check_valve');
-            if ((desc.includes('CONTROL') || desc.includes('ACTUATOR')) && !valveTypes.includes('control_valve')) valveTypes.push('control_valve');
-            if ((desc.includes('SAFETY') || desc.includes('RELIEF') || desc.includes('PSV')) && !valveTypes.includes('safety_valve')) valveTypes.push('safety_valve');
-            if (desc.includes('PLUG') && !valveTypes.includes('plug_valve')) valveTypes.push('plug_valve');
-            if (desc.includes('NEEDLE') && !valveTypes.includes('needle_valve')) valveTypes.push('needle_valve');
-            if (desc.includes('DIAPHRAGM') && !valveTypes.includes('diaphragm_valve')) valveTypes.push('diaphragm_valve');
+            if (desc.includes("BALL") && !valveTypes.includes("ball_valve"))
+              valveTypes.push("ball_valve");
+            if (desc.includes("GATE") && !valveTypes.includes("gate_valve"))
+              valveTypes.push("gate_valve");
+            if (desc.includes("GLOBE") && !valveTypes.includes("globe_valve"))
+              valveTypes.push("globe_valve");
+            if (desc.includes("BUTTERFLY") && !valveTypes.includes("butterfly_valve"))
+              valveTypes.push("butterfly_valve");
+            if (desc.includes("CHECK") && !valveTypes.includes("check_valve"))
+              valveTypes.push("check_valve");
+            if (
+              (desc.includes("CONTROL") || desc.includes("ACTUATOR")) &&
+              !valveTypes.includes("control_valve")
+            )
+              valveTypes.push("control_valve");
+            if (
+              (desc.includes("SAFETY") || desc.includes("RELIEF") || desc.includes("PSV")) &&
+              !valveTypes.includes("safety_valve")
+            )
+              valveTypes.push("safety_valve");
+            if (desc.includes("PLUG") && !valveTypes.includes("plug_valve"))
+              valveTypes.push("plug_valve");
+            if (desc.includes("NEEDLE") && !valveTypes.includes("needle_valve"))
+              valveTypes.push("needle_valve");
+            if (desc.includes("DIAPHRAGM") && !valveTypes.includes("diaphragm_valve"))
+              valveTypes.push("diaphragm_valve");
           });
           if (valveTypes.length === 0) {
-            valveTypes.push('general_valve');
+            valveTypes.push("general_valve");
           }
         }
 
         const instrumentTypes: string[] = [];
-        instrumentSections.forEach(section => {
-          if (section.sectionType === 'flow_meters' && !instrumentTypes.includes('flow_meter')) {
-            instrumentTypes.push('flow_meter');
+        instrumentSections.forEach((section) => {
+          if (section.sectionType === "flow_meters" && !instrumentTypes.includes("flow_meter")) {
+            instrumentTypes.push("flow_meter");
           }
-          if (section.sectionType === 'pressure_instruments' && !instrumentTypes.includes('pressure_instrument')) {
-            instrumentTypes.push('pressure_instrument');
+          if (
+            section.sectionType === "pressure_instruments" &&
+            !instrumentTypes.includes("pressure_instrument")
+          ) {
+            instrumentTypes.push("pressure_instrument");
           }
-          if (section.sectionType === 'level_instruments' && !instrumentTypes.includes('level_instrument')) {
-            instrumentTypes.push('level_instrument');
+          if (
+            section.sectionType === "level_instruments" &&
+            !instrumentTypes.includes("level_instrument")
+          ) {
+            instrumentTypes.push("level_instrument");
           }
-          if (section.sectionType === 'temperature_instruments' && !instrumentTypes.includes('temperature_instrument')) {
-            instrumentTypes.push('temperature_instrument');
+          if (
+            section.sectionType === "temperature_instruments" &&
+            !instrumentTypes.includes("temperature_instrument")
+          ) {
+            instrumentTypes.push("temperature_instrument");
           }
-          if (section.sectionType === 'instruments') {
-            section.items.forEach(item => {
+          if (section.sectionType === "instruments") {
+            section.items.forEach((item) => {
               const desc = item.description.toUpperCase();
-              if ((desc.includes('FLOW') || desc.includes('METER')) && !instrumentTypes.includes('flow_meter')) instrumentTypes.push('flow_meter');
-              if ((desc.includes('PRESSURE') || desc.includes('PSI') || desc.includes('BAR')) && !instrumentTypes.includes('pressure_instrument')) instrumentTypes.push('pressure_instrument');
-              if ((desc.includes('LEVEL') || desc.includes('RADAR') || desc.includes('ULTRASONIC')) && !instrumentTypes.includes('level_instrument')) instrumentTypes.push('level_instrument');
-              if ((desc.includes('TEMPERATURE') || desc.includes('RTD') || desc.includes('THERMOCOUPLE')) && !instrumentTypes.includes('temperature_instrument')) instrumentTypes.push('temperature_instrument');
-              if ((desc.includes('PH') || desc.includes('CONDUCTIVITY') || desc.includes('ANALYZER')) && !instrumentTypes.includes('analytical_instrument')) instrumentTypes.push('analytical_instrument');
+              if (
+                (desc.includes("FLOW") || desc.includes("METER")) &&
+                !instrumentTypes.includes("flow_meter")
+              )
+                instrumentTypes.push("flow_meter");
+              if (
+                (desc.includes("PRESSURE") || desc.includes("PSI") || desc.includes("BAR")) &&
+                !instrumentTypes.includes("pressure_instrument")
+              )
+                instrumentTypes.push("pressure_instrument");
+              if (
+                (desc.includes("LEVEL") || desc.includes("RADAR") || desc.includes("ULTRASONIC")) &&
+                !instrumentTypes.includes("level_instrument")
+              )
+                instrumentTypes.push("level_instrument");
+              if (
+                (desc.includes("TEMPERATURE") ||
+                  desc.includes("RTD") ||
+                  desc.includes("THERMOCOUPLE")) &&
+                !instrumentTypes.includes("temperature_instrument")
+              )
+                instrumentTypes.push("temperature_instrument");
+              if (
+                (desc.includes("PH") ||
+                  desc.includes("CONDUCTIVITY") ||
+                  desc.includes("ANALYZER")) &&
+                !instrumentTypes.includes("analytical_instrument")
+              )
+                instrumentTypes.push("analytical_instrument");
             });
             if (instrumentTypes.length === 0 && section.items.length > 0) {
-              instrumentTypes.push('general_instrument');
+              instrumentTypes.push("general_instrument");
             }
           }
         });
 
         const pumpTypes: string[] = [];
-        pumpSections.forEach(section => {
-          if (section.sectionType === 'pumps' && !pumpTypes.includes('new_pump')) {
-            pumpTypes.push('new_pump');
+        pumpSections.forEach((section) => {
+          if (section.sectionType === "pumps" && !pumpTypes.includes("new_pump")) {
+            pumpTypes.push("new_pump");
           }
-          if (section.sectionType === 'pump_parts' && !pumpTypes.includes('pump_part')) {
-            pumpTypes.push('pump_part');
+          if (section.sectionType === "pump_parts" && !pumpTypes.includes("pump_part")) {
+            pumpTypes.push("pump_part");
           }
-          if (section.sectionType === 'pump_spares' && !pumpTypes.includes('pump_spare')) {
-            pumpTypes.push('pump_spare');
+          if (section.sectionType === "pump_spares" && !pumpTypes.includes("pump_spare")) {
+            pumpTypes.push("pump_spare");
           }
-          if (section.sectionType === 'pump_repairs' && !pumpTypes.includes('pump_repair')) {
-            pumpTypes.push('pump_repair');
+          if (section.sectionType === "pump_repairs" && !pumpTypes.includes("pump_repair")) {
+            pumpTypes.push("pump_repair");
           }
-          if (section.sectionType === 'pump_rental' && !pumpTypes.includes('pump_rental')) {
-            pumpTypes.push('pump_rental');
+          if (section.sectionType === "pump_rental" && !pumpTypes.includes("pump_rental")) {
+            pumpTypes.push("pump_rental");
           }
-          section.items.forEach(item => {
+          section.items.forEach((item) => {
             const desc = item.description.toUpperCase();
-            if ((desc.includes('CENTRIFUGAL') || desc.includes('END SUCTION')) && !pumpTypes.includes('centrifugal_pump')) pumpTypes.push('centrifugal_pump');
-            if ((desc.includes('SUBMERSIBLE') || desc.includes('BOREHOLE')) && !pumpTypes.includes('submersible_pump')) pumpTypes.push('submersible_pump');
-            if ((desc.includes('PROGRESSIVE') || desc.includes('CAVITY') || desc.includes('MONO')) && !pumpTypes.includes('progressive_cavity_pump')) pumpTypes.push('progressive_cavity_pump');
-            if ((desc.includes('SLURRY') || desc.includes('WARMAN')) && !pumpTypes.includes('slurry_pump')) pumpTypes.push('slurry_pump');
-            if (desc.includes('DIAPHRAGM') && !pumpTypes.includes('diaphragm_pump')) pumpTypes.push('diaphragm_pump');
-            if (desc.includes('GEAR') && !pumpTypes.includes('gear_pump')) pumpTypes.push('gear_pump');
-            if (desc.includes('IMPELLER') && !pumpTypes.includes('impeller')) pumpTypes.push('impeller');
-            if (desc.includes('SEAL') && !pumpTypes.includes('mechanical_seal')) pumpTypes.push('mechanical_seal');
-            if (desc.includes('BEARING') && !pumpTypes.includes('bearing_kit')) pumpTypes.push('bearing_kit');
-            if (desc.includes('WEAR RING') && !pumpTypes.includes('wear_ring')) pumpTypes.push('wear_ring');
+            if (
+              (desc.includes("CENTRIFUGAL") || desc.includes("END SUCTION")) &&
+              !pumpTypes.includes("centrifugal_pump")
+            )
+              pumpTypes.push("centrifugal_pump");
+            if (
+              (desc.includes("SUBMERSIBLE") || desc.includes("BOREHOLE")) &&
+              !pumpTypes.includes("submersible_pump")
+            )
+              pumpTypes.push("submersible_pump");
+            if (
+              (desc.includes("PROGRESSIVE") || desc.includes("CAVITY") || desc.includes("MONO")) &&
+              !pumpTypes.includes("progressive_cavity_pump")
+            )
+              pumpTypes.push("progressive_cavity_pump");
+            if (
+              (desc.includes("SLURRY") || desc.includes("WARMAN")) &&
+              !pumpTypes.includes("slurry_pump")
+            )
+              pumpTypes.push("slurry_pump");
+            if (desc.includes("DIAPHRAGM") && !pumpTypes.includes("diaphragm_pump"))
+              pumpTypes.push("diaphragm_pump");
+            if (desc.includes("GEAR") && !pumpTypes.includes("gear_pump"))
+              pumpTypes.push("gear_pump");
+            if (desc.includes("IMPELLER") && !pumpTypes.includes("impeller"))
+              pumpTypes.push("impeller");
+            if (desc.includes("SEAL") && !pumpTypes.includes("mechanical_seal"))
+              pumpTypes.push("mechanical_seal");
+            if (desc.includes("BEARING") && !pumpTypes.includes("bearing_kit"))
+              pumpTypes.push("bearing_kit");
+            if (desc.includes("WEAR RING") && !pumpTypes.includes("wear_ring"))
+              pumpTypes.push("wear_ring");
           });
         });
 
         return {
           ...prev,
-          flangeTypes: hasBlankFlangesSection ? { ...prev.flangeTypes, blank: true } : prev.flangeTypes,
+          flangeTypes: hasBlankFlangesSection
+            ? { ...prev.flangeTypes, blank: true }
+            : prev.flangeTypes,
           bnwGrade,
           valveTypes,
           instrumentTypes,
@@ -628,7 +805,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         setSupplierCurrency(profile.company.currencyCode);
       }
     } catch (err) {
-      log.error('Failed to load supplier currency:', err);
+      log.error("Failed to load supplier currency:", err);
     }
   };
 
@@ -653,16 +830,22 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         bnwGrade: prev.bnwGrade,
       }));
     } catch (err) {
-      log.error('Failed to load RFQ items:', err);
+      log.error("Failed to load RFQ items:", err);
     } finally {
       setRfqLoading(false);
     }
   };
 
   const handlePricingInputChange = (
-    category: 'steelSpecs' | 'weldTypes' | 'flangeTypes' | 'bnwTypes' | 'valveTypes' | 'instrumentTypes',
+    category:
+      | "steelSpecs"
+      | "weldTypes"
+      | "flangeTypes"
+      | "bnwTypes"
+      | "valveTypes"
+      | "instrumentTypes",
     key: string,
-    value: number
+    value: number,
   ) => {
     setPricingInputs((prev) => ({
       ...prev,
@@ -674,8 +857,8 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   };
 
   const handlePercentageChange = (
-    field: 'labourExtrasPercent' | 'contingenciesPercent',
-    value: number
+    field: "labourExtrasPercent" | "contingenciesPercent",
+    value: number,
   ) => {
     setPricingInputs((prev) => ({
       ...prev,
@@ -697,7 +880,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       const data = await supplierPortalApi.getBoqDetails(boqId);
       setBoqDetail(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load BOQ details');
+      setError(err instanceof Error ? err.message : "Failed to load BOQ details");
     } finally {
       setLoading(false);
     }
@@ -705,7 +888,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 
   const handleDecline = async () => {
     if (!declineReason.trim()) {
-      showToast('Please provide a reason for declining', 'warning');
+      showToast("Please provide a reason for declining", "warning");
       return;
     }
 
@@ -713,10 +896,10 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       setDecliningLoading(true);
       await supplierPortalApi.declineBoq(boqId, declineReason);
       setShowDeclineModal(false);
-      showToast('BOQ declined successfully', 'success');
+      showToast("BOQ declined successfully", "success");
       loadBoqDetails();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to decline BOQ', 'error');
+      showToast(err instanceof Error ? err.message : "Failed to decline BOQ", "error");
     } finally {
       setDecliningLoading(false);
     }
@@ -730,9 +913,9 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         unitPrices,
         weldUnitPrices,
       });
-      showToast('Progress saved successfully', 'success');
+      showToast("Progress saved successfully", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to save progress', 'error');
+      showToast(err instanceof Error ? err.message : "Failed to save progress", "error");
     } finally {
       setSavingProgress(false);
     }
@@ -746,10 +929,10 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         unitPrices,
         weldUnitPrices,
       });
-      showToast('Quote submitted successfully', 'success');
+      showToast("Quote submitted successfully", "success");
       loadBoqDetails();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to submit quote', 'error');
+      showToast(err instanceof Error ? err.message : "Failed to submit quote", "error");
     } finally {
       setSubmittingQuote(false);
     }
@@ -760,25 +943,37 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 
     const workbook = XLSX.utils.book_new();
 
-    if (viewMode === 'rfq' && rfqItems.length > 0) {
+    if (viewMode === "rfq" && rfqItems.length > 0) {
       const headers = [
-        'Line #', 'Type', 'Description', 'Qty', 'NB (mm)', 'Wall/Sch',
-        'End Config', 'Weight/Unit (kg)', 'Total Weight (kg)', 'Notes'
+        "Line #",
+        "Type",
+        "Description",
+        "Qty",
+        "NB (mm)",
+        "Wall/Sch",
+        "End Config",
+        "Weight/Unit (kg)",
+        "Total Weight (kg)",
+        "Notes",
       ];
 
       const rows = rfqItems.map((item) => {
         const details = item.straightPipeDetails || item.bendDetails || item.fittingDetails;
-        const nb = item.straightPipeDetails?.nominalBoreMm ||
-                   item.bendDetails?.nominalBoreMm ||
-                   item.fittingDetails?.nominalDiameterMm || '-';
+        const nb =
+          item.straightPipeDetails?.nominalBoreMm ||
+          item.bendDetails?.nominalBoreMm ||
+          item.fittingDetails?.nominalDiameterMm ||
+          "-";
         const wallSch = details?.scheduleNumber
           ? `Sch ${details.scheduleNumber}`
           : details?.wallThicknessMm
             ? `${details.wallThicknessMm}mm`
-            : '-';
-        const endConfig = item.straightPipeDetails?.pipeEndConfiguration ||
-                          item.bendDetails?.bendEndConfiguration ||
-                          item.fittingDetails?.pipeEndConfiguration || '-';
+            : "-";
+        const endConfig =
+          item.straightPipeDetails?.pipeEndConfiguration ||
+          item.bendDetails?.bendEndConfiguration ||
+          item.fittingDetails?.pipeEndConfiguration ||
+          "-";
 
         return [
           item.lineNumber,
@@ -790,70 +985,79 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           endConfig,
           Number(item.weightPerUnitKg || 0).toFixed(2),
           Number(item.totalWeightKg || 0).toFixed(2),
-          item.notes || ''
+          item.notes || "",
         ];
       });
 
       const totalWeight = rfqItems.reduce((sum, item) => sum + Number(item.totalWeightKg || 0), 0);
-      rows.push(['', '', 'TOTAL', '', '', '', '', '', totalWeight.toFixed(2), '']);
+      rows.push(["", "", "TOTAL", "", "", "", "", "", totalWeight.toFixed(2), ""]);
 
       const wsData = [headers, ...rows];
       const ws = XLSX.utils.aoa_to_sheet(wsData);
-      ws['!cols'] = [
-        { wch: 6 }, { wch: 12 }, { wch: 60 }, { wch: 6 }, { wch: 8 },
-        { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 30 }
+      ws["!cols"] = [
+        { wch: 6 },
+        { wch: 12 },
+        { wch: 60 },
+        { wch: 6 },
+        { wch: 8 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 30 },
       ];
-      XLSX.utils.book_append_sheet(workbook, ws, 'RFQ Items');
+      XLSX.utils.book_append_sheet(workbook, ws, "RFQ Items");
 
-      const fileName = `RFQ_${boqDetail.boq.boqNumber}_${nowISO().split('T')[0]}.xlsx`;
+      const fileName = `RFQ_${boqDetail.boq.boqNumber}_${nowISO().split("T")[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
     } else {
       boqDetail.sections.forEach((section) => {
         const hasWelds = section.items.some(
-          (item) =>
-            item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld
+          (item) => item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld,
         );
-        const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
+        const hasAreas = section.items.some(
+          (item) => item.areas?.intAreaM2 || item.areas?.extAreaM2,
+        );
 
-        const headers = ['#', 'Description', 'Qty', 'Unit'];
+        const headers = ["#", "Description", "Qty", "Unit"];
         if (hasWelds) {
-          headers.push('Flange Weld (m)', 'Mitre Weld (m)', 'Tee Weld (m)');
+          headers.push("Flange Weld (m)", "Mitre Weld (m)", "Tee Weld (m)");
         }
         if (hasAreas) {
-          headers.push('Int Area (m²)', 'Ext Area (m²)');
+          headers.push("Int Area (m²)", "Ext Area (m²)");
         }
-        headers.push('Weight (kg)');
+        headers.push("Weight (kg)");
 
         const rows = section.items.map((item, idx) => {
           const row: (string | number)[] = [idx + 1, item.description, item.qty, item.unit];
           if (hasWelds) {
             row.push(
-              item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-',
-              item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-',
-              item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'
+              item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : "-",
+              item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : "-",
+              item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : "-",
             );
           }
           if (hasAreas) {
             row.push(
-              item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-',
-              item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'
+              item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : "-",
+              item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : "-",
             );
           }
           row.push(Number(item.weightKg || 0).toFixed(2));
           return row;
         });
 
-        const totalWeightIdx = headers.indexOf('Weight (kg)');
+        const totalWeightIdx = headers.indexOf("Weight (kg)");
         const totalsRow: (string | number)[] = headers.map((_, idx) => {
-          if (idx === 1) return 'TOTAL';
+          if (idx === 1) return "TOTAL";
           if (idx === totalWeightIdx) return Number(section.totalWeightKg || 0).toFixed(2);
-          return '';
+          return "";
         });
         rows.push(totalsRow);
 
         const wsData = [headers, ...rows];
         const ws = XLSX.utils.aoa_to_sheet(wsData);
-        ws['!cols'] = [
+        ws["!cols"] = [
           { wch: 5 },
           { wch: 50 },
           { wch: 8 },
@@ -861,17 +1065,17 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           ...Array(headers.length - 4).fill({ wch: 15 }),
         ];
 
-        const sheetName = section.sectionTitle.substring(0, 31).replace(/[\\/*?:[\]]/g, '');
+        const sheetName = section.sectionTitle.substring(0, 31).replace(/[\\/*?:[\]]/g, "");
         XLSX.utils.book_append_sheet(workbook, ws, sheetName);
       });
 
-      const fileName = `BOQ_${boqDetail.boq.boqNumber}_${nowISO().split('T')[0]}.xlsx`;
+      const fileName = `BOQ_${boqDetail.boq.boqNumber}_${nowISO().split("T")[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
     }
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
+    if (!dateString) return "-";
     return formatDateTimeZA(dateString);
   };
 
@@ -890,7 +1094,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="text-center py-12">
-          <div className="text-red-600 mb-4">{error || 'BOQ not found'}</div>
+          <div className="text-red-600 mb-4">{error || "BOQ not found"}</div>
           <Link
             href="/supplier/portal/boqs"
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -913,33 +1117,44 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
             {/* Row 1 */}
             <div>
               <span className="text-xs font-medium text-gray-500">Project</span>
-              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.name || '-'}</p>
+              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.name || "-"}</p>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500">Description</span>
-              <p className="text-sm text-gray-900 truncate">{boqDetail.projectInfo?.description || '-'}</p>
+              <p className="text-sm text-gray-900 truncate">
+                {boqDetail.projectInfo?.description || "-"}
+              </p>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500">Required Date</span>
-              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.requiredDate ? formatDate(boqDetail.projectInfo.requiredDate) : '-'}</p>
+              <p className="text-sm text-gray-900">
+                {boqDetail.projectInfo?.requiredDate
+                  ? formatDate(boqDetail.projectInfo.requiredDate)
+                  : "-"}
+              </p>
             </div>
             {/* Row 2 */}
             <div>
               <span className="text-xs font-medium text-gray-500">Customer</span>
-              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.company || '-'}</p>
+              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.company || "-"}</p>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500">Contact</span>
-              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.name || '-'}</p>
+              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.name || "-"}</p>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500">Email</span>
               <p className="text-sm text-gray-900">
                 {boqDetail.customerInfo?.email ? (
-                  <a href={`mailto:${boqDetail.customerInfo.email}`} className="text-blue-600 hover:underline">
+                  <a
+                    href={`mailto:${boqDetail.customerInfo.email}`}
+                    className="text-blue-600 hover:underline"
+                  >
                     {boqDetail.customerInfo.email}
                   </a>
-                ) : '-'}
+                ) : (
+                  "-"
+                )}
               </p>
             </div>
           </div>
@@ -960,17 +1175,17 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <Link
-                href="/supplier/portal/boqs"
-                className="text-gray-400 hover:text-gray-600"
-              >
+              <Link href="/supplier/portal/boqs" className="text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </Link>
-              <h1 className="text-2xl font-semibold text-gray-900">
-                {boqDetail.boq.boqNumber}
-              </h1>
+              <h1 className="text-2xl font-semibold text-gray-900">{boqDetail.boq.boqNumber}</h1>
               <span
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
               >
@@ -983,24 +1198,34 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => setViewMode(viewMode === 'boq' ? 'rfq' : 'boq')}
+              onClick={() => setViewMode(viewMode === "boq" ? "rfq" : "boq")}
               className="inline-flex items-center px-4 py-2 border border-blue-500 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h7"
+                />
               </svg>
-              {viewMode === 'boq' ? 'RFQ View' : 'BOQ View'}
+              {viewMode === "boq" ? "RFQ View" : "BOQ View"}
             </button>
             <button
               onClick={exportToExcel}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
               Export Excel
             </button>
-            {boqDetail.accessStatus !== 'declined' && boqDetail.accessStatus !== 'quoted' && (
+            {boqDetail.accessStatus !== "declined" && boqDetail.accessStatus !== "quoted" && (
               <button
                 onClick={() => setShowDeclineModal(true)}
                 className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -1013,7 +1238,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       </div>
 
       {/* BOQ/RFQ Content */}
-      {viewMode === 'boq' ? (
+      {viewMode === "boq" ? (
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">
             Bill of Quantities ({boqDetail.sections.length} sections)
@@ -1026,7 +1251,9 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
                 section={section}
                 currencyCode={supplierCurrency}
                 unitPrices={unitPrices[String(section.id)] || {}}
-                onUnitPriceChange={(itemIndex, value) => handleUnitPriceChange(String(section.id), itemIndex, value)}
+                onUnitPriceChange={(itemIndex, value) =>
+                  handleUnitPriceChange(String(section.id), itemIndex, value)
+                }
                 pricingInputs={pricingInputs}
                 rfqItems={rfqItems}
               />
@@ -1058,7 +1285,11 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       ) : (
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">
-            RFQ Item Details ({rfqItems.length > 0 ? rfqItems.length : boqDetail.sections.reduce((sum, s) => sum + s.items.length, 0)} items)
+            RFQ Item Details (
+            {rfqItems.length > 0
+              ? rfqItems.length
+              : boqDetail.sections.reduce((sum, s) => sum + s.items.length, 0)}{" "}
+            items)
           </h2>
 
           {rfqLoading ? (
@@ -1098,14 +1329,14 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
               disabled={savingProgress || submittingQuote}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {savingProgress ? 'Saving...' : 'Save Progress'}
+              {savingProgress ? "Saving..." : "Save Progress"}
             </button>
             <button
               onClick={handleSubmitQuote}
-              disabled={savingProgress || submittingQuote || boqDetail?.accessStatus === 'quoted'}
+              disabled={savingProgress || submittingQuote || boqDetail?.accessStatus === "quoted"}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {submittingQuote ? 'Submitting...' : 'Submit Quote'}
+              {submittingQuote ? "Submitting..." : "Submit Quote"}
             </button>
           </div>
         </div>
@@ -1115,7 +1346,10 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
       {showDeclineModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowDeclineModal(false)} />
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              onClick={() => setShowDeclineModal(false)}
+            />
             <div className="relative bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Decline to Quote</h3>
               <p className="text-sm text-gray-500 mb-4">
@@ -1141,7 +1375,7 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
                   disabled={decliningLoading}
                 >
-                  {decliningLoading ? 'Declining...' : 'Confirm Decline'}
+                  {decliningLoading ? "Declining..." : "Confirm Decline"}
                 </button>
               </div>
             </div>
@@ -1155,8 +1389,21 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 interface PricingInputsSectionProps {
   extractedSpecs: ExtractedSpecs;
   pricingInputs: PricingInputs;
-  onPricingInputChange: (category: 'steelSpecs' | 'weldTypes' | 'flangeTypes' | 'bnwTypes' | 'valveTypes' | 'instrumentTypes', key: string, value: number) => void;
-  onPercentageChange: (field: 'labourExtrasPercent' | 'contingenciesPercent', value: number) => void;
+  onPricingInputChange: (
+    category:
+      | "steelSpecs"
+      | "weldTypes"
+      | "flangeTypes"
+      | "bnwTypes"
+      | "valveTypes"
+      | "instrumentTypes",
+    key: string,
+    value: number,
+  ) => void;
+  onPercentageChange: (
+    field: "labourExtrasPercent" | "contingenciesPercent",
+    value: number,
+  ) => void;
   currencyCode: string;
 }
 
@@ -1174,13 +1421,16 @@ function PricingInputsSection({
     <div className="bg-white rounded-lg shadow-sm p-6 w-full">
       <h2 className="text-lg font-medium text-gray-900 mb-4">Pricing Inputs</h2>
       <p className="text-sm text-gray-500 mb-6">
-        Enter your prices below and the BOQ item unit prices will be automatically calculated based on weight.
+        Enter your prices below and the BOQ item unit prices will be automatically calculated based
+        on weight.
       </p>
 
       <div className="flex flex-wrap gap-6 w-full [&>div]:flex-1 [&>div]:min-w-[200px]">
         {/* Steel Specifications */}
         <div className="space-y-3 min-w-0">
-          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Steel Specifications (Price/kg)</h3>
+          <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
+            Steel Specifications (Price/kg)
+          </h3>
           {extractedSpecs.steelSpecs.length > 0 ? (
             extractedSpecs.steelSpecs.map((spec) => (
               <div key={spec} className="flex items-center gap-2">
@@ -1193,8 +1443,10 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.steelSpecs[spec] || ''}
-                    onChange={(e) => onPricingInputChange('steelSpecs', spec, parseFloat(e.target.value) || 0)}
+                    value={pricingInputs.steelSpecs[spec] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange("steelSpecs", spec, parseFloat(e.target.value) || 0)
+                    }
                     placeholder="0.00"
                     className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -1204,17 +1456,17 @@ function PricingInputsSection({
             ))
           ) : (
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 flex-1">
-                Steel (General)
-              </label>
+              <label className="text-sm text-gray-600 flex-1">Steel (General)</label>
               <div className="flex items-center flex-shrink-0">
                 <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  value={pricingInputs.steelSpecs['Steel'] || ''}
-                  onChange={(e) => onPricingInputChange('steelSpecs', 'Steel', parseFloat(e.target.value) || 0)}
+                  value={pricingInputs.steelSpecs["Steel"] || ""}
+                  onChange={(e) =>
+                    onPricingInputChange("steelSpecs", "Steel", parseFloat(e.target.value) || 0)
+                  }
                   placeholder="0.00"
                   className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
@@ -1226,9 +1478,13 @@ function PricingInputsSection({
 
         {/* Weld Types - only show types used in this RFQ */}
         {(extractedSpecs.weldTypes.flangeWeld ||
-          extractedSpecs.weldTypes.mitreWeld || extractedSpecs.weldTypes.teeWeld || extractedSpecs.weldTypes.tackWeld) && (
+          extractedSpecs.weldTypes.mitreWeld ||
+          extractedSpecs.weldTypes.teeWeld ||
+          extractedSpecs.weldTypes.tackWeld) && (
           <div className="space-y-3 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Weld Types (Price/Lm)</h3>
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
+              Weld Types (Price/Lm)
+            </h3>
             {extractedSpecs.weldTypes.flangeWeld && (
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-600 flex-1">Flange Weld</label>
@@ -1238,8 +1494,14 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes['flangeWeld'] || ''}
-                    onChange={(e) => onPricingInputChange('weldTypes', 'flangeWeld', parseFloat(e.target.value) || 0)}
+                    value={pricingInputs.weldTypes["flangeWeld"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange(
+                        "weldTypes",
+                        "flangeWeld",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
                     placeholder="0.00"
                     className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -1256,8 +1518,14 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes['mitreWeld'] || ''}
-                    onChange={(e) => onPricingInputChange('weldTypes', 'mitreWeld', parseFloat(e.target.value) || 0)}
+                    value={pricingInputs.weldTypes["mitreWeld"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange(
+                        "weldTypes",
+                        "mitreWeld",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
                     placeholder="0.00"
                     className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -1274,8 +1542,10 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes['teeWeld'] || ''}
-                    onChange={(e) => onPricingInputChange('weldTypes', 'teeWeld', parseFloat(e.target.value) || 0)}
+                    value={pricingInputs.weldTypes["teeWeld"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange("weldTypes", "teeWeld", parseFloat(e.target.value) || 0)
+                    }
                     placeholder="0.00"
                     className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -1292,8 +1562,10 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes['tackWeld'] || ''}
-                    onChange={(e) => onPricingInputChange('weldTypes', 'tackWeld', parseFloat(e.target.value) || 0)}
+                    value={pricingInputs.weldTypes["tackWeld"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange("weldTypes", "tackWeld", parseFloat(e.target.value) || 0)
+                    }
                     placeholder="0.00"
                     className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -1305,9 +1577,13 @@ function PricingInputsSection({
         )}
 
         {/* Flange Price Centers - only show types used in this RFQ */}
-        {(extractedSpecs.flangeTypes.slipOn || extractedSpecs.flangeTypes.rotating || extractedSpecs.flangeTypes.blank) && (
+        {(extractedSpecs.flangeTypes.slipOn ||
+          extractedSpecs.flangeTypes.rotating ||
+          extractedSpecs.flangeTypes.blank) && (
           <div className="space-y-3 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Flange Pricing (Price/unit)</h3>
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
+              Flange Pricing (Price/unit)
+            </h3>
             {extractedSpecs.flangeTypes.slipOn && (
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-600 flex-1">Slip On Flange</label>
@@ -1317,8 +1593,10 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.flangeTypes['slipOn'] || ''}
-                    onChange={(e) => onPricingInputChange('flangeTypes', 'slipOn', parseFloat(e.target.value) || 0)}
+                    value={pricingInputs.flangeTypes["slipOn"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange("flangeTypes", "slipOn", parseFloat(e.target.value) || 0)
+                    }
                     placeholder="0.00"
                     className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -1335,8 +1613,14 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.flangeTypes['rotating'] || ''}
-                    onChange={(e) => onPricingInputChange('flangeTypes', 'rotating', parseFloat(e.target.value) || 0)}
+                    value={pricingInputs.flangeTypes["rotating"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange(
+                        "flangeTypes",
+                        "rotating",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
                     placeholder="0.00"
                     className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -1353,8 +1637,10 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.flangeTypes['blank'] || ''}
-                    onChange={(e) => onPricingInputChange('flangeTypes', 'blank', parseFloat(e.target.value) || 0)}
+                    value={pricingInputs.flangeTypes["blank"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange("flangeTypes", "blank", parseFloat(e.target.value) || 0)
+                    }
                     placeholder="0.00"
                     className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -1379,8 +1665,10 @@ function PricingInputsSection({
                   type="number"
                   min="0"
                   step="0.01"
-                  value={pricingInputs.bnwTypes['bolts'] || ''}
-                  onChange={(e) => onPricingInputChange('bnwTypes', 'bolts', parseFloat(e.target.value) || 0)}
+                  value={pricingInputs.bnwTypes["bolts"] || ""}
+                  onChange={(e) =>
+                    onPricingInputChange("bnwTypes", "bolts", parseFloat(e.target.value) || 0)
+                  }
                   placeholder="0.00"
                   className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
@@ -1395,8 +1683,10 @@ function PricingInputsSection({
                   type="number"
                   min="0"
                   step="0.01"
-                  value={pricingInputs.bnwTypes['nuts'] || ''}
-                  onChange={(e) => onPricingInputChange('bnwTypes', 'nuts', parseFloat(e.target.value) || 0)}
+                  value={pricingInputs.bnwTypes["nuts"] || ""}
+                  onChange={(e) =>
+                    onPricingInputChange("bnwTypes", "nuts", parseFloat(e.target.value) || 0)
+                  }
                   placeholder="0.00"
                   className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
@@ -1411,8 +1701,10 @@ function PricingInputsSection({
                   type="number"
                   min="0"
                   step="0.01"
-                  value={pricingInputs.bnwTypes['washers'] || ''}
-                  onChange={(e) => onPricingInputChange('bnwTypes', 'washers', parseFloat(e.target.value) || 0)}
+                  value={pricingInputs.bnwTypes["washers"] || ""}
+                  onChange={(e) =>
+                    onPricingInputChange("bnwTypes", "washers", parseFloat(e.target.value) || 0)
+                  }
                   placeholder="0.00"
                   className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
@@ -1425,32 +1717,42 @@ function PricingInputsSection({
         {/* Valve Pricing - only show if valve sections exist */}
         {extractedSpecs.valveTypes.length > 0 && (
           <div className="space-y-3 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Valve Pricing (Price/unit)</h3>
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
+              Valve Pricing (Price/unit)
+            </h3>
             {extractedSpecs.valveTypes.map((valveType) => {
               const labels: Record<string, string> = {
-                ball_valve: 'Ball Valve',
-                gate_valve: 'Gate Valve',
-                globe_valve: 'Globe Valve',
-                butterfly_valve: 'Butterfly Valve',
-                check_valve: 'Check Valve',
-                control_valve: 'Control Valve',
-                safety_valve: 'Safety/Relief Valve',
-                plug_valve: 'Plug Valve',
-                needle_valve: 'Needle Valve',
-                diaphragm_valve: 'Diaphragm Valve',
-                general_valve: 'Valve (General)',
+                ball_valve: "Ball Valve",
+                gate_valve: "Gate Valve",
+                globe_valve: "Globe Valve",
+                butterfly_valve: "Butterfly Valve",
+                check_valve: "Check Valve",
+                control_valve: "Control Valve",
+                safety_valve: "Safety/Relief Valve",
+                plug_valve: "Plug Valve",
+                needle_valve: "Needle Valve",
+                diaphragm_valve: "Diaphragm Valve",
+                general_valve: "Valve (General)",
               };
               return (
                 <div key={valveType} className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 flex-1">{labels[valveType] || valveType}</label>
+                  <label className="text-sm text-gray-600 flex-1">
+                    {labels[valveType] || valveType}
+                  </label>
                   <div className="flex items-center">
                     <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      value={pricingInputs.valveTypes[valveType] || ''}
-                      onChange={(e) => onPricingInputChange('valveTypes', valveType, parseFloat(e.target.value) || 0)}
+                      value={pricingInputs.valveTypes[valveType] || ""}
+                      onChange={(e) =>
+                        onPricingInputChange(
+                          "valveTypes",
+                          valveType,
+                          parseFloat(e.target.value) || 0,
+                        )
+                      }
                       placeholder="0.00"
                       className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
@@ -1465,27 +1767,37 @@ function PricingInputsSection({
         {/* Instrument Pricing - only show if instrument sections exist */}
         {extractedSpecs.instrumentTypes.length > 0 && (
           <div className="space-y-3 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">Instrument Pricing (Price/unit)</h3>
+            <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
+              Instrument Pricing (Price/unit)
+            </h3>
             {extractedSpecs.instrumentTypes.map((instType) => {
               const labels: Record<string, string> = {
-                flow_meter: 'Flow Meter',
-                pressure_instrument: 'Pressure Instrument',
-                level_instrument: 'Level Instrument',
-                temperature_instrument: 'Temperature Instrument',
-                analytical_instrument: 'Analytical Instrument',
-                general_instrument: 'Instrument (General)',
+                flow_meter: "Flow Meter",
+                pressure_instrument: "Pressure Instrument",
+                level_instrument: "Level Instrument",
+                temperature_instrument: "Temperature Instrument",
+                analytical_instrument: "Analytical Instrument",
+                general_instrument: "Instrument (General)",
               };
               return (
                 <div key={instType} className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 flex-1">{labels[instType] || instType}</label>
+                  <label className="text-sm text-gray-600 flex-1">
+                    {labels[instType] || instType}
+                  </label>
                   <div className="flex items-center">
                     <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
-                      value={pricingInputs.instrumentTypes[instType] || ''}
-                      onChange={(e) => onPricingInputChange('instrumentTypes', instType, parseFloat(e.target.value) || 0)}
+                      value={pricingInputs.instrumentTypes[instType] || ""}
+                      onChange={(e) =>
+                        onPricingInputChange(
+                          "instrumentTypes",
+                          instType,
+                          parseFloat(e.target.value) || 0,
+                        )
+                      }
                       placeholder="0.00"
                       className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
@@ -1511,14 +1823,18 @@ function PricingInputsSection({
                 min="0"
                 max="100"
                 step="0.5"
-                value={pricingInputs.labourExtrasPercent || ''}
-                onChange={(e) => onPercentageChange('labourExtrasPercent', parseFloat(e.target.value) || 0)}
+                value={pricingInputs.labourExtrasPercent || ""}
+                onChange={(e) =>
+                  onPercentageChange("labourExtrasPercent", parseFloat(e.target.value) || 0)
+                }
                 placeholder="0"
                 className="w-full px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <span className="text-sm text-gray-500 ml-1">%</span>
             </div>
-            <span className="text-xs text-gray-400 whitespace-nowrap">(Added to each line item)</span>
+            <span className="text-xs text-gray-400 whitespace-nowrap">
+              (Added to each line item)
+            </span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -1531,8 +1847,10 @@ function PricingInputsSection({
                 min="0"
                 max="100"
                 step="0.5"
-                value={pricingInputs.contingenciesPercent || ''}
-                onChange={(e) => onPercentageChange('contingenciesPercent', parseFloat(e.target.value) || 0)}
+                value={pricingInputs.contingenciesPercent || ""}
+                onChange={(e) =>
+                  onPercentageChange("contingenciesPercent", parseFloat(e.target.value) || 0)
+                }
                 placeholder="5"
                 className="w-full px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
@@ -1557,158 +1875,309 @@ interface GrandTotalsSectionProps {
   weldUnitPrices: Record<string, number>;
 }
 
-function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode, rfqItems, weldTotals, extractedSpecs, weldUnitPrices }: GrandTotalsSectionProps) {
+function GrandTotalsSection({
+  sections,
+  unitPrices,
+  pricingInputs,
+  currencyCode,
+  rfqItems,
+  weldTotals,
+  extractedSpecs,
+  weldUnitPrices,
+}: GrandTotalsSectionProps) {
   const currency = currencyByCode(currencyCode);
   const currencySymbol = currency?.symbol || currencyCode;
 
   const formatCurrency = (value: number): string => {
-    return value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const calculateSuggestedPriceForItem = (item: ConsolidatedItem, sectionType: string): number => {
-    const isFabricatedSection = ['straight_pipes', 'bends', 'fittings', 'tees'].includes(sectionType);
-    const isFlangesSection = sectionType === 'flanges' || sectionType === 'blank_flanges';
-    const isBlankFlangesSection = sectionType === 'blank_flanges';
-    const isBnwSection = sectionType === 'bnw_sets';
+    const isFabricatedSection = ["straight_pipes", "bends", "fittings", "tees"].includes(
+      sectionType,
+    );
+    const isFlangesSection = sectionType === "flanges" || sectionType === "blank_flanges";
+    const isBlankFlangesSection = sectionType === "blank_flanges";
+    const isBnwSection = sectionType === "bnw_sets";
     const description = item.description.toUpperCase();
-    const weightPerUnit = item.qty > 0 ? (item.weightKg / item.qty) : 0;
+    const weightPerUnit = item.qty > 0 ? item.weightKg / item.qty : 0;
 
     if (isBnwSection) {
       const totalBnwWeight = weightPerUnit;
       const boltWeight = totalBnwWeight * 0.55;
-      const nutWeight = totalBnwWeight * 0.30;
+      const nutWeight = totalBnwWeight * 0.3;
       const washerWeight = totalBnwWeight * 0.15;
 
-      const boltPrice = (pricingInputs.bnwTypes['bolts'] || 0) * boltWeight;
-      const nutPrice = (pricingInputs.bnwTypes['nuts'] || 0) * nutWeight;
-      const washerPrice = (pricingInputs.bnwTypes['washers'] || 0) * washerWeight;
+      const boltPrice = (pricingInputs.bnwTypes["bolts"] || 0) * boltWeight;
+      const nutPrice = (pricingInputs.bnwTypes["nuts"] || 0) * nutWeight;
+      const washerPrice = (pricingInputs.bnwTypes["washers"] || 0) * washerWeight;
 
       return boltPrice + nutPrice + washerPrice;
     }
 
     if (isFlangesSection) {
       let flangePrice = 0;
-      if (isBlankFlangesSection || description.includes('BLANK')) {
-        flangePrice = (pricingInputs.flangeTypes['blank'] || 0) * weightPerUnit;
-      } else if (description.includes('ROTATING') || description.includes('R/F')) {
-        flangePrice = (pricingInputs.flangeTypes['rotating'] || 0) * weightPerUnit;
+      if (isBlankFlangesSection || description.includes("BLANK")) {
+        flangePrice = (pricingInputs.flangeTypes["blank"] || 0) * weightPerUnit;
+      } else if (description.includes("ROTATING") || description.includes("R/F")) {
+        flangePrice = (pricingInputs.flangeTypes["rotating"] || 0) * weightPerUnit;
       } else {
-        flangePrice = (pricingInputs.flangeTypes['slipOn'] || 0) * weightPerUnit;
+        flangePrice = (pricingInputs.flangeTypes["slipOn"] || 0) * weightPerUnit;
       }
       const labourExtras = flangePrice * (pricingInputs.labourExtrasPercent / 100);
       return flangePrice + labourExtras;
     }
 
-    const isValveSectionFirst = sectionType === 'valves';
+    const isValveSectionFirst = sectionType === "valves";
     if (isValveSectionFirst) {
       let valvePrice = 0;
-      if (description.includes('BALL')) {
-        valvePrice = pricingInputs.valveTypes['ball_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('GATE')) {
-        valvePrice = pricingInputs.valveTypes['gate_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('GLOBE')) {
-        valvePrice = pricingInputs.valveTypes['globe_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('BUTTERFLY')) {
-        valvePrice = pricingInputs.valveTypes['butterfly_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('CHECK')) {
-        valvePrice = pricingInputs.valveTypes['check_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('CONTROL') || description.includes('ACTUATOR')) {
-        valvePrice = pricingInputs.valveTypes['control_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('SAFETY') || description.includes('RELIEF') || description.includes('PSV')) {
-        valvePrice = pricingInputs.valveTypes['safety_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('PLUG')) {
-        valvePrice = pricingInputs.valveTypes['plug_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('NEEDLE')) {
-        valvePrice = pricingInputs.valveTypes['needle_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('DIAPHRAGM')) {
-        valvePrice = pricingInputs.valveTypes['diaphragm_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      if (description.includes("BALL")) {
+        valvePrice =
+          pricingInputs.valveTypes["ball_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("GATE")) {
+        valvePrice =
+          pricingInputs.valveTypes["gate_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("GLOBE")) {
+        valvePrice =
+          pricingInputs.valveTypes["globe_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("BUTTERFLY")) {
+        valvePrice =
+          pricingInputs.valveTypes["butterfly_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
+      } else if (description.includes("CHECK")) {
+        valvePrice =
+          pricingInputs.valveTypes["check_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("CONTROL") || description.includes("ACTUATOR")) {
+        valvePrice =
+          pricingInputs.valveTypes["control_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
+      } else if (
+        description.includes("SAFETY") ||
+        description.includes("RELIEF") ||
+        description.includes("PSV")
+      ) {
+        valvePrice =
+          pricingInputs.valveTypes["safety_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
+      } else if (description.includes("PLUG")) {
+        valvePrice =
+          pricingInputs.valveTypes["plug_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("NEEDLE")) {
+        valvePrice =
+          pricingInputs.valveTypes["needle_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
+      } else if (description.includes("DIAPHRAGM")) {
+        valvePrice =
+          pricingInputs.valveTypes["diaphragm_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
       } else {
-        valvePrice = pricingInputs.valveTypes['general_valve'] || Object.values(pricingInputs.valveTypes)[0] || 0;
+        valvePrice =
+          pricingInputs.valveTypes["general_valve"] ||
+          Object.values(pricingInputs.valveTypes)[0] ||
+          0;
       }
       const labourExtrasValve = valvePrice * (pricingInputs.labourExtrasPercent / 100);
       return valvePrice + labourExtrasValve;
     }
 
-    const isInstrumentSectionFirst = ['instruments', 'flow_meters', 'pressure_instruments', 'level_instruments', 'temperature_instruments'].includes(sectionType);
+    const isInstrumentSectionFirst = [
+      "instruments",
+      "flow_meters",
+      "pressure_instruments",
+      "level_instruments",
+      "temperature_instruments",
+    ].includes(sectionType);
     if (isInstrumentSectionFirst) {
       let instrumentPrice = 0;
-      if (sectionType === 'flow_meters' || description.includes('FLOW') || description.includes('METER')) {
-        instrumentPrice = pricingInputs.instrumentTypes['flow_meter'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
-      } else if (sectionType === 'pressure_instruments' || description.includes('PRESSURE') || description.includes('PSI') || description.includes('BAR')) {
-        instrumentPrice = pricingInputs.instrumentTypes['pressure_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
-      } else if (sectionType === 'level_instruments' || description.includes('LEVEL') || description.includes('RADAR') || description.includes('ULTRASONIC')) {
-        instrumentPrice = pricingInputs.instrumentTypes['level_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
-      } else if (sectionType === 'temperature_instruments' || description.includes('TEMPERATURE') || description.includes('RTD') || description.includes('THERMOCOUPLE')) {
-        instrumentPrice = pricingInputs.instrumentTypes['temperature_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
-      } else if (description.includes('PH') || description.includes('CONDUCTIVITY') || description.includes('ANALYZER')) {
-        instrumentPrice = pricingInputs.instrumentTypes['analytical_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      if (
+        sectionType === "flow_meters" ||
+        description.includes("FLOW") ||
+        description.includes("METER")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["flow_meter"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
+      } else if (
+        sectionType === "pressure_instruments" ||
+        description.includes("PRESSURE") ||
+        description.includes("PSI") ||
+        description.includes("BAR")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["pressure_instrument"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
+      } else if (
+        sectionType === "level_instruments" ||
+        description.includes("LEVEL") ||
+        description.includes("RADAR") ||
+        description.includes("ULTRASONIC")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["level_instrument"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
+      } else if (
+        sectionType === "temperature_instruments" ||
+        description.includes("TEMPERATURE") ||
+        description.includes("RTD") ||
+        description.includes("THERMOCOUPLE")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["temperature_instrument"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
+      } else if (
+        description.includes("PH") ||
+        description.includes("CONDUCTIVITY") ||
+        description.includes("ANALYZER")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["analytical_instrument"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
       } else {
-        instrumentPrice = pricingInputs.instrumentTypes['general_instrument'] || Object.values(pricingInputs.instrumentTypes)[0] || 0;
+        instrumentPrice =
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          Object.values(pricingInputs.instrumentTypes)[0] ||
+          0;
       }
       const labourExtrasInst = instrumentPrice * (pricingInputs.labourExtrasPercent / 100);
       return instrumentPrice + labourExtrasInst;
     }
 
-    const isPumpSectionFirst = ['pumps', 'pump_parts', 'pump_spares', 'pump_repairs', 'pump_rental'].includes(sectionType);
+    const isPumpSectionFirst = [
+      "pumps",
+      "pump_parts",
+      "pump_spares",
+      "pump_repairs",
+      "pump_rental",
+    ].includes(sectionType);
     if (isPumpSectionFirst) {
       let pumpPrice = 0;
-      if (sectionType === 'pumps') {
-        if (description.includes('CENTRIFUGAL') || description.includes('END SUCTION')) {
-          pumpPrice = pricingInputs.pumpTypes['centrifugal_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('SUBMERSIBLE') || description.includes('BOREHOLE')) {
-          pumpPrice = pricingInputs.pumpTypes['submersible_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('PROGRESSIVE') || description.includes('CAVITY') || description.includes('MONO')) {
-          pumpPrice = pricingInputs.pumpTypes['progressive_cavity_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('SLURRY') || description.includes('WARMAN')) {
-          pumpPrice = pricingInputs.pumpTypes['slurry_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('DIAPHRAGM')) {
-          pumpPrice = pricingInputs.pumpTypes['diaphragm_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('GEAR')) {
-          pumpPrice = pricingInputs.pumpTypes['gear_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+      if (sectionType === "pumps") {
+        if (description.includes("CENTRIFUGAL") || description.includes("END SUCTION")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["centrifugal_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+        } else if (description.includes("SUBMERSIBLE") || description.includes("BOREHOLE")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["submersible_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+        } else if (
+          description.includes("PROGRESSIVE") ||
+          description.includes("CAVITY") ||
+          description.includes("MONO")
+        ) {
+          pumpPrice =
+            pricingInputs.pumpTypes["progressive_cavity_pump"] ||
+            pricingInputs.pumpTypes["new_pump"] ||
+            0;
+        } else if (description.includes("SLURRY") || description.includes("WARMAN")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["slurry_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+        } else if (description.includes("DIAPHRAGM")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["diaphragm_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+        } else if (description.includes("GEAR")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["gear_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
         } else {
-          pumpPrice = pricingInputs.pumpTypes['new_pump'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice =
+            pricingInputs.pumpTypes["new_pump"] || Object.values(pricingInputs.pumpTypes)[0] || 0;
         }
-      } else if (sectionType === 'pump_parts' || sectionType === 'pump_spares') {
-        if (description.includes('IMPELLER')) {
-          pumpPrice = pricingInputs.pumpTypes['impeller'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('SEAL')) {
-          pumpPrice = pricingInputs.pumpTypes['mechanical_seal'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('BEARING')) {
-          pumpPrice = pricingInputs.pumpTypes['bearing_kit'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('WEAR RING')) {
-          pumpPrice = pricingInputs.pumpTypes['wear_ring'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('COUPLING')) {
-          pumpPrice = pricingInputs.pumpTypes['coupling'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('SHAFT') || description.includes('SLEEVE')) {
-          pumpPrice = pricingInputs.pumpTypes['shaft_sleeve'] || pricingInputs.pumpTypes['pump_part'] || 0;
+      } else if (sectionType === "pump_parts" || sectionType === "pump_spares") {
+        if (description.includes("IMPELLER")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["impeller"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("SEAL")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["mechanical_seal"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("BEARING")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["bearing_kit"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("WEAR RING")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["wear_ring"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("COUPLING")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["coupling"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("SHAFT") || description.includes("SLEEVE")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["shaft_sleeve"] || pricingInputs.pumpTypes["pump_part"] || 0;
         } else {
-          pumpPrice = pricingInputs.pumpTypes['pump_part'] || pricingInputs.pumpTypes['pump_spare'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice =
+            pricingInputs.pumpTypes["pump_part"] ||
+            pricingInputs.pumpTypes["pump_spare"] ||
+            Object.values(pricingInputs.pumpTypes)[0] ||
+            0;
         }
-      } else if (sectionType === 'pump_repairs') {
-        if (description.includes('MAJOR') || description.includes('OVERHAUL')) {
-          pumpPrice = pricingInputs.pumpTypes['major_overhaul'] || pricingInputs.pumpTypes['pump_repair'] || 0;
-        } else if (description.includes('MINOR')) {
-          pumpPrice = pricingInputs.pumpTypes['minor_overhaul'] || pricingInputs.pumpTypes['pump_repair'] || 0;
-        } else if (description.includes('SEAL') && description.includes('REPLACE')) {
-          pumpPrice = pricingInputs.pumpTypes['seal_replacement'] || pricingInputs.pumpTypes['pump_repair'] || 0;
-        } else if (description.includes('BEARING') && description.includes('REPLACE')) {
-          pumpPrice = pricingInputs.pumpTypes['bearing_replacement'] || pricingInputs.pumpTypes['pump_repair'] || 0;
-        } else if (description.includes('INSPECT')) {
-          pumpPrice = pricingInputs.pumpTypes['inspection'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+      } else if (sectionType === "pump_repairs") {
+        if (description.includes("MAJOR") || description.includes("OVERHAUL")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["major_overhaul"] ||
+            pricingInputs.pumpTypes["pump_repair"] ||
+            0;
+        } else if (description.includes("MINOR")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["minor_overhaul"] ||
+            pricingInputs.pumpTypes["pump_repair"] ||
+            0;
+        } else if (description.includes("SEAL") && description.includes("REPLACE")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["seal_replacement"] ||
+            pricingInputs.pumpTypes["pump_repair"] ||
+            0;
+        } else if (description.includes("BEARING") && description.includes("REPLACE")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["bearing_replacement"] ||
+            pricingInputs.pumpTypes["pump_repair"] ||
+            0;
+        } else if (description.includes("INSPECT")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["inspection"] || pricingInputs.pumpTypes["pump_repair"] || 0;
         } else {
-          pumpPrice = pricingInputs.pumpTypes['pump_repair'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice =
+            pricingInputs.pumpTypes["pump_repair"] ||
+            Object.values(pricingInputs.pumpTypes)[0] ||
+            0;
         }
-      } else if (sectionType === 'pump_rental') {
-        if (description.includes('SLURRY')) {
-          pumpPrice = pricingInputs.pumpTypes['slurry_rental'] || pricingInputs.pumpTypes['pump_rental'] || 0;
-        } else if (description.includes('LARGE') || description.includes('200')) {
-          pumpPrice = pricingInputs.pumpTypes['large_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
-        } else if (description.includes('MEDIUM') || description.includes('100') || description.includes('150')) {
-          pumpPrice = pricingInputs.pumpTypes['medium_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
-        } else if (description.includes('SMALL') || description.includes('50') || description.includes('75')) {
-          pumpPrice = pricingInputs.pumpTypes['small_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+      } else if (sectionType === "pump_rental") {
+        if (description.includes("SLURRY")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["slurry_rental"] || pricingInputs.pumpTypes["pump_rental"] || 0;
+        } else if (description.includes("LARGE") || description.includes("200")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["large_dewatering"] ||
+            pricingInputs.pumpTypes["pump_rental"] ||
+            0;
+        } else if (
+          description.includes("MEDIUM") ||
+          description.includes("100") ||
+          description.includes("150")
+        ) {
+          pumpPrice =
+            pricingInputs.pumpTypes["medium_dewatering"] ||
+            pricingInputs.pumpTypes["pump_rental"] ||
+            0;
+        } else if (
+          description.includes("SMALL") ||
+          description.includes("50") ||
+          description.includes("75")
+        ) {
+          pumpPrice =
+            pricingInputs.pumpTypes["small_dewatering"] ||
+            pricingInputs.pumpTypes["pump_rental"] ||
+            0;
         } else {
-          pumpPrice = pricingInputs.pumpTypes['pump_rental'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice =
+            pricingInputs.pumpTypes["pump_rental"] ||
+            Object.values(pricingInputs.pumpTypes)[0] ||
+            0;
         }
       }
       const labourExtrasPump = pumpPrice * (pricingInputs.labourExtrasPercent / 100);
@@ -1719,18 +2188,19 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode,
 
     let basePrice = 0;
 
-    const rfqItem = item.entries.length > 0
-      ? rfqItems.find(ri => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
-      : null;
+    const rfqItem =
+      item.entries.length > 0
+        ? rfqItems.find((ri) => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
+        : null;
 
     const itemSteelSpec = rfqItem
       ? normalizeSteelSpec(
           rfqItem.straightPipeDetails?.pipeStandard ||
-          rfqItem.bendDetails?.pipeStandard ||
-          rfqItem.fittingDetails?.fittingStandard ||
-          ''
+            rfqItem.bendDetails?.pipeStandard ||
+            rfqItem.fittingDetails?.fittingStandard ||
+            "",
         )
-      : '';
+      : "";
 
     Object.entries(pricingInputs.steelSpecs).forEach(([spec, pricePerKg]) => {
       if (pricePerKg > 0) {
@@ -1750,21 +2220,24 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode,
 
     let flangePrice = 0;
     if (rfqItem) {
-      const endConfig = rfqItem.straightPipeDetails?.pipeEndConfiguration ||
-                        rfqItem.bendDetails?.bendEndConfiguration ||
-                        rfqItem.fittingDetails?.pipeEndConfiguration || '';
+      const endConfig =
+        rfqItem.straightPipeDetails?.pipeEndConfiguration ||
+        rfqItem.bendDetails?.bendEndConfiguration ||
+        rfqItem.fittingDetails?.pipeEndConfiguration ||
+        "";
 
-      if (endConfig && endConfig !== 'PE') {
+      if (endConfig && endConfig !== "PE") {
         const flangeCount = flangeCountFromConfig(endConfig, rfqItem.itemType);
         if (isRotatingFlange(endConfig)) {
-          flangePrice += (pricingInputs.flangeTypes['rotating'] || 0) * flangeCount;
+          flangePrice += (pricingInputs.flangeTypes["rotating"] || 0) * flangeCount;
         } else {
-          flangePrice += (pricingInputs.flangeTypes['slipOn'] || 0) * flangeCount;
+          flangePrice += (pricingInputs.flangeTypes["slipOn"] || 0) * flangeCount;
         }
       }
 
       if (rfqItem.fittingDetails?.addBlankFlange && rfqItem.fittingDetails.blankFlangeCount) {
-        flangePrice += (pricingInputs.flangeTypes['blank'] || 0) * rfqItem.fittingDetails.blankFlangeCount;
+        flangePrice +=
+          (pricingInputs.flangeTypes["blank"] || 0) * rfqItem.fittingDetails.blankFlangeCount;
       }
     }
 
@@ -1785,8 +2258,9 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode,
       const pricePerLm = pricingInputs.weldTypes[weldType] || 0;
       const labourExtras = pricePerLm * (pricingInputs.labourExtrasPercent / 100);
       const suggestedPrice = pricePerLm + labourExtras;
-      const effectivePrice = (manualPrice !== undefined && manualPrice > 0) ? manualPrice : suggestedPrice;
-      return sum + (quantity * effectivePrice);
+      const effectivePrice =
+        manualPrice !== undefined && manualPrice > 0 ? manualPrice : suggestedPrice;
+      return sum + quantity * effectivePrice;
     }, 0);
   };
 
@@ -1794,10 +2268,11 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode,
     const sectionPrices = unitPrices[String(section.id)] || {};
     const sectionTotal = section.items.reduce((sum, item, idx) => {
       const manualPrice = sectionPrices[idx];
-      const effectivePrice = (manualPrice !== undefined && manualPrice > 0)
-        ? manualPrice
-        : calculateSuggestedPriceForItem(item, section.sectionType);
-      return sum + (item.qty * effectivePrice);
+      const effectivePrice =
+        manualPrice !== undefined && manualPrice > 0
+          ? manualPrice
+          : calculateSuggestedPriceForItem(item, section.sectionType);
+      return sum + item.qty * effectivePrice;
     }, 0);
     return total + sectionTotal;
   }, 0);
@@ -1816,23 +2291,35 @@ function GrandTotalsSection({ sections, unitPrices, pricingInputs, currencyCode,
       <div className="flex flex-col items-end space-y-2">
         <div className="flex justify-between w-80 text-sm">
           <span className="text-gray-600">Subtotal:</span>
-          <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(subtotal)}</span>
+          <span className="font-medium text-gray-900">
+            {currencySymbol} {formatCurrency(subtotal)}
+          </span>
         </div>
         <div className="flex justify-between w-80 text-sm">
-          <span className="text-gray-600">Contingencies ({pricingInputs.contingenciesPercent}%):</span>
-          <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(contingenciesAmount)}</span>
+          <span className="text-gray-600">
+            Contingencies ({pricingInputs.contingenciesPercent}%):
+          </span>
+          <span className="font-medium text-gray-900">
+            {currencySymbol} {formatCurrency(contingenciesAmount)}
+          </span>
         </div>
         <div className="flex justify-between w-80 text-sm font-semibold border-t border-gray-300 pt-2 mt-2">
           <span className="text-gray-900">Grand Total (ex VAT):</span>
-          <span className="text-gray-900">{currencySymbol} {formatCurrency(grandTotalExVat)}</span>
+          <span className="text-gray-900">
+            {currencySymbol} {formatCurrency(grandTotalExVat)}
+          </span>
         </div>
         <div className="flex justify-between w-80 text-sm">
           <span className="text-gray-600">VAT ({vatRate}%):</span>
-          <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(vatAmount)}</span>
+          <span className="font-medium text-gray-900">
+            {currencySymbol} {formatCurrency(vatAmount)}
+          </span>
         </div>
         <div className="flex justify-between w-80 text-lg font-bold border-t border-gray-300 pt-2 mt-2">
           <span className="text-gray-900">Total (inc VAT):</span>
-          <span className="text-green-700">{currencySymbol} {formatCurrency(grandTotalIncVat)}</span>
+          <span className="text-green-700">
+            {currencySymbol} {formatCurrency(grandTotalIncVat)}
+          </span>
         </div>
       </div>
     </div>
@@ -1849,10 +2336,10 @@ interface WeldsSectionProps {
 }
 
 const WELD_TYPE_LABELS: Record<string, string> = {
-  flangeWeld: 'Flange Weld',
-  mitreWeld: 'Mitre Weld',
-  teeWeld: 'Tee Weld',
-  tackWeld: 'Tack Weld (Loose Flange)',
+  flangeWeld: "Flange Weld",
+  mitreWeld: "Mitre Weld",
+  teeWeld: "Tee Weld",
+  tackWeld: "Tack Weld (Loose Flange)",
 };
 
 function WeldsSection({
@@ -1867,7 +2354,7 @@ function WeldsSection({
   const currencySymbol = currency?.symbol || currencyCode;
 
   const formatCurrency = (value: number): string => {
-    return value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const weldTypes = Object.entries(extractedSpecs.weldTypes)
@@ -1895,7 +2382,7 @@ function WeldsSection({
   const totalAmount = weldTypes.reduce((sum, weldType) => {
     const quantity = weldTotals[weldType as keyof WeldTotals];
     const unitPrice = effectiveUnitPrice(weldType);
-    return sum + (quantity * unitPrice);
+    return sum + quantity * unitPrice;
   }, 0);
 
   return (
@@ -1908,10 +2395,18 @@ function WeldsSection({
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <thead className="bg-gray-50">
             <tr>
-              <th className="w-12 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Weld Type</th>
-              <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Total (Lm)</th>
-              <th className="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+              <th className="w-12 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                #
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                Weld Type
+              </th>
+              <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                Total (Lm)
+              </th>
+              <th className="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                Unit
+              </th>
               <th className="w-32 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
                 Unit Price ({currencySymbol})
               </th>
@@ -1927,13 +2422,18 @@ function WeldsSection({
               const manualPrice = weldUnitPrices[weldType];
               const currentUnitPrice = effectiveUnitPrice(weldType);
               const lineTotalValue = quantity * currentUnitPrice;
-              const isAutoCalculated = (manualPrice === undefined || manualPrice === 0) && suggestedPrice > 0;
+              const isAutoCalculated =
+                (manualPrice === undefined || manualPrice === 0) && suggestedPrice > 0;
 
               return (
                 <tr key={weldType}>
                   <td className="w-12 px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
-                  <td className="px-3 py-2 text-sm text-gray-900">{WELD_TYPE_LABELS[weldType] || weldType}</td>
-                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{quantity.toFixed(3)}</td>
+                  <td className="px-3 py-2 text-sm text-gray-900">
+                    {WELD_TYPE_LABELS[weldType] || weldType}
+                  </td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                    {quantity.toFixed(3)}
+                  </td>
                   <td className="w-16 px-3 py-2 text-sm text-gray-500">Lm</td>
                   <td className="w-32 px-2 py-1">
                     <div className="flex items-center">
@@ -1942,10 +2442,12 @@ function WeldsSection({
                         type="number"
                         min="0"
                         step="0.01"
-                        value={manualPrice || ''}
-                        onChange={(e) => onWeldUnitPriceChange(weldType, parseFloat(e.target.value) || 0)}
-                        placeholder={suggestedPrice > 0 ? suggestedPrice.toFixed(2) : '0.00'}
-                        className={`w-full px-2 py-1 text-sm text-right border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isAutoCalculated ? 'border-green-300 bg-green-50' : 'border-gray-300'}`}
+                        value={manualPrice || ""}
+                        onChange={(e) =>
+                          onWeldUnitPriceChange(weldType, parseFloat(e.target.value) || 0)
+                        }
+                        placeholder={suggestedPrice > 0 ? suggestedPrice.toFixed(2) : "0.00"}
+                        className={`w-full px-2 py-1 text-sm text-right border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isAutoCalculated ? "border-green-300 bg-green-50" : "border-gray-300"}`}
                       />
                     </div>
                     {isAutoCalculated && (
@@ -1963,7 +2465,12 @@ function WeldsSection({
                 TOTAL
               </td>
               <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                {(weldTotals.flangeWeld + weldTotals.mitreWeld + weldTotals.teeWeld + weldTotals.tackWeld).toFixed(3)}
+                {(
+                  weldTotals.flangeWeld +
+                  weldTotals.mitreWeld +
+                  weldTotals.teeWeld +
+                  weldTotals.tackWeld
+                ).toFixed(3)}
               </td>
               <td className="w-16 px-3 py-2 text-sm text-gray-500">Lm</td>
               <td className="w-32 px-3 py-2 text-sm text-gray-500"></td>
@@ -1987,20 +2494,29 @@ interface SectionTableProps {
   rfqItems: RfqItemDetail[];
 }
 
-function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pricingInputs, rfqItems }: SectionTableProps) {
+function SectionTable({
+  section,
+  currencyCode,
+  unitPrices,
+  onUnitPriceChange,
+  pricingInputs,
+  rfqItems,
+}: SectionTableProps) {
   const hasWelds = section.items.some(
-    (item) =>
-      item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld
+    (item) => item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld,
   );
   const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
 
   const currency = currencyByCode(currencyCode);
   const currencySymbol = currency?.symbol || currencyCode;
 
-  const isFabricatedSection = ['straight_pipes', 'bends', 'fittings', 'tees'].includes(section.sectionType);
-  const isFlangesSection = section.sectionType === 'flanges' || section.sectionType === 'blank_flanges';
-  const isBlankFlangesSection = section.sectionType === 'blank_flanges';
-  const isBnwSection = section.sectionType === 'bnw_sets';
+  const isFabricatedSection = ["straight_pipes", "bends", "fittings", "tees"].includes(
+    section.sectionType,
+  );
+  const isFlangesSection =
+    section.sectionType === "flanges" || section.sectionType === "blank_flanges";
+  const isBlankFlangesSection = section.sectionType === "blank_flanges";
+  const isBnwSection = section.sectionType === "bnw_sets";
 
   const effectiveItemWeight = (item: ConsolidatedItem): number => {
     if (isFlangesSection) {
@@ -2012,144 +2528,284 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
   const calculateSuggestedPrice = (item: ConsolidatedItem): number => {
     const description = item.description.toUpperCase();
     const itemWeight = effectiveItemWeight(item);
-    const weightPerUnit = item.qty > 0 ? (itemWeight / item.qty) : 0;
+    const weightPerUnit = item.qty > 0 ? itemWeight / item.qty : 0;
 
     if (isBnwSection) {
       const totalBnwWeight = weightPerUnit;
       const boltWeight = totalBnwWeight * 0.55;
-      const nutWeight = totalBnwWeight * 0.30;
+      const nutWeight = totalBnwWeight * 0.3;
       const washerWeight = totalBnwWeight * 0.15;
 
-      const boltPrice = (pricingInputs.bnwTypes['bolts'] || 0) * boltWeight;
-      const nutPrice = (pricingInputs.bnwTypes['nuts'] || 0) * nutWeight;
-      const washerPrice = (pricingInputs.bnwTypes['washers'] || 0) * washerWeight;
+      const boltPrice = (pricingInputs.bnwTypes["bolts"] || 0) * boltWeight;
+      const nutPrice = (pricingInputs.bnwTypes["nuts"] || 0) * nutWeight;
+      const washerPrice = (pricingInputs.bnwTypes["washers"] || 0) * washerWeight;
 
       return boltPrice + nutPrice + washerPrice;
     }
 
     if (isFlangesSection) {
       let flangePrice = 0;
-      if (isBlankFlangesSection || description.includes('BLANK')) {
-        flangePrice = (pricingInputs.flangeTypes['blank'] || 0) * weightPerUnit;
-      } else if (description.includes('ROTATING') || description.includes('R/F')) {
-        flangePrice = (pricingInputs.flangeTypes['rotating'] || 0) * weightPerUnit;
+      if (isBlankFlangesSection || description.includes("BLANK")) {
+        flangePrice = (pricingInputs.flangeTypes["blank"] || 0) * weightPerUnit;
+      } else if (description.includes("ROTATING") || description.includes("R/F")) {
+        flangePrice = (pricingInputs.flangeTypes["rotating"] || 0) * weightPerUnit;
       } else {
-        flangePrice = (pricingInputs.flangeTypes['slipOn'] || 0) * weightPerUnit;
+        flangePrice = (pricingInputs.flangeTypes["slipOn"] || 0) * weightPerUnit;
       }
       const labourExtras = flangePrice * (pricingInputs.labourExtrasPercent / 100);
       return flangePrice + labourExtras;
     }
 
-    const isValveSectionSecond = section.sectionType === 'valves';
+    const isValveSectionSecond = section.sectionType === "valves";
     if (isValveSectionSecond) {
       let valvePrice = 0;
-      if (description.includes('BALL')) {
-        valvePrice = pricingInputs.valveTypes['ball_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('GATE')) {
-        valvePrice = pricingInputs.valveTypes['gate_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('GLOBE')) {
-        valvePrice = pricingInputs.valveTypes['globe_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('BUTTERFLY')) {
-        valvePrice = pricingInputs.valveTypes['butterfly_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('CHECK')) {
-        valvePrice = pricingInputs.valveTypes['check_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('CONTROL') || description.includes('ACTUATOR')) {
-        valvePrice = pricingInputs.valveTypes['control_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('SAFETY') || description.includes('RELIEF') || description.includes('PSV')) {
-        valvePrice = pricingInputs.valveTypes['safety_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('PLUG')) {
-        valvePrice = pricingInputs.valveTypes['plug_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('NEEDLE')) {
-        valvePrice = pricingInputs.valveTypes['needle_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
-      } else if (description.includes('DIAPHRAGM')) {
-        valvePrice = pricingInputs.valveTypes['diaphragm_valve'] || pricingInputs.valveTypes['general_valve'] || 0;
+      if (description.includes("BALL")) {
+        valvePrice =
+          pricingInputs.valveTypes["ball_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("GATE")) {
+        valvePrice =
+          pricingInputs.valveTypes["gate_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("GLOBE")) {
+        valvePrice =
+          pricingInputs.valveTypes["globe_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("BUTTERFLY")) {
+        valvePrice =
+          pricingInputs.valveTypes["butterfly_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
+      } else if (description.includes("CHECK")) {
+        valvePrice =
+          pricingInputs.valveTypes["check_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("CONTROL") || description.includes("ACTUATOR")) {
+        valvePrice =
+          pricingInputs.valveTypes["control_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
+      } else if (
+        description.includes("SAFETY") ||
+        description.includes("RELIEF") ||
+        description.includes("PSV")
+      ) {
+        valvePrice =
+          pricingInputs.valveTypes["safety_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
+      } else if (description.includes("PLUG")) {
+        valvePrice =
+          pricingInputs.valveTypes["plug_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+      } else if (description.includes("NEEDLE")) {
+        valvePrice =
+          pricingInputs.valveTypes["needle_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
+      } else if (description.includes("DIAPHRAGM")) {
+        valvePrice =
+          pricingInputs.valveTypes["diaphragm_valve"] ||
+          pricingInputs.valveTypes["general_valve"] ||
+          0;
       } else {
-        valvePrice = pricingInputs.valveTypes['general_valve'] || Object.values(pricingInputs.valveTypes)[0] || 0;
+        valvePrice =
+          pricingInputs.valveTypes["general_valve"] ||
+          Object.values(pricingInputs.valveTypes)[0] ||
+          0;
       }
       const labourExtrasValve = valvePrice * (pricingInputs.labourExtrasPercent / 100);
       return valvePrice + labourExtrasValve;
     }
 
-    const isInstrumentSectionSecond = ['instruments', 'flow_meters', 'pressure_instruments', 'level_instruments', 'temperature_instruments'].includes(section.sectionType);
+    const isInstrumentSectionSecond = [
+      "instruments",
+      "flow_meters",
+      "pressure_instruments",
+      "level_instruments",
+      "temperature_instruments",
+    ].includes(section.sectionType);
     if (isInstrumentSectionSecond) {
       let instrumentPrice = 0;
-      if (section.sectionType === 'flow_meters' || description.includes('FLOW') || description.includes('METER')) {
-        instrumentPrice = pricingInputs.instrumentTypes['flow_meter'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
-      } else if (section.sectionType === 'pressure_instruments' || description.includes('PRESSURE') || description.includes('PSI') || description.includes('BAR')) {
-        instrumentPrice = pricingInputs.instrumentTypes['pressure_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
-      } else if (section.sectionType === 'level_instruments' || description.includes('LEVEL') || description.includes('RADAR') || description.includes('ULTRASONIC')) {
-        instrumentPrice = pricingInputs.instrumentTypes['level_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
-      } else if (section.sectionType === 'temperature_instruments' || description.includes('TEMPERATURE') || description.includes('RTD') || description.includes('THERMOCOUPLE')) {
-        instrumentPrice = pricingInputs.instrumentTypes['temperature_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
-      } else if (description.includes('PH') || description.includes('CONDUCTIVITY') || description.includes('ANALYZER')) {
-        instrumentPrice = pricingInputs.instrumentTypes['analytical_instrument'] || pricingInputs.instrumentTypes['general_instrument'] || 0;
+      if (
+        section.sectionType === "flow_meters" ||
+        description.includes("FLOW") ||
+        description.includes("METER")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["flow_meter"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
+      } else if (
+        section.sectionType === "pressure_instruments" ||
+        description.includes("PRESSURE") ||
+        description.includes("PSI") ||
+        description.includes("BAR")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["pressure_instrument"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
+      } else if (
+        section.sectionType === "level_instruments" ||
+        description.includes("LEVEL") ||
+        description.includes("RADAR") ||
+        description.includes("ULTRASONIC")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["level_instrument"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
+      } else if (
+        section.sectionType === "temperature_instruments" ||
+        description.includes("TEMPERATURE") ||
+        description.includes("RTD") ||
+        description.includes("THERMOCOUPLE")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["temperature_instrument"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
+      } else if (
+        description.includes("PH") ||
+        description.includes("CONDUCTIVITY") ||
+        description.includes("ANALYZER")
+      ) {
+        instrumentPrice =
+          pricingInputs.instrumentTypes["analytical_instrument"] ||
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          0;
       } else {
-        instrumentPrice = pricingInputs.instrumentTypes['general_instrument'] || Object.values(pricingInputs.instrumentTypes)[0] || 0;
+        instrumentPrice =
+          pricingInputs.instrumentTypes["general_instrument"] ||
+          Object.values(pricingInputs.instrumentTypes)[0] ||
+          0;
       }
       const labourExtrasInst = instrumentPrice * (pricingInputs.labourExtrasPercent / 100);
       return instrumentPrice + labourExtrasInst;
     }
 
-    const isPumpSectionSecond = ['pumps', 'pump_parts', 'pump_spares', 'pump_repairs', 'pump_rental'].includes(section.sectionType);
+    const isPumpSectionSecond = [
+      "pumps",
+      "pump_parts",
+      "pump_spares",
+      "pump_repairs",
+      "pump_rental",
+    ].includes(section.sectionType);
     if (isPumpSectionSecond) {
       let pumpPrice = 0;
-      if (section.sectionType === 'pumps') {
-        if (description.includes('CENTRIFUGAL') || description.includes('END SUCTION')) {
-          pumpPrice = pricingInputs.pumpTypes['centrifugal_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('SUBMERSIBLE') || description.includes('BOREHOLE')) {
-          pumpPrice = pricingInputs.pumpTypes['submersible_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('PROGRESSIVE') || description.includes('CAVITY') || description.includes('MONO')) {
-          pumpPrice = pricingInputs.pumpTypes['progressive_cavity_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('SLURRY') || description.includes('WARMAN')) {
-          pumpPrice = pricingInputs.pumpTypes['slurry_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('DIAPHRAGM')) {
-          pumpPrice = pricingInputs.pumpTypes['diaphragm_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
-        } else if (description.includes('GEAR')) {
-          pumpPrice = pricingInputs.pumpTypes['gear_pump'] || pricingInputs.pumpTypes['new_pump'] || 0;
+      if (section.sectionType === "pumps") {
+        if (description.includes("CENTRIFUGAL") || description.includes("END SUCTION")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["centrifugal_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+        } else if (description.includes("SUBMERSIBLE") || description.includes("BOREHOLE")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["submersible_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+        } else if (
+          description.includes("PROGRESSIVE") ||
+          description.includes("CAVITY") ||
+          description.includes("MONO")
+        ) {
+          pumpPrice =
+            pricingInputs.pumpTypes["progressive_cavity_pump"] ||
+            pricingInputs.pumpTypes["new_pump"] ||
+            0;
+        } else if (description.includes("SLURRY") || description.includes("WARMAN")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["slurry_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+        } else if (description.includes("DIAPHRAGM")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["diaphragm_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+        } else if (description.includes("GEAR")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["gear_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
         } else {
-          pumpPrice = pricingInputs.pumpTypes['new_pump'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice =
+            pricingInputs.pumpTypes["new_pump"] || Object.values(pricingInputs.pumpTypes)[0] || 0;
         }
-      } else if (section.sectionType === 'pump_parts' || section.sectionType === 'pump_spares') {
-        if (description.includes('IMPELLER')) {
-          pumpPrice = pricingInputs.pumpTypes['impeller'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('SEAL')) {
-          pumpPrice = pricingInputs.pumpTypes['mechanical_seal'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('BEARING')) {
-          pumpPrice = pricingInputs.pumpTypes['bearing_kit'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('WEAR RING')) {
-          pumpPrice = pricingInputs.pumpTypes['wear_ring'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('COUPLING')) {
-          pumpPrice = pricingInputs.pumpTypes['coupling'] || pricingInputs.pumpTypes['pump_part'] || 0;
-        } else if (description.includes('SHAFT') || description.includes('SLEEVE')) {
-          pumpPrice = pricingInputs.pumpTypes['shaft_sleeve'] || pricingInputs.pumpTypes['pump_part'] || 0;
+      } else if (section.sectionType === "pump_parts" || section.sectionType === "pump_spares") {
+        if (description.includes("IMPELLER")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["impeller"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("SEAL")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["mechanical_seal"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("BEARING")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["bearing_kit"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("WEAR RING")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["wear_ring"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("COUPLING")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["coupling"] || pricingInputs.pumpTypes["pump_part"] || 0;
+        } else if (description.includes("SHAFT") || description.includes("SLEEVE")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["shaft_sleeve"] || pricingInputs.pumpTypes["pump_part"] || 0;
         } else {
-          pumpPrice = pricingInputs.pumpTypes['pump_part'] || pricingInputs.pumpTypes['pump_spare'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice =
+            pricingInputs.pumpTypes["pump_part"] ||
+            pricingInputs.pumpTypes["pump_spare"] ||
+            Object.values(pricingInputs.pumpTypes)[0] ||
+            0;
         }
-      } else if (section.sectionType === 'pump_repairs') {
-        if (description.includes('MAJOR') || description.includes('OVERHAUL')) {
-          pumpPrice = pricingInputs.pumpTypes['major_overhaul'] || pricingInputs.pumpTypes['pump_repair'] || 0;
-        } else if (description.includes('MINOR')) {
-          pumpPrice = pricingInputs.pumpTypes['minor_overhaul'] || pricingInputs.pumpTypes['pump_repair'] || 0;
-        } else if (description.includes('SEAL') && description.includes('REPLACE')) {
-          pumpPrice = pricingInputs.pumpTypes['seal_replacement'] || pricingInputs.pumpTypes['pump_repair'] || 0;
-        } else if (description.includes('BEARING') && description.includes('REPLACE')) {
-          pumpPrice = pricingInputs.pumpTypes['bearing_replacement'] || pricingInputs.pumpTypes['pump_repair'] || 0;
-        } else if (description.includes('INSPECT')) {
-          pumpPrice = pricingInputs.pumpTypes['inspection'] || pricingInputs.pumpTypes['pump_repair'] || 0;
+      } else if (section.sectionType === "pump_repairs") {
+        if (description.includes("MAJOR") || description.includes("OVERHAUL")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["major_overhaul"] ||
+            pricingInputs.pumpTypes["pump_repair"] ||
+            0;
+        } else if (description.includes("MINOR")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["minor_overhaul"] ||
+            pricingInputs.pumpTypes["pump_repair"] ||
+            0;
+        } else if (description.includes("SEAL") && description.includes("REPLACE")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["seal_replacement"] ||
+            pricingInputs.pumpTypes["pump_repair"] ||
+            0;
+        } else if (description.includes("BEARING") && description.includes("REPLACE")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["bearing_replacement"] ||
+            pricingInputs.pumpTypes["pump_repair"] ||
+            0;
+        } else if (description.includes("INSPECT")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["inspection"] || pricingInputs.pumpTypes["pump_repair"] || 0;
         } else {
-          pumpPrice = pricingInputs.pumpTypes['pump_repair'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice =
+            pricingInputs.pumpTypes["pump_repair"] ||
+            Object.values(pricingInputs.pumpTypes)[0] ||
+            0;
         }
-      } else if (section.sectionType === 'pump_rental') {
-        if (description.includes('SLURRY')) {
-          pumpPrice = pricingInputs.pumpTypes['slurry_rental'] || pricingInputs.pumpTypes['pump_rental'] || 0;
-        } else if (description.includes('LARGE') || description.includes('200')) {
-          pumpPrice = pricingInputs.pumpTypes['large_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
-        } else if (description.includes('MEDIUM') || description.includes('100') || description.includes('150')) {
-          pumpPrice = pricingInputs.pumpTypes['medium_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
-        } else if (description.includes('SMALL') || description.includes('50') || description.includes('75')) {
-          pumpPrice = pricingInputs.pumpTypes['small_dewatering'] || pricingInputs.pumpTypes['pump_rental'] || 0;
+      } else if (section.sectionType === "pump_rental") {
+        if (description.includes("SLURRY")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["slurry_rental"] || pricingInputs.pumpTypes["pump_rental"] || 0;
+        } else if (description.includes("LARGE") || description.includes("200")) {
+          pumpPrice =
+            pricingInputs.pumpTypes["large_dewatering"] ||
+            pricingInputs.pumpTypes["pump_rental"] ||
+            0;
+        } else if (
+          description.includes("MEDIUM") ||
+          description.includes("100") ||
+          description.includes("150")
+        ) {
+          pumpPrice =
+            pricingInputs.pumpTypes["medium_dewatering"] ||
+            pricingInputs.pumpTypes["pump_rental"] ||
+            0;
+        } else if (
+          description.includes("SMALL") ||
+          description.includes("50") ||
+          description.includes("75")
+        ) {
+          pumpPrice =
+            pricingInputs.pumpTypes["small_dewatering"] ||
+            pricingInputs.pumpTypes["pump_rental"] ||
+            0;
         } else {
-          pumpPrice = pricingInputs.pumpTypes['pump_rental'] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice =
+            pricingInputs.pumpTypes["pump_rental"] ||
+            Object.values(pricingInputs.pumpTypes)[0] ||
+            0;
         }
       }
       const labourExtrasPump = pumpPrice * (pricingInputs.labourExtrasPercent / 100);
@@ -2160,18 +2816,19 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
 
     let basePrice = 0;
 
-    const rfqItem = item.entries.length > 0
-      ? rfqItems.find(ri => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
-      : null;
+    const rfqItem =
+      item.entries.length > 0
+        ? rfqItems.find((ri) => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
+        : null;
 
     const itemSteelSpec = rfqItem
       ? normalizeSteelSpec(
           rfqItem.straightPipeDetails?.pipeStandard ||
-          rfqItem.bendDetails?.pipeStandard ||
-          rfqItem.fittingDetails?.fittingStandard ||
-          ''
+            rfqItem.bendDetails?.pipeStandard ||
+            rfqItem.fittingDetails?.fittingStandard ||
+            "",
         )
-      : '';
+      : "";
 
     Object.entries(pricingInputs.steelSpecs).forEach(([spec, pricePerKg]) => {
       if (pricePerKg > 0) {
@@ -2191,21 +2848,24 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
 
     let flangePrice = 0;
     if (rfqItem) {
-      const endConfig = rfqItem.straightPipeDetails?.pipeEndConfiguration ||
-                        rfqItem.bendDetails?.bendEndConfiguration ||
-                        rfqItem.fittingDetails?.pipeEndConfiguration || '';
+      const endConfig =
+        rfqItem.straightPipeDetails?.pipeEndConfiguration ||
+        rfqItem.bendDetails?.bendEndConfiguration ||
+        rfqItem.fittingDetails?.pipeEndConfiguration ||
+        "";
 
-      if (endConfig && endConfig !== 'PE') {
+      if (endConfig && endConfig !== "PE") {
         const flangeCount = flangeCountFromConfig(endConfig, rfqItem.itemType);
         if (isRotatingFlange(endConfig)) {
-          flangePrice += (pricingInputs.flangeTypes['rotating'] || 0) * flangeCount;
+          flangePrice += (pricingInputs.flangeTypes["rotating"] || 0) * flangeCount;
         } else {
-          flangePrice += (pricingInputs.flangeTypes['slipOn'] || 0) * flangeCount;
+          flangePrice += (pricingInputs.flangeTypes["slipOn"] || 0) * flangeCount;
         }
       }
 
       if (rfqItem.fittingDetails?.addBlankFlange && rfqItem.fittingDetails.blankFlangeCount) {
-        flangePrice += (pricingInputs.flangeTypes['blank'] || 0) * rfqItem.fittingDetails.blankFlangeCount;
+        flangePrice +=
+          (pricingInputs.flangeTypes["blank"] || 0) * rfqItem.fittingDetails.blankFlangeCount;
       }
     }
 
@@ -2228,10 +2888,7 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
     return item.qty * unitPrice;
   };
 
-  const totalLineAmount = section.items.reduce(
-    (sum, item, idx) => sum + lineTotal(idx, item),
-    0
-  );
+  const totalLineAmount = section.items.reduce((sum, item, idx) => sum + lineTotal(idx, item), 0);
 
   const totals = {
     flangeWeld: section.items.reduce((sum, item) => sum + (item.welds?.flangeWeld || 0), 0),
@@ -2245,7 +2902,7 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
   };
 
   const formatCurrency = (value: number): string => {
-    return value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   return (
@@ -2258,10 +2915,18 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
           <thead className="bg-gray-50">
             <tr>
-              <th className="w-12 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-              <th className="w-16 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
-              <th className="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Unit</th>
+              <th className="w-12 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                #
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                Description
+              </th>
+              <th className="w-16 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                Qty
+              </th>
+              <th className="w-16 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                Unit
+              </th>
               <th className="w-32 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
                 Unit Price ({currencySymbol})
               </th>
@@ -2270,18 +2935,30 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
               </th>
               {hasWelds && (
                 <>
-                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Flange Weld (m)</th>
-                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Mitre Weld (m)</th>
-                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Tee Weld (m)</th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Flange Weld (m)
+                  </th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Mitre Weld (m)
+                  </th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Tee Weld (m)
+                  </th>
                 </>
               )}
               {hasAreas && (
                 <>
-                  <th className="w-20 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Int m²</th>
-                  <th className="w-20 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Ext m²</th>
+                  <th className="w-20 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Int m²
+                  </th>
+                  <th className="w-20 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Ext m²
+                  </th>
                 </>
               )}
-              <th className="w-28 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Weight (kg)</th>
+              <th className="w-28 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                Weight (kg)
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -2290,9 +2967,12 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
               const suggestedPrice = calculateSuggestedPrice(item);
               const currentUnitPrice = effectiveUnitPrice(idx, item);
               const lineTotalValue = lineTotal(idx, item);
-              const isAutoCalculated = (manualPrice === undefined || manualPrice === 0) && suggestedPrice > 0;
-              const totalWeldLm = (item.welds?.flangeWeld || 0) +
-                                  (item.welds?.mitreWeld || 0) + (item.welds?.teeWeld || 0);
+              const isAutoCalculated =
+                (manualPrice === undefined || manualPrice === 0) && suggestedPrice > 0;
+              const totalWeldLm =
+                (item.welds?.flangeWeld || 0) +
+                (item.welds?.mitreWeld || 0) +
+                (item.welds?.teeWeld || 0);
 
               return (
                 <React.Fragment key={idx}>
@@ -2308,10 +2988,10 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
                           type="number"
                           min="0"
                           step="0.01"
-                          value={manualPrice || ''}
+                          value={manualPrice || ""}
                           onChange={(e) => onUnitPriceChange(idx, parseFloat(e.target.value) || 0)}
-                          placeholder={suggestedPrice > 0 ? suggestedPrice.toFixed(2) : '0.00'}
-                          className={`w-full px-2 py-1 text-sm text-right border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isAutoCalculated ? 'border-green-300 bg-green-50' : 'border-gray-300'}`}
+                          placeholder={suggestedPrice > 0 ? suggestedPrice.toFixed(2) : "0.00"}
+                          className={`w-full px-2 py-1 text-sm text-right border rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isAutoCalculated ? "border-green-300 bg-green-50" : "border-gray-300"}`}
                         />
                       </div>
                       {isAutoCalculated && (
@@ -2324,23 +3004,23 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
                     {hasWelds && (
                       <>
                         <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                          {item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : '-'}
+                          {item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : "-"}
                         </td>
                         <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                          {item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : '-'}
+                          {item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : "-"}
                         </td>
                         <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
-                          {item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : '-'}
+                          {item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : "-"}
                         </td>
                       </>
                     )}
                     {hasAreas && (
                       <>
                         <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
-                          {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-'}
+                          {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : "-"}
                         </td>
                         <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
-                          {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'}
+                          {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : "-"}
                         </td>
                       </>
                     )}
@@ -2351,8 +3031,12 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
                   {isFabricatedSection && totalWeldLm > 0 && (
                     <tr className="bg-blue-50 border-b border-blue-100">
                       <td className="w-12"></td>
-                      <td className="px-3 py-1 text-xs text-blue-700" colSpan={hasWelds ? 9 : hasAreas ? 7 : 5}>
-                        <span className="font-medium">Total Weld Length:</span> {totalWeldLm.toFixed(3)} Lm
+                      <td
+                        className="px-3 py-1 text-xs text-blue-700"
+                        colSpan={hasWelds ? 9 : hasAreas ? 7 : 5}
+                      >
+                        <span className="font-medium">Total Weld Length:</span>{" "}
+                        {totalWeldLm.toFixed(3)} Lm
                       </td>
                       <td className="w-28"></td>
                     </tr>
@@ -2375,18 +3059,30 @@ function SectionTable({ section, currencyCode, unitPrices, onUnitPriceChange, pr
               </td>
               {hasWelds && (
                 <>
-                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.flangeWeld || 0).toFixed(3)}</td>
-                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.mitreWeld || 0).toFixed(3)}</td>
-                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.teeWeld || 0).toFixed(3)}</td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                    {Number(totals.flangeWeld || 0).toFixed(3)}
+                  </td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                    {Number(totals.mitreWeld || 0).toFixed(3)}
+                  </td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                    {Number(totals.teeWeld || 0).toFixed(3)}
+                  </td>
                 </>
               )}
               {hasAreas && (
                 <>
-                  <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.intArea || 0).toFixed(2)}</td>
-                  <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.extArea || 0).toFixed(2)}</td>
+                  <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                    {Number(totals.intArea || 0).toFixed(2)}
+                  </td>
+                  <td className="w-20 px-3 py-2 text-sm text-gray-900 text-right">
+                    {Number(totals.extArea || 0).toFixed(2)}
+                  </td>
                 </>
               )}
-              <td className="w-28 px-3 py-2 text-sm text-gray-900 text-right">{Number(totals.weight || 0).toFixed(2)}</td>
+              <td className="w-28 px-3 py-2 text-sm text-gray-900 text-right">
+                {Number(totals.weight || 0).toFixed(2)}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -2406,7 +3102,7 @@ function RfqSectionTable({ section }: { section: BoqSection }) {
       extArea: acc.extArea + Number(item.areas?.extAreaM2 || 0),
       intArea: acc.intArea + Number(item.areas?.intAreaM2 || 0),
     }),
-    { qty: 0, weight: 0, extArea: 0, intArea: 0 }
+    { qty: 0, weight: 0, extArea: 0, intArea: 0 },
   );
 
   return (
@@ -2424,48 +3120,68 @@ function RfqSectionTable({ section }: { section: BoqSection }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-blue-50 border-b border-blue-200">
-              <th className="text-left py-2 px-3 text-xs font-semibold text-blue-800 w-24">Item #</th>
-              <th className="text-left py-2 px-3 text-xs font-semibold text-blue-800">Description</th>
-              <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-20">Weld WT</th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-blue-800 w-24">
+                Item #
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-semibold text-blue-800">
+                Description
+              </th>
+              <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-20">
+                Weld WT
+              </th>
               {hasAreas && (
                 <>
-                  <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-20">Ext m²</th>
-                  <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-20">Int m²</th>
+                  <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-20">
+                    Ext m²
+                  </th>
+                  <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-20">
+                    Int m²
+                  </th>
                 </>
               )}
-              <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-16">Qty</th>
-              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-800 w-28">Weight/Item</th>
-              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-800 w-28">Line Weight</th>
+              <th className="text-center py-2 px-3 text-xs font-semibold text-blue-800 w-16">
+                Qty
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-800 w-28">
+                Weight/Item
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-semibold text-blue-800 w-28">
+                Line Weight
+              </th>
             </tr>
           </thead>
           <tbody>
             {section.items.map((item, idx) => {
-              const itemNumber = `${section.sectionType.substring(0, 3).toUpperCase()}-${String(idx + 1).padStart(3, '0')}`;
+              const itemNumber = `${section.sectionType.substring(0, 3).toUpperCase()}-${String(idx + 1).padStart(3, "0")}`;
               const weightPerItem = item.qty > 0 ? Number(item.weightKg || 0) / item.qty : 0;
               const lineWeight = Number(item.weightKg || 0);
 
               // Extract wall thickness from description if available
-              const wtMatch = item.description.match(/W\/T\s*(\d+(?:\.\d+)?)\s*mm|(\d+(?:\.\d+)?)\s*mm\s*W\/T|Sch\w*\s*\((\d+(?:\.\d+)?)mm\)/i);
-              const weldWt = wtMatch ? (wtMatch[1] || wtMatch[2] || wtMatch[3]) : null;
+              const wtMatch = item.description.match(
+                /W\/T\s*(\d+(?:\.\d+)?)\s*mm|(\d+(?:\.\d+)?)\s*mm\s*W\/T|Sch\w*\s*\((\d+(?:\.\d+)?)mm\)/i,
+              );
+              const weldWt = wtMatch ? wtMatch[1] || wtMatch[2] || wtMatch[3] : null;
 
               return (
-                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="py-2 px-3 text-xs text-blue-600 font-medium">{itemNumber}</td>
                   <td className="py-2 px-3 text-xs text-gray-700">{item.description}</td>
                   <td className="py-2 px-3 text-xs text-gray-600 text-center">
-                    {weldWt ? `${weldWt}mm` : '-'}
+                    {weldWt ? `${weldWt}mm` : "-"}
                   </td>
                   {hasAreas && (
                     <>
                       <td className="py-2 px-3 text-xs text-gray-600 text-center">
-                        {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : '-'}
+                        {item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : "-"}
                       </td>
                       <td className="py-2 px-3 text-xs text-gray-600 text-center">
-                        {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : '-'}
+                        {item.areas?.intAreaM2 ? Number(item.areas.intAreaM2).toFixed(2) : "-"}
                       </td>
                     </>
                   )}
-                  <td className="py-2 px-3 text-xs text-gray-900 text-center font-medium">{item.qty}</td>
+                  <td className="py-2 px-3 text-xs text-gray-900 text-center font-medium">
+                    {item.qty}
+                  </td>
                   <td className="py-2 px-3 text-xs text-gray-600 text-right">
                     {weightPerItem.toFixed(2)} kg
                   </td>
@@ -2477,21 +3193,25 @@ function RfqSectionTable({ section }: { section: BoqSection }) {
             })}
             {/* Totals Row */}
             <tr className="bg-blue-100 border-t-2 border-blue-300 font-semibold">
-              <td className="py-2 px-3 text-xs text-blue-800" colSpan={2}>TOTAL</td>
+              <td className="py-2 px-3 text-xs text-blue-800" colSpan={2}>
+                TOTAL
+              </td>
               <td className="py-2 px-3 text-xs text-blue-800 text-center">-</td>
               {hasAreas && (
                 <>
                   <td className="py-2 px-3 text-xs text-blue-800 text-center">
-                    {sectionTotals.extArea > 0 ? sectionTotals.extArea.toFixed(2) : '-'}
+                    {sectionTotals.extArea > 0 ? sectionTotals.extArea.toFixed(2) : "-"}
                   </td>
                   <td className="py-2 px-3 text-xs text-blue-800 text-center">
-                    {sectionTotals.intArea > 0 ? sectionTotals.intArea.toFixed(2) : '-'}
+                    {sectionTotals.intArea > 0 ? sectionTotals.intArea.toFixed(2) : "-"}
                   </td>
                 </>
               )}
               <td className="py-2 px-3 text-xs text-blue-800 text-center">{sectionTotals.qty}</td>
               <td className="py-2 px-3 text-xs text-blue-800 text-right">-</td>
-              <td className="py-2 px-3 text-xs text-green-700 text-right">{sectionTotals.weight.toFixed(2)} kg</td>
+              <td className="py-2 px-3 text-xs text-green-700 text-right">
+                {sectionTotals.weight.toFixed(2)} kg
+              </td>
             </tr>
           </tbody>
         </table>
@@ -2508,44 +3228,60 @@ interface RfqItemsDetailedViewProps {
   unitPrices: Record<string, Record<number, number>>;
 }
 
-function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, unitPrices }: RfqItemsDetailedViewProps) {
+function RfqItemsDetailedView({
+  items,
+  sections,
+  currencyCode,
+  pricingInputs,
+  unitPrices,
+}: RfqItemsDetailedViewProps) {
   const currency = currencyByCode(currencyCode);
   const currencySymbol = currency?.symbol || currencyCode;
   const totalWeight = items.reduce((sum, item) => sum + Number(item.totalWeightKg || 0), 0);
 
   const formatCurrency = (value: number): string => {
-    return value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const accessorySectionOrder = ['bnw_sets', 'gaskets'];
-  const accessorySections = sections?.filter(s =>
-    accessorySectionOrder.includes(s.sectionType)
-  ).sort((a, b) => accessorySectionOrder.indexOf(a.sectionType) - accessorySectionOrder.indexOf(b.sectionType)) || [];
+  const accessorySectionOrder = ["bnw_sets", "gaskets"];
+  const accessorySections =
+    sections
+      ?.filter((s) => accessorySectionOrder.includes(s.sectionType))
+      .sort(
+        (a, b) =>
+          accessorySectionOrder.indexOf(a.sectionType) -
+          accessorySectionOrder.indexOf(b.sectionType),
+      ) || [];
 
-  const accessoryWeight = accessorySections.reduce((sum, s) => sum + Number(s.totalWeightKg || 0), 0);
+  const accessoryWeight = accessorySections.reduce(
+    (sum, s) => sum + Number(s.totalWeightKg || 0),
+    0,
+  );
 
   const itemTypeColors: Record<string, { bg: string; badge: string; badgeText: string }> = {
-    straight_pipe: { bg: 'bg-blue-50', badge: 'bg-blue-200', badgeText: 'text-blue-800' },
-    bend: { bg: 'bg-purple-50', badge: 'bg-purple-200', badgeText: 'text-purple-800' },
-    fitting: { bg: 'bg-green-50', badge: 'bg-green-200', badgeText: 'text-green-800' },
+    straight_pipe: { bg: "bg-blue-50", badge: "bg-blue-200", badgeText: "text-blue-800" },
+    bend: { bg: "bg-purple-50", badge: "bg-purple-200", badgeText: "text-purple-800" },
+    fitting: { bg: "bg-green-50", badge: "bg-green-200", badgeText: "text-green-800" },
   };
 
   const formatItemType = (type: string) => {
     const labels: Record<string, string> = {
-      straight_pipe: 'Pipe',
-      bend: 'Bend',
-      fitting: 'Fitting',
+      straight_pipe: "Pipe",
+      bend: "Bend",
+      fitting: "Fitting",
     };
     return labels[type] || type;
   };
 
   const formatScheduleDisplay = (scheduleNumber?: string, wallThicknessMm?: number): string => {
-    if (!scheduleNumber && !wallThicknessMm) return '-';
-    if (scheduleNumber?.startsWith('WT') || scheduleNumber?.includes('719')) {
-      const wt = Number(wallThicknessMm) || parseFloat(scheduleNumber.replace(/[^0-9.]/g, ''));
-      return wt && !isNaN(wt) ? `${wt.toFixed(2)}mm W/T` : (scheduleNumber || '-');
+    if (!scheduleNumber && !wallThicknessMm) return "-";
+    if (scheduleNumber?.startsWith("WT") || scheduleNumber?.includes("719")) {
+      const wt = Number(wallThicknessMm) || parseFloat(scheduleNumber.replace(/[^0-9.]/g, ""));
+      return wt && !Number.isNaN(wt) ? `${wt.toFixed(2)}mm W/T` : scheduleNumber || "-";
     }
-    return scheduleNumber || (wallThicknessMm ? `${Number(wallThicknessMm).toFixed(2)}mm W/T` : '-');
+    return (
+      scheduleNumber || (wallThicknessMm ? `${Number(wallThicknessMm).toFixed(2)}mm W/T` : "-")
+    );
   };
 
   const roundToNearestWeldThickness = (wt: number): number => {
@@ -2567,41 +3303,42 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
     const TACK_WELDS_PER_LOOSE_FLANGE = 8;
 
     const getLooseFlangeCount = (endConfig: string): number => {
-      if (endConfig === '2xLF') return 2;
-      if (endConfig === 'FOE_LF' || endConfig === 'F2E_LF') return 1;
+      if (endConfig === "2xLF") return 2;
+      if (endConfig === "FOE_LF" || endConfig === "F2E_LF") return 1;
       return 0;
     };
 
     if (item.straightPipeDetails) {
       const details = item.straightPipeDetails;
-      const endConfig = details.pipeEndConfiguration || 'PE';
+      const endConfig = details.pipeEndConfiguration || "PE";
       const wt = Number(details.wallThicknessMm) || 6;
       const nb = Number(details.nominalBoreMm) || 0;
-      const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
       const circumferenceMm = Math.PI * od;
 
       let flangeWeldMeters = 0;
       if (details.totalFlangeWeldLengthM) {
         flangeWeldMeters = Number(details.totalFlangeWeldLengthM);
       } else if (details.numberOfFlangeWelds) {
-        flangeWeldMeters = Number(details.numberOfFlangeWelds) * 2 * circumferenceMm / 1000;
-      } else if (endConfig && endConfig !== 'PE') {
+        flangeWeldMeters = (Number(details.numberOfFlangeWelds) * 2 * circumferenceMm) / 1000;
+      } else if (endConfig && endConfig !== "PE") {
         const flangeConnections = weldCountPerPipe(endConfig);
-        flangeWeldMeters = flangeConnections * 2 * circumferenceMm / 1000;
+        flangeWeldMeters = (flangeConnections * 2 * circumferenceMm) / 1000;
       }
 
       let buttWeldMeters = 0;
       if (details.totalButtWeldLengthM) {
         buttWeldMeters = Number(details.totalButtWeldLengthM);
       } else if (details.numberOfButtWelds) {
-        buttWeldMeters = Number(details.numberOfButtWelds) * circumferenceMm / 1000;
+        buttWeldMeters = (Number(details.numberOfButtWelds) * circumferenceMm) / 1000;
       }
 
       const looseFlangeCount = getLooseFlangeCount(endConfig);
-      const tackWeldMeters = looseFlangeCount * TACK_WELDS_PER_LOOSE_FLANGE * TACK_WELD_LENGTH_MM / 1000;
+      const tackWeldMeters =
+        (looseFlangeCount * TACK_WELDS_PER_LOOSE_FLANGE * TACK_WELD_LENGTH_MM) / 1000;
 
       const totalLinearMeters = flangeWeldMeters + buttWeldMeters + tackWeldMeters;
-      if (totalLinearMeters === 0 || isNaN(totalLinearMeters)) return null;
+      if (totalLinearMeters === 0 || Number.isNaN(totalLinearMeters)) return null;
 
       return {
         flangeWeldMeters,
@@ -2610,16 +3347,16 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
         teeWeldMeters: 0,
         tackWeldMeters,
         totalLinearMeters,
-        wallThicknessMm: wt
+        wallThicknessMm: wt,
       };
     }
 
     if (item.bendDetails) {
       const details = item.bendDetails;
-      const endConfig = details.bendEndConfiguration || 'PE';
+      const endConfig = details.bendEndConfiguration || "PE";
       const wt = Number(details.wallThicknessMm) || 6;
       const nb = Number(details.nominalBoreMm) || 0;
-      const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
       const circumferenceMm = Math.PI * od;
       const calcData = details.calculationData;
 
@@ -2627,32 +3364,32 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
       if (details.totalFlangeWeldLengthM) {
         flangeWeldMeters = Number(details.totalFlangeWeldLengthM);
       } else if (details.numberOfFlangeWelds) {
-        flangeWeldMeters = Number(details.numberOfFlangeWelds) * 2 * circumferenceMm / 1000;
-      } else if (endConfig && endConfig !== 'PE') {
+        flangeWeldMeters = (Number(details.numberOfFlangeWelds) * 2 * circumferenceMm) / 1000;
+      } else if (endConfig && endConfig !== "PE") {
         const flangeConnections = weldCountPerBend(endConfig);
-        flangeWeldMeters = flangeConnections * 2 * circumferenceMm / 1000;
+        flangeWeldMeters = (flangeConnections * 2 * circumferenceMm) / 1000;
       }
 
       let buttWeldMeters = 0;
       if (details.totalButtWeldLengthM) {
         buttWeldMeters = Number(details.totalButtWeldLengthM);
       } else if (details.numberOfButtWelds) {
-        buttWeldMeters = Number(details.numberOfButtWelds) * circumferenceMm / 1000;
+        buttWeldMeters = (Number(details.numberOfButtWelds) * circumferenceMm) / 1000;
       } else if (calcData?.numberOfButtWelds) {
-        buttWeldMeters = Number(calcData.numberOfButtWelds) * circumferenceMm / 1000;
+        buttWeldMeters = (Number(calcData.numberOfButtWelds) * circumferenceMm) / 1000;
       } else if (calcData?.tangentButtWelds) {
-        buttWeldMeters = Number(calcData.tangentButtWelds) * circumferenceMm / 1000;
+        buttWeldMeters = (Number(calcData.tangentButtWelds) * circumferenceMm) / 1000;
       } else if (details.numberOfTangents && details.numberOfTangents > 0) {
-        buttWeldMeters = Number(details.numberOfTangents) * circumferenceMm / 1000;
+        buttWeldMeters = (Number(details.numberOfTangents) * circumferenceMm) / 1000;
       }
 
       let mitreWeldMeters = 0;
       if (calcData?.mitreWeldLengthM) {
         mitreWeldMeters = Number(calcData.mitreWeldLengthM);
       } else if (calcData?.numberOfMitreWelds) {
-        mitreWeldMeters = Number(calcData.numberOfMitreWelds) * circumferenceMm / 1000;
+        mitreWeldMeters = (Number(calcData.numberOfMitreWelds) * circumferenceMm) / 1000;
       } else if (calcData?.numberOfSegments && Number(calcData.numberOfSegments) > 1) {
-        mitreWeldMeters = (Number(calcData.numberOfSegments) - 1) * circumferenceMm / 1000;
+        mitreWeldMeters = ((Number(calcData.numberOfSegments) - 1) * circumferenceMm) / 1000;
       }
 
       let teeWeldMeters = 0;
@@ -2660,33 +3397,35 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
       if (Array.isArray(stubs) && stubs.length > 0) {
         stubs.forEach((stub: { nominalBoreMm?: number }) => {
           const stubNb = Number(stub.nominalBoreMm) || nb;
-          const stubOd = NB_TO_OD_LOOKUP[stubNb] || (stubNb * 1.05);
+          const stubOd = NB_TO_OD_LOOKUP[stubNb] || stubNb * 1.05;
           const stubCirc = Math.PI * stubOd;
           teeWeldMeters += stubCirc / 1000;
         });
       } else if (calcData?.numberOfStubs && Number(calcData.numberOfStubs) > 0) {
         const stubNb = Number(calcData.stubNominalBoreMm) || nb;
-        const stubOd = NB_TO_OD_LOOKUP[stubNb] || (stubNb * 1.05);
+        const stubOd = NB_TO_OD_LOOKUP[stubNb] || stubNb * 1.05;
         const stubCirc = Math.PI * stubOd;
-        teeWeldMeters = Number(calcData.numberOfStubs) * stubCirc / 1000;
+        teeWeldMeters = (Number(calcData.numberOfStubs) * stubCirc) / 1000;
       }
 
       if (stubs.length > 0) {
         stubs.forEach((stub: { flangeSpec?: string; nominalBoreMm?: number }) => {
-          if (stub.flangeSpec && stub.flangeSpec !== 'PE' && stub.flangeSpec !== '') {
+          if (stub.flangeSpec && stub.flangeSpec !== "PE" && stub.flangeSpec !== "") {
             const stubNb = Number(stub.nominalBoreMm) || nb;
-            const stubOd = NB_TO_OD_LOOKUP[stubNb] || (stubNb * 1.05);
+            const stubOd = NB_TO_OD_LOOKUP[stubNb] || stubNb * 1.05;
             const stubCirc = Math.PI * stubOd;
-            flangeWeldMeters += 2 * stubCirc / 1000;
+            flangeWeldMeters += (2 * stubCirc) / 1000;
           }
         });
       }
 
       const looseFlangeCount = getLooseFlangeCount(endConfig);
-      const tackWeldMeters = looseFlangeCount * TACK_WELDS_PER_LOOSE_FLANGE * TACK_WELD_LENGTH_MM / 1000;
+      const tackWeldMeters =
+        (looseFlangeCount * TACK_WELDS_PER_LOOSE_FLANGE * TACK_WELD_LENGTH_MM) / 1000;
 
-      const totalLinearMeters = flangeWeldMeters + buttWeldMeters + mitreWeldMeters + teeWeldMeters + tackWeldMeters;
-      if (totalLinearMeters === 0 || isNaN(totalLinearMeters)) return null;
+      const totalLinearMeters =
+        flangeWeldMeters + buttWeldMeters + mitreWeldMeters + teeWeldMeters + tackWeldMeters;
+      if (totalLinearMeters === 0 || Number.isNaN(totalLinearMeters)) return null;
 
       return {
         flangeWeldMeters,
@@ -2695,24 +3434,24 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
         teeWeldMeters,
         tackWeldMeters,
         totalLinearMeters,
-        wallThicknessMm: wt
+        wallThicknessMm: wt,
       };
     }
 
     if (item.fittingDetails) {
       const details = item.fittingDetails;
-      const endConfig = details.pipeEndConfiguration || 'PE';
+      const endConfig = details.pipeEndConfiguration || "PE";
       const wt = Number(details.wallThicknessMm) || 6;
       const mainNb = Number(details.nominalDiameterMm) || 0;
       const branchNb = Number(details.branchNominalDiameterMm) || mainNb;
-      const mainOd = NB_TO_OD_LOOKUP[mainNb] || (mainNb * 1.05);
-      const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+      const mainOd = NB_TO_OD_LOOKUP[mainNb] || mainNb * 1.05;
+      const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.05;
       const mainCirc = Math.PI * mainOd;
       const branchCirc = Math.PI * branchOd;
 
       let flangeWeldMeters = 0;
       const flangeConnections = weldCountPerFitting(endConfig);
-      if (details.numberOfFlangeWelds || (endConfig && endConfig !== 'PE')) {
+      if (details.numberOfFlangeWelds || (endConfig && endConfig !== "PE")) {
         if (flangeConnections >= 3) {
           flangeWeldMeters = (2 * mainCirc * 2 + branchCirc * 2) / 1000;
         } else if (flangeConnections === 2) {
@@ -2724,7 +3463,7 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
 
       let teeWeldMeters = 0;
       if (details.numberOfTeeWelds) {
-        teeWeldMeters = Number(details.numberOfTeeWelds) * branchCirc / 1000;
+        teeWeldMeters = (Number(details.numberOfTeeWelds) * branchCirc) / 1000;
       } else {
         const calcData = details.calculationData;
         if (calcData?.teeWeldLengthM) {
@@ -2733,10 +3472,11 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
       }
 
       const looseFlangeCount = getLooseFlangeCount(endConfig);
-      const tackWeldMeters = looseFlangeCount * TACK_WELDS_PER_LOOSE_FLANGE * TACK_WELD_LENGTH_MM / 1000;
+      const tackWeldMeters =
+        (looseFlangeCount * TACK_WELDS_PER_LOOSE_FLANGE * TACK_WELD_LENGTH_MM) / 1000;
 
       const totalLinearMeters = flangeWeldMeters + teeWeldMeters + tackWeldMeters;
-      if (totalLinearMeters === 0 || isNaN(totalLinearMeters)) return null;
+      if (totalLinearMeters === 0 || Number.isNaN(totalLinearMeters)) return null;
 
       return {
         flangeWeldMeters,
@@ -2745,75 +3485,86 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
         teeWeldMeters,
         tackWeldMeters,
         totalLinearMeters,
-        wallThicknessMm: wt
+        wallThicknessMm: wt,
       };
     }
 
     return null;
   };
 
-  const calculateFlangeWeight = (nb: number, config: string | undefined, itemType: string, qty: number, pressureClass?: string, flangeStandard?: string): number => {
+  const calculateFlangeWeight = (
+    nb: number,
+    config: string | undefined,
+    itemType: string,
+    qty: number,
+    pressureClass?: string,
+    flangeStandard?: string,
+  ): number => {
     const flangeCount = flangeCountFromConfig(config, itemType);
     if (flangeCount === 0) return 0;
-    const singleFlangeWt = flangeWeight(nb, pressureClass || 'PN16', flangeStandard);
+    const singleFlangeWt = flangeWeight(nb, pressureClass || "PN16", flangeStandard);
     return flangeCount * singleFlangeWt * qty;
   };
 
   const calculateItemUnitPrice = (item: RfqItemDetail): number => {
     const weightPerUnit = Number(item.weightPerUnitKg || 0);
 
-    const itemSteelSpec = item.straightPipeDetails?.pipeStandard ||
+    const itemSteelSpec =
+      item.straightPipeDetails?.pipeStandard ||
       item.bendDetails?.pipeStandard ||
-      item.fittingDetails?.fittingStandard || '';
+      item.fittingDetails?.fittingStandard ||
+      "";
     const normalizedSpec = normalizeSteelSpec(itemSteelSpec);
-    const steelPricePerKg = pricingInputs.steelSpecs[normalizedSpec] ||
-      Object.values(pricingInputs.steelSpecs)[0] || 0;
+    const steelPricePerKg =
+      pricingInputs.steelSpecs[normalizedSpec] || Object.values(pricingInputs.steelSpecs)[0] || 0;
 
-    let steelPrice = weightPerUnit * steelPricePerKg;
+    const steelPrice = weightPerUnit * steelPricePerKg;
     let flangePrice = 0;
     let weldPrice = 0;
 
     const details = item.straightPipeDetails || item.bendDetails || item.fittingDetails;
     if (details) {
       const endConfig =
-        (item.straightPipeDetails?.pipeEndConfiguration) ||
-        (item.bendDetails?.bendEndConfiguration) ||
-        (item.fittingDetails?.pipeEndConfiguration);
+        item.straightPipeDetails?.pipeEndConfiguration ||
+        item.bendDetails?.bendEndConfiguration ||
+        item.fittingDetails?.pipeEndConfiguration;
 
-      if (endConfig && endConfig !== 'PE') {
-        const nb = item.straightPipeDetails?.nominalBoreMm ||
+      if (endConfig && endConfig !== "PE") {
+        const nb =
+          item.straightPipeDetails?.nominalBoreMm ||
           item.bendDetails?.nominalBoreMm ||
-          item.fittingDetails?.nominalDiameterMm || 0;
+          item.fittingDetails?.nominalDiameterMm ||
+          0;
         const flangeCount = flangeCountFromConfig(endConfig, item.itemType);
-        const flangeStandard = item.flangeStandardCode || 'SANS 1123';
-        const pressureClass = item.flangePressureClassDesignation || '1000/3';
+        const flangeStandard = item.flangeStandardCode || "SANS 1123";
+        const pressureClass = item.flangePressureClassDesignation || "1000/3";
         const flangeWeightPerUnit = flangeCount * flangeWeight(nb, pressureClass, flangeStandard);
 
         if (isRotatingFlange(endConfig)) {
-          flangePrice = flangeWeightPerUnit * (pricingInputs.flangeTypes['rotating'] || 0);
+          flangePrice = flangeWeightPerUnit * (pricingInputs.flangeTypes["rotating"] || 0);
         } else {
-          flangePrice = flangeWeightPerUnit * (pricingInputs.flangeTypes['slipOn'] || 0);
+          flangePrice = flangeWeightPerUnit * (pricingInputs.flangeTypes["slipOn"] || 0);
         }
       }
 
       if (item.fittingDetails?.addBlankFlange && item.fittingDetails.blankFlangeCount) {
         const blankNb = item.fittingDetails.nominalDiameterMm || 0;
-        const flangeStandard = item.flangeStandardCode || 'SANS 1123';
-        const pressureClass = item.flangePressureClassDesignation || '1000/3';
-        const isSans = flangeStandard.toUpperCase().includes('SANS');
+        const flangeStandard = item.flangeStandardCode || "SANS 1123";
+        const pressureClass = item.flangePressureClassDesignation || "1000/3";
+        const isSans = flangeStandard.toUpperCase().includes("SANS");
         const singleBlankWt = isSans
           ? sansBlankFlangeWeight(blankNb, pressureClass)
           : blankFlangeWeight(blankNb, pressureClass);
         const blankWt = singleBlankWt * item.fittingDetails.blankFlangeCount;
-        flangePrice += blankWt * (pricingInputs.flangeTypes['blank'] || 0);
+        flangePrice += blankWt * (pricingInputs.flangeTypes["blank"] || 0);
       }
 
       const weldInfo = calculateWeldLinearMeterage(item);
       if (weldInfo) {
-        const flangeWeldRate = pricingInputs.weldTypes['flangeWeld'] || 0;
-        const mitreWeldRate = pricingInputs.weldTypes['mitreWeld'] || 0;
-        const teeWeldRate = pricingInputs.weldTypes['teeWeld'] || 0;
-        const tackWeldRate = pricingInputs.weldTypes['tackWeld'] || 0;
+        const flangeWeldRate = pricingInputs.weldTypes["flangeWeld"] || 0;
+        const mitreWeldRate = pricingInputs.weldTypes["mitreWeld"] || 0;
+        const teeWeldRate = pricingInputs.weldTypes["teeWeld"] || 0;
+        const tackWeldRate = pricingInputs.weldTypes["tackWeld"] || 0;
         const weldRate = flangeWeldRate || mitreWeldRate || teeWeldRate || tackWeldRate;
         weldPrice = Number(weldInfo.totalLinearMeters) * weldRate;
       }
@@ -2848,10 +3599,14 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
             <div key={item.id} className={`border border-gray-200 rounded-lg p-3 ${colors.bg}`}>
               <div className="flex justify-between items-start mb-1">
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 text-xs font-semibold rounded ${colors.badge} ${colors.badgeText}`}>
+                  <span
+                    className={`px-2 py-0.5 text-xs font-semibold rounded ${colors.badge} ${colors.badgeText}`}
+                  >
                     {formatItemType(item.itemType)}
                   </span>
-                  <h4 className="font-medium text-gray-800 text-sm">Item #{item.lineNumber || index + 1}</h4>
+                  <h4 className="font-medium text-gray-800 text-sm">
+                    Item #{item.lineNumber || index + 1}
+                  </h4>
                 </div>
                 <div className="text-right">
                   <span className="text-sm font-semibold text-gray-700">
@@ -2867,70 +3622,98 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 {item.straightPipeDetails && (
                   <>
                     <div>
-                      <span className="text-gray-500">NB:</span>{' '}
-                      <span className="font-medium">{Math.round(Number(item.straightPipeDetails.nominalBoreMm))}mm</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Wall Thickness:</span>{' '}
+                      <span className="text-gray-500">NB:</span>{" "}
                       <span className="font-medium">
-                        {formatScheduleDisplay(item.straightPipeDetails.scheduleNumber, item.straightPipeDetails.wallThicknessMm)}
+                        {Math.round(Number(item.straightPipeDetails.nominalBoreMm))}mm
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Length:</span>{' '}
+                      <span className="text-gray-500">Wall Thickness:</span>{" "}
+                      <span className="font-medium">
+                        {formatScheduleDisplay(
+                          item.straightPipeDetails.scheduleNumber,
+                          item.straightPipeDetails.wallThicknessMm,
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Length:</span>{" "}
                       <span className="font-medium">
                         {item.straightPipeDetails.individualPipeLength
                           ? Number(item.straightPipeDetails.individualPipeLength).toFixed(3)
                           : item.straightPipeDetails.totalLength
                             ? Number(item.straightPipeDetails.totalLength).toFixed(3)
-                            : '-'}m
+                            : "-"}
+                        m
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Qty:</span>{' '}
-                      <span className="font-medium">{item.quantity || item.straightPipeDetails.quantityValue || 1}</span>
+                      <span className="text-gray-500">Qty:</span>{" "}
+                      <span className="font-medium">
+                        {item.quantity || item.straightPipeDetails.quantityValue || 1}
+                      </span>
                     </div>
-                    {item.straightPipeDetails.pipeEndConfiguration && item.straightPipeDetails.pipeEndConfiguration !== 'PE' && (
-                      <div>
-                        <span className="text-gray-500">End Config:</span>{' '}
-                        <span className="font-medium text-blue-600">{item.straightPipeDetails.pipeEndConfiguration}</span>
-                      </div>
-                    )}
-                    <div>
-                      <span className="text-gray-500">Weight/Unit:</span>{' '}
-                      <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
-                    </div>
-                    {item.straightPipeDetails.pipeEndConfiguration && item.straightPipeDetails.pipeEndConfiguration !== 'PE' && (() => {
-                      const nb = Math.round(Number(item.straightPipeDetails.nominalBoreMm));
-                      const qty = item.quantity || item.straightPipeDetails.quantityValue || 1;
-                      const flangeCount = flangeCountFromConfig(item.straightPipeDetails.pipeEndConfiguration, 'straight_pipe');
-                      const totalFlanges = flangeCount * qty;
-                      const flangeStandard = item.flangeStandardCode || 'SANS 1123';
-                      const pressureClass = item.flangePressureClassDesignation || '1000/3';
-                      const singleFlangeWt = flangeWeight(nb, pressureClass, flangeStandard);
-                      const totalFlangeWt = singleFlangeWt * totalFlanges;
-                      return totalFlanges > 0 ? (
-                        <div className="col-span-2">
-                          <span className="text-gray-500">Flanges:</span>{' '}
-                          <span className="font-medium">
-                            {totalFlanges}x {nb}NB {flangeStandard} {pressureClass} = {totalFlangeWt.toFixed(2)} kg
+                    {item.straightPipeDetails.pipeEndConfiguration &&
+                      item.straightPipeDetails.pipeEndConfiguration !== "PE" && (
+                        <div>
+                          <span className="text-gray-500">End Config:</span>{" "}
+                          <span className="font-medium text-blue-600">
+                            {item.straightPipeDetails.pipeEndConfiguration}
                           </span>
-                          <span className="text-gray-500 text-xs ml-2">({singleFlangeWt.toFixed(2)} kg each)</span>
                         </div>
-                      ) : null;
-                    })()}
+                      )}
+                    <div>
+                      <span className="text-gray-500">Weight/Unit:</span>{" "}
+                      <span className="font-medium">
+                        {Number(item.weightPerUnitKg || 0).toFixed(2)} kg
+                      </span>
+                    </div>
+                    {item.straightPipeDetails.pipeEndConfiguration &&
+                      item.straightPipeDetails.pipeEndConfiguration !== "PE" &&
+                      (() => {
+                        const nb = Math.round(Number(item.straightPipeDetails.nominalBoreMm));
+                        const qty = item.quantity || item.straightPipeDetails.quantityValue || 1;
+                        const flangeCount = flangeCountFromConfig(
+                          item.straightPipeDetails.pipeEndConfiguration,
+                          "straight_pipe",
+                        );
+                        const totalFlanges = flangeCount * qty;
+                        const flangeStandard = item.flangeStandardCode || "SANS 1123";
+                        const pressureClass = item.flangePressureClassDesignation || "1000/3";
+                        const singleFlangeWt = flangeWeight(nb, pressureClass, flangeStandard);
+                        const totalFlangeWt = singleFlangeWt * totalFlanges;
+                        return totalFlanges > 0 ? (
+                          <div className="col-span-2">
+                            <span className="text-gray-500">Flanges:</span>{" "}
+                            <span className="font-medium">
+                              {totalFlanges}x {nb}NB {flangeStandard} {pressureClass} ={" "}
+                              {totalFlangeWt.toFixed(2)} kg
+                            </span>
+                            <span className="text-gray-500 text-xs ml-2">
+                              ({singleFlangeWt.toFixed(2)} kg each)
+                            </span>
+                          </div>
+                        ) : null;
+                      })()}
                     {(() => {
                       const weldInfo = calculateWeldLinearMeterage(item);
                       if (!weldInfo) return null;
                       const parts = [];
-                      if (Number(weldInfo.flangeWeldMeters) > 0) parts.push(`Flange: ${Number(weldInfo.flangeWeldMeters).toFixed(2)}m`);
-                      if (Number(weldInfo.buttWeldMeters) > 0) parts.push(`Butt: ${Number(weldInfo.buttWeldMeters).toFixed(2)}m`);
-                      if (Number(weldInfo.tackWeldMeters) > 0) parts.push(`Tack: ${Number(weldInfo.tackWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.flangeWeldMeters) > 0)
+                        parts.push(`Flange: ${Number(weldInfo.flangeWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.buttWeldMeters) > 0)
+                        parts.push(`Butt: ${Number(weldInfo.buttWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.tackWeldMeters) > 0)
+                        parts.push(`Tack: ${Number(weldInfo.tackWeldMeters).toFixed(2)}m`);
                       return (
                         <div className="col-span-2">
-                          <span className="text-gray-500">Weld L/m:</span>{' '}
+                          <span className="text-gray-500">Weld L/m:</span>{" "}
                           <span className="font-medium text-purple-600">
-                            {parts.join(' + ')} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m ({roundToNearestWeldThickness(Number(weldInfo.wallThicknessMm)).toFixed(1)}mm WT)
+                            {parts.join(" + ")} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m (
+                            {roundToNearestWeldThickness(Number(weldInfo.wallThicknessMm)).toFixed(
+                              1,
+                            )}
+                            mm WT)
                           </span>
                         </div>
                       );
@@ -2941,98 +3724,139 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 {item.bendDetails && (
                   <>
                     <div>
-                      <span className="text-gray-500">NB:</span>{' '}
-                      <span className="font-medium">{Math.round(Number(item.bendDetails.nominalBoreMm))}mm</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Wall Thickness:</span>{' '}
+                      <span className="text-gray-500">NB:</span>{" "}
                       <span className="font-medium">
-                        {formatScheduleDisplay(item.bendDetails.scheduleNumber, item.bendDetails.wallThicknessMm)}
+                        {Math.round(Number(item.bendDetails.nominalBoreMm))}mm
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Angle:</span>{' '}
+                      <span className="text-gray-500">Wall Thickness:</span>{" "}
+                      <span className="font-medium">
+                        {formatScheduleDisplay(
+                          item.bendDetails.scheduleNumber,
+                          item.bendDetails.wallThicknessMm,
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Angle:</span>{" "}
                       <span className="font-medium">{item.bendDetails.bendDegrees}°</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Type:</span>{' '}
+                      <span className="text-gray-500">Type:</span>{" "}
                       <span className="font-medium">
                         {item.bendDetails.bendRadiusType
                           ? `${item.bendDetails.bendRadiusType.charAt(0).toUpperCase() + item.bendDetails.bendRadiusType.slice(1)} Radius`
-                          : item.bendDetails.bendType || '1.5D'}
+                          : item.bendDetails.bendType || "1.5D"}
                       </span>
                     </div>
                     {(() => {
                       const nb = Number(item.bendDetails.nominalBoreMm) || 0;
                       const isSABS719 = !!item.bendDetails.bendRadiusType;
-                      const bendType = item.bendDetails.bendType || '1.5D';
-                      const radiusFactor = isSABS719 ? 0 : (parseFloat(bendType.replace('D', '')) || 1.5);
-                      const bendRadiusMm = isSABS719 ? Number(item.bendDetails.centerToFaceMm) || 0 : nb * radiusFactor;
-                      const bendAngleRad = ((Number(item.bendDetails.bendDegrees) || 90) * Math.PI) / 180;
+                      const bendType = item.bendDetails.bendType || "1.5D";
+                      const radiusFactor = isSABS719
+                        ? 0
+                        : parseFloat(bendType.replace("D", "")) || 1.5;
+                      const bendRadiusMm = isSABS719
+                        ? Number(item.bendDetails.centerToFaceMm) || 0
+                        : nb * radiusFactor;
+                      const bendAngleRad =
+                        ((Number(item.bendDetails.bendDegrees) || 90) * Math.PI) / 180;
                       const arcLengthMm = bendRadiusMm * bendAngleRad;
                       const calcData = item.bendDetails.calculationData;
                       const storedTangents = calcData?.tangentLengths || [];
-                      const numberOfTangents = item.bendDetails.numberOfTangents || storedTangents.length || 0;
+                      const numberOfTangents =
+                        item.bendDetails.numberOfTangents || storedTangents.length || 0;
                       const numberOfSegments = calcData?.numberOfSegments || 0;
                       const centerToFace = Number(item.bendDetails.centerToFaceMm) || 0;
-                      const actualTangents = storedTangents.map((t: number) => Math.max(0, t - centerToFace));
+                      const actualTangents = storedTangents.map((t: number) =>
+                        Math.max(0, t - centerToFace),
+                      );
                       return (
                         <>
                           <div>
-                            <span className="text-gray-500">Bend Radius:</span>{' '}
-                            <span className="font-medium text-indigo-600">{bendRadiusMm.toFixed(0)}mm</span>
+                            <span className="text-gray-500">Bend Radius:</span>{" "}
+                            <span className="font-medium text-indigo-600">
+                              {bendRadiusMm.toFixed(0)}mm
+                            </span>
                           </div>
                           <div>
-                            <span className="text-gray-500">Arc Length:</span>{' '}
-                            <span className="font-medium text-indigo-600">{arcLengthMm.toFixed(0)}mm</span>
+                            <span className="text-gray-500">Arc Length:</span>{" "}
+                            <span className="font-medium text-indigo-600">
+                              {arcLengthMm.toFixed(0)}mm
+                            </span>
                           </div>
                           {numberOfTangents > 0 && (
                             <div>
-                              <span className="text-gray-500">Tangents:</span>{' '}
+                              <span className="text-gray-500">Tangents:</span>{" "}
                               <span className="font-medium text-blue-600">
-                                {numberOfTangents}x ({actualTangents.length > 0 ? actualTangents.map((t: number) => `${Math.round(t)}mm`).join(', ') : 'N/A'})
+                                {numberOfTangents}x (
+                                {actualTangents.length > 0
+                                  ? actualTangents
+                                      .map((t: number) => `${Math.round(t)}mm`)
+                                      .join(", ")
+                                  : "N/A"}
+                                )
                               </span>
                             </div>
                           )}
                           {numberOfSegments > 1 && (
                             <div>
-                              <span className="text-gray-500">Segments:</span>{' '}
-                              <span className="font-medium text-orange-600">{numberOfSegments}</span>
+                              <span className="text-gray-500">Segments:</span>{" "}
+                              <span className="font-medium text-orange-600">
+                                {numberOfSegments}
+                              </span>
                             </div>
                           )}
                         </>
                       );
                     })()}
                     <div>
-                      <span className="text-gray-500">Qty:</span>{' '}
+                      <span className="text-gray-500">Qty:</span>{" "}
                       <span className="font-medium">{item.quantity || 1}</span>
                     </div>
-                    {item.bendDetails.bendEndConfiguration && item.bendDetails.bendEndConfiguration !== 'PE' && (
-                      <div>
-                        <span className="text-gray-500">End Config:</span>{' '}
-                        <span className="font-medium text-purple-600">{item.bendDetails.bendEndConfiguration}</span>
-                      </div>
-                    )}
+                    {item.bendDetails.bendEndConfiguration &&
+                      item.bendDetails.bendEndConfiguration !== "PE" && (
+                        <div>
+                          <span className="text-gray-500">End Config:</span>{" "}
+                          <span className="font-medium text-purple-600">
+                            {item.bendDetails.bendEndConfiguration}
+                          </span>
+                        </div>
+                      )}
                     <div>
-                      <span className="text-gray-500">Weight/Unit:</span>{' '}
-                      <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
+                      <span className="text-gray-500">Weight/Unit:</span>{" "}
+                      <span className="font-medium">
+                        {Number(item.weightPerUnitKg || 0).toFixed(2)} kg
+                      </span>
                     </div>
                     {(() => {
                       const nb = Math.round(Number(item.bendDetails.nominalBoreMm));
                       const qty = item.quantity || 1;
-                      const flangeStandard = item.flangeStandardCode || 'SANS 1123';
-                      const pressureClass = item.flangePressureClassDesignation || '1000/3';
+                      const flangeStandard = item.flangeStandardCode || "SANS 1123";
+                      const pressureClass = item.flangePressureClassDesignation || "1000/3";
                       const calcData = item.bendDetails.calculationData;
                       const stubs = calcData?.stubs || [];
 
-                      if (!item.bendDetails.bendEndConfiguration || item.bendDetails.bendEndConfiguration === 'PE') {
+                      if (
+                        !item.bendDetails.bendEndConfiguration ||
+                        item.bendDetails.bendEndConfiguration === "PE"
+                      ) {
                         return null;
                       }
 
-                      const flangeItems: Array<{nb: number; count: number; weight: number; singleWeight: number}> = [];
-                      const mainFlangeCount = flangeCountFromConfig(item.bendDetails.bendEndConfiguration, 'bend');
-                      const stubsWithFlanges = stubs.filter((s: {nominalBoreMm?: number}) =>
-                        s.nominalBoreMm && s.nominalBoreMm > 0
+                      const flangeItems: Array<{
+                        nb: number;
+                        count: number;
+                        weight: number;
+                        singleWeight: number;
+                      }> = [];
+                      const mainFlangeCount = flangeCountFromConfig(
+                        item.bendDetails.bendEndConfiguration,
+                        "bend",
+                      );
+                      const stubsWithFlanges = stubs.filter(
+                        (s: { nominalBoreMm?: number }) => s.nominalBoreMm && s.nominalBoreMm > 0,
                       );
                       const stubFlangeCount = stubsWithFlanges.length;
                       const actualMainFlanges = Math.max(0, mainFlangeCount - stubFlangeCount);
@@ -3043,19 +3867,23 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                           nb,
                           count: actualMainFlanges * qty,
                           weight: singleFlangeWt * actualMainFlanges * qty,
-                          singleWeight: singleFlangeWt
+                          singleWeight: singleFlangeWt,
                         });
                       }
 
-                      stubsWithFlanges.forEach((stub: {nominalBoreMm?: number}) => {
+                      stubsWithFlanges.forEach((stub: { nominalBoreMm?: number }) => {
                         if (stub.nominalBoreMm && stub.nominalBoreMm > 0) {
                           const stubNb = Math.round(Number(stub.nominalBoreMm));
-                          const singleFlangeWt = flangeWeight(stubNb, pressureClass, flangeStandard);
+                          const singleFlangeWt = flangeWeight(
+                            stubNb,
+                            pressureClass,
+                            flangeStandard,
+                          );
                           flangeItems.push({
                             nb: stubNb,
                             count: qty,
                             weight: singleFlangeWt * qty,
-                            singleWeight: singleFlangeWt
+                            singleWeight: singleFlangeWt,
                           });
                         }
                       });
@@ -3066,11 +3894,14 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                         <div className="col-span-2 space-y-1">
                           {flangeItems.map((fi, idx) => (
                             <div key={idx}>
-                              <span className="text-gray-500">Flanges:</span>{' '}
+                              <span className="text-gray-500">Flanges:</span>{" "}
                               <span className="font-medium">
-                                {fi.count}x {fi.nb}NB {flangeStandard} {pressureClass} = {fi.weight.toFixed(2)} kg
+                                {fi.count}x {fi.nb}NB {flangeStandard} {pressureClass} ={" "}
+                                {fi.weight.toFixed(2)} kg
                               </span>
-                              <span className="text-gray-500 text-xs ml-2">({fi.singleWeight.toFixed(2)} kg each)</span>
+                              <span className="text-gray-500 text-xs ml-2">
+                                ({fi.singleWeight.toFixed(2)} kg each)
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -3080,16 +3911,25 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                       const weldInfo = calculateWeldLinearMeterage(item);
                       if (!weldInfo) return null;
                       const parts = [];
-                      if (Number(weldInfo.flangeWeldMeters) > 0) parts.push(`Flange: ${Number(weldInfo.flangeWeldMeters).toFixed(2)}m`);
-                      if (Number(weldInfo.buttWeldMeters) > 0) parts.push(`Butt: ${Number(weldInfo.buttWeldMeters).toFixed(2)}m`);
-                      if (Number(weldInfo.mitreWeldMeters) > 0) parts.push(`Mitre: ${Number(weldInfo.mitreWeldMeters).toFixed(2)}m`);
-                      if (Number(weldInfo.teeWeldMeters) > 0) parts.push(`Tee: ${Number(weldInfo.teeWeldMeters).toFixed(2)}m`);
-                      if (Number(weldInfo.tackWeldMeters) > 0) parts.push(`Tack: ${Number(weldInfo.tackWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.flangeWeldMeters) > 0)
+                        parts.push(`Flange: ${Number(weldInfo.flangeWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.buttWeldMeters) > 0)
+                        parts.push(`Butt: ${Number(weldInfo.buttWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.mitreWeldMeters) > 0)
+                        parts.push(`Mitre: ${Number(weldInfo.mitreWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.teeWeldMeters) > 0)
+                        parts.push(`Tee: ${Number(weldInfo.teeWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.tackWeldMeters) > 0)
+                        parts.push(`Tack: ${Number(weldInfo.tackWeldMeters).toFixed(2)}m`);
                       return (
                         <div className="col-span-2">
-                          <span className="text-gray-500">Weld L/m:</span>{' '}
+                          <span className="text-gray-500">Weld L/m:</span>{" "}
                           <span className="font-medium text-purple-600">
-                            {parts.join(' + ')} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m ({roundToNearestWeldThickness(Number(weldInfo.wallThicknessMm)).toFixed(1)}mm WT)
+                            {parts.join(" + ")} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m (
+                            {roundToNearestWeldThickness(Number(weldInfo.wallThicknessMm)).toFixed(
+                              1,
+                            )}
+                            mm WT)
                           </span>
                         </div>
                       );
@@ -3100,129 +3940,181 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 {item.fittingDetails && (
                   <>
                     <div>
-                      <span className="text-gray-500">NB:</span>{' '}
-                      <span className="font-medium">{Math.round(Number(item.fittingDetails.nominalDiameterMm))}mm</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Wall Thickness:</span>{' '}
+                      <span className="text-gray-500">NB:</span>{" "}
                       <span className="font-medium">
-                        {formatScheduleDisplay(item.fittingDetails.scheduleNumber, item.fittingDetails.wallThicknessMm)}
+                        {Math.round(Number(item.fittingDetails.nominalDiameterMm))}mm
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Type:</span>{' '}
-                      <span className="font-medium">{item.fittingDetails.fittingType || 'Tee'}</span>
+                      <span className="text-gray-500">Wall Thickness:</span>{" "}
+                      <span className="font-medium">
+                        {formatScheduleDisplay(
+                          item.fittingDetails.scheduleNumber,
+                          item.fittingDetails.wallThicknessMm,
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Type:</span>{" "}
+                      <span className="font-medium">
+                        {item.fittingDetails.fittingType || "Tee"}
+                      </span>
                     </div>
                     {item.fittingDetails.branchNominalDiameterMm &&
-                     Number(item.fittingDetails.branchNominalDiameterMm) !== Number(item.fittingDetails.nominalDiameterMm) && (
-                      <div>
-                        <span className="text-gray-500">Branch NB:</span>{' '}
-                        <span className="font-medium text-indigo-600">{Math.round(Number(item.fittingDetails.branchNominalDiameterMm))}mm</span>
-                      </div>
-                    )}
+                      Number(item.fittingDetails.branchNominalDiameterMm) !==
+                        Number(item.fittingDetails.nominalDiameterMm) && (
+                        <div>
+                          <span className="text-gray-500">Branch NB:</span>{" "}
+                          <span className="font-medium text-indigo-600">
+                            {Math.round(Number(item.fittingDetails.branchNominalDiameterMm))}mm
+                          </span>
+                        </div>
+                      )}
                     {(() => {
                       const calcData = item.fittingDetails.calculationData;
                       const teeHeight = calcData?.teeHeightMm || calcData?.branchHeightMm;
                       return teeHeight ? (
                         <div>
-                          <span className="text-gray-500">Tee Height:</span>{' '}
-                          <span className="font-medium text-indigo-600">{Math.round(Number(teeHeight))}mm</span>
+                          <span className="text-gray-500">Tee Height:</span>{" "}
+                          <span className="font-medium text-indigo-600">
+                            {Math.round(Number(teeHeight))}mm
+                          </span>
                         </div>
                       ) : null;
                     })()}
                     <div>
-                      <span className="text-gray-500">Qty:</span>{' '}
+                      <span className="text-gray-500">Qty:</span>{" "}
                       <span className="font-medium">{item.quantity || 1}</span>
                     </div>
-                    {item.fittingDetails.pipeEndConfiguration && item.fittingDetails.pipeEndConfiguration !== 'PE' && (
-                      <div>
-                        <span className="text-gray-500">End Config:</span>{' '}
-                        <span className="font-medium text-green-600">{item.fittingDetails.pipeEndConfiguration}</span>
-                      </div>
-                    )}
-                    <div>
-                      <span className="text-gray-500">Weight/Unit:</span>{' '}
-                      <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
-                    </div>
-                    {item.fittingDetails.pipeEndConfiguration && item.fittingDetails.pipeEndConfiguration !== 'PE' && (() => {
-                      const flangeStandard = item.flangeStandardCode || 'SANS 1123';
-                      const pressureClass = item.flangePressureClassDesignation || '1000/3';
-                      const mainNb = Math.round(Number(item.fittingDetails.nominalDiameterMm));
-                      const branchNb = Math.round(Number(item.fittingDetails.branchNominalDiameterMm || mainNb));
-                      const qty = item.quantity || 1;
-                      const calcData = item.fittingDetails.calculationData;
-
-                      const flangeItems: Array<{nb: number; count: number; weight: number; singleWeight: number}> = [];
-
-                      const mainFlangeCount = calcData?.mainFlangeCount || 2;
-                      if (mainFlangeCount > 0) {
-                        const singleFlangeWt = flangeWeight(mainNb, pressureClass, flangeStandard);
-                        flangeItems.push({
-                          nb: mainNb,
-                          count: mainFlangeCount * qty,
-                          weight: singleFlangeWt * mainFlangeCount * qty,
-                          singleWeight: singleFlangeWt
-                        });
-                      }
-
-                      const branchFlangeCount = calcData?.branchFlangeCount || (branchNb !== mainNb ? 1 : 0);
-                      if (branchFlangeCount > 0 && branchNb !== mainNb) {
-                        const singleFlangeWt = flangeWeight(branchNb, pressureClass, flangeStandard);
-                        flangeItems.push({
-                          nb: branchNb,
-                          count: branchFlangeCount * qty,
-                          weight: singleFlangeWt * branchFlangeCount * qty,
-                          singleWeight: singleFlangeWt
-                        });
-                      }
-
-                      if (flangeItems.length === 0) return null;
-
-                      return (
-                        <div className="col-span-2 space-y-1">
-                          {flangeItems.map((fi, idx) => (
-                            <div key={idx}>
-                              <span className="text-gray-500">Flanges:</span>{' '}
-                              <span className="font-medium">
-                                {fi.count}x {fi.nb}NB {flangeStandard} {pressureClass} = {fi.weight.toFixed(2)} kg
-                              </span>
-                              <span className="text-gray-500 text-xs ml-2">({fi.singleWeight.toFixed(2)} kg each)</span>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                    {item.fittingDetails.addBlankFlange && item.fittingDetails.blankFlangeCount && (() => {
-                      const blankFlangeNB = Math.round(Number(item.fittingDetails.nominalDiameterMm));
-                      const flangeStandard = item.flangeStandardCode || 'SANS 1123';
-                      const pressureClass = item.flangePressureClassDesignation || '1000/3';
-                      const isSans = flangeStandard.toUpperCase().includes('SANS');
-                      const singleBlankWt = isSans
-                        ? sansBlankFlangeWeight(blankFlangeNB, pressureClass)
-                        : blankFlangeWeight(blankFlangeNB, pressureClass);
-                      const totalBlankWt = singleBlankWt * item.fittingDetails.blankFlangeCount;
-                      return (
-                        <div className="col-span-2">
-                          <span className="text-gray-500">Blank Flanges:</span>{' '}
-                          <span className="font-medium">
-                            {item.fittingDetails.blankFlangeCount}x {blankFlangeNB}NB {flangeStandard} {pressureClass} = {totalBlankWt.toFixed(2)} kg
+                    {item.fittingDetails.pipeEndConfiguration &&
+                      item.fittingDetails.pipeEndConfiguration !== "PE" && (
+                        <div>
+                          <span className="text-gray-500">End Config:</span>{" "}
+                          <span className="font-medium text-green-600">
+                            {item.fittingDetails.pipeEndConfiguration}
                           </span>
-                          <span className="text-gray-500 text-xs ml-2">({singleBlankWt.toFixed(2)} kg each)</span>
                         </div>
-                      );
-                    })()}
+                      )}
+                    <div>
+                      <span className="text-gray-500">Weight/Unit:</span>{" "}
+                      <span className="font-medium">
+                        {Number(item.weightPerUnitKg || 0).toFixed(2)} kg
+                      </span>
+                    </div>
+                    {item.fittingDetails.pipeEndConfiguration &&
+                      item.fittingDetails.pipeEndConfiguration !== "PE" &&
+                      (() => {
+                        const flangeStandard = item.flangeStandardCode || "SANS 1123";
+                        const pressureClass = item.flangePressureClassDesignation || "1000/3";
+                        const mainNb = Math.round(Number(item.fittingDetails.nominalDiameterMm));
+                        const branchNb = Math.round(
+                          Number(item.fittingDetails.branchNominalDiameterMm || mainNb),
+                        );
+                        const qty = item.quantity || 1;
+                        const calcData = item.fittingDetails.calculationData;
+
+                        const flangeItems: Array<{
+                          nb: number;
+                          count: number;
+                          weight: number;
+                          singleWeight: number;
+                        }> = [];
+
+                        const mainFlangeCount = calcData?.mainFlangeCount || 2;
+                        if (mainFlangeCount > 0) {
+                          const singleFlangeWt = flangeWeight(
+                            mainNb,
+                            pressureClass,
+                            flangeStandard,
+                          );
+                          flangeItems.push({
+                            nb: mainNb,
+                            count: mainFlangeCount * qty,
+                            weight: singleFlangeWt * mainFlangeCount * qty,
+                            singleWeight: singleFlangeWt,
+                          });
+                        }
+
+                        const branchFlangeCount =
+                          calcData?.branchFlangeCount || (branchNb !== mainNb ? 1 : 0);
+                        if (branchFlangeCount > 0 && branchNb !== mainNb) {
+                          const singleFlangeWt = flangeWeight(
+                            branchNb,
+                            pressureClass,
+                            flangeStandard,
+                          );
+                          flangeItems.push({
+                            nb: branchNb,
+                            count: branchFlangeCount * qty,
+                            weight: singleFlangeWt * branchFlangeCount * qty,
+                            singleWeight: singleFlangeWt,
+                          });
+                        }
+
+                        if (flangeItems.length === 0) return null;
+
+                        return (
+                          <div className="col-span-2 space-y-1">
+                            {flangeItems.map((fi, idx) => (
+                              <div key={idx}>
+                                <span className="text-gray-500">Flanges:</span>{" "}
+                                <span className="font-medium">
+                                  {fi.count}x {fi.nb}NB {flangeStandard} {pressureClass} ={" "}
+                                  {fi.weight.toFixed(2)} kg
+                                </span>
+                                <span className="text-gray-500 text-xs ml-2">
+                                  ({fi.singleWeight.toFixed(2)} kg each)
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    {item.fittingDetails.addBlankFlange &&
+                      item.fittingDetails.blankFlangeCount &&
+                      (() => {
+                        const blankFlangeNB = Math.round(
+                          Number(item.fittingDetails.nominalDiameterMm),
+                        );
+                        const flangeStandard = item.flangeStandardCode || "SANS 1123";
+                        const pressureClass = item.flangePressureClassDesignation || "1000/3";
+                        const isSans = flangeStandard.toUpperCase().includes("SANS");
+                        const singleBlankWt = isSans
+                          ? sansBlankFlangeWeight(blankFlangeNB, pressureClass)
+                          : blankFlangeWeight(blankFlangeNB, pressureClass);
+                        const totalBlankWt = singleBlankWt * item.fittingDetails.blankFlangeCount;
+                        return (
+                          <div className="col-span-2">
+                            <span className="text-gray-500">Blank Flanges:</span>{" "}
+                            <span className="font-medium">
+                              {item.fittingDetails.blankFlangeCount}x {blankFlangeNB}NB{" "}
+                              {flangeStandard} {pressureClass} = {totalBlankWt.toFixed(2)} kg
+                            </span>
+                            <span className="text-gray-500 text-xs ml-2">
+                              ({singleBlankWt.toFixed(2)} kg each)
+                            </span>
+                          </div>
+                        );
+                      })()}
                     {(() => {
                       const weldInfo = calculateWeldLinearMeterage(item);
                       if (!weldInfo) return null;
                       const parts = [];
-                      if (Number(weldInfo.flangeWeldMeters) > 0) parts.push(`Flange: ${Number(weldInfo.flangeWeldMeters).toFixed(2)}m`);
-                      if (Number(weldInfo.teeWeldMeters) > 0) parts.push(`Tee: ${Number(weldInfo.teeWeldMeters).toFixed(2)}m`);
-                      if (Number(weldInfo.tackWeldMeters) > 0) parts.push(`Tack: ${Number(weldInfo.tackWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.flangeWeldMeters) > 0)
+                        parts.push(`Flange: ${Number(weldInfo.flangeWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.teeWeldMeters) > 0)
+                        parts.push(`Tee: ${Number(weldInfo.teeWeldMeters).toFixed(2)}m`);
+                      if (Number(weldInfo.tackWeldMeters) > 0)
+                        parts.push(`Tack: ${Number(weldInfo.tackWeldMeters).toFixed(2)}m`);
                       return (
                         <div className="col-span-2">
-                          <span className="text-gray-500">Weld L/m:</span>{' '}
+                          <span className="text-gray-500">Weld L/m:</span>{" "}
                           <span className="font-medium text-purple-600">
-                            {parts.join(' + ')} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m ({roundToNearestWeldThickness(Number(weldInfo.wallThicknessMm)).toFixed(1)}mm WT)
+                            {parts.join(" + ")} = {Number(weldInfo.totalLinearMeters).toFixed(2)}m (
+                            {roundToNearestWeldThickness(Number(weldInfo.wallThicknessMm)).toFixed(
+                              1,
+                            )}
+                            mm WT)
                           </span>
                         </div>
                       );
@@ -3234,12 +4126,14 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 {!item.straightPipeDetails && !item.bendDetails && !item.fittingDetails && (
                   <>
                     <div>
-                      <span className="text-gray-500">Qty:</span>{' '}
+                      <span className="text-gray-500">Qty:</span>{" "}
                       <span className="font-medium">{item.quantity || 1}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Weight/Unit:</span>{' '}
-                      <span className="font-medium">{Number(item.weightPerUnitKg || 0).toFixed(2)} kg</span>
+                      <span className="text-gray-500">Weight/Unit:</span>{" "}
+                      <span className="font-medium">
+                        {Number(item.weightPerUnitKg || 0).toFixed(2)} kg
+                      </span>
                     </div>
                   </>
                 )}
@@ -3252,47 +4146,67 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                   <div className="grid grid-cols-3 md:grid-cols-6 gap-x-3 gap-y-1 text-xs">
                     {item.bendDetails.centerToFaceMm && (
                       <div>
-                        <span className="text-gray-500">C/F:</span>{' '}
-                        <span className="font-medium text-indigo-600">{Math.round(Number(item.bendDetails.centerToFaceMm))}mm</span>
+                        <span className="text-gray-500">C/F:</span>{" "}
+                        <span className="font-medium text-indigo-600">
+                          {Math.round(Number(item.bendDetails.centerToFaceMm))}mm
+                        </span>
                       </div>
                     )}
                     <div>
-                      <span className="text-gray-500">Angle:</span>{' '}
-                      <span className="font-medium text-indigo-600">{Number(item.bendDetails.bendDegrees || 90).toFixed(0)}°</span>
+                      <span className="text-gray-500">Angle:</span>{" "}
+                      <span className="font-medium text-indigo-600">
+                        {Number(item.bendDetails.bendDegrees || 90).toFixed(0)}°
+                      </span>
                       {(() => {
-                        const segments = item.bendDetails?.numberOfSegments || item.bendDetails?.calculationData?.numberOfSegments;
+                        const segments =
+                          item.bendDetails?.numberOfSegments ||
+                          item.bendDetails?.calculationData?.numberOfSegments;
                         return segments && segments > 1 ? (
-                          <span className="font-medium text-orange-600"> ({segments} segments)</span>
+                          <span className="font-medium text-orange-600">
+                            {" "}
+                            ({segments} segments)
+                          </span>
                         ) : null;
                       })()}
                     </div>
                     {(() => {
-                      const storedTangents = item.bendDetails?.tangentLengths || item.bendDetails?.calculationData?.tangentLengths || [];
-                      const numTangents = item.bendDetails?.numberOfTangents || storedTangents.length || 0;
+                      const storedTangents =
+                        item.bendDetails?.tangentLengths ||
+                        item.bendDetails?.calculationData?.tangentLengths ||
+                        [];
+                      const numTangents =
+                        item.bendDetails?.numberOfTangents || storedTangents.length || 0;
                       if (numTangents === 0 || storedTangents.length === 0) return null;
                       const centerToFace = Number(item.bendDetails?.centerToFaceMm) || 0;
-                      const actualTangents = storedTangents.map((t: number) => Math.max(0, t - centerToFace));
+                      const actualTangents = storedTangents.map((t: number) =>
+                        Math.max(0, t - centerToFace),
+                      );
                       const allSame = actualTangents.every((t: number) => t === actualTangents[0]);
-                      const formatted = allSame && actualTangents.length > 1
-                        ? `${actualTangents.length} x ${Math.round(actualTangents[0])}mm`
-                        : actualTangents.map((t: number) => `${Math.round(t)}mm`).join(', ');
+                      const formatted =
+                        allSame && actualTangents.length > 1
+                          ? `${actualTangents.length} x ${Math.round(actualTangents[0])}mm`
+                          : actualTangents.map((t: number) => `${Math.round(t)}mm`).join(", ");
                       return (
                         <div>
-                          <span className="text-gray-500">Tangents:</span>{' '}
+                          <span className="text-gray-500">Tangents:</span>{" "}
                           <span className="font-medium text-blue-600">{formatted}</span>
                         </div>
                       );
                     })()}
                     {(() => {
-                      const stubs = item.bendDetails?.stubLengths || item.bendDetails?.calculationData?.stubLengths || [];
+                      const stubs =
+                        item.bendDetails?.stubLengths ||
+                        item.bendDetails?.calculationData?.stubLengths ||
+                        [];
                       if (stubs.length === 0) return null;
                       const allSame = stubs.every((s: number) => s === stubs[0]);
-                      const formatted = allSame && stubs.length > 1
-                        ? `${stubs.length} x ${Math.round(stubs[0])}mm`
-                        : stubs.map((s: number) => `${Math.round(s)}mm`).join(', ');
+                      const formatted =
+                        allSame && stubs.length > 1
+                          ? `${stubs.length} x ${Math.round(stubs[0])}mm`
+                          : stubs.map((s: number) => `${Math.round(s)}mm`).join(", ");
                       return (
                         <div>
-                          <span className="text-gray-500">Stubs:</span>{' '}
+                          <span className="text-gray-500">Stubs:</span>{" "}
                           <span className="font-medium text-green-600">{formatted}</span>
                         </div>
                       );
@@ -3301,29 +4215,34 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 </div>
               )}
 
-              {item.fittingDetails && (item.fittingDetails.pipeLengthAMm || item.fittingDetails.pipeLengthBMm) && (
-                <div className="mt-2 pt-2 border-t border-gray-200">
-                  <div className="text-xs text-gray-500 mb-1 font-medium">Dimensions:</div>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-x-3 gap-y-1 text-xs">
-                    {item.fittingDetails.pipeLengthAMm && (
-                      <div>
-                        <span className="text-gray-500">Length A:</span>{' '}
-                        <span className="font-medium text-indigo-600">{Math.round(Number(item.fittingDetails.pipeLengthAMm))}mm</span>
-                      </div>
-                    )}
-                    {item.fittingDetails.pipeLengthBMm && (
-                      <div>
-                        <span className="text-gray-500">Length B:</span>{' '}
-                        <span className="font-medium text-blue-600">{Math.round(Number(item.fittingDetails.pipeLengthBMm))}mm</span>
-                      </div>
-                    )}
+              {item.fittingDetails &&
+                (item.fittingDetails.pipeLengthAMm || item.fittingDetails.pipeLengthBMm) && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <div className="text-xs text-gray-500 mb-1 font-medium">Dimensions:</div>
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-x-3 gap-y-1 text-xs">
+                      {item.fittingDetails.pipeLengthAMm && (
+                        <div>
+                          <span className="text-gray-500">Length A:</span>{" "}
+                          <span className="font-medium text-indigo-600">
+                            {Math.round(Number(item.fittingDetails.pipeLengthAMm))}mm
+                          </span>
+                        </div>
+                      )}
+                      {item.fittingDetails.pipeLengthBMm && (
+                        <div>
+                          <span className="text-gray-500">Length B:</span>{" "}
+                          <span className="font-medium text-blue-600">
+                            {Math.round(Number(item.fittingDetails.pipeLengthBMm))}mm
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {item.notes && (
                 <div className="mt-2 pt-2 border-t border-gray-200">
-                  <span className="text-xs text-gray-500">Notes:</span>{' '}
+                  <span className="text-xs text-gray-500">Notes:</span>{" "}
                   <span className="text-xs text-gray-700">{item.notes}</span>
                 </div>
               )}
@@ -3331,39 +4250,46 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
               {/* Pricing Breakdown Section */}
               {(() => {
                 const weightPerUnit = Number(item.weightPerUnitKg || 0);
-                const itemSteelSpec = item.straightPipeDetails?.pipeStandard ||
+                const itemSteelSpec =
+                  item.straightPipeDetails?.pipeStandard ||
                   item.bendDetails?.pipeStandard ||
-                  item.fittingDetails?.fittingStandard || '';
+                  item.fittingDetails?.fittingStandard ||
+                  "";
                 const normalizedSpec = normalizeSteelSpec(itemSteelSpec);
-                const steelPricePerKg = pricingInputs.steelSpecs[normalizedSpec] ||
-                  Object.values(pricingInputs.steelSpecs)[0] || 0;
+                const steelPricePerKg =
+                  pricingInputs.steelSpecs[normalizedSpec] ||
+                  Object.values(pricingInputs.steelSpecs)[0] ||
+                  0;
                 const steelCost = weightPerUnit * steelPricePerKg;
 
                 const endConfig =
-                  (item.straightPipeDetails?.pipeEndConfiguration) ||
-                  (item.bendDetails?.bendEndConfiguration) ||
-                  (item.fittingDetails?.pipeEndConfiguration);
+                  item.straightPipeDetails?.pipeEndConfiguration ||
+                  item.bendDetails?.bendEndConfiguration ||
+                  item.fittingDetails?.pipeEndConfiguration;
 
                 let flangeWeightKg = 0;
                 let flangePricePerKg = 0;
                 let flangeCost = 0;
-                if (endConfig && endConfig !== 'PE') {
-                  const flangeStandard = item.flangeStandardCode || 'SANS 1123';
-                  const pressureClass = item.flangePressureClassDesignation || '1000/3';
+                if (endConfig && endConfig !== "PE") {
+                  const flangeStandard = item.flangeStandardCode || "SANS 1123";
+                  const pressureClass = item.flangePressureClassDesignation || "1000/3";
                   flangePricePerKg = isRotatingFlange(endConfig)
-                    ? (pricingInputs.flangeTypes['rotating'] || 0)
-                    : (pricingInputs.flangeTypes['slipOn'] || 0);
+                    ? pricingInputs.flangeTypes["rotating"] || 0
+                    : pricingInputs.flangeTypes["slipOn"] || 0;
 
                   if (item.bendDetails) {
                     const mainNb = Math.round(Number(item.bendDetails.nominalBoreMm));
                     const calcData = item.bendDetails.calculationData;
                     const stubs = calcData?.stubs || [];
-                    const totalFlangeCount = flangeCountFromConfig(endConfig, 'bend');
-                    const stubFlangeCount = stubs.filter((s: { nominalBoreMm?: number }) => s.nominalBoreMm && s.nominalBoreMm > 0).length;
+                    const totalFlangeCount = flangeCountFromConfig(endConfig, "bend");
+                    const stubFlangeCount = stubs.filter(
+                      (s: { nominalBoreMm?: number }) => s.nominalBoreMm && s.nominalBoreMm > 0,
+                    ).length;
                     const mainFlangeCount = Math.max(0, totalFlangeCount - stubFlangeCount);
 
                     if (mainFlangeCount > 0) {
-                      flangeWeightKg += mainFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
+                      flangeWeightKg +=
+                        mainFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
                     }
                     stubs.forEach((stub: { nominalBoreMm?: number }) => {
                       if (stub.nominalBoreMm && stub.nominalBoreMm > 0) {
@@ -3373,23 +4299,40 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                     });
                   } else if (item.fittingDetails) {
                     const mainNb = Math.round(Number(item.fittingDetails.nominalDiameterMm));
-                    const branchNb = Math.round(Number(item.fittingDetails.branchNominalDiameterMm || mainNb));
-                    const fittingConfig = item.fittingDetails.pipeEndConfiguration || '';
-                    const mainFlangeCount = ['FAE', 'FFF', 'F2E', 'FFP'].includes(fittingConfig) ? 2 :
-                                           ['F2E_RF', 'F2E_LF', 'PFF', 'FPP', 'PFP'].includes(fittingConfig) ? 1 : 0;
-                    const branchFlangeCount = ['FAE', 'FFF', 'F2E_RF', 'F2E_LF', 'PFF', 'PPF'].includes(fittingConfig) ? 1 : 0;
+                    const branchNb = Math.round(
+                      Number(item.fittingDetails.branchNominalDiameterMm || mainNb),
+                    );
+                    const fittingConfig = item.fittingDetails.pipeEndConfiguration || "";
+                    const mainFlangeCount = ["FAE", "FFF", "F2E", "FFP"].includes(fittingConfig)
+                      ? 2
+                      : ["F2E_RF", "F2E_LF", "PFF", "FPP", "PFP"].includes(fittingConfig)
+                        ? 1
+                        : 0;
+                    const branchFlangeCount = [
+                      "FAE",
+                      "FFF",
+                      "F2E_RF",
+                      "F2E_LF",
+                      "PFF",
+                      "PPF",
+                    ].includes(fittingConfig)
+                      ? 1
+                      : 0;
 
                     if (mainFlangeCount > 0) {
-                      flangeWeightKg += mainFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
+                      flangeWeightKg +=
+                        mainFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
                     }
                     if (branchFlangeCount > 0 && branchNb !== mainNb) {
-                      flangeWeightKg += branchFlangeCount * flangeWeight(branchNb, pressureClass, flangeStandard);
+                      flangeWeightKg +=
+                        branchFlangeCount * flangeWeight(branchNb, pressureClass, flangeStandard);
                     } else if (branchFlangeCount > 0) {
-                      flangeWeightKg += branchFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
+                      flangeWeightKg +=
+                        branchFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
                     }
                   } else if (item.straightPipeDetails) {
                     const nb = Math.round(Number(item.straightPipeDetails.nominalBoreMm));
-                    const flangeCount = flangeCountFromConfig(endConfig, 'straight_pipe');
+                    const flangeCount = flangeCountFromConfig(endConfig, "straight_pipe");
                     flangeWeightKg = flangeCount * flangeWeight(nb, pressureClass, flangeStandard);
                   }
 
@@ -3400,21 +4343,21 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                 let blankFlangeCost = 0;
                 if (item.fittingDetails?.addBlankFlange && item.fittingDetails.blankFlangeCount) {
                   const blankNb = Math.round(Number(item.fittingDetails.nominalDiameterMm || 0));
-                  const flangeStandard = item.flangeStandardCode || 'SANS 1123';
-                  const pressureClass = item.flangePressureClassDesignation || '1000/3';
-                  const isSans = flangeStandard.toUpperCase().includes('SANS');
+                  const flangeStandard = item.flangeStandardCode || "SANS 1123";
+                  const pressureClass = item.flangePressureClassDesignation || "1000/3";
+                  const isSans = flangeStandard.toUpperCase().includes("SANS");
                   const singleBlankWt = isSans
                     ? sansBlankFlangeWeight(blankNb, pressureClass)
                     : blankFlangeWeight(blankNb, pressureClass);
                   blankFlangeWeightKg = singleBlankWt * item.fittingDetails.blankFlangeCount;
-                  blankFlangeCost = blankFlangeWeightKg * (pricingInputs.flangeTypes['blank'] || 0);
+                  blankFlangeCost = blankFlangeWeightKg * (pricingInputs.flangeTypes["blank"] || 0);
                 }
 
                 const weldInfo = calculateWeldLinearMeterage(item);
-                const flangeWeldRate = pricingInputs.weldTypes['flangeWeld'] || 0;
-                const mitreWeldRate = pricingInputs.weldTypes['mitreWeld'] || 0;
-                const teeWeldRate = pricingInputs.weldTypes['teeWeld'] || 0;
-                const tackWeldRate = pricingInputs.weldTypes['tackWeld'] || 0;
+                const flangeWeldRate = pricingInputs.weldTypes["flangeWeld"] || 0;
+                const mitreWeldRate = pricingInputs.weldTypes["mitreWeld"] || 0;
+                const teeWeldRate = pricingInputs.weldTypes["teeWeld"] || 0;
+                const tackWeldRate = pricingInputs.weldTypes["tackWeld"] || 0;
                 const totalWeldMeters = weldInfo ? Number(weldInfo.totalLinearMeters) : 0;
                 const weldRate = flangeWeldRate || mitreWeldRate || teeWeldRate || tackWeldRate;
                 const weldCost = totalWeldMeters * weldRate;
@@ -3426,51 +4369,77 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                   <div className="mt-2 pt-2 border-t border-gray-300">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-2">
                       <div>
-                        <span className="text-gray-500">Steel:</span>{' '}
-                        <span className="font-medium">{weightPerUnit.toFixed(0)}kg × R{steelPricePerKg.toFixed(2)} = </span>
-                        <span className="font-semibold text-blue-600">{currencySymbol}{formatCurrency(steelCost)}</span>
+                        <span className="text-gray-500">Steel:</span>{" "}
+                        <span className="font-medium">
+                          {weightPerUnit.toFixed(0)}kg × R{steelPricePerKg.toFixed(2)} ={" "}
+                        </span>
+                        <span className="font-semibold text-blue-600">
+                          {currencySymbol}
+                          {formatCurrency(steelCost)}
+                        </span>
                       </div>
                       {flangeWeightKg > 0 && (
                         <div>
-                          <span className="text-gray-500">Flanges:</span>{' '}
-                          <span className="font-medium">{flangeWeightKg.toFixed(0)}kg × R{flangePricePerKg.toFixed(2)} = </span>
-                          <span className="font-semibold text-amber-600">{currencySymbol}{formatCurrency(flangeCost)}</span>
+                          <span className="text-gray-500">Flanges:</span>{" "}
+                          <span className="font-medium">
+                            {flangeWeightKg.toFixed(0)}kg × R{flangePricePerKg.toFixed(2)} ={" "}
+                          </span>
+                          <span className="font-semibold text-amber-600">
+                            {currencySymbol}
+                            {formatCurrency(flangeCost)}
+                          </span>
                         </div>
                       )}
                       {blankFlangeWeightKg > 0 && (
                         <div>
-                          <span className="text-gray-500">Blank Flanges:</span>{' '}
-                          <span className="font-medium">{blankFlangeWeightKg.toFixed(0)}kg × R{(pricingInputs.flangeTypes['blank'] || 0).toFixed(2)} = </span>
-                          <span className="font-semibold text-orange-600">{currencySymbol}{formatCurrency(blankFlangeCost)}</span>
+                          <span className="text-gray-500">Blank Flanges:</span>{" "}
+                          <span className="font-medium">
+                            {blankFlangeWeightKg.toFixed(0)}kg × R
+                            {(pricingInputs.flangeTypes["blank"] || 0).toFixed(2)} ={" "}
+                          </span>
+                          <span className="font-semibold text-orange-600">
+                            {currencySymbol}
+                            {formatCurrency(blankFlangeCost)}
+                          </span>
                         </div>
                       )}
                       {totalWeldMeters > 0 && (
                         <div>
-                          <span className="text-gray-500">Welds:</span>{' '}
-                          <span className="font-medium">{totalWeldMeters.toFixed(2)}m × R{weldRate.toFixed(2)} = </span>
-                          <span className="font-semibold text-purple-600">{currencySymbol}{formatCurrency(weldCost)}</span>
+                          <span className="text-gray-500">Welds:</span>{" "}
+                          <span className="font-medium">
+                            {totalWeldMeters.toFixed(2)}m × R{weldRate.toFixed(2)} ={" "}
+                          </span>
+                          <span className="font-semibold text-purple-600">
+                            {currencySymbol}
+                            {formatCurrency(weldCost)}
+                          </span>
                         </div>
                       )}
                       {pricingInputs.labourExtrasPercent > 0 && (
                         <div>
-                          <span className="text-gray-500">Labour & Extras ({pricingInputs.labourExtrasPercent}%):</span>{' '}
-                          <span className="font-semibold text-gray-600">{currencySymbol}{formatCurrency(labourExtras)}</span>
+                          <span className="text-gray-500">
+                            Labour & Extras ({pricingInputs.labourExtrasPercent}%):
+                          </span>{" "}
+                          <span className="font-semibold text-gray-600">
+                            {currencySymbol}
+                            {formatCurrency(labourExtras)}
+                          </span>
                         </div>
                       )}
                     </div>
                     <div className="flex justify-end items-center gap-6">
                       <div className="text-right">
-                        <span className="text-xs text-gray-500">Unit Value:</span>{' '}
+                        <span className="text-xs text-gray-500">Unit Value:</span>{" "}
                         <span className="text-sm font-semibold text-gray-800">
                           {currencySymbol} {formatCurrency(unitPrice)}
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs text-gray-500">Qty:</span>{' '}
+                        <span className="text-xs text-gray-500">Qty:</span>{" "}
                         <span className="text-sm font-medium text-gray-700">{qty}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-xs text-gray-500">Line Total:</span>{' '}
+                        <span className="text-xs text-gray-500">Line Total:</span>{" "}
                         <span className="text-sm font-bold text-green-700">
                           {currencySymbol} {formatCurrency(lineTotal)}
                         </span>
@@ -3491,20 +4460,25 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
           {accessorySections.map((section) => {
             const calculateAccessoryItemPrice = (item: ConsolidatedItem): number => {
               const weight = Number(item.weightKg || 0);
-              if (section.sectionType === 'bnw_sets') {
+              if (section.sectionType === "bnw_sets") {
                 const boltWeight = weight * 0.55;
-                const nutWeight = weight * 0.30;
+                const nutWeight = weight * 0.3;
                 const washerWeight = weight * 0.15;
-                return (pricingInputs.bnwTypes['bolts'] || 0) * boltWeight +
-                       (pricingInputs.bnwTypes['nuts'] || 0) * nutWeight +
-                       (pricingInputs.bnwTypes['washers'] || 0) * washerWeight;
-              } else if (section.sectionType === 'blank_flanges') {
-                return (pricingInputs.flangeTypes['blank'] || 0) * weight;
+                return (
+                  (pricingInputs.bnwTypes["bolts"] || 0) * boltWeight +
+                  (pricingInputs.bnwTypes["nuts"] || 0) * nutWeight +
+                  (pricingInputs.bnwTypes["washers"] || 0) * washerWeight
+                );
+              } else if (section.sectionType === "blank_flanges") {
+                return (pricingInputs.flangeTypes["blank"] || 0) * weight;
               }
               return 0;
             };
 
-            const sectionTotal = section.items.reduce((sum, item) => sum + calculateAccessoryItemPrice(item), 0);
+            const sectionTotal = section.items.reduce(
+              (sum, item) => sum + calculateAccessoryItemPrice(item),
+              0,
+            );
 
             return (
               <div key={section.id} className="border border-gray-200 rounded-lg overflow-hidden">
@@ -3515,12 +4489,24 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="text-left py-2 px-2 text-xs font-medium text-gray-500 uppercase w-12">#</th>
-                        <th className="text-left py-2 px-2 text-xs font-medium text-gray-500 uppercase">Description</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase w-16">Qty</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase w-16">Unit</th>
-                        <th className="text-right py-2 px-2 text-xs font-medium text-gray-500 uppercase w-24">Weight</th>
-                        <th className="text-right py-2 px-2 text-xs font-medium text-gray-500 uppercase w-28">Line Total</th>
+                        <th className="text-left py-2 px-2 text-xs font-medium text-gray-500 uppercase w-12">
+                          #
+                        </th>
+                        <th className="text-left py-2 px-2 text-xs font-medium text-gray-500 uppercase">
+                          Description
+                        </th>
+                        <th className="text-right py-2 px-3 text-xs font-medium text-gray-500 uppercase w-16">
+                          Qty
+                        </th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-gray-500 uppercase w-16">
+                          Unit
+                        </th>
+                        <th className="text-right py-2 px-2 text-xs font-medium text-gray-500 uppercase w-24">
+                          Weight
+                        </th>
+                        <th className="text-right py-2 px-2 text-xs font-medium text-gray-500 uppercase w-28">
+                          Line Total
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3532,7 +4518,9 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                             <td className="py-2 px-2 text-gray-900">{item.description}</td>
                             <td className="py-2 px-3 text-gray-900 text-right">{item.qty}</td>
                             <td className="py-2 px-3 text-gray-500">{item.unit}</td>
-                            <td className="py-2 px-2 text-gray-900 text-right">{Number(item.weightKg || 0).toFixed(2)} kg</td>
+                            <td className="py-2 px-2 text-gray-900 text-right">
+                              {Number(item.weightKg || 0).toFixed(2)} kg
+                            </td>
                             <td className="py-2 px-2 text-green-700 text-right font-medium">
                               {currencySymbol} {formatCurrency(itemTotal)}
                             </td>
@@ -3540,12 +4528,16 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
                         );
                       })}
                       <tr className="bg-gray-50 font-medium">
-                        <td colSpan={2} className="py-2 px-2 text-gray-900">TOTAL</td>
+                        <td colSpan={2} className="py-2 px-2 text-gray-900">
+                          TOTAL
+                        </td>
                         <td className="py-2 px-3 text-gray-900 text-right">
                           {section.items.reduce((sum, i) => sum + (i.qty || 0), 0)}
                         </td>
                         <td className="py-2 px-3"></td>
-                        <td className="py-2 px-2 text-gray-900 text-right">{Number(section.totalWeightKg || 0).toFixed(2)} kg</td>
+                        <td className="py-2 px-2 text-gray-900 text-right">
+                          {Number(section.totalWeightKg || 0).toFixed(2)} kg
+                        </td>
                         <td className="py-2 px-2 text-green-700 text-right font-bold">
                           {currencySymbol} {formatCurrency(sectionTotal)}
                         </td>
@@ -3562,20 +4554,26 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
       {/* Financial Totals */}
       {(() => {
         const accessoriesTotal = accessorySections.reduce((sum, section) => {
-          return sum + section.items.reduce((itemSum, item) => {
-            const weight = Number(item.weightKg || 0);
-            if (section.sectionType === 'bnw_sets') {
-              const boltWeight = weight * 0.55;
-              const nutWeight = weight * 0.30;
-              const washerWeight = weight * 0.15;
-              return itemSum + (pricingInputs.bnwTypes['bolts'] || 0) * boltWeight +
-                     (pricingInputs.bnwTypes['nuts'] || 0) * nutWeight +
-                     (pricingInputs.bnwTypes['washers'] || 0) * washerWeight;
-            } else if (section.sectionType === 'blank_flanges') {
-              return itemSum + (pricingInputs.flangeTypes['blank'] || 0) * weight;
-            }
-            return itemSum;
-          }, 0);
+          return (
+            sum +
+            section.items.reduce((itemSum, item) => {
+              const weight = Number(item.weightKg || 0);
+              if (section.sectionType === "bnw_sets") {
+                const boltWeight = weight * 0.55;
+                const nutWeight = weight * 0.3;
+                const washerWeight = weight * 0.15;
+                return (
+                  itemSum +
+                  (pricingInputs.bnwTypes["bolts"] || 0) * boltWeight +
+                  (pricingInputs.bnwTypes["nuts"] || 0) * nutWeight +
+                  (pricingInputs.bnwTypes["washers"] || 0) * washerWeight
+                );
+              } else if (section.sectionType === "blank_flanges") {
+                return itemSum + (pricingInputs.flangeTypes["blank"] || 0) * weight;
+              }
+              return itemSum;
+            }, 0)
+          );
         }, 0);
 
         const subtotal = itemsSubtotal + accessoriesTotal;
@@ -3591,33 +4589,49 @@ function RfqItemsDetailedView({ items, sections, currencyCode, pricingInputs, un
             <div className="space-y-2 max-w-md ml-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Items Subtotal:</span>
-                <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(itemsSubtotal)}</span>
+                <span className="font-medium text-gray-900">
+                  {currencySymbol} {formatCurrency(itemsSubtotal)}
+                </span>
               </div>
               {accessoriesTotal > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Accessories:</span>
-                  <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(accessoriesTotal)}</span>
+                  <span className="font-medium text-gray-900">
+                    {currencySymbol} {formatCurrency(accessoriesTotal)}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between text-sm border-t pt-2">
                 <span className="text-gray-600">Subtotal:</span>
-                <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(subtotal)}</span>
+                <span className="font-medium text-gray-900">
+                  {currencySymbol} {formatCurrency(subtotal)}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Contingencies ({pricingInputs.contingenciesPercent}%):</span>
-                <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(contingenciesAmount)}</span>
+                <span className="text-gray-600">
+                  Contingencies ({pricingInputs.contingenciesPercent}%):
+                </span>
+                <span className="font-medium text-gray-900">
+                  {currencySymbol} {formatCurrency(contingenciesAmount)}
+                </span>
               </div>
               <div className="flex justify-between text-sm font-semibold border-t pt-2">
                 <span className="text-gray-700">Grand Total (Ex VAT):</span>
-                <span className="text-gray-900">{currencySymbol} {formatCurrency(grandTotalExVat)}</span>
+                <span className="text-gray-900">
+                  {currencySymbol} {formatCurrency(grandTotalExVat)}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">VAT ({vatRate}%):</span>
-                <span className="font-medium text-gray-900">{currencySymbol} {formatCurrency(vatAmount)}</span>
+                <span className="font-medium text-gray-900">
+                  {currencySymbol} {formatCurrency(vatAmount)}
+                </span>
               </div>
               <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                 <span className="text-gray-800">Grand Total (Inc VAT):</span>
-                <span className="text-green-700">{currencySymbol} {formatCurrency(grandTotalIncVat)}</span>
+                <span className="text-green-700">
+                  {currencySymbol} {formatCurrency(grandTotalIncVat)}
+                </span>
               </div>
             </div>
           </div>

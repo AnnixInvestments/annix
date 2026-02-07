@@ -1,25 +1,25 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useCreateBoq } from '@/app/lib/query/hooks';
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { Suspense, useEffect, useState } from "react";
+import { useCreateBoq } from "@/app/lib/query/hooks";
 
 function CreateBoqContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [drawingId, setDrawingId] = useState<string>('');
-  const [rfqId, setRfqId] = useState<string>('');
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [drawingId, setDrawingId] = useState<string>("");
+  const [rfqId, setRfqId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const createBoqMutation = useCreateBoq();
 
   useEffect(() => {
-    const rfqIdParam = searchParams.get('rfqId');
+    const rfqIdParam = searchParams.get("rfqId");
     if (rfqIdParam) {
       setRfqId(rfqIdParam);
     }
-    const drawingIdParam = searchParams.get('drawingId');
+    const drawingIdParam = searchParams.get("drawingId");
     if (drawingIdParam) {
       setDrawingId(drawingIdParam);
     }
@@ -32,15 +32,17 @@ function CreateBoqContent() {
     setError(null);
 
     try {
-      const data: { title: string; description?: string; drawingId?: number; rfqId?: number } = { title };
+      const data: { title: string; description?: string; drawingId?: number; rfqId?: number } = {
+        title,
+      };
       if (description) data.description = description;
-      if (drawingId) data.drawingId = parseInt(drawingId);
-      if (rfqId) data.rfqId = parseInt(rfqId);
+      if (drawingId) data.drawingId = parseInt(drawingId, 10);
+      if (rfqId) data.rfqId = parseInt(rfqId, 10);
 
       const boq = await createBoqMutation.mutateAsync(data);
       router.push(`/boq/${boq.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create BOQ');
+      setError(err instanceof Error ? err.message : "Failed to create BOQ");
     }
   };
 
@@ -149,7 +151,7 @@ function CreateBoqContent() {
                   Creating...
                 </span>
               ) : (
-                'Create BOQ'
+                "Create BOQ"
               )}
             </button>
           </div>

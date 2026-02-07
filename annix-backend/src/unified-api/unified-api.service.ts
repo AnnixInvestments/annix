@@ -1,17 +1,17 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { DataSource } from "typeorm";
 import {
+  AssemblyValidateDto,
+  AssemblyValidationResultDto,
+  CompatibilityIssueDto,
   CompleteFlangeSpecificationDto,
   FlangeBoltingInfoDto,
-  PtRatingInfoDto,
   GasketInfoDto,
   MaterialSearchQueryDto,
   MaterialSearchResponseDto,
   MaterialSearchResultDto,
-  AssemblyValidateDto,
-  AssemblyValidationResultDto,
-  CompatibilityIssueDto,
-} from './dto/unified-api.dto';
+  PtRatingInfoDto,
+} from "./dto/unified-api.dto";
 
 const ISO_METRIC_THREAD_PITCHES: Record<number, number> = {
   12: 1.75,
@@ -36,23 +36,23 @@ const ISO_METRIC_THREAD_PITCHES: Record<number, number> = {
 };
 
 const GALVANIC_COMPATIBILITY: Record<string, Record<string, boolean>> = {
-  'Carbon Steel': {
-    'Carbon Steel': true,
-    'Stainless Steel': false,
+  "Carbon Steel": {
+    "Carbon Steel": true,
+    "Stainless Steel": false,
     Duplex: false,
     Copper: false,
     Aluminum: false,
   },
-  'Stainless Steel': {
-    'Carbon Steel': false,
-    'Stainless Steel': true,
+  "Stainless Steel": {
+    "Carbon Steel": false,
+    "Stainless Steel": true,
     Duplex: true,
     Copper: true,
     Aluminum: false,
   },
   Duplex: {
-    'Carbon Steel': false,
-    'Stainless Steel': true,
+    "Carbon Steel": false,
+    "Stainless Steel": true,
     Duplex: true,
     Copper: true,
     Aluminum: false,
@@ -67,7 +67,7 @@ export class UnifiedApiService {
 
   async completeFlangeSpecification(
     id: number,
-    materialGroup: string = 'Carbon Steel A105 (Group 1.1)',
+    materialGroup: string = "Carbon Steel A105 (Group 1.1)",
   ): Promise<CompleteFlangeSpecificationDto> {
     const flangeQuery = `
       SELECT
@@ -122,9 +122,7 @@ export class UnifiedApiService {
       raisedFaceDiameterMm: flange.raised_face_diameter_mm
         ? parseFloat(flange.raised_face_diameter_mm)
         : null,
-      hubDiameterMm: flange.hub_diameter_mm
-        ? parseFloat(flange.hub_diameter_mm)
-        : null,
+      hubDiameterMm: flange.hub_diameter_mm ? parseFloat(flange.hub_diameter_mm) : null,
       pcdMm: parseFloat(flange.pcd_mm),
       numHoles: flange.num_holes,
       holeDiameterMm: null,
@@ -163,9 +161,7 @@ export class UnifiedApiService {
     const diameterMatch = (flange.bolt_designation as string).match(/M(\d+)/i);
     const boltDiameterMm = diameterMatch ? parseInt(diameterMatch[1], 10) : 16;
     const threadPitchMm =
-      (flange.thread_pitch_mm as number) ||
-      ISO_METRIC_THREAD_PITCHES[boltDiameterMm] ||
-      2.0;
+      (flange.thread_pitch_mm as number) || ISO_METRIC_THREAD_PITCHES[boltDiameterMm] || 2.0;
 
     const boltingQuery = `
       SELECT
@@ -181,8 +177,7 @@ export class UnifiedApiService {
       LIMIT 1
     `;
 
-    const nps =
-      flange.nps || this.nominalBoreToNps(flange.nominal_bore_mm as number);
+    const nps = flange.nps || this.nominalBoreToNps(flange.nominal_bore_mm as number);
     const boltingResults = await this.dataSource.query(boltingQuery, [
       flange.standard_code,
       flange.pressure_class,
@@ -197,13 +192,11 @@ export class UnifiedApiService {
     `;
 
     const materialResults = await this.dataSource.query(materialQuery, [
-      `%${materialGroup.split(' ')[0]}%`,
+      `%${materialGroup.split(" ")[0]}%`,
     ]);
 
     const boltLengthMm =
-      (flange.bolt_length_mm as number) ||
-      (boltingResults[0]?.bolt_length_default as number) ||
-      70;
+      (flange.bolt_length_mm as number) || (boltingResults[0]?.bolt_length_default as number) || 70;
 
     const massQuery = `
       SELECT mass_kg
@@ -215,10 +208,7 @@ export class UnifiedApiService {
 
     let boltMassKg: number | undefined;
     if (flange.bolt_id) {
-      const massResults = await this.dataSource.query(massQuery, [
-        flange.bolt_id,
-        boltLengthMm,
-      ]);
+      const massResults = await this.dataSource.query(massQuery, [flange.bolt_id, boltLengthMm]);
       if (massResults.length > 0) {
         boltMassKg = parseFloat(massResults[0].mass_kg);
       }
@@ -241,9 +231,7 @@ export class UnifiedApiService {
       nutSpec: materialResults[0]?.nut_spec || null,
       boltMassKg,
       totalBoltSetMassKg:
-        boltMassKg && flange.num_holes
-          ? boltMassKg * (flange.num_holes as number)
-          : undefined,
+        boltMassKg && flange.num_holes ? boltMassKg * (flange.num_holes as number) : undefined,
     };
   }
 
@@ -263,24 +251,17 @@ export class UnifiedApiService {
       ORDER BY temperature_celsius
     `;
 
-    const results = await this.dataSource.query(query, [
-      pressureClassId,
-      materialGroup,
-    ]);
+    const results = await this.dataSource.query(query, [pressureClassId, materialGroup]);
 
     return results.map((r: Record<string, unknown>) => ({
       temperatureC: parseFloat(r.temperature_c as string),
       maxPressureBar: parseFloat(r.max_pressure_bar as string),
-      maxPressurePsi: r.max_pressure_psi
-        ? parseFloat(r.max_pressure_psi as string)
-        : undefined,
+      maxPressurePsi: r.max_pressure_psi ? parseFloat(r.max_pressure_psi as string) : undefined,
       materialGroup: r.material_group as string,
     }));
   }
 
-  private async gasketInfo(
-    nominalBoreMm: number,
-  ): Promise<GasketInfoDto | null> {
+  private async gasketInfo(nominalBoreMm: number): Promise<GasketInfoDto | null> {
     const query = `
       SELECT gasket_type, weight_kg, inner_diameter_mm, outer_diameter_mm
       FROM gasket_weights
@@ -299,47 +280,41 @@ export class UnifiedApiService {
     return {
       gasketType: gasket.gasket_type,
       weightKg: parseFloat(gasket.weight_kg),
-      innerDiameterMm: gasket.inner_diameter_mm
-        ? parseFloat(gasket.inner_diameter_mm)
-        : null,
-      outerDiameterMm: gasket.outer_diameter_mm
-        ? parseFloat(gasket.outer_diameter_mm)
-        : null,
+      innerDiameterMm: gasket.inner_diameter_mm ? parseFloat(gasket.inner_diameter_mm) : null,
+      outerDiameterMm: gasket.outer_diameter_mm ? parseFloat(gasket.outer_diameter_mm) : null,
     };
   }
 
   private nominalBoreToNps(nominalBoreMm: number): string {
     const nbToNpsMap: Record<number, string> = {
-      15: '1/2',
-      20: '3/4',
-      25: '1',
-      32: '1-1/4',
-      40: '1-1/2',
-      50: '2',
-      65: '2-1/2',
-      80: '3',
-      100: '4',
-      125: '5',
-      150: '6',
-      200: '8',
-      250: '10',
-      300: '12',
-      350: '14',
-      400: '16',
-      450: '18',
-      500: '20',
-      600: '24',
+      15: "1/2",
+      20: "3/4",
+      25: "1",
+      32: "1-1/4",
+      40: "1-1/2",
+      50: "2",
+      65: "2-1/2",
+      80: "3",
+      100: "4",
+      125: "5",
+      150: "6",
+      200: "8",
+      250: "10",
+      300: "12",
+      350: "14",
+      400: "16",
+      450: "18",
+      500: "20",
+      600: "24",
     };
     return nbToNpsMap[nominalBoreMm] || String(nominalBoreMm);
   }
 
-  async materialSearch(
-    query: MaterialSearchQueryDto,
-  ): Promise<MaterialSearchResponseDto> {
+  async materialSearch(query: MaterialSearchQueryDto): Promise<MaterialSearchResponseDto> {
     const searchTerm = query.query.toLowerCase();
     const results: MaterialSearchResultDto[] = [];
 
-    if (!query.type || query.type === 'all' || query.type === 'steel') {
+    if (!query.type || query.type === "all" || query.type === "steel") {
       const steelResults = await this.searchSteelSpecifications(
         searchTerm,
         query.minTempC,
@@ -348,7 +323,7 @@ export class UnifiedApiService {
       results.push(...steelResults);
     }
 
-    if (!query.type || query.type === 'all' || query.type === 'pipe') {
+    if (!query.type || query.type === "all" || query.type === "pipe") {
       const pipeResults = await this.searchPipeMaterials(
         searchTerm,
         query.minTempC,
@@ -357,7 +332,7 @@ export class UnifiedApiService {
       results.push(...pipeResults);
     }
 
-    if (!query.type || query.type === 'all' || query.type === 'flange') {
+    if (!query.type || query.type === "all" || query.type === "flange") {
       const flangeResults = await this.searchFlangeMaterials(searchTerm);
       results.push(...flangeResults);
     }
@@ -414,8 +389,8 @@ export class UnifiedApiService {
 
     return results.map((r: Record<string, unknown>) => {
       const name = (r.steel_spec_name as string).toLowerCase();
-      const normalized = ((r.normalized_name as string) || '').toLowerCase();
-      const uns = ((r.uns_number as string) || '').toLowerCase();
+      const normalized = ((r.normalized_name as string) || "").toLowerCase();
+      const uns = ((r.uns_number as string) || "").toLowerCase();
 
       let matchScore = 50;
       if (name === searchTerm) matchScore = 100;
@@ -425,16 +400,14 @@ export class UnifiedApiService {
       else if (name.includes(searchTerm)) matchScore = 70;
 
       return {
-        type: 'steel_specification' as const,
+        type: "steel_specification" as const,
         id: r.id as number,
         name: r.steel_spec_name as string,
         normalizedName: r.normalized_name as string,
         unsNumber: r.uns_number as string,
         astmEquivalent: r.astm_equivalent as string,
         category: r.material_category as string,
-        densityKgM3: r.density_kg_m3
-          ? parseFloat(r.density_kg_m3 as string)
-          : undefined,
+        densityKgM3: r.density_kg_m3 ? parseFloat(r.density_kg_m3 as string) : undefined,
         minTempC: r.min_temp_c ? parseFloat(r.min_temp_c as string) : undefined,
         maxTempC: r.max_temp_c ? parseFloat(r.max_temp_c as string) : undefined,
         yieldStrengthMPa: r.yield_strength_mpa
@@ -479,16 +452,14 @@ export class UnifiedApiService {
       else if (name.includes(searchTerm)) matchScore = 65;
 
       return {
-        type: 'pipe_material' as const,
+        type: "pipe_material" as const,
         id: r.id as number,
         name: r.steel_spec_name as string,
         normalizedName: r.normalized_name as string,
         unsNumber: r.uns_number as string,
         astmEquivalent: r.astm_equivalent as string,
         category: r.material_category as string,
-        densityKgM3: r.density_kg_m3
-          ? parseFloat(r.density_kg_m3 as string)
-          : undefined,
+        densityKgM3: r.density_kg_m3 ? parseFloat(r.density_kg_m3 as string) : undefined,
         minTempC: r.min_temp_c ? parseFloat(r.min_temp_c as string) : undefined,
         maxTempC: r.max_temp_c ? parseFloat(r.max_temp_c as string) : undefined,
         matchScore,
@@ -496,9 +467,7 @@ export class UnifiedApiService {
     });
   }
 
-  private async searchFlangeMaterials(
-    searchTerm: string,
-  ): Promise<MaterialSearchResultDto[]> {
+  private async searchFlangeMaterials(searchTerm: string): Promise<MaterialSearchResultDto[]> {
     const query = `
       SELECT DISTINCT material_group as name
       FROM flange_pt_ratings
@@ -517,7 +486,7 @@ export class UnifiedApiService {
       else if (name.includes(searchTerm)) matchScore = 60;
 
       return {
-        type: 'flange_material' as const,
+        type: "flange_material" as const,
         id: index + 1,
         name: r.name as string,
         matchScore,
@@ -525,21 +494,13 @@ export class UnifiedApiService {
     });
   }
 
-  async assemblyValidate(
-    dto: AssemblyValidateDto,
-  ): Promise<AssemblyValidationResultDto> {
+  async assemblyValidate(dto: AssemblyValidateDto): Promise<AssemblyValidationResultDto> {
     const issues: CompatibilityIssueDto[] = [];
     let score = 100;
 
-    const flangeComponents = dto.components.filter(
-      (c) => c.componentType === 'flange',
-    );
-    const pipeComponents = dto.components.filter(
-      (c) => c.componentType === 'pipe',
-    );
-    const boltComponents = dto.components.filter(
-      (c) => c.componentType === 'bolt',
-    );
+    const flangeComponents = dto.components.filter((c) => c.componentType === "flange");
+    const pipeComponents = dto.components.filter((c) => c.componentType === "pipe");
+    const boltComponents = dto.components.filter((c) => c.componentType === "bolt");
 
     for (const flange of flangeComponents) {
       if (flange.pressureClassId) {
@@ -551,10 +512,10 @@ export class UnifiedApiService {
 
         if (!ptCheck.isValid) {
           issues.push({
-            severity: 'error',
-            code: 'PT_RATING_EXCEEDED',
+            severity: "error",
+            code: "PT_RATING_EXCEEDED",
             message: ptCheck.message,
-            affectedComponents: ['flange'],
+            affectedComponents: ["flange"],
             recommendation: ptCheck.recommendation,
           });
           score -= 30;
@@ -572,14 +533,11 @@ export class UnifiedApiService {
       const compatibility = this.checkGalvanicCompatibility(uniqueCategories);
       if (!compatibility.isCompatible) {
         issues.push({
-          severity: 'warning',
-          code: 'GALVANIC_INCOMPATIBILITY',
-          message: `Potential galvanic corrosion between ${compatibility.incompatiblePairs.join(', ')}`,
-          affectedComponents: dto.components
-            .filter((c) => c.material)
-            .map((c) => c.componentType),
-          recommendation:
-            'Consider using isolation gaskets or selecting compatible materials',
+          severity: "warning",
+          code: "GALVANIC_INCOMPATIBILITY",
+          message: `Potential galvanic corrosion between ${compatibility.incompatiblePairs.join(", ")}`,
+          affectedComponents: dto.components.filter((c) => c.material).map((c) => c.componentType),
+          recommendation: "Consider using isolation gaskets or selecting compatible materials",
         });
         score -= 15;
       }
@@ -588,16 +546,13 @@ export class UnifiedApiService {
     for (const bolt of boltComponents) {
       if (bolt.threadPitchMm && bolt.boltDiameterMm) {
         const expectedPitch = ISO_METRIC_THREAD_PITCHES[bolt.boltDiameterMm];
-        if (
-          expectedPitch &&
-          Math.abs(bolt.threadPitchMm - expectedPitch) > 0.1
-        ) {
+        if (expectedPitch && Math.abs(bolt.threadPitchMm - expectedPitch) > 0.1) {
           issues.push({
-            severity: 'warning',
-            code: 'NON_STANDARD_THREAD_PITCH',
+            severity: "warning",
+            code: "NON_STANDARD_THREAD_PITCH",
             message: `Bolt M${bolt.boltDiameterMm} has non-standard pitch ${bolt.threadPitchMm}mm (expected ${expectedPitch}mm)`,
-            affectedComponents: ['bolt'],
-            recommendation: 'Verify thread pitch compatibility with nuts',
+            affectedComponents: ["bolt"],
+            recommendation: "Verify thread pitch compatibility with nuts",
           });
           score -= 5;
         }
@@ -612,40 +567,34 @@ export class UnifiedApiService {
       const uniqueStandards = [...new Set(flangeStandards)];
       if (uniqueStandards.length > 1) {
         issues.push({
-          severity: 'error',
-          code: 'MIXED_FLANGE_STANDARDS',
-          message: 'Assembly contains flanges from different standards',
-          affectedComponents: ['flange'],
-          recommendation:
-            'Use flanges from the same standard for proper mating',
+          severity: "error",
+          code: "MIXED_FLANGE_STANDARDS",
+          message: "Assembly contains flanges from different standards",
+          affectedComponents: ["flange"],
+          recommendation: "Use flanges from the same standard for proper mating",
         });
         score -= 25;
       }
     }
 
-    const nominalBores = dto.components
-      .filter((c) => c.nominalBoreMm)
-      .map((c) => c.nominalBoreMm!);
+    const nominalBores = dto.components.filter((c) => c.nominalBoreMm).map((c) => c.nominalBoreMm!);
 
     if (nominalBores.length > 1) {
       const uniqueBores = [...new Set(nominalBores)];
       if (uniqueBores.length > 1) {
         const isReducer = dto.components.some(
-          (c) =>
-            c.componentType === 'fitting' &&
-            c.material?.toLowerCase().includes('reducer'),
+          (c) => c.componentType === "fitting" && c.material?.toLowerCase().includes("reducer"),
         );
 
         if (!isReducer) {
           issues.push({
-            severity: 'warning',
-            code: 'MISMATCHED_BORE_SIZES',
-            message: `Assembly has mixed nominal bores: ${uniqueBores.join('mm, ')}mm`,
+            severity: "warning",
+            code: "MISMATCHED_BORE_SIZES",
+            message: `Assembly has mixed nominal bores: ${uniqueBores.join("mm, ")}mm`,
             affectedComponents: dto.components
               .filter((c) => c.nominalBoreMm)
               .map((c) => c.componentType),
-            recommendation:
-              'Verify bore size compatibility or include appropriate reducers',
+            recommendation: "Verify bore size compatibility or include appropriate reducers",
           });
           score -= 10;
         }
@@ -656,19 +605,19 @@ export class UnifiedApiService {
       const carbonSteelComponents = dto.components.filter(
         (c) =>
           c.material &&
-          (c.material.toLowerCase().includes('a105') ||
-            c.material.toLowerCase().includes('a106') ||
-            c.material.toLowerCase().includes('carbon')),
+          (c.material.toLowerCase().includes("a105") ||
+            c.material.toLowerCase().includes("a106") ||
+            c.material.toLowerCase().includes("carbon")),
       );
 
       if (carbonSteelComponents.length > 0) {
         issues.push({
-          severity: 'warning',
-          code: 'HIGH_TEMP_CARBON_STEEL',
+          severity: "warning",
+          code: "HIGH_TEMP_CARBON_STEEL",
           message: `Carbon steel components may have reduced strength at ${dto.designTemperatureC}°C`,
           affectedComponents: carbonSteelComponents.map((c) => c.componentType),
           recommendation:
-            'Consider using alloy steel or stainless steel for temperatures above 400°C',
+            "Consider using alloy steel or stainless steel for temperatures above 400°C",
         });
         score -= 10;
       }
@@ -678,22 +627,20 @@ export class UnifiedApiService {
       const nonImpactTestedMaterials = dto.components.filter(
         (c) =>
           c.material &&
-          !c.material.toLowerCase().includes('lt') &&
-          !c.material.toLowerCase().includes('low temp') &&
-          !c.material.toLowerCase().includes('304') &&
-          !c.material.toLowerCase().includes('316'),
+          !c.material.toLowerCase().includes("lt") &&
+          !c.material.toLowerCase().includes("low temp") &&
+          !c.material.toLowerCase().includes("304") &&
+          !c.material.toLowerCase().includes("316"),
       );
 
       if (nonImpactTestedMaterials.length > 0) {
         issues.push({
-          severity: 'warning',
-          code: 'LOW_TEMP_IMPACT_TESTING',
+          severity: "warning",
+          code: "LOW_TEMP_IMPACT_TESTING",
           message: `Materials may require impact testing for service at ${dto.designTemperatureC}°C`,
-          affectedComponents: nonImpactTestedMaterials.map(
-            (c) => c.componentType,
-          ),
+          affectedComponents: nonImpactTestedMaterials.map((c) => c.componentType),
           recommendation:
-            'Verify impact testing requirements per ASME B31.3 or use low-temperature rated materials',
+            "Verify impact testing requirements per ASME B31.3 or use low-temperature rated materials",
         });
         score -= 10;
       }
@@ -702,13 +649,10 @@ export class UnifiedApiService {
     score = Math.max(0, Math.min(100, score));
 
     return {
-      isValid: !issues.some((i) => i.severity === 'error'),
+      isValid: !issues.some((i) => i.severity === "error"),
       score,
       issues,
-      maxPressureAtTempBar: await this.maxPressureAtTemp(
-        flangeComponents,
-        dto.designTemperatureC,
-      ),
+      maxPressureAtTempBar: await this.maxPressureAtTemp(flangeComponents, dto.designTemperatureC),
       temperatureRangeC: this.temperatureRange(dto.components),
       materialCompatibility: this.buildCompatibilityMatrix(uniqueCategories),
     };
@@ -732,7 +676,7 @@ export class UnifiedApiService {
     if (ratings.length === 0) {
       return {
         isValid: true,
-        message: 'No P-T rating data available for validation',
+        message: "No P-T rating data available for validation",
       };
     }
 
@@ -754,8 +698,7 @@ export class UnifiedApiService {
         const currPressure = parseFloat(current.max_pressure_bar);
 
         const ratio = (designTempC - prevTemp) / (temp - prevTemp);
-        maxPressureAtTemp =
-          prevPressure + ratio * (currPressure - prevPressure);
+        maxPressureAtTemp = prevPressure + ratio * (currPressure - prevPressure);
         break;
       }
     }
@@ -769,8 +712,7 @@ export class UnifiedApiService {
       return {
         isValid: false,
         message: `Design pressure ${designPressureBar} bar exceeds max rating ${maxPressureAtTemp.toFixed(1)} bar at ${designTempC}°C`,
-        recommendation:
-          'Select a higher pressure class or reduce design pressure',
+        recommendation: "Select a higher pressure class or reduce design pressure",
       };
     }
 
@@ -782,19 +724,19 @@ export class UnifiedApiService {
 
   private materialCategory(material: string): string {
     const m = material.toLowerCase();
-    if (m.includes('304') || m.includes('316') || m.includes('stainless')) {
-      return 'Stainless Steel';
+    if (m.includes("304") || m.includes("316") || m.includes("stainless")) {
+      return "Stainless Steel";
     }
-    if (m.includes('duplex') || m.includes('2205') || m.includes('2507')) {
-      return 'Duplex';
+    if (m.includes("duplex") || m.includes("2205") || m.includes("2507")) {
+      return "Duplex";
     }
-    if (m.includes('copper') || m.includes('bronze') || m.includes('brass')) {
-      return 'Copper';
+    if (m.includes("copper") || m.includes("bronze") || m.includes("brass")) {
+      return "Copper";
     }
-    if (m.includes('aluminum') || m.includes('aluminium')) {
-      return 'Aluminum';
+    if (m.includes("aluminum") || m.includes("aluminium")) {
+      return "Aluminum";
     }
-    return 'Carbon Steel';
+    return "Carbon Steel";
   }
 
   private checkGalvanicCompatibility(categories: string[]): {
@@ -809,9 +751,7 @@ export class UnifiedApiService {
         const cat2 = categories[j];
 
         const compatibility =
-          GALVANIC_COMPATIBILITY[cat1]?.[cat2] ??
-          GALVANIC_COMPATIBILITY[cat2]?.[cat1] ??
-          true;
+          GALVANIC_COMPATIBILITY[cat1]?.[cat2] ?? GALVANIC_COMPATIBILITY[cat2]?.[cat1] ?? true;
 
         if (!compatibility) {
           incompatiblePairs.push(`${cat1} / ${cat2}`);
@@ -842,10 +782,7 @@ export class UnifiedApiService {
       LIMIT 1
     `;
 
-    const result = await this.dataSource.query(query, [
-      flangeComponents[0].pressureClassId,
-      tempC,
-    ]);
+    const result = await this.dataSource.query(query, [flangeComponents[0].pressureClassId, tempC]);
 
     if (result.length > 0) {
       return parseFloat(result[0].max_pressure_bar);
@@ -865,17 +802,13 @@ export class UnifiedApiService {
 
       const m = c.material.toLowerCase();
 
-      if (m.includes('304') || m.includes('316')) {
+      if (m.includes("304") || m.includes("316")) {
         minTemp = Math.min(minTemp, -196);
         maxTemp = Math.max(maxTemp, 450);
-      } else if (m.includes('duplex')) {
+      } else if (m.includes("duplex")) {
         minTemp = Math.min(minTemp, -50);
         maxTemp = Math.max(maxTemp, 300);
-      } else if (
-        m.includes('a105') ||
-        m.includes('a106') ||
-        m.includes('carbon')
-      ) {
+      } else if (m.includes("a105") || m.includes("a106") || m.includes("carbon")) {
         minTemp = Math.max(minTemp, -29);
         maxTemp = Math.min(maxTemp, 400);
       }
@@ -884,18 +817,14 @@ export class UnifiedApiService {
     return { min: minTemp, max: maxTemp };
   }
 
-  private buildCompatibilityMatrix(
-    categories: string[],
-  ): Record<string, Record<string, boolean>> {
+  private buildCompatibilityMatrix(categories: string[]): Record<string, Record<string, boolean>> {
     const matrix: Record<string, Record<string, boolean>> = {};
 
     for (const cat1 of categories) {
       matrix[cat1] = {};
       for (const cat2 of categories) {
         matrix[cat1][cat2] =
-          GALVANIC_COMPATIBILITY[cat1]?.[cat2] ??
-          GALVANIC_COMPATIBILITY[cat2]?.[cat1] ??
-          true;
+          GALVANIC_COMPATIBILITY[cat1]?.[cat2] ?? GALVANIC_COMPATIBILITY[cat2]?.[cat1] ?? true;
       }
     }
 

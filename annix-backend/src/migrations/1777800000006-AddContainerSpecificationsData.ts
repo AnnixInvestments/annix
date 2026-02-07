@@ -1,18 +1,18 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddContainerSpecificationsData1777800000006 implements MigrationInterface {
-  name = 'AddContainerSpecificationsData1777800000006';
+  name = "AddContainerSpecificationsData1777800000006";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const tableExists = async (tableName: string): Promise<boolean> => {
       const result = await queryRunner.query(
-        `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)`,
+        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
         [tableName],
       );
       return result[0].exists;
     };
 
-    if (!(await tableExists('container_types'))) {
+    if (!(await tableExists("container_types"))) {
       await queryRunner.query(`
         CREATE TABLE container_types (
           id SERIAL PRIMARY KEY,
@@ -41,7 +41,7 @@ export class AddContainerSpecificationsData1777800000006 implements MigrationInt
       `);
     }
 
-    if (!(await tableExists('container_specifications'))) {
+    if (!(await tableExists("container_specifications"))) {
       await queryRunner.query(`
         CREATE TABLE container_specifications (
           id SERIAL PRIMARY KEY,
@@ -91,7 +91,7 @@ export class AddContainerSpecificationsData1777800000006 implements MigrationInt
       `);
     }
 
-    if (!(await tableExists('container_load_limits'))) {
+    if (!(await tableExists("container_load_limits"))) {
       await queryRunner.query(`
         CREATE TABLE container_load_limits (
           id SERIAL PRIMARY KEY,
@@ -115,7 +115,7 @@ export class AddContainerSpecificationsData1777800000006 implements MigrationInt
       `);
     }
 
-    if (!(await tableExists('container_iso_codes'))) {
+    if (!(await tableExists("container_iso_codes"))) {
       await queryRunner.query(`
         CREATE TABLE container_iso_codes (
           id SERIAL PRIMARY KEY,
@@ -151,9 +151,9 @@ export class AddContainerSpecificationsData1777800000006 implements MigrationInt
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS container_iso_codes`);
-    await queryRunner.query(`DROP TABLE IF EXISTS container_load_limits`);
-    await queryRunner.query(`DROP TABLE IF EXISTS container_specifications`);
-    await queryRunner.query(`DROP TABLE IF EXISTS container_types`);
+    await queryRunner.query("DROP TABLE IF EXISTS container_iso_codes");
+    await queryRunner.query("DROP TABLE IF EXISTS container_load_limits");
+    await queryRunner.query("DROP TABLE IF EXISTS container_specifications");
+    await queryRunner.query("DROP TABLE IF EXISTS container_types");
   }
 }

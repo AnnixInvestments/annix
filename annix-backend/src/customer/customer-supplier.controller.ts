@@ -1,35 +1,32 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
-  Param,
   Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
   Query,
   Req,
   UseGuards,
-  ParseIntPipe,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiOperation,
   ApiQuery,
-} from '@nestjs/swagger';
-import { Request } from 'express';
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+import { Request } from "express";
 
-import { CustomerSupplierService } from './customer-supplier.service';
-import { CustomerAuthGuard } from './guards/customer-auth.guard';
-import {
-  DirectoryQueryDto,
-  BlockSupplierDto,
-} from './dto/supplier-directory.dto';
+import { CustomerSupplierService } from "./customer-supplier.service";
+import { BlockSupplierDto, DirectoryQueryDto } from "./dto/supplier-directory.dto";
+import { CustomerAuthGuard } from "./guards/customer-auth.guard";
 
-@ApiTags('Customer Supplier Management')
-@Controller('customer/suppliers')
+@ApiTags("Customer Supplier Management")
+@Controller("customer/suppliers")
 @UseGuards(CustomerAuthGuard)
 @ApiBearerAuth()
 export class CustomerSupplierController {
@@ -38,42 +35,42 @@ export class CustomerSupplierController {
   // Preferential Suppliers
 
   @Get()
-  @ApiOperation({ summary: 'Get preferred supplier list' })
-  @ApiResponse({ status: 200, description: 'Preferred suppliers retrieved' })
+  @ApiOperation({ summary: "Get preferred supplier list" })
+  @ApiResponse({ status: 200, description: "Preferred suppliers retrieved" })
   async getPreferredSuppliers(@Req() req: Request) {
     const customerId = (req as any).customer.customerId;
     return this.supplierService.getPreferredSuppliers(customerId);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Add a preferred supplier' })
+  @ApiOperation({ summary: "Add a preferred supplier" })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         supplierProfileId: {
-          type: 'number',
-          description: 'ID of registered supplier (optional)',
+          type: "number",
+          description: "ID of registered supplier (optional)",
         },
         supplierName: {
-          type: 'string',
-          description: 'Name for unregistered supplier',
+          type: "string",
+          description: "Name for unregistered supplier",
         },
         supplierEmail: {
-          type: 'string',
-          description: 'Email for unregistered supplier',
+          type: "string",
+          description: "Email for unregistered supplier",
         },
         priority: {
-          type: 'number',
-          description: 'Priority order (lower = higher priority)',
+          type: "number",
+          description: "Priority order (lower = higher priority)",
         },
-        notes: { type: 'string', description: 'Notes about this supplier' },
+        notes: { type: "string", description: "Notes about this supplier" },
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Supplier added' })
-  @ApiResponse({ status: 403, description: 'Not authorized' })
-  @ApiResponse({ status: 409, description: 'Supplier already exists' })
+  @ApiResponse({ status: 201, description: "Supplier added" })
+  @ApiResponse({ status: 403, description: "Not authorized" })
+  @ApiResponse({ status: 409, description: "Supplier already exists" })
   async addPreferredSupplier(
     @Body()
     data: {
@@ -87,72 +84,58 @@ export class CustomerSupplierController {
   ) {
     const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
-    return this.supplierService.addPreferredSupplier(
-      customerId,
-      data,
-      clientIp,
-    );
+    return this.supplierService.addPreferredSupplier(customerId, data, clientIp);
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update a preferred supplier' })
-  @ApiResponse({ status: 200, description: 'Supplier updated' })
-  @ApiResponse({ status: 404, description: 'Supplier not found' })
+  @Patch(":id")
+  @ApiOperation({ summary: "Update a preferred supplier" })
+  @ApiResponse({ status: 200, description: "Supplier updated" })
+  @ApiResponse({ status: 404, description: "Supplier not found" })
   async updatePreferredSupplier(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() data: { priority?: number; notes?: string },
     @Req() req: Request,
   ) {
     const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
-    return this.supplierService.updatePreferredSupplier(
-      customerId,
-      id,
-      data,
-      clientIp,
-    );
+    return this.supplierService.updatePreferredSupplier(customerId, id, data, clientIp);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Remove a preferred supplier' })
-  @ApiResponse({ status: 200, description: 'Supplier removed' })
-  @ApiResponse({ status: 404, description: 'Supplier not found' })
-  async removePreferredSupplier(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-  ) {
+  @Delete(":id")
+  @ApiOperation({ summary: "Remove a preferred supplier" })
+  @ApiResponse({ status: 200, description: "Supplier removed" })
+  @ApiResponse({ status: 404, description: "Supplier not found" })
+  async removePreferredSupplier(@Param("id", ParseIntPipe) id: number, @Req() req: Request) {
     const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
-    return this.supplierService.removePreferredSupplier(
-      customerId,
-      id,
-      clientIp,
-    );
+    return this.supplierService.removePreferredSupplier(customerId, id, clientIp);
   }
 
   // Supplier Directory
 
-  @Get('directory')
-  @ApiOperation({ summary: 'Get supplier directory with status' })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by company name' })
-  @ApiQuery({ name: 'province', required: false, description: 'Filter by province' })
-  @ApiQuery({ name: 'products', required: false, isArray: true, description: 'Filter by product categories' })
-  @ApiResponse({ status: 200, description: 'Directory suppliers retrieved' })
-  async supplierDirectory(
-    @Query() filters: DirectoryQueryDto,
-    @Req() req: Request,
-  ) {
+  @Get("directory")
+  @ApiOperation({ summary: "Get supplier directory with status" })
+  @ApiQuery({ name: "search", required: false, description: "Search by company name" })
+  @ApiQuery({ name: "province", required: false, description: "Filter by province" })
+  @ApiQuery({
+    name: "products",
+    required: false,
+    isArray: true,
+    description: "Filter by product categories",
+  })
+  @ApiResponse({ status: 200, description: "Directory suppliers retrieved" })
+  async supplierDirectory(@Query() filters: DirectoryQueryDto, @Req() req: Request) {
     const customerId = (req as any).customer.customerId;
     return this.supplierService.supplierDirectory(customerId, filters);
   }
 
-  @Post(':supplierId/block')
-  @ApiOperation({ summary: 'Block a supplier' })
-  @ApiResponse({ status: 201, description: 'Supplier blocked' })
-  @ApiResponse({ status: 403, description: 'Not authorized' })
-  @ApiResponse({ status: 409, description: 'Supplier already blocked' })
+  @Post(":supplierId/block")
+  @ApiOperation({ summary: "Block a supplier" })
+  @ApiResponse({ status: 201, description: "Supplier blocked" })
+  @ApiResponse({ status: 403, description: "Not authorized" })
+  @ApiResponse({ status: 409, description: "Supplier already blocked" })
   async blockSupplier(
-    @Param('supplierId', ParseIntPipe) supplierId: number,
+    @Param("supplierId", ParseIntPipe) supplierId: number,
     @Body() data: BlockSupplierDto,
     @Req() req: Request,
   ) {
@@ -166,12 +149,12 @@ export class CustomerSupplierController {
     );
   }
 
-  @Delete(':supplierId/block')
-  @ApiOperation({ summary: 'Unblock a supplier' })
-  @ApiResponse({ status: 200, description: 'Supplier unblocked' })
-  @ApiResponse({ status: 404, description: 'Blocked supplier not found' })
+  @Delete(":supplierId/block")
+  @ApiOperation({ summary: "Unblock a supplier" })
+  @ApiResponse({ status: 200, description: "Supplier unblocked" })
+  @ApiResponse({ status: 404, description: "Blocked supplier not found" })
   async unblockSupplier(
-    @Param('supplierId', ParseIntPipe) supplierId: number,
+    @Param("supplierId", ParseIntPipe) supplierId: number,
     @Req() req: Request,
   ) {
     const customerId = (req as any).customer.customerId;
@@ -181,30 +164,30 @@ export class CustomerSupplierController {
 
   // Invitations
 
-  @Get('invitations')
-  @ApiOperation({ summary: 'Get all supplier invitations' })
-  @ApiResponse({ status: 200, description: 'Invitations retrieved' })
+  @Get("invitations")
+  @ApiOperation({ summary: "Get all supplier invitations" })
+  @ApiResponse({ status: 200, description: "Invitations retrieved" })
   async getInvitations(@Req() req: Request) {
     const customerId = (req as any).customer.customerId;
     return this.supplierService.getInvitations(customerId);
   }
 
-  @Post('invite')
-  @ApiOperation({ summary: 'Send a supplier invitation' })
+  @Post("invite")
+  @ApiOperation({ summary: "Send a supplier invitation" })
   @ApiBody({
     schema: {
-      type: 'object',
-      required: ['email'],
+      type: "object",
+      required: ["email"],
       properties: {
-        email: { type: 'string', format: 'email' },
-        supplierCompanyName: { type: 'string' },
-        message: { type: 'string' },
+        email: { type: "string", format: "email" },
+        supplierCompanyName: { type: "string" },
+        message: { type: "string" },
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Invitation sent' })
-  @ApiResponse({ status: 400, description: 'Supplier already registered' })
-  @ApiResponse({ status: 409, description: 'Active invitation exists' })
+  @ApiResponse({ status: 201, description: "Invitation sent" })
+  @ApiResponse({ status: 400, description: "Supplier already registered" })
+  @ApiResponse({ status: 409, description: "Active invitation exists" })
   async createInvitation(
     @Body()
     data: { email: string; supplierCompanyName?: string; message?: string },
@@ -215,42 +198,34 @@ export class CustomerSupplierController {
     return this.supplierService.createInvitation(customerId, data, clientIp);
   }
 
-  @Post('invitations/:id/cancel')
-  @ApiOperation({ summary: 'Cancel a pending invitation' })
-  @ApiResponse({ status: 200, description: 'Invitation cancelled' })
+  @Post("invitations/:id/cancel")
+  @ApiOperation({ summary: "Cancel a pending invitation" })
+  @ApiResponse({ status: 200, description: "Invitation cancelled" })
   @ApiResponse({
     status: 400,
-    description: 'Cannot cancel non-pending invitation',
+    description: "Cannot cancel non-pending invitation",
   })
-  async cancelInvitation(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-  ) {
+  async cancelInvitation(@Param("id", ParseIntPipe) id: number, @Req() req: Request) {
     const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.cancelInvitation(customerId, id, clientIp);
   }
 
-  @Post('invitations/:id/resend')
-  @ApiOperation({ summary: 'Resend an invitation' })
-  @ApiResponse({ status: 200, description: 'Invitation resent' })
-  async resendInvitation(
-    @Param('id', ParseIntPipe) id: number,
-    @Req() req: Request,
-  ) {
+  @Post("invitations/:id/resend")
+  @ApiOperation({ summary: "Resend an invitation" })
+  @ApiResponse({ status: 200, description: "Invitation resent" })
+  async resendInvitation(@Param("id", ParseIntPipe) id: number, @Req() req: Request) {
     const customerId = (req as any).customer.customerId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.resendInvitation(customerId, id, clientIp);
   }
 
   private getClientIp(req: Request): string {
-    const forwarded = req.headers['x-forwarded-for'];
+    const forwarded = req.headers["x-forwarded-for"];
     if (forwarded) {
-      const ips = Array.isArray(forwarded)
-        ? forwarded[0]
-        : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
       return ips.trim();
     }
-    return req.ip || req.socket?.remoteAddress || 'unknown';
+    return req.ip || req.socket?.remoteAddress || "unknown";
   }
 }

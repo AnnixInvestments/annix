@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateFabricationTables1766002100000 implements MigrationInterface {
-  name = 'CreateFabricationTables1766002100000';
+  name = "CreateFabricationTables1766002100000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // ==================== Create Tables ====================
@@ -224,32 +224,30 @@ export class CreateFabricationTables1766002100000 implements MigrationInterface 
 
     // Create indexes for better query performance
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_fab_operations_code ON fabrication_operations(code)`,
+      "CREATE INDEX IF NOT EXISTS idx_fab_operations_code ON fabrication_operations(code)",
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_fab_operations_active ON fabrication_operations(is_active)`,
+      "CREATE INDEX IF NOT EXISTS idx_fab_operations_active ON fabrication_operations(is_active)",
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_fab_complexity_level ON fabrication_complexity_levels(level)`,
+      "CREATE INDEX IF NOT EXISTS idx_fab_complexity_level ON fabrication_complexity_levels(level)",
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_labor_rates_code ON shop_labor_rates(code)`,
+      "CREATE INDEX IF NOT EXISTS idx_labor_rates_code ON shop_labor_rates(code)",
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_labor_rates_active ON shop_labor_rates(is_active)`,
+      "CREATE INDEX IF NOT EXISTS idx_labor_rates_active ON shop_labor_rates(is_active)",
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_labor_rates_active`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_labor_rates_code`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_fab_complexity_level`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_fab_operations_active`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_fab_operations_code`);
-    await queryRunner.query(`DROP TABLE IF EXISTS shop_labor_rates`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS fabrication_complexity_levels`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS fabrication_operations`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_labor_rates_active");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_labor_rates_code");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_fab_complexity_level");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_fab_operations_active");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_fab_operations_code");
+    await queryRunner.query("DROP TABLE IF EXISTS shop_labor_rates");
+    await queryRunner.query("DROP TABLE IF EXISTS fabrication_complexity_levels");
+    await queryRunner.query("DROP TABLE IF EXISTS fabrication_operations");
   }
 }

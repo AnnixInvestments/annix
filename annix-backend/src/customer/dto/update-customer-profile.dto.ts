@@ -1,19 +1,12 @@
-import {
-  IsString,
-  IsOptional,
-  IsEmail,
-  MinLength,
-  Matches,
-  MaxLength,
-} from 'class-validator';
-import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
-import { IsZAPhone } from '../../shared/validators';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsOptional, IsString, Matches, MaxLength, MinLength } from "class-validator";
+import { IsZAPhone } from "../../shared/validators";
 
 // Only allow updating specific fields
 export class UpdateCustomerProfileDto {
   @ApiPropertyOptional({
-    description: 'Job title',
-    example: 'Senior Procurement Manager',
+    description: "Job title",
+    example: "Senior Procurement Manager",
   })
   @IsString()
   @IsOptional()
@@ -21,8 +14,8 @@ export class UpdateCustomerProfileDto {
   jobTitle?: string;
 
   @ApiPropertyOptional({
-    description: 'Direct phone number',
-    example: '+27 11 555 0125',
+    description: "Direct phone number",
+    example: "+27 11 555 0125",
   })
   @IsString()
   @IsOptional()
@@ -31,8 +24,8 @@ export class UpdateCustomerProfileDto {
   directPhone?: string;
 
   @ApiPropertyOptional({
-    description: 'Mobile phone number',
-    example: '+27 82 555 0123',
+    description: "Mobile phone number",
+    example: "+27 82 555 0123",
   })
   @IsString()
   @IsOptional()
@@ -43,37 +36,37 @@ export class UpdateCustomerProfileDto {
 
 export class UpdateCompanyAddressDto {
   @ApiPropertyOptional({
-    description: 'Street address',
-    example: '456 New Industrial Road',
+    description: "Street address",
+    example: "456 New Industrial Road",
   })
   @IsString()
   @IsOptional()
   streetAddress?: string;
 
-  @ApiPropertyOptional({ description: 'City', example: 'Cape Town' })
+  @ApiPropertyOptional({ description: "City", example: "Cape Town" })
   @IsString()
   @IsOptional()
   @MaxLength(100)
   city?: string;
 
   @ApiPropertyOptional({
-    description: 'Province or state',
-    example: 'Western Cape',
+    description: "Province or state",
+    example: "Western Cape",
   })
   @IsString()
   @IsOptional()
   @MaxLength(100)
   provinceState?: string;
 
-  @ApiPropertyOptional({ description: 'Postal code', example: '8000' })
+  @ApiPropertyOptional({ description: "Postal code", example: "8000" })
   @IsString()
   @IsOptional()
   @MaxLength(20)
   postalCode?: string;
 
   @ApiPropertyOptional({
-    description: 'Primary contact phone number',
-    example: '+27 21 555 0123',
+    description: "Primary contact phone number",
+    example: "+27 21 555 0123",
   })
   @IsString()
   @IsOptional()
@@ -83,24 +76,20 @@ export class UpdateCompanyAddressDto {
 }
 
 export class ChangePasswordDto {
-  @ApiProperty({ description: 'Current password', example: 'OldP@ssw0rd!' })
+  @ApiProperty({ description: "Current password", example: "OldP@ssw0rd!" })
   @IsString()
   currentPassword: string;
 
   @ApiProperty({
-    description:
-      'New password (min 10 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char)',
-    example: 'NewSecure1!',
+    description: "New password (min 10 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char)",
+    example: "NewSecure1!",
   })
   @IsString()
   @MinLength(10)
-  @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/,
-    {
-      message:
-        'Password must be at least 10 characters with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)',
-    },
-  )
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$/, {
+    message:
+      "Password must be at least 10 characters with at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)",
+  })
   newPassword: string;
 }
 

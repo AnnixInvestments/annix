@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { SearchableSelect, SearchableSelectOption } from './SearchableSelect';
-import { CURRENCIES, formatCurrencyLabel, DEFAULT_CURRENCY } from '@/app/lib/currencies';
+import * as React from "react";
+import { CURRENCIES, DEFAULT_CURRENCY, formatCurrencyLabel } from "@/app/lib/currencies";
+import { SearchableSelect, SearchableSelectOption } from "./SearchableSelect";
 
 interface CurrencySelectProps {
   id?: string;
@@ -22,7 +22,19 @@ const currencyOptions: SearchableSelectOption[] = CURRENCIES.map((currency) => (
 }));
 
 const CurrencySelect = React.forwardRef<HTMLButtonElement, CurrencySelectProps>(
-  ({ id, value, onChange, placeholder = 'Select currency...', className, disabled, open, onOpenChange }, ref) => {
+  (
+    {
+      id,
+      value,
+      onChange,
+      placeholder = "Select currency...",
+      className,
+      disabled,
+      open,
+      onOpenChange,
+    },
+    ref,
+  ) => {
     return (
       <SearchableSelect
         ref={ref}
@@ -38,10 +50,10 @@ const CurrencySelect = React.forwardRef<HTMLButtonElement, CurrencySelectProps>(
         onOpenChange={onOpenChange}
       />
     );
-  }
+  },
 );
 
-CurrencySelect.displayName = 'CurrencySelect';
+CurrencySelect.displayName = "CurrencySelect";
 
 export { CurrencySelect, DEFAULT_CURRENCY };
 export type { CurrencySelectProps };

@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateAuditLogTable1766000100000 implements MigrationInterface {
-  name = 'CreateAuditLogTable1766000100000';
+  name = "CreateAuditLogTable1766000100000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create audit_action enum
@@ -58,9 +58,7 @@ export class CreateAuditLogTable1766000100000 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_audit_logs_performed_by" ON "audit_logs" ("performed_by_user_id")`,
     );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_audit_logs_action" ON "audit_logs" ("action")`,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_audit_logs_action" ON "audit_logs" ("action")`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

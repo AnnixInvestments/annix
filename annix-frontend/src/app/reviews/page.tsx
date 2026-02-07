@@ -1,18 +1,14 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  useReviews,
-  useReviewAction,
-  type ReviewWorkflow,
-} from '@/app/lib/query/hooks';
-import { formatDateTimeZA } from '@/app/lib/datetime';
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { formatDateTimeZA } from "@/app/lib/datetime";
+import { type ReviewWorkflow, useReviewAction, useReviews } from "@/app/lib/query/hooks";
 
 export default function ReviewDashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
-  const [entityFilter, setEntityFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [entityFilter, setEntityFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
@@ -21,11 +17,15 @@ export default function ReviewDashboardPage() {
   }, [activeTab, entityFilter]);
 
   const reviewParams = {
-    entityType: entityFilter !== 'all' ? entityFilter : undefined,
+    entityType: entityFilter !== "all" ? entityFilter : undefined,
     page: currentPage,
     limit: 20,
   };
-  const { data: reviewData, isLoading: loading, error: queryError } = useReviews(activeTab, reviewParams);
+  const {
+    data: reviewData,
+    isLoading: loading,
+    error: queryError,
+  } = useReviews(activeTab, reviewParams);
   const reviews = reviewData?.data ?? [];
   const pagination = {
     page: reviewData?.page ?? 1,
@@ -40,8 +40,8 @@ export default function ReviewDashboardPage() {
   const handleAction = (
     entityType: string,
     entityId: number,
-    action: 'approve' | 'reject' | 'request-changes',
-    comments?: string
+    action: "approve" | "reject" | "request-changes",
+    comments?: string,
   ) => {
     setMutationError(null);
     reviewAction.mutate(
@@ -50,59 +50,59 @@ export default function ReviewDashboardPage() {
         onError: (err) => {
           setMutationError(err instanceof Error ? err.message : `Failed to ${action}`);
         },
-      }
+      },
     );
   };
 
   const statusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800';
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-800';
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "in_progress":
+        return "bg-blue-100 text-blue-800";
+      case "completed":
+        return "bg-green-100 text-green-800";
+      case "cancelled":
+        return "bg-gray-100 text-gray-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const entityStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'under_review':
-        return 'bg-blue-100 text-blue-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'changes_requested':
-        return 'bg-orange-100 text-orange-800';
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "submitted":
+        return "bg-yellow-100 text-yellow-800";
+      case "under_review":
+        return "bg-blue-100 text-blue-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
+      case "changes_requested":
+        return "bg-orange-100 text-orange-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const formatDate = (dateString: string) => formatDateTimeZA(dateString);
 
   const entityInfo = (review: ReviewWorkflow) => {
-    if (review.entityType === 'drawing' && review.drawing) {
+    if (review.entityType === "drawing" && review.drawing) {
       return {
-        type: 'Drawing',
+        type: "Drawing",
         number: review.drawing.drawingNumber,
         title: review.drawing.title,
         status: review.drawing.status,
         link: `/drawings/${review.entityId}`,
       };
     }
-    if (review.entityType === 'boq' && review.boq) {
+    if (review.entityType === "boq" && review.boq) {
       return {
-        type: 'BOQ',
+        type: "BOQ",
         number: review.boq.boqNumber,
         title: review.boq.title,
         status: review.boq.status,
@@ -112,8 +112,8 @@ export default function ReviewDashboardPage() {
     return {
       type: review.entityType.toUpperCase(),
       number: `#${review.entityId}`,
-      title: 'Unknown',
-      status: 'unknown',
+      title: "Unknown",
+      status: "unknown",
       link: `/${review.entityType}s/${review.entityId}`,
     };
   };
@@ -143,21 +143,21 @@ export default function ReviewDashboardPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
             <div className="flex gap-2">
               <button
-                onClick={() => setActiveTab('pending')}
+                onClick={() => setActiveTab("pending")}
                 className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeTab === 'pending'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  activeTab === "pending"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
                 Pending Reviews
               </button>
               <button
-                onClick={() => setActiveTab('history')}
+                onClick={() => setActiveTab("history")}
                 className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                  activeTab === 'history'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  activeTab === "history"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
                 Review History
@@ -190,7 +190,7 @@ export default function ReviewDashboardPage() {
           </div>
         )}
 
-        {activeTab === 'pending' && (
+        {activeTab === "pending" && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center gap-4">
@@ -211,7 +211,7 @@ export default function ReviewDashboardPage() {
                 <div>
                   <p className="text-sm text-gray-500">Drawings</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {reviews.filter((r) => r.entityType === 'drawing').length}
+                    {reviews.filter((r) => r.entityType === "drawing").length}
                   </p>
                 </div>
               </div>
@@ -224,7 +224,7 @@ export default function ReviewDashboardPage() {
                 <div>
                   <p className="text-sm text-gray-500">BOQs</p>
                   <p className="text-2xl font-bold text-purple-600">
-                    {reviews.filter((r) => r.entityType === 'boq').length}
+                    {reviews.filter((r) => r.entityType === "boq").length}
                   </p>
                 </div>
               </div>
@@ -235,17 +235,15 @@ export default function ReviewDashboardPage() {
         {reviews.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-md p-12 text-center">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-gray-400 text-4xl">
-                {activeTab === 'pending' ? '✓' : '📜'}
-              </span>
+              <span className="text-gray-400 text-4xl">{activeTab === "pending" ? "✓" : "📜"}</span>
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {activeTab === 'pending' ? 'No Pending Reviews' : 'No Review History'}
+              {activeTab === "pending" ? "No Pending Reviews" : "No Review History"}
             </h3>
             <p className="text-gray-600">
-              {activeTab === 'pending'
+              {activeTab === "pending"
                 ? "You're all caught up! There are no items waiting for review."
-                : 'No reviews have been completed yet.'}
+                : "No reviews have been completed yet."}
             </p>
           </div>
         ) : (
@@ -264,9 +262,9 @@ export default function ReviewDashboardPage() {
                           <div className="flex items-center gap-3 mb-2">
                             <span
                               className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                info.type === 'Drawing'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-purple-100 text-purple-800'
+                                info.type === "Drawing"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-purple-100 text-purple-800"
                               }`}
                             >
                               {info.type}
@@ -274,16 +272,16 @@ export default function ReviewDashboardPage() {
                             <span className="font-bold text-gray-900">{info.number}</span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-xs font-semibold ${entityStatusColor(
-                                info.status
+                                info.status,
                               )}`}
                             >
-                              {info.status.replace('_', ' ').toUpperCase()}
+                              {info.status.replace("_", " ").toUpperCase()}
                             </span>
                           </div>
                           <p className="text-gray-700 font-medium">{info.title}</p>
                           <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                             <span>
-                              Initiated by:{' '}
+                              Initiated by:{" "}
                               <span className="font-medium">{review.initiatedBy.username}</span>
                             </span>
                             <span>{formatDate(review.createdAt)}</span>
@@ -296,11 +294,11 @@ export default function ReviewDashboardPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                          {activeTab === 'pending' ? (
+                          {activeTab === "pending" ? (
                             <>
                               <button
                                 onClick={() =>
-                                  handleAction(review.entityType, review.entityId, 'approve')
+                                  handleAction(review.entityType, review.entityId, "approve")
                                 }
                                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors"
                               >
@@ -308,13 +306,13 @@ export default function ReviewDashboardPage() {
                               </button>
                               <button
                                 onClick={() => {
-                                  const comments = prompt('Enter reason for changes:');
+                                  const comments = prompt("Enter reason for changes:");
                                   if (comments) {
                                     handleAction(
                                       review.entityType,
                                       review.entityId,
-                                      'request-changes',
-                                      comments
+                                      "request-changes",
+                                      comments,
                                     );
                                   }
                                 }}
@@ -324,13 +322,13 @@ export default function ReviewDashboardPage() {
                               </button>
                               <button
                                 onClick={() => {
-                                  const comments = prompt('Enter reason for rejection:');
+                                  const comments = prompt("Enter reason for rejection:");
                                   if (comments) {
                                     handleAction(
                                       review.entityType,
                                       review.entityId,
-                                      'reject',
-                                      comments
+                                      "reject",
+                                      comments,
                                     );
                                   }
                                 }}
@@ -343,10 +341,10 @@ export default function ReviewDashboardPage() {
                             <div className="text-right">
                               <span
                                 className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor(
-                                  review.status
+                                  review.status,
                                 )}`}
                               >
-                                {review.status.replace('_', ' ').toUpperCase()}
+                                {review.status.replace("_", " ").toUpperCase()}
                               </span>
                               {review.completedBy && (
                                 <p className="text-sm text-gray-500 mt-1">

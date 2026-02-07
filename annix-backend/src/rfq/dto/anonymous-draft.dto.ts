@@ -1,19 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsString,
-  IsOptional,
-  IsEmail,
-  IsInt,
-  IsObject,
-  IsArray,
-  Min,
-  Max,
-} from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsArray, IsEmail, IsInt, IsObject, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class SaveAnonymousDraftDto {
   @ApiProperty({
-    description: 'Customer email for recovery',
-    example: 'customer@example.com',
+    description: "Customer email for recovery",
+    example: "customer@example.com",
     required: false,
   })
   @IsOptional()
@@ -21,8 +12,8 @@ export class SaveAnonymousDraftDto {
   customerEmail?: string;
 
   @ApiProperty({
-    description: 'Project name',
-    example: '500NB Pipeline Extension',
+    description: "Project name",
+    example: "500NB Pipeline Extension",
     required: false,
   })
   @IsOptional()
@@ -30,7 +21,7 @@ export class SaveAnonymousDraftDto {
   projectName?: string;
 
   @ApiProperty({
-    description: 'Current step in the RFQ form (1-5)',
+    description: "Current step in the RFQ form (1-5)",
     example: 2,
   })
   @IsInt()
@@ -39,13 +30,13 @@ export class SaveAnonymousDraftDto {
   currentStep: number;
 
   @ApiProperty({
-    description: 'Complete form state as JSON',
+    description: "Complete form state as JSON",
   })
   @IsObject()
   formData: Record<string, any>;
 
   @ApiProperty({
-    description: 'Global specifications as JSON',
+    description: "Global specifications as JSON",
     required: false,
   })
   @IsOptional()
@@ -53,7 +44,7 @@ export class SaveAnonymousDraftDto {
   globalSpecs?: Record<string, any>;
 
   @ApiProperty({
-    description: 'Required products/services selected',
+    description: "Required products/services selected",
     required: false,
   })
   @IsOptional()
@@ -61,7 +52,7 @@ export class SaveAnonymousDraftDto {
   requiredProducts?: string[];
 
   @ApiProperty({
-    description: 'Pipe entries as JSON',
+    description: "Pipe entries as JSON",
     required: false,
   })
   @IsOptional()
@@ -69,7 +60,7 @@ export class SaveAnonymousDraftDto {
   entries?: Record<string, any>[];
 
   @ApiProperty({
-    description: 'Browser fingerprint for matching',
+    description: "Browser fingerprint for matching",
     required: false,
   })
   @IsOptional()
@@ -78,64 +69,64 @@ export class SaveAnonymousDraftDto {
 }
 
 export class AnonymousDraftResponseDto {
-  @ApiProperty({ description: 'Draft ID', example: 1 })
+  @ApiProperty({ description: "Draft ID", example: 1 })
   id: number;
 
   @ApiProperty({
-    description: 'Recovery token for email-based retrieval',
-    example: 'abc123def456...',
+    description: "Recovery token for email-based retrieval",
+    example: "abc123def456...",
   })
   recoveryToken: string;
 
   @ApiProperty({
-    description: 'Customer email',
-    example: 'customer@example.com',
+    description: "Customer email",
+    example: "customer@example.com",
   })
   customerEmail?: string;
 
-  @ApiProperty({ description: 'Project name', example: '500NB Pipeline' })
+  @ApiProperty({ description: "Project name", example: "500NB Pipeline" })
   projectName?: string;
 
-  @ApiProperty({ description: 'Current form step', example: 2 })
+  @ApiProperty({ description: "Current form step", example: 2 })
   currentStep: number;
 
-  @ApiProperty({ description: 'Expiry date' })
+  @ApiProperty({ description: "Expiry date" })
   expiresAt: Date;
 
-  @ApiProperty({ description: 'Creation date' })
+  @ApiProperty({ description: "Creation date" })
   createdAt: Date;
 
-  @ApiProperty({ description: 'Last update date' })
+  @ApiProperty({ description: "Last update date" })
   updatedAt: Date;
 }
 
 export class AnonymousDraftFullResponseDto extends AnonymousDraftResponseDto {
-  @ApiProperty({ description: 'Complete form data' })
+  @ApiProperty({ description: "Complete form data" })
   formData: Record<string, any>;
 
-  @ApiProperty({ description: 'Global specifications' })
+  @ApiProperty({ description: "Global specifications" })
   globalSpecs?: Record<string, any>;
 
-  @ApiProperty({ description: 'Required products/services' })
+  @ApiProperty({ description: "Required products/services" })
   requiredProducts?: string[];
 
-  @ApiProperty({ description: 'Pipe entries' })
+  @ApiProperty({ description: "Pipe entries" })
   entries?: Record<string, any>[];
 }
 
 export class RequestRecoveryEmailDto {
   @ApiProperty({
-    description: 'Customer email to send recovery link to',
-    example: 'customer@example.com',
+    description: "Customer email to send recovery link to",
+    example: "customer@example.com",
   })
   @IsEmail()
   customerEmail: string;
 }
 
 export class RecoveryEmailResponseDto {
-  @ApiProperty({ description: 'Success message' })
+  @ApiProperty({ description: "Success message" })
   message: string;
 
-  @ApiProperty({ description: 'Whether a draft was found', example: true })
+  @ApiProperty({ description: "Whether a draft was found", example: true })
   draftFound: boolean;
 }

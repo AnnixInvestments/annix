@@ -1,15 +1,9 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Request } from 'express';
-
-import { CustomerAuthService } from '../customer-auth.service';
-import { AuditService } from '../../audit/audit.service';
-import { AuditAction } from '../../audit/entities/audit-log.entity';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Request } from "express";
+import { AuditService } from "../../audit/audit.service";
+import { AuditAction } from "../../audit/entities/audit-log.entity";
+import { CustomerAuthService } from "../customer-auth.service";
 
 /**
  * Guard that verifies the device fingerprint on every request
@@ -25,20 +19,20 @@ export class CustomerDeviceGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    if (this.configService.get('DISABLE_DEVICE_FINGERPRINT') === 'true') {
+    if (this.configService.get("DISABLE_DEVICE_FINGERPRINT") === "true") {
       return true;
     }
 
     const request = context.switchToHttp().getRequest<Request>();
-    const deviceFingerprint = request.headers['x-device-fingerprint'] as string;
-    const customer = request['customer'];
+    const deviceFingerprint = request.headers["x-device-fingerprint"] as string;
+    const customer = request["customer"];
 
     if (!customer) {
-      throw new UnauthorizedException('Customer authentication required');
+      throw new UnauthorizedException("Customer authentication required");
     }
 
     if (!deviceFingerprint) {
-      throw new UnauthorizedException('Device fingerprint required');
+      throw new UnauthorizedException("Device fingerprint required");
     }
 
     // Verify device binding
@@ -51,19 +45,19 @@ export class CustomerDeviceGuard implements CanActivate {
       // Log the failed device verification
       const clientIp = this.getClientIp(request);
       await this.auditService.log({
-        entityType: 'customer_profile',
+        entityType: "customer_profile",
         entityId: customer.customerId,
         action: AuditAction.REJECT,
         newValues: {
-          reason: 'device_mismatch_on_request',
-          attemptedFingerprint: deviceFingerprint.substring(0, 20) + '...',
+          reason: "device_mismatch_on_request",
+          attemptedFingerprint: `${deviceFingerprint.substring(0, 20)}...`,
         },
         ipAddress: clientIp,
-        userAgent: request.headers['user-agent'] as string,
+        userAgent: request.headers["user-agent"] as string,
       });
 
       throw new UnauthorizedException(
-        'Device not recognized. This account is locked to a specific device.',
+        "Device not recognized. This account is locked to a specific device.",
       );
     }
 
@@ -71,33 +65,31 @@ export class CustomerDeviceGuard implements CanActivate {
     const clientIp = this.getClientIp(request);
     if (binding.registeredIp !== clientIp) {
       await this.auditService.log({
-        entityType: 'customer_profile',
+        entityType: "customer_profile",
         entityId: customer.customerId,
         action: AuditAction.UPDATE,
         newValues: {
-          warning: 'ip_mismatch_on_request',
+          warning: "ip_mismatch_on_request",
           registeredIp: binding.registeredIp,
           currentIp: clientIp,
         },
         ipAddress: clientIp,
-        userAgent: request.headers['user-agent'] as string,
+        userAgent: request.headers["user-agent"] as string,
       });
 
       // Attach warning to request for potential UI notification
-      request['ipMismatchWarning'] = true;
+      request["ipMismatchWarning"] = true;
     }
 
     return true;
   }
 
   private getClientIp(req: Request): string {
-    const forwarded = req.headers['x-forwarded-for'];
+    const forwarded = req.headers["x-forwarded-for"];
     if (forwarded) {
-      const ips = Array.isArray(forwarded)
-        ? forwarded[0]
-        : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
       return ips.trim();
     }
-    return req.ip || req.socket?.remoteAddress || 'unknown';
+    return req.ip || req.socket?.remoteAddress || "unknown";
   }
 }

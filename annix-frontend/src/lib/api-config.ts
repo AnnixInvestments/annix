@@ -1,12 +1,12 @@
-const FALLBACK_BASE_URL = 'http://localhost:4001';
+const FALLBACK_BASE_URL = "http://localhost:4001";
 
 const normalizeOrigin = (origin?: string | null) => {
   if (!origin) {
     const vercelUrl = process.env.VERCEL_URL;
     if (vercelUrl) {
-      return vercelUrl.startsWith('http') ? vercelUrl : `https://${vercelUrl}`;
+      return vercelUrl.startsWith("http") ? vercelUrl : `https://${vercelUrl}`;
     }
-    return 'http://localhost:3000';
+    return "http://localhost:3000";
   }
   return origin;
 };
@@ -18,17 +18,12 @@ export const resolveBaseUrl = (originHint?: string | null) => {
   }
 
   const trimmed = envValue.trim();
-  if (
-    !trimmed ||
-    trimmed === 'undefined' ||
-    trimmed === '/undefined' ||
-    trimmed === 'null'
-  ) {
+  if (!trimmed || trimmed === "undefined" || trimmed === "/undefined" || trimmed === "null") {
     return FALLBACK_BASE_URL;
   }
 
-  if (trimmed.startsWith('/')) {
-    if (typeof window !== 'undefined') {
+  if (trimmed.startsWith("/")) {
+    if (typeof window !== "undefined") {
       return `${window.location.origin}${trimmed}`;
     }
     const origin = normalizeOrigin(originHint);
@@ -39,7 +34,7 @@ export const resolveBaseUrl = (originHint?: string | null) => {
 };
 
 export const browserBaseUrl = () => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     return resolveBaseUrl(window.location.origin);
   }
   return resolveBaseUrl();
@@ -52,8 +47,8 @@ export const apiConfig = {
 };
 
 export const getAuthHeaders = (): Record<string, string> => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('auth_token');
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("auth_token");
     if (token) {
       return {
         Authorization: `Bearer ${token}`,

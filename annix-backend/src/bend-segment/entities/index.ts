@@ -1,1 +1,1 @@
-export * from './bend-segment-rule.entity';
+export * from "./bend-segment-rule.entity";

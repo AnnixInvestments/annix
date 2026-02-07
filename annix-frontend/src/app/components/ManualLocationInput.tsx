@@ -18,23 +18,26 @@ interface ManualLocationInputProps {
   onClose: () => void;
 }
 
-export default function ManualLocationInput({ onLocationSelect, onClose }: ManualLocationInputProps) {
+export default function ManualLocationInput({
+  onLocationSelect,
+  onClose,
+}: ManualLocationInputProps) {
   const [manualAddress, setManualAddress] = useState("");
   const [manualLat, setManualLat] = useState("");
   const [manualLng, setManualLng] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
-    
-    if (!isNaN(lat) && !isNaN(lng)) {
+
+    if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
       const location: Location = { lat, lng };
       const addressComponents: AddressComponents = {
         address: manualAddress,
         region: "",
-        country: ""
+        country: "",
       };
       onLocationSelect(location, addressComponents);
     }
@@ -45,9 +48,7 @@ export default function ManualLocationInput({ onLocationSelect, onClose }: Manua
       <h3 className="text-lg font-semibold text-blue-700 mb-4">Manual Location Entry</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Address (optional)
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Address (optional)</label>
           <input
             type="text"
             value={manualAddress}
@@ -56,12 +57,10 @@ export default function ManualLocationInput({ onLocationSelect, onClose }: Manua
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Latitude *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Latitude *</label>
             <input
               type="number"
               value={manualLat}
@@ -72,11 +71,9 @@ export default function ManualLocationInput({ onLocationSelect, onClose }: Manua
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Longitude *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Longitude *</label>
             <input
               type="number"
               value={manualLng}
@@ -88,14 +85,15 @@ export default function ManualLocationInput({ onLocationSelect, onClose }: Manua
             />
           </div>
         </div>
-        
+
         <div className="bg-blue-50 p-3 rounded mb-4">
           <p className="text-blue-700 text-sm">
-            <strong>Example:</strong> Johannesburg, South Africa<br />
+            <strong>Example:</strong> Johannesburg, South Africa
+            <br />
             Latitude: -26.20227, Longitude: 28.04363
           </p>
         </div>
-        
+
         <div className="flex gap-3">
           <button
             type="submit"

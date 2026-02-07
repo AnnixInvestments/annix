@@ -1,13 +1,9 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { CreateFlangeStandardDto } from './dto/create-flange-standard.dto';
-import { UpdateFlangeStandardDto } from './dto/update-flange-standard.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { FlangeStandard } from './entities/flange-standard.entity';
-import { Repository } from 'typeorm';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CreateFlangeStandardDto } from "./dto/create-flange-standard.dto";
+import { UpdateFlangeStandardDto } from "./dto/update-flange-standard.dto";
+import { FlangeStandard } from "./entities/flange-standard.entity";
 
 @Injectable()
 export class FlangeStandardService {
@@ -20,10 +16,7 @@ export class FlangeStandardService {
     const exists = await this.standardRepo.findOne({
       where: { code: dto.code },
     });
-    if (exists)
-      throw new BadRequestException(
-        `Flange standard ${dto.code} already exists`,
-      );
+    if (exists) throw new BadRequestException(`Flange standard ${dto.code} already exists`);
 
     const standard = this.standardRepo.create(dto);
     return this.standardRepo.save(standard);
@@ -35,15 +28,11 @@ export class FlangeStandardService {
 
   async findOne(id: number): Promise<FlangeStandard> {
     const standard = await this.standardRepo.findOne({ where: { id } });
-    if (!standard)
-      throw new NotFoundException(`Flange standard ${id} not found`);
+    if (!standard) throw new NotFoundException(`Flange standard ${id} not found`);
     return standard;
   }
 
-  async update(
-    id: number,
-    dto: UpdateFlangeStandardDto,
-  ): Promise<FlangeStandard> {
+  async update(id: number, dto: UpdateFlangeStandardDto): Promise<FlangeStandard> {
     const standard = await this.findOne(id);
     if (dto.code) standard.code = dto.code;
     return this.standardRepo.save(standard);

@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import { useState } from "react";
 import {
-  remoteAccessApi,
-  type RemoteAccessRequestType,
-  type RemoteAccessDocumentType,
   type AccessStatusResponse,
-} from '@/app/lib/api/remoteAccessApi';
+  type RemoteAccessDocumentType,
+  type RemoteAccessRequestType,
+  remoteAccessApi,
+} from "@/app/lib/api/remoteAccessApi";
 
 interface RemoteAccessRequestModalProps {
   isOpen: boolean;
@@ -27,7 +27,7 @@ export default function RemoteAccessRequestModal({
   requestType,
   onAccessGranted,
 }: RemoteAccessRequestModalProps) {
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
   const [status, setStatus] = useState<AccessStatusResponse | null>(null);
@@ -48,7 +48,7 @@ export default function RemoteAccessRequestModal({
       setIsPolling(true);
       pollForApproval();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to request access');
+      setError(err instanceof Error ? err.message : "Failed to request access");
     } finally {
       setIsSubmitting(false);
     }
@@ -63,11 +63,11 @@ export default function RemoteAccessRequestModal({
         if (result.hasAccess) {
           setIsPolling(false);
           onAccessGranted();
-        } else if (result.status === 'DENIED' || result.status === 'EXPIRED') {
+        } else if (result.status === "DENIED" || result.status === "EXPIRED") {
           setIsPolling(false);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to check status');
+        setError(err instanceof Error ? err.message : "Failed to check status");
         setIsPolling(false);
       }
     };
@@ -86,15 +86,12 @@ export default function RemoteAccessRequestModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-300">
         <div
           className="px-8 py-6 flex flex-col items-center"
-          style={{ backgroundColor: '#323288' }}
+          style={{ backgroundColor: "#323288" }}
         >
           <h1 className="text-xl font-bold text-white">Remote Access Required</h1>
         </div>
@@ -128,7 +125,9 @@ export default function RemoteAccessRequestModal({
 
               <div className="bg-gray-50 rounded-lg p-4 mb-4">
                 <p className="font-medium text-gray-900">{documentName}</p>
-                <p className="text-sm text-gray-500">{documentType} #{documentId}</p>
+                <p className="text-sm text-gray-500">
+                  {documentType} #{documentId}
+                </p>
               </div>
 
               <div className="mb-4">
@@ -162,9 +161,9 @@ export default function RemoteAccessRequestModal({
                   onClick={handleRequestAccess}
                   disabled={isSubmitting}
                   className="flex-1 py-2 px-4 rounded-lg font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-                  style={{ backgroundColor: '#323288' }}
+                  style={{ backgroundColor: "#323288" }}
                 >
-                  {isSubmitting ? 'Requesting...' : 'Request Access'}
+                  {isSubmitting ? "Requesting..." : "Request Access"}
                 </button>
               </div>
             </>
@@ -188,13 +187,11 @@ export default function RemoteAccessRequestModal({
                 </svg>
               </div>
 
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                Waiting for Approval
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Waiting for Approval</h2>
 
               <p className="text-gray-600 mb-4">
-                Your access request has been sent to the document owner.
-                They will receive an email notification.
+                Your access request has been sent to the document owner. They will receive an email
+                notification.
               </p>
 
               <p className="text-sm text-gray-500">
@@ -210,7 +207,7 @@ export default function RemoteAccessRequestModal({
             </div>
           )}
 
-          {status?.status === 'DENIED' && (
+          {status?.status === "DENIED" && (
             <div className="text-center py-8">
               <div className="mx-auto w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
                 <svg
@@ -228,9 +225,7 @@ export default function RemoteAccessRequestModal({
                 </svg>
               </div>
 
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                Access Denied
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h2>
 
               <p className="text-gray-600 mb-4">
                 The document owner has denied your access request.
@@ -245,7 +240,7 @@ export default function RemoteAccessRequestModal({
             </div>
           )}
 
-          {status?.status === 'EXPIRED' && (
+          {status?.status === "EXPIRED" && (
             <div className="text-center py-8">
               <div className="mx-auto w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 <svg
@@ -263,9 +258,7 @@ export default function RemoteAccessRequestModal({
                 </svg>
               </div>
 
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                Request Expired
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Request Expired</h2>
 
               <p className="text-gray-600 mb-4">
                 Your access request has expired. Please submit a new request.
@@ -277,7 +270,7 @@ export default function RemoteAccessRequestModal({
                   setIsPolling(false);
                 }}
                 className="py-2 px-4 rounded-lg font-medium text-white"
-                style={{ backgroundColor: '#323288' }}
+                style={{ backgroundColor: "#323288" }}
               >
                 Request Again
               </button>
@@ -285,10 +278,7 @@ export default function RemoteAccessRequestModal({
           )}
         </div>
 
-        <div
-          className="h-1.5"
-          style={{ backgroundColor: '#FFA500' }}
-        />
+        <div className="h-1.5" style={{ backgroundColor: "#FFA500" }} />
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content = fs.readFileSync(filePath, "utf8");
 
 // Remove the incorrectly placed gasket code and fix the getBnwSetInfo function
 const brokenPattern = `  if (!classData || !classData[nbMm]) {
@@ -153,10 +153,10 @@ const getGasketWeight = (gasketType: string, nbMm: number): number => {
 
 if (content.includes(brokenPattern)) {
   content = content.replace(brokenPattern, fixedPattern);
-  console.log('✅ Fixed gasket code placement');
+  console.log("✅ Fixed gasket code placement");
 } else {
-  console.log('❌ Pattern not found - code may have different formatting');
+  console.log("❌ Pattern not found - code may have different formatting");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

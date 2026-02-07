@@ -1,18 +1,18 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddDnvOsC401FabricationTestingData1777800000009 implements MigrationInterface {
-  name = 'AddDnvOsC401FabricationTestingData1777800000009';
+  name = "AddDnvOsC401FabricationTestingData1777800000009";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const tableExists = async (tableName: string): Promise<boolean> => {
       const result = await queryRunner.query(
-        `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)`,
+        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
         [tableName],
       );
       return result[0].exists;
     };
 
-    if (!(await tableExists('dnv_fabrication_tolerances'))) {
+    if (!(await tableExists("dnv_fabrication_tolerances"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_fabrication_tolerances (
           id SERIAL PRIMARY KEY,
@@ -42,7 +42,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_thickness_qualification_range'))) {
+    if (!(await tableExists("dnv_thickness_qualification_range"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_thickness_qualification_range (
           id SERIAL PRIMARY KEY,
@@ -73,7 +73,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_diameter_qualification_range'))) {
+    if (!(await tableExists("dnv_diameter_qualification_range"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_diameter_qualification_range (
           id SERIAL PRIMARY KEY,
@@ -97,7 +97,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_ndt_extent'))) {
+    if (!(await tableExists("dnv_ndt_extent"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_ndt_extent (
           id SERIAL PRIMARY KEY,
@@ -128,7 +128,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_ndt_acceptance_criteria'))) {
+    if (!(await tableExists("dnv_ndt_acceptance_criteria"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_ndt_acceptance_criteria (
           id SERIAL PRIMARY KEY,
@@ -157,7 +157,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_pwht_requirements'))) {
+    if (!(await tableExists("dnv_pwht_requirements"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_pwht_requirements (
           id SERIAL PRIMARY KEY,
@@ -183,7 +183,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_cold_deformation_limits'))) {
+    if (!(await tableExists("dnv_cold_deformation_limits"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_cold_deformation_limits (
           id SERIAL PRIMARY KEY,
@@ -204,7 +204,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_surface_preparation'))) {
+    if (!(await tableExists("dnv_surface_preparation"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_surface_preparation (
           id SERIAL PRIMARY KEY,
@@ -229,7 +229,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_hydrogen_limits'))) {
+    if (!(await tableExists("dnv_hydrogen_limits"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_hydrogen_limits (
           id SERIAL PRIMARY KEY,
@@ -249,7 +249,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_bolt_requirements'))) {
+    if (!(await tableExists("dnv_bolt_requirements"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_bolt_requirements (
           id SERIAL PRIMARY KEY,
@@ -270,7 +270,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_tightness_test_parameters'))) {
+    if (!(await tableExists("dnv_tightness_test_parameters"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_tightness_test_parameters (
           id SERIAL PRIMARY KEY,
@@ -296,7 +296,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_ut_calibration_blocks'))) {
+    if (!(await tableExists("dnv_ut_calibration_blocks"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_ut_calibration_blocks (
           id SERIAL PRIMARY KEY,
@@ -321,7 +321,7 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
       `);
     }
 
-    if (!(await tableExists('dnv_ctod_requirements'))) {
+    if (!(await tableExists("dnv_ctod_requirements"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_ctod_requirements (
           id SERIAL PRIMARY KEY,
@@ -347,24 +347,18 @@ export class AddDnvOsC401FabricationTestingData1777800000009 implements Migratio
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_ctod_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_ut_calibration_blocks`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS dnv_tightness_test_parameters`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_bolt_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_hydrogen_limits`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_surface_preparation`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_cold_deformation_limits`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_pwht_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_ndt_acceptance_criteria`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_ndt_extent`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS dnv_diameter_qualification_range`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS dnv_thickness_qualification_range`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_fabrication_tolerances`);
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_ctod_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_ut_calibration_blocks");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_tightness_test_parameters");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_bolt_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_hydrogen_limits");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_surface_preparation");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_cold_deformation_limits");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_pwht_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_ndt_acceptance_criteria");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_ndt_extent");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_diameter_qualification_range");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_thickness_qualification_range");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_fabrication_tolerances");
   }
 }

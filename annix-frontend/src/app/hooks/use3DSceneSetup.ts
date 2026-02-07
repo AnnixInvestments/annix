@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-import * as THREE from 'three';
+import { useMemo } from "react";
+import * as THREE from "three";
+import { resolveFlangeData } from "@/app/lib/3d/flangeData";
 import {
+  calculateVisualWallThickness,
   GEOMETRY_CONSTANTS,
   nbToOd,
-  calculateVisualWallThickness,
-} from '@/app/lib/config/rfq/rendering3DStandards';
-import { FLANGE_DATA, resolveFlangeData } from '@/app/lib/3d/flangeData';
-import type { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
+} from "@/app/lib/config/rfq/rendering3DStandards";
+import type { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 
 const SCALE = GEOMETRY_CONSTANTS.SCALE;
 
-type StubOrientation = 'top' | 'bottom' | 'inside' | 'outside';
+type StubOrientation = "top" | "bottom" | "inside" | "outside";
 
 export interface StubData {
   nominalBoreMm?: number;
@@ -145,7 +145,7 @@ export function use3DSceneSetup({
   tangent2 = 0,
   numberOfSegments,
   stubs = [],
-  flangeConfig = 'PE',
+  flangeConfig = "PE",
   closureLengthMm = 0,
   bendRadiusMm,
   bendItemType,
@@ -174,14 +174,13 @@ export function use3DSceneSetup({
   const gapLength = 100 / SCALE;
   const weldTube = outerR * 0.05;
 
-  const isDuckfoot = bendItemType === 'DUCKFOOT_BEND';
-  const isSweepTee = bendItemType === 'SWEEP_TEE';
-  const isSBend = bendItemType === 'S_BEND';
+  const isDuckfoot = bendItemType === "DUCKFOOT_BEND";
+  const isSweepTee = bendItemType === "SWEEP_TEE";
+  const isSBend = bendItemType === "S_BEND";
   const isSegmentedBend = numberOfSegments !== undefined && numberOfSegments > 1;
 
   const defaultPipeALengthMm = nominalBore * 3;
-  const effectivePipeALengthMm =
-    sweepTeePipeALengthMm || (isSweepTee ? defaultPipeALengthMm : 0);
+  const effectivePipeALengthMm = sweepTeePipeALengthMm || (isSweepTee ? defaultPipeALengthMm : 0);
   const pipeALength = effectivePipeALengthMm / SCALE;
 
   const dimensions: ScaledDimensions = {
@@ -204,46 +203,24 @@ export function use3DSceneSetup({
   };
 
   const flangeConfiguration: FlangeConfiguration = {
-    hasInletFlange: ['FOE', 'FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(
-      config
+    hasInletFlange: ["FOE", "FBE", "FOE_LF", "FOE_RF", "2X_RF", "2XLF"].includes(config),
+    hasOutletFlange: ["FBE", "FOE_LF", "FOE_RF", "2X_RF", "2XLF"].includes(config),
+    hasLooseInletFlange: config === "FOE_LF" || config === "2XLF",
+    hasLooseOutletFlange: config === "2XLF",
+    hasRotatingInletFlange: config === "FOE_RF" || config === "2X_RF",
+    hasRotatingOutletFlange: config === "2X_RF",
+    fittingHasInletFlange: ["FAE", "F2E", "F2E_LF", "F2E_RF", "3X_RF", "2X_RF_FOE"].includes(
+      config,
     ),
-    hasOutletFlange: ['FBE', 'FOE_LF', 'FOE_RF', '2X_RF', '2XLF'].includes(config),
-    hasLooseInletFlange: config === 'FOE_LF' || config === '2XLF',
-    hasLooseOutletFlange: config === '2XLF',
-    hasRotatingInletFlange: config === 'FOE_RF' || config === '2X_RF',
-    hasRotatingOutletFlange: config === '2X_RF',
-    fittingHasInletFlange: [
-      'FAE',
-      'F2E',
-      'F2E_LF',
-      'F2E_RF',
-      '3X_RF',
-      '2X_RF_FOE',
-    ].includes(config),
-    fittingHasOutletFlange: [
-      'FAE',
-      'F2E',
-      'F2E_LF',
-      'F2E_RF',
-      '3X_RF',
-      '2X_RF_FOE',
-    ].includes(config),
-    fittingHasBranchFlange: [
-      'FAE',
-      'F2E_LF',
-      'F2E_RF',
-      '3X_RF',
-      '2X_RF_FOE',
-    ].includes(config),
-    fittingHasLooseInletFlange: config === 'F2E_LF',
-    fittingHasLooseOutletFlange: config === 'F2E_LF',
-    fittingHasRotatingInletFlange: ['F2E_RF', '3X_RF', '2X_RF_FOE'].includes(
-      config
+    fittingHasOutletFlange: ["FAE", "F2E", "F2E_LF", "F2E_RF", "3X_RF", "2X_RF_FOE"].includes(
+      config,
     ),
-    fittingHasRotatingOutletFlange: ['F2E_RF', '3X_RF', '2X_RF_FOE'].includes(
-      config
-    ),
-    fittingHasRotatingBranchFlange: config === '3X_RF',
+    fittingHasBranchFlange: ["FAE", "F2E_LF", "F2E_RF", "3X_RF", "2X_RF_FOE"].includes(config),
+    fittingHasLooseInletFlange: config === "F2E_LF",
+    fittingHasLooseOutletFlange: config === "F2E_LF",
+    fittingHasRotatingInletFlange: ["F2E_RF", "3X_RF", "2X_RF_FOE"].includes(config),
+    fittingHasRotatingOutletFlange: ["F2E_RF", "3X_RF", "2X_RF_FOE"].includes(config),
+    fittingHasRotatingBranchFlange: config === "3X_RF",
   };
 
   const bendFlags: BendTypeFlags = {
@@ -264,13 +241,11 @@ export function use3DSceneSetup({
   const bendEndPoint = new THREE.Vector3(
     bendCenter.x + bendR * Math.cos(bendEndAngle),
     0,
-    bendCenter.z + bendR * Math.sin(bendEndAngle)
+    bendCenter.z + bendR * Math.sin(bendEndAngle),
   );
 
   const outletDir = new THREE.Vector3(-Math.sin(angleRad), 0, Math.cos(angleRad));
-  const outletEnd = bendEndPoint
-    .clone()
-    .add(outletDir.clone().multiplyScalar(t2));
+  const outletEnd = bendEndPoint.clone().add(outletDir.clone().multiplyScalar(t2));
 
   const positions: BendPositions = {
     inletStart,
@@ -312,12 +287,7 @@ export function use3DSceneSetup({
 
   const stubsData = useMemo(() => {
     return stubs
-      .filter(
-        (s) =>
-          s.locationFromFlange != null &&
-          s.length != null &&
-          s.nominalBoreMm != null
-      )
+      .filter((s) => s.locationFromFlange != null && s.length != null && s.nominalBoreMm != null)
       .map((s) => {
         const sOd = nbToOd(s.nominalBoreMm!);
         const sWt = calculateVisualWallThickness(sOd, wtMm * 0.8);
@@ -329,7 +299,7 @@ export function use3DSceneSetup({
           innerR: (sOd - 2 * sWt) / SCALE / 2,
           length: s.length! / SCALE,
           nb: s.nominalBoreMm!,
-          orientation: s.orientation || ('outside' as StubOrientation),
+          orientation: s.orientation || ("outside" as StubOrientation),
           angleDegrees: s.angleDegrees ?? 0,
           hasFlange: s.hasFlange ?? true,
         };

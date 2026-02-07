@@ -1,10 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsNotEmpty, IsString } from "class-validator";
 
 export class CreateBoltDto {
   @ApiProperty({
-    description: 'Bolt designation',
-    example: 'M12',
+    description: "Bolt designation",
+    example: "M12",
   })
   @IsString()
   @IsNotEmpty()

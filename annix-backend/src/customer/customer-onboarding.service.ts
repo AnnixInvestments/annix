@@ -1,28 +1,17 @@
 import {
-  Injectable,
-  NotFoundException,
   BadRequestException,
   ForbiddenException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
-import { now } from '../lib/datetime';
-
-import {
-  CustomerProfile,
-  CustomerOnboarding,
-  CustomerDocument,
-  CustomerCompany,
-  CustomerAccountStatus,
-} from './entities';
-import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity';
-import {
-  CustomerDocumentType,
-  CustomerDocumentValidationStatus,
-} from './entities/customer-document.entity';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/entities/audit-log.entity';
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
+import { now } from "../lib/datetime";
+import { CustomerCompany, CustomerDocument, CustomerOnboarding, CustomerProfile } from "./entities";
+import { CustomerDocumentType } from "./entities/customer-document.entity";
+import { CustomerOnboardingStatus } from "./entities/customer-onboarding.entity";
 
 // Required document types for onboarding
 const REQUIRED_DOCUMENT_TYPES = [
@@ -50,7 +39,7 @@ export class CustomerOnboardingService {
     });
 
     if (!onboarding) {
-      throw new NotFoundException('Onboarding record not found');
+      throw new NotFoundException("Onboarding record not found");
     }
 
     // Get documents
@@ -67,7 +56,7 @@ export class CustomerOnboardingService {
     // Get profile and company
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     return {
@@ -107,41 +96,37 @@ export class CustomerOnboardingService {
 
     return [
       {
-        field: 'legalName',
-        label: 'Legal Company Name',
+        field: "legalName",
+        label: "Legal Company Name",
         complete: !!company.legalName,
       },
       {
-        field: 'registrationNumber',
-        label: 'Registration Number',
+        field: "registrationNumber",
+        label: "Registration Number",
         complete: !!company.registrationNumber,
       },
       {
-        field: 'streetAddress',
-        label: 'Street Address',
+        field: "streetAddress",
+        label: "Street Address",
         complete: !!company.streetAddress,
       },
-      { field: 'city', label: 'City', complete: !!company.city },
+      { field: "city", label: "City", complete: !!company.city },
       {
-        field: 'primaryPhone',
-        label: 'Primary Phone',
+        field: "primaryPhone",
+        label: "Primary Phone",
         complete: !!company.primaryPhone,
       },
     ];
   }
 
-  async updateCompanyDetails(
-    customerId: number,
-    data: Partial<CustomerCompany>,
-    clientIp: string,
-  ) {
+  async updateCompanyDetails(customerId: number, data: Partial<CustomerCompany>, clientIp: string) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     const onboarding = await this.onboardingRepo.findOne({
@@ -149,19 +134,16 @@ export class CustomerOnboardingService {
     });
 
     if (!onboarding) {
-      throw new NotFoundException('Onboarding record not found');
+      throw new NotFoundException("Onboarding record not found");
     }
 
     // Only allow updates in DRAFT or REJECTED status
     if (
-      ![
-        CustomerOnboardingStatus.DRAFT,
-        CustomerOnboardingStatus.REJECTED,
-      ].includes(onboarding.status)
+      ![CustomerOnboardingStatus.DRAFT, CustomerOnboardingStatus.REJECTED].includes(
+        onboarding.status,
+      )
     ) {
-      throw new ForbiddenException(
-        'Cannot update company details at this stage',
-      );
+      throw new ForbiddenException("Cannot update company details at this stage");
     }
 
     // Update company
@@ -182,7 +164,7 @@ export class CustomerOnboardingService {
     await this.onboardingRepo.save(onboarding);
 
     await this.auditService.log({
-      entityType: 'customer_company',
+      entityType: "customer_company",
       entityId: company.id,
       action: AuditAction.UPDATE,
       newValues: data,
@@ -198,24 +180,21 @@ export class CustomerOnboardingService {
     });
 
     if (!onboarding) {
-      throw new NotFoundException('Onboarding record not found');
+      throw new NotFoundException("Onboarding record not found");
     }
 
     // Only allow submission from DRAFT or REJECTED status
     if (
-      ![
-        CustomerOnboardingStatus.DRAFT,
-        CustomerOnboardingStatus.REJECTED,
-      ].includes(onboarding.status)
+      ![CustomerOnboardingStatus.DRAFT, CustomerOnboardingStatus.REJECTED].includes(
+        onboarding.status,
+      )
     ) {
-      throw new BadRequestException('Onboarding has already been submitted');
+      throw new BadRequestException("Onboarding has already been submitted");
     }
 
     // Check company details complete
     if (!onboarding.companyDetailsComplete) {
-      throw new BadRequestException(
-        'Please complete all company details before submitting',
-      );
+      throw new BadRequestException("Please complete all company details before submitting");
     }
 
     // Check documents complete
@@ -228,9 +207,7 @@ export class CustomerOnboardingService {
     );
 
     if (missingDocuments.length > 0) {
-      throw new BadRequestException(
-        `Missing required documents: ${missingDocuments.join(', ')}`,
-      );
+      throw new BadRequestException(`Missing required documents: ${missingDocuments.join(", ")}`);
     }
 
     // Update status
@@ -248,7 +225,7 @@ export class CustomerOnboardingService {
     await this.onboardingRepo.save(onboarding);
 
     await this.auditService.log({
-      entityType: 'customer_onboarding',
+      entityType: "customer_onboarding",
       entityId: onboarding.id,
       action: AuditAction.UPDATE,
       newValues: {
@@ -260,17 +237,12 @@ export class CustomerOnboardingService {
 
     return {
       success: true,
-      message:
-        'Onboarding submitted successfully. It will be reviewed shortly.',
+      message: "Onboarding submitted successfully. It will be reviewed shortly.",
       status: onboarding.status,
     };
   }
 
-  async saveDraft(
-    customerId: number,
-    data: Partial<CustomerCompany>,
-    clientIp: string,
-  ) {
+  async saveDraft(customerId: number, data: Partial<CustomerCompany>, clientIp: string) {
     return this.updateCompanyDetails(customerId, data, clientIp);
   }
 }

@@ -1,20 +1,20 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsEnum,
   IsArray,
-  IsNumber,
-  MaxLength,
   IsDateString,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BroadcastTarget, BroadcastPriority } from '../entities';
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from "class-validator";
+import { BroadcastPriority, BroadcastTarget } from "../entities";
 
 export class CreateBroadcastDto {
   @ApiProperty({
-    description: 'Broadcast title',
-    example: 'System Maintenance Notice',
+    description: "Broadcast title",
+    example: "System Maintenance Notice",
   })
   @IsString()
   @IsNotEmpty()
@@ -22,16 +22,15 @@ export class CreateBroadcastDto {
   title: string;
 
   @ApiProperty({
-    description: 'Broadcast content',
-    example:
-      'We will be performing scheduled maintenance on Saturday from 2:00 AM to 4:00 AM.',
+    description: "Broadcast content",
+    example: "We will be performing scheduled maintenance on Saturday from 2:00 AM to 4:00 AM.",
   })
   @IsString()
   @IsNotEmpty()
   content: string;
 
   @ApiPropertyOptional({
-    description: 'Target audience',
+    description: "Target audience",
     enum: BroadcastTarget,
     default: BroadcastTarget.ALL,
   })
@@ -40,7 +39,7 @@ export class CreateBroadcastDto {
   targetAudience?: BroadcastTarget;
 
   @ApiPropertyOptional({
-    description: 'Specific user IDs (when targetAudience is SPECIFIC)',
+    description: "Specific user IDs (when targetAudience is SPECIFIC)",
     example: [1, 2, 3],
     type: [Number],
   })
@@ -50,7 +49,7 @@ export class CreateBroadcastDto {
   specificUserIds?: number[];
 
   @ApiPropertyOptional({
-    description: 'Priority level',
+    description: "Priority level",
     enum: BroadcastPriority,
     default: BroadcastPriority.NORMAL,
   })
@@ -59,15 +58,15 @@ export class CreateBroadcastDto {
   priority?: BroadcastPriority;
 
   @ApiPropertyOptional({
-    description: 'Expiration date (ISO string)',
-    example: '2025-12-31T23:59:59Z',
+    description: "Expiration date (ISO string)",
+    example: "2025-12-31T23:59:59Z",
   })
   @IsDateString()
   @IsOptional()
   expiresAt?: string;
 
   @ApiPropertyOptional({
-    description: 'Whether to send email notifications',
+    description: "Whether to send email notifications",
     example: true,
   })
   @IsOptional()
@@ -76,14 +75,14 @@ export class CreateBroadcastDto {
 
 export class BroadcastFilterDto {
   @ApiPropertyOptional({
-    description: 'Include expired broadcasts',
+    description: "Include expired broadcasts",
     example: false,
   })
   @IsOptional()
   includeExpired?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Filter by priority',
+    description: "Filter by priority",
     enum: BroadcastPriority,
   })
   @IsEnum(BroadcastPriority)
@@ -91,14 +90,14 @@ export class BroadcastFilterDto {
   priority?: BroadcastPriority;
 
   @ApiPropertyOptional({
-    description: 'Only show unread',
+    description: "Only show unread",
     example: true,
   })
   @IsOptional()
   unreadOnly?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Page number',
+    description: "Page number",
     example: 1,
     default: 1,
   })
@@ -107,7 +106,7 @@ export class BroadcastFilterDto {
   page?: number;
 
   @ApiPropertyOptional({
-    description: 'Items per page',
+    description: "Items per page",
     example: 20,
     default: 20,
   })
@@ -117,44 +116,44 @@ export class BroadcastFilterDto {
 }
 
 export class BroadcastSummaryDto {
-  @ApiProperty({ description: 'Broadcast ID' })
+  @ApiProperty({ description: "Broadcast ID" })
   id: number;
 
-  @ApiProperty({ description: 'Title' })
+  @ApiProperty({ description: "Title" })
   title: string;
 
-  @ApiProperty({ description: 'Content preview (first 200 chars)' })
+  @ApiProperty({ description: "Content preview (first 200 chars)" })
   contentPreview: string;
 
-  @ApiProperty({ description: 'Target audience' })
+  @ApiProperty({ description: "Target audience" })
   targetAudience: BroadcastTarget;
 
-  @ApiProperty({ description: 'Priority' })
+  @ApiProperty({ description: "Priority" })
   priority: BroadcastPriority;
 
-  @ApiPropertyOptional({ description: 'Expiration date' })
+  @ApiPropertyOptional({ description: "Expiration date" })
   expiresAt: Date | null;
 
-  @ApiProperty({ description: 'Is read by current user' })
+  @ApiProperty({ description: "Is read by current user" })
   isRead: boolean;
 
-  @ApiProperty({ description: 'Created at' })
+  @ApiProperty({ description: "Created at" })
   createdAt: Date;
 
-  @ApiProperty({ description: 'Sent by name' })
+  @ApiProperty({ description: "Sent by name" })
   sentByName: string;
 }
 
 export class BroadcastDetailDto extends BroadcastSummaryDto {
-  @ApiProperty({ description: 'Full content' })
+  @ApiProperty({ description: "Full content" })
   content: string;
 
-  @ApiProperty({ description: 'Total recipients count' })
+  @ApiProperty({ description: "Total recipients count" })
   totalRecipients: number;
 
-  @ApiProperty({ description: 'Read count' })
+  @ApiProperty({ description: "Read count" })
   readCount: number;
 
-  @ApiProperty({ description: 'Email sent count' })
+  @ApiProperty({ description: "Email sent count" })
   emailSentCount: number;
 }

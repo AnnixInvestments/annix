@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
-import { PumpProductCard, PumpProductCardData } from './PumpProductCard';
+import { useMemo, useState } from "react";
+import { PumpProductCard, PumpProductCardData } from "./PumpProductCard";
 
 interface PumpProductListProps {
   products: PumpProductCardData[];
@@ -13,9 +13,9 @@ interface PumpProductListProps {
   emptyMessage?: string;
 }
 
-type ViewMode = 'grid' | 'list';
-type SortField = 'title' | 'manufacturer' | 'price' | 'flowRate';
-type SortDirection = 'asc' | 'desc';
+type ViewMode = "grid" | "list";
+type SortField = "title" | "manufacturer" | "price" | "flowRate";
+type SortDirection = "asc" | "desc";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -26,15 +26,15 @@ export function PumpProductList({
   multiSelect = false,
   showFilters = true,
   linkPrefix,
-  emptyMessage = 'No pump products found',
+  emptyMessage = "No pump products found",
 }: PumpProductListProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
-  const [manufacturerFilter, setManufacturerFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [sortField, setSortField] = useState<SortField>('title');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [manufacturerFilter, setManufacturerFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [sortField, setSortField] = useState<SortField>("title");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(0);
 
   const manufacturers = useMemo(() => {
@@ -57,7 +57,7 @@ export function PumpProductList({
           p.title.toLowerCase().includes(query) ||
           p.sku.toLowerCase().includes(query) ||
           p.manufacturer.toLowerCase().includes(query) ||
-          (p.description && p.description.toLowerCase().includes(query))
+          p.description?.toLowerCase().includes(query),
       );
     }
 
@@ -74,21 +74,29 @@ export function PumpProductList({
     }
 
     result.sort((a, b) => {
-      const direction = sortDirection === 'asc' ? 1 : -1;
-      if (sortField === 'title') {
+      const direction = sortDirection === "asc" ? 1 : -1;
+      if (sortField === "title") {
         return direction * a.title.localeCompare(b.title);
-      } else if (sortField === 'manufacturer') {
+      } else if (sortField === "manufacturer") {
         return direction * a.manufacturer.localeCompare(b.manufacturer);
-      } else if (sortField === 'price') {
+      } else if (sortField === "price") {
         return direction * ((a.listPrice || 0) - (b.listPrice || 0));
-      } else if (sortField === 'flowRate') {
+      } else if (sortField === "flowRate") {
         return direction * ((a.flowRateMax || 0) - (b.flowRateMax || 0));
       }
       return 0;
     });
 
     return result;
-  }, [products, searchQuery, categoryFilter, manufacturerFilter, statusFilter, sortField, sortDirection]);
+  }, [
+    products,
+    searchQuery,
+    categoryFilter,
+    manufacturerFilter,
+    statusFilter,
+    sortField,
+    sortDirection,
+  ]);
 
   const paginatedProducts = useMemo(() => {
     const start = currentPage * ITEMS_PER_PAGE;
@@ -104,17 +112,17 @@ export function PumpProductList({
   };
 
   const clearFilters = () => {
-    setSearchQuery('');
-    setCategoryFilter('');
-    setManufacturerFilter('');
-    setStatusFilter('');
+    setSearchQuery("");
+    setCategoryFilter("");
+    setManufacturerFilter("");
+    setStatusFilter("");
     setCurrentPage(0);
   };
 
   const hasActiveFilters = searchQuery || categoryFilter || manufacturerFilter || statusFilter;
 
   function categoryLabel(category: string): string {
-    return category.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+    return category.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
   }
 
   return (
@@ -197,10 +205,7 @@ export function PumpProductList({
             </select>
 
             {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
+              <button onClick={clearFilters} className="text-sm text-blue-600 hover:text-blue-800">
                 Clear filters
               </button>
             )}
@@ -208,7 +213,7 @@ export function PumpProductList({
 
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
             <div className="text-sm text-gray-600">
-              {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''} found
+              {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""} found
             </div>
 
             <div className="flex items-center gap-4">
@@ -225,14 +230,29 @@ export function PumpProductList({
                   <option value="flowRate">Flow Rate</option>
                 </select>
                 <button
-                  onClick={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+                  onClick={() => setSortDirection((d) => (d === "asc" ? "desc" : "asc"))}
                   className="p-1 hover:bg-gray-100 rounded"
                 >
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {sortDirection === 'asc' ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  <svg
+                    className="w-4 h-4 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    {sortDirection === "asc" ? (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 15l7-7 7 7"
+                      />
                     ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     )}
                   </svg>
                 </button>
@@ -240,19 +260,29 @@ export function PumpProductList({
 
               <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
                 <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
+                  onClick={() => setViewMode("grid")}
+                  className={`p-2 ${viewMode === "grid" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"}`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                    />
                   </svg>
                 </button>
                 <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
+                  onClick={() => setViewMode("list")}
+                  className={`p-2 ${viewMode === "list" ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:bg-gray-50"}`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 10h16M4 14h16M4 18h16"
+                    />
                   </svg>
                 </button>
               </div>
@@ -284,9 +314,9 @@ export function PumpProductList({
       ) : (
         <div
           className={
-            viewMode === 'grid'
-              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-              : 'space-y-4'
+            viewMode === "grid"
+              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+              : "space-y-4"
           }
         >
           {paginatedProducts.map((product) => (
@@ -304,8 +334,8 @@ export function PumpProductList({
       {totalPages > 1 && (
         <div className="flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3">
           <div className="text-sm text-gray-600">
-            Showing {currentPage * ITEMS_PER_PAGE + 1} to{' '}
-            {Math.min((currentPage + 1) * ITEMS_PER_PAGE, filteredProducts.length)} of{' '}
+            Showing {currentPage * ITEMS_PER_PAGE + 1} to{" "}
+            {Math.min((currentPage + 1) * ITEMS_PER_PAGE, filteredProducts.length)} of{" "}
             {filteredProducts.length}
           </div>
           <div className="flex items-center gap-2">

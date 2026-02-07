@@ -1,5 +1,5 @@
-import { API_BASE_URL } from '@/lib/api-config';
-import { getStoredFingerprint } from '@/app/hooks/useDeviceFingerprint';
+import { getStoredFingerprint } from "@/app/hooks/useDeviceFingerprint";
+import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for customer portal - must match backend DTOs
 
@@ -10,7 +10,7 @@ export interface CustomerCompanyDto {
   registrationNumber: string;
   vatNumber?: string;
   industry?: string;
-  companySize?: 'micro' | 'small' | 'medium' | 'large' | 'enterprise';
+  companySize?: "micro" | "small" | "medium" | "large" | "enterprise";
   streetAddress: string;
   city: string;
   provinceState: string;
@@ -51,7 +51,7 @@ export interface CustomerRegistrationDto {
 }
 
 // Legacy type aliases for compatibility
-export type CustomerProfileDto = Omit<CustomerUserDto, 'email' | 'password'>;
+export type CustomerProfileDto = Omit<CustomerUserDto, "email" | "password">;
 
 // Document validation types
 export interface DocumentValidationResult {
@@ -162,21 +162,21 @@ class CustomerApiClient {
     this.baseURL = baseURL;
 
     // Load tokens from storage
-    if (typeof window !== 'undefined') {
-      this.accessToken = localStorage.getItem('customerAccessToken');
-      this.refreshToken = localStorage.getItem('customerRefreshToken');
+    if (typeof window !== "undefined") {
+      this.accessToken = localStorage.getItem("customerAccessToken");
+      this.refreshToken = localStorage.getItem("customerRefreshToken");
     }
   }
 
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
     // Always get fresh token from localStorage to handle race conditions
     let token = this.accessToken;
-    if (typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('customerAccessToken');
+    if (typeof window !== "undefined") {
+      const storedToken = localStorage.getItem("customerAccessToken");
       if (storedToken) {
         token = storedToken;
         this.accessToken = storedToken; // Sync instance
@@ -184,13 +184,13 @@ class CustomerApiClient {
     }
 
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     // Include device fingerprint on all authenticated requests
     const fingerprint = getStoredFingerprint();
     if (fingerprint) {
-      headers['x-device-fingerprint'] = fingerprint;
+      headers["x-device-fingerprint"] = fingerprint;
     }
 
     return headers;
@@ -199,40 +199,37 @@ class CustomerApiClient {
   private setTokens(accessToken: string, refreshToken: string) {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('customerAccessToken', accessToken);
-      localStorage.setItem('customerRefreshToken', refreshToken);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("customerAccessToken", accessToken);
+      localStorage.setItem("customerRefreshToken", refreshToken);
     }
   }
 
   clearTokens() {
     this.accessToken = null;
     this.refreshToken = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('customerAccessToken');
-      localStorage.removeItem('customerRefreshToken');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("customerAccessToken");
+      localStorage.removeItem("customerRefreshToken");
     }
   }
 
   isAuthenticated(): boolean {
     // Always check localStorage directly to avoid stale token issues
     // This handles race conditions where the singleton was created before tokens were stored
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('customerAccessToken');
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("customerAccessToken");
       if (token && !this.accessToken) {
         // Sync the instance with localStorage
         this.accessToken = token;
-        this.refreshToken = localStorage.getItem('customerRefreshToken');
+        this.refreshToken = localStorage.getItem("customerRefreshToken");
       }
       return !!token;
     }
     return !!this.accessToken;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
     const config: RequestInit = {
@@ -284,8 +281,8 @@ class CustomerApiClient {
 
   // Authentication endpoints
   async register(data: CustomerRegistrationDto): Promise<CustomerAuthResponse> {
-    const result = await this.request<CustomerAuthResponse>('/customer/register', {
-      method: 'POST',
+    const result = await this.request<CustomerAuthResponse>("/customer/register", {
+      method: "POST",
       body: JSON.stringify(data),
     });
 
@@ -295,7 +292,7 @@ class CustomerApiClient {
 
   async registerWithFormData(formData: FormData): Promise<CustomerAuthResponse> {
     const response = await fetch(`${this.baseURL}/customer/register`, {
-      method: 'POST',
+      method: "POST",
       body: formData,
     });
 
@@ -319,8 +316,8 @@ class CustomerApiClient {
   }
 
   async login(data: CustomerLoginDto): Promise<CustomerAuthResponse> {
-    const result = await this.request<CustomerAuthResponse>('/customer/auth/login', {
-      method: 'POST',
+    const result = await this.request<CustomerAuthResponse>("/customer/auth/login", {
+      method: "POST",
       body: JSON.stringify(data),
     });
 
@@ -330,8 +327,8 @@ class CustomerApiClient {
 
   async logout(): Promise<void> {
     try {
-      await this.request('/customer/auth/logout', {
-        method: 'POST',
+      await this.request("/customer/auth/logout", {
+        method: "POST",
       });
     } finally {
       this.clearTokens();
@@ -341,16 +338,16 @@ class CustomerApiClient {
   async refreshAccessToken(): Promise<boolean> {
     // Get refresh token from localStorage to avoid stale instance value
     let refreshToken = this.refreshToken;
-    if (typeof window !== 'undefined') {
-      refreshToken = localStorage.getItem('customerRefreshToken');
+    if (typeof window !== "undefined") {
+      refreshToken = localStorage.getItem("customerRefreshToken");
     }
 
     if (!refreshToken) return false;
 
     try {
       const result = await fetch(`${this.baseURL}/customer/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),
       });
 
@@ -379,31 +376,34 @@ class CustomerApiClient {
 
   // Profile endpoints
   async getProfile(): Promise<CustomerProfileResponse> {
-    return this.request<CustomerProfileResponse>('/customer/profile');
+    return this.request<CustomerProfileResponse>("/customer/profile");
   }
 
   async updateProfile(data: Partial<CustomerProfileDto>): Promise<CustomerProfileResponse> {
-    return this.request<CustomerProfileResponse>('/customer/profile', {
-      method: 'PATCH',
+    return this.request<CustomerProfileResponse>("/customer/profile", {
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
-  async changePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    return this.request('/customer/profile/password', {
-      method: 'PATCH',
+  async changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request("/customer/profile/password", {
+      method: "PATCH",
       body: JSON.stringify({ currentPassword, newPassword }),
     });
   }
 
   // Dashboard
   async getDashboard(): Promise<CustomerDashboardResponse> {
-    return this.request<CustomerDashboardResponse>('/customer/dashboard');
+    return this.request<CustomerDashboardResponse>("/customer/dashboard");
   }
 
   // Company
   async getCompany(): Promise<CustomerCompanyDto> {
-    return this.request<CustomerCompanyDto>('/customer/company');
+    return this.request<CustomerCompanyDto>("/customer/company");
   }
 
   async updateCompanyAddress(data: {
@@ -413,15 +413,17 @@ class CustomerApiClient {
     postalCode?: string;
     primaryPhone?: string;
   }): Promise<CustomerCompanyDto> {
-    return this.request<CustomerCompanyDto>('/customer/company/address', {
-      method: 'PATCH',
+    return this.request<CustomerCompanyDto>("/customer/company/address", {
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   // Check if email is available during registration
   async checkEmailAvailable(email: string): Promise<{ available: boolean }> {
-    return this.request<{ available: boolean }>(`/customer/check-email?email=${encodeURIComponent(email)}`);
+    return this.request<{ available: boolean }>(
+      `/customer/check-email?email=${encodeURIComponent(email)}`,
+    );
   }
 }
 
@@ -440,7 +442,7 @@ export const customerAuthApi = {
    */
   validateDocument: async (
     file: File,
-    documentType: 'vat' | 'registration',
+    documentType: "vat" | "registration",
     expectedData: {
       vatNumber?: string;
       registrationNumber?: string;
@@ -449,15 +451,15 @@ export const customerAuthApi = {
       city?: string;
       provinceState?: string;
       postalCode?: string;
-    }
+    },
   ): Promise<DocumentValidationResult> => {
     const formData = new FormData();
-    formData.append('document', file);
-    formData.append('documentType', documentType);
-    formData.append('expectedData', JSON.stringify(expectedData));
+    formData.append("document", file);
+    formData.append("documentType", documentType);
+    formData.append("expectedData", JSON.stringify(expectedData));
 
     const response = await fetch(`${API_BASE_URL}/customer/validate-document`, {
-      method: 'POST',
+      method: "POST",
       body: formData,
     });
 
@@ -465,9 +467,9 @@ export const customerAuthApi = {
       const errorText = await response.text();
       try {
         const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.message || 'Document validation failed');
+        throw new Error(errorJson.message || "Document validation failed");
       } catch {
-        throw new Error('Document validation failed');
+        throw new Error("Document validation failed");
       }
     }
 
@@ -488,7 +490,7 @@ export const customerPortalApi = {
 
 // Onboarding types and API
 export interface OnboardingStatus {
-  status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+  status: "draft" | "submitted" | "under_review" | "approved" | "rejected";
   companyDetailsComplete: boolean;
   documentsComplete: boolean;
   submittedAt?: string;
@@ -530,7 +532,7 @@ export interface SupplierInvitation {
   id: number;
   email: string;
   supplierCompanyName?: string;
-  status: 'pending' | 'accepted' | 'expired' | 'cancelled';
+  status: "pending" | "accepted" | "expired" | "cancelled";
   createdAt: string;
   expiresAt: string;
   acceptedAt?: string;
@@ -544,7 +546,7 @@ export interface DirectorySupplier {
   province: string;
   products: string[];
   productLabels: string[];
-  status: 'preferred' | 'blocked' | 'none';
+  status: "preferred" | "blocked" | "none";
   preferredSupplierId?: number;
   blockedSupplierId?: number;
 }
@@ -563,19 +565,21 @@ class CustomerOnboardingApi {
   }
 
   async getStatus(): Promise<OnboardingStatus> {
-    return this.client['request']<OnboardingStatus>('/customer/onboarding/status');
+    return this.client["request"]<OnboardingStatus>("/customer/onboarding/status");
   }
 
-  async updateCompanyDetails(data: Partial<CustomerCompanyDto>): Promise<{ success: boolean; message: string }> {
-    return this.client['request']('/customer/onboarding/company', {
-      method: 'PATCH',
+  async updateCompanyDetails(
+    data: Partial<CustomerCompanyDto>,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.client["request"]("/customer/onboarding/company", {
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   async submit(): Promise<{ success: boolean; message: string }> {
-    return this.client['request']('/customer/onboarding/submit', {
-      method: 'POST',
+    return this.client["request"]("/customer/onboarding/submit", {
+      method: "POST",
     });
   }
 }
@@ -588,7 +592,7 @@ class CustomerDocumentApi {
   }
 
   async getDocuments(): Promise<CustomerDocument[]> {
-    return this.client['request']<CustomerDocument[]>('/customer/documents');
+    return this.client["request"]<CustomerDocument[]>("/customer/documents");
   }
 
   async uploadDocument(
@@ -610,19 +614,19 @@ class CustomerDocumentApi {
     },
   ): Promise<{ id: number; message: string }> {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('documentType', documentType);
+    formData.append("file", file);
+    formData.append("documentType", documentType);
     if (expiryDate) {
-      formData.append('expiryDate', expiryDate);
+      formData.append("expiryDate", expiryDate);
     }
     if (verificationResult) {
-      formData.append('verificationResult', JSON.stringify(verificationResult));
+      formData.append("verificationResult", JSON.stringify(verificationResult));
     }
 
-    const response = await fetch(`${this.client['baseURL']}/customer/documents`, {
-      method: 'POST',
+    const response = await fetch(`${this.client["baseURL"]}/customer/documents`, {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${this.client['accessToken']}`,
+        Authorization: `Bearer ${this.client["accessToken"]}`,
       },
       body: formData,
     });
@@ -636,13 +640,13 @@ class CustomerDocumentApi {
   }
 
   async deleteDocument(id: number): Promise<{ success: boolean; message: string }> {
-    return this.client['request'](`/customer/documents/${id}`, {
-      method: 'DELETE',
+    return this.client["request"](`/customer/documents/${id}`, {
+      method: "DELETE",
     });
   }
 
   getDownloadUrl(id: number): string {
-    return `${this.client['baseURL']}/customer/documents/${id}/download`;
+    return `${this.client["baseURL"]}/customer/documents/${id}/download`;
   }
 
   async downloadDocument(id: number): Promise<void> {
@@ -650,7 +654,7 @@ class CustomerDocumentApi {
 
     // Create blob and trigger download
     const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = objectUrl;
     link.download = filename;
     document.body.appendChild(link);
@@ -666,28 +670,29 @@ class CustomerDocumentApi {
   }
 
   private async fetchDocumentBlob(id: number): Promise<{ blob: Blob; filename: string }> {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('customerAccessToken') : null;
-    const url = `${this.client['baseURL']}/customer/documents/${id}/download`;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("customerAccessToken") : null;
+    const url = `${this.client["baseURL"]}/customer/documents/${id}/download`;
 
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       },
     });
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error('Please log in to view this document');
+        throw new Error("Please log in to view this document");
       }
       if (response.status === 404) {
-        throw new Error('Document not found');
+        throw new Error("Document not found");
       }
-      throw new Error('Failed to load document. Please try again.');
+      throw new Error("Failed to load document. Please try again.");
     }
 
     // Get filename from Content-Disposition header or use default
-    const contentDisposition = response.headers.get('Content-Disposition');
-    let filename = 'document';
+    const contentDisposition = response.headers.get("Content-Disposition");
+    let filename = "document";
     if (contentDisposition) {
       const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
       if (match) {
@@ -709,7 +714,7 @@ class CustomerSupplierApi {
 
   // Preferred Suppliers
   async getPreferredSuppliers(): Promise<PreferredSupplier[]> {
-    return this.client['request']<PreferredSupplier[]>('/customer/suppliers');
+    return this.client["request"]<PreferredSupplier[]>("/customer/suppliers");
   }
 
   async addPreferredSupplier(data: {
@@ -719,31 +724,31 @@ class CustomerSupplierApi {
     priority?: number;
     notes?: string;
   }): Promise<{ id: number; message: string }> {
-    return this.client['request']('/customer/suppliers', {
-      method: 'POST',
+    return this.client["request"]("/customer/suppliers", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async updatePreferredSupplier(
     id: number,
-    data: { priority?: number; notes?: string }
+    data: { priority?: number; notes?: string },
   ): Promise<{ success: boolean; message: string }> {
-    return this.client['request'](`/customer/suppliers/${id}`, {
-      method: 'PATCH',
+    return this.client["request"](`/customer/suppliers/${id}`, {
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   async removePreferredSupplier(id: number): Promise<{ success: boolean; message: string }> {
-    return this.client['request'](`/customer/suppliers/${id}`, {
-      method: 'DELETE',
+    return this.client["request"](`/customer/suppliers/${id}`, {
+      method: "DELETE",
     });
   }
 
   // Invitations
   async getInvitations(): Promise<SupplierInvitation[]> {
-    return this.client['request']<SupplierInvitation[]>('/customer/suppliers/invitations');
+    return this.client["request"]<SupplierInvitation[]>("/customer/suppliers/invitations");
   }
 
   async createInvitation(data: {
@@ -751,51 +756,53 @@ class CustomerSupplierApi {
     supplierCompanyName?: string;
     message?: string;
   }): Promise<{ id: number; message: string; expiresAt: string }> {
-    return this.client['request']('/customer/suppliers/invite', {
-      method: 'POST',
+    return this.client["request"]("/customer/suppliers/invite", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async cancelInvitation(id: number): Promise<{ success: boolean; message: string }> {
-    return this.client['request'](`/customer/suppliers/invitations/${id}/cancel`, {
-      method: 'POST',
+    return this.client["request"](`/customer/suppliers/invitations/${id}/cancel`, {
+      method: "POST",
     });
   }
 
-  async resendInvitation(id: number): Promise<{ success: boolean; message: string; expiresAt: string }> {
-    return this.client['request'](`/customer/suppliers/invitations/${id}/resend`, {
-      method: 'POST',
+  async resendInvitation(
+    id: number,
+  ): Promise<{ success: boolean; message: string; expiresAt: string }> {
+    return this.client["request"](`/customer/suppliers/invitations/${id}/resend`, {
+      method: "POST",
     });
   }
 
   async supplierDirectory(filters?: DirectoryFilters): Promise<DirectorySupplier[]> {
     const params = new URLSearchParams();
-    if (filters?.search) params.append('search', filters.search);
-    if (filters?.province) params.append('province', filters.province);
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.province) params.append("province", filters.province);
     if (filters?.products) {
-      filters.products.forEach((p) => params.append('products', p));
+      filters.products.forEach((p) => params.append("products", p));
     }
     const queryString = params.toString();
     const url = queryString
       ? `/customer/suppliers/directory?${queryString}`
-      : '/customer/suppliers/directory';
-    return this.client['request']<DirectorySupplier[]>(url);
+      : "/customer/suppliers/directory";
+    return this.client["request"]<DirectorySupplier[]>(url);
   }
 
   async blockSupplier(
     supplierProfileId: number,
     reason?: string,
   ): Promise<{ id: number; message: string }> {
-    return this.client['request'](`/customer/suppliers/${supplierProfileId}/block`, {
-      method: 'POST',
+    return this.client["request"](`/customer/suppliers/${supplierProfileId}/block`, {
+      method: "POST",
       body: JSON.stringify({ reason }),
     });
   }
 
   async unblockSupplier(supplierProfileId: number): Promise<{ success: boolean; message: string }> {
-    return this.client['request'](`/customer/suppliers/${supplierProfileId}/block`, {
-      method: 'DELETE',
+    return this.client["request"](`/customer/suppliers/${supplierProfileId}/block`, {
+      method: "DELETE",
     });
   }
 }
@@ -808,9 +815,9 @@ export const customerEmailApi = {
       const errorText = await response.text();
       try {
         const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.message || 'Verification failed');
+        throw new Error(errorJson.message || "Verification failed");
       } catch {
-        throw new Error('Verification failed');
+        throw new Error("Verification failed");
       }
     }
     return response.json();
@@ -818,17 +825,17 @@ export const customerEmailApi = {
 
   resendVerification: async (email: string): Promise<{ success: boolean; message: string }> => {
     const response = await fetch(`${API_BASE_URL}/customer/auth/resend-verification`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     });
     if (!response.ok) {
       const errorText = await response.text();
       try {
         const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.message || 'Failed to resend verification');
+        throw new Error(errorJson.message || "Failed to resend verification");
       } catch {
-        throw new Error('Failed to resend verification');
+        throw new Error("Failed to resend verification");
       }
     }
     return response.json();

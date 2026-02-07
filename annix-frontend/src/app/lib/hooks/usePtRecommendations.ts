@@ -1,19 +1,20 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ptRatingApi, PtRecommendationResult } from '@/app/lib/api/client';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PtRecommendationResult, ptRatingApi } from "@/app/lib/api/client";
 import {
-  recommendBoltGrade,
-  isStainlessSteelSpec,
   BoltGradeRecommendation,
-} from '@/app/lib/config/rfq/boltGradeRecommendations';
+  isStainlessSteelSpec,
+  recommendBoltGrade,
+} from "@/app/lib/config/rfq/boltGradeRecommendations";
 import {
-  recommendGasket,
   type GasketRecommendation,
-} from '@/app/lib/config/rfq/gasketRecommendations';
+  recommendGasket,
+} from "@/app/lib/config/rfq/gasketRecommendations";
 
 export type { GasketRecommendation };
-import { log } from '@/app/lib/logger';
+
+import { log } from "@/app/lib/logger";
 
 interface UsePtRecommendationsParams {
   standardId: number | undefined;
@@ -88,17 +89,17 @@ export function usePtRecommendations({
       });
 
       setRecommendations(result);
-      log.debug('P-T recommendations fetched', { result });
+      log.debug("P-T recommendations fetched", { result });
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
+      if (err instanceof Error && err.name === "AbortError") {
         return;
       }
-      const message = err instanceof Error ? err.message : 'Failed to fetch recommendations';
+      const message = err instanceof Error ? err.message : "Failed to fetch recommendations";
       setError(message);
-      if (message === 'Backend unavailable') {
-        log.debug('P-T recommendations: backend unavailable');
+      if (message === "Backend unavailable") {
+        log.debug("P-T recommendations: backend unavailable");
       } else {
-        log.warn('P-T recommendations error', { message });
+        log.warn("P-T recommendations error", { message });
       }
     } finally {
       setIsLoading(false);

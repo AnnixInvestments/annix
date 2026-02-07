@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { browserBaseUrl } from '@/lib/api-config';
-import { log } from '@/app/lib/logger';
+import { log } from "@/app/lib/logger";
+import { browserBaseUrl } from "@/lib/api-config";
 
 export interface NixExtractedItem {
   rowNumber: number;
   itemNumber: string;
   description: string;
-  itemType: 'pipe' | 'bend' | 'reducer' | 'tee' | 'flange' | 'expansion_joint' | 'unknown';
+  itemType: "pipe" | "bend" | "reducer" | "tee" | "flange" | "expansion_joint" | "unknown";
   material: string | null;
   materialGrade: string | null;
   diameter: number | null;
-  diameterUnit: 'mm' | 'inch';
+  diameterUnit: "mm" | "inch";
   secondaryDiameter: number | null;
   length: number | null;
   wallThickness: number | null;
   schedule: string | null;
   angle: number | null;
-  flangeConfig: 'none' | 'one_end' | 'both_ends' | 'puddle' | 'blind' | null;
+  flangeConfig: "none" | "one_end" | "both_ends" | "puddle" | "blind" | null;
   quantity: number;
   unit: string;
   confidence: number;
@@ -85,7 +85,7 @@ export interface NixCorrectionPayload {
   userId?: number;
 }
 
-export type RegistrationDocumentType = 'vat' | 'registration' | 'bee';
+export type RegistrationDocumentType = "vat" | "registration" | "bee";
 
 export interface ExpectedCompanyData {
   vatNumber?: string;
@@ -136,7 +136,7 @@ export interface RegistrationVerificationResult {
   allFieldsMatch: boolean;
   autoCorrections: AutoCorrection[];
   warnings: string[];
-  ocrMethod: 'pdf-parse' | 'tesseract' | 'ai' | 'none';
+  ocrMethod: "pdf-parse" | "tesseract" | "ai" | "none";
   processingTimeMs: number;
   mismatchReport?: string;
 }
@@ -177,13 +177,17 @@ export interface RegionExtractionResult {
 }
 
 export const nixApi = {
-  uploadAndProcess: async (file: File, userId?: number, rfqId?: number): Promise<NixProcessResponse> => {
+  uploadAndProcess: async (
+    file: File,
+    userId?: number,
+    rfqId?: number,
+  ): Promise<NixProcessResponse> => {
     if (!file || !(file instanceof File)) {
-      throw new Error('Invalid file object provided to Nix upload');
+      throw new Error("Invalid file object provided to Nix upload");
     }
 
     if (file.size === 0) {
-      throw new Error('Cannot upload empty file to Nix');
+      throw new Error("Cannot upload empty file to Nix");
     }
 
     let fileData: ArrayBuffer;
@@ -191,21 +195,21 @@ export const nixApi = {
       fileData = await file.arrayBuffer();
     } catch {
       throw new Error(
-        `Cannot read "${file.name}". The file may be open in another application (like Excel). Please close it and try again.`
+        `Cannot read "${file.name}". The file may be open in another application (like Excel). Please close it and try again.`,
       );
     }
 
     const blob = new Blob([fileData], { type: file.type });
     const formData = new FormData();
-    formData.append('file', blob, file.name);
-    if (userId) formData.append('userId', userId.toString());
-    if (rfqId) formData.append('rfqId', rfqId.toString());
+    formData.append("file", blob, file.name);
+    if (userId) formData.append("userId", userId.toString());
+    if (rfqId) formData.append("rfqId", rfqId.toString());
 
-    const uploadUrl = '/api/nix/upload';
-    log.debug('[Nix] Uploading via API route:', uploadUrl, 'File:', file.name, 'Size:', file.size);
+    const uploadUrl = "/api/nix/upload";
+    log.debug("[Nix] Uploading via API route:", uploadUrl, "File:", file.name, "Size:", file.size);
 
     const response = await fetch(uploadUrl, {
-      method: 'POST',
+      method: "POST",
       body: formData,
     });
 
@@ -219,12 +223,12 @@ export const nixApi = {
 
   extraction: async (extractionId: number): Promise<NixProcessResponse> => {
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}`, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
 
@@ -238,12 +242,12 @@ export const nixApi = {
 
   pendingClarifications: async (extractionId: number): Promise<NixClarificationDto[]> => {
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/extraction/${extractionId}/clarifications`, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
 
@@ -258,19 +262,19 @@ export const nixApi = {
   submitClarification: async (
     clarificationId: number,
     responseText: string,
-    allowLearning: boolean = true
+    allowLearning: boolean = true,
   ): Promise<{ success: boolean; remainingClarifications: number }> => {
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/clarification`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
         clarificationId,
-        responseType: 'text',
+        responseType: "text",
         responseText,
         allowLearning,
       }),
@@ -286,17 +290,17 @@ export const nixApi = {
 
   skipClarification: async (clarificationId: number): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/clarification`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
         clarificationId,
-        responseType: 'text',
-        responseText: '[SKIPPED]',
+        responseType: "text",
+        responseText: "[SKIPPED]",
         allowLearning: false,
       }),
     });
@@ -311,18 +315,18 @@ export const nixApi = {
 
   submitCorrection: async (correction: NixCorrectionPayload): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     const response = await fetch(`${baseUrl}/nix/learning/correction`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(correction),
     });
 
     if (!response.ok) {
-      log.warn('[Nix] Failed to submit correction:', await response.text());
+      log.warn("[Nix] Failed to submit correction:", await response.text());
       return { success: false };
     }
 
@@ -335,7 +339,7 @@ export const nixApi = {
     expectedData: ExpectedCompanyData,
   ): Promise<RegistrationVerificationResult> => {
     if (!file || !(file instanceof File)) {
-      throw new Error('Invalid file object provided');
+      throw new Error("Invalid file object provided");
     }
 
     let fileData: ArrayBuffer;
@@ -349,19 +353,19 @@ export const nixApi = {
 
     const blob = new Blob([fileData], { type: file.type });
     const formData = new FormData();
-    formData.append('file', blob, file.name);
-    formData.append('documentType', documentType);
-    formData.append('expectedData', JSON.stringify(expectedData));
+    formData.append("file", blob, file.name);
+    formData.append("documentType", documentType);
+    formData.append("expectedData", JSON.stringify(expectedData));
 
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    log.debug('[Nix] Verifying registration document:', file.name, documentType);
+    log.debug("[Nix] Verifying registration document:", file.name, documentType);
 
     const response = await fetch(`${baseUrl}/nix/verify-registration-document`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: formData,
     });
@@ -383,7 +387,7 @@ export const nixApi = {
 
     for (const { file, documentType } of files) {
       if (!file || !(file instanceof File)) {
-        throw new Error('Invalid file object provided');
+        throw new Error("Invalid file object provided");
       }
 
       let fileData: ArrayBuffer;
@@ -396,22 +400,22 @@ export const nixApi = {
       }
 
       const blob = new Blob([fileData], { type: file.type });
-      formData.append('files', blob, file.name);
+      formData.append("files", blob, file.name);
       documentTypes.push(documentType);
     }
 
-    formData.append('documentTypes', JSON.stringify(documentTypes));
-    formData.append('expectedData', JSON.stringify(expectedData));
+    formData.append("documentTypes", JSON.stringify(documentTypes));
+    formData.append("expectedData", JSON.stringify(expectedData));
 
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    log.debug('[Nix] Verifying registration batch:', files.length, 'documents');
+    log.debug("[Nix] Verifying registration batch:", files.length, "documents");
 
     const response = await fetch(`${baseUrl}/nix/verify-registration-batch`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: formData,
     });
@@ -424,12 +428,9 @@ export const nixApi = {
     return response.json();
   },
 
-  documentPages: async (
-    file: File,
-    scale: number = 1.5,
-  ): Promise<{ pages: PdfPageImage[] }> => {
+  documentPages: async (file: File, scale: number = 1.5): Promise<{ pages: PdfPageImage[] }> => {
     if (!file || !(file instanceof File)) {
-      throw new Error('Invalid file object provided');
+      throw new Error("Invalid file object provided");
     }
 
     let fileData: ArrayBuffer;
@@ -443,16 +444,16 @@ export const nixApi = {
 
     const blob = new Blob([fileData], { type: file.type });
     const formData = new FormData();
-    formData.append('file', blob, file.name);
-    formData.append('scale', scale.toString());
+    formData.append("file", blob, file.name);
+    formData.append("scale", scale.toString());
 
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const response = await fetch(`${baseUrl}/nix/document-pages`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: formData,
     });
@@ -471,7 +472,7 @@ export const nixApi = {
     fieldName: string,
   ): Promise<RegionExtractionResult> => {
     if (!file || !(file instanceof File)) {
-      throw new Error('Invalid file object provided');
+      throw new Error("Invalid file object provided");
     }
 
     let fileData: ArrayBuffer;
@@ -485,17 +486,17 @@ export const nixApi = {
 
     const blob = new Blob([fileData], { type: file.type });
     const formData = new FormData();
-    formData.append('file', blob, file.name);
-    formData.append('regionCoordinates', JSON.stringify(regionCoordinates));
-    formData.append('fieldName', fieldName);
+    formData.append("file", blob, file.name);
+    formData.append("regionCoordinates", JSON.stringify(regionCoordinates));
+    formData.append("fieldName", fieldName);
 
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const response = await fetch(`${baseUrl}/nix/extract-from-region`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: formData,
     });
@@ -510,19 +511,19 @@ export const nixApi = {
 
   saveExtractionRegion: async (data: ExtractionRegionData): Promise<{ success: boolean }> => {
     const baseUrl = browserBaseUrl();
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
     const response = await fetch(`${baseUrl}/nix/save-extraction-region`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      log.warn('[Nix] Failed to save extraction region:', await response.text());
+      log.warn("[Nix] Failed to save extraction region:", await response.text());
       return { success: false };
     }
 

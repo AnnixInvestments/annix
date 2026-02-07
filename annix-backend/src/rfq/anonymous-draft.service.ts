@@ -1,21 +1,16 @@
+import * as crypto from "node:crypto";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { InjectRepository } from "@nestjs/typeorm";
+import { LessThan, Repository } from "typeorm";
+import { EmailService } from "../email/email.service";
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
-import { AnonymousDraft } from './entities/anonymous-draft.entity';
-import {
-  SaveAnonymousDraftDto,
-  AnonymousDraftResponseDto,
   AnonymousDraftFullResponseDto,
+  AnonymousDraftResponseDto,
   RecoveryEmailResponseDto,
-} from './dto/anonymous-draft.dto';
-import { EmailService } from '../email/email.service';
+  SaveAnonymousDraftDto,
+} from "./dto/anonymous-draft.dto";
+import { AnonymousDraft } from "./entities/anonymous-draft.entity";
 
 @Injectable()
 export class AnonymousDraftService {
@@ -30,7 +25,7 @@ export class AnonymousDraftService {
   ) {}
 
   private generateRecoveryToken(): string {
-    return crypto.randomBytes(32).toString('hex');
+    return crypto.randomBytes(32).toString("hex");
   }
 
   private calculateExpiryDate(): Date {
@@ -41,9 +36,13 @@ export class AnonymousDraftService {
 
   async saveDraft(dto: SaveAnonymousDraftDto): Promise<AnonymousDraftResponseDto> {
     this.logger.log(`Saving anonymous draft for ${dto.customerEmail}`);
-    this.logger.log(`Received formData keys: ${dto.formData ? Object.keys(dto.formData).join(', ') : 'null'}`);
+    this.logger.log(
+      `Received formData keys: ${dto.formData ? Object.keys(dto.formData).join(", ") : "null"}`,
+    );
     this.logger.log(`Received entries count: ${dto.entries?.length || 0}`);
-    this.logger.log(`Received globalSpecs keys: ${dto.globalSpecs ? Object.keys(dto.globalSpecs).join(', ') : 'null'}`);
+    this.logger.log(
+      `Received globalSpecs keys: ${dto.globalSpecs ? Object.keys(dto.globalSpecs).join(", ") : "null"}`,
+    );
 
     let draft: AnonymousDraft | null = null;
 
@@ -53,7 +52,7 @@ export class AnonymousDraftService {
           customerEmail: dto.customerEmail,
           isClaimed: false,
         },
-        order: { createdAt: 'DESC' },
+        order: { createdAt: "DESC" },
       });
     }
 
@@ -87,7 +86,9 @@ export class AnonymousDraftService {
       });
 
       await this.anonymousDraftRepo.save(draft);
-      this.logger.log(`Created new anonymous draft ${draft.id} for ${dto.customerEmail || 'unknown email'}`);
+      this.logger.log(
+        `Created new anonymous draft ${draft.id} for ${dto.customerEmail || "unknown email"}`,
+      );
     }
 
     return this.mapToResponse(draft);
@@ -101,20 +102,24 @@ export class AnonymousDraftService {
 
     if (!draft) {
       this.logger.warn(`Draft not found for token: ${token.substring(0, 8)}...`);
-      throw new NotFoundException('Draft not found');
+      throw new NotFoundException("Draft not found");
     }
 
     this.logger.log(`Found draft ${draft.id} for ${draft.customerEmail}`);
-    this.logger.log(`Draft formData keys: ${draft.formData ? Object.keys(draft.formData).join(', ') : 'null'}`);
+    this.logger.log(
+      `Draft formData keys: ${draft.formData ? Object.keys(draft.formData).join(", ") : "null"}`,
+    );
     this.logger.log(`Draft entries count: ${draft.entries?.length || 0}`);
-    this.logger.log(`Draft globalSpecs keys: ${draft.globalSpecs ? Object.keys(draft.globalSpecs).join(', ') : 'null'}`);
+    this.logger.log(
+      `Draft globalSpecs keys: ${draft.globalSpecs ? Object.keys(draft.globalSpecs).join(", ") : "null"}`,
+    );
 
     if (new Date() > draft.expiresAt) {
-      throw new NotFoundException('Draft has expired');
+      throw new NotFoundException("Draft has expired");
     }
 
     if (draft.isClaimed) {
-      throw new BadRequestException('This draft has already been claimed by a registered user');
+      throw new BadRequestException("This draft has already been claimed by a registered user");
     }
 
     return this.mapToFullResponse(draft);
@@ -126,24 +131,24 @@ export class AnonymousDraftService {
         customerEmail,
         isClaimed: false,
       },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
     });
 
     if (!draft) {
       return {
-        message: 'If a draft exists for this email, a recovery link has been sent.',
+        message: "If a draft exists for this email, a recovery link has been sent.",
         draftFound: false,
       };
     }
 
     if (new Date() > draft.expiresAt) {
       return {
-        message: 'If a draft exists for this email, a recovery link has been sent.',
+        message: "If a draft exists for this email, a recovery link has been sent.",
         draftFound: false,
       };
     }
 
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const recoveryLink = `${frontendUrl}/rfq?recover=${draft.recoveryToken}`;
 
     const html = `
@@ -156,14 +161,14 @@ export class AnonymousDraftService {
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #2563eb;">Welcome to the Annix RFQ App</h1>
-          <p>Thank you for starting a Request for Quotation${draft.projectName ? ` for "${draft.projectName}"` : ''} with Annix.</p>
+          <p>Thank you for starting a Request for Quotation${draft.projectName ? ` for "${draft.projectName}"` : ""} with Annix.</p>
 
           <p>This is a confirmation that your RFQ progress has been saved. Each time you click <strong>Save Progress</strong>, an email will be sent to you so you can resume from that point directly.</p>
 
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
             <strong>Your RFQ Details:</strong>
             <p style="margin: 5px 0 0 0;">
-              ${draft.projectName ? `<strong>Project:</strong> ${draft.projectName}<br/>` : ''}
+              ${draft.projectName ? `<strong>Project:</strong> ${draft.projectName}<br/>` : ""}
               <strong>Progress:</strong> Step ${draft.currentStep} of 5<br/>
               <strong>Last Saved:</strong> ${draft.updatedAt.toLocaleDateString()}
             </p>
@@ -190,12 +195,12 @@ export class AnonymousDraftService {
     const text = `
       Welcome to the Annix RFQ App
 
-      Thank you for starting a Request for Quotation${draft.projectName ? ` for "${draft.projectName}"` : ''} with Annix.
+      Thank you for starting a Request for Quotation${draft.projectName ? ` for "${draft.projectName}"` : ""} with Annix.
 
       This is a confirmation that your RFQ progress has been saved. Each time you click Save Progress, an email will be sent to you so you can resume from that point directly.
 
       Your RFQ Details:
-      Project: ${draft.projectName || 'Unnamed'}
+      Project: ${draft.projectName || "Unnamed"}
       Progress: Step ${draft.currentStep} of 5
       Last Saved: ${draft.updatedAt.toLocaleDateString()}
 
@@ -208,7 +213,7 @@ export class AnonymousDraftService {
 
     await this.emailService.sendEmail({
       to: customerEmail,
-      subject: 'Welcome to Annix RFQ - Your Progress Has Been Saved',
+      subject: "Welcome to Annix RFQ - Your Progress Has Been Saved",
       html,
       text,
     });
@@ -220,7 +225,7 @@ export class AnonymousDraftService {
     this.logger.log(`Sent recovery email to ${customerEmail} for draft ${draft.id}`);
 
     return {
-      message: 'If a draft exists for this email, a recovery link has been sent.',
+      message: "If a draft exists for this email, a recovery link has been sent.",
       draftFound: true,
     };
   }
@@ -231,11 +236,11 @@ export class AnonymousDraftService {
     });
 
     if (!draft) {
-      throw new NotFoundException('Draft not found');
+      throw new NotFoundException("Draft not found");
     }
 
     if (draft.isClaimed) {
-      throw new BadRequestException('This draft has already been claimed');
+      throw new BadRequestException("This draft has already been claimed");
     }
 
     draft.isClaimed = true;
@@ -245,7 +250,7 @@ export class AnonymousDraftService {
     this.logger.log(`Draft ${draft.id} claimed by user ${userId}`);
 
     return {
-      message: 'Draft claimed successfully',
+      message: "Draft claimed successfully",
       draftId: draft.id,
     };
   }

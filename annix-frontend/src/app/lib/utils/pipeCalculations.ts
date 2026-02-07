@@ -6,8 +6,8 @@
  * and surface area calculations.
  */
 
-import { STEEL_DENSITY_KG_CM3 } from '@/app/lib/config/rfq/constants';
-import { log } from '@/app/lib/logger';
+import { STEEL_DENSITY_KG_CM3 } from "@/app/lib/config/rfq/constants";
+import { log } from "@/app/lib/logger";
 
 /**
  * Calculate weight per meter for carbon steel pipes and fittings
@@ -24,9 +24,9 @@ import { log } from '@/app/lib/logger';
  */
 export function calculatePipeWeightPerMeter(
   outsideDiameterMm: number,
-  wallThicknessMm: number
+  wallThicknessMm: number,
 ): number {
-  return ((outsideDiameterMm - wallThicknessMm) * wallThicknessMm) * 0.02466;
+  return (outsideDiameterMm - wallThicknessMm) * wallThicknessMm * 0.02466;
 }
 
 /**
@@ -42,11 +42,8 @@ export function calculatePipeWeightPerMeter(
  * // 8 * 25.4 * 3 = 609.6mm
  * calculateBendRadius(8, 3) // Returns 609.6
  */
-export function calculateBendRadius(
-  nominalBoreInches: number,
-  bendTypeMultiplier: number
-): number {
-  return (nominalBoreInches * 25.4) * bendTypeMultiplier;
+export function calculateBendRadius(nominalBoreInches: number, bendTypeMultiplier: number): number {
+  return nominalBoreInches * 25.4 * bendTypeMultiplier;
 }
 
 /**
@@ -56,10 +53,32 @@ export function calculateBendRadius(
 export function nbMmToInches(nbMm: number): number {
   // Standard NB conversions
   const conversionMap: Record<number, number> = {
-    15: 0.5, 20: 0.75, 25: 1, 32: 1.25, 40: 1.5, 50: 2, 65: 2.5, 80: 3,
-    100: 4, 125: 5, 150: 6, 200: 8, 250: 10, 300: 12, 350: 14, 400: 16,
-    450: 18, 500: 20, 600: 24, 700: 28, 750: 30, 800: 32, 900: 36, 1000: 40,
-    1050: 42, 1200: 48
+    15: 0.5,
+    20: 0.75,
+    25: 1,
+    32: 1.25,
+    40: 1.5,
+    50: 2,
+    65: 2.5,
+    80: 3,
+    100: 4,
+    125: 5,
+    150: 6,
+    200: 8,
+    250: 10,
+    300: 12,
+    350: 14,
+    400: 16,
+    450: 18,
+    500: 20,
+    600: 24,
+    700: 28,
+    750: 30,
+    800: 32,
+    900: 36,
+    1000: 40,
+    1050: 42,
+    1200: 48,
   };
   return conversionMap[nbMm] || nbMm / 25.4;
 }
@@ -79,10 +98,10 @@ export function nbMmToInches(nbMm: number): number {
  */
 export function calculateExternalPaintArea(
   outsideDiameterMm: number,
-  overallLengthM: number
+  overallLengthM: number,
 ): number {
   const outsideDiameterM = outsideDiameterMm / 1000;
-  return (outsideDiameterM * Math.PI) * overallLengthM;
+  return outsideDiameterM * Math.PI * overallLengthM;
 }
 
 /**
@@ -102,11 +121,11 @@ export function calculateExternalPaintArea(
 export function calculateInternalLiningArea(
   insideDiameterMm: number,
   overallLengthM: number,
-  numberOfFlanges: number = 0
+  numberOfFlanges: number = 0,
 ): number {
   const insideDiameterM = insideDiameterMm / 1000;
-  const effectiveLength = overallLengthM + (numberOfFlanges * 0.1);
-  return (insideDiameterM * Math.PI) * effectiveLength;
+  const effectiveLength = overallLengthM + numberOfFlanges * 0.1;
+  return insideDiameterM * Math.PI * effectiveLength;
 }
 
 /**
@@ -129,24 +148,24 @@ export function calculateRubberWeight(
   thicknessMm: number,
   widthM: number,
   lengthM: number,
-  specificGravity: number
+  specificGravity: number,
 ): number {
   const thicknessM = thicknessMm / 1000;
-  return ((thicknessM * widthM) * lengthM) * specificGravity * 1000;
+  return thicknessM * widthM * lengthM * specificGravity * 1000;
 }
 
 /**
  * Standard rubber specific gravities for common compounds
  */
 export const RUBBER_SPECIFIC_GRAVITIES: Record<string, number> = {
-  'Natural Rubber': 1.05,
-  'Neoprene': 1.25,
-  'Nitrile (NBR)': 1.15,
-  'EPDM': 1.10,
-  'Butyl': 1.15,
-  'Viton': 1.80,
-  'Silicone': 1.15,
-  'Hypalon': 1.25,
+  "Natural Rubber": 1.05,
+  Neoprene: 1.25,
+  "Nitrile (NBR)": 1.15,
+  EPDM: 1.1,
+  Butyl: 1.15,
+  Viton: 1.8,
+  Silicone: 1.15,
+  Hypalon: 1.25,
 };
 
 /**
@@ -154,9 +173,9 @@ export const RUBBER_SPECIFIC_GRAVITIES: Record<string, number> = {
  */
 export function calculateInsideDiameter(
   outsideDiameterMm: number,
-  wallThicknessMm: number
+  wallThicknessMm: number,
 ): number {
-  return outsideDiameterMm - (2 * wallThicknessMm);
+  return outsideDiameterMm - 2 * wallThicknessMm;
 }
 
 // ============================================================================
@@ -170,34 +189,37 @@ export function calculateInsideDiameter(
  * Note: These values are for seamless pipe (E=1.0)
  * For ERW pipe, multiply by joint efficiency factor (typically 0.85)
  */
-export const MATERIAL_ALLOWABLE_STRESS: Record<string, {
-  stressMPa: number;
-  description: string;
-  temperatureLimit: number; // Max temp in °C before significant derating
-}> = {
-  'ASTM_A53_Grade_B': {
+export const MATERIAL_ALLOWABLE_STRESS: Record<
+  string,
+  {
+    stressMPa: number;
+    description: string;
+    temperatureLimit: number; // Max temp in °C before significant derating
+  }
+> = {
+  ASTM_A53_Grade_B: {
     stressMPa: 138,
-    description: 'ASTM A53 Grade B - ERW/Seamless Carbon Steel',
+    description: "ASTM A53 Grade B - ERW/Seamless Carbon Steel",
     temperatureLimit: 200,
   },
-  'ASTM_A106_Grade_B': {
+  ASTM_A106_Grade_B: {
     stressMPa: 138,
-    description: 'ASTM A106 Grade B - Seamless Carbon Steel (High Temp)',
+    description: "ASTM A106 Grade B - Seamless Carbon Steel (High Temp)",
     temperatureLimit: 400,
   },
-  'ASTM_A333_Grade_6': {
+  ASTM_A333_Grade_6: {
     stressMPa: 138,
-    description: 'ASTM A333 Grade 6 - Low Temperature Carbon Steel',
+    description: "ASTM A333 Grade 6 - Low Temperature Carbon Steel",
     temperatureLimit: 200,
   },
-  'ASTM_A312_TP304': {
+  ASTM_A312_TP304: {
     stressMPa: 115,
-    description: 'ASTM A312 TP304 - Stainless Steel',
+    description: "ASTM A312 TP304 - Stainless Steel",
     temperatureLimit: 500,
   },
-  'ASTM_A312_TP316': {
+  ASTM_A312_TP316: {
     stressMPa: 115,
-    description: 'ASTM A312 TP316 - Stainless Steel',
+    description: "ASTM A312 TP316 - Stainless Steel",
     temperatureLimit: 500,
   },
 };
@@ -207,22 +229,24 @@ export const MATERIAL_ALLOWABLE_STRESS: Record<string, {
  * Values are approximate - actual values should be from code tables
  */
 export const TEMPERATURE_DERATING: Record<number, number> = {
-  20: 1.00,   // Ambient - no derating
-  50: 1.00,   // Still within ambient range
-  100: 0.98,  // Slight reduction
-  150: 0.95,  // 5% reduction
-  200: 0.92,  // 8% reduction
-  250: 0.88,  // 12% reduction
-  300: 0.83,  // 17% reduction
-  350: 0.77,  // 23% reduction
-  400: 0.70,  // 30% reduction
+  20: 1.0, // Ambient - no derating
+  50: 1.0, // Still within ambient range
+  100: 0.98, // Slight reduction
+  150: 0.95, // 5% reduction
+  200: 0.92, // 8% reduction
+  250: 0.88, // 12% reduction
+  300: 0.83, // 17% reduction
+  350: 0.77, // 23% reduction
+  400: 0.7, // 30% reduction
 };
 
 /**
  * Get temperature derating factor with interpolation
  */
 export function temperatureDerating(temperatureC: number): number {
-  const temps = Object.keys(TEMPERATURE_DERATING).map(Number).sort((a, b) => a - b);
+  const temps = Object.keys(TEMPERATURE_DERATING)
+    .map(Number)
+    .sort((a, b) => a - b);
 
   if (temperatureC <= temps[0]) return TEMPERATURE_DERATING[temps[0]];
   if (temperatureC >= temps[temps.length - 1]) return TEMPERATURE_DERATING[temps[temps.length - 1]];
@@ -231,7 +255,10 @@ export function temperatureDerating(temperatureC: number): number {
   for (let i = 0; i < temps.length - 1; i++) {
     if (temperatureC >= temps[i] && temperatureC <= temps[i + 1]) {
       const ratio = (temperatureC - temps[i]) / (temps[i + 1] - temps[i]);
-      return TEMPERATURE_DERATING[temps[i]] + ratio * (TEMPERATURE_DERATING[temps[i + 1]] - TEMPERATURE_DERATING[temps[i]]);
+      return (
+        TEMPERATURE_DERATING[temps[i]] +
+        ratio * (TEMPERATURE_DERATING[temps[i + 1]] - TEMPERATURE_DERATING[temps[i]])
+      );
     }
   }
 
@@ -266,12 +293,13 @@ export function temperatureDerating(temperatureC: number): number {
 export function calculateMaxAllowablePressure(
   outsideDiameterMm: number,
   wallThicknessMm: number,
-  materialCode: string = 'ASTM_A106_Grade_B',
+  materialCode: string = "ASTM_A106_Grade_B",
   temperatureC: number = 20,
   jointEfficiency: number = 1.0,
-  corrosionAllowanceMm: number = 0
+  corrosionAllowanceMm: number = 0,
 ): number {
-  const material = MATERIAL_ALLOWABLE_STRESS[materialCode] || MATERIAL_ALLOWABLE_STRESS['ASTM_A106_Grade_B'];
+  const material =
+    MATERIAL_ALLOWABLE_STRESS[materialCode] || MATERIAL_ALLOWABLE_STRESS["ASTM_A106_Grade_B"];
   const tempDerating = temperatureDerating(temperatureC);
 
   // Effective wall thickness after corrosion allowance
@@ -309,13 +337,14 @@ export function calculateMaxAllowablePressure(
 export function calculateMinWallThickness(
   outsideDiameterMm: number,
   pressureBar: number,
-  materialCode: string = 'ASTM_A106_Grade_B',
+  materialCode: string = "ASTM_A106_Grade_B",
   temperatureC: number = 20,
   jointEfficiency: number = 1.0,
   corrosionAllowanceMm: number = 0,
-  safetyFactor: number = 1.0
+  safetyFactor: number = 1.0,
 ): number {
-  const material = MATERIAL_ALLOWABLE_STRESS[materialCode] || MATERIAL_ALLOWABLE_STRESS['ASTM_A106_Grade_B'];
+  const material =
+    MATERIAL_ALLOWABLE_STRESS[materialCode] || MATERIAL_ALLOWABLE_STRESS["ASTM_A106_Grade_B"];
   const tempDerating = temperatureDerating(temperatureC);
 
   // Derated allowable stress
@@ -325,7 +354,8 @@ export function calculateMinWallThickness(
   const pressureMPa = pressureBar * 0.1;
 
   // ASME B31.3 wall thickness formula: t = (P × OD) / (2 × S × E)
-  const minWT = (pressureMPa * outsideDiameterMm * safetyFactor) / (2 * allowableStress * jointEfficiency);
+  const minWT =
+    (pressureMPa * outsideDiameterMm * safetyFactor) / (2 * allowableStress * jointEfficiency);
 
   // Add corrosion allowance
   return minWT + corrosionAllowanceMm;
@@ -345,8 +375,8 @@ export function validateScheduleForPressure(
   outsideDiameterMm: number,
   wallThicknessMm: number,
   workingPressureBar: number,
-  materialCode: string = 'ASTM_A106_Grade_B',
-  temperatureC: number = 20
+  materialCode: string = "ASTM_A106_Grade_B",
+  temperatureC: number = 20,
 ): {
   isAcceptable: boolean;
   maxAllowablePressure: number;
@@ -358,14 +388,14 @@ export function validateScheduleForPressure(
     outsideDiameterMm,
     wallThicknessMm,
     materialCode,
-    temperatureC
+    temperatureC,
   );
 
   const minWT = calculateMinWallThickness(
     outsideDiameterMm,
     workingPressureBar,
     materialCode,
-    temperatureC
+    temperatureC,
   );
 
   const safetyMargin = maxPressure / workingPressureBar;
@@ -408,9 +438,9 @@ export function findRecommendedSchedule(
   schedules: Array<{ scheduleDesignation: string; wallThicknessMm: number }>,
   outsideDiameterMm: number,
   workingPressureBar: number,
-  materialCode: string = 'ASTM_A106_Grade_B',
+  materialCode: string = "ASTM_A106_Grade_B",
   temperatureC: number = 20,
-  minSafetyFactor: number = 1.2
+  minSafetyFactor: number = 1.2,
 ): {
   schedule: { scheduleDesignation: string; wallThicknessMm: number } | null;
   validation: ReturnType<typeof validateScheduleForPressure> | null;
@@ -426,22 +456,24 @@ export function findRecommendedSchedule(
     temperatureC,
     1.0,
     0,
-    minSafetyFactor
+    minSafetyFactor,
   );
 
   // Find all eligible schedules that meet minimum wall thickness
   const eligibleSchedules = schedules
-    .map(schedule => ({
+    .map((schedule) => ({
       schedule,
       validation: validateScheduleForPressure(
         outsideDiameterMm,
         schedule.wallThicknessMm,
         workingPressureBar,
         materialCode,
-        temperatureC
+        temperatureC,
       ),
     }))
-    .filter(item => item.validation.isAcceptable && item.validation.safetyMargin >= minSafetyFactor)
+    .filter(
+      (item) => item.validation.isAcceptable && item.validation.safetyMargin >= minSafetyFactor,
+    )
     .sort((a, b) => a.schedule.wallThicknessMm - b.schedule.wallThicknessMm);
 
   if (eligibleSchedules.length === 0) {
@@ -461,12 +493,40 @@ export function findRecommendedSchedule(
 }
 
 const NB_TO_OD_INTERNAL: Record<number, number> = {
-  15: 21.3, 20: 26.7, 25: 33.4, 32: 42.2, 40: 48.3, 50: 60.3, 65: 73.0, 80: 88.9,
-  100: 114.3, 125: 139.7, 150: 168.3, 200: 219.1, 250: 273.0, 300: 323.9,
-  350: 355.6, 400: 406.4, 450: 457.2, 500: 508.0, 600: 609.6, 700: 711.2,
-  750: 762.0, 800: 812.8, 900: 914.4, 1000: 1016.0, 1050: 1066.8, 1200: 1219.2,
-  1400: 1422.4, 1500: 1524.0, 1600: 1625.6, 1800: 1828.8, 2000: 2032.0,
-  2200: 2235.2, 2400: 2438.4, 2500: 2540.0
+  15: 21.3,
+  20: 26.7,
+  25: 33.4,
+  32: 42.2,
+  40: 48.3,
+  50: 60.3,
+  65: 73.0,
+  80: 88.9,
+  100: 114.3,
+  125: 139.7,
+  150: 168.3,
+  200: 219.1,
+  250: 273.0,
+  300: 323.9,
+  350: 355.6,
+  400: 406.4,
+  450: 457.2,
+  500: 508.0,
+  600: 609.6,
+  700: 711.2,
+  750: 762.0,
+  800: 812.8,
+  900: 914.4,
+  1000: 1016.0,
+  1050: 1066.8,
+  1200: 1219.2,
+  1400: 1422.4,
+  1500: 1524.0,
+  1600: 1625.6,
+  1800: 1828.8,
+  2000: 2032.0,
+  2200: 2235.2,
+  2400: 2438.4,
+  2500: 2540.0,
 };
 
 /**
@@ -488,9 +548,9 @@ export function getMinWallThicknessForNB(
   nominalBoreMm: number,
   pressureBar: number,
   temperatureC: number = 20,
-  materialCode: string = 'ASTM_A106_Grade_B'
+  materialCode: string = "ASTM_A106_Grade_B",
 ): number {
-  const od = NB_TO_OD_INTERNAL[nominalBoreMm] || (nominalBoreMm * 1.05);
+  const od = NB_TO_OD_INTERNAL[nominalBoreMm] || nominalBoreMm * 1.05;
   return calculateMinWallThickness(od, pressureBar, materialCode, temperatureC, 1.0, 0, 1.2);
 }
 
@@ -520,15 +580,15 @@ export function getMinWallThicknessForNB(
  * Joint efficiency factors per ASME B31.3 Table A-1B
  */
 export const JOINT_EFFICIENCY: Record<string, number> = {
-  'Seamless': 1.0,
-  'Electric Fusion Welded': 0.95,
-  'Electric Resistance Welded': 0.85,
-  'Furnace Butt Welded': 0.60,
+  Seamless: 1.0,
+  "Electric Fusion Welded": 0.95,
+  "Electric Resistance Welded": 0.85,
+  "Furnace Butt Welded": 0.6,
   // Shorthand codes
-  'SMLS': 1.0,
-  'EFW': 0.95,
-  'ERW': 0.85,
-  'FBW': 0.60,
+  SMLS: 1.0,
+  EFW: 0.95,
+  ERW: 0.85,
+  FBW: 0.6,
 };
 
 /**
@@ -537,13 +597,13 @@ export const JOINT_EFFICIENCY: Record<string, number> = {
  */
 export const TEMPERATURE_COEFFICIENT_Y: Record<string, number> = {
   // Temperature ranges in °F for ferritic steels
-  'below_900F': 0.4,   // Below 482°C
-  '950F': 0.5,         // 510°C
-  '1050F_and_above': 0.7,  // 566°C and above
+  below_900F: 0.4, // Below 482°C
+  "950F": 0.5, // 510°C
+  "1050F_and_above": 0.7, // 566°C and above
   // Celsius equivalents
-  'below_482C': 0.4,
-  '510C': 0.5,
-  '566C_and_above': 0.7,
+  below_482C: 0.4,
+  "510C": 0.5,
+  "566C_and_above": 0.7,
 };
 
 /**
@@ -562,150 +622,153 @@ export function getYCoefficient(temperatureC: number): number {
  *
  * Note: These are for seamless pipe (E=1.0). Apply joint efficiency for welded.
  */
-export const ASME_MATERIAL_STRESS_TABLES: Record<string, {
-  type: string;
-  maxTempF: number;
-  maxTempC: number;
-  allowableStressKsi: Record<string, number>;
-  allowableStressMPa?: Record<string, number>;
-}> = {
-  'ASTM_A106_Gr_B': {
-    type: 'Carbon Steel',
+export const ASME_MATERIAL_STRESS_TABLES: Record<
+  string,
+  {
+    type: string;
+    maxTempF: number;
+    maxTempC: number;
+    allowableStressKsi: Record<string, number>;
+    allowableStressMPa?: Record<string, number>;
+  }
+> = {
+  ASTM_A106_Gr_B: {
+    type: "Carbon Steel",
     maxTempF: 800,
     maxTempC: 427,
     allowableStressKsi: {
-      '-20_to_400': 20.0,
-      '500': 19.2,
-      '600': 17.5,
-      '650': 16.6,
-      '700': 15.7,
-      '750': 13.0,
-      '800': 9.3,
+      "-20_to_400": 20.0,
+      "500": 19.2,
+      "600": 17.5,
+      "650": 16.6,
+      "700": 15.7,
+      "750": 13.0,
+      "800": 9.3,
     },
   },
-  'ASTM_A53_Gr_B': {
-    type: 'Carbon Steel',
+  ASTM_A53_Gr_B: {
+    type: "Carbon Steel",
     maxTempF: 750,
     maxTempC: 400,
     allowableStressKsi: {
-      '-20_to_400': 20.0,
-      '500': 19.2,
-      '600': 17.5,
-      '650': 16.6,
-      '700': 15.7,
-      '750': 13.0,
+      "-20_to_400": 20.0,
+      "500": 19.2,
+      "600": 17.5,
+      "650": 16.6,
+      "700": 15.7,
+      "750": 13.0,
     },
   },
-  'API_5L_Gr_B': {
-    type: 'Line Pipe Carbon Steel',
+  API_5L_Gr_B: {
+    type: "Line Pipe Carbon Steel",
     maxTempF: 750,
     maxTempC: 400,
     allowableStressKsi: {
-      '-20_to_400': 20.0,
-      '500': 19.2,
-      '600': 17.5,
-      '650': 16.6,
-      '700': 15.7,
-      '750': 13.0,
+      "-20_to_400": 20.0,
+      "500": 19.2,
+      "600": 17.5,
+      "650": 16.6,
+      "700": 15.7,
+      "750": 13.0,
     },
   },
-  'ASTM_A333_Gr_6': {
-    type: 'Low-Temp Carbon Steel',
+  ASTM_A333_Gr_6: {
+    type: "Low-Temp Carbon Steel",
     maxTempF: 750,
     maxTempC: 400,
     allowableStressKsi: {
-      '-50_to_400': 20.0,
-      '500': 19.2,
-      '600': 17.5,
-      '650': 16.6,
-      '700': 15.7,
-      '750': 13.0,
+      "-50_to_400": 20.0,
+      "500": 19.2,
+      "600": 17.5,
+      "650": 16.6,
+      "700": 15.7,
+      "750": 13.0,
     },
   },
-  'ASTM_A312_TP304': {
-    type: 'Stainless Steel',
+  ASTM_A312_TP304: {
+    type: "Stainless Steel",
     maxTempF: 1500,
     maxTempC: 816,
     allowableStressKsi: {
-      '-20_to_100': 20.0,
-      '200': 20.0,
-      '300': 18.9,
-      '400': 17.5,
-      '500': 16.3,
-      '600': 15.3,
-      '700': 14.6,
-      '800': 14.0,
-      '900': 13.5,
-      '1000': 9.7,
-      '1100': 6.0,
-      '1200': 3.7,
-      '1300': 2.4,
-      '1400': 1.6,
-      '1500': 1.1,
+      "-20_to_100": 20.0,
+      "200": 20.0,
+      "300": 18.9,
+      "400": 17.5,
+      "500": 16.3,
+      "600": 15.3,
+      "700": 14.6,
+      "800": 14.0,
+      "900": 13.5,
+      "1000": 9.7,
+      "1100": 6.0,
+      "1200": 3.7,
+      "1300": 2.4,
+      "1400": 1.6,
+      "1500": 1.1,
     },
   },
-  'ASTM_A312_TP316': {
-    type: 'Stainless Steel',
+  ASTM_A312_TP316: {
+    type: "Stainless Steel",
     maxTempF: 1500,
     maxTempC: 816,
     allowableStressKsi: {
-      '-20_to_100': 20.0,
-      '200': 20.0,
-      '300': 20.0,
-      '400': 18.9,
-      '500': 17.9,
-      '600': 17.0,
-      '700': 16.4,
-      '800': 15.9,
-      '900': 15.4,
-      '1000': 12.4,
-      '1100': 8.1,
-      '1200': 5.2,
-      '1300': 3.4,
-      '1400': 2.2,
-      '1500': 1.4,
+      "-20_to_100": 20.0,
+      "200": 20.0,
+      "300": 20.0,
+      "400": 18.9,
+      "500": 17.9,
+      "600": 17.0,
+      "700": 16.4,
+      "800": 15.9,
+      "900": 15.4,
+      "1000": 12.4,
+      "1100": 8.1,
+      "1200": 5.2,
+      "1300": 3.4,
+      "1400": 2.2,
+      "1500": 1.4,
     },
   },
-  'ASTM_A335_P11': {
-    type: 'Alloy Steel (1.25Cr-0.5Mo)',
+  ASTM_A335_P11: {
+    type: "Alloy Steel (1.25Cr-0.5Mo)",
     maxTempF: 1200,
     maxTempC: 649,
     allowableStressKsi: {
-      '-20_to_100': 20.0,
-      '200': 20.0,
-      '300': 19.3,
-      '400': 18.7,
-      '500': 18.3,
-      '600': 18.0,
-      '700': 17.7,
-      '800': 17.2,
-      '900': 16.3,
-      '1000': 14.3,
-      '1050': 12.8,
-      '1100': 10.7,
-      '1150': 8.3,
-      '1200': 6.3,
+      "-20_to_100": 20.0,
+      "200": 20.0,
+      "300": 19.3,
+      "400": 18.7,
+      "500": 18.3,
+      "600": 18.0,
+      "700": 17.7,
+      "800": 17.2,
+      "900": 16.3,
+      "1000": 14.3,
+      "1050": 12.8,
+      "1100": 10.7,
+      "1150": 8.3,
+      "1200": 6.3,
     },
   },
-  'ASTM_A335_P22': {
-    type: 'Alloy Steel (2.25Cr-1Mo)',
+  ASTM_A335_P22: {
+    type: "Alloy Steel (2.25Cr-1Mo)",
     maxTempF: 1200,
     maxTempC: 649,
     allowableStressKsi: {
-      '-20_to_100': 20.0,
-      '200': 20.0,
-      '300': 19.3,
-      '400': 18.7,
-      '500': 18.3,
-      '600': 18.0,
-      '700': 17.7,
-      '800': 17.2,
-      '900': 16.3,
-      '1000': 14.3,
-      '1050': 12.8,
-      '1100': 10.7,
-      '1150': 8.3,
-      '1200': 6.3,
+      "-20_to_100": 20.0,
+      "200": 20.0,
+      "300": 19.3,
+      "400": 18.7,
+      "500": 18.3,
+      "600": 18.0,
+      "700": 17.7,
+      "800": 17.2,
+      "900": 16.3,
+      "1000": 14.3,
+      "1050": 12.8,
+      "1100": 10.7,
+      "1150": 8.3,
+      "1200": 6.3,
     },
   },
 };
@@ -715,67 +778,66 @@ export const ASME_MATERIAL_STRESS_TABLES: Record<string, {
  */
 export const MATERIAL_CODE_MAPPING: Record<string, string> = {
   // Standard names to internal codes
-  'ASTM A106 Grade B': 'ASTM_A106_Gr_B',
-  'ASTM A106 Gr B': 'ASTM_A106_Gr_B',
-  'A106 Gr B': 'ASTM_A106_Gr_B',
-  'A106B': 'ASTM_A106_Gr_B',
-  'ASTM A53 Grade B': 'ASTM_A53_Gr_B',
-  'ASTM A53 Gr B': 'ASTM_A53_Gr_B',
-  'A53 Gr B': 'ASTM_A53_Gr_B',
-  'A53B': 'ASTM_A53_Gr_B',
-  'API 5L Grade B': 'API_5L_Gr_B',
-  'API 5L Gr B': 'API_5L_Gr_B',
-  '5L Gr B': 'API_5L_Gr_B',
-  'ASTM A333 Grade 6': 'ASTM_A333_Gr_6',
-  'ASTM A333 Gr 6': 'ASTM_A333_Gr_6',
-  'A333 Gr 6': 'ASTM_A333_Gr_6',
-  'ASTM A312 TP304': 'ASTM_A312_TP304',
-  'A312 TP304': 'ASTM_A312_TP304',
-  '304 SS': 'ASTM_A312_TP304',
-  '304SS': 'ASTM_A312_TP304',
-  'ASTM A312 TP316': 'ASTM_A312_TP316',
-  'A312 TP316': 'ASTM_A312_TP316',
-  '316 SS': 'ASTM_A312_TP316',
-  '316SS': 'ASTM_A312_TP316',
-  'ASTM A335 P11': 'ASTM_A335_P11',
-  'A335 P11': 'ASTM_A335_P11',
-  'P11': 'ASTM_A335_P11',
-  'ASTM A335 P22': 'ASTM_A335_P22',
-  'A335 P22': 'ASTM_A335_P22',
-  'P22': 'ASTM_A335_P22',
+  "ASTM A106 Grade B": "ASTM_A106_Gr_B",
+  "ASTM A106 Gr B": "ASTM_A106_Gr_B",
+  "A106 Gr B": "ASTM_A106_Gr_B",
+  A106B: "ASTM_A106_Gr_B",
+  "ASTM A53 Grade B": "ASTM_A53_Gr_B",
+  "ASTM A53 Gr B": "ASTM_A53_Gr_B",
+  "A53 Gr B": "ASTM_A53_Gr_B",
+  A53B: "ASTM_A53_Gr_B",
+  "API 5L Grade B": "API_5L_Gr_B",
+  "API 5L Gr B": "API_5L_Gr_B",
+  "5L Gr B": "API_5L_Gr_B",
+  "ASTM A333 Grade 6": "ASTM_A333_Gr_6",
+  "ASTM A333 Gr 6": "ASTM_A333_Gr_6",
+  "A333 Gr 6": "ASTM_A333_Gr_6",
+  "ASTM A312 TP304": "ASTM_A312_TP304",
+  "A312 TP304": "ASTM_A312_TP304",
+  "304 SS": "ASTM_A312_TP304",
+  "304SS": "ASTM_A312_TP304",
+  "ASTM A312 TP316": "ASTM_A312_TP316",
+  "A312 TP316": "ASTM_A312_TP316",
+  "316 SS": "ASTM_A312_TP316",
+  "316SS": "ASTM_A312_TP316",
+  "ASTM A335 P11": "ASTM_A335_P11",
+  "A335 P11": "ASTM_A335_P11",
+  P11: "ASTM_A335_P11",
+  "ASTM A335 P22": "ASTM_A335_P22",
+  "A335 P22": "ASTM_A335_P22",
+  P22: "ASTM_A335_P22",
   // Legacy codes
-  'ASTM_A53_Grade_B': 'ASTM_A53_Gr_B',
-  'ASTM_A106_Grade_B': 'ASTM_A106_Gr_B',
-  'ASTM_A333_Grade_6': 'ASTM_A333_Gr_6',
+  ASTM_A53_Grade_B: "ASTM_A53_Gr_B",
+  ASTM_A106_Grade_B: "ASTM_A106_Gr_B",
+  ASTM_A333_Grade_6: "ASTM_A333_Gr_6",
 };
 
 /**
  * Get allowable stress for material at temperature (in ksi)
  * Uses interpolation for temperatures between table values
  */
-export function getAllowableStressKsi(
-  materialCode: string,
-  temperatureF: number
-): number {
+export function getAllowableStressKsi(materialCode: string, temperatureF: number): number {
   // Normalize material code
   const normalizedCode = MATERIAL_CODE_MAPPING[materialCode] || materialCode;
   const material = ASME_MATERIAL_STRESS_TABLES[normalizedCode];
 
   if (!material) {
     log.warn(`Material ${materialCode} not found, using ASTM A106 Gr B defaults`);
-    return getAllowableStressKsi('ASTM_A106_Gr_B', temperatureF);
+    return getAllowableStressKsi("ASTM_A106_Gr_B", temperatureF);
   }
 
   const stressTable = material.allowableStressKsi;
 
   // Parse temperature ranges and find applicable stress
-  const entries = Object.entries(stressTable).map(([key, value]) => {
-    if (key.includes('_to_')) {
-      const [low, high] = key.split('_to_').map(Number);
-      return { low, high, value };
-    }
-    return { low: Number(key), high: Number(key), value };
-  }).sort((a, b) => a.high - b.high);
+  const entries = Object.entries(stressTable)
+    .map(([key, value]) => {
+      if (key.includes("_to_")) {
+        const [low, high] = key.split("_to_").map(Number);
+        return { low, high, value };
+      }
+      return { low: Number(key), high: Number(key), value };
+    })
+    .sort((a, b) => a.high - b.high);
 
   // Find matching range or interpolate
   for (let i = 0; i < entries.length; i++) {
@@ -803,12 +865,9 @@ export function getAllowableStressKsi(
 /**
  * Get allowable stress for material at temperature (in MPa)
  */
-export function getAllowableStressMPa(
-  materialCode: string,
-  temperatureC: number
-): number {
+export function getAllowableStressMPa(materialCode: string, temperatureC: number): number {
   // Convert Celsius to Fahrenheit
-  const temperatureF = (temperatureC * 9/5) + 32;
+  const temperatureF = (temperatureC * 9) / 5 + 32;
   // Get stress in ksi and convert to MPa (1 ksi = 6.895 MPa)
   return getAllowableStressKsi(materialCode, temperatureF) * 6.895;
 }
@@ -818,385 +877,494 @@ export function getAllowableStressMPa(
  * Wall thickness in inches, OD in inches
  */
 export interface PipeDimension {
-  npsIn: string;      // NPS in inches (e.g., "20" for NPS 20)
-  nbMm: number;       // Nominal bore in mm
-  odIn: number;       // Outside diameter in inches
-  odMm: number;       // Outside diameter in mm
-  schedulesWallIn: Record<string, number>;  // Schedule -> wall thickness in inches
+  npsIn: string; // NPS in inches (e.g., "20" for NPS 20)
+  nbMm: number; // Nominal bore in mm
+  odIn: number; // Outside diameter in inches
+  odMm: number; // Outside diameter in mm
+  schedulesWallIn: Record<string, number>; // Schedule -> wall thickness in inches
 }
 
 export const PIPE_DIMENSIONS: PipeDimension[] = [
   {
-    npsIn: '1/2',
+    npsIn: "1/2",
     nbMm: 15,
     odIn: 0.84,
     odMm: 21.3,
     schedulesWallIn: {
-      '5': 0.065, '5S': 0.065,
-      '10': 0.083, '10S': 0.083,
-      '30': 0.095,
-      '40': 0.109, '40S': 0.109, 'STD': 0.109,
-      '80': 0.147, '80S': 0.147, 'XS': 0.147,
-      '160': 0.188,
-      'XXS': 0.294,
+      "5": 0.065,
+      "5S": 0.065,
+      "10": 0.083,
+      "10S": 0.083,
+      "30": 0.095,
+      "40": 0.109,
+      "40S": 0.109,
+      STD: 0.109,
+      "80": 0.147,
+      "80S": 0.147,
+      XS: 0.147,
+      "160": 0.188,
+      XXS: 0.294,
     },
   },
   {
-    npsIn: '3/4',
+    npsIn: "3/4",
     nbMm: 20,
     odIn: 1.05,
     odMm: 26.7,
     schedulesWallIn: {
-      '5': 0.065, '5S': 0.065,
-      '10': 0.083, '10S': 0.083,
-      '30': 0.095,
-      '40': 0.113, '40S': 0.113, 'STD': 0.113,
-      '80': 0.154, '80S': 0.154, 'XS': 0.154,
-      '160': 0.219,
-      'XXS': 0.308,
+      "5": 0.065,
+      "5S": 0.065,
+      "10": 0.083,
+      "10S": 0.083,
+      "30": 0.095,
+      "40": 0.113,
+      "40S": 0.113,
+      STD: 0.113,
+      "80": 0.154,
+      "80S": 0.154,
+      XS: 0.154,
+      "160": 0.219,
+      XXS: 0.308,
     },
   },
   {
-    npsIn: '1',
+    npsIn: "1",
     nbMm: 25,
     odIn: 1.315,
     odMm: 33.4,
     schedulesWallIn: {
-      '5': 0.065, '5S': 0.065,
-      '10': 0.109, '10S': 0.109,
-      '30': 0.114,
-      '40': 0.133, '40S': 0.133, 'STD': 0.133,
-      '80': 0.179, '80S': 0.179, 'XS': 0.179,
-      '160': 0.25,
-      'XXS': 0.358,
+      "5": 0.065,
+      "5S": 0.065,
+      "10": 0.109,
+      "10S": 0.109,
+      "30": 0.114,
+      "40": 0.133,
+      "40S": 0.133,
+      STD: 0.133,
+      "80": 0.179,
+      "80S": 0.179,
+      XS: 0.179,
+      "160": 0.25,
+      XXS: 0.358,
     },
   },
   {
-    npsIn: '1 1/4',
+    npsIn: "1 1/4",
     nbMm: 32,
     odIn: 1.66,
     odMm: 42.2,
     schedulesWallIn: {
-      '5': 0.065, '5S': 0.065,
-      '10': 0.109, '10S': 0.109,
-      '30': 0.117,
-      '40': 0.14, '40S': 0.14, 'STD': 0.14,
-      '80': 0.191, '80S': 0.191, 'XS': 0.191,
-      '160': 0.25,
-      'XXS': 0.382,
+      "5": 0.065,
+      "5S": 0.065,
+      "10": 0.109,
+      "10S": 0.109,
+      "30": 0.117,
+      "40": 0.14,
+      "40S": 0.14,
+      STD: 0.14,
+      "80": 0.191,
+      "80S": 0.191,
+      XS: 0.191,
+      "160": 0.25,
+      XXS: 0.382,
     },
   },
   {
-    npsIn: '1 1/2',
+    npsIn: "1 1/2",
     nbMm: 40,
     odIn: 1.9,
     odMm: 48.3,
     schedulesWallIn: {
-      '5': 0.065, '5S': 0.065,
-      '10': 0.109, '10S': 0.109,
-      '30': 0.125,
-      '40': 0.145, '40S': 0.145, 'STD': 0.145,
-      '80': 0.2, '80S': 0.2, 'XS': 0.2,
-      '160': 0.281,
-      'XXS': 0.4,
+      "5": 0.065,
+      "5S": 0.065,
+      "10": 0.109,
+      "10S": 0.109,
+      "30": 0.125,
+      "40": 0.145,
+      "40S": 0.145,
+      STD: 0.145,
+      "80": 0.2,
+      "80S": 0.2,
+      XS: 0.2,
+      "160": 0.281,
+      XXS: 0.4,
     },
   },
   {
-    npsIn: '2',
+    npsIn: "2",
     nbMm: 50,
     odIn: 2.375,
     odMm: 60.3,
     schedulesWallIn: {
-      '5': 0.065, '5S': 0.065,
-      '10': 0.109, '10S': 0.109,
-      '30': 0.125,
-      '40': 0.154, '40S': 0.154, 'STD': 0.154,
-      '80': 0.218, '80S': 0.218, 'XS': 0.218,
-      '160': 0.344,
-      'XXS': 0.436,
+      "5": 0.065,
+      "5S": 0.065,
+      "10": 0.109,
+      "10S": 0.109,
+      "30": 0.125,
+      "40": 0.154,
+      "40S": 0.154,
+      STD: 0.154,
+      "80": 0.218,
+      "80S": 0.218,
+      XS: 0.218,
+      "160": 0.344,
+      XXS: 0.436,
     },
   },
   {
-    npsIn: '2 1/2',
+    npsIn: "2 1/2",
     nbMm: 65,
     odIn: 2.875,
     odMm: 73.0,
     schedulesWallIn: {
-      '5': 0.083, '5S': 0.083,
-      '10': 0.12, '10S': 0.12,
-      '30': 0.188,
-      '40': 0.203, '40S': 0.203, 'STD': 0.203,
-      '80': 0.276, '80S': 0.276, 'XS': 0.276,
-      '160': 0.375,
-      'XXS': 0.552,
+      "5": 0.083,
+      "5S": 0.083,
+      "10": 0.12,
+      "10S": 0.12,
+      "30": 0.188,
+      "40": 0.203,
+      "40S": 0.203,
+      STD: 0.203,
+      "80": 0.276,
+      "80S": 0.276,
+      XS: 0.276,
+      "160": 0.375,
+      XXS: 0.552,
     },
   },
   {
-    npsIn: '3',
+    npsIn: "3",
     nbMm: 80,
     odIn: 3.5,
     odMm: 88.9,
     schedulesWallIn: {
-      '5': 0.083, '5S': 0.083,
-      '10': 0.12, '10S': 0.12,
-      '30': 0.188,
-      '40': 0.216, '40S': 0.216, 'STD': 0.216,
-      '80': 0.3, '80S': 0.3, 'XS': 0.3,
-      '160': 0.438,
-      'XXS': 0.6,
+      "5": 0.083,
+      "5S": 0.083,
+      "10": 0.12,
+      "10S": 0.12,
+      "30": 0.188,
+      "40": 0.216,
+      "40S": 0.216,
+      STD: 0.216,
+      "80": 0.3,
+      "80S": 0.3,
+      XS: 0.3,
+      "160": 0.438,
+      XXS: 0.6,
     },
   },
   {
-    npsIn: '4',
+    npsIn: "4",
     nbMm: 100,
     odIn: 4.5,
     odMm: 114.3,
     schedulesWallIn: {
-      '5': 0.083, '5S': 0.083,
-      '10': 0.12, '10S': 0.12,
-      '30': 0.188,
-      '40': 0.237, '40S': 0.237, 'STD': 0.237,
-      '80': 0.337, '80S': 0.337, 'XS': 0.337,
-      '120': 0.438,
-      '160': 0.531,
-      'XXS': 0.674,
+      "5": 0.083,
+      "5S": 0.083,
+      "10": 0.12,
+      "10S": 0.12,
+      "30": 0.188,
+      "40": 0.237,
+      "40S": 0.237,
+      STD: 0.237,
+      "80": 0.337,
+      "80S": 0.337,
+      XS: 0.337,
+      "120": 0.438,
+      "160": 0.531,
+      XXS: 0.674,
     },
   },
   {
-    npsIn: '5',
+    npsIn: "5",
     nbMm: 125,
     odIn: 5.563,
     odMm: 141.3,
     schedulesWallIn: {
-      '5': 0.109, '5S': 0.109,
-      '10': 0.134, '10S': 0.134,
-      '40': 0.258, '40S': 0.258, 'STD': 0.258,
-      '80': 0.375, '80S': 0.375, 'XS': 0.375,
-      '120': 0.5,
-      '160': 0.625,
-      'XXS': 0.75,
+      "5": 0.109,
+      "5S": 0.109,
+      "10": 0.134,
+      "10S": 0.134,
+      "40": 0.258,
+      "40S": 0.258,
+      STD: 0.258,
+      "80": 0.375,
+      "80S": 0.375,
+      XS: 0.375,
+      "120": 0.5,
+      "160": 0.625,
+      XXS: 0.75,
     },
   },
   {
-    npsIn: '6',
+    npsIn: "6",
     nbMm: 150,
     odIn: 6.625,
     odMm: 168.3,
     schedulesWallIn: {
-      '5': 0.109, '5S': 0.109,
-      '10': 0.134, '10S': 0.134,
-      '40': 0.28, '40S': 0.28, 'STD': 0.28,
-      '80': 0.432, '80S': 0.432, 'XS': 0.432,
-      '120': 0.562,
-      '160': 0.719,
-      'XXS': 0.864,
+      "5": 0.109,
+      "5S": 0.109,
+      "10": 0.134,
+      "10S": 0.134,
+      "40": 0.28,
+      "40S": 0.28,
+      STD: 0.28,
+      "80": 0.432,
+      "80S": 0.432,
+      XS: 0.432,
+      "120": 0.562,
+      "160": 0.719,
+      XXS: 0.864,
     },
   },
   {
-    npsIn: '8',
+    npsIn: "8",
     nbMm: 200,
     odIn: 8.625,
     odMm: 219.1,
     schedulesWallIn: {
-      '5': 0.109, '5S': 0.109,
-      '10': 0.148, '10S': 0.148,
-      '20': 0.25,
-      '30': 0.277,
-      '40': 0.322, '40S': 0.322, 'STD': 0.322,
-      '60': 0.406,
-      '80': 0.5, '80S': 0.5, 'XS': 0.5,
-      '100': 0.594,
-      '120': 0.719,
-      '140': 0.812,
-      '160': 0.906,
-      'XXS': 0.875,
+      "5": 0.109,
+      "5S": 0.109,
+      "10": 0.148,
+      "10S": 0.148,
+      "20": 0.25,
+      "30": 0.277,
+      "40": 0.322,
+      "40S": 0.322,
+      STD: 0.322,
+      "60": 0.406,
+      "80": 0.5,
+      "80S": 0.5,
+      XS: 0.5,
+      "100": 0.594,
+      "120": 0.719,
+      "140": 0.812,
+      "160": 0.906,
+      XXS: 0.875,
     },
   },
   {
-    npsIn: '10',
+    npsIn: "10",
     nbMm: 250,
     odIn: 10.75,
     odMm: 273.1,
     schedulesWallIn: {
-      '5': 0.134, '5S': 0.134,
-      '10': 0.165, '10S': 0.165,
-      '20': 0.25,
-      '30': 0.307,
-      '40': 0.365, '40S': 0.365, 'STD': 0.365,
-      '60': 0.5,
-      '80': 0.594, '80S': 0.5, 'XS': 0.5,
-      '100': 0.719,
-      '120': 0.844,
-      '140': 0.938,
-      '160': 1.031,
-      'XXS': 0.875,
+      "5": 0.134,
+      "5S": 0.134,
+      "10": 0.165,
+      "10S": 0.165,
+      "20": 0.25,
+      "30": 0.307,
+      "40": 0.365,
+      "40S": 0.365,
+      STD: 0.365,
+      "60": 0.5,
+      "80": 0.594,
+      "80S": 0.5,
+      XS: 0.5,
+      "100": 0.719,
+      "120": 0.844,
+      "140": 0.938,
+      "160": 1.031,
+      XXS: 0.875,
     },
   },
   {
-    npsIn: '12',
+    npsIn: "12",
     nbMm: 300,
     odIn: 12.75,
     odMm: 323.9,
     schedulesWallIn: {
-      '5': 0.165, '5S': 0.165,
-      '10': 0.18, '10S': 0.18,
-      '20': 0.25,
-      '30': 0.33,
-      '40': 0.375, 'STD': 0.375,
-      '40S': 0.406,
-      '60': 0.562,
-      '80': 0.688, '80S': 0.5, 'XS': 0.5,
-      '100': 0.812,
-      '120': 0.938,
-      '140': 1.0,
-      '160': 1.125,
-      'XXS': 1.0,
+      "5": 0.165,
+      "5S": 0.165,
+      "10": 0.18,
+      "10S": 0.18,
+      "20": 0.25,
+      "30": 0.33,
+      "40": 0.375,
+      STD: 0.375,
+      "40S": 0.406,
+      "60": 0.562,
+      "80": 0.688,
+      "80S": 0.5,
+      XS: 0.5,
+      "100": 0.812,
+      "120": 0.938,
+      "140": 1.0,
+      "160": 1.125,
+      XXS: 1.0,
     },
   },
   {
-    npsIn: '14',
+    npsIn: "14",
     nbMm: 350,
     odIn: 14.0,
     odMm: 355.6,
     schedulesWallIn: {
-      '5': 0.156,
-      '10': 0.188, '10S': 0.25,
-      '20': 0.312,
-      '30': 0.375, 'STD': 0.375,
-      '40': 0.438,
-      'XS': 0.5,
-      '60': 0.594,
-      '80': 0.75,
-      '100': 0.938,
-      '120': 1.094,
-      '140': 1.25,
-      '160': 1.406,
+      "5": 0.156,
+      "10": 0.188,
+      "10S": 0.25,
+      "20": 0.312,
+      "30": 0.375,
+      STD: 0.375,
+      "40": 0.438,
+      XS: 0.5,
+      "60": 0.594,
+      "80": 0.75,
+      "100": 0.938,
+      "120": 1.094,
+      "140": 1.25,
+      "160": 1.406,
     },
   },
   {
-    npsIn: '16',
+    npsIn: "16",
     nbMm: 400,
     odIn: 16.0,
     odMm: 406.4,
     schedulesWallIn: {
-      '5': 0.165,
-      '10': 0.188, '10S': 0.25,
-      '20': 0.312,
-      '30': 0.375, 'STD': 0.375,
-      '40': 0.5, 'XS': 0.5,
-      '60': 0.656,
-      '80': 0.844,
-      '100': 1.031,
-      '120': 1.219,
-      '140': 1.438,
-      '160': 1.594,
+      "5": 0.165,
+      "10": 0.188,
+      "10S": 0.25,
+      "20": 0.312,
+      "30": 0.375,
+      STD: 0.375,
+      "40": 0.5,
+      XS: 0.5,
+      "60": 0.656,
+      "80": 0.844,
+      "100": 1.031,
+      "120": 1.219,
+      "140": 1.438,
+      "160": 1.594,
     },
   },
   {
-    npsIn: '18',
+    npsIn: "18",
     nbMm: 450,
     odIn: 18.0,
     odMm: 457.0,
     schedulesWallIn: {
-      '5': 0.165,
-      '10': 0.188, '10S': 0.25,
-      '20': 0.312,
-      '30': 0.438, 'STD': 0.375,
-      '40': 0.562, 'XS': 0.5,
-      '60': 0.75,
-      '80': 0.938,
-      '100': 1.156,
-      '120': 1.375,
-      '140': 1.562,
-      '160': 1.781,
+      "5": 0.165,
+      "10": 0.188,
+      "10S": 0.25,
+      "20": 0.312,
+      "30": 0.438,
+      STD: 0.375,
+      "40": 0.562,
+      XS: 0.5,
+      "60": 0.75,
+      "80": 0.938,
+      "100": 1.156,
+      "120": 1.375,
+      "140": 1.562,
+      "160": 1.781,
     },
   },
   {
-    npsIn: '20',
+    npsIn: "20",
     nbMm: 500,
     odIn: 20.0,
     odMm: 508.0,
     schedulesWallIn: {
-      '5': 0.188,
-      '10': 0.25, '10S': 0.25,
-      '20': 0.375, 'STD': 0.375,
-      '30': 0.5, 'XS': 0.5,
-      '40': 0.594,
-      '60': 0.812,
-      '80': 1.031,
-      '100': 1.281,
-      '120': 1.5,
-      '140': 1.75,
-      '160': 1.969,
+      "5": 0.188,
+      "10": 0.25,
+      "10S": 0.25,
+      "20": 0.375,
+      STD: 0.375,
+      "30": 0.5,
+      XS: 0.5,
+      "40": 0.594,
+      "60": 0.812,
+      "80": 1.031,
+      "100": 1.281,
+      "120": 1.5,
+      "140": 1.75,
+      "160": 1.969,
     },
   },
   {
-    npsIn: '24',
+    npsIn: "24",
     nbMm: 600,
     odIn: 24.0,
     odMm: 610.0,
     schedulesWallIn: {
-      '5': 0.218,
-      '10': 0.25, '10S': 0.25,
-      '20': 0.375, 'STD': 0.375,
-      '30': 0.562, 'XS': 0.5,
-      '40': 0.688,
-      '60': 0.969,
-      '80': 1.219,
-      '100': 1.531,
-      '120': 1.812,
-      '140': 2.062,
-      '160': 2.344,
+      "5": 0.218,
+      "10": 0.25,
+      "10S": 0.25,
+      "20": 0.375,
+      STD: 0.375,
+      "30": 0.562,
+      XS: 0.5,
+      "40": 0.688,
+      "60": 0.969,
+      "80": 1.219,
+      "100": 1.531,
+      "120": 1.812,
+      "140": 2.062,
+      "160": 2.344,
     },
   },
   {
-    npsIn: '30',
+    npsIn: "30",
     nbMm: 750,
     odIn: 30.0,
     odMm: 762.0,
     schedulesWallIn: {
-      '5': 0.25,
-      '10': 0.312, '10S': 0.312,
-      '20': 0.5,
-      '30': 0.625, 'STD': 0.375, 'XS': 0.5,
-      '40': 0.75,
-      '60': 1.0,
-      '80': 1.25,
+      "5": 0.25,
+      "10": 0.312,
+      "10S": 0.312,
+      "20": 0.5,
+      "30": 0.625,
+      STD: 0.375,
+      XS: 0.5,
+      "40": 0.75,
+      "60": 1.0,
+      "80": 1.25,
     },
   },
   {
-    npsIn: '36',
+    npsIn: "36",
     nbMm: 900,
     odIn: 36.0,
     odMm: 914.0,
     schedulesWallIn: {
-      '10': 0.312, '10S': 0.312,
-      '20': 0.5,
-      '30': 0.625, 'STD': 0.375, 'XS': 0.5,
-      '40': 0.75,
+      "10": 0.312,
+      "10S": 0.312,
+      "20": 0.5,
+      "30": 0.625,
+      STD: 0.375,
+      XS: 0.5,
+      "40": 0.75,
     },
   },
   {
-    npsIn: '42',
+    npsIn: "42",
     nbMm: 1050,
     odIn: 42.0,
     odMm: 1067.0,
     schedulesWallIn: {
-      '10': 0.312, '10S': 0.312,
-      '20': 0.5,
-      '30': 0.625, 'STD': 0.375, 'XS': 0.5,
+      "10": 0.312,
+      "10S": 0.312,
+      "20": 0.5,
+      "30": 0.625,
+      STD: 0.375,
+      XS: 0.5,
     },
   },
   {
-    npsIn: '48',
+    npsIn: "48",
     nbMm: 1200,
     odIn: 48.0,
     odMm: 1219.0,
     schedulesWallIn: {
-      '5': 0.25,
-      '10': 0.375, '10S': 0.375,
-      '20': 0.562,
-      '30': 0.688, 'STD': 0.375, 'XS': 0.5,
+      "5": 0.25,
+      "10": 0.375,
+      "10S": 0.375,
+      "20": 0.562,
+      "30": 0.688,
+      STD: 0.375,
+      XS: 0.5,
     },
   },
 ];
@@ -1205,7 +1373,7 @@ export const PIPE_DIMENSIONS: PipeDimension[] = [
  * Get pipe dimension by NB (mm)
  */
 export function getPipeDimensionByNb(nbMm: number): PipeDimension | undefined {
-  return PIPE_DIMENSIONS.find(p => p.nbMm === nbMm);
+  return PIPE_DIMENSIONS.find((p) => p.nbMm === nbMm);
 }
 
 /**
@@ -1230,17 +1398,17 @@ export function getWallThicknessMm(nbMm: number, schedule: string): number | und
  */
 export function normalizeScheduleName(schedule: string): string {
   // Remove common prefixes and variations
-  let normalized = schedule
-    .replace(/^Sch\s*/i, '')
-    .replace(/^Schedule\s*/i, '')
-    .replace(/\/STD$/i, '')
-    .replace(/\/XS$/i, '')
+  const normalized = schedule
+    .replace(/^Sch\s*/i, "")
+    .replace(/^Schedule\s*/i, "")
+    .replace(/\/STD$/i, "")
+    .replace(/\/XS$/i, "")
     .trim();
 
   // Handle Sch 40/STD type names
-  if (schedule.toLowerCase().includes('std')) return 'STD';
-  if (schedule.toLowerCase().includes('xs') && !schedule.toLowerCase().includes('xxs')) return 'XS';
-  if (schedule.toLowerCase().includes('xxs')) return 'XXS';
+  if (schedule.toLowerCase().includes("std")) return "STD";
+  if (schedule.toLowerCase().includes("xs") && !schedule.toLowerCase().includes("xxs")) return "XS";
+  if (schedule.toLowerCase().includes("xxs")) return "XXS";
 
   return normalized;
 }
@@ -1258,7 +1426,7 @@ export function calculateMAWP(params: {
   schedule: string;
   materialCode: string;
   temperatureC: number;
-  jointType?: 'Seamless' | 'ERW' | 'EFW';
+  jointType?: "Seamless" | "ERW" | "EFW";
   corrosionAllowanceMm?: number;
 }): {
   mawpBar: number;
@@ -1274,7 +1442,14 @@ export function calculateMAWP(params: {
   isValid: boolean;
   message: string;
 } {
-  const { nbMm, schedule, materialCode, temperatureC, jointType = 'Seamless', corrosionAllowanceMm = 0 } = params;
+  const {
+    nbMm,
+    schedule,
+    materialCode,
+    temperatureC,
+    jointType = "Seamless",
+    corrosionAllowanceMm = 0,
+  } = params;
 
   // Get pipe dimensions
   const pipe = getPipeDimensionByNb(nbMm);
@@ -1289,7 +1464,7 @@ export function calculateMAWP(params: {
       jointEfficiency: 1.0,
       yCoefficient: 0.4,
       effectiveWallMm: 0,
-      formula: 'P = (2 * S * E * (t - c)) / (D_o - 2 * y * (t - c))',
+      formula: "P = (2 * S * E * (t - c)) / (D_o - 2 * y * (t - c))",
       isValid: false,
       message: `Pipe NB ${nbMm}mm not found in dimension table`,
     };
@@ -1308,7 +1483,7 @@ export function calculateMAWP(params: {
       jointEfficiency: 1.0,
       yCoefficient: 0.4,
       effectiveWallMm: 0,
-      formula: 'P = (2 * S * E * (t - c)) / (D_o - 2 * y * (t - c))',
+      formula: "P = (2 * S * E * (t - c)) / (D_o - 2 * y * (t - c))",
       isValid: false,
       message: `Schedule ${schedule} not available for NB ${nbMm}mm`,
     };
@@ -1319,7 +1494,7 @@ export function calculateMAWP(params: {
   const yCoefficient = getYCoefficient(temperatureC);
 
   // Get allowable stress
-  const temperatureF = (temperatureC * 9/5) + 32;
+  const temperatureF = (temperatureC * 9) / 5 + 32;
   const allowableStressKsi = getAllowableStressKsi(materialCode, temperatureF);
   const allowableStressMPa = allowableStressKsi * 6.895;
 
@@ -1337,7 +1512,7 @@ export function calculateMAWP(params: {
       jointEfficiency,
       yCoefficient,
       effectiveWallMm,
-      formula: 'P = (2 * S * E * (t - c)) / (D_o - 2 * y * (t - c))',
+      formula: "P = (2 * S * E * (t - c)) / (D_o - 2 * y * (t - c))",
       isValid: false,
       message: `Corrosion allowance (${corrosionAllowanceMm}mm) exceeds wall thickness (${wallThicknessMm}mm)`,
     };
@@ -1355,14 +1530,15 @@ export function calculateMAWP(params: {
     formula = `P = (2 × ${allowableStressMPa.toFixed(1)} × ${jointEfficiency} × ${effectiveWallMm.toFixed(2)}) / ${outsideDiameterMm} = ${(mawpMPa * 10).toFixed(1)} bar (Barlow's)`;
   } else {
     // Full ASME B31.3 formula: P = (2 * S * E * (t - c)) / (D_o - 2 * y * (t - c))
-    mawpMPa = (2 * allowableStressMPa * jointEfficiency * effectiveWallMm) /
-              (outsideDiameterMm - 2 * yCoefficient * effectiveWallMm);
+    mawpMPa =
+      (2 * allowableStressMPa * jointEfficiency * effectiveWallMm) /
+      (outsideDiameterMm - 2 * yCoefficient * effectiveWallMm);
     formula = `P = (2 × ${allowableStressMPa.toFixed(1)} × ${jointEfficiency} × ${effectiveWallMm.toFixed(2)}) / (${outsideDiameterMm} - 2 × ${yCoefficient} × ${effectiveWallMm.toFixed(2)}) = ${(mawpMPa * 10).toFixed(1)} bar`;
   }
 
   // Convert to bar and psi
-  const mawpBar = mawpMPa * 10;  // 1 MPa = 10 bar
-  const mawpPsi = mawpBar * 14.504;  // 1 bar = 14.504 psi
+  const mawpBar = mawpMPa * 10; // 1 MPa = 10 bar
+  const mawpPsi = mawpBar * 14.504; // 1 bar = 14.504 psi
 
   return {
     mawpBar,
@@ -1389,7 +1565,7 @@ export function findSuitableSchedules(params: {
   materialCode: string;
   temperatureC: number;
   requiredPressureBar: number;
-  jointType?: 'Seamless' | 'ERW' | 'EFW';
+  jointType?: "Seamless" | "ERW" | "EFW";
   corrosionAllowanceMm?: number;
   minSafetyFactor?: number;
 }): Array<{
@@ -1399,7 +1575,15 @@ export function findSuitableSchedules(params: {
   safetyFactor: number;
   isRecommended: boolean;
 }> {
-  const { nbMm, materialCode, temperatureC, requiredPressureBar, jointType = 'Seamless', corrosionAllowanceMm = 0, minSafetyFactor = 1.2 } = params;
+  const {
+    nbMm,
+    materialCode,
+    temperatureC,
+    requiredPressureBar,
+    jointType = "Seamless",
+    corrosionAllowanceMm = 0,
+    minSafetyFactor = 1.2,
+  } = params;
 
   const pipe = getPipeDimensionByNb(nbMm);
   if (!pipe) return [];
@@ -1415,7 +1599,7 @@ export function findSuitableSchedules(params: {
   // Test each available schedule
   for (const [schedule, wallIn] of Object.entries(pipe.schedulesWallIn)) {
     // Skip duplicate schedule names (e.g., '40' and '40S')
-    if (schedule.endsWith('S') && pipe.schedulesWallIn[schedule.slice(0, -1)]) continue;
+    if (schedule.endsWith("S") && pipe.schedulesWallIn[schedule.slice(0, -1)]) continue;
 
     const mawpResult = calculateMAWP({
       nbMm,
@@ -1461,7 +1645,7 @@ export function validateScheduleSelection(params: {
   materialCode: string;
   temperatureC: number;
   requiredPressureBar: number;
-  jointType?: 'Seamless' | 'ERW' | 'EFW';
+  jointType?: "Seamless" | "ERW" | "EFW";
   corrosionAllowanceMm?: number;
 }): {
   isValid: boolean;
@@ -1545,10 +1729,10 @@ export function validateScheduleSelection(params: {
  * All dimensions in mm
  */
 export interface FlangeDimensions {
-  dn: number;          // Nominal diameter (mm)
-  flangeOdMm: number;  // Flange outside diameter
-  boreIdMm: number;    // Bore ID (matches pipe ID approximately)
-  raisedFaceDiaMm: number;  // Raised face diameter (for RF flanges)
+  dn: number; // Nominal diameter (mm)
+  flangeOdMm: number; // Flange outside diameter
+  boreIdMm: number; // Bore ID (matches pipe ID approximately)
+  raisedFaceDiaMm: number; // Raised face diameter (for RF flanges)
   hubLengthMm: number; // Hub/neck length for weld neck flanges
 }
 
@@ -1627,22 +1811,22 @@ export const ANSI_B165_CLASS_600_FLANGES: FlangeDimensions[] = [
 
 // Map of all flange dimension tables by pressure class
 const FLANGE_DIMENSIONS_BY_CLASS: Record<string, FlangeDimensions[]> = {
-  '150': ANSI_B165_CLASS_150_FLANGES,
-  'CLASS 150': ANSI_B165_CLASS_150_FLANGES,
-  'PN16': ANSI_B165_CLASS_150_FLANGES,
-  'PN20': ANSI_B165_CLASS_150_FLANGES,
-  '300': ANSI_B165_CLASS_300_FLANGES,
-  'CLASS 300': ANSI_B165_CLASS_300_FLANGES,
-  'PN50': ANSI_B165_CLASS_300_FLANGES,
-  '600': ANSI_B165_CLASS_600_FLANGES,
-  'CLASS 600': ANSI_B165_CLASS_600_FLANGES,
-  'PN100': ANSI_B165_CLASS_600_FLANGES,
-  '900': ANSI_B165_CLASS_600_FLANGES,  // Use Class 600 as approximation for higher classes
-  'CLASS 900': ANSI_B165_CLASS_600_FLANGES,
-  '1500': ANSI_B165_CLASS_600_FLANGES,
-  'CLASS 1500': ANSI_B165_CLASS_600_FLANGES,
-  '2500': ANSI_B165_CLASS_600_FLANGES,
-  'CLASS 2500': ANSI_B165_CLASS_600_FLANGES,
+  "150": ANSI_B165_CLASS_150_FLANGES,
+  "CLASS 150": ANSI_B165_CLASS_150_FLANGES,
+  PN16: ANSI_B165_CLASS_150_FLANGES,
+  PN20: ANSI_B165_CLASS_150_FLANGES,
+  "300": ANSI_B165_CLASS_300_FLANGES,
+  "CLASS 300": ANSI_B165_CLASS_300_FLANGES,
+  PN50: ANSI_B165_CLASS_300_FLANGES,
+  "600": ANSI_B165_CLASS_600_FLANGES,
+  "CLASS 600": ANSI_B165_CLASS_600_FLANGES,
+  PN100: ANSI_B165_CLASS_600_FLANGES,
+  "900": ANSI_B165_CLASS_600_FLANGES, // Use Class 600 as approximation for higher classes
+  "CLASS 900": ANSI_B165_CLASS_600_FLANGES,
+  "1500": ANSI_B165_CLASS_600_FLANGES,
+  "CLASS 1500": ANSI_B165_CLASS_600_FLANGES,
+  "2500": ANSI_B165_CLASS_600_FLANGES,
+  "CLASS 2500": ANSI_B165_CLASS_600_FLANGES,
 };
 
 /**
@@ -1650,11 +1834,14 @@ const FLANGE_DIMENSIONS_BY_CLASS: Record<string, FlangeDimensions[]> = {
  * @param dn Nominal diameter in mm
  * @param pressureClass Optional pressure class designation (e.g., '150', 'Class 300', 'PN50')
  */
-export function getFlangeDimensionsByDn(dn: number, pressureClass?: string): FlangeDimensions | undefined {
+export function getFlangeDimensionsByDn(
+  dn: number,
+  pressureClass?: string,
+): FlangeDimensions | undefined {
   // Normalize pressure class to find the right table
-  const normalizedClass = (pressureClass || '150').toUpperCase().trim();
+  const normalizedClass = (pressureClass || "150").toUpperCase().trim();
   const flangeTable = FLANGE_DIMENSIONS_BY_CLASS[normalizedClass] || ANSI_B165_CLASS_150_FLANGES;
-  return flangeTable.find(f => f.dn === dn);
+  return flangeTable.find((f) => f.dn === dn);
 }
 
 /**
@@ -1683,23 +1870,23 @@ export interface SurfaceAreaParams {
   insideDiameterMm: number;
   pipeLengthM: number;
   numberOfFlanges: number;
-  dn?: number;  // Optional - for flange dimension lookup
-  pressureClass?: string;  // Optional - pressure class for flange dimension lookup
+  dn?: number; // Optional - for flange dimension lookup
+  pressureClass?: string; // Optional - pressure class for flange dimension lookup
 }
 
 export interface SurfaceAreaResult {
   // External coating
-  externalPipeAreaM2: number;      // Pipe external surface
+  externalPipeAreaM2: number; // Pipe external surface
   externalFlangeBackAreaM2: number; // Back of flanges (annular area)
-  totalExternalAreaM2: number;     // Total for external coating
+  totalExternalAreaM2: number; // Total for external coating
 
   // Internal coating
-  internalPipeAreaM2: number;      // Pipe internal surface
+  internalPipeAreaM2: number; // Pipe internal surface
   internalFlangeFaceAreaM2: number; // Flange face (raised face area)
-  totalInternalAreaM2: number;     // Total for internal coating
+  totalInternalAreaM2: number; // Total for internal coating
 
   // Combined
-  totalSurfaceAreaM2: number;      // Total surface area
+  totalSurfaceAreaM2: number; // Total surface area
 
   // Details
   flangeDataAvailable: boolean;
@@ -1715,18 +1902,12 @@ export interface SurfaceAreaResult {
  * Note: Adds 100mm allowance per flange/end to account for surface protection overlap
  */
 export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): SurfaceAreaResult {
-  const {
-    outsideDiameterMm,
-    insideDiameterMm,
-    pipeLengthM,
-    numberOfFlanges,
-    dn,
-    pressureClass,
-  } = params;
+  const { outsideDiameterMm, insideDiameterMm, pipeLengthM, numberOfFlanges, dn, pressureClass } =
+    params;
 
   // Add 100mm (0.1m) allowance per flange/end for surface protection overlap
   const FLANGE_ALLOWANCE_M = 0.1; // 100mm per end
-  const effectivePipeLengthM = pipeLengthM + (numberOfFlanges * FLANGE_ALLOWANCE_M);
+  const effectivePipeLengthM = pipeLengthM + numberOfFlanges * FLANGE_ALLOWANCE_M;
 
   // External pipe surface area: π × OD × Length (with flange allowance)
   const outsideDiameterM = outsideDiameterMm / 1000;
@@ -1755,20 +1936,24 @@ export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): Su
       // External flange area (back of flange)
       // This is the annular area from flange OD to pipe OD
       // This is the area that gets painted on the back/outside of the flange
-      externalFlangeBackAreaM2 = annularAreaM2(flangeDims.flangeOdMm, outsideDiameterMm) * numberOfFlanges;
+      externalFlangeBackAreaM2 =
+        annularAreaM2(flangeDims.flangeOdMm, outsideDiameterMm) * numberOfFlanges;
 
       // Internal flange face area (the gasket seating surface)
       // This is the annular area from raised face diameter to bore ID
       // This is coated when internal lining is applied
-      internalFlangeFaceAreaM2 = annularAreaM2(flangeDims.raisedFaceDiaMm, flangeDims.boreIdMm) * numberOfFlanges;
+      internalFlangeFaceAreaM2 =
+        annularAreaM2(flangeDims.raisedFaceDiaMm, flangeDims.boreIdMm) * numberOfFlanges;
     } else {
       // Estimate flange areas if DN not found
       // Use typical flange OD ≈ 1.8 × Pipe OD for Class 150
       const estimatedFlangeOdMm = outsideDiameterMm * 1.8;
       const estimatedRaisedFaceDiaMm = outsideDiameterMm * 1.2;
 
-      externalFlangeBackAreaM2 = annularAreaM2(estimatedFlangeOdMm, outsideDiameterMm) * numberOfFlanges;
-      internalFlangeFaceAreaM2 = annularAreaM2(estimatedRaisedFaceDiaMm, insideDiameterMm) * numberOfFlanges;
+      externalFlangeBackAreaM2 =
+        annularAreaM2(estimatedFlangeOdMm, outsideDiameterMm) * numberOfFlanges;
+      internalFlangeFaceAreaM2 =
+        annularAreaM2(estimatedRaisedFaceDiaMm, insideDiameterMm) * numberOfFlanges;
       flangeOdMm = estimatedFlangeOdMm;
       raisedFaceDiaMm = estimatedRaisedFaceDiaMm;
     }
@@ -1890,7 +2075,7 @@ function buttWeldCrossSectionMm2(
   wallThicknessMm: number,
   rootGapMm: number,
   grooveAngleDeg: number,
-  reinforcementMm: number
+  reinforcementMm: number,
 ): number {
   const halfAngleRad = (grooveAngleDeg / 2) * (Math.PI / 180);
   const rootArea = wallThicknessMm * rootGapMm;
@@ -1933,7 +2118,12 @@ export function calculateButtWeldVolume(params: {
   const reinforcementMm = config?.reinforcementMm ?? DEFAULT_WELD_CONFIG.reinforcementMm;
 
   const circumferenceMm = Math.PI * outsideDiameterMm;
-  const crossSectionMm2 = buttWeldCrossSectionMm2(wallThicknessMm, rootGapMm, grooveAngleDeg, reinforcementMm);
+  const crossSectionMm2 = buttWeldCrossSectionMm2(
+    wallThicknessMm,
+    rootGapMm,
+    grooveAngleDeg,
+    reinforcementMm,
+  );
   const weldLengthMm = circumferenceMm * numberOfButtWelds;
   const volumeMm3 = crossSectionMm2 * weldLengthMm;
   const volumeCm3 = volumeMm3 / 1000;
@@ -1956,9 +2146,10 @@ export function calculateSaddleWeldVolume(params: {
   // For equal diameters: weld length = 2.7 × OD (Steinmetz factor)
   // For unequal diameters: L ≈ π × d × √[1 + (d/D)²] where d=branch, D=main
   const diameterRatio = branchOdMm / mainOdMm;
-  const weldLengthMm = diameterRatio >= 0.95
-    ? STEINMETZ_FACTOR * branchOdMm // Equal diameters - use Steinmetz
-    : Math.PI * branchOdMm * Math.sqrt(1 + diameterRatio * diameterRatio); // Unequal - approximation
+  const weldLengthMm =
+    diameterRatio >= 0.95
+      ? STEINMETZ_FACTOR * branchOdMm // Equal diameters - use Steinmetz
+      : Math.PI * branchOdMm * Math.sqrt(1 + diameterRatio * diameterRatio); // Unequal - approximation
 
   const legSizeMm = config?.filletLegSizeMm || calculateFilletWeldLegSize(wallThicknessMm);
   const crossSectionMm2 = filletWeldCrossSectionMm2(legSizeMm);
@@ -2017,7 +2208,12 @@ export function calculateBendWeldVolume(params: {
     hasFlangeWeld: boolean;
   }>;
   config?: WeldVolumeConfig;
-}): WeldVolumeResult & { stubWeldVolumeMm3: number; stubWeldVolumeCm3: number; saddleWeldVolumeMm3: number; saddleWeldVolumeCm3: number } {
+}): WeldVolumeResult & {
+  stubWeldVolumeMm3: number;
+  stubWeldVolumeCm3: number;
+  saddleWeldVolumeMm3: number;
+  saddleWeldVolumeCm3: number;
+} {
   const mainFlangeWeld = calculateFlangeWeldVolume({
     outsideDiameterMm: params.mainOdMm,
     wallThicknessMm: params.mainWallThicknessMm,
@@ -2049,8 +2245,8 @@ export function calculateBendWeldVolume(params: {
   let stubWeldVolumeMm3 = 0;
   if (params.stubs) {
     params.stubs
-      .filter(stub => stub.hasFlangeWeld)
-      .forEach(stub => {
+      .filter((stub) => stub.hasFlangeWeld)
+      .forEach((stub) => {
         const stubWeld = calculateFlangeWeldVolume({
           outsideDiameterMm: stub.odMm,
           wallThicknessMm: stub.wallThicknessMm,
@@ -2062,7 +2258,8 @@ export function calculateBendWeldVolume(params: {
   }
   const stubWeldVolumeCm3 = stubWeldVolumeMm3 / 1000;
 
-  const totalVolumeMm3 = mainFlangeWeld.volumeMm3 + mitreWeld.volumeMm3 + stubWeldVolumeMm3 + saddleWeldVolumeMm3;
+  const totalVolumeMm3 =
+    mainFlangeWeld.volumeMm3 + mitreWeld.volumeMm3 + stubWeldVolumeMm3 + saddleWeldVolumeMm3;
   const totalVolumeCm3 = totalVolumeMm3 / 1000;
   const WELD_METAL_DENSITY_KG_CM3 = STEEL_DENSITY_KG_CM3;
   const weldMetalWeightKg = totalVolumeCm3 * WELD_METAL_DENSITY_KG_CM3;
@@ -2119,7 +2316,8 @@ export function calculateFittingWeldVolume(params: {
   }
   const teeJunctionVolumeCm3 = teeJunctionVolumeMm3 / 1000;
 
-  const totalFilletVolumeMm3 = mainFlangeWeld.volumeMm3 + branchFlangeVolumeMm3 + teeJunctionVolumeMm3;
+  const totalFilletVolumeMm3 =
+    mainFlangeWeld.volumeMm3 + branchFlangeVolumeMm3 + teeJunctionVolumeMm3;
   const totalVolumeMm3 = totalFilletVolumeMm3;
   const totalVolumeCm3 = totalVolumeMm3 / 1000;
   const WELD_METAL_DENSITY_KG_CM3 = STEEL_DENSITY_KG_CM3;

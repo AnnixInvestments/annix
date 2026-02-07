@@ -1,89 +1,87 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
-import { PipeSchedule } from './entities/pipe-schedule.entity';
-import { MaterialAllowableStress } from './entities/material-allowable-stress.entity';
-import {
-  CalculatePipeThicknessDto,
-  PipeThicknessResultDto,
-} from './dto/pipe-schedule.dto';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CalculatePipeThicknessDto, PipeThicknessResultDto } from "./dto/pipe-schedule.dto";
+import { MaterialAllowableStress } from "./entities/material-allowable-stress.entity";
+import { PipeSchedule } from "./entities/pipe-schedule.entity";
 
 // NPS to OD mapping (inches) - ASME B36.10
 const NPS_OD_INCH: { [key: string]: number } = {
-  '1/8': 0.405,
-  '1/4': 0.54,
-  '3/8': 0.675,
-  '1/2': 0.84,
-  '3/4': 1.05,
-  '1': 1.315,
-  '1-1/4': 1.66,
-  '1-1/2': 1.9,
-  '2': 2.375,
-  '2-1/2': 2.875,
-  '3': 3.5,
-  '3-1/2': 4.0,
-  '4': 4.5,
-  '5': 5.563,
-  '6': 6.625,
-  '8': 8.625,
-  '10': 10.75,
-  '12': 12.75,
-  '14': 14.0,
-  '16': 16.0,
-  '18': 18.0,
-  '20': 20.0,
-  '22': 22.0,
-  '24': 24.0,
-  '26': 26.0,
-  '28': 28.0,
-  '30': 30.0,
-  '32': 32.0,
-  '34': 34.0,
-  '36': 36.0,
-  '42': 42.0,
-  '48': 48.0,
+  "1/8": 0.405,
+  "1/4": 0.54,
+  "3/8": 0.675,
+  "1/2": 0.84,
+  "3/4": 1.05,
+  "1": 1.315,
+  "1-1/4": 1.66,
+  "1-1/2": 1.9,
+  "2": 2.375,
+  "2-1/2": 2.875,
+  "3": 3.5,
+  "3-1/2": 4.0,
+  "4": 4.5,
+  "5": 5.563,
+  "6": 6.625,
+  "8": 8.625,
+  "10": 10.75,
+  "12": 12.75,
+  "14": 14.0,
+  "16": 16.0,
+  "18": 18.0,
+  "20": 20.0,
+  "22": 22.0,
+  "24": 24.0,
+  "26": 26.0,
+  "28": 28.0,
+  "30": 30.0,
+  "32": 32.0,
+  "34": 34.0,
+  "36": 36.0,
+  "42": 42.0,
+  "48": 48.0,
 };
 
 // NPS to NB (mm) mapping
 const NPS_TO_NB_MM: { [key: string]: number } = {
-  '1/8': 6,
-  '1/4': 8,
-  '3/8': 10,
-  '1/2': 15,
-  '3/4': 20,
-  '1': 25,
-  '1-1/4': 32,
-  '1-1/2': 40,
-  '2': 50,
-  '2-1/2': 65,
-  '3': 80,
-  '3-1/2': 90,
-  '4': 100,
-  '5': 125,
-  '6': 150,
-  '8': 200,
-  '10': 250,
-  '12': 300,
-  '14': 350,
-  '16': 400,
-  '18': 450,
-  '20': 500,
-  '22': 550,
-  '24': 600,
-  '26': 650,
-  '28': 700,
-  '30': 750,
-  '32': 800,
-  '34': 850,
-  '36': 900,
-  '42': 1050,
-  '48': 1200,
+  "1/8": 6,
+  "1/4": 8,
+  "3/8": 10,
+  "1/2": 15,
+  "3/4": 20,
+  "1": 25,
+  "1-1/4": 32,
+  "1-1/2": 40,
+  "2": 50,
+  "2-1/2": 65,
+  "3": 80,
+  "3-1/2": 90,
+  "4": 100,
+  "5": 125,
+  "6": 150,
+  "8": 200,
+  "10": 250,
+  "12": 300,
+  "14": 350,
+  "16": 400,
+  "18": 450,
+  "20": 500,
+  "22": 550,
+  "24": 600,
+  "26": 650,
+  "28": 700,
+  "30": 750,
+  "32": 800,
+  "34": 850,
+  "36": 900,
+  "42": 1050,
+  "48": 1200,
 };
 
 // Reverse mapping: NB (mm) to NPS
-const NB_MM_TO_NPS: { [key: number]: string } = Object.entries(
-  NPS_TO_NB_MM,
-).reduce((acc, [nps, nb]) => ({ ...acc, [nb]: nps }), {});
+const NB_MM_TO_NPS: { [key: number]: string } = Object.entries(NPS_TO_NB_MM).reduce(
+  (acc, [nps, nb]) => ({ ...acc, [nb]: nps }),
+  {},
+);
 
 @Injectable()
 export class PipeScheduleService {
@@ -111,7 +109,7 @@ export class PipeScheduleService {
   ): Promise<number | null> {
     const stresses = await this.stressRepo.find({
       where: { materialCode },
-      order: { temperatureCelsius: 'ASC' },
+      order: { temperatureCelsius: "ASC" },
     });
 
     if (stresses.length === 0) return null;
@@ -136,12 +134,10 @@ export class PipeScheduleService {
     }
 
     // Linear interpolation
-    const tempRange =
-      Number(upper.temperatureCelsius) - Number(lower.temperatureCelsius);
+    const tempRange = Number(upper.temperatureCelsius) - Number(lower.temperatureCelsius);
     if (tempRange === 0) return Number(lower.allowableStressKsi);
 
-    const stressRange =
-      Number(upper.allowableStressKsi) - Number(lower.allowableStressKsi);
+    const stressRange = Number(upper.allowableStressKsi) - Number(lower.allowableStressKsi);
     const tempOffset = temperatureCelsius - Number(lower.temperatureCelsius);
     const interpolatedStress =
       Number(lower.allowableStressKsi) + (stressRange * tempOffset) / tempRange;
@@ -153,7 +149,7 @@ export class PipeScheduleService {
   async getSchedulesByNps(nps: string): Promise<PipeSchedule[]> {
     return this.scheduleRepo.find({
       where: { nps },
-      order: { wallThicknessInch: 'ASC' },
+      order: { wallThicknessInch: "ASC" },
     });
   }
 
@@ -161,7 +157,7 @@ export class PipeScheduleService {
   async getSchedulesByNbMm(nbMm: number): Promise<PipeSchedule[]> {
     return this.scheduleRepo.find({
       where: { nbMm },
-      order: { wallThicknessInch: 'ASC' },
+      order: { wallThicknessInch: "ASC" },
     });
   }
 
@@ -199,16 +195,14 @@ export class PipeScheduleService {
       wallInch: Number(maxSchedule.wallThicknessInch),
       wallMm: Number(maxSchedule.wallThicknessMm),
       warning:
-        'Required thickness exceeds maximum standard schedule. Consider special wall thickness or pipe upgrade.',
+        "Required thickness exceeds maximum standard schedule. Consider special wall thickness or pipe upgrade.",
     };
   }
 
   // Main calculation: ASME B31.3 formula
   // t = P*D / (2*(S*E*W + P*Y))
   // t_m = t + corrosion allowance
-  async calculatePipeThickness(
-    dto: CalculatePipeThicknessDto,
-  ): Promise<PipeThicknessResultDto> {
+  async calculatePipeThickness(dto: CalculatePipeThicknessDto): Promise<PipeThicknessResultDto> {
     const warnings: string[] = [];
 
     // Determine NPS from input
@@ -227,10 +221,7 @@ export class PipeScheduleService {
     }
 
     // Get allowable stress
-    const stressKsi = await this.getAllowableStress(
-      dto.materialCode,
-      dto.temperatureCelsius,
-    );
+    const stressKsi = await this.getAllowableStress(dto.materialCode, dto.temperatureCelsius);
     if (!stressKsi) {
       throw new Error(
         `No stress data for material ${dto.materialCode} at ${dto.temperatureCelsius}°C`,
@@ -247,21 +238,17 @@ export class PipeScheduleService {
     const pressurePsi = this.barToPsi(dto.pressureBar);
 
     // Calculate design thickness (ASME B31.3)
-    const t =
-      (pressurePsi * odInch) /
-      (2 * (stressKsi * 1000 * E * W + pressurePsi * Y));
+    const t = (pressurePsi * odInch) / (2 * (stressKsi * 1000 * E * W + pressurePsi * Y));
     const tMinInch = t + corrosionInch;
 
     // Temperature warnings
     const tempF = this.celsiusToFahrenheit(dto.temperatureCelsius);
     if (tempF > 700) {
-      warnings.push(
-        'Temperature exceeds 700°F (371°C). Creep considerations may apply.',
-      );
+      warnings.push("Temperature exceeds 700°F (371°C). Creep considerations may apply.");
     }
     if (tempF > 900) {
       warnings.push(
-        'Temperature exceeds 900°F (482°C). Y coefficient may need adjustment for creep range.',
+        "Temperature exceeds 900°F (482°C). Y coefficient may need adjustment for creep range.",
       );
     }
 
@@ -272,26 +259,23 @@ export class PipeScheduleService {
       minRequiredThicknessMm: Math.round(tMinInch * 25.4 * 100) / 100,
       allowableStressKsi: stressKsi,
       allowableStressMpa: Math.round(stressKsi * 6.895 * 100) / 100,
-      recommendedSchedule: '',
+      recommendedSchedule: "",
       recommendedWallInch: 0,
       recommendedWallMm: 0,
       warnings: [],
-      notes: `Calculated per ASME B31.3. E=${E} (${E === 1 ? 'seamless' : 'welded'}), W=${W}, Y=${Y}. Corrosion allowance: ${dto.corrosionAllowanceMm ?? 0}mm.`,
+      notes: `Calculated per ASME B31.3. E=${E} (${E === 1 ? "seamless" : "welded"}), W=${W}, Y=${Y}. Corrosion allowance: ${dto.corrosionAllowanceMm ?? 0}mm.`,
     };
 
     // Check selected schedule if provided
     if (dto.selectedSchedule) {
       const schedules = await this.getSchedulesByNps(nps);
-      const selected = schedules.find(
-        (s) => s.schedule === dto.selectedSchedule,
-      );
+      const selected = schedules.find((s) => s.schedule === dto.selectedSchedule);
 
       if (selected) {
         result.selectedSchedule = dto.selectedSchedule;
         result.selectedScheduleWallInch = Number(selected.wallThicknessInch);
         result.selectedScheduleWallMm = Number(selected.wallThicknessMm);
-        result.isSelectedScheduleAdequate =
-          Number(selected.wallThicknessInch) >= tMinInch;
+        result.isSelectedScheduleAdequate = Number(selected.wallThicknessInch) >= tMinInch;
 
         if (!result.isSelectedScheduleAdequate) {
           warnings.push(
@@ -299,9 +283,7 @@ export class PipeScheduleService {
           );
         }
       } else {
-        warnings.push(
-          `Schedule ${dto.selectedSchedule} not found for NPS ${nps}.`,
-        );
+        warnings.push(`Schedule ${dto.selectedSchedule} not found for NPS ${nps}.`);
       }
     }
 
@@ -325,9 +307,9 @@ export class PipeScheduleService {
   // Get all available materials
   async getMaterials(): Promise<string[]> {
     const materials = await this.stressRepo
-      .createQueryBuilder('stress')
-      .select('DISTINCT stress.material_code', 'materialCode')
-      .addSelect('stress.material_name', 'materialName')
+      .createQueryBuilder("stress")
+      .select("DISTINCT stress.material_code", "materialCode")
+      .addSelect("stress.material_name", "materialName")
       .getRawMany();
 
     return materials;
@@ -336,17 +318,17 @@ export class PipeScheduleService {
   // Get all NPS values with schedule data
   async getAvailableNpsSizes(): Promise<string[]> {
     const sizes = await this.scheduleRepo
-      .createQueryBuilder('schedule')
-      .select('DISTINCT schedule.nps', 'nps')
-      .orderBy('schedule.nps', 'ASC')
+      .createQueryBuilder("schedule")
+      .select("DISTINCT schedule.nps", "nps")
+      .orderBy("schedule.nps", "ASC")
       .getRawMany();
 
     // Sort by actual numeric value
     return sizes
       .map((s) => s.nps)
       .sort((a, b) => {
-        const aNum = a.includes('/') ? eval(a) : parseFloat(a);
-        const bNum = b.includes('/') ? eval(b) : parseFloat(b);
+        const aNum = a.includes("/") ? eval(a) : parseFloat(a);
+        const bNum = b.includes("/") ? eval(b) : parseFloat(b);
         return aNum - bNum;
       });
   }

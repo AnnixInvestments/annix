@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { log } from '@/app/lib/logger';
-import { now, nowISO, fromISO } from '@/app/lib/datetime';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { fromISO, now, nowISO } from "@/app/lib/datetime";
+import { log } from "@/app/lib/logger";
 
-const DRAFT_STORAGE_KEY = 'annix_rfq_draft';
-const DRAFT_TIMESTAMP_KEY = 'annix_rfq_draft_timestamp';
+const DRAFT_STORAGE_KEY = "annix_rfq_draft";
+const DRAFT_TIMESTAMP_KEY = "annix_rfq_draft_timestamp";
 const DRAFT_EXPIRY_DAYS = 7;
 
 export interface RfqDraftData {
@@ -37,7 +37,7 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
   }, []);
 
   const loadDraft = useCallback((): RfqDraftData | null => {
-    if (typeof window === 'undefined') return null;
+    if (typeof window === "undefined") return null;
 
     try {
       const stored = localStorage.getItem(DRAFT_STORAGE_KEY);
@@ -46,67 +46,71 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
       const draft: RfqDraftData = JSON.parse(stored);
 
       if (draft.lastSaved && isExpired(draft.lastSaved)) {
-        log.debug('Draft expired, clearing...');
+        log.debug("Draft expired, clearing...");
         localStorage.removeItem(DRAFT_STORAGE_KEY);
         localStorage.removeItem(DRAFT_TIMESTAMP_KEY);
         setHasDraft(false);
         return null;
       }
 
-      log.debug('Loaded draft from localStorage:', {
+      log.debug("Loaded draft from localStorage:", {
         customerEmail: draft.customerEmail,
         currentStep: draft.currentStep,
-        entriesCount: draft.entries?.length
+        entriesCount: draft.entries?.length,
       });
 
       return draft;
     } catch (error) {
-      log.error('Error loading draft from localStorage:', error);
+      log.error("Error loading draft from localStorage:", error);
       return null;
     }
   }, [isExpired]);
 
-  const saveDraft = useCallback((data: Partial<RfqDraftData>) => {
-    if (typeof window === 'undefined') return;
+  const saveDraft = useCallback(
+    (data: Partial<RfqDraftData>) => {
+      if (typeof window === "undefined") return;
 
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      try {
-        const existingDraft = loadDraft();
-        const currentTime = nowISO();
-
-        const draftToSave: RfqDraftData = {
-          rfqData: data.rfqData ?? existingDraft?.rfqData ?? {},
-          globalSpecs: data.globalSpecs ?? existingDraft?.globalSpecs ?? {},
-          currentStep: data.currentStep ?? existingDraft?.currentStep ?? 0,
-          entries: data.entries ?? existingDraft?.entries ?? [],
-          lastSaved: currentTime,
-          customerEmail: data.rfqData?.customerEmail || data.customerEmail || existingDraft?.customerEmail,
-        };
-
-        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftToSave));
-        localStorage.setItem(DRAFT_TIMESTAMP_KEY, currentTime);
-
-        setHasDraft(true);
-        setLastSaved(fromISO(currentTime).toJSDate());
-        setDraftEmail(draftToSave.customerEmail || null);
-
-        log.debug('Draft saved to localStorage:', {
-          customerEmail: draftToSave.customerEmail,
-          currentStep: draftToSave.currentStep,
-          entriesCount: draftToSave.entries?.length,
-        });
-      } catch (error) {
-        log.error('Error saving draft to localStorage:', error);
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
-    }, 1000);
-  }, [loadDraft]);
+
+      saveTimeoutRef.current = setTimeout(() => {
+        try {
+          const existingDraft = loadDraft();
+          const currentTime = nowISO();
+
+          const draftToSave: RfqDraftData = {
+            rfqData: data.rfqData ?? existingDraft?.rfqData ?? {},
+            globalSpecs: data.globalSpecs ?? existingDraft?.globalSpecs ?? {},
+            currentStep: data.currentStep ?? existingDraft?.currentStep ?? 0,
+            entries: data.entries ?? existingDraft?.entries ?? [],
+            lastSaved: currentTime,
+            customerEmail:
+              data.rfqData?.customerEmail || data.customerEmail || existingDraft?.customerEmail,
+          };
+
+          localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftToSave));
+          localStorage.setItem(DRAFT_TIMESTAMP_KEY, currentTime);
+
+          setHasDraft(true);
+          setLastSaved(fromISO(currentTime).toJSDate());
+          setDraftEmail(draftToSave.customerEmail || null);
+
+          log.debug("Draft saved to localStorage:", {
+            customerEmail: draftToSave.customerEmail,
+            currentStep: draftToSave.currentStep,
+            entriesCount: draftToSave.entries?.length,
+          });
+        } catch (error) {
+          log.error("Error saving draft to localStorage:", error);
+        }
+      }, 1000);
+    },
+    [loadDraft],
+  );
 
   const clearDraft = useCallback(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     try {
       localStorage.removeItem(DRAFT_STORAGE_KEY);
@@ -114,9 +118,9 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
       setHasDraft(false);
       setLastSaved(null);
       setDraftEmail(null);
-      log.debug('Draft cleared from localStorage');
+      log.debug("Draft cleared from localStorage");
     } catch (error) {
-      log.error('Error clearing draft from localStorage:', error);
+      log.error("Error clearing draft from localStorage:", error);
     }
   }, []);
 
@@ -146,16 +150,16 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
 }
 
 export function formatLastSaved(date: Date | null): string {
-  if (!date) return '';
+  if (!date) return "";
 
   const savedDt = fromISO(date.toISOString());
-  const diff = now().diff(savedDt, ['days', 'hours', 'minutes']);
+  const diff = now().diff(savedDt, ["days", "hours", "minutes"]);
   const diffMins = Math.floor(diff.minutes);
   const diffHours = Math.floor(diff.hours);
   const diffDays = Math.floor(diff.days);
 
-  if (diffMins < 1 && diffHours < 1 && diffDays < 1) return 'Just now';
-  if (diffHours < 1 && diffDays < 1) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-  if (diffDays < 1) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-  return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  if (diffMins < 1 && diffHours < 1 && diffDays < 1) return "Just now";
+  if (diffHours < 1 && diffDays < 1) return `${diffMins} minute${diffMins !== 1 ? "s" : ""} ago`;
+  if (diffDays < 1) return `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+  return `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
 }

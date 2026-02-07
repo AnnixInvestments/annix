@@ -1,40 +1,39 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
   Body,
+  Controller,
+  Delete,
+  Get,
+  Logger,
   Param,
+  ParseIntPipe,
+  Patch,
+  Post,
   Req,
+  UploadedFile,
   UseGuards,
   UseInterceptors,
-  UploadedFile,
-  ParseIntPipe,
-  Logger,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
-  ApiTags,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
-  ApiConsumes,
-  ApiBody,
-} from '@nestjs/swagger';
-import { Request } from 'express';
-
-import { SupplierService } from './supplier.service';
-import { SupplierAuthGuard } from './guards/supplier-auth.guard';
+  ApiTags,
+} from "@nestjs/swagger";
+import { Request } from "express";
 import {
+  SaveSupplierCapabilitiesDto,
   SupplierCompanyDto,
   UpdateSupplierProfileDto,
   UploadSupplierDocumentDto,
-  SaveSupplierCapabilitiesDto,
-} from './dto';
+} from "./dto";
+import { SupplierAuthGuard } from "./guards/supplier-auth.guard";
+import { SupplierService } from "./supplier.service";
 
-@ApiTags('Supplier Portal')
-@Controller('supplier')
+@ApiTags("Supplier Portal")
+@Controller("supplier")
 @UseGuards(SupplierAuthGuard)
 @ApiBearerAuth()
 export class SupplierController {
@@ -42,160 +41,149 @@ export class SupplierController {
 
   constructor(private readonly supplierService: SupplierService) {}
 
-  @Get('profile')
-  @ApiOperation({ summary: 'Get supplier profile' })
-  @ApiResponse({ status: 200, description: 'Profile retrieved' })
+  @Get("profile")
+  @ApiOperation({ summary: "Get supplier profile" })
+  @ApiResponse({ status: 200, description: "Profile retrieved" })
   async getProfile(@Req() req: Request) {
-    const supplierId = req['supplier'].supplierId;
+    const supplierId = req["supplier"].supplierId;
     return this.supplierService.getProfile(supplierId);
   }
 
-  @Patch('profile')
-  @ApiOperation({ summary: 'Update supplier profile' })
-  @ApiResponse({ status: 200, description: 'Profile updated' })
-  async updateProfile(
-    @Body() dto: UpdateSupplierProfileDto,
-    @Req() req: Request,
-  ) {
-    const supplierId = req['supplier'].supplierId;
+  @Patch("profile")
+  @ApiOperation({ summary: "Update supplier profile" })
+  @ApiResponse({ status: 200, description: "Profile updated" })
+  async updateProfile(@Body() dto: UpdateSupplierProfileDto, @Req() req: Request) {
+    const supplierId = req["supplier"].supplierId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.updateProfile(supplierId, dto, clientIp);
   }
 
-  @Get('dashboard')
-  @ApiOperation({ summary: 'Get supplier dashboard data' })
-  @ApiResponse({ status: 200, description: 'Dashboard data retrieved' })
+  @Get("dashboard")
+  @ApiOperation({ summary: "Get supplier dashboard data" })
+  @ApiResponse({ status: 200, description: "Dashboard data retrieved" })
   async getDashboard(@Req() req: Request) {
-    const supplierId = req['supplier'].supplierId;
+    const supplierId = req["supplier"].supplierId;
     return this.supplierService.getDashboard(supplierId);
   }
 
-  @Get('onboarding/status')
-  @ApiOperation({ summary: 'Get onboarding status' })
-  @ApiResponse({ status: 200, description: 'Onboarding status retrieved' })
+  @Get("onboarding/status")
+  @ApiOperation({ summary: "Get onboarding status" })
+  @ApiResponse({ status: 200, description: "Onboarding status retrieved" })
   async getOnboardingStatus(@Req() req: Request) {
-    const supplierId = req['supplier'].supplierId;
+    const supplierId = req["supplier"].supplierId;
     return this.supplierService.getOnboardingStatus(supplierId);
   }
 
-  @Post('onboarding/company')
-  @ApiOperation({ summary: 'Save company details for onboarding' })
-  @ApiResponse({ status: 200, description: 'Company details saved' })
-  async saveCompanyDetails(
-    @Body() dto: SupplierCompanyDto,
-    @Req() req: Request,
-  ) {
-    const supplierId = req['supplier'].supplierId;
+  @Post("onboarding/company")
+  @ApiOperation({ summary: "Save company details for onboarding" })
+  @ApiResponse({ status: 200, description: "Company details saved" })
+  async saveCompanyDetails(@Body() dto: SupplierCompanyDto, @Req() req: Request) {
+    const supplierId = req["supplier"].supplierId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.saveCompanyDetails(supplierId, dto, clientIp);
   }
 
-  @Get('onboarding/documents')
-  @ApiOperation({ summary: 'Get uploaded documents' })
-  @ApiResponse({ status: 200, description: 'Documents retrieved' })
+  @Get("onboarding/documents")
+  @ApiOperation({ summary: "Get uploaded documents" })
+  @ApiResponse({ status: 200, description: "Documents retrieved" })
   async getDocuments(@Req() req: Request) {
-    const supplierId = req['supplier'].supplierId;
+    const supplierId = req["supplier"].supplierId;
     return this.supplierService.getDocuments(supplierId);
   }
 
-  @Post('onboarding/documents')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Upload onboarding document' })
-  @ApiConsumes('multipart/form-data')
+  @Post("onboarding/documents")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload onboarding document" })
+  @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        file: { type: 'string', format: 'binary' },
+        file: { type: "string", format: "binary" },
         documentType: {
-          type: 'string',
+          type: "string",
           enum: [
-            'registration_cert',
-            'tax_clearance',
-            'bee_cert',
-            'iso_cert',
-            'insurance',
-            'other',
+            "registration_cert",
+            "tax_clearance",
+            "bee_cert",
+            "iso_cert",
+            "insurance",
+            "other",
           ],
         },
-        expiryDate: { type: 'string', format: 'date' },
-        verificationResult: { type: 'string', description: 'JSON string of pre-verified result from frontend Nix verification' },
+        expiryDate: { type: "string", format: "date" },
+        verificationResult: {
+          type: "string",
+          description: "JSON string of pre-verified result from frontend Nix verification",
+        },
       },
-      required: ['file', 'documentType'],
+      required: ["file", "documentType"],
     },
   })
-  @ApiResponse({ status: 201, description: 'Document uploaded' })
+  @ApiResponse({ status: 201, description: "Document uploaded" })
   async uploadDocument(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadSupplierDocumentDto,
-    @Body('verificationResult') verificationResultJson: string,
+    @Body("verificationResult") verificationResultJson: string,
     @Req() req: Request,
   ) {
-    const supplierId = req['supplier'].supplierId;
+    const supplierId = req["supplier"].supplierId;
     const clientIp = this.getClientIp(req);
 
-    if (verificationResultJson && typeof verificationResultJson === 'string') {
+    if (verificationResultJson && typeof verificationResultJson === "string") {
       try {
         dto.verificationResult = JSON.parse(verificationResultJson);
       } catch {
-        this.logger.warn('Failed to parse verificationResult JSON');
+        this.logger.warn("Failed to parse verificationResult JSON");
       }
     }
 
     return this.supplierService.uploadDocument(supplierId, file, dto, clientIp);
   }
 
-  @Delete('onboarding/documents/:id')
-  @ApiOperation({ summary: 'Delete onboarding document' })
-  @ApiResponse({ status: 200, description: 'Document deleted' })
-  async deleteDocument(
-    @Param('id', ParseIntPipe) documentId: number,
-    @Req() req: Request,
-  ) {
-    const supplierId = req['supplier'].supplierId;
+  @Delete("onboarding/documents/:id")
+  @ApiOperation({ summary: "Delete onboarding document" })
+  @ApiResponse({ status: 200, description: "Document deleted" })
+  async deleteDocument(@Param("id", ParseIntPipe) documentId: number, @Req() req: Request) {
+    const supplierId = req["supplier"].supplierId;
     const clientIp = this.getClientIp(req);
     await this.supplierService.deleteDocument(supplierId, documentId, clientIp);
-    return { success: true, message: 'Document deleted' };
+    return { success: true, message: "Document deleted" };
   }
 
-  @Post('onboarding/submit')
-  @ApiOperation({ summary: 'Submit onboarding for review' })
-  @ApiResponse({ status: 200, description: 'Onboarding submitted' })
-  @ApiResponse({ status: 400, description: 'Incomplete onboarding data' })
+  @Post("onboarding/submit")
+  @ApiOperation({ summary: "Submit onboarding for review" })
+  @ApiResponse({ status: 200, description: "Onboarding submitted" })
+  @ApiResponse({ status: 400, description: "Incomplete onboarding data" })
   async submitOnboarding(@Req() req: Request) {
-    const supplierId = req['supplier'].supplierId;
+    const supplierId = req["supplier"].supplierId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.submitOnboarding(supplierId, clientIp);
   }
 
-  @Get('onboarding/capabilities')
-  @ApiOperation({ summary: 'Get supplier capabilities (products/services)' })
-  @ApiResponse({ status: 200, description: 'Capabilities retrieved' })
+  @Get("onboarding/capabilities")
+  @ApiOperation({ summary: "Get supplier capabilities (products/services)" })
+  @ApiResponse({ status: 200, description: "Capabilities retrieved" })
   async getCapabilities(@Req() req: Request) {
-    const supplierId = req['supplier'].supplierId;
+    const supplierId = req["supplier"].supplierId;
     return this.supplierService.getCapabilities(supplierId);
   }
 
-  @Post('onboarding/capabilities')
-  @ApiOperation({ summary: 'Save supplier capabilities (products/services)' })
-  @ApiResponse({ status: 200, description: 'Capabilities saved' })
-  async saveCapabilities(
-    @Body() dto: SaveSupplierCapabilitiesDto,
-    @Req() req: Request,
-  ) {
-    const supplierId = req['supplier'].supplierId;
+  @Post("onboarding/capabilities")
+  @ApiOperation({ summary: "Save supplier capabilities (products/services)" })
+  @ApiResponse({ status: 200, description: "Capabilities saved" })
+  async saveCapabilities(@Body() dto: SaveSupplierCapabilitiesDto, @Req() req: Request) {
+    const supplierId = req["supplier"].supplierId;
     const clientIp = this.getClientIp(req);
     return this.supplierService.saveCapabilities(supplierId, dto, clientIp);
   }
 
   private getClientIp(req: Request): string {
-    const forwarded = req.headers['x-forwarded-for'];
+    const forwarded = req.headers["x-forwarded-for"];
     if (forwarded) {
-      const ips = Array.isArray(forwarded)
-        ? forwarded[0]
-        : forwarded.split(',')[0];
+      const ips = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(",")[0];
       return ips.trim();
     }
-    return req.ip || req.socket?.remoteAddress || 'unknown';
+    return req.ip || req.socket?.remoteAddress || "unknown";
   }
 }

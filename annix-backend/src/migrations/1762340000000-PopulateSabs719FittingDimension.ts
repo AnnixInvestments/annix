@@ -1,13 +1,13 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class PopulateSabs719FittingDimension1762340000000 implements MigrationInterface {
-  name = 'PopulateSabs719FittingDimension1762340000000';
+  name = "PopulateSabs719FittingDimension1762340000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('🔧 Populating SABS 719 fitting dimension table...');
+    console.warn("🔧 Populating SABS 719 fitting dimension table...");
 
     // Clear existing data to avoid duplicates
-    await queryRunner.query(`DELETE FROM sabs719_fitting_dimension`);
+    await queryRunner.query("DELETE FROM sabs719_fitting_dimension");
 
     // Short Tee dimensions - C/F (center-to-face) values from SABS 719 table
     // For Short Tee: Pipe Length A = C/F × 2 (run), Pipe Length B = C/F (branch)
@@ -109,9 +109,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.warn(
-      `✅ Inserted ${longRadiusElbowData.length} Long Radius Elbow dimensions`,
-    );
+    console.warn(`✅ Inserted ${longRadiusElbowData.length} Long Radius Elbow dimensions`);
 
     // Medium Radius Elbow dimensions
     const mediumRadiusElbowData = [
@@ -142,9 +140,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.warn(
-      `✅ Inserted ${mediumRadiusElbowData.length} Medium Radius Elbow dimensions`,
-    );
+    console.warn(`✅ Inserted ${mediumRadiusElbowData.length} Medium Radius Elbow dimensions`);
 
     // Short Radius Elbow / Elbow dimensions
     const shortRadiusElbowData = [
@@ -175,9 +171,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.warn(
-      `✅ Inserted ${shortRadiusElbowData.length} Short Radius Elbow dimensions`,
-    );
+    console.warn(`✅ Inserted ${shortRadiusElbowData.length} Short Radius Elbow dimensions`);
 
     // Lateral dimensions - similar to Short Tee: Pipe A = CF × 2, Pipe B = CF
     for (const [nb, od, cf] of shortTeeData) {
@@ -292,7 +286,7 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.warn(`✅ Inserted Duckfoot dimensions`);
+    console.warn("✅ Inserted Duckfoot dimensions");
 
     // Unequal tee variants (using gusset CF dimensions)
     for (const [nb, od, cf] of gussetTeeCfData) {
@@ -315,13 +309,13 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
         )
       `);
     }
-    console.warn(`✅ Inserted Unequal Tee dimensions`);
+    console.warn("✅ Inserted Unequal Tee dimensions");
 
-    console.warn('🎉 SABS 719 fitting dimension table populated successfully!');
+    console.warn("🎉 SABS 719 fitting dimension table populated successfully!");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DELETE FROM sabs719_fitting_dimension`);
-    console.warn('🗑️ Cleared SABS 719 fitting dimension table');
+    await queryRunner.query("DELETE FROM sabs719_fitting_dimension");
+    console.warn("🗑️ Cleared SABS 719 fitting dimension table");
   }
 }

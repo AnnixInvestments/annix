@@ -1,10 +1,10 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ReviewWorkflow } from './entities/review-workflow.entity';
-import { WorkflowController } from './workflow.controller';
-import { WorkflowService } from './workflow.service';
-import { DrawingsModule } from '../drawings/drawings.module';
-import { BoqModule } from '../boq/boq.module';
+import { forwardRef, Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { BoqModule } from "../boq/boq.module";
+import { DrawingsModule } from "../drawings/drawings.module";
+import { ReviewWorkflow } from "./entities/review-workflow.entity";
+import { WorkflowController } from "./workflow.controller";
+import { WorkflowService } from "./workflow.service";
 
 @Module({
   imports: [

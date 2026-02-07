@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { WeldTypeController } from './weld-type.controller';
-import { WeldTypeService } from './weld-type.service';
-import { WeldType } from './entities/weld-type.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { WeldType } from "./entities/weld-type.entity";
+import { WeldTypeController } from "./weld-type.controller";
+import { WeldTypeService } from "./weld-type.service";
 
-describe('WeldTypeController', () => {
+describe("WeldTypeController", () => {
   let controller: WeldTypeController;
   let service: WeldTypeService;
 
@@ -40,7 +40,7 @@ describe('WeldTypeController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

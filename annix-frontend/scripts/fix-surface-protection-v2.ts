@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content = fs.readFileSync(filePath, "utf8");
 
 // Replace the entire Surface Protection block start with header and fixed summary
 const oldBlock = `        {/* External Coating & Internal Lining - Only show if Surface Protection is selected */}
@@ -88,9 +88,9 @@ const newBlock = `        {/* Surface Protection - Only show if Surface Protecti
 
 if (content.includes(oldBlock)) {
   content = content.replace(oldBlock, newBlock);
-  console.log('✅ Updated Surface Protection section with header');
+  console.log("✅ Updated Surface Protection section with header");
 } else {
-  console.log('❌ Could not find the old block - checking if already modified or different format');
+  console.log("❌ Could not find the old block - checking if already modified or different format");
   // Try the original format without my changes
   const originalBlock = `        {/* External Coating & Internal Lining - Only show if Surface Protection is selected */}
         {showSurfaceProtection && (
@@ -143,9 +143,9 @@ if (content.includes(oldBlock)) {
         {/* External Coating */}`;
 
     content = content.replace(originalBlock, newOriginalBlock);
-    console.log('✅ Updated Surface Protection section (original format)');
+    console.log("✅ Updated Surface Protection section (original format)");
   } else {
-    console.log('❌ Could not find original block either');
+    console.log("❌ Could not find original block either");
   }
 }
 
@@ -163,10 +163,10 @@ const closingNew = `          </div>
 
 if (content.includes(closingOld)) {
   content = content.replace(closingOld, closingNew);
-  console.log('✅ Fixed closing tag');
+  console.log("✅ Fixed closing tag");
 } else {
-  console.log('❌ Could not find closing pattern');
+  console.log("❌ Could not find closing pattern");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CustomFieldValue } from '../entities/custom-field-value.entity';
-import { NixExtractionRegion } from '../entities/nix-extraction-region.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CustomFieldValue } from "../entities/custom-field-value.entity";
+import { NixExtractionRegion } from "../entities/nix-extraction-region.entity";
 
 export interface SaveCustomFieldDto {
-  entityType: 'customer' | 'supplier';
+  entityType: "customer" | "supplier";
   entityId: number;
   fieldName: string;
   fieldValue: string | null;
@@ -32,9 +32,7 @@ export class CustomFieldService {
   ) {}
 
   async saveCustomFieldValue(dto: SaveCustomFieldDto): Promise<CustomFieldValue> {
-    this.logger.log(
-      `Saving custom field ${dto.fieldName} for ${dto.entityType} ${dto.entityId}`,
-    );
+    this.logger.log(`Saving custom field ${dto.fieldName} for ${dto.entityType} ${dto.entityId}`);
 
     const existing = await this.customFieldValueRepo.findOne({
       where: {
@@ -67,19 +65,19 @@ export class CustomFieldService {
   }
 
   async customFieldsForEntity(
-    entityType: 'customer' | 'supplier',
+    entityType: "customer" | "supplier",
     entityId: number,
   ): Promise<CustomFieldValue[]> {
     return this.customFieldValueRepo.find({
       where: { entityType, entityId },
-      order: { fieldName: 'ASC' },
+      order: { fieldName: "ASC" },
     });
   }
 
   async customFieldDefinitions(): Promise<CustomFieldDefinition[]> {
     const regions = await this.extractionRegionRepo.find({
       where: { isCustomField: true, isActive: true },
-      order: { documentCategory: 'ASC', fieldName: 'ASC' },
+      order: { documentCategory: "ASC", fieldName: "ASC" },
     });
 
     return regions.map((r) => ({
@@ -94,7 +92,7 @@ export class CustomFieldService {
   ): Promise<CustomFieldDefinition[]> {
     const regions = await this.extractionRegionRepo.find({
       where: { isCustomField: true, isActive: true, documentCategory },
-      order: { fieldName: 'ASC' },
+      order: { fieldName: "ASC" },
     });
 
     return regions.map((r) => ({
@@ -104,10 +102,7 @@ export class CustomFieldService {
     }));
   }
 
-  async verifyCustomField(
-    id: number,
-    verifiedByUserId: number,
-  ): Promise<CustomFieldValue> {
+  async verifyCustomField(id: number, verifiedByUserId: number): Promise<CustomFieldValue> {
     const field = await this.customFieldValueRepo.findOneOrFail({
       where: { id },
     });
@@ -116,10 +111,7 @@ export class CustomFieldService {
     return this.customFieldValueRepo.save(field);
   }
 
-  async updateCustomFieldValue(
-    id: number,
-    newValue: string,
-  ): Promise<CustomFieldValue> {
+  async updateCustomFieldValue(id: number, newValue: string): Promise<CustomFieldValue> {
     const field = await this.customFieldValueRepo.findOneOrFail({
       where: { id },
     });

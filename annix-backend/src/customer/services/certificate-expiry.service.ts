@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, IsNull, Or } from 'typeorm';
-import { CustomerCompany } from '../entities/customer-company.entity';
-import { CustomerProfile } from '../entities/customer-profile.entity';
-import { EmailService } from '../../email/email.service';
-import { now, formatDate } from '../../lib/datetime';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { EmailService } from "../../email/email.service";
+import { formatDate, now } from "../../lib/datetime";
+import { CustomerCompany } from "../entities/customer-company.entity";
+import { CustomerProfile } from "../entities/customer-profile.entity";
 
 @Injectable()
 export class CertificateExpiryService {
@@ -21,22 +21,22 @@ export class CertificateExpiryService {
 
   @Cron(CronExpression.EVERY_DAY_AT_8AM)
   async checkBeeExpiryNotifications(): Promise<void> {
-    this.logger.log('Running daily BEE certificate expiry check...');
+    this.logger.log("Running daily BEE certificate expiry check...");
 
     try {
-      const today = now().startOf('day').toJSDate();
-      const todayStr = now().toFormat('yyyy-MM-dd');
+      const today = now().startOf("day").toJSDate();
+      const todayStr = now().toFormat("yyyy-MM-dd");
 
       const companiesWithExpiredBee = await this.companyRepo
-        .createQueryBuilder('company')
-        .leftJoinAndSelect('company.profiles', 'profile')
-        .leftJoinAndSelect('profile.user', 'user')
-        .where('company.beeCertificateExpiry IS NOT NULL')
-        .andWhere('DATE(company.beeCertificateExpiry) <= :today', {
+        .createQueryBuilder("company")
+        .leftJoinAndSelect("company.profiles", "profile")
+        .leftJoinAndSelect("profile.user", "user")
+        .where("company.beeCertificateExpiry IS NOT NULL")
+        .andWhere("DATE(company.beeCertificateExpiry) <= :today", {
           today: todayStr,
         })
         .andWhere(
-          '(company.beeExpiryNotificationSentAt IS NULL OR DATE(company.beeExpiryNotificationSentAt) < DATE(company.beeCertificateExpiry))',
+          "(company.beeExpiryNotificationSentAt IS NULL OR DATE(company.beeExpiryNotificationSentAt) < DATE(company.beeCertificateExpiry))",
         )
         .getMany();
 
@@ -48,12 +48,9 @@ export class CertificateExpiryService {
         await this.sendExpiryNotification(company);
       }
 
-      this.logger.log('BEE certificate expiry check completed');
+      this.logger.log("BEE certificate expiry check completed");
     } catch (error) {
-      this.logger.error(
-        `Failed to run BEE expiry check: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to run BEE expiry check: ${error.message}`, error.stack);
     }
   }
 
@@ -61,15 +58,13 @@ export class CertificateExpiryService {
     const profiles = company.profiles || [];
 
     if (profiles.length === 0) {
-      this.logger.warn(
-        `Company ${company.id} (${company.legalName}) has no profiles to notify`,
-      );
+      this.logger.warn(`Company ${company.id} (${company.legalName}) has no profiles to notify`);
       return;
     }
 
     const expiryDate = company.beeCertificateExpiry
       ? formatDate(company.beeCertificateExpiry)
-      : 'Unknown';
+      : "Unknown";
 
     for (const profile of profiles) {
       if (!profile.user?.email) {
@@ -78,8 +73,7 @@ export class CertificateExpiryService {
 
       try {
         const contactName = `${profile.firstName} ${profile.lastName}`;
-        const companyName =
-          company.tradingName || company.legalName || 'Your Company';
+        const companyName = company.tradingName || company.legalName || "Your Company";
 
         await this.emailService.sendBeeExpiryNotificationEmail(
           profile.user.email,
@@ -107,7 +101,7 @@ export class CertificateExpiryService {
     companiesChecked: number;
     notificationsSent: number;
   }> {
-    this.logger.log('Manually triggering BEE expiry check...');
+    this.logger.log("Manually triggering BEE expiry check...");
     await this.checkBeeExpiryNotifications();
     return { companiesChecked: 0, notificationsSent: 0 };
   }

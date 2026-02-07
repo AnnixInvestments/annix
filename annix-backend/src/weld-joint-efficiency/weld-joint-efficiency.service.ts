@@ -1,16 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 import {
+  B31_1_JointEfficiencyRow,
   B31_1_TABLE_102_4_3,
   B31_1_TABLE_102_4_3_NOTES,
+  B31_1_WELD_RULES,
+  B31_3_QualityFactorRow,
   B31_3_TABLE_A_1B,
   B31_3_TABLE_A_1B_NOTES,
-  B31_1_WELD_RULES,
   MATERIAL_CATEGORIES,
-  B31_1_JointEfficiencyRow,
-  B31_3_QualityFactorRow,
   WeldRuleSection,
-  MaterialCategory,
-} from './weld-joint-efficiency.data';
+} from "./weld-joint-efficiency.data";
 
 export interface JointEfficiencyLookupResult {
   found: boolean;
@@ -83,10 +82,7 @@ export class WeldJointEfficiencyService {
    * @param examination - The examination type (optional, for more specific lookup)
    * @returns JointEfficiencyLookupResult
    */
-  getJointEfficiencyB31_1(
-    typeOfJoint: string,
-    examination?: string,
-  ): JointEfficiencyLookupResult {
+  getJointEfficiencyB31_1(typeOfJoint: string, examination?: string): JointEfficiencyLookupResult {
     const normalizedJoint = typeOfJoint.toLowerCase().trim();
     const normalizedExam = examination?.toLowerCase().trim();
 
@@ -151,11 +147,11 @@ export class WeldJointEfficiencyService {
     }
 
     const rows = B31_3_TABLE_A_1B[categoryKey];
-    const normalizedSpec = specNo.toLowerCase().trim().replace(/\s+/g, ' ');
+    const normalizedSpec = specNo.toLowerCase().trim().replace(/\s+/g, " ");
     const normalizedDesc = description?.toLowerCase().trim();
 
     for (const row of rows) {
-      const rowSpecNormalized = row.specNo.toLowerCase().replace(/\s+/g, ' ');
+      const rowSpecNormalized = row.specNo.toLowerCase().replace(/\s+/g, " ");
 
       if (rowSpecNormalized === normalizedSpec) {
         // If description is provided, also check that
@@ -198,14 +194,12 @@ export class WeldJointEfficiencyService {
     specNo: string;
     results: Array<B31_3_QualityFactorRow & { materialCategory: string }>;
   } {
-    const normalizedSpec = specNo.toLowerCase().trim().replace(/\s+/g, ' ');
-    const results: Array<
-      B31_3_QualityFactorRow & { materialCategory: string }
-    > = [];
+    const normalizedSpec = specNo.toLowerCase().trim().replace(/\s+/g, " ");
+    const results: Array<B31_3_QualityFactorRow & { materialCategory: string }> = [];
 
     for (const [category, rows] of Object.entries(B31_3_TABLE_A_1B)) {
       for (const row of rows) {
-        const rowSpecNormalized = row.specNo.toLowerCase().replace(/\s+/g, ' ');
+        const rowSpecNormalized = row.specNo.toLowerCase().replace(/\s+/g, " ");
         if (rowSpecNormalized === normalizedSpec) {
           results.push({ ...row, materialCategory: category });
         }
@@ -273,18 +267,18 @@ export class WeldJointEfficiencyService {
    */
   getDefaultJointEfficiency(
     specNo: string,
-    pipeType: 'seamless' | 'erw' | 'efw' | 'furnace',
+    pipeType: "seamless" | "erw" | "efw" | "furnace",
     radiographed: boolean = false,
   ): number | null {
     // Quick lookup for common cases
     switch (pipeType) {
-      case 'seamless':
+      case "seamless":
         return 1.0;
-      case 'erw':
+      case "erw":
         return 0.85;
-      case 'furnace':
+      case "furnace":
         return 0.6;
-      case 'efw':
+      case "efw":
         return radiographed ? 1.0 : 0.85;
       default:
         return null;
@@ -313,9 +307,7 @@ export class WeldJointEfficiencyService {
     );
 
     // Search B31.3 table
-    const b31_3_matches: Array<
-      B31_3_QualityFactorRow & { materialCategory: string }
-    > = [];
+    const b31_3_matches: Array<B31_3_QualityFactorRow & { materialCategory: string }> = [];
     for (const [category, rows] of Object.entries(B31_3_TABLE_A_1B)) {
       for (const row of rows) {
         if (

@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddComprehensiveBoltNutData1770500000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -7,18 +7,10 @@ export class AddComprehensiveBoltNutData1770500000000 implements MigrationInterf
       WHERE table_name = 'bolts' AND column_name = 'grade'
     `);
     if (gradeColumnExists.length === 0) {
-      await queryRunner.query(
-        `ALTER TABLE bolts ADD COLUMN grade varchar NULL`,
-      );
-      await queryRunner.query(
-        `ALTER TABLE bolts ADD COLUMN material varchar NULL`,
-      );
-      await queryRunner.query(
-        `ALTER TABLE bolts ADD COLUMN head_style varchar NULL`,
-      );
-      await queryRunner.query(
-        `ALTER TABLE bolts ADD COLUMN thread_type varchar NULL`,
-      );
+      await queryRunner.query("ALTER TABLE bolts ADD COLUMN grade varchar NULL");
+      await queryRunner.query("ALTER TABLE bolts ADD COLUMN material varchar NULL");
+      await queryRunner.query("ALTER TABLE bolts ADD COLUMN head_style varchar NULL");
+      await queryRunner.query("ALTER TABLE bolts ADD COLUMN thread_type varchar NULL");
     }
 
     const nutGradeColumnExists = await queryRunner.query(`
@@ -26,12 +18,8 @@ export class AddComprehensiveBoltNutData1770500000000 implements MigrationInterf
       WHERE table_name = 'nut_masses' AND column_name = 'grade'
     `);
     if (nutGradeColumnExists.length === 0) {
-      await queryRunner.query(
-        `ALTER TABLE nut_masses ADD COLUMN grade varchar NULL`,
-      );
-      await queryRunner.query(
-        `ALTER TABLE nut_masses ADD COLUMN type varchar NULL`,
-      );
+      await queryRunner.query("ALTER TABLE nut_masses ADD COLUMN grade varchar NULL");
+      await queryRunner.query("ALTER TABLE nut_masses ADD COLUMN type varchar NULL");
     }
 
     await queryRunner.query(
@@ -40,33 +28,31 @@ export class AddComprehensiveBoltNutData1770500000000 implements MigrationInterf
 
     const boltIds: Record<string, number> = {};
     const boltSizes = [
-      'M10',
-      'M12',
-      'M16',
-      'M20',
-      'M24',
-      'M27',
-      'M30',
-      'M33',
-      'M36',
-      'M39',
-      'M42',
-      'M45',
-      'M48',
-      'M52',
-      'M56',
-      'M64',
+      "M10",
+      "M12",
+      "M16",
+      "M20",
+      "M24",
+      "M27",
+      "M30",
+      "M33",
+      "M36",
+      "M39",
+      "M42",
+      "M45",
+      "M48",
+      "M52",
+      "M56",
+      "M64",
     ];
     for (const size of boltSizes) {
-      const result = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = '${size}'`,
-      );
+      const result = await queryRunner.query(`SELECT id FROM bolts WHERE designation = '${size}'`);
       if (result.length > 0) {
         boltIds[size] = result[0].id;
       }
     }
 
-    const newBoltSizes = ['M48'];
+    const newBoltSizes = ["M48"];
     for (const size of newBoltSizes) {
       if (!boltIds[size]) {
         const result = await queryRunner.query(
@@ -443,22 +429,22 @@ export class AddComprehensiveBoltNutData1770500000000 implements MigrationInterf
     }
 
     const nutMassData: [string, number][] = [
-      ['M10', 0.0116],
-      ['M12', 0.0173],
-      ['M16', 0.0333],
-      ['M20', 0.0644],
-      ['M24', 0.11],
-      ['M27', 0.165],
-      ['M30', 0.223],
-      ['M33', 0.288],
-      ['M36', 0.393],
-      ['M39', 0.502],
-      ['M42', 0.652],
-      ['M45', 0.8],
-      ['M48', 0.98],
-      ['M52', 1.22],
-      ['M56', 1.42],
-      ['M64', 1.98],
+      ["M10", 0.0116],
+      ["M12", 0.0173],
+      ["M16", 0.0333],
+      ["M20", 0.0644],
+      ["M24", 0.11],
+      ["M27", 0.165],
+      ["M30", 0.223],
+      ["M33", 0.288],
+      ["M36", 0.393],
+      ["M39", 0.502],
+      ["M42", 0.652],
+      ["M45", 0.8],
+      ["M48", 0.98],
+      ["M52", 1.22],
+      ["M56", 1.42],
+      ["M64", 1.98],
     ];
 
     for (const [size, mass] of nutMassData) {
@@ -477,21 +463,13 @@ export class AddComprehensiveBoltNutData1770500000000 implements MigrationInterf
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DELETE FROM bolt_masses`);
-    await queryRunner.query(`DELETE FROM nut_masses`);
-    await queryRunner.query(`ALTER TABLE bolts DROP COLUMN IF EXISTS grade`);
-    await queryRunner.query(`ALTER TABLE bolts DROP COLUMN IF EXISTS material`);
-    await queryRunner.query(
-      `ALTER TABLE bolts DROP COLUMN IF EXISTS head_style`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE bolts DROP COLUMN IF EXISTS thread_type`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE nut_masses DROP COLUMN IF EXISTS grade`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE nut_masses DROP COLUMN IF EXISTS type`,
-    );
+    await queryRunner.query("DELETE FROM bolt_masses");
+    await queryRunner.query("DELETE FROM nut_masses");
+    await queryRunner.query("ALTER TABLE bolts DROP COLUMN IF EXISTS grade");
+    await queryRunner.query("ALTER TABLE bolts DROP COLUMN IF EXISTS material");
+    await queryRunner.query("ALTER TABLE bolts DROP COLUMN IF EXISTS head_style");
+    await queryRunner.query("ALTER TABLE bolts DROP COLUMN IF EXISTS thread_type");
+    await queryRunner.query("ALTER TABLE nut_masses DROP COLUMN IF EXISTS grade");
+    await queryRunner.query("ALTER TABLE nut_masses DROP COLUMN IF EXISTS type");
   }
 }

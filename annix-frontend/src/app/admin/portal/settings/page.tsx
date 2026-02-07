@@ -1,8 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useToast } from '@/app/components/Toast';
-import { useFeatureFlags, useToggleFeatureFlag } from '@/app/lib/query/hooks';
+import { useToast } from "@/app/components/Toast";
+import { useFeatureFlags, useToggleFeatureFlag } from "@/app/lib/query/hooks";
 
 export default function SettingsPage() {
   const { showToast } = useToast();
@@ -16,14 +15,11 @@ export default function SettingsPage() {
       { flagKey, enabled: !currentEnabled },
       {
         onSuccess: (updated) => {
-          showToast(
-            `${flagKey} ${updated.enabled ? 'enabled' : 'disabled'}`,
-            'success',
-          );
+          showToast(`${flagKey} ${updated.enabled ? "enabled" : "disabled"}`, "success");
         },
         onError: (err) => {
-          const message = err instanceof Error ? err.message : 'Failed to update flag';
-          showToast(message, 'error');
+          const message = err instanceof Error ? err.message : "Failed to update flag";
+          showToast(message, "error");
         },
       },
     );
@@ -51,7 +47,9 @@ export default function SettingsPage() {
         {flagsQuery.isLoading ? (
           <div className="px-6 py-12 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">Loading feature flags...</p>
+            <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+              Loading feature flags...
+            </p>
           </div>
         ) : flagsQuery.error ? (
           <div className="px-6 py-12 text-center">
@@ -66,12 +64,10 @@ export default function SettingsPage() {
         ) : (
           <div className="divide-y divide-gray-200 dark:divide-slate-700">
             {flags.map((flag) => {
-              const isUpdating = toggleMutation.isPending && toggleMutation.variables?.flagKey === flag.flagKey;
+              const isUpdating =
+                toggleMutation.isPending && toggleMutation.variables?.flagKey === flag.flagKey;
               return (
-                <div
-                  key={flag.flagKey}
-                  className="px-6 py-4 flex items-center justify-between"
-                >
+                <div key={flag.flagKey} className="px-6 py-4 flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-3">
                       <span className="text-sm font-mono font-medium text-gray-900 dark:text-white">
@@ -80,11 +76,11 @@ export default function SettingsPage() {
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                           flag.enabled
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-gray-300'
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                            : "bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-gray-300"
                         }`}
                       >
-                        {flag.enabled ? 'Enabled' : 'Disabled'}
+                        {flag.enabled ? "Enabled" : "Disabled"}
                       </span>
                     </div>
                     {flag.description && (
@@ -98,15 +94,15 @@ export default function SettingsPage() {
                     onClick={() => handleToggle(flag.flagKey, flag.enabled)}
                     disabled={isUpdating}
                     className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      flag.enabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-slate-600'
-                    } ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      flag.enabled ? "bg-blue-600" : "bg-gray-200 dark:bg-slate-600"
+                    } ${isUpdating ? "opacity-50 cursor-not-allowed" : ""}`}
                     role="switch"
                     aria-checked={flag.enabled}
                     aria-label={`Toggle ${flag.flagKey}`}
                   >
                     <span
                       className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        flag.enabled ? 'translate-x-5' : 'translate-x-0'
+                        flag.enabled ? "translate-x-5" : "translate-x-0"
                       }`}
                     />
                   </button>

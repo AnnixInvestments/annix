@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NutMassController } from './nut-mass.controller';
-import { NutMassService } from './nut-mass.service';
-import { NutMass } from './entities/nut-mass.entity';
-import { Bolt } from '../bolt/entities/bolt.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { Bolt } from "../bolt/entities/bolt.entity";
+import { NutMass } from "./entities/nut-mass.entity";
+import { NutMassController } from "./nut-mass.controller";
+import { NutMassService } from "./nut-mass.service";
 
-describe('NutMassController', () => {
+describe("NutMassController", () => {
   let controller: NutMassController;
   let service: NutMassService;
 
@@ -45,7 +45,7 @@ describe('NutMassController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

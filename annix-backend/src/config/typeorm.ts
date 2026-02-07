@@ -1,22 +1,21 @@
-import { registerAs } from '@nestjs/config';
-import { config as dotenvConfig } from 'dotenv';
-import { DataSource, DataSourceOptions } from 'typeorm';
-import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { registerAs } from "@nestjs/config";
+import { TypeOrmModuleOptions } from "@nestjs/typeorm";
+import { config as dotenvConfig } from "dotenv";
+import { DataSource, DataSourceOptions } from "typeorm";
 
-dotenvConfig({ path: '.env' });
+dotenvConfig({ path: ".env" });
 
 const config: DataSourceOptions = {
-  type: 'postgres',
+  type: "postgres",
   host: process.env.DATABASE_HOST,
   port: Number(process.env.DATABASE_PORT),
   username: process.env.DATABASE_USERNAME,
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
-  entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+  entities: [`${__dirname}/../**/*.entity{.ts,.js}`],
   synchronize: false,
-  logging: process.env.NODE_ENV !== 'production',
-  ssl:
-    process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  logging: process.env.NODE_ENV !== "production",
+  ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : false,
   extra: {
     max: 10,
     min: 2,
@@ -25,5 +24,5 @@ const config: DataSourceOptions = {
   },
 };
 
-export default registerAs('typeorm', () => config as TypeOrmModuleOptions);
+export default registerAs("typeorm", () => config as TypeOrmModuleOptions);
 export const connectionSource = new DataSource(config);

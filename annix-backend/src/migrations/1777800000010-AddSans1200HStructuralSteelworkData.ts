@@ -1,18 +1,18 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddSans1200HStructuralSteelworkData1777800000010 implements MigrationInterface {
-  name = 'AddSans1200HStructuralSteelworkData1777800000010';
+  name = "AddSans1200HStructuralSteelworkData1777800000010";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const tableExists = async (tableName: string): Promise<boolean> => {
       const result = await queryRunner.query(
-        `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)`,
+        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
         [tableName],
       );
       return result[0].exists;
     };
 
-    if (!(await tableExists('sans1200h_steel_grades'))) {
+    if (!(await tableExists("sans1200h_steel_grades"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_steel_grades (
           id SERIAL PRIMARY KEY,
@@ -42,7 +42,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_bolt_specifications'))) {
+    if (!(await tableExists("sans1200h_bolt_specifications"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_bolt_specifications (
           id SERIAL PRIMARY KEY,
@@ -68,7 +68,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_bolt_tension_requirements'))) {
+    if (!(await tableExists("sans1200h_bolt_tension_requirements"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_bolt_tension_requirements (
           id SERIAL PRIMARY KEY,
@@ -94,7 +94,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_hole_clearances'))) {
+    if (!(await tableExists("sans1200h_hole_clearances"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_hole_clearances (
           id SERIAL PRIMARY KEY,
@@ -118,7 +118,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_cutting_methods'))) {
+    if (!(await tableExists("sans1200h_cutting_methods"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_cutting_methods (
           id SERIAL PRIMARY KEY,
@@ -144,7 +144,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_rivet_defect_limits'))) {
+    if (!(await tableExists("sans1200h_rivet_defect_limits"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_rivet_defect_limits (
           id SERIAL PRIMARY KEY,
@@ -169,7 +169,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_fabrication_tolerances'))) {
+    if (!(await tableExists("sans1200h_fabrication_tolerances"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_fabrication_tolerances (
           id SERIAL PRIMARY KEY,
@@ -195,7 +195,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_erection_tolerances'))) {
+    if (!(await tableExists("sans1200h_erection_tolerances"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_erection_tolerances (
           id SERIAL PRIMARY KEY,
@@ -223,7 +223,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_gantry_rail_tolerances'))) {
+    if (!(await tableExists("sans1200h_gantry_rail_tolerances"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_gantry_rail_tolerances (
           id SERIAL PRIMARY KEY,
@@ -251,7 +251,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_grouting_requirements'))) {
+    if (!(await tableExists("sans1200h_grouting_requirements"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_grouting_requirements (
           id SERIAL PRIMARY KEY,
@@ -278,7 +278,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_assembly_requirements'))) {
+    if (!(await tableExists("sans1200h_assembly_requirements"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_assembly_requirements (
           id SERIAL PRIMARY KEY,
@@ -305,7 +305,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_welding_standards'))) {
+    if (!(await tableExists("sans1200h_welding_standards"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_welding_standards (
           id SERIAL PRIMARY KEY,
@@ -332,7 +332,7 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
       `);
     }
 
-    if (!(await tableExists('sans1200h_referenced_standards'))) {
+    if (!(await tableExists("sans1200h_referenced_standards"))) {
       await queryRunner.query(`
         CREATE TABLE sans1200h_referenced_standards (
           id SERIAL PRIMARY KEY,
@@ -374,36 +374,18 @@ export class AddSans1200HStructuralSteelworkData1777800000010 implements Migrati
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS sans1200h_referenced_standards`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_welding_standards`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS sans1200h_assembly_requirements`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS sans1200h_grouting_requirements`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS sans1200h_gantry_rail_tolerances`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS sans1200h_erection_tolerances`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS sans1200h_fabrication_tolerances`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS sans1200h_rivet_defect_limits`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_cutting_methods`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_hole_clearances`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS sans1200h_bolt_tension_requirements`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS sans1200h_bolt_specifications`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS sans1200h_steel_grades`);
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_referenced_standards");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_welding_standards");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_assembly_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_grouting_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_gantry_rail_tolerances");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_erection_tolerances");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_fabrication_tolerances");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_rivet_defect_limits");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_cutting_methods");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_hole_clearances");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_bolt_tension_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_bolt_specifications");
+    await queryRunner.query("DROP TABLE IF EXISTS sans1200h_steel_grades");
   }
 }

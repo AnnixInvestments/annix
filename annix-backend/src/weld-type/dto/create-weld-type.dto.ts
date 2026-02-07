@@ -1,26 +1,26 @@
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateWeldTypeDto {
   @ApiProperty({
-    example: 'FW_STR',
-    description: 'Weld type code (short identifier)',
+    example: "FW_STR",
+    description: "Weld type code (short identifier)",
   })
   @IsString()
   @IsNotEmpty()
   weld_code: string;
 
   @ApiProperty({
-    example: 'Flange Weld - Straight',
-    description: 'Full name of the weld type',
+    example: "Flange Weld - Straight",
+    description: "Full name of the weld type",
   })
   @IsString()
   @IsNotEmpty()
   weld_name: string;
 
   @ApiProperty({
-    example: 'FLANGE',
-    description: 'Weld category',
+    example: "FLANGE",
+    description: "Weld category",
     required: false,
   })
   @IsString()
@@ -28,8 +28,8 @@ export class CreateWeldTypeDto {
   category?: string;
 
   @ApiProperty({
-    example: 'Flange weld for straight pipe connections',
-    description: 'Detailed description of the weld type',
+    example: "Flange weld for straight pipe connections",
+    description: "Detailed description of the weld type",
     required: false,
   })
   @IsString()

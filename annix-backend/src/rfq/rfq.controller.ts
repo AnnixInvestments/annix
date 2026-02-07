@@ -1,74 +1,67 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
   Post,
   Put,
-  Delete,
-  Body,
-  Param,
-  HttpStatus,
-  UseInterceptors,
-  UploadedFile,
-  Res,
-  ParseIntPipe,
-  UseGuards,
   Req,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { Response, Request } from 'express';
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
+  ApiBearerAuth,
   ApiBody,
   ApiConsumes,
+  ApiOperation,
   ApiParam,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
-import { RfqService } from './rfq.service';
-import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
-import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
-import { CreateBendRfqDto } from './dto/create-bend-rfq.dto';
-import { CreateUnifiedRfqDto } from './dto/create-unified-rfq.dto';
-import {
-  StraightPipeCalculationResultDto,
-  RfqResponseDto,
-} from './dto/rfq-response.dto';
-import { BendCalculationResultDto } from './dto/bend-calculation-result.dto';
-import { RfqDocumentResponseDto } from './dto/rfq-document.dto';
-import {
-  SaveRfqDraftDto,
-  RfqDraftResponseDto,
-  RfqDraftFullResponseDto,
-} from './dto/rfq-draft.dto';
-import { Rfq } from './entities/rfq.entity';
-import { CustomerAuthGuard } from '../customer/guards/customer-auth.guard';
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
+import { Request, Response } from "express";
+import { CustomerAuthGuard } from "../customer/guards/customer-auth.guard";
+import { BendCalculationResultDto } from "./dto/bend-calculation-result.dto";
+import { CreateBendRfqDto } from "./dto/create-bend-rfq.dto";
+import { CreateBendRfqWithItemDto } from "./dto/create-bend-rfq-with-item.dto";
+import { CreateStraightPipeRfqWithItemDto } from "./dto/create-rfq-item.dto";
+import { CreateUnifiedRfqDto } from "./dto/create-unified-rfq.dto";
+import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
+import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
+import { RfqResponseDto, StraightPipeCalculationResultDto } from "./dto/rfq-response.dto";
+import { Rfq } from "./entities/rfq.entity";
+import { RfqService } from "./rfq.service";
 
-@ApiTags('RFQ')
-@Controller('rfq')
+@ApiTags("RFQ")
+@Controller("rfq")
 export class RfqController {
   constructor(private readonly rfqService: RfqService) {}
 
-  @Get('statistics')
+  @Get("statistics")
   @ApiOperation({
-    summary: 'RFQ statistics',
-    description: 'Returns RFQ counts per year for dashboard display',
+    summary: "RFQ statistics",
+    description: "Returns RFQ counts per year for dashboard display",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Statistics retrieved successfully',
+    description: "Statistics retrieved successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        currentYear: { type: 'number', example: 2026 },
-        currentYearCount: { type: 'number', example: 42 },
+        currentYear: { type: "number", example: 2026 },
+        currentYearCount: { type: "number", example: 42 },
         yearlyStats: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              year: { type: 'number', example: 2026 },
-              count: { type: 'number', example: 42 },
+              year: { type: "number", example: 2026 },
+              count: { type: "number", example: 42 },
             },
           },
         },
@@ -83,164 +76,162 @@ export class RfqController {
     return this.rfqService.rfqStatistics();
   }
 
-  @Post('straight-pipe/calculate')
+  @Post("straight-pipe/calculate")
   @ApiOperation({
-    summary: 'Calculate straight pipe requirements',
+    summary: "Calculate straight pipe requirements",
     description:
-      'Calculate pipe weight, quantities, and welding requirements for straight pipe RFQ',
+      "Calculate pipe weight, quantities, and welding requirements for straight pipe RFQ",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Calculation completed successfully',
+    description: "Calculation completed successfully",
     type: StraightPipeCalculationResultDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Pipe dimension or steel specification not found',
+    description: "Pipe dimension or steel specification not found",
   })
   @ApiBody({
-    description: 'Straight pipe specifications for calculation',
+    description: "Straight pipe specifications for calculation",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         nominalBoreMm: {
-          type: 'number',
+          type: "number",
           example: 500,
-          description: 'Nominal bore in mm',
+          description: "Nominal bore in mm",
         },
         scheduleType: {
-          type: 'string',
-          enum: ['schedule', 'wall_thickness'],
-          example: 'schedule',
+          type: "string",
+          enum: ["schedule", "wall_thickness"],
+          example: "schedule",
         },
         scheduleNumber: {
-          type: 'string',
-          example: 'Sch20',
-          description: 'Schedule number if scheduleType is schedule',
+          type: "string",
+          example: "Sch20",
+          description: "Schedule number if scheduleType is schedule",
         },
         wallThicknessMm: {
-          type: 'number',
+          type: "number",
           example: 15.09,
-          description: 'Wall thickness in mm if scheduleType is wall_thickness',
+          description: "Wall thickness in mm if scheduleType is wall_thickness",
         },
         individualPipeLength: {
-          type: 'number',
+          type: "number",
           example: 12.192,
-          description: 'Length of each individual pipe',
+          description: "Length of each individual pipe",
         },
         lengthUnit: {
-          type: 'string',
-          enum: ['meters', 'feet'],
-          example: 'meters',
+          type: "string",
+          enum: ["meters", "feet"],
+          example: "meters",
         },
         quantityType: {
-          type: 'string',
-          enum: ['total_length', 'number_of_pipes'],
-          example: 'total_length',
+          type: "string",
+          enum: ["total_length", "number_of_pipes"],
+          example: "total_length",
         },
         quantityValue: {
-          type: 'number',
+          type: "number",
           example: 8000,
-          description: 'Total length in meters/feet or number of pipes',
+          description: "Total length in meters/feet or number of pipes",
         },
         workingPressureBar: {
-          type: 'number',
+          type: "number",
           example: 10,
-          description: 'Working pressure in bar',
+          description: "Working pressure in bar",
         },
         workingTemperatureC: {
-          type: 'number',
+          type: "number",
           example: 120,
-          description: 'Working temperature in celsius',
+          description: "Working temperature in celsius",
         },
         steelSpecificationId: {
-          type: 'number',
+          type: "number",
           example: 1,
-          description: 'Steel specification ID (optional)',
+          description: "Steel specification ID (optional)",
         },
         flangeStandardId: {
-          type: 'number',
+          type: "number",
           example: 1,
-          description: 'Flange standard ID (optional)',
+          description: "Flange standard ID (optional)",
         },
         flangePressureClassId: {
-          type: 'number',
+          type: "number",
           example: 1,
-          description: 'Flange pressure class ID (optional)',
+          description: "Flange pressure class ID (optional)",
         },
       },
       required: [
-        'nominalBoreMm',
-        'scheduleType',
-        'individualPipeLength',
-        'lengthUnit',
-        'quantityType',
-        'quantityValue',
-        'workingPressureBar',
+        "nominalBoreMm",
+        "scheduleType",
+        "individualPipeLength",
+        "lengthUnit",
+        "quantityType",
+        "quantityValue",
+        "workingPressureBar",
       ],
     },
   })
   async calculateStraightPipeRequirements(
-    @Body() dto: CreateStraightPipeRfqWithItemDto['straightPipe'],
+    @Body() dto: CreateStraightPipeRfqWithItemDto["straightPipe"],
   ): Promise<StraightPipeCalculationResultDto> {
     return this.rfqService.calculateStraightPipeRequirements(dto);
   }
 
-  @Post('straight-pipe')
+  @Post("straight-pipe")
   @ApiOperation({
-    summary: 'Create straight pipe RFQ',
-    description:
-      'Create a new RFQ for straight pipe with automatic calculations',
+    summary: "Create straight pipe RFQ",
+    description: "Create a new RFQ for straight pipe with automatic calculations",
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'RFQ created successfully',
+    description: "RFQ created successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         rfq: {
-          $ref: '#/components/schemas/Rfq',
+          $ref: "#/components/schemas/Rfq",
         },
         calculation: {
-          $ref: '#/components/schemas/StraightPipeCalculationResultDto',
+          $ref: "#/components/schemas/StraightPipeCalculationResultDto",
         },
       },
     },
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid input data',
+    description: "Invalid input data",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'User, pipe dimension, or steel specification not found',
+    description: "User, pipe dimension, or steel specification not found",
   })
   @ApiBody({
-    description: 'Complete straight pipe RFQ data',
+    description: "Complete straight pipe RFQ data",
     type: CreateStraightPipeRfqWithItemDto,
     examples: {
       example1: {
-        summary: 'Example straight pipe RFQ',
-        description: 'A complete example for 500NB Sch20 pipeline',
+        summary: "Example straight pipe RFQ",
+        description: "A complete example for 500NB Sch20 pipeline",
         value: {
           rfq: {
-            projectName: '500NB Pipeline Extension',
-            description:
-              'Extension of existing pipeline system with carbon steel pipe',
-            customerName: 'Acme Industrial Solutions',
-            customerEmail: 'procurement@acme-industrial.co.za',
-            customerPhone: '+27 11 555 0123',
-            requiredDate: '2025-12-31',
-            status: 'draft',
-            notes: 'Urgent delivery required by month end',
+            projectName: "500NB Pipeline Extension",
+            description: "Extension of existing pipeline system with carbon steel pipe",
+            customerName: "Acme Industrial Solutions",
+            customerEmail: "procurement@acme-industrial.co.za",
+            customerPhone: "+27 11 555 0123",
+            requiredDate: "2025-12-31",
+            status: "draft",
+            notes: "Urgent delivery required by month end",
           },
           straightPipe: {
             nominalBoreMm: 500,
-            scheduleType: 'schedule',
-            scheduleNumber: 'Sch20',
+            scheduleType: "schedule",
+            scheduleNumber: "Sch20",
             individualPipeLength: 12.192,
-            lengthUnit: 'meters',
-            quantityType: 'total_length',
+            lengthUnit: "meters",
+            quantityType: "total_length",
             quantityValue: 8000,
             workingPressureBar: 10,
             workingTemperatureC: 120,
@@ -248,8 +239,8 @@ export class RfqController {
             flangeStandardId: 1,
             flangePressureClassId: 1,
           },
-          itemDescription: '500NB Sch20 Straight Pipe for 10 Bar Pipeline',
-          itemNotes: 'All pipes to be hydrostatically tested before delivery',
+          itemDescription: "500NB Sch20 Straight Pipe for 10 Bar Pipeline",
+          itemNotes: "All pipes to be hydrostatically tested before delivery",
         },
       },
     },
@@ -264,29 +255,29 @@ export class RfqController {
     return this.rfqService.createStraightPipeRfq(dto, userId);
   }
 
-  @Post('unified')
+  @Post("unified")
   @ApiOperation({
-    summary: 'Create unified RFQ with all items',
+    summary: "Create unified RFQ with all items",
     description:
-      'Create a single RFQ containing multiple items (straight pipes, bends, fittings) in one request',
+      "Create a single RFQ containing multiple items (straight pipes, bends, fittings) in one request",
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'RFQ created successfully with all items',
+    description: "RFQ created successfully with all items",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        rfq: { $ref: '#/components/schemas/Rfq' },
-        itemsCreated: { type: 'number', example: 3 },
+        rfq: { $ref: "#/components/schemas/Rfq" },
+        itemsCreated: { type: "number", example: 3 },
       },
     },
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid input data',
+    description: "Invalid input data",
   })
   @ApiBody({
-    description: 'Unified RFQ data with all items',
+    description: "Unified RFQ data with all items",
     type: CreateUnifiedRfqDto,
   })
   @UseGuards(CustomerAuthGuard)
@@ -299,39 +290,39 @@ export class RfqController {
     return this.rfqService.createUnifiedRfq(dto, userId);
   }
 
-  @Put('unified/:id')
+  @Put("unified/:id")
   @ApiOperation({
-    summary: 'Update existing RFQ with all items (re-submit)',
+    summary: "Update existing RFQ with all items (re-submit)",
     description:
-      'Update an existing RFQ with new items and data. This is used when a customer re-submits an RFQ with changes.',
+      "Update an existing RFQ with new items and data. This is used when a customer re-submits an RFQ with changes.",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'RFQ updated successfully with all items',
+    description: "RFQ updated successfully with all items",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        rfq: { $ref: '#/components/schemas/Rfq' },
-        itemsUpdated: { type: 'number', example: 3 },
+        rfq: { $ref: "#/components/schemas/Rfq" },
+        itemsUpdated: { type: "number", example: 3 },
       },
     },
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid input data',
+    description: "Invalid input data",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'RFQ not found',
+    description: "RFQ not found",
   })
   @ApiBody({
-    description: 'Updated RFQ data with all items',
+    description: "Updated RFQ data with all items",
     type: CreateUnifiedRfqDto,
   })
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
   async updateUnifiedRfq(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: CreateUnifiedRfqDto,
     @Req() req: Request,
   ): Promise<{ rfq: Rfq; itemsUpdated: number }> {
@@ -339,23 +330,23 @@ export class RfqController {
     return this.rfqService.updateUnifiedRfq(id, dto, userId);
   }
 
-  @Post('bend/calculate')
+  @Post("bend/calculate")
   @ApiOperation({
-    summary: 'Calculate bend requirements',
+    summary: "Calculate bend requirements",
     description:
-      'Calculate bend weight, center-to-face dimensions, welding requirements, and pricing for bend RFQ',
+      "Calculate bend weight, center-to-face dimensions, welding requirements, and pricing for bend RFQ",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Bend calculation completed successfully',
+    description: "Bend calculation completed successfully",
     type: BendCalculationResultDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Bend data, pipe dimension, or steel specification not found',
+    description: "Bend data, pipe dimension, or steel specification not found",
   })
   @ApiBody({
-    description: 'Bend specifications for calculation',
+    description: "Bend specifications for calculation",
     type: CreateBendRfqDto,
   })
   async calculateBendRequirements(
@@ -364,70 +355,69 @@ export class RfqController {
     return this.rfqService.calculateBendRequirements(dto);
   }
 
-  @Post('bend')
+  @Post("bend")
   @ApiOperation({
-    summary: 'Create bend RFQ',
+    summary: "Create bend RFQ",
     description:
-      'Create a new RFQ for bends/elbows with automatic calculations including center-to-face, weights, and welding requirements',
+      "Create a new RFQ for bends/elbows with automatic calculations including center-to-face, weights, and welding requirements",
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'Bend RFQ created successfully',
+    description: "Bend RFQ created successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         rfq: {
-          $ref: '#/components/schemas/Rfq',
+          $ref: "#/components/schemas/Rfq",
         },
         calculation: {
-          $ref: '#/components/schemas/BendCalculationResultDto',
+          $ref: "#/components/schemas/BendCalculationResultDto",
         },
       },
     },
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid input data',
+    description: "Invalid input data",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description:
-      'User, bend data, pipe dimension, or steel specification not found',
+    description: "User, bend data, pipe dimension, or steel specification not found",
   })
   @ApiBody({
-    description: 'Complete bend RFQ data',
+    description: "Complete bend RFQ data",
     type: CreateBendRfqWithItemDto,
     examples: {
       example1: {
-        summary: 'Example bend RFQ - 350NB 3D 45° with tangent',
+        summary: "Example bend RFQ - 350NB 3D 45° with tangent",
         value: {
           rfq: {
-            projectName: '350NB Pipeline Bend Extension',
-            description: 'Bend for pipeline direction change',
-            customerName: 'Industrial Solutions Ltd',
-            customerEmail: 'procurement@industrial.co.za',
-            customerPhone: '+27 11 555 0456',
-            requiredDate: '2025-12-15',
-            status: 'draft',
-            notes: 'Special coating requirements',
+            projectName: "350NB Pipeline Bend Extension",
+            description: "Bend for pipeline direction change",
+            customerName: "Industrial Solutions Ltd",
+            customerEmail: "procurement@industrial.co.za",
+            customerPhone: "+27 11 555 0456",
+            requiredDate: "2025-12-15",
+            status: "draft",
+            notes: "Special coating requirements",
           },
           bend: {
             nominalBoreMm: 350,
-            scheduleNumber: 'Sch30',
-            bendType: '3D',
+            scheduleNumber: "Sch30",
+            bendType: "3D",
             bendDegrees: 45,
             numberOfTangents: 1,
             tangentLengths: [400],
             quantityValue: 1,
-            quantityType: 'number_of_items',
+            quantityType: "number_of_items",
             workingPressureBar: 16,
             workingTemperatureC: 20,
             steelSpecificationId: 2,
             useGlobalFlangeSpecs: true,
           },
           itemDescription:
-            '350NB 3D 45° Pulled Bend, Sch30 with 1 tangent of 400mm for 16 Bar Line',
-          itemNotes: 'Requires special surface treatment and inspection',
+            "350NB 3D 45° Pulled Bend, Sch30 with 1 tangent of 400mm for 16 Bar Line",
+          itemNotes: "Requires special surface treatment and inspection",
         },
       },
     },
@@ -444,12 +434,12 @@ export class RfqController {
 
   @Get()
   @ApiOperation({
-    summary: 'Get all RFQs',
-    description: 'Get all RFQs created by the authenticated user',
+    summary: "Get all RFQs",
+    description: "Get all RFQs created by the authenticated user",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'RFQs retrieved successfully',
+    description: "RFQs retrieved successfully",
     type: [RfqResponseDto],
   })
   @UseGuards(CustomerAuthGuard)
@@ -462,46 +452,46 @@ export class RfqController {
   // ==================== Draft Endpoints ====================
   // NOTE: Draft routes must be defined BEFORE :id routes to avoid route conflicts
 
-  @Post('drafts')
+  @Post("drafts")
   @ApiOperation({
-    summary: 'Save RFQ draft',
-    description: 'Save or update an RFQ draft with form progress',
+    summary: "Save RFQ draft",
+    description: "Save or update an RFQ draft with form progress",
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'Draft saved successfully',
+    description: "Draft saved successfully",
     type: RfqDraftResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'User or draft not found',
+    description: "User or draft not found",
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Cannot update converted draft',
+    description: "Cannot update converted draft",
   })
   @ApiBody({
-    description: 'RFQ draft data to save',
+    description: "RFQ draft data to save",
     type: SaveRfqDraftDto,
     examples: {
       example1: {
-        summary: 'Save new draft',
+        summary: "Save new draft",
         value: {
-          projectName: 'Pipeline Extension Project',
+          projectName: "Pipeline Extension Project",
           currentStep: 2,
           formData: {
-            projectName: 'Pipeline Extension Project',
-            customerName: 'Acme Corp',
-            requiredByDate: '2025-12-31',
-            deliveryLocation: 'Johannesburg',
+            projectName: "Pipeline Extension Project",
+            customerName: "Acme Corp",
+            requiredByDate: "2025-12-31",
+            deliveryLocation: "Johannesburg",
           },
           globalSpecs: {
-            steelSpec: 'ASTM A106 Gr.B',
-            steelGrade: 'Grade B',
+            steelSpec: "ASTM A106 Gr.B",
+            steelGrade: "Grade B",
             workingPressure: 10,
             workingTemperature: 120,
           },
-          requiredProducts: ['fabricated_steel', 'surface_protection'],
+          requiredProducts: ["fabricated_steel", "surface_protection"],
           straightPipeEntries: [],
         },
       },
@@ -509,24 +499,21 @@ export class RfqController {
   })
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
-  async saveDraft(
-    @Body() dto: SaveRfqDraftDto,
-    @Req() req: Request,
-  ): Promise<RfqDraftResponseDto> {
+  async saveDraft(@Body() dto: SaveRfqDraftDto, @Req() req: Request): Promise<RfqDraftResponseDto> {
     const userId = (req as any).customer?.userId;
     return this.rfqService.saveDraft(dto, userId);
   }
 
-  @Get('drafts')
+  @Get("drafts")
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Get all drafts',
-    description: 'Get all RFQ drafts for the authenticated user',
+    summary: "Get all drafts",
+    description: "Get all RFQ drafts for the authenticated user",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Drafts retrieved successfully',
+    description: "Drafts retrieved successfully",
     type: [RfqDraftResponseDto],
   })
   async getDrafts(@Req() req: Request): Promise<RfqDraftResponseDto[]> {
@@ -534,293 +521,289 @@ export class RfqController {
     return this.rfqService.getDrafts(userId);
   }
 
-  @Get('drafts/number/:draftNumber')
+  @Get("drafts/number/:draftNumber")
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Get draft by draft number',
-    description: 'Get a specific RFQ draft by its draft number',
+    summary: "Get draft by draft number",
+    description: "Get a specific RFQ draft by its draft number",
   })
   @ApiParam({
-    name: 'draftNumber',
-    description: 'Draft number (e.g., DRAFT-2025-0001)',
+    name: "draftNumber",
+    description: "Draft number (e.g., DRAFT-2025-0001)",
     type: String,
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Draft retrieved successfully',
+    description: "Draft retrieved successfully",
     type: RfqDraftFullResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Draft not found',
+    description: "Draft not found",
   })
   async getDraftByNumber(
-    @Param('draftNumber') draftNumber: string,
+    @Param("draftNumber") draftNumber: string,
     @Req() req: Request,
   ): Promise<RfqDraftFullResponseDto> {
     const userId = (req as any).customer?.userId;
     return this.rfqService.getDraftByNumber(draftNumber, userId);
   }
 
-  @Get('drafts/:id')
+  @Get("drafts/:id")
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Get draft by ID',
-    description: 'Get a specific RFQ draft with full form data',
+    summary: "Get draft by ID",
+    description: "Get a specific RFQ draft with full form data",
   })
-  @ApiParam({ name: 'id', description: 'Draft ID', type: Number })
+  @ApiParam({ name: "id", description: "Draft ID", type: Number })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Draft retrieved successfully',
+    description: "Draft retrieved successfully",
     type: RfqDraftFullResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Draft not found',
+    description: "Draft not found",
   })
   async getDraftById(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Req() req: Request,
   ): Promise<RfqDraftFullResponseDto> {
     const userId = (req as any).customer?.userId;
     return this.rfqService.getDraftById(id, userId);
   }
 
-  @Delete('drafts/:id')
+  @Delete("drafts/:id")
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Delete draft',
-    description: 'Delete an RFQ draft',
+    summary: "Delete draft",
+    description: "Delete an RFQ draft",
   })
-  @ApiParam({ name: 'id', description: 'Draft ID', type: Number })
+  @ApiParam({ name: "id", description: "Draft ID", type: Number })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Draft deleted successfully',
+    description: "Draft deleted successfully",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Draft not found',
+    description: "Draft not found",
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Cannot delete converted draft',
+    description: "Cannot delete converted draft",
   })
   async deleteDraft(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Req() req: Request,
   ): Promise<{ message: string }> {
     const userId = (req as any).customer?.userId;
     await this.rfqService.deleteDraft(id, userId);
-    return { message: 'Draft deleted successfully' };
+    return { message: "Draft deleted successfully" };
   }
 
-  @Post('drafts/:id/convert')
+  @Post("drafts/:id/convert")
   @UseGuards(CustomerAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Mark draft as converted',
-    description: 'Mark an RFQ draft as converted to a submitted RFQ',
+    summary: "Mark draft as converted",
+    description: "Mark an RFQ draft as converted to a submitted RFQ",
   })
-  @ApiParam({ name: 'id', description: 'Draft ID', type: Number })
+  @ApiParam({ name: "id", description: "Draft ID", type: Number })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        rfqId: { type: 'number', description: 'The ID of the created RFQ' },
+        rfqId: { type: "number", description: "The ID of the created RFQ" },
       },
-      required: ['rfqId'],
+      required: ["rfqId"],
     },
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Draft marked as converted successfully',
+    description: "Draft marked as converted successfully",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Draft not found',
+    description: "Draft not found",
   })
   async convertDraft(
-    @Param('id', ParseIntPipe) id: number,
-    @Body('rfqId') rfqId: number,
+    @Param("id", ParseIntPipe) id: number,
+    @Body("rfqId") rfqId: number,
     @Req() req: Request,
   ): Promise<{ message: string }> {
     const userId = (req as any).customer?.userId;
     await this.rfqService.markDraftAsConverted(id, rfqId, userId);
-    return { message: 'Draft marked as converted successfully' };
+    return { message: "Draft marked as converted successfully" };
   }
 
   // ==================== RFQ by ID (must come after /drafts routes) ====================
 
-  @Get(':id')
+  @Get(":id")
   @ApiOperation({
-    summary: 'Get RFQ by ID',
-    description:
-      'Get detailed RFQ information including all items and calculations',
+    summary: "Get RFQ by ID",
+    description: "Get detailed RFQ information including all items and calculations",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'RFQ retrieved successfully',
+    description: "RFQ retrieved successfully",
     type: Rfq,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'RFQ not found',
+    description: "RFQ not found",
   })
-  async getRfqById(@Param('id') id: number): Promise<Rfq> {
+  async getRfqById(@Param("id") id: number): Promise<Rfq> {
     return this.rfqService.findRfqById(id);
   }
 
   // ==================== Document Endpoints ====================
 
-  @Post(':id/documents')
+  @Post(":id/documents")
   @UseInterceptors(
-    FileInterceptor('file', {
+    FileInterceptor("file", {
       limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
     }),
   )
   @ApiOperation({
-    summary: 'Upload document to RFQ',
+    summary: "Upload document to RFQ",
     description:
-      'Upload a document file (PDF, Excel, Word, etc.) to an RFQ. Maximum 10 documents per RFQ, 50MB per file.',
+      "Upload a document file (PDF, Excel, Word, etc.) to an RFQ. Maximum 10 documents per RFQ, 50MB per file.",
   })
-  @ApiConsumes('multipart/form-data')
-  @ApiParam({ name: 'id', description: 'RFQ ID', type: Number })
+  @ApiConsumes("multipart/form-data")
+  @ApiParam({ name: "id", description: "RFQ ID", type: Number })
   @ApiBody({
-    description: 'Document file to upload',
+    description: "Document file to upload",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         file: {
-          type: 'string',
-          format: 'binary',
-          description: 'The document file (PDF, Excel, Word, images, etc.)',
+          type: "string",
+          format: "binary",
+          description: "The document file (PDF, Excel, Word, images, etc.)",
         },
       },
-      required: ['file'],
+      required: ["file"],
     },
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'Document uploaded successfully',
+    description: "Document uploaded successfully",
     type: RfqDocumentResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'File too large or document limit reached',
+    description: "File too large or document limit reached",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'RFQ not found',
+    description: "RFQ not found",
   })
   async uploadDocument(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<RfqDocumentResponseDto> {
     return this.rfqService.uploadDocument(id, file);
   }
 
-  @Get(':id/documents')
+  @Get(":id/documents")
   @ApiOperation({
-    summary: 'Get all documents for RFQ',
-    description: 'Retrieve list of all documents attached to an RFQ',
+    summary: "Get all documents for RFQ",
+    description: "Retrieve list of all documents attached to an RFQ",
   })
-  @ApiParam({ name: 'id', description: 'RFQ ID', type: Number })
+  @ApiParam({ name: "id", description: "RFQ ID", type: Number })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Documents retrieved successfully',
+    description: "Documents retrieved successfully",
     type: [RfqDocumentResponseDto],
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'RFQ not found',
+    description: "RFQ not found",
   })
-  async getDocuments(
-    @Param('id', ParseIntPipe) id: number,
-  ): Promise<RfqDocumentResponseDto[]> {
+  async getDocuments(@Param("id", ParseIntPipe) id: number): Promise<RfqDocumentResponseDto[]> {
     return this.rfqService.getDocuments(id);
   }
 
-  @Get('documents/:documentId/download')
+  @Get("documents/:documentId/download")
   @ApiOperation({
-    summary: 'Download document',
-    description: 'Download a specific document by its ID',
+    summary: "Download document",
+    description: "Download a specific document by its ID",
   })
-  @ApiParam({ name: 'documentId', description: 'Document ID', type: Number })
+  @ApiParam({ name: "documentId", description: "Document ID", type: Number })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Document file',
+    description: "Document file",
     content: {
-      'application/octet-stream': {
+      "application/octet-stream": {
         schema: {
-          type: 'string',
-          format: 'binary',
+          type: "string",
+          format: "binary",
         },
       },
     },
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Document not found',
+    description: "Document not found",
   })
   async downloadDocument(
-    @Param('documentId', ParseIntPipe) documentId: number,
+    @Param("documentId", ParseIntPipe) documentId: number,
     @Res() res: Response,
   ): Promise<void> {
-    const { buffer, document } =
-      await this.rfqService.downloadDocument(documentId);
+    const { buffer, document } = await this.rfqService.downloadDocument(documentId);
 
     res.set({
-      'Content-Type': document.mimeType,
-      'Content-Disposition': `attachment; filename="${encodeURIComponent(document.filename)}"`,
-      'Content-Length': buffer.length,
+      "Content-Type": document.mimeType,
+      "Content-Disposition": `attachment; filename="${encodeURIComponent(document.filename)}"`,
+      "Content-Length": buffer.length,
     });
 
     res.send(buffer);
   }
 
-  @Delete('documents/:documentId')
+  @Delete("documents/:documentId")
   @ApiOperation({
-    summary: 'Delete document',
-    description: 'Delete a document from an RFQ',
+    summary: "Delete document",
+    description: "Delete a document from an RFQ",
   })
-  @ApiParam({ name: 'documentId', description: 'Document ID', type: Number })
+  @ApiParam({ name: "documentId", description: "Document ID", type: Number })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Document deleted successfully',
+    description: "Document deleted successfully",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Document not found',
+    description: "Document not found",
   })
   async deleteDocument(
-    @Param('documentId', ParseIntPipe) documentId: number,
+    @Param("documentId", ParseIntPipe) documentId: number,
   ): Promise<{ message: string }> {
     await this.rfqService.deleteDocument(documentId);
-    return { message: 'Document deleted successfully' };
+    return { message: "Document deleted successfully" };
   }
 
-  @Post(':id/notify-update')
+  @Post(":id/notify-update")
   @UseGuards(CustomerAuthGuard)
-  @ApiBearerAuth('customer-auth')
+  @ApiBearerAuth("customer-auth")
   @ApiOperation({
-    summary: 'Notify suppliers of RFQ update',
+    summary: "Notify suppliers of RFQ update",
     description:
-      'Send email notifications to suppliers when an RFQ is updated. Excludes suppliers who have declined to quote.',
+      "Send email notifications to suppliers when an RFQ is updated. Excludes suppliers who have declined to quote.",
   })
-  @ApiParam({ name: 'id', description: 'RFQ ID', type: Number })
+  @ApiParam({ name: "id", description: "RFQ ID", type: Number })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Suppliers notified successfully',
+    description: "Suppliers notified successfully",
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'RFQ not found',
+    description: "RFQ not found",
   })
   async notifySuppliersOfUpdate(
-    @Param('id', ParseIntPipe) rfqId: number,
+    @Param("id", ParseIntPipe) rfqId: number,
   ): Promise<{ suppliersNotified: number; suppliersSkipped: number }> {
     return this.rfqService.notifySuppliersOfRfqUpdate(rfqId);
   }

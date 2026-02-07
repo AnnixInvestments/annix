@@ -1,27 +1,24 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany,
-  Unique,
-} from 'typeorm';
-import { ForgedFittingDimension } from './forged-fitting-dimension.entity';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from "typeorm";
+import { ForgedFittingDimension } from "./forged-fitting-dimension.entity";
 
-@Entity('forged_fitting_types')
-@Unique(['code'])
+@Entity("forged_fitting_types")
+@Unique(["code"])
 export class ForgedFittingType {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ type: "varchar", length: 50 })
   code: string;
 
-  @Column({ type: 'varchar', length: 100 })
+  @Column({ type: "varchar", length: 100 })
   name: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true })
   description: string | null;
 
-  @OneToMany(() => ForgedFittingDimension, (dim) => dim.fittingType)
+  @OneToMany(
+    () => ForgedFittingDimension,
+    (dim) => dim.fittingType,
+  )
   dimensions: ForgedFittingDimension[];
 }

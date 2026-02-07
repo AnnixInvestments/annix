@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import { Select } from '@/app/components/ui/Select';
-import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
-import { SmartNotesDropdown } from '@/app/components/rfq/SmartNotesDropdown';
+import { useEffect, useState } from "react";
+import { SmartNotesDropdown } from "@/app/components/rfq/SmartNotesDropdown";
+import SplitPaneLayout from "@/app/components/rfq/SplitPaneLayout";
+import { Select } from "@/app/components/ui/Select";
 import {
-  EXPANSION_JOINT_TYPES,
   BELLOWS_JOINT_TYPES,
   BELLOWS_MATERIALS,
-  FABRICATED_LOOP_TYPES,
   EXPANSION_JOINT_END_OPTIONS,
+  EXPANSION_JOINT_TYPES,
   elbowsForLoopType,
+  FABRICATED_LOOP_TYPES,
   flangeConfigForEndOption,
   STEEL_DENSITY_KG_M3,
-} from '@/app/lib/config/rfq';
-import { NB_TO_OD_LOOKUP } from '@/app/lib/hooks/useFlangeWeights';
+} from "@/app/lib/config/rfq";
+import { NB_TO_OD_LOOKUP } from "@/app/lib/hooks/useFlangeWeights";
 
 export interface ExpansionJointFormProps {
   entry: any;
@@ -31,11 +31,11 @@ export interface ExpansionJointFormProps {
 const NB_OPTIONS = [50, 80, 100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 750, 900];
 
 const SCHEDULE_OPTIONS = [
-  { value: 'Sch10', label: 'Sch 10' },
-  { value: 'Sch20', label: 'Sch 20' },
-  { value: 'Sch40', label: 'Sch 40 / STD' },
-  { value: 'Sch80', label: 'Sch 80 / XS' },
-  { value: 'Sch160', label: 'Sch 160' },
+  { value: "Sch10", label: "Sch 10" },
+  { value: "Sch20", label: "Sch 20" },
+  { value: "Sch40", label: "Sch 40 / STD" },
+  { value: "Sch80", label: "Sch 80 / XS" },
+  { value: "Sch160", label: "Sch 160" },
 ];
 
 export default function ExpansionJointForm({
@@ -51,32 +51,33 @@ export default function ExpansionJointForm({
 }: ExpansionJointFormProps) {
   const [calculationResults, setCalculationResults] = useState<any>(null);
 
-  const expansionJointType = entry.specs?.expansionJointType || 'bought_in_bellows';
-  const nominalDiameterMm = entry.specs?.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
-  const scheduleNumber = entry.specs?.scheduleNumber || globalSpecs?.scheduleNumber || 'Sch40';
+  const expansionJointType = entry.specs?.expansionJointType || "bought_in_bellows";
+  const nominalDiameterMm =
+    entry.specs?.nominalDiameterMm || globalSpecs?.nominalDiameterMm || null;
+  const scheduleNumber = entry.specs?.scheduleNumber || globalSpecs?.scheduleNumber || "Sch40";
   const quantity = entry.specs?.quantityValue;
 
-  const bellowsJointType = entry.specs?.bellowsJointType || 'axial';
-  const bellowsMaterial = entry.specs?.bellowsMaterial || 'stainless_steel_304';
+  const bellowsJointType = entry.specs?.bellowsJointType || "axial";
+  const bellowsMaterial = entry.specs?.bellowsMaterial || "stainless_steel_304";
   const axialMovementMm = entry.specs?.axialMovementMm || null;
   const lateralMovementMm = entry.specs?.lateralMovementMm || null;
   const angularMovementDeg = entry.specs?.angularMovementDeg || null;
-  const supplierReference = entry.specs?.supplierReference || '';
-  const catalogNumber = entry.specs?.catalogNumber || '';
+  const supplierReference = entry.specs?.supplierReference || "";
+  const catalogNumber = entry.specs?.catalogNumber || "";
   const unitCostFromSupplier = entry.specs?.unitCostFromSupplier || null;
   const markupPercentage = entry.specs?.markupPercentage || 15;
 
-  const loopType = entry.specs?.loopType || 'full_loop';
+  const loopType = entry.specs?.loopType || "full_loop";
   const loopHeightMm = entry.specs?.loopHeightMm || null;
   const loopWidthMm = entry.specs?.loopWidthMm || null;
-  const endConfiguration = entry.specs?.endConfiguration || 'FBE';
+  const endConfiguration = entry.specs?.endConfiguration || "FBE";
 
   const outsideDiameterMm = nominalDiameterMm
-    ? (NB_TO_OD_LOOKUP[nominalDiameterMm as keyof typeof NB_TO_OD_LOOKUP] || nominalDiameterMm * 1.05)
+    ? NB_TO_OD_LOOKUP[nominalDiameterMm as keyof typeof NB_TO_OD_LOOKUP] || nominalDiameterMm * 1.05
     : null;
 
   useEffect(() => {
-    if (expansionJointType === 'bought_in_bellows' && unitCostFromSupplier) {
+    if (expansionJointType === "bought_in_bellows" && unitCostFromSupplier) {
       const unitPrice = unitCostFromSupplier * (1 + markupPercentage / 100);
       const totalPrice = unitPrice * quantity;
 
@@ -93,7 +94,7 @@ export default function ExpansionJointForm({
       });
     }
 
-    if (expansionJointType === 'fabricated_loop' && nominalDiameterMm && loopHeightMm) {
+    if (expansionJointType === "fabricated_loop" && nominalDiameterMm && loopHeightMm) {
       const results = calculateFabricatedLoop();
       if (results) {
         setCalculationResults(results);
@@ -128,13 +129,14 @@ export default function ExpansionJointForm({
     const effectiveLoopWidth = loopWidthMm || nominalDiameterMm * 3;
     const elbowArcLength = (Math.PI / 2) * nominalDiameterMm;
     const straightLengthPerLoop = loopHeightMm * 2 + effectiveLoopWidth;
-    const totalPipeLengthMm = straightLengthPerLoop + (elbowArcLength * numberOfElbows);
+    const totalPipeLengthMm = straightLengthPerLoop + elbowArcLength * numberOfElbows;
 
     const pipeWeightPerMeter =
-      (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * STEEL_DENSITY_KG_M3) / 1000000;
+      (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * STEEL_DENSITY_KG_M3) /
+      1000000;
     const pipeWeightKg = pipeWeightPerMeter * (totalPipeLengthMm / 1000);
 
-    const elbowWeight = Math.pow(nominalDiameterMm / 25, 2) * 0.5;
+    const elbowWeight = (nominalDiameterMm / 25) ** 2 * 0.5;
     const elbowWeightKg = elbowWeight * numberOfElbows;
 
     const flangeWeightEach = flangeWeightForNb(nominalDiameterMm);
@@ -247,10 +249,10 @@ export default function ExpansionJointForm({
                   </label>
                   <Select
                     id={`nb-${entry.id}`}
-                    value={nominalDiameterMm?.toString() || ''}
+                    value={nominalDiameterMm?.toString() || ""}
                     onChange={(value) => {
                       onUpdateEntry(entry.id, {
-                        specs: { ...entry.specs, nominalDiameterMm: parseInt(value) },
+                        specs: { ...entry.specs, nominalDiameterMm: parseInt(value, 10) },
                       });
                     }}
                     options={NB_OPTIONS.map((nb) => ({
@@ -264,7 +266,7 @@ export default function ExpansionJointForm({
               </div>
             </div>
 
-            {expansionJointType === 'bought_in_bellows' && (
+            {expansionJointType === "bought_in_bellows" && (
               <>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 dark:bg-blue-900/20 dark:border-blue-700">
                   <h4 className="text-sm font-bold text-blue-900 border-b border-blue-400 pb-1.5 mb-3 dark:text-blue-100 dark:border-blue-600">
@@ -322,7 +324,7 @@ export default function ExpansionJointForm({
                       </label>
                       <input
                         type="number"
-                        value={axialMovementMm || ''}
+                        value={axialMovementMm || ""}
                         onChange={(e) => {
                           onUpdateEntry(entry.id, {
                             specs: {
@@ -342,7 +344,7 @@ export default function ExpansionJointForm({
                       </label>
                       <input
                         type="number"
-                        value={lateralMovementMm || ''}
+                        value={lateralMovementMm || ""}
                         onChange={(e) => {
                           onUpdateEntry(entry.id, {
                             specs: {
@@ -362,7 +364,7 @@ export default function ExpansionJointForm({
                       </label>
                       <input
                         type="number"
-                        value={angularMovementDeg || ''}
+                        value={angularMovementDeg || ""}
                         onChange={(e) => {
                           onUpdateEntry(entry.id, {
                             specs: {
@@ -424,7 +426,7 @@ export default function ExpansionJointForm({
                       </label>
                       <input
                         type="number"
-                        value={unitCostFromSupplier || ''}
+                        value={unitCostFromSupplier || ""}
                         onChange={(e) => {
                           onUpdateEntry(entry.id, {
                             specs: {
@@ -464,117 +466,115 @@ export default function ExpansionJointForm({
               </>
             )}
 
-            {expansionJointType === 'fabricated_loop' && (
-              <>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3 dark:bg-green-900/20 dark:border-green-700">
-                  <h4 className="text-sm font-bold text-green-900 border-b border-green-400 pb-1.5 mb-3 dark:text-green-100 dark:border-green-600">
-                    Loop Configuration
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
-                        Schedule *
-                      </label>
-                      <Select
-                        id={`schedule-${entry.id}`}
-                        value={scheduleNumber}
-                        onChange={(value) => {
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, scheduleNumber: value },
-                          });
-                        }}
-                        options={SCHEDULE_OPTIONS}
-                        placeholder="Select schedule"
-                        className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
-                        Loop Type *
-                      </label>
-                      <Select
-                        id={`loop-type-${entry.id}`}
-                        value={loopType}
-                        onChange={(value) => {
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, loopType: value },
-                          });
-                        }}
-                        options={FABRICATED_LOOP_TYPES.map((lt) => ({
-                          value: lt.value,
-                          label: lt.label,
-                          description: lt.description,
-                        }))}
-                        placeholder="Select loop type"
-                        className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
-                      />
-                    </div>
+            {expansionJointType === "fabricated_loop" && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-3 dark:bg-green-900/20 dark:border-green-700">
+                <h4 className="text-sm font-bold text-green-900 border-b border-green-400 pb-1.5 mb-3 dark:text-green-100 dark:border-green-600">
+                  Loop Configuration
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
+                      Schedule *
+                    </label>
+                    <Select
+                      id={`schedule-${entry.id}`}
+                      value={scheduleNumber}
+                      onChange={(value) => {
+                        onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, scheduleNumber: value },
+                        });
+                      }}
+                      options={SCHEDULE_OPTIONS}
+                      placeholder="Select schedule"
+                      className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
+                    />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
-                        Loop Height (mm) *
-                      </label>
-                      <input
-                        type="number"
-                        value={loopHeightMm || ''}
-                        onChange={(e) => {
-                          onUpdateEntry(entry.id, {
-                            specs: {
-                              ...entry.specs,
-                              loopHeightMm: parseFloat(e.target.value) || null,
-                            },
-                          });
-                        }}
-                        className="w-full px-2 py-1.5 border border-green-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 bg-green-50 text-gray-900 dark:bg-green-900/30 dark:border-green-600 dark:text-gray-100"
-                        placeholder="e.g., 500"
-                        min="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
-                        Loop Width (mm)
-                      </label>
-                      <input
-                        type="number"
-                        value={loopWidthMm || ''}
-                        onChange={(e) => {
-                          onUpdateEntry(entry.id, {
-                            specs: {
-                              ...entry.specs,
-                              loopWidthMm: parseFloat(e.target.value) || null,
-                            },
-                          });
-                        }}
-                        className="w-full px-2 py-1.5 border border-green-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 bg-green-50 text-gray-900 dark:bg-green-900/30 dark:border-green-600 dark:text-gray-100"
-                        placeholder="Auto-calculated if blank"
-                        min="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
-                        End Configuration *
-                      </label>
-                      <Select
-                        id={`end-config-${entry.id}`}
-                        value={endConfiguration}
-                        onChange={(value) => {
-                          onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, endConfiguration: value },
-                          });
-                        }}
-                        options={EXPANSION_JOINT_END_OPTIONS.map((opt) => ({
-                          value: opt.value,
-                          label: opt.label,
-                        }))}
-                        placeholder="Select end config"
-                        className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
+                      Loop Type *
+                    </label>
+                    <Select
+                      id={`loop-type-${entry.id}`}
+                      value={loopType}
+                      onChange={(value) => {
+                        onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, loopType: value },
+                        });
+                      }}
+                      options={FABRICATED_LOOP_TYPES.map((lt) => ({
+                        value: lt.value,
+                        label: lt.label,
+                        description: lt.description,
+                      }))}
+                      placeholder="Select loop type"
+                      className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
+                    />
                   </div>
                 </div>
-              </>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
+                      Loop Height (mm) *
+                    </label>
+                    <input
+                      type="number"
+                      value={loopHeightMm || ""}
+                      onChange={(e) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            loopHeightMm: parseFloat(e.target.value) || null,
+                          },
+                        });
+                      }}
+                      className="w-full px-2 py-1.5 border border-green-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 bg-green-50 text-gray-900 dark:bg-green-900/30 dark:border-green-600 dark:text-gray-100"
+                      placeholder="e.g., 500"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
+                      Loop Width (mm)
+                    </label>
+                    <input
+                      type="number"
+                      value={loopWidthMm || ""}
+                      onChange={(e) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            loopWidthMm: parseFloat(e.target.value) || null,
+                          },
+                        });
+                      }}
+                      className="w-full px-2 py-1.5 border border-green-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 bg-green-50 text-gray-900 dark:bg-green-900/30 dark:border-green-600 dark:text-gray-100"
+                      placeholder="Auto-calculated if blank"
+                      min="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-green-900 mb-1 dark:text-green-100">
+                      End Configuration *
+                    </label>
+                    <Select
+                      id={`end-config-${entry.id}`}
+                      value={endConfiguration}
+                      onChange={(value) => {
+                        onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, endConfiguration: value },
+                        });
+                      }}
+                      options={EXPANSION_JOINT_END_OPTIONS.map((opt) => ({
+                        value: opt.value,
+                        label: opt.label,
+                      }))}
+                      placeholder="Select end config"
+                      className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 dark:bg-gray-800 dark:border-gray-700">
@@ -588,19 +588,21 @@ export default function ExpansionJointForm({
                   </label>
                   <input
                     type="number"
-                    value={quantity ?? ''}
+                    value={quantity ?? ""}
                     onChange={(e) => {
                       const rawValue = e.target.value;
-                      if (rawValue === '') {
-                        onUpdateEntry(entry.id, { specs: { ...entry.specs, quantityValue: undefined } });
+                      if (rawValue === "") {
+                        onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, quantityValue: undefined },
+                        });
                         return;
                       }
                       onUpdateEntry(entry.id, {
-                        specs: { ...entry.specs, quantityValue: parseInt(rawValue) },
+                        specs: { ...entry.specs, quantityValue: parseInt(rawValue, 10) },
                       });
                     }}
                     onBlur={(e) => {
-                      if (e.target.value === '' || parseInt(e.target.value) < 1) {
+                      if (e.target.value === "" || parseInt(e.target.value, 10) < 1) {
                         onUpdateEntry(entry.id, { specs: { ...entry.specs, quantityValue: 1 } });
                       }
                     }}
@@ -617,8 +619,12 @@ export default function ExpansionJointForm({
                 Notes
               </h4>
               <SmartNotesDropdown
-                selectedNotes={entry.notes ? (Array.isArray(entry.notes) ? entry.notes : [entry.notes]) : []}
-                onNotesChange={(newNotes) => onUpdateEntry(entry.id, { notes: newNotes.join('\n') })}
+                selectedNotes={
+                  entry.notes ? (Array.isArray(entry.notes) ? entry.notes : [entry.notes]) : []
+                }
+                onNotesChange={(newNotes) =>
+                  onUpdateEntry(entry.id, { notes: newNotes.join("\n") })
+                }
                 placeholder="Add notes for this item..."
               />
             </div>
@@ -626,7 +632,7 @@ export default function ExpansionJointForm({
         }
         previewContent={
           <div className="space-y-4">
-            {expansionJointType === 'bought_in_bellows' && calculationResults && (
+            {expansionJointType === "bought_in_bellows" && calculationResults && (
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 dark:bg-orange-900/20 dark:border-orange-700">
                 <h5 className="text-sm font-bold text-orange-900 mb-2 dark:text-orange-100">
                   Pricing Calculation
@@ -634,25 +640,29 @@ export default function ExpansionJointForm({
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="text-orange-800 dark:text-orange-200">Supplier Cost:</div>
                   <div className="font-semibold text-orange-900 dark:text-orange-100">
-                    R {unitCostFromSupplier?.toLocaleString() || '-'}
+                    R {unitCostFromSupplier?.toLocaleString() || "-"}
                   </div>
-                  <div className="text-orange-800 dark:text-orange-200">Markup ({markupPercentage}%):</div>
+                  <div className="text-orange-800 dark:text-orange-200">
+                    Markup ({markupPercentage}%):
+                  </div>
                   <div className="font-semibold text-orange-900 dark:text-orange-100">
-                    R {calculationResults.markupAmount?.toLocaleString() || '-'}
+                    R {calculationResults.markupAmount?.toLocaleString() || "-"}
                   </div>
                   <div className="text-orange-800 dark:text-orange-200">Unit Price:</div>
                   <div className="font-semibold text-orange-900 dark:text-orange-100">
-                    R {calculationResults.unitCost?.toLocaleString() || '-'}
+                    R {calculationResults.unitCost?.toLocaleString() || "-"}
                   </div>
-                  <div className="text-orange-800 dark:text-orange-200">Total ({quantity} units):</div>
+                  <div className="text-orange-800 dark:text-orange-200">
+                    Total ({quantity} units):
+                  </div>
                   <div className="font-bold text-orange-900 dark:text-orange-100">
-                    R {calculationResults.totalCost?.toLocaleString() || '-'}
+                    R {calculationResults.totalCost?.toLocaleString() || "-"}
                   </div>
                 </div>
               </div>
             )}
 
-            {expansionJointType === 'fabricated_loop' && calculationResults && (
+            {expansionJointType === "fabricated_loop" && calculationResults && (
               <>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 dark:bg-green-900/20 dark:border-green-700">
                   <h5 className="text-sm font-bold text-green-900 mb-2 dark:text-green-100">
@@ -673,7 +683,9 @@ export default function ExpansionJointForm({
                     <div className="font-semibold text-green-900 dark:text-green-100">
                       {calculationResults.flangeWeightKg} kg
                     </div>
-                    <div className="text-green-800 dark:text-green-200 font-bold">Total Weight:</div>
+                    <div className="text-green-800 dark:text-green-200 font-bold">
+                      Total Weight:
+                    </div>
                     <div className="font-bold text-green-900 dark:text-green-100">
                       {calculationResults.totalWeightKg} kg
                     </div>

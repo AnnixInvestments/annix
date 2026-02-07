@@ -1,12 +1,6 @@
-import {
-  IsString,
-  IsNumber,
-  IsEnum,
-  IsOptional,
-  IsNotEmpty,
-} from 'class-validator';
-import { MineType, OperationalStatus } from '../entities/sa-mine.entity';
-import { RiskLevel } from '../entities/slurry-profile.entity';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { MineType, OperationalStatus } from "../entities/sa-mine.entity";
+import { RiskLevel } from "../entities/slurry-profile.entity";
 
 export class CommodityDto {
   id: number;

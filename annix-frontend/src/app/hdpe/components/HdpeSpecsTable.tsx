@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { hdpeApi, NOMINAL_BORES, SDR_VALUES, HdpePipeSpecification } from '@/app/lib/hdpe';
+import { useEffect, useMemo, useState } from "react";
+import { HdpePipeSpecification, hdpeApi, NOMINAL_BORES, SDR_VALUES } from "@/app/lib/hdpe";
 
 interface HdpeSpecsTableProps {
   selectedNominalBore?: number;
@@ -17,8 +17,8 @@ export default function HdpeSpecsTable({
   const [specs, setSpecs] = useState<HdpePipeSpecification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterNb, setFilterNb] = useState<number | ''>('');
-  const [filterSdr, setFilterSdr] = useState<number | ''>('');
+  const [filterNb, setFilterNb] = useState<number | "">("");
+  const [filterSdr, setFilterSdr] = useState<number | "">("");
 
   useEffect(() => {
     hdpeApi.pipeSpecifications
@@ -44,11 +44,11 @@ export default function HdpeSpecsTable({
 
   const uniqueNbs = useMemo(
     () => [...new Set(specs.map((s) => s.nominalBore))].sort((a, b) => a - b),
-    [specs]
+    [specs],
   );
   const uniqueSdrs = useMemo(
     () => [...new Set(specs.map((s) => s.sdr))].sort((a, b) => a - b),
-    [specs]
+    [specs],
   );
 
   if (loading) {
@@ -83,7 +83,7 @@ export default function HdpeSpecsTable({
           </label>
           <select
             value={filterNb}
-            onChange={(e) => setFilterNb(e.target.value ? Number(e.target.value) : '')}
+            onChange={(e) => setFilterNb(e.target.value ? Number(e.target.value) : "")}
             className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
           >
             <option value="">All Sizes</option>
@@ -101,7 +101,7 @@ export default function HdpeSpecsTable({
           </label>
           <select
             value={filterSdr}
-            onChange={(e) => setFilterSdr(e.target.value ? Number(e.target.value) : '')}
+            onChange={(e) => setFilterSdr(e.target.value ? Number(e.target.value) : "")}
             className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
           >
             <option value="">All SDRs</option>
@@ -116,8 +116,8 @@ export default function HdpeSpecsTable({
         {(filterNb || filterSdr) && (
           <button
             onClick={() => {
-              setFilterNb('');
-              setFilterSdr('');
+              setFilterNb("");
+              setFilterSdr("");
             }}
             className="self-end px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
@@ -178,9 +178,9 @@ export default function HdpeSpecsTable({
                     key={spec.id}
                     className={`${
                       isSelected
-                        ? 'bg-blue-50 dark:bg-blue-900/20'
-                        : 'hover:bg-gray-50 dark:hover:bg-slate-700'
-                    } ${onSelect ? 'cursor-pointer' : ''}`}
+                        ? "bg-blue-50 dark:bg-blue-900/20"
+                        : "hover:bg-gray-50 dark:hover:bg-slate-700"
+                    } ${onSelect ? "cursor-pointer" : ""}`}
                     onClick={onSelect ? () => onSelect(spec) : undefined}
                   >
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">

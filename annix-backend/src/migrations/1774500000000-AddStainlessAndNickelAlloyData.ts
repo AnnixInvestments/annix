@@ -1,21 +1,21 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInterface {
-  name = 'AddStainlessAndNickelAlloyData1774500000000';
+  name = "AddStainlessAndNickelAlloyData1774500000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding stainless steel and nickel alloy data...');
+    console.warn("Adding stainless steel and nickel alloy data...");
 
     // ============================================================
     // PART 1: AUSTENITIC STAINLESS STEEL GRADES (A312)
     // ============================================================
-    console.warn('Adding austenitic stainless steel grades...');
+    console.warn("Adding austenitic stainless steel grades...");
 
     const stainlessGrades = [
       // TP304H - High Carbon 304 (high temp service)
       {
-        code: 'A312_TP304H',
-        name: 'ASTM A312 TP304H (18Cr-8Ni High Carbon)',
+        code: "A312_TP304H",
+        name: "ASTM A312 TP304H (18Cr-8Ni High Carbon)",
         stressData: [
           { tempC: -196, tempF: -320, ksi: 18.8, mpa: 129.6 },
           { tempC: -129, tempF: -200, ksi: 18.8, mpa: 129.6 },
@@ -47,8 +47,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // TP316H - High Carbon 316 (high temp service)
       {
-        code: 'A312_TP316H',
-        name: 'ASTM A312 TP316H (16Cr-12Ni-2Mo High Carbon)',
+        code: "A312_TP316H",
+        name: "ASTM A312 TP316H (16Cr-12Ni-2Mo High Carbon)",
         stressData: [
           { tempC: -196, tempF: -320, ksi: 18.8, mpa: 129.6 },
           { tempC: -129, tempF: -200, ksi: 18.8, mpa: 129.6 },
@@ -80,8 +80,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // TP321 - Titanium Stabilized
       {
-        code: 'A312_TP321',
-        name: 'ASTM A312 TP321 (18Cr-10Ni-Ti Stabilized)',
+        code: "A312_TP321",
+        name: "ASTM A312 TP321 (18Cr-10Ni-Ti Stabilized)",
         stressData: [
           { tempC: -196, tempF: -320, ksi: 18.8, mpa: 129.6 },
           { tempC: -29, tempF: -20, ksi: 18.8, mpa: 129.6 },
@@ -112,8 +112,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // TP321H - High Carbon Titanium Stabilized
       {
-        code: 'A312_TP321H',
-        name: 'ASTM A312 TP321H (18Cr-10Ni-Ti High Carbon)',
+        code: "A312_TP321H",
+        name: "ASTM A312 TP321H (18Cr-10Ni-Ti High Carbon)",
         stressData: [
           { tempC: -196, tempF: -320, ksi: 18.8, mpa: 129.6 },
           { tempC: -29, tempF: -20, ksi: 18.8, mpa: 129.6 },
@@ -136,8 +136,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // TP347 - Niobium Stabilized
       {
-        code: 'A312_TP347',
-        name: 'ASTM A312 TP347 (18Cr-10Ni-Nb Stabilized)',
+        code: "A312_TP347",
+        name: "ASTM A312 TP347 (18Cr-10Ni-Nb Stabilized)",
         stressData: [
           { tempC: -196, tempF: -320, ksi: 18.8, mpa: 129.6 },
           { tempC: -29, tempF: -20, ksi: 18.8, mpa: 129.6 },
@@ -160,8 +160,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // TP347H - High Carbon Niobium Stabilized
       {
-        code: 'A312_TP347H',
-        name: 'ASTM A312 TP347H (18Cr-10Ni-Nb High Carbon)',
+        code: "A312_TP347H",
+        name: "ASTM A312 TP347H (18Cr-10Ni-Nb High Carbon)",
         stressData: [
           { tempC: -196, tempF: -320, ksi: 18.8, mpa: 129.6 },
           { tempC: -29, tempF: -20, ksi: 18.8, mpa: 129.6 },
@@ -184,8 +184,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // TP309S - High Temperature
       {
-        code: 'A312_TP309S',
-        name: 'ASTM A312 TP309S (23Cr-12Ni High Temp)',
+        code: "A312_TP309S",
+        name: "ASTM A312 TP309S (23Cr-12Ni High Temp)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 18.8, mpa: 129.6 },
           { tempC: 38, tempF: 100, ksi: 18.8, mpa: 129.6 },
@@ -211,8 +211,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // TP310S - Highest Temperature Austenitic
       {
-        code: 'A312_TP310S',
-        name: 'ASTM A312 TP310S (25Cr-20Ni Highest Temp)',
+        code: "A312_TP310S",
+        name: "ASTM A312 TP310S (25Cr-20Ni Highest Temp)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 18.8, mpa: 129.6 },
           { tempC: 38, tempF: 100, ksi: 18.8, mpa: 129.6 },
@@ -248,14 +248,7 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
           ON CONFLICT (material_code, temperature_celsius) DO UPDATE SET
             allowable_stress_ksi = $5, allowable_stress_mpa = $6
         `,
-          [
-            grade.code,
-            grade.name,
-            stress.tempC,
-            stress.tempF,
-            stress.ksi,
-            stress.mpa,
-          ],
+          [grade.code, grade.name, stress.tempC, stress.tempF, stress.ksi, stress.mpa],
         );
       }
     }
@@ -263,13 +256,13 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
     // ============================================================
     // PART 2: DUPLEX STAINLESS STEEL GRADES (A790)
     // ============================================================
-    console.warn('Adding duplex stainless steel grades...');
+    console.warn("Adding duplex stainless steel grades...");
 
     const duplexGrades = [
       // S31803 - Standard Duplex (2205)
       {
-        code: 'A790_S31803',
-        name: 'ASTM A790 S31803 Duplex (22Cr-5Ni-3Mo)',
+        code: "A790_S31803",
+        name: "ASTM A790 S31803 Duplex (22Cr-5Ni-3Mo)",
         stressData: [
           { tempC: -46, tempF: -50, ksi: 25.0, mpa: 172.4 },
           { tempC: -29, tempF: -20, ksi: 25.0, mpa: 172.4 },
@@ -283,8 +276,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // S32205 - Duplex 2205
       {
-        code: 'A790_S32205',
-        name: 'ASTM A790 S32205 Duplex 2205',
+        code: "A790_S32205",
+        name: "ASTM A790 S32205 Duplex 2205",
         stressData: [
           { tempC: -46, tempF: -50, ksi: 28.9, mpa: 199.3 },
           { tempC: -29, tempF: -20, ksi: 28.9, mpa: 199.3 },
@@ -298,8 +291,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // S32750 - Super Duplex 2507
       {
-        code: 'A790_S32750',
-        name: 'ASTM A790 S32750 Super Duplex 2507',
+        code: "A790_S32750",
+        name: "ASTM A790 S32750 Super Duplex 2507",
         stressData: [
           { tempC: -46, tempF: -50, ksi: 36.4, mpa: 251.0 },
           { tempC: -29, tempF: -20, ksi: 36.4, mpa: 251.0 },
@@ -313,8 +306,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // S32760 - Super Duplex Zeron 100
       {
-        code: 'A790_S32760',
-        name: 'ASTM A790 S32760 Super Duplex Zeron 100',
+        code: "A790_S32760",
+        name: "ASTM A790 S32760 Super Duplex Zeron 100",
         stressData: [
           { tempC: -46, tempF: -50, ksi: 36.4, mpa: 251.0 },
           { tempC: -29, tempF: -20, ksi: 36.4, mpa: 251.0 },
@@ -337,14 +330,7 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
           ON CONFLICT (material_code, temperature_celsius) DO UPDATE SET
             allowable_stress_ksi = $5, allowable_stress_mpa = $6
         `,
-          [
-            grade.code,
-            grade.name,
-            stress.tempC,
-            stress.tempF,
-            stress.ksi,
-            stress.mpa,
-          ],
+          [grade.code, grade.name, stress.tempC, stress.tempF, stress.ksi, stress.mpa],
         );
       }
     }
@@ -352,13 +338,13 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
     // ============================================================
     // PART 3: NICKEL ALLOY GRADES
     // ============================================================
-    console.warn('Adding nickel alloy grades...');
+    console.warn("Adding nickel alloy grades...");
 
     const nickelGrades = [
       // Monel 400
       {
-        code: 'B165_MONEL400',
-        name: 'ASTM B165 Monel 400 (Ni-Cu)',
+        code: "B165_MONEL400",
+        name: "ASTM B165 Monel 400 (Ni-Cu)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 18.5, mpa: 127.6 },
           { tempC: 38, tempF: 100, ksi: 18.5, mpa: 127.6 },
@@ -375,8 +361,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // Inconel 600
       {
-        code: 'B167_INCONEL600',
-        name: 'ASTM B167 Inconel 600 (Ni-Cr-Fe)',
+        code: "B167_INCONEL600",
+        name: "ASTM B167 Inconel 600 (Ni-Cr-Fe)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 23.3, mpa: 160.6 },
           { tempC: 38, tempF: 100, ksi: 23.3, mpa: 160.6 },
@@ -399,8 +385,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // Incoloy 800H
       {
-        code: 'B407_INCOLOY800H',
-        name: 'ASTM B407 Incoloy 800H (Ni-Fe-Cr)',
+        code: "B407_INCOLOY800H",
+        name: "ASTM B407 Incoloy 800H (Ni-Fe-Cr)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 16.7, mpa: 115.1 },
           { tempC: 38, tempF: 100, ksi: 16.7, mpa: 115.1 },
@@ -425,8 +411,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // Incoloy 825
       {
-        code: 'B423_INCOLOY825',
-        name: 'ASTM B423 Incoloy 825 (Ni-Fe-Cr-Mo-Cu)',
+        code: "B423_INCOLOY825",
+        name: "ASTM B423 Incoloy 825 (Ni-Fe-Cr-Mo-Cu)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 23.3, mpa: 160.6 },
           { tempC: 38, tempF: 100, ksi: 23.3, mpa: 160.6 },
@@ -443,8 +429,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // Inconel 625
       {
-        code: 'B444_INCONEL625',
-        name: 'ASTM B444 Inconel 625 (Ni-Cr-Mo-Nb)',
+        code: "B444_INCONEL625",
+        name: "ASTM B444 Inconel 625 (Ni-Cr-Mo-Nb)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 40.0, mpa: 275.8 },
           { tempC: 38, tempF: 100, ksi: 40.0, mpa: 275.8 },
@@ -467,8 +453,8 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
       },
       // Hastelloy C-276
       {
-        code: 'B619_HASTELLOYC276',
-        name: 'ASTM B619 Hastelloy C-276 (Ni-Mo-Cr)',
+        code: "B619_HASTELLOYC276",
+        name: "ASTM B619 Hastelloy C-276 (Ni-Mo-Cr)",
         stressData: [
           { tempC: -29, tempF: -20, ksi: 28.6, mpa: 197.2 },
           { tempC: 38, tempF: 100, ksi: 28.6, mpa: 197.2 },
@@ -498,22 +484,15 @@ export class AddStainlessAndNickelAlloyData1774500000000 implements MigrationInt
           ON CONFLICT (material_code, temperature_celsius) DO UPDATE SET
             allowable_stress_ksi = $5, allowable_stress_mpa = $6
         `,
-          [
-            grade.code,
-            grade.name,
-            stress.tempC,
-            stress.tempF,
-            stress.ksi,
-            stress.mpa,
-          ],
+          [grade.code, grade.name, stress.tempC, stress.tempF, stress.ksi, stress.mpa],
         );
       }
     }
 
-    console.warn('Stainless steel and nickel alloy data migration complete.');
+    console.warn("Stainless steel and nickel alloy data migration complete.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Rollback not implemented for stainless and nickel data');
+    console.warn("Rollback not implemented for stainless and nickel data");
   }
 }

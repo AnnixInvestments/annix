@@ -1,16 +1,16 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
-@Entity('nb_nps_lookup')
+@Entity("nb_nps_lookup")
 export class NbNpsLookup {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'float' })
+  @Column({ type: "float" })
   nb_mm: number; // Nominal Bore (DN) in mm
 
-  @Column({ type: 'float' })
+  @Column({ type: "float" })
   nps_inch: number; // NPS in inches
 
-  @Column({ type: 'float' })
+  @Column({ type: "float" })
   outside_diameter_mm: number; // OD in mm
 }

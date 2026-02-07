@@ -1,12 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddDuckfootRibHeightColumn1778000800000
-  implements MigrationInterface
-{
-  name = 'AddDuckfootRibHeightColumn1778000800000';
+export class AddDuckfootRibHeightColumn1778000800000 implements MigrationInterface {
+  name = "AddDuckfootRibHeightColumn1778000800000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding rib_height_h_mm column to duckfoot_elbow_dimensions...');
+    console.warn("Adding rib_height_h_mm column to duckfoot_elbow_dimensions...");
 
     await queryRunner.query(`
       ALTER TABLE duckfoot_elbow_dimensions
@@ -44,7 +42,7 @@ export class AddDuckfootRibHeightColumn1778000800000
       ALTER COLUMN rib_height_h_mm SET NOT NULL
     `);
 
-    console.warn('Duckfoot rib height column added and populated.');
+    console.warn("Duckfoot rib height column added and populated.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

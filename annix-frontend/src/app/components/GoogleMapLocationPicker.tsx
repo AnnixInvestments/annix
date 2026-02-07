@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
-import { GoogleMap, useJsApiLoader, Marker, Autocomplete } from "@react-google-maps/api";
-import { GoogleMapDisplayConfig, GOOGLE_MAP_PRESETS, GoogleMapPreset } from "@/app/config/googleMapsConfig";
-import ManualLocationInput from "./ManualLocationInput";
+import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import {
+  GOOGLE_MAP_PRESETS,
+  GoogleMapDisplayConfig,
+  GoogleMapPreset,
+} from "@/app/config/googleMapsConfig";
+import ManualLocationInput from "./ManualLocationInput";
 
 interface Location {
   lat: number;
@@ -27,7 +31,7 @@ interface GoogleMapLocationPickerProps {
 
 const defaultCenter: Location = {
   lat: -26.20227,
-  lng: 28.04363
+  lng: 28.04363,
 };
 
 const libraries: ("places" | "geocoding")[] = ["places", "geocoding"];
@@ -37,7 +41,7 @@ function resolveConfig(config?: GoogleMapPreset | GoogleMapDisplayConfig): Googl
     return GOOGLE_MAP_PRESETS.default;
   }
 
-  if (typeof config === 'string') {
+  if (typeof config === "string") {
     return GOOGLE_MAP_PRESETS[config];
   }
 
@@ -49,7 +53,7 @@ export default function GoogleMapLocationPicker({
   onLocationSelect,
   onClose,
   apiKey,
-  config
+  config,
 }: GoogleMapLocationPickerProps) {
   const { showToast } = useToast();
   const displayConfig = resolveConfig(config);
@@ -66,11 +70,11 @@ export default function GoogleMapLocationPicker({
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: apiKey || "placeholder", // Prevent hook error with placeholder
-    libraries
+    libraries,
   });
 
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
-    initialLocation || null
+    initialLocation || null,
   );
   const [addressInfo, setAddressInfo] = useState<AddressComponents | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
@@ -79,15 +83,18 @@ export default function GoogleMapLocationPicker({
   const mapRef = useRef<google.maps.Map | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
-  const invalidApiKey = !apiKey || apiKey === 'your_google_maps_api_key_here' || apiKey === 'test_key_replacement_needed';
+  const invalidApiKey =
+    !apiKey ||
+    apiKey === "your_google_maps_api_key_here" ||
+    apiKey === "test_key_replacement_needed";
 
   if (invalidApiKey) {
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
         <div className="text-red-600 font-semibold mb-2">Google Maps Configuration Required</div>
         <div className="text-red-600 text-sm mb-4">
-          A valid Google Maps API key is required to use this feature.
-          Please configure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your environment variables.
+          A valid Google Maps API key is required to use this feature. Please configure
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your environment variables.
         </div>
         <div className="bg-blue-50 p-4 rounded mb-4">
           <p className="text-blue-700 font-semibold mb-2">Alternative: Manual Location Entry</p>
@@ -120,10 +127,11 @@ export default function GoogleMapLocationPicker({
   const containerStyle = {
     width: "100%",
     height: `${displayConfig.mapHeight || 400}px`,
-    minHeight: displayConfig.layout === 'responsive' ? `${displayConfig.mapHeight || 250}px` : undefined
+    minHeight:
+      displayConfig.layout === "responsive" ? `${displayConfig.mapHeight || 250}px` : undefined,
   };
 
-const onMapLoad = useCallback((map: google.maps.Map) => {
+  const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
   }, []);
 
@@ -134,15 +142,15 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
   const onPlaceChanged = useCallback(() => {
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
-      
+
       if (!place.geometry || !place.geometry.location) {
-        showToast(`No details available for input: '${place.name}'`, 'error');
+        showToast(`No details available for input: '${place.name}'`, "error");
         return;
       }
 
       const location: Location = {
         lat: place.geometry.location.lat(),
-        lng: place.geometry.location.lng()
+        lng: place.geometry.location.lng(),
       };
 
       setSelectedLocation(location);
@@ -154,7 +162,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
         mapRef.current?.setZoom(17);
       }
 
-      let address = place.formatted_address || "";
+      const address = place.formatted_address || "";
       let region = "";
       let country = "";
 
@@ -184,7 +192,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
 
       if (response.results && response.results.length > 0) {
         const result = response.results[0];
-        let address = result.formatted_address || "";
+        const address = result.formatted_address || "";
         let region = "";
         let country = "";
 
@@ -205,16 +213,19 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     }
   }, []);
 
-  const handleMapClick = useCallback((event: google.maps.MapMouseEvent) => {
-    if (event.latLng) {
-      const location: Location = {
-        lat: event.latLng.lat(),
-        lng: event.latLng.lng()
-      };
-      setSelectedLocation(location);
-      reverseGeocode(location);
-    }
-  }, [reverseGeocode]);
+  const handleMapClick = useCallback(
+    (event: google.maps.MapMouseEvent) => {
+      if (event.latLng) {
+        const location: Location = {
+          lat: event.latLng.lat(),
+          lng: event.latLng.lng(),
+        };
+        setSelectedLocation(location);
+        reverseGeocode(location);
+      }
+    },
+    [reverseGeocode],
+  );
 
   const handleConfirmLocation = useCallback(() => {
     if (selectedLocation) {
@@ -229,7 +240,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
         (position) => {
           const location: Location = {
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
           };
           setSelectedLocation(location);
           reverseGeocode(location);
@@ -241,12 +252,15 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
         },
         () => {
           setIsGettingLocation(false);
-          showToast("Unable to get your current location. Please enable location services or select a location on the map.", 'error');
+          showToast(
+            "Unable to get your current location. Please enable location services or select a location on the map.",
+            "error",
+          );
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
       );
     } else {
-      showToast("Geolocation is not supported by your browser.", 'error');
+      showToast("Geolocation is not supported by your browser.", "error");
     }
   }, [reverseGeocode]);
 
@@ -264,7 +278,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     setLatError(null);
     setLngError(null);
 
-    if (isNaN(lat)) {
+    if (Number.isNaN(lat)) {
       setLatError("Please enter a valid latitude value.");
       hasError = true;
     } else if (lat < -90 || lat > 90) {
@@ -272,7 +286,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
       hasError = true;
     }
 
-    if (isNaN(lng)) {
+    if (Number.isNaN(lng)) {
       setLngError("Please enter a valid longitude value.");
       hasError = true;
     } else if (lng < -180 || lng > 180) {
@@ -299,7 +313,9 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
             </h3>
             {isApiKeyMissing && (
               <p className="text-sm text-red-600 mt-1">
-                A valid Google Maps API key is required to use the map feature. Please configure <code className="bg-red-100 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> in your environment variables.
+                A valid Google Maps API key is required to use the map feature. Please configure{" "}
+                <code className="bg-red-100 px-1 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> in
+                your environment variables.
               </p>
             )}
           </div>
@@ -311,9 +327,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Latitude *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Latitude *</label>
                 <input
                   type="number"
                   step="0.00001"
@@ -324,8 +338,8 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
                   }}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
                     latError
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-blue-500'
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
                   }`}
                   placeholder="-26.20227"
                 />
@@ -337,9 +351,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Longitude *
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Longitude *</label>
                 <input
                   type="number"
                   step="0.00001"
@@ -350,8 +362,8 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
                   }}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
                     lngError
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-blue-500'
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
                   }`}
                   placeholder="28.04363"
                 />
@@ -373,8 +385,8 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
                   className="underline hover:text-blue-900"
                 >
                   Google Maps
-                </a>
-                {" "}and right-clicking on the map to copy the coordinates.
+                </a>{" "}
+                and right-clicking on the map to copy the coordinates.
               </p>
             </div>
           </div>
@@ -396,7 +408,12 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
               }`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               Confirm Location
             </button>
@@ -420,9 +437,14 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
           <div className="bg-blue-50 p-3 rounded mb-4">
             <p className="text-blue-700 text-sm">
               <strong>To fix:</strong> Get a valid API key from
-              <a href="https://console.cloud.google.com/google/maps-apis/overview"
-                 target="_blank" rel="noopener noreferrer"
-                 className="text-blue-600 underline">Google Cloud Console</a>
+              <a
+                href="https://console.cloud.google.com/google/maps-apis/overview"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline"
+              >
+                Google Cloud Console
+              </a>
               and ensure these APIs are enabled:
             </p>
             <ul className="text-blue-700 text-sm mt-2 list-disc list-inside">
@@ -463,17 +485,20 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
     );
   }
 
-  const outerContainerClass = displayConfig.layout === 'responsive'
-    ? "bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] md:max-h-[95vh] flex flex-col md:h-auto"
-    : "bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden";
+  const outerContainerClass =
+    displayConfig.layout === "responsive"
+      ? "bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] md:max-h-[95vh] flex flex-col md:h-auto"
+      : "bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden";
 
-  const addressInfoClass = displayConfig.layout === 'responsive'
-    ? `p-4 border-t bg-gray-50 overflow-y-auto max-h-[${displayConfig.addressInfoMaxHeight || 200}px]`
-    : "p-4 border-t bg-gray-50";
+  const addressInfoClass =
+    displayConfig.layout === "responsive"
+      ? `p-4 border-t bg-gray-50 overflow-y-auto max-h-[${displayConfig.addressInfoMaxHeight || 200}px]`
+      : "p-4 border-t bg-gray-50";
 
-  const mapContainerClass = displayConfig.layout === 'responsive'
-    ? "flex-1 overflow-hidden flex flex-col min-h-0 relative"
-    : "relative";
+  const mapContainerClass =
+    displayConfig.layout === "responsive"
+      ? "flex-1 overflow-hidden flex flex-col min-h-0 relative"
+      : "relative";
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -482,7 +507,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Select Project Location</h3>
             <p className="text-sm text-gray-600 mb-2">
-              {displayConfig.layout === 'responsive'
+              {displayConfig.layout === "responsive"
                 ? "Search for an address or click on the map to pin your project location"
                 : "Click on the map to pin your project location"}
             </p>
@@ -497,8 +522,18 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
             onClick={onClose}
             className="p-2 hover:bg-gray-200 rounded-full transition-colors"
           >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5 text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -511,7 +546,7 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
                 onPlaceChanged={onPlaceChanged}
                 options={{
                   fields: ["formatted_address", "geometry", "name", "address_components"],
-                  types: ["address"]
+                  types: ["address"],
                 }}
               >
                 <input
@@ -532,18 +567,15 @@ const onMapLoad = useCallback((map: google.maps.Map) => {
             zoom={initialLocation ? 14 : 6}
             onClick={handleMapClick}
             onLoad={onMapLoad}
-options={{
+            options={{
               streetViewControl: false,
               mapTypeControl: true,
               fullscreenControl: false,
-              clickableIcons: false
+              clickableIcons: false,
             }}
           >
             {selectedLocation && (
-              <Marker
-                position={selectedLocation}
-                animation={google.maps.Animation.DROP}
-              />
+              <Marker position={selectedLocation} animation={google.maps.Animation.DROP} />
             )}
           </GoogleMap>
 
@@ -565,9 +597,19 @@ options={{
               </>
             ) : (
               <>
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-5 h-5 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <circle cx="12" cy="12" r="3" strokeWidth={2} />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v4m0 12v4m10-10h-4M6 12H2" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 2v4m0 12v4m10-10h-4M6 12H2"
+                  />
                   <circle cx="12" cy="12" r="8" strokeWidth={2} />
                 </svg>
                 My Location
@@ -582,7 +624,8 @@ options={{
               <div className="bg-white p-3 rounded-lg border">
                 <div className="text-xs font-medium text-gray-500 mb-1">Coordinates</div>
                 <div className="text-sm font-semibold text-gray-900">
-                  {Number(selectedLocation.lat).toFixed(5)}, {Number(selectedLocation.lng).toFixed(5)}
+                  {Number(selectedLocation.lat).toFixed(5)},{" "}
+                  {Number(selectedLocation.lng).toFixed(5)}
                 </div>
               </div>
               <div className="bg-white p-3 rounded-lg border">
@@ -593,7 +636,9 @@ options={{
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                       Looking up address...
                     </span>
-                  ) : addressInfo?.address || "Click to get address"}
+                  ) : (
+                    addressInfo?.address || "Click to get address"
+                  )}
                 </div>
               </div>
             </div>
@@ -630,7 +675,12 @@ options={{
             }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             Confirm Location
           </button>

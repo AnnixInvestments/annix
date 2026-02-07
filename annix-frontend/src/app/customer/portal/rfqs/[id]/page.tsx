@@ -1,10 +1,9 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import { formatDateZA } from '@/app/lib/datetime';
-import { useCustomerRfqDetail } from '@/app/lib/query/hooks';
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { formatDateZA } from "@/app/lib/datetime";
+import { useCustomerRfqDetail } from "@/app/lib/query/hooks";
 
 export default function CustomerRfqDetailPage() {
   const params = useParams();
@@ -15,20 +14,20 @@ export default function CustomerRfqDetailPage() {
 
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'quoted':
-        return 'bg-blue-100 text-blue-800';
-      case 'accepted':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-600';
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "quoted":
+        return "bg-blue-100 text-blue-800";
+      case "accepted":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
+      case "cancelled":
+        return "bg-gray-100 text-gray-600";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -44,12 +43,11 @@ export default function CustomerRfqDetailPage() {
     return (
       <div className="space-y-4">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-sm text-red-700">{rfqQuery.error instanceof Error ? rfqQuery.error.message : 'RFQ not found'}</p>
+          <p className="text-sm text-red-700">
+            {rfqQuery.error instanceof Error ? rfqQuery.error.message : "RFQ not found"}
+          </p>
         </div>
-        <Link
-          href="/customer/portal/rfqs"
-          className="text-blue-600 hover:underline"
-        >
+        <Link href="/customer/portal/rfqs" className="text-blue-600 hover:underline">
           Back to RFQ list
         </Link>
       </div>
@@ -62,16 +60,20 @@ export default function CustomerRfqDetailPage() {
       <div className="flex justify-between items-start">
         <div>
           <div className="flex items-center gap-2">
-            <Link
-              href="/customer/portal/rfqs"
-              className="text-gray-500 hover:text-gray-700"
-            >
+            <Link href="/customer/portal/rfqs" className="text-gray-500 hover:text-gray-700">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
               </svg>
             </Link>
             <h1 className="text-2xl font-bold text-gray-900">{rfq.rfqNumber}</h1>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(rfq.status)}`}>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(rfq.status)}`}
+            >
               {rfq.status}
             </span>
           </div>
@@ -106,15 +108,13 @@ export default function CustomerRfqDetailPage() {
                           {item.itemDescription || `Item ${index + 1}`}
                         </h3>
                         <p className="text-sm text-gray-500 mt-1">
-                          {item.itemType === 'straight_pipe' && 'Straight Pipe'}
-                          {item.itemType === 'bend' && 'Bend'}
-                          {item.itemType === 'fitting' && 'Fitting'}
+                          {item.itemType === "straight_pipe" && "Straight Pipe"}
+                          {item.itemType === "bend" && "Bend"}
+                          {item.itemType === "fitting" && "Fitting"}
                         </p>
                       </div>
                       {item.quantity && (
-                        <span className="text-sm text-gray-500">
-                          Qty: {item.quantity}
-                        </span>
+                        <span className="text-sm text-gray-500">Qty: {item.quantity}</span>
                       )}
                     </div>
                     {item.itemNotes && (
@@ -123,9 +123,7 @@ export default function CustomerRfqDetailPage() {
                   </div>
                 ))
               ) : (
-                <div className="p-6 text-center text-gray-500">
-                  No items in this RFQ
-                </div>
+                <div className="p-6 text-center text-gray-500">No items in this RFQ</div>
               )}
             </div>
           </div>
@@ -148,31 +146,27 @@ export default function CustomerRfqDetailPage() {
               <div className="flex justify-between">
                 <dt className="text-sm text-gray-500">Status</dt>
                 <dd>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(rfq.status)}`}>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(rfq.status)}`}
+                  >
                     {rfq.status}
                   </span>
                 </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-sm text-gray-500">Created</dt>
-                <dd className="text-sm text-gray-900">
-                  {formatDateZA(rfq.createdAt)}
-                </dd>
+                <dd className="text-sm text-gray-900">{formatDateZA(rfq.createdAt)}</dd>
               </div>
               {rfq.requiredDate && (
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-500">Required By</dt>
-                  <dd className="text-sm text-gray-900">
-                    {formatDateZA(rfq.requiredDate)}
-                  </dd>
+                  <dd className="text-sm text-gray-900">{formatDateZA(rfq.requiredDate)}</dd>
                 </div>
               )}
               {rfq.totalWeightKg && (
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-500">Total Weight</dt>
-                  <dd className="text-sm text-gray-900">
-                    {rfq.totalWeightKg.toFixed(2)} kg
-                  </dd>
+                  <dd className="text-sm text-gray-900">{rfq.totalWeightKg.toFixed(2)} kg</dd>
                 </div>
               )}
             </dl>
@@ -181,18 +175,32 @@ export default function CustomerRfqDetailPage() {
           {/* Status info */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex">
-              <svg className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <div>
                 <h4 className="text-sm font-medium text-blue-800">RFQ Status</h4>
                 <p className="mt-1 text-sm text-blue-700">
-                  {rfq.status === 'pending' && 'Your RFQ is being reviewed by our team. We will provide a quotation shortly.'}
-                  {rfq.status === 'quoted' && 'A quotation has been provided. Please review and respond.'}
-                  {rfq.status === 'accepted' && 'Thank you for accepting the quotation. We will be in touch shortly.'}
-                  {rfq.status === 'draft' && 'This RFQ is in draft status and has not been submitted yet.'}
-                  {rfq.status === 'rejected' && 'This quotation was declined.'}
-                  {rfq.status === 'cancelled' && 'This RFQ has been cancelled.'}
+                  {rfq.status === "pending" &&
+                    "Your RFQ is being reviewed by our team. We will provide a quotation shortly."}
+                  {rfq.status === "quoted" &&
+                    "A quotation has been provided. Please review and respond."}
+                  {rfq.status === "accepted" &&
+                    "Thank you for accepting the quotation. We will be in touch shortly."}
+                  {rfq.status === "draft" &&
+                    "This RFQ is in draft status and has not been submitted yet."}
+                  {rfq.status === "rejected" && "This quotation was declined."}
+                  {rfq.status === "cancelled" && "This RFQ has been cancelled."}
                 </p>
               </div>
             </div>
@@ -207,7 +215,12 @@ export default function CustomerRfqDetailPage() {
                 className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
                 </svg>
                 Edit RFQ
               </Link>
@@ -216,7 +229,12 @@ export default function CustomerRfqDetailPage() {
                 className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                  />
                 </svg>
                 Print RFQ
               </button>
@@ -225,7 +243,12 @@ export default function CustomerRfqDetailPage() {
                 className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
                 </svg>
                 Contact Support
               </a>

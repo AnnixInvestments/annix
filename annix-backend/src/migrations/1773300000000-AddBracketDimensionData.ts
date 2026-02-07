@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddBracketDimensionData1773300000000 implements MigrationInterface {
-  name = 'AddBracketDimensionData1773300000000';
+  name = "AddBracketDimensionData1773300000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding comprehensive bracket dimension data...');
+    console.warn("Adding comprehensive bracket dimension data...");
 
     const weldedBracketBySize = [
       {
@@ -195,18 +195,10 @@ export class AddBracketDimensionData1773300000000 implements MigrationInterface 
           unit_weight_kg = EXCLUDED.unit_weight_kg,
           max_load_kg = EXCLUDED.max_load_kg
       `,
-        [
-          dim.nps,
-          dim.nb,
-          dim.length,
-          dim.brace,
-          dim.thickness,
-          dim.weight,
-          dim.load,
-        ],
+        [dim.nps, dim.nb, dim.length, dim.brace, dim.thickness, dim.weight, dim.load],
       );
     }
-    console.warn('Added WELDED_BRACKET dimensions for 19 sizes');
+    console.warn("Added WELDED_BRACKET dimensions for 19 sizes");
 
     const rollerSupportBySize = [
       {
@@ -386,18 +378,10 @@ export class AddBracketDimensionData1773300000000 implements MigrationInterface 
           unit_weight_kg = EXCLUDED.unit_weight_kg,
           max_load_kg = EXCLUDED.max_load_kg
       `,
-        [
-          dim.nps,
-          dim.nb,
-          dim.baseW,
-          dim.baseL,
-          dim.rollerDia,
-          dim.weight,
-          dim.load,
-        ],
+        [dim.nps, dim.nb, dim.baseW, dim.baseL, dim.rollerDia, dim.weight, dim.load],
       );
     }
-    console.warn('Added ROLLER_SUPPORT dimensions for 16 sizes');
+    console.warn("Added ROLLER_SUPPORT dimensions for 16 sizes");
 
     const slidePlateBySize = [
       {
@@ -517,18 +501,10 @@ export class AddBracketDimensionData1773300000000 implements MigrationInterface 
           unit_weight_kg = EXCLUDED.unit_weight_kg,
           max_load_kg = EXCLUDED.max_load_kg
       `,
-        [
-          dim.nps,
-          dim.nb,
-          dim.baseW,
-          dim.baseL,
-          dim.thickness,
-          dim.weight,
-          dim.load,
-        ],
+        [dim.nps, dim.nb, dim.baseW, dim.baseL, dim.thickness, dim.weight, dim.load],
       );
     }
-    console.warn('Added SLIDE_PLATE dimensions for 10 sizes');
+    console.warn("Added SLIDE_PLATE dimensions for 10 sizes");
 
     const bandHangerBySize = [
       {
@@ -620,25 +596,16 @@ export class AddBracketDimensionData1773300000000 implements MigrationInterface 
           unit_weight_kg = EXCLUDED.unit_weight_kg,
           max_load_kg = EXCLUDED.max_load_kg
       `,
-        [
-          dim.nps,
-          dim.nb,
-          dim.bandWidth,
-          dim.thickness,
-          dim.thickness,
-          dim.weight,
-          dim.load,
-        ],
+        [dim.nps, dim.nb, dim.bandWidth, dim.thickness, dim.thickness, dim.weight, dim.load],
       );
     }
-    console.warn('Added BAND_HANGER dimensions for 9 sizes');
+    console.warn("Added BAND_HANGER dimensions for 9 sizes");
 
     const newBracketTypes = [
       {
-        typeCode: 'SPRING_HANGER',
-        displayName: 'Spring Hanger',
-        description:
-          'Variable spring support for thermal movement compensation',
+        typeCode: "SPRING_HANGER",
+        displayName: "Spring Hanger",
+        description: "Variable spring support for thermal movement compensation",
         minNb: 50,
         maxNb: 600,
         weightFactor: 4.0,
@@ -648,9 +615,9 @@ export class AddBracketDimensionData1773300000000 implements MigrationInterface 
         isAnchorType: false,
       },
       {
-        typeCode: 'CONSTANT_SUPPORT',
-        displayName: 'Constant Support Hanger',
-        description: 'Maintains constant load through full travel range',
+        typeCode: "CONSTANT_SUPPORT",
+        displayName: "Constant Support Hanger",
+        description: "Maintains constant load through full travel range",
         minNb: 100,
         maxNb: 900,
         weightFactor: 6.0,
@@ -660,10 +627,9 @@ export class AddBracketDimensionData1773300000000 implements MigrationInterface 
         isAnchorType: false,
       },
       {
-        typeCode: 'RISER_CLAMP',
-        displayName: 'Riser Clamp',
-        description:
-          'Support for vertical pipe runs with load transfer to structure',
+        typeCode: "RISER_CLAMP",
+        displayName: "Riser Clamp",
+        description: "Support for vertical pipe runs with load transfer to structure",
         minNb: 25,
         maxNb: 600,
         weightFactor: 2.0,
@@ -707,9 +673,7 @@ export class AddBracketDimensionData1773300000000 implements MigrationInterface 
         ],
       );
     }
-    console.warn(
-      'Added 3 new bracket types: SPRING_HANGER, CONSTANT_SUPPORT, RISER_CLAMP',
-    );
+    console.warn("Added 3 new bracket types: SPRING_HANGER, CONSTANT_SUPPORT, RISER_CLAMP");
 
     const springHangerBySize = [
       {
@@ -817,18 +781,10 @@ export class AddBracketDimensionData1773300000000 implements MigrationInterface 
           unit_weight_kg = EXCLUDED.unit_weight_kg,
           max_load_kg = EXCLUDED.max_load_kg
       `,
-        [
-          dim.nps,
-          dim.nb,
-          dim.travel,
-          dim.springRate,
-          dim.springRate,
-          dim.weight,
-          dim.load,
-        ],
+        [dim.nps, dim.nb, dim.travel, dim.springRate, dim.springRate, dim.weight, dim.load],
       );
     }
-    console.warn('Added SPRING_HANGER dimensions for 11 sizes');
+    console.warn("Added SPRING_HANGER dimensions for 11 sizes");
 
     const riserClampBySize = [
       { nps: '1"', nb: 25, clampOD: 45, height: 60, weight: 0.4, load: 400 },
@@ -931,35 +887,27 @@ export class AddBracketDimensionData1773300000000 implements MigrationInterface 
           unit_weight_kg = EXCLUDED.unit_weight_kg,
           max_load_kg = EXCLUDED.max_load_kg
       `,
-        [
-          dim.nps,
-          dim.nb,
-          dim.clampOD,
-          dim.height,
-          dim.height,
-          dim.weight,
-          dim.load,
-        ],
+        [dim.nps, dim.nb, dim.clampOD, dim.height, dim.height, dim.weight, dim.load],
       );
     }
-    console.warn('Added RISER_CLAMP dimensions for 13 sizes');
+    console.warn("Added RISER_CLAMP dimensions for 13 sizes");
 
-    console.warn('Bracket dimension data migration completed successfully.');
+    console.warn("Bracket dimension data migration completed successfully.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     const typesToRemove = [
-      'WELDED_BRACKET',
-      'ROLLER_SUPPORT',
-      'SLIDE_PLATE',
-      'BAND_HANGER',
-      'SPRING_HANGER',
-      'RISER_CLAMP',
+      "WELDED_BRACKET",
+      "ROLLER_SUPPORT",
+      "SLIDE_PLATE",
+      "BAND_HANGER",
+      "SPRING_HANGER",
+      "RISER_CLAMP",
     ];
 
     for (const typeCode of typesToRemove) {
       await queryRunner.query(
-        `DELETE FROM bracket_dimensions_by_size WHERE bracket_type_code = $1`,
+        "DELETE FROM bracket_dimensions_by_size WHERE bracket_type_code = $1",
         [typeCode],
       );
     }

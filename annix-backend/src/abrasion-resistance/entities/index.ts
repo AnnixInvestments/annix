@@ -1,1 +1,1 @@
-export * from './abrasion-resistance.entity';
+export * from "./abrasion-resistance.entity";

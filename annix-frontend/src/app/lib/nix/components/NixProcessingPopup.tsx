@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
-import AmixLogo from '@/app/components/AmixLogo';
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import AmixLogo from "@/app/components/AmixLogo";
 
 interface NixProcessingPopupProps {
   isVisible: boolean;
@@ -17,13 +17,13 @@ export default function NixProcessingPopup({
   statusMessage,
   estimatedTimeRemaining,
 }: NixProcessingPopupProps) {
-  const [dots, setDots] = useState('');
+  const [dots, setDots] = useState("");
 
   useEffect(() => {
     if (!isVisible) return;
 
     const interval = setInterval(() => {
-      setDots((prev) => (prev.length >= 3 ? '' : prev + '.'));
+      setDots((prev) => (prev.length >= 3 ? "" : `${prev}.`));
     }, 500);
 
     return () => clearInterval(interval);
@@ -37,7 +37,7 @@ export default function NixProcessingPopup({
     }
     const mins = Math.floor(seconds / 60);
     const secs = Math.ceil(seconds % 60);
-    return secs > 0 ? `${mins}m ${secs}s` : `${mins} minute${mins > 1 ? 's' : ''}`;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins} minute${mins > 1 ? "s" : ""}`;
   };
 
   return (
@@ -50,7 +50,7 @@ export default function NixProcessingPopup({
       <div className="relative bg-white rounded-xl shadow-2xl max-w-xl w-full overflow-hidden animate-in fade-in zoom-in duration-300">
         <div
           className="px-4 py-3 flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: '#323288' }}
+          style={{ backgroundColor: "#323288" }}
         >
           <AmixLogo size="md" showText useSignatureFont />
         </div>
@@ -73,9 +73,7 @@ export default function NixProcessingPopup({
               <h2 className="text-lg font-bold text-gray-900">
                 Nix is Reading Your Document{dots}
               </h2>
-              <p className="text-sm text-gray-600 mt-1">
-                {statusMessage}
-              </p>
+              <p className="text-sm text-gray-600 mt-1">{statusMessage}</p>
             </div>
           </div>
 
@@ -85,16 +83,17 @@ export default function NixProcessingPopup({
                 className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out"
                 style={{
                   width: `${progress}%`,
-                  background: 'linear-gradient(90deg, #FFA500 0%, #FF8C00 50%, #FFA500 100%)',
-                  backgroundSize: '200% 100%',
-                  animation: 'shimmer 2s infinite linear',
+                  background: "linear-gradient(90deg, #FFA500 0%, #FF8C00 50%, #FFA500 100%)",
+                  backgroundSize: "200% 100%",
+                  animation: "shimmer 2s infinite linear",
                 }}
               />
               <div
                 className="absolute inset-0 rounded-full"
                 style={{
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                  animation: 'shimmer 1.5s infinite',
+                  background:
+                    "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)",
+                  animation: "shimmer 1.5s infinite",
                 }}
               />
             </div>
@@ -111,17 +110,25 @@ export default function NixProcessingPopup({
 
           <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-400">
             <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
             </svg>
             <span>Extracting pipe specifications and items...</span>
           </div>
         </div>
 
-        <div
-          className="h-1 flex-shrink-0"
-          style={{ backgroundColor: '#FFA500' }}
-        />
+        <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FFA500" }} />
       </div>
 
       <style jsx>{`

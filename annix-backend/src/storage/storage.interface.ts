@@ -14,4 +14,4 @@ export interface IStorageService {
   getPublicUrl(path: string): string;
 }
 
-export const STORAGE_SERVICE = 'STORAGE_SERVICE';
+export const STORAGE_SERVICE = "STORAGE_SERVICE";

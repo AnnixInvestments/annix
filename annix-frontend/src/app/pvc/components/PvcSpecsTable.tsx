@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { pvcApi, NOMINAL_DIAMETERS, PN_VALUES, PvcPipeSpecification } from '@/app/lib/pvc';
+import { useEffect, useMemo, useState } from "react";
+import { NOMINAL_DIAMETERS, PN_VALUES, PvcPipeSpecification, pvcApi } from "@/app/lib/pvc";
 
 interface PvcSpecsTableProps {
   selectedNominalDiameter?: number;
@@ -17,8 +17,8 @@ export default function PvcSpecsTable({
   const [specs, setSpecs] = useState<PvcPipeSpecification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterDn, setFilterDn] = useState<number | ''>('');
-  const [filterPn, setFilterPn] = useState<number | ''>('');
+  const [filterDn, setFilterDn] = useState<number | "">("");
+  const [filterPn, setFilterPn] = useState<number | "">("");
 
   useEffect(() => {
     pvcApi.en1452
@@ -44,11 +44,11 @@ export default function PvcSpecsTable({
 
   const uniqueDns = useMemo(
     () => [...new Set(specs.map((s) => s.nominalDiameter))].sort((a, b) => a - b),
-    [specs]
+    [specs],
   );
   const uniquePns = useMemo(
     () => [...new Set(specs.map((s) => s.pressureRating))].sort((a, b) => a - b),
-    [specs]
+    [specs],
   );
 
   if (loading) {
@@ -83,7 +83,7 @@ export default function PvcSpecsTable({
           </label>
           <select
             value={filterDn}
-            onChange={(e) => setFilterDn(e.target.value ? Number(e.target.value) : '')}
+            onChange={(e) => setFilterDn(e.target.value ? Number(e.target.value) : "")}
             className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
           >
             <option value="">All Sizes</option>
@@ -101,7 +101,7 @@ export default function PvcSpecsTable({
           </label>
           <select
             value={filterPn}
-            onChange={(e) => setFilterPn(e.target.value ? Number(e.target.value) : '')}
+            onChange={(e) => setFilterPn(e.target.value ? Number(e.target.value) : "")}
             className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
           >
             <option value="">All Pressures</option>
@@ -116,8 +116,8 @@ export default function PvcSpecsTable({
         {(filterDn || filterPn) && (
           <button
             onClick={() => {
-              setFilterDn('');
-              setFilterPn('');
+              setFilterDn("");
+              setFilterPn("");
             }}
             className="self-end px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
@@ -168,7 +168,8 @@ export default function PvcSpecsTable({
             ) : (
               filteredSpecs.map((spec, idx) => {
                 const isSelected =
-                  selectedNominalDiameter === spec.nominalDiameter && selectedPressureRating === spec.pressureRating;
+                  selectedNominalDiameter === spec.nominalDiameter &&
+                  selectedPressureRating === spec.pressureRating;
                 const key = `${spec.nominalDiameter}-${spec.pressureRating}-${idx}`;
 
                 return (
@@ -176,9 +177,9 @@ export default function PvcSpecsTable({
                     key={key}
                     className={`${
                       isSelected
-                        ? 'bg-blue-50 dark:bg-blue-900/20'
-                        : 'hover:bg-gray-50 dark:hover:bg-slate-700'
-                    } ${onSelect ? 'cursor-pointer' : ''}`}
+                        ? "bg-blue-50 dark:bg-blue-900/20"
+                        : "hover:bg-gray-50 dark:hover:bg-slate-700"
+                    } ${onSelect ? "cursor-pointer" : ""}`}
                     onClick={onSelect ? () => onSelect(spec) : undefined}
                   >
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">

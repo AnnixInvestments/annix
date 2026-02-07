@@ -1,14 +1,21 @@
 #!/usr/bin/env npx ts-node
 
-import { select, confirm, input, checkbox } from '@inquirer/prompts';
-import chalk from 'chalk';
-import { execSync, spawn, ChildProcess } from 'child_process';
-import { existsSync, openSync, readFileSync, writeFileSync, unlinkSync, mkdtempSync } from 'fs';
-import { createInterface, emitKeypressEvents, Key } from 'readline';
-import { tmpdir, homedir } from 'os';
-import { join } from 'path';
+import { type ChildProcess, execSync, spawn } from "node:child_process";
+import {
+  existsSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { homedir, tmpdir } from "node:os";
+import { join } from "node:path";
+import { createInterface, emitKeypressEvents, type Key } from "node:readline";
+import { checkbox, confirm, input, select } from "@inquirer/prompts";
+import chalk from "chalk";
 
-const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
+const LOG_LEVEL = process.env.LOG_LEVEL ?? "info";
 const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
 
 const log = {
@@ -30,7 +37,7 @@ const log = {
   error: (message: string) => {
     console.error(chalk.red(message));
   },
-  print: (message: string = '') => {
+  print: (message: string = "") => {
     console.log(message);
   },
 };
@@ -61,21 +68,21 @@ interface Session {
   name: string;
   branch: string;
   project: string;
-  status: 'working' | 'complete' | 'error' | 'idle';
+  status: "working" | "complete" | "error" | "idle";
   lastActivity: string;
   tty: string | null;
   isOrphaned: boolean;
 }
 
-const DEFAULT_ROOT_DIR = join(__dirname, '..');
-const CLAUDE_BRANCH_PREFIX = 'claude/';
-const PROJECTS_CONFIG_FILE = join(DEFAULT_ROOT_DIR, '.parallel-claude-projects.json');
-const APP_LOG_FILE = join(DEFAULT_ROOT_DIR, '.parallel-claude-app.log');
+const DEFAULT_ROOT_DIR = join(__dirname, "..");
+const CLAUDE_BRANCH_PREFIX = "claude/";
+const PROJECTS_CONFIG_FILE = join(DEFAULT_ROOT_DIR, ".parallel-claude-projects.json");
+const APP_LOG_FILE = join(DEFAULT_ROOT_DIR, ".parallel-claude-app.log");
 
 let currentProject: ProjectConfig = {
-  name: 'Annix-sync',
+  name: "Annix-sync",
   path: DEFAULT_ROOT_DIR,
-  worktreeDir: join(DEFAULT_ROOT_DIR, '..', 'annix-worktrees'),
+  worktreeDir: join(DEFAULT_ROOT_DIR, "..", "annix-worktrees"),
 };
 
 function rootDir(): string {
@@ -83,7 +90,10 @@ function rootDir(): string {
 }
 
 function worktreeDir(): string {
-  return currentProject.worktreeDir ?? join(currentProject.path, '..', `${currentProject.name.toLowerCase()}-worktrees`);
+  return (
+    currentProject.worktreeDir ??
+    join(currentProject.path, "..", `${currentProject.name.toLowerCase()}-worktrees`)
+  );
 }
 
 function loadProjectsConfig(): ProjectsConfig {
@@ -91,26 +101,26 @@ function loadProjectsConfig(): ProjectsConfig {
     const defaultConfig: ProjectsConfig = {
       projects: [
         {
-          name: 'Annix-sync',
+          name: "Annix-sync",
           path: DEFAULT_ROOT_DIR,
-          worktreeDir: join(DEFAULT_ROOT_DIR, '..', 'annix-worktrees'),
+          worktreeDir: join(DEFAULT_ROOT_DIR, "..", "annix-worktrees"),
         },
       ],
-      defaultProject: 'Annix-sync',
+      defaultProject: "Annix-sync",
     };
     saveProjectsConfig(defaultConfig);
     return defaultConfig;
   }
 
   try {
-    const content = readFileSync(PROJECTS_CONFIG_FILE, 'utf-8');
+    const content = readFileSync(PROJECTS_CONFIG_FILE, "utf-8");
     return JSON.parse(content) as ProjectsConfig;
   } catch {
-    log.error('Failed to load projects config, using defaults');
+    log.error("Failed to load projects config, using defaults");
     return {
       projects: [
         {
-          name: 'Annix-sync',
+          name: "Annix-sync",
           path: DEFAULT_ROOT_DIR,
         },
       ],
@@ -120,15 +130,15 @@ function loadProjectsConfig(): ProjectsConfig {
 
 function saveProjectsConfig(config: ProjectsConfig): void {
   try {
-    writeFileSync(PROJECTS_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+    writeFileSync(PROJECTS_CONFIG_FILE, JSON.stringify(config, null, 2), "utf-8");
   } catch {
-    log.error('Failed to save projects config');
+    log.error("Failed to save projects config");
   }
 }
 
 function addProject(project: ProjectConfig): void {
   const config = loadProjectsConfig();
-  const existingIndex = config.projects.findIndex(p => p.path === project.path);
+  const existingIndex = config.projects.findIndex((p) => p.path === project.path);
   if (existingIndex >= 0) {
     config.projects[existingIndex] = project;
   } else {
@@ -145,43 +155,43 @@ async function selectProjectForSession(): Promise<ProjectConfig | null> {
   const config = loadProjectsConfig();
 
   const choices = [
-    ...config.projects.map(p => ({
+    ...config.projects.map((p) => ({
       name: `${p.name} ${chalk.dim(`(${p.path})`)}`,
       value: p.path,
     })),
-    { name: chalk.green('+ Add another project'), value: 'add-new' },
-    { name: chalk.dim('← Cancel'), value: 'cancel' },
+    { name: chalk.green("+ Add another project"), value: "add-new" },
+    { name: chalk.dim("← Cancel"), value: "cancel" },
   ];
 
-  const selected = await selectWithEscape('Select project for this session:', choices, 'cancel');
+  const selected = await selectWithEscape("Select project for this session:", choices, "cancel");
 
-  if (selected === 'cancel') {
+  if (selected === "cancel") {
     return null;
   }
 
-  if (selected === 'add-new') {
+  if (selected === "add-new") {
     const projectPath = await input({
-      message: 'Enter full path to project:',
+      message: "Enter full path to project:",
       validate: (val) => {
-        if (!val.trim()) return 'Path required';
-        if (!existsSync(val.trim())) return 'Path does not exist';
-        if (!existsSync(join(val.trim(), '.git'))) return 'Not a git repository';
+        if (!val.trim()) return "Path required";
+        if (!existsSync(val.trim())) return "Path does not exist";
+        if (!existsSync(join(val.trim(), ".git"))) return "Not a git repository";
         return true;
       },
     });
 
     const trimmedPath = projectPath.trim();
-    const defaultName = trimmedPath.split('/').pop() || 'Project';
+    const defaultName = trimmedPath.split("/").pop() || "Project";
 
     const projectName = await input({
-      message: 'Project name:',
+      message: "Project name:",
       default: defaultName,
-      validate: (val) => val.trim() ? true : 'Name required',
+      validate: (val) => (val.trim() ? true : "Name required"),
     });
 
     const worktreeDirPath = await input({
-      message: 'Worktree directory (leave blank for default):',
-      default: join(trimmedPath, '..', `${projectName.trim().toLowerCase()}-worktrees`),
+      message: "Worktree directory (leave blank for default):",
+      default: join(trimmedPath, "..", `${projectName.trim().toLowerCase()}-worktrees`),
     });
 
     const newProject: ProjectConfig = {
@@ -196,7 +206,7 @@ async function selectProjectForSession(): Promise<ProjectConfig | null> {
     return newProject;
   }
 
-  const project = config.projects.find(p => p.path === selected);
+  const project = config.projects.find((p) => p.path === selected);
   return project ?? null;
 }
 
@@ -204,8 +214,8 @@ function exec(cmd: string, options: { cwd?: string; silent?: boolean } = {}): st
   try {
     return execSync(cmd, {
       cwd: options.cwd ?? rootDir(),
-      encoding: 'utf-8',
-      stdio: options.silent ? 'pipe' : ['pipe', 'pipe', 'pipe'],
+      encoding: "utf-8",
+      stdio: options.silent ? "pipe" : ["pipe", "pipe", "pipe"],
     }).trim();
   } catch (error) {
     if (!options.silent) {
@@ -215,22 +225,22 @@ function exec(cmd: string, options: { cwd?: string; silent?: boolean } = {}): st
         log.error(stderr);
       }
     }
-    return '';
+    return "";
   }
 }
 
 function appProcessStatus(): { backend: boolean; frontend: boolean } {
-  const isWindows = process.platform === 'win32';
+  const isWindows = process.platform === "win32";
 
   if (isWindows) {
-    const netstat = exec('netstat -ano', { silent: true });
-    const lines = netstat.split('\n');
-    const backend = lines.some(line => line.includes(':4001') && line.includes('LISTENING'));
-    const frontend = lines.some(line => line.includes(':3000') && line.includes('LISTENING'));
+    const netstat = exec("netstat -ano", { silent: true });
+    const lines = netstat.split("\n");
+    const backend = lines.some((line) => line.includes(":4001") && line.includes("LISTENING"));
+    const frontend = lines.some((line) => line.includes(":3000") && line.includes("LISTENING"));
     return { backend, frontend };
   } else {
-    const backend = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== '';
-    const frontend = exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== '';
+    const backend = exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== "";
+    const frontend = exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== "";
     return { backend, frontend };
   }
 }
@@ -241,19 +251,21 @@ function isAppProcessRunning(): boolean {
 }
 
 function currentBranch(): string {
-  return exec('git branch --show-current');
+  return exec("git branch --show-current");
 }
 
 function claudeBranches(): Branch[] {
   const branches: Branch[] = [];
 
-  const localOutput = exec('git branch --format="%(refname:short)|%(committerdate:relative)|%(subject)"');
-  const localBranches = localOutput.split('\n').filter(line => line.trim());
+  const localOutput = exec(
+    'git branch --format="%(refname:short)|%(committerdate:relative)|%(subject)"',
+  );
+  const localBranches = localOutput.split("\n").filter((line) => line.trim());
 
   localBranches
-    .filter(line => line.startsWith(CLAUDE_BRANCH_PREFIX))
-    .forEach(line => {
-      const [name, time, subject] = line.split('|');
+    .filter((line) => line.startsWith(CLAUDE_BRANCH_PREFIX))
+    .forEach((line) => {
+      const [name, time, subject] = line.split("|");
 
       const aheadCount = exec(`git rev-list --count main..${name}`, { silent: true });
       const behindCount = exec(`git rev-list --count ${name}..main`, { silent: true });
@@ -264,8 +276,8 @@ function claudeBranches(): Branch[] {
         isRemote: false,
         ahead: parseInt(aheadCount, 10) || 0,
         behind: parseInt(behindCount, 10) || 0,
-        lastCommit: subject || '',
-        lastCommitTime: time || '',
+        lastCommit: subject || "",
+        lastCommitTime: time || "",
       });
     });
 
@@ -274,23 +286,25 @@ function claudeBranches(): Branch[] {
 
 function allBranches(): string[] {
   const output = exec('git branch --format="%(refname:short)"');
-  return output.split('\n').filter(line => line.trim());
+  return output.split("\n").filter((line) => line.trim());
 }
 
 function branchStatus(branch: string): { ahead: number; behind: number } {
-  const output = exec(`git rev-list --left-right --count origin/main...${branch}`, { silent: true });
+  const output = exec(`git rev-list --left-right --count origin/main...${branch}`, {
+    silent: true,
+  });
   if (!output) return { ahead: 0, behind: 0 };
 
-  const [behind, ahead] = output.split('\t').map(n => parseInt(n, 10) || 0);
+  const [behind, ahead] = output.split("\t").map((n) => parseInt(n, 10) || 0);
   return { ahead, behind };
 }
 
 function formatBranchDisplay(branch: Branch, current: string): string {
   const isCurrent = branch.name === current;
-  const marker = isCurrent ? chalk.green('●') : chalk.dim('○');
+  const marker = isCurrent ? chalk.green("●") : chalk.dim("○");
   const name = isCurrent ? chalk.green(branch.name) : branch.name;
 
-  let status = '';
+  let status = "";
   if (branch.ahead > 0 && branch.behind > 0) {
     status = chalk.yellow(`↑${branch.ahead} ↓${branch.behind}`);
   } else if (branch.ahead > 0) {
@@ -298,10 +312,10 @@ function formatBranchDisplay(branch: Branch, current: string): string {
   } else if (branch.behind > 0) {
     status = chalk.red(`↓${branch.behind} behind`);
   } else {
-    status = chalk.dim('up to date');
+    status = chalk.dim("up to date");
   }
 
-  const time = branch.lastCommitTime ? chalk.dim(`(${branch.lastCommitTime})`) : '';
+  const time = branch.lastCommitTime ? chalk.dim(`(${branch.lastCommitTime})`) : "";
 
   return `${marker} ${name} ${status} ${time}`;
 }
@@ -313,9 +327,12 @@ function detectClaudeSessions(): Session[] {
   try {
     const platform = process.platform;
 
-    if (platform === 'darwin' || platform === 'linux') {
-      const output = exec('ps -eo pid,tty,command | grep -E "[c]laude" | grep -v "parallel-claude"', { silent: true });
-      const lines = output.split('\n').filter(line => line.trim());
+    if (platform === "darwin" || platform === "linux") {
+      const output = exec(
+        'ps -eo pid,tty,command | grep -E "[c]laude" | grep -v "parallel-claude"',
+        { silent: true },
+      );
+      const lines = output.split("\n").filter((line) => line.trim());
 
       lines.forEach((line) => {
         const match = line.trim().match(/^(\d+)\s+(\S+)\s+(.*)$/);
@@ -325,62 +342,77 @@ function detectClaudeSessions(): Session[] {
           const command = match[3];
 
           if (seenPids.has(pid)) return;
-          if (!command.includes('claude')) return;
+          if (!command.includes("claude")) return;
           seenPids.add(pid);
 
-          const isOrphaned = tty === '??' || tty === '?';
+          const isOrphaned = tty === "??" || tty === "?";
 
-          let branch = 'unknown';
-          let cwd = '';
-          let project = 'unknown';
+          let branch = "unknown";
+          let cwd = "";
+          let project = "unknown";
 
-          const lsofOutput = exec(`lsof -p ${pid} 2>/dev/null | grep cwd | head -1`, { silent: true });
+          const lsofOutput = exec(`lsof -p ${pid} 2>/dev/null | grep cwd | head -1`, {
+            silent: true,
+          });
           const cwdMatch = lsofOutput.match(/\s(\/\S+)$/);
           if (cwdMatch) {
             cwd = cwdMatch[1];
-            const branchOutput = exec(`git -C "${cwd}" branch --show-current 2>/dev/null`, { silent: true });
+            const branchOutput = exec(`git -C "${cwd}" branch --show-current 2>/dev/null`, {
+              silent: true,
+            });
             if (branchOutput) {
               branch = branchOutput;
             }
-            const repoRoot = exec(`git -C "${cwd}" rev-parse --show-toplevel 2>/dev/null`, { silent: true });
+            const repoRoot = exec(`git -C "${cwd}" rev-parse --show-toplevel 2>/dev/null`, {
+              silent: true,
+            });
             if (repoRoot) {
-              project = repoRoot.split('/').pop() || 'unknown';
+              project = repoRoot.split("/").pop() || "unknown";
             }
           }
 
           sessions.push({
             pid,
-            name: cwd ? cwd.split('/').pop() || 'unknown' : `PID ${pid}`,
+            name: cwd ? cwd.split("/").pop() || "unknown" : `PID ${pid}`,
             branch,
             project,
-            status: 'working',
-            lastActivity: 'active',
+            status: "working",
+            lastActivity: "active",
             tty: isOrphaned ? null : tty,
             isOrphaned,
           });
         }
       });
-    } else if (platform === 'win32') {
-      const output = exec('wmic process where "name like \'%node%\' or name like \'%claude%\'" get processid,commandline /format:csv', { silent: true });
-      const lines = output.split('\n').filter(line => line.includes('claude') && !line.includes('parallel-claude'));
+    } else if (platform === "win32") {
+      const output = exec(
+        "wmic process where \"name like '%node%' or name like '%claude%'\" get processid,commandline /format:csv",
+        { silent: true },
+      );
+      const lines = output
+        .split("\n")
+        .filter((line) => line.includes("claude") && !line.includes("parallel-claude"));
 
       lines.forEach((line) => {
-        const parts = line.split(',');
+        const parts = line.split(",");
         if (parts.length >= 2) {
           const pid = parseInt(parts[parts.length - 1], 10);
-          if (isNaN(pid) || seenPids.has(pid)) return;
+          if (Number.isNaN(pid) || seenPids.has(pid)) return;
           seenPids.add(pid);
 
-          const hasConsole = exec(`powershell -Command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).MainWindowHandle -ne 0"`, { silent: true }).trim() === 'True';
+          const hasConsole =
+            exec(
+              `powershell -Command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).MainWindowHandle -ne 0"`,
+              { silent: true },
+            ).trim() === "True";
 
           sessions.push({
             pid,
             name: `PID ${pid}`,
-            branch: 'unknown',
-            project: 'unknown',
-            status: 'working',
-            lastActivity: 'active',
-            tty: hasConsole ? 'console' : null,
+            branch: "unknown",
+            project: "unknown",
+            status: "working",
+            lastActivity: "active",
+            tty: hasConsole ? "console" : null,
             isOrphaned: !hasConsole,
           });
         }
@@ -396,10 +428,10 @@ function detectClaudeSessions(): Session[] {
 function killExternalProcess(pid: number, force: boolean = false): boolean {
   try {
     const platform = process.platform;
-    if (platform === 'win32') {
-      execSync(`taskkill /PID ${pid} /F`, { stdio: 'pipe' });
+    if (platform === "win32") {
+      execSync(`taskkill /PID ${pid} /F`, { stdio: "pipe" });
     } else {
-      process.kill(pid, force ? 'SIGKILL' : 'SIGTERM');
+      process.kill(pid, force ? "SIGKILL" : "SIGTERM");
     }
     return true;
   } catch {
@@ -407,11 +439,14 @@ function killExternalProcess(pid: number, force: boolean = false): boolean {
   }
 }
 
-function killMultipleProcesses(pids: number[], force: boolean = false): { killed: number[]; failed: number[] } {
+function killMultipleProcesses(
+  pids: number[],
+  force: boolean = false,
+): { killed: number[]; failed: number[] } {
   const killed: number[] = [];
   const failed: number[] = [];
 
-  pids.forEach(pid => {
+  pids.forEach((pid) => {
     if (killExternalProcess(pid, force)) {
       killed.push(pid);
     } else {
@@ -426,41 +461,57 @@ const terminalWidth = () => process.stdout.columns || 80;
 const boxContentWidth = () => terminalWidth() - 2;
 
 function printHeader(): void {
-  process.stdout.write('\x1b[2J\x1b[H');
+  process.stdout.write("\x1b[2J\x1b[H");
   const width = boxContentWidth();
-  log.print(chalk.bold.cyan('┌' + '─'.repeat(width) + '┐'));
-  const title = '  Parallel Claude';
-  log.print(chalk.bold.cyan('│') + chalk.bold(title) + ' '.repeat(width - title.length) + chalk.bold.cyan('│'));
-  log.print(chalk.bold.cyan('├' + '─'.repeat(width) + '┤'));
+  log.print(chalk.bold.cyan(`┌${"─".repeat(width)}┐`));
+  const title = "  Parallel Claude";
+  log.print(
+    chalk.bold.cyan("│") +
+      chalk.bold(title) +
+      " ".repeat(width - title.length) +
+      chalk.bold.cyan("│"),
+  );
+  log.print(chalk.bold.cyan(`├${"─".repeat(width)}┤`));
 }
 
 function printFooter(): void {
-  log.print(chalk.bold.cyan('└' + '─'.repeat(boxContentWidth()) + '┘'));
+  log.print(chalk.bold.cyan(`└${"─".repeat(boxContentWidth())}┘`));
 }
 
 function printSection(title: string): void {
   const width = boxContentWidth();
   const text = `  ${title}`;
-  log.print(chalk.bold.cyan('│') + chalk.bold(text) + ' '.repeat(width - text.length) + chalk.bold.cyan('│'));
+  log.print(
+    chalk.bold.cyan("│") +
+      chalk.bold(text) +
+      " ".repeat(width - text.length) +
+      chalk.bold.cyan("│"),
+  );
 }
 
 function printBoxLine(content: string, indent: number = 2): void {
-  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
   const cleanContent = stripAnsi(content);
   const width = boxContentWidth();
   const maxWidth = width - indent;
 
   if (cleanContent.length > maxWidth) {
-    const truncated = cleanContent.slice(0, maxWidth - 1) + '…';
-    log.print(chalk.bold.cyan('│') + ' '.repeat(indent) + truncated + chalk.bold.cyan('│'));
+    const truncated = `${cleanContent.slice(0, maxWidth - 1)}…`;
+    log.print(chalk.bold.cyan("│") + " ".repeat(indent) + truncated + chalk.bold.cyan("│"));
   } else {
     const padding = maxWidth - cleanContent.length;
-    log.print(chalk.bold.cyan('│') + ' '.repeat(indent) + content + ' '.repeat(padding) + chalk.bold.cyan('│'));
+    log.print(
+      chalk.bold.cyan("│") +
+        " ".repeat(indent) +
+        content +
+        " ".repeat(padding) +
+        chalk.bold.cyan("│"),
+    );
   }
 }
 
 function printEmptyLine(): void {
-  log.print(chalk.bold.cyan('│') + ' '.repeat(boxContentWidth()) + chalk.bold.cyan('│'));
+  log.print(chalk.bold.cyan("│") + " ".repeat(boxContentWidth()) + chalk.bold.cyan("│"));
 }
 
 async function switchToBranch(branch: string): Promise<void> {
@@ -475,7 +526,7 @@ async function switchToBranch(branch: string): Promise<void> {
 async function rebaseBranch(branch: string): Promise<boolean> {
   log.warn(`\nRebasing ${branch} onto main...`);
 
-  exec('git fetch origin');
+  exec("git fetch origin");
 
   const current = currentBranch();
   if (current !== branch) {
@@ -483,11 +534,11 @@ async function rebaseBranch(branch: string): Promise<boolean> {
   }
 
   try {
-    execSync('git rebase origin/main', { cwd: rootDir(), stdio: 'inherit' });
+    execSync("git rebase origin/main", { cwd: rootDir(), stdio: "inherit" });
     log.info(`✓ Rebased ${branch} onto main`);
     return true;
   } catch {
-    log.error(`✗ Rebase failed. Resolve conflicts and run: git rebase --continue`);
+    log.error("✗ Rebase failed. Resolve conflicts and run: git rebase --continue");
     return false;
   }
 }
@@ -495,22 +546,22 @@ async function rebaseBranch(branch: string): Promise<boolean> {
 async function mergeBranch(branch: string): Promise<boolean> {
   log.warn(`\nMerging ${branch} to main (fast-forward)...`);
 
-  exec('git checkout main');
-  exec('git fetch origin');
+  exec("git checkout main");
+  exec("git fetch origin");
 
   try {
-    execSync('git rebase origin/main', { cwd: rootDir(), stdio: 'inherit' });
+    execSync("git rebase origin/main", { cwd: rootDir(), stdio: "inherit" });
   } catch {
-    log.error(`✗ Failed to sync main with origin. Resolve conflicts first.`);
+    log.error("✗ Failed to sync main with origin. Resolve conflicts first.");
     return false;
   }
 
   try {
-    execSync(`git merge --ff-only ${branch}`, { cwd: rootDir(), stdio: 'inherit' });
+    execSync(`git merge --ff-only ${branch}`, { cwd: rootDir(), stdio: "inherit" });
     log.info(`✓ Merged ${branch} to main`);
     return true;
   } catch {
-    log.error(`✗ Fast-forward merge failed. Branch may need rebasing first.`);
+    log.error("✗ Fast-forward merge failed. Branch may need rebasing first.");
     return false;
   }
 }
@@ -520,78 +571,79 @@ async function pullChanges(): Promise<void> {
 
   const appWasRunning = appProcess !== null || isAppProcessRunning();
 
-  const headBefore = exec('git rev-parse HEAD', { silent: true });
+  const headBefore = exec("git rev-parse HEAD", { silent: true });
 
   log.warn(`\nPulling changes for ${branch}...`);
-  exec('git fetch origin');
+  exec("git fetch origin");
 
-  const hasChanges = exec('git status --porcelain', { silent: true }) !== '';
+  const hasChanges = exec("git status --porcelain", { silent: true }) !== "";
   let stashed = false;
 
   if (hasChanges) {
-    log.info('Stashing local changes...');
+    log.info("Stashing local changes...");
     try {
-      execSync('git stash push -m "parallel-claude auto-stash"', { cwd: rootDir(), stdio: 'pipe' });
+      execSync('git stash push -m "parallel-claude auto-stash"', { cwd: rootDir(), stdio: "pipe" });
       stashed = true;
     } catch {
-      log.error('✗ Failed to stash changes');
-      await confirm({ message: 'Press Enter to continue...', default: true });
+      log.error("✗ Failed to stash changes");
+      await confirm({ message: "Press Enter to continue...", default: true });
       return;
     }
   }
 
   try {
-    execSync(`git pull --rebase origin ${branch}`, { cwd: rootDir(), stdio: 'inherit' });
+    execSync(`git pull --rebase origin ${branch}`, { cwd: rootDir(), stdio: "inherit" });
     log.info(`✓ Pulled latest changes for ${branch}`);
   } catch (error) {
-    const errorMsg = (error as { stderr?: Buffer })?.stderr?.toString() || '';
-    log.error(`✗ Pull failed${errorMsg ? ': ' + errorMsg.trim() : ''}`);
+    const errorMsg = (error as { stderr?: Buffer })?.stderr?.toString() || "";
+    log.error(`✗ Pull failed${errorMsg ? `: ${errorMsg.trim()}` : ""}`);
     if (stashed) {
-      log.info('Restoring stashed changes...');
-      exec('git stash pop', { silent: true });
+      log.info("Restoring stashed changes...");
+      exec("git stash pop", { silent: true });
     }
-    await confirm({ message: 'Press Enter to continue...', default: true });
+    await confirm({ message: "Press Enter to continue...", default: true });
     return;
   }
 
   if (stashed) {
-    log.info('Restoring stashed changes...');
+    log.info("Restoring stashed changes...");
     try {
-      execSync('git stash pop', { cwd: rootDir(), stdio: 'pipe' });
-      log.info('✓ Local changes restored');
+      execSync("git stash pop", { cwd: rootDir(), stdio: "pipe" });
+      log.info("✓ Local changes restored");
     } catch {
       log.warn('⚠ Could not auto-restore stashed changes. Run "git stash pop" manually.');
-      await confirm({ message: 'Press Enter to continue...', default: true });
+      await confirm({ message: "Press Enter to continue...", default: true });
     }
   }
 
-  const headAfter = exec('git rev-parse HEAD', { silent: true });
+  const headAfter = exec("git rev-parse HEAD", { silent: true });
   if (headBefore === headAfter) {
-    log.info('Already up to date.');
+    log.info("Already up to date.");
     return;
   }
 
   const changedFiles = exec(`git diff --name-only ${headBefore}..${headAfter}`, { silent: true });
 
-  const depsChanged = changedFiles.includes('package.json') || changedFiles.includes('pnpm-lock.yaml');
+  const depsChanged =
+    changedFiles.includes("package.json") || changedFiles.includes("pnpm-lock.yaml");
   if (depsChanged) {
-    log.warn('Dependencies changed. Running pnpm install...');
+    log.warn("Dependencies changed. Running pnpm install...");
     try {
-      execSync('pnpm install', { cwd: rootDir(), stdio: 'inherit' });
-      log.info('✓ Dependencies installed');
+      execSync("pnpm install", { cwd: rootDir(), stdio: "inherit" });
+      log.info("✓ Dependencies installed");
     } catch {
-      log.error('✗ Failed to install dependencies');
+      log.error("✗ Failed to install dependencies");
     }
   }
 
-  const migrationsChanged = changedFiles.split('\n').some(f => f.includes('migrations/'));
+  const migrationsChanged = changedFiles.split("\n").some((f) => f.includes("migrations/"));
   if (migrationsChanged) {
-    log.warn('New migrations detected. Running migrations...');
+    log.warn("New migrations detected. Running migrations...");
     try {
-      execSync('pnpm --filter annix-backend migration:run', { cwd: rootDir(), stdio: 'inherit' });
-      log.info('✓ Migrations applied');
+      execSync("pnpm --filter annix-backend migration:run", { cwd: rootDir(), stdio: "inherit" });
+      log.info("✓ Migrations applied");
     } catch {
-      log.error('✗ Failed to run migrations');
+      log.error("✗ Failed to run migrations");
     }
   }
 
@@ -599,9 +651,9 @@ async function pullChanges(): Promise<void> {
     const appStillRunning = isAppProcessRunning();
 
     if (!appStillRunning) {
-      log.warn('App stopped after pull.');
+      log.warn("App stopped after pull.");
       const restart = await confirm({
-        message: 'Restart the app?',
+        message: "Restart the app?",
         default: true,
       });
       if (restart) {
@@ -612,27 +664,37 @@ async function pullChanges(): Promise<void> {
 }
 
 async function deleteBranch(branch: string): Promise<void> {
-  const worktreeList = exec('git worktree list --porcelain', { silent: true });
-  const worktreeMatch = worktreeList.match(new RegExp(`worktree ([^\\n]+)\\n[^\\n]*\\nbranch refs/heads/${branch.replace('/', '\\/')}`, 'm'));
+  const worktreeList = exec("git worktree list --porcelain", { silent: true });
+  const worktreeMatch = worktreeList.match(
+    new RegExp(
+      `worktree ([^\\n]+)\\n[^\\n]*\\nbranch refs/heads/${branch.replace("/", "\\/")}`,
+      "m",
+    ),
+  );
   const worktreePath = worktreeMatch ? worktreeMatch[1] : null;
 
   if (worktreePath) {
     log.warn(`Branch ${branch} is linked to worktree at ${worktreePath}`);
     const removeWorktree = await confirm({
-      message: `Remove worktree first?`,
+      message: "Remove worktree first?",
       default: true,
     });
 
     if (removeWorktree) {
       try {
-        execSync(`git worktree remove "${worktreePath}" --force`, { cwd: rootDir(), stdio: 'inherit' });
-        log.info(`✓ Worktree removed`);
+        execSync(`git worktree remove "${worktreePath}" --force`, {
+          cwd: rootDir(),
+          stdio: "inherit",
+        });
+        log.info("✓ Worktree removed");
       } catch {
-        log.error(`Failed to remove worktree. Delete it manually: git worktree remove "${worktreePath}" --force`);
+        log.error(
+          `Failed to remove worktree. Delete it manually: git worktree remove "${worktreePath}" --force`,
+        );
         return;
       }
     } else {
-      log.warn('Cannot delete branch while worktree exists.');
+      log.warn("Cannot delete branch while worktree exists.");
       return;
     }
   }
@@ -644,7 +706,7 @@ async function deleteBranch(branch: string): Promise<void> {
 
   if (deleteLocal) {
     try {
-      execSync(`git branch -D ${branch}`, { cwd: rootDir(), stdio: 'inherit' });
+      execSync(`git branch -D ${branch}`, { cwd: rootDir(), stdio: "inherit" });
       log.info(`✓ Deleted local branch ${branch}`);
     } catch {
       log.error(`Failed to delete local branch ${branch}`);
@@ -667,7 +729,7 @@ async function deleteBranch(branch: string): Promise<void> {
 }
 
 let appProcess: ChildProcess | null = null;
-let appStatus: 'stopped' | 'starting' | 'running' | 'error' = 'stopped';
+let appStatus: "stopped" | "starting" | "running" | "error" = "stopped";
 let appErrorMessage: string | null = null;
 
 interface ManagedSession {
@@ -678,7 +740,7 @@ interface ManagedSession {
   project: ProjectConfig;
   worktreePath?: string;
   startTime: Date;
-  status: 'running' | 'stopped';
+  status: "running" | "stopped";
   headless: boolean;
   task?: string;
 }
@@ -687,17 +749,17 @@ const managedSessions: Map<string, ManagedSession> = new Map();
 let sessionCounter = 0;
 
 function killExistingProcesses(): void {
-  log.info('Stopping any existing dev processes...');
+  log.info("Stopping any existing dev processes...");
 
-  const isWindows = process.platform === 'win32';
+  const isWindows = process.platform === "win32";
 
   if (isWindows) {
-    const killScript = join(rootDir(), 'kill-dev.ps1');
+    const killScript = join(rootDir(), "kill-dev.ps1");
     if (existsSync(killScript)) {
       exec(`powershell -ExecutionPolicy Bypass -File "${killScript}"`, { silent: true });
     }
   } else {
-    const killScript = join(rootDir(), 'kill-dev.sh');
+    const killScript = join(rootDir(), "kill-dev.sh");
     if (existsSync(killScript)) {
       exec(`bash "${killScript}"`, { silent: true });
     }
@@ -705,23 +767,27 @@ function killExistingProcesses(): void {
 }
 
 function projectHasAppScripts(): boolean {
-  const isWindows = process.platform === 'win32';
-  const script = isWindows ? 'run-dev.ps1' : 'run-dev.sh';
+  const isWindows = process.platform === "win32";
+  const script = isWindows ? "run-dev.ps1" : "run-dev.sh";
   return existsSync(join(rootDir(), script));
 }
 
 async function startApp(): Promise<void> {
   if (!projectHasAppScripts()) {
-    log.warn('This project does not have app scripts (run-dev.sh).');
+    log.warn("This project does not have app scripts (run-dev.sh).");
     return;
   }
 
   killExistingProcesses();
 
-  const isWindows = process.platform === 'win32';
-  log.info(isWindows ? '\nStarting development server in new tab...' : '\nStarting development server in background...');
+  const isWindows = process.platform === "win32";
+  log.info(
+    isWindows
+      ? "\nStarting development server in new tab..."
+      : "\nStarting development server in background...",
+  );
 
-  appStatus = 'starting';
+  appStatus = "starting";
   appErrorMessage = null;
 
   if (existsSync(APP_LOG_FILE)) {
@@ -729,51 +795,55 @@ async function startApp(): Promise<void> {
   }
 
   if (isWindows) {
-    const scriptPath = join(rootDir(), 'run-dev.ps1');
-    const hasWindowsTerminal = exec('where wt', { silent: true }) !== '';
+    const scriptPath = join(rootDir(), "run-dev.ps1");
+    const hasWindowsTerminal = exec("where wt", { silent: true }) !== "";
 
     if (hasWindowsTerminal) {
       const wtCmd = `wt -w 0 new-tab --title "App Dev Server" -d "${rootDir()}" powershell -ExecutionPolicy Bypass -NoProfile -File "${scriptPath}"`;
       appProcess = spawn(wtCmd, [], {
         cwd: rootDir(),
-        stdio: 'ignore',
+        stdio: "ignore",
         detached: true,
         shell: true,
         env: process.env,
       });
     } else {
-      appProcess = spawn('powershell', ['-ExecutionPolicy', 'Bypass', '-NoProfile', '-File', scriptPath], {
-        cwd: rootDir(),
-        stdio: 'ignore',
-        detached: true,
-        env: process.env,
-      });
+      appProcess = spawn(
+        "powershell",
+        ["-ExecutionPolicy", "Bypass", "-NoProfile", "-File", scriptPath],
+        {
+          cwd: rootDir(),
+          stdio: "ignore",
+          detached: true,
+          env: process.env,
+        },
+      );
     }
   } else {
-    const logFd = openSync(APP_LOG_FILE, 'w');
-    appProcess = spawn('bash', ['./run-dev.sh'], {
+    const logFd = openSync(APP_LOG_FILE, "w");
+    appProcess = spawn("bash", ["./run-dev.sh"], {
       cwd: rootDir(),
-      stdio: ['ignore', logFd, logFd],
+      stdio: ["ignore", logFd, logFd],
       detached: true,
     });
   }
 
   appProcess.unref();
-  appProcess.on('exit', (code) => {
+  appProcess.on("exit", (code) => {
     appProcess = null;
-    if (appStatus === 'starting' || appStatus === 'running') {
+    if (appStatus === "starting" || appStatus === "running") {
       if (code !== 0 && code !== null) {
-        appStatus = 'error';
+        appStatus = "error";
         appErrorMessage = `Process exited with code ${code}`;
         log.error(`App failed: ${appErrorMessage}`);
       } else {
-        appStatus = 'stopped';
+        appStatus = "stopped";
       }
     }
   });
 
-  appProcess.on('error', (err) => {
-    appStatus = 'error';
+  appProcess.on("error", (err) => {
+    appStatus = "error";
     appErrorMessage = err.message;
     log.error(`App failed to start: ${err.message}`);
   });
@@ -783,50 +853,50 @@ async function startApp(): Promise<void> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < maxWaitMs) {
-    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
 
     const status = appProcessStatus();
 
     if (status.backend && status.frontend) {
-      appStatus = 'running';
+      appStatus = "running";
       return;
     }
 
-    if (appStatus === 'error') {
+    if (appStatus === "error") {
       return;
     }
   }
 
-  appStatus = 'error';
-  appErrorMessage = 'Timed out waiting for app';
+  appStatus = "error";
+  appErrorMessage = "Timed out waiting for app";
 }
 
 async function stopApp(): Promise<void> {
-  log.info('\nStopping development server...');
+  log.info("\nStopping development server...");
 
-  appStatus = 'stopped';
+  appStatus = "stopped";
   appErrorMessage = null;
 
   killExistingProcesses();
 
   if (appProcess) {
-    appProcess.kill('SIGTERM');
+    appProcess.kill("SIGTERM");
     appProcess = null;
   }
 
-  log.info('✓ App stopped.');
+  log.info("✓ App stopped.");
 }
 
 function readAppLogs(maxLines: number): string[] {
   if (!existsSync(APP_LOG_FILE)) {
-    return ['[No log file found. Start the app first.]'];
+    return ["[No log file found. Start the app first.]"];
   }
 
   try {
-    const content = readFileSync(APP_LOG_FILE, 'utf-8');
-    return content.split('\n').slice(-maxLines);
+    const content = readFileSync(APP_LOG_FILE, "utf-8");
+    return content.split("\n").slice(-maxLines);
   } catch {
-    return ['[Unable to read log file]'];
+    return ["[Unable to read log file]"];
   }
 }
 
@@ -836,8 +906,8 @@ function appLogsExist(): boolean {
 
 async function showAppLogs(): Promise<void> {
   if (!appLogsExist()) {
-    log.warn('\nNo log file found. Start the app first.');
-    await confirm({ message: 'Press Enter to continue...', default: true });
+    log.warn("\nNo log file found. Start the app first.");
+    await confirm({ message: "Press Enter to continue...", default: true });
     return;
   }
 
@@ -849,30 +919,44 @@ async function showAppLogs(): Promise<void> {
 
     const lines = readAppLogs(contentHeight);
 
-    process.stdout.write('\x1b[2J\x1b[H');
+    process.stdout.write("\x1b[2J\x1b[H");
 
-    const title = '  📄 App Logs (live)';
-    log.print(chalk.bold.cyan('┌' + '─'.repeat(contentWidth) + '┐'));
-    log.print(chalk.bold.cyan('│') + chalk.bold(title) + ' '.repeat(contentWidth - title.length) + chalk.bold.cyan('│'));
-    log.print(chalk.bold.cyan('├' + '─'.repeat(contentWidth) + '┤'));
+    const title = "  📄 App Logs (live)";
+    log.print(chalk.bold.cyan(`┌${"─".repeat(contentWidth)}┐`));
+    log.print(
+      chalk.bold.cyan("│") +
+        chalk.bold(title) +
+        " ".repeat(contentWidth - title.length) +
+        chalk.bold.cyan("│"),
+    );
+    log.print(chalk.bold.cyan(`├${"─".repeat(contentWidth)}┤`));
 
-    const displayLines = lines.length < contentHeight
-      ? [...Array(contentHeight - lines.length).fill(''), ...lines]
-      : lines;
+    const displayLines =
+      lines.length < contentHeight
+        ? [...Array(contentHeight - lines.length).fill(""), ...lines]
+        : lines;
 
-    displayLines.forEach(line => {
-      const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+    displayLines.forEach((line) => {
+      const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
       const cleanLine = stripAnsi(line);
       const maxLen = contentWidth - 2;
-      const truncated = cleanLine.length > maxLen ? cleanLine.slice(0, maxLen - 1) + '…' : cleanLine;
+      const truncated =
+        cleanLine.length > maxLen ? `${cleanLine.slice(0, maxLen - 1)}…` : cleanLine;
       const padding = Math.max(0, maxLen - truncated.length);
-      log.print(chalk.bold.cyan('│') + '  ' + truncated + ' '.repeat(padding) + chalk.bold.cyan('│'));
+      log.print(
+        `${chalk.bold.cyan("│")}  ${truncated}${" ".repeat(padding)}${chalk.bold.cyan("│")}`,
+      );
     });
 
-    log.print(chalk.bold.cyan('├' + '─'.repeat(contentWidth) + '┤'));
-    const footerText = '  Press any key to return to menu';
-    log.print(chalk.bold.cyan('│') + chalk.yellow(footerText) + ' '.repeat(contentWidth - footerText.length) + chalk.bold.cyan('│'));
-    log.print(chalk.bold.cyan('└' + '─'.repeat(contentWidth) + '┘'));
+    log.print(chalk.bold.cyan(`├${"─".repeat(contentWidth)}┤`));
+    const footerText = "  Press any key to return to menu";
+    log.print(
+      chalk.bold.cyan("│") +
+        chalk.yellow(footerText) +
+        " ".repeat(contentWidth - footerText.length) +
+        chalk.bold.cyan("│"),
+    );
+    log.print(chalk.bold.cyan(`└${"─".repeat(contentWidth)}┘`));
   };
 
   renderLogView();
@@ -882,7 +966,7 @@ async function showAppLogs(): Promise<void> {
   await new Promise<void>((resolve) => {
     const handler = () => {
       clearInterval(intervalId);
-      process.stdin.removeListener('data', handler);
+      process.stdin.removeListener("data", handler);
       if (process.stdin.isTTY && process.stdin.setRawMode) {
         process.stdin.setRawMode(false);
       }
@@ -892,14 +976,14 @@ async function showAppLogs(): Promise<void> {
     if (process.stdin.isTTY && process.stdin.setRawMode) {
       process.stdin.setRawMode(true);
       process.stdin.resume();
-      process.stdin.once('data', handler);
+      process.stdin.once("data", handler);
     } else {
       clearInterval(intervalId);
       resolve();
     }
   });
 
-  process.stdout.write('\x1b[2J\x1b[H');
+  process.stdout.write("\x1b[2J\x1b[H");
 }
 
 async function showBranchMenu(): Promise<void> {
@@ -907,22 +991,22 @@ async function showBranchMenu(): Promise<void> {
   const current = currentBranch();
 
   if (branches.length === 0) {
-    log.warn('\nNo claude/* branches found.');
-    log.info('Claude branches are used for parallel development work.\n');
+    log.warn("\nNo claude/* branches found.");
+    log.info("Claude branches are used for parallel development work.\n");
 
     const action = await select({
-      message: 'What would you like to do?',
+      message: "What would you like to do?",
       choices: [
-        { name: '➕ Create a new claude/* branch', value: 'create' },
-        { name: chalk.dim('← Back'), value: 'back' },
+        { name: "➕ Create a new claude/* branch", value: "create" },
+        { name: chalk.dim("← Back"), value: "back" },
       ],
       pageSize: 20,
     });
 
-    if (action === 'create') {
+    if (action === "create") {
       const branchName = await input({
-        message: 'Branch name (will be prefixed with claude/):',
-        validate: (val) => val.trim() ? true : 'Branch name required',
+        message: "Branch name (will be prefixed with claude/):",
+        validate: (val) => (val.trim() ? true : "Branch name required"),
       });
 
       const fullBranchName = `claude/${branchName.trim()}`;
@@ -932,28 +1016,28 @@ async function showBranchMenu(): Promise<void> {
     return;
   }
 
-  const choices = branches.map(branch => ({
+  const choices = branches.map((branch) => ({
     name: formatBranchDisplay(branch, current),
     value: branch.name,
   }));
 
   choices.push(
-    { name: '➕ Create new claude/* branch', value: 'create' },
-    { name: chalk.dim('← Back'), value: 'back' }
+    { name: "➕ Create new claude/* branch", value: "create" },
+    { name: chalk.dim("← Back"), value: "back" },
   );
 
   const selected = await select({
-    message: 'Select a branch:',
+    message: "Select a branch:",
     choices,
     pageSize: 20,
   });
 
-  if (selected === 'back') return;
+  if (selected === "back") return;
 
-  if (selected === 'create') {
+  if (selected === "create") {
     const branchName = await input({
-      message: 'Branch name (will be prefixed with claude/):',
-      validate: (val) => val.trim() ? true : 'Branch name required',
+      message: "Branch name (will be prefixed with claude/):",
+      validate: (val) => (val.trim() ? true : "Branch name required"),
     });
 
     const fullBranchName = `claude/${branchName.trim()}`;
@@ -969,31 +1053,31 @@ async function branchActions(branch: string): Promise<void> {
   const action = await select({
     message: `Actions for ${branch}:`,
     choices: [
-      { name: 'Switch to this branch', value: 'switch' },
-      { name: 'Start app to test', value: 'test' },
-      { name: 'Rebase onto main', value: 'rebase' },
-      { name: 'Approve (rebase + merge + delete)', value: 'approve' },
-      { name: 'Delete branch', value: 'delete' },
-      { name: chalk.dim('← Back'), value: 'back' },
+      { name: "Switch to this branch", value: "switch" },
+      { name: "Start app to test", value: "test" },
+      { name: "Rebase onto main", value: "rebase" },
+      { name: "Approve (rebase + merge + delete)", value: "approve" },
+      { name: "Delete branch", value: "delete" },
+      { name: chalk.dim("← Back"), value: "back" },
     ],
     pageSize: 20,
   });
 
   switch (action) {
-    case 'switch':
+    case "switch":
       await switchToBranch(branch);
       break;
-    case 'test':
+    case "test":
       await switchToBranch(branch);
       await startApp();
       break;
-    case 'rebase':
+    case "rebase":
       await rebaseBranch(branch);
       break;
-    case 'approve':
+    case "approve":
       await approveBranch(branch);
       break;
-    case 'delete':
+    case "delete":
       await deleteBranch(branch);
       break;
   }
@@ -1008,19 +1092,19 @@ async function approveBranch(branch: string): Promise<void> {
   });
 
   if (!confirmed) {
-    log.warn('Cancelled.');
+    log.warn("Cancelled.");
     return;
   }
 
   const rebased = await rebaseBranch(branch);
   if (!rebased) {
-    log.error('Approval stopped due to rebase failure.');
+    log.error("Approval stopped due to rebase failure.");
     return;
   }
 
   const merged = await mergeBranch(branch);
   if (!merged) {
-    log.error('Approval stopped due to merge failure.');
+    log.error("Approval stopped due to merge failure.");
     return;
   }
 
@@ -1029,14 +1113,14 @@ async function approveBranch(branch: string): Promise<void> {
   log.info(`\n✓ Branch ${branch} approved and merged to main!`);
 
   const push = await confirm({
-    message: 'Push main to origin?',
+    message: "Push main to origin?",
     default: true,
   });
 
   if (push) {
-    log.warn('Pushing to origin...');
-    execSync('git push origin main', { cwd: rootDir(), stdio: 'inherit' });
-    log.info('✓ Pushed to origin.');
+    log.warn("Pushing to origin...");
+    execSync("git push origin main", { cwd: rootDir(), stdio: "inherit" });
+    log.info("✓ Pushed to origin.");
   }
 }
 
@@ -1052,17 +1136,17 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
 
   sessionCounter++;
   const sessionId = `session-${sessionCounter}`;
-  const modeLabel = headless ? 'headless' : 'interactive';
+  const modeLabel = headless ? "headless" : "interactive";
   const sessionName = `Claude ${sessionCounter} (${modeLabel})`;
 
-  const branchName = branch ?? 'main';
-  const useWorktree = branch && branch !== 'main';
+  const branchName = branch ?? "main";
+  const useWorktree = branch && branch !== "main";
 
   let worktreePath: string | undefined;
   let sessionDir = rootDir();
 
   if (useWorktree) {
-    const worktreeName = branch.replace(CLAUDE_BRANCH_PREFIX, '').replace(/[^a-z0-9-]/gi, '-');
+    const worktreeName = branch.replace(CLAUDE_BRANCH_PREFIX, "").replace(/[^a-z0-9-]/gi, "-");
     worktreePath = join(worktreeDir(), worktreeName);
     sessionDir = worktreePath;
 
@@ -1070,7 +1154,7 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
       execSync(`mkdir -p "${worktreeDir()}"`, { cwd: rootDir() });
     }
 
-    const existingWorktrees = exec('git worktree list --porcelain', { silent: true });
+    const existingWorktrees = exec("git worktree list --porcelain", { silent: true });
     const worktreeExists = existingWorktrees.includes(worktreePath);
 
     if (!worktreeExists) {
@@ -1092,26 +1176,26 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
 
   log.warn(`\nStarting new Claude Code session on ${branchName} (${modeLabel})...`);
   if (task) {
-    log.info(`Task: ${task.slice(0, 60)}${task.length > 60 ? '...' : ''}`);
+    log.info(`Task: ${task.slice(0, 60)}${task.length > 60 ? "..." : ""}`);
   }
 
-  const isWindows = process.platform === 'win32';
+  const isWindows = process.platform === "win32";
 
   let taskFile: string | null = null;
   if (task) {
-    const tempDir = mkdtempSync(join(tmpdir(), 'claude-task-'));
-    taskFile = join(tempDir, 'task.txt');
-    writeFileSync(taskFile, task, 'utf-8');
+    const tempDir = mkdtempSync(join(tmpdir(), "claude-task-"));
+    taskFile = join(tempDir, "task.txt");
+    writeFileSync(taskFile, task, "utf-8");
   }
 
-  let claudeCmd = 'claude';
+  let claudeCmd = "claude";
   let usePipe = false;
   if (headless) {
     if (taskFile) {
       claudeCmd = `cat '${taskFile}' | claude --dangerously-skip-permissions`;
       usePipe = true;
     } else {
-      claudeCmd = 'claude --dangerously-skip-permissions';
+      claudeCmd = "claude --dangerously-skip-permissions";
     }
   } else if (taskFile) {
     claudeCmd = `cat '${taskFile}' | claude`;
@@ -1121,44 +1205,45 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
   let sessionProcess: ChildProcess;
 
   if (isWindows) {
-    let winCmd = 'claude';
+    let winCmd = "claude";
     if (headless) {
       winCmd = taskFile
         ? `claude --dangerously-skip-permissions < "${taskFile}"`
-        : 'claude --dangerously-skip-permissions';
+        : "claude --dangerously-skip-permissions";
     } else if (taskFile) {
       winCmd = `type "${taskFile}" | claude`;
     }
 
-    const hasWindowsTerminal = exec('where wt', { silent: true }) !== '';
+    const hasWindowsTerminal = exec("where wt", { silent: true }) !== "";
 
     if (hasWindowsTerminal) {
-      const claudePath = exec('where claude.cmd', { silent: true }).split('\n')[0].trim();
+      const claudePath = exec("where claude.cmd", { silent: true }).split("\n")[0].trim();
       const fullWinCmd = winCmd.replace(/^claude/, `"${claudePath}"`);
       const wtCmd = `wt -w 0 new-tab --title "Claude ${sessionCounter}" -d "${sessionDir}" ${fullWinCmd}`;
       sessionProcess = spawn(wtCmd, [], {
         cwd: rootDir(),
         detached: true,
-        stdio: 'ignore',
+        stdio: "ignore",
         shell: true,
       });
     } else {
-      sessionProcess = spawn('cmd', ['/c', 'start', 'cmd', '/k', winCmd], {
+      sessionProcess = spawn("cmd", ["/c", "start", "cmd", "/k", winCmd], {
         cwd: sessionDir,
         detached: true,
-        stdio: 'ignore',
+        stdio: "ignore",
       });
     }
   } else {
-    const terminalApp = process.env.TERM_PROGRAM === 'iTerm.app' ? 'iTerm' : 'Terminal';
+    const terminalApp = process.env.TERM_PROGRAM === "iTerm.app" ? "iTerm" : "Terminal";
     const shellCmd = `cd "${sessionDir}" && ${claudeCmd}`;
 
-    const escapeForAppleScript = (cmd: string) => cmd.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const escapeForAppleScript = (cmd: string) => cmd.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
     const escapedShellCmd = escapeForAppleScript(shellCmd);
 
-    if (terminalApp === 'iTerm') {
+    if (terminalApp === "iTerm") {
       try {
-        execSync(`osascript <<EOF
+        execSync(
+          `osascript <<EOF
 tell application "iTerm"
   tell current window
     create tab with default profile
@@ -1167,11 +1252,14 @@ tell application "iTerm"
     end tell
   end tell
 end tell
-EOF`, { cwd: rootDir(), stdio: 'inherit' });
+EOF`,
+          { cwd: rootDir(), stdio: "inherit" },
+        );
       } catch (e) {
-        log.error('Failed to open iTerm tab. Trying new window...');
+        log.error("Failed to open iTerm tab. Trying new window...");
         try {
-          execSync(`osascript <<EOF
+          execSync(
+            `osascript <<EOF
 tell application "iTerm"
   activate
   create window with default profile
@@ -1179,20 +1267,28 @@ tell application "iTerm"
     write text "${escapedShellCmd}"
   end tell
 end tell
-EOF`, { cwd: rootDir(), stdio: 'inherit' });
+EOF`,
+            { cwd: rootDir(), stdio: "inherit" },
+          );
         } catch {
-          log.error('Failed to open iTerm. Trying Terminal...');
-          execSync(`osascript -e 'tell application "Terminal" to do script "${escapedShellCmd}"'`, { cwd: rootDir(), stdio: 'inherit' });
+          log.error("Failed to open iTerm. Trying Terminal...");
+          execSync(`osascript -e 'tell application "Terminal" to do script "${escapedShellCmd}"'`, {
+            cwd: rootDir(),
+            stdio: "inherit",
+          });
         }
       }
     } else {
-      execSync(`osascript -e 'tell application "Terminal" to do script "${escapedShellCmd}" in front window'`, { cwd: rootDir(), stdio: 'inherit' });
+      execSync(
+        `osascript -e 'tell application "Terminal" to do script "${escapedShellCmd}" in front window'`,
+        { cwd: rootDir(), stdio: "inherit" },
+      );
     }
 
-    sessionProcess = spawn('echo', ['Session started in new terminal'], {
+    sessionProcess = spawn("echo", ["Session started in new terminal"], {
       cwd: rootDir(),
       detached: true,
-      stdio: 'ignore',
+      stdio: "ignore",
     });
   }
 
@@ -1206,7 +1302,7 @@ EOF`, { cwd: rootDir(), stdio: 'inherit' });
     project: currentProject,
     worktreePath,
     startTime: new Date(),
-    status: 'running',
+    status: "running",
     headless,
     task,
   };
@@ -1215,14 +1311,14 @@ EOF`, { cwd: rootDir(), stdio: 'inherit' });
 
   log.info(`✓ ${sessionName} started on branch ${branchName}`);
   if (headless) {
-    log.warn('  ⚠️  Headless mode: Claude will auto-accept all actions');
+    log.warn("  ⚠️  Headless mode: Claude will auto-accept all actions");
   }
 }
 
 async function terminateSession(sessionId: string): Promise<void> {
   const session = managedSessions.get(sessionId);
   if (!session) {
-    log.error('Session not found.');
+    log.error("Session not found.");
     return;
   }
 
@@ -1232,18 +1328,18 @@ async function terminateSession(sessionId: string): Promise<void> {
   });
 
   if (!confirmed) {
-    log.warn('Cancelled.');
+    log.warn("Cancelled.");
     return;
   }
 
   try {
     if (session.process.pid) {
-      process.kill(session.process.pid, 'SIGTERM');
+      process.kill(session.process.pid, "SIGTERM");
     }
-    session.status = 'stopped';
+    session.status = "stopped";
     log.info(`✓ ${session.name} terminated.`);
   } catch {
-    log.warn(`Note: Session may need to be closed manually in its terminal.`);
+    log.warn("Note: Session may need to be closed manually in its terminal.");
   }
 
   if (session.worktreePath) {
@@ -1255,9 +1351,11 @@ async function terminateSession(sessionId: string): Promise<void> {
     if (removeWorktree) {
       try {
         exec(`git worktree remove "${session.worktreePath}" --force`, { silent: false });
-        log.info(`✓ Worktree removed.`);
+        log.info("✓ Worktree removed.");
       } catch {
-        log.warn(`Could not remove worktree. Remove manually with: git worktree remove "${session.worktreePath}"`);
+        log.warn(
+          `Could not remove worktree. Remove manually with: git worktree remove "${session.worktreePath}"`,
+        );
       }
     }
   }
@@ -1266,13 +1364,13 @@ async function terminateSession(sessionId: string): Promise<void> {
 }
 
 async function pullChangesFromBranch(branch: string): Promise<void> {
-  if (branch === 'main') {
-    log.warn('Cannot pull from main to main.');
+  if (branch === "main") {
+    log.warn("Cannot pull from main to main.");
     return;
   }
 
-  const mainWorktreeBranch = exec('git branch --show-current', { cwd: rootDir(), silent: true });
-  if (mainWorktreeBranch !== 'main') {
+  const mainWorktreeBranch = exec("git branch --show-current", { cwd: rootDir(), silent: true });
+  if (mainWorktreeBranch !== "main") {
     log.warn(`Main worktree is on ${mainWorktreeBranch}, not main. Cannot pull changes.`);
     return;
   }
@@ -1282,46 +1380,54 @@ async function pullChangesFromBranch(branch: string): Promise<void> {
   const commitsOutput = exec(`git log main..${branch} --oneline`, { silent: true });
 
   if (!commitsOutput) {
-    log.warn('No new commits found on this branch yet.');
-    log.info('Ask the Claude session to commit its changes first.');
-    await confirm({ message: 'Press Enter to continue...', default: true });
+    log.warn("No new commits found on this branch yet.");
+    log.info("Ask the Claude session to commit its changes first.");
+    await confirm({ message: "Press Enter to continue...", default: true });
     return;
   }
 
-  const commits = commitsOutput.split('\n').filter(line => line.trim());
-  log.print('\n' + chalk.bold(`Commits on ${branch}:`));
-  commits.forEach(commit => {
+  const commits = commitsOutput.split("\n").filter((line) => line.trim());
+  log.print(`\n${chalk.bold(`Commits on ${branch}:`)}`);
+  commits.forEach((commit) => {
     log.print(`  ${chalk.cyan(commit)}`);
   });
-  log.print('');
+  log.print("");
 
-  const pullChoice = await selectWithEscape('What would you like to do?', [
-    { name: '🍒 Cherry-pick all commits to main (for testing)', value: 'cherry-pick-all' },
-    { name: '🍒 Cherry-pick latest commit only', value: 'cherry-pick-latest' },
-    { name: chalk.dim('← Cancel'), value: 'cancel' },
-  ], 'cancel');
+  const pullChoice = await selectWithEscape(
+    "What would you like to do?",
+    [
+      { name: "🍒 Cherry-pick all commits to main (for testing)", value: "cherry-pick-all" },
+      { name: "🍒 Cherry-pick latest commit only", value: "cherry-pick-latest" },
+      { name: chalk.dim("← Cancel"), value: "cancel" },
+    ],
+    "cancel",
+  );
 
-  if (pullChoice === 'cancel') return;
+  if (pullChoice === "cancel") return;
 
-  const latestCommit = commits[0].split(' ')[0];
-  const oldestCommit = commits[commits.length - 1].split(' ')[0];
+  const latestCommit = commits[0].split(" ")[0];
+  const oldestCommit = commits[commits.length - 1].split(" ")[0];
 
   const cherryPickWithRetry = async (commitRange: string): Promise<boolean> => {
     try {
-      execSync(`git cherry-pick -X theirs ${commitRange}`, { cwd: rootDir(), stdio: 'inherit' });
+      execSync(`git cherry-pick -X theirs ${commitRange}`, { cwd: rootDir(), stdio: "inherit" });
       return true;
     } catch {
-      log.error('Cherry-pick failed.');
+      log.error("Cherry-pick failed.");
 
-      const abortChoice = await selectWithEscape('What would you like to do?', [
-        { name: '🔙 Abort and return to menu', value: 'abort' },
-        { name: '🛠️  Leave as-is for manual resolution', value: 'manual' },
-      ], 'abort');
+      const abortChoice = await selectWithEscape(
+        "What would you like to do?",
+        [
+          { name: "🔙 Abort and return to menu", value: "abort" },
+          { name: "🛠️  Leave as-is for manual resolution", value: "manual" },
+        ],
+        "abort",
+      );
 
-      if (abortChoice === 'abort') {
+      if (abortChoice === "abort") {
         try {
-          execSync('git cherry-pick --abort', { cwd: rootDir(), stdio: 'pipe' });
-          log.info('Cherry-pick aborted.');
+          execSync("git cherry-pick --abort", { cwd: rootDir(), stdio: "pipe" });
+          log.info("Cherry-pick aborted.");
         } catch {
           // Already aborted
         }
@@ -1333,7 +1439,7 @@ async function pullChangesFromBranch(branch: string): Promise<void> {
   };
 
   let success = false;
-  if (pullChoice === 'cherry-pick-all') {
+  if (pullChoice === "cherry-pick-all") {
     const commitRange = commits.length === 1 ? latestCommit : `${oldestCommit}^..${latestCommit}`;
     success = await cherryPickWithRetry(commitRange);
     if (success) {
@@ -1342,18 +1448,18 @@ async function pullChangesFromBranch(branch: string): Promise<void> {
   } else {
     success = await cherryPickWithRetry(latestCommit);
     if (success) {
-      log.info(`✓ Cherry-picked latest commit to main for testing.`);
+      log.info("✓ Cherry-picked latest commit to main for testing.");
     }
   }
 
   if (success) {
-    log.print('');
-    log.info('Changes are now on main. Test them locally.');
-    log.info('If they work: push when ready.');
+    log.print("");
+    log.info("Changes are now on main. Test them locally.");
+    log.info("If they work: push when ready.");
     log.info('If they don\'t work: run "git reset --hard HEAD~1" to undo.');
   }
 
-  await confirm({ message: 'Press Enter to continue...', default: true });
+  await confirm({ message: "Press Enter to continue...", default: true });
 }
 
 async function showSessionsMenu(): Promise<void> {
@@ -1361,97 +1467,108 @@ async function showSessionsMenu(): Promise<void> {
     const detectedSessions = detectClaudeSessions();
     const managed = Array.from(managedSessions.values());
 
-    const attachedSessions = detectedSessions.filter(s => !s.isOrphaned);
-    const orphanedSessions = detectedSessions.filter(s => s.isOrphaned);
+    const attachedSessions = detectedSessions.filter((s) => !s.isOrphaned);
+    const orphanedSessions = detectedSessions.filter((s) => s.isOrphaned);
 
-    log.print('\n' + chalk.bold('=== Claude Sessions ===') + '\n');
+    log.print(`\n${chalk.bold("=== Claude Sessions ===")}\n`);
 
-    log.print(chalk.bold('Managed Sessions:'));
+    log.print(chalk.bold("Managed Sessions:"));
     if (managed.length === 0) {
-      log.print(chalk.dim('  No sessions started from this manager.'));
+      log.print(chalk.dim("  No sessions started from this manager."));
     } else {
-      managed.forEach(session => {
+      managed.forEach((session) => {
         const runtime = Math.round((Date.now() - session.startTime.getTime()) / 60000);
-        const statusColor = session.status === 'running' ? chalk.green : chalk.dim;
-        const modeIcon = session.headless ? '⚡' : '🛡️';
+        const statusColor = session.status === "running" ? chalk.green : chalk.dim;
+        const modeIcon = session.headless ? "⚡" : "🛡️";
         const projectLabel = chalk.bold(session.project.name);
         const taskPreview = session.task
-          ? chalk.dim(` "${session.task.slice(0, 40)}${session.task.length > 40 ? '...' : ''}"`)
-          : '';
-        log.print(`  ${statusColor('●')} ${modeIcon} ${projectLabel} ${chalk.cyan(session.branch)} [${runtime}m]${taskPreview}`);
+          ? chalk.dim(` "${session.task.slice(0, 40)}${session.task.length > 40 ? "..." : ""}"`)
+          : "";
+        log.print(
+          `  ${statusColor("●")} ${modeIcon} ${projectLabel} ${chalk.cyan(session.branch)} [${runtime}m]${taskPreview}`,
+        );
       });
     }
 
-    log.print('\n' + chalk.bold('Active Sessions (attached to terminal):'));
+    log.print(`\n${chalk.bold("Active Sessions (attached to terminal):")}`);
     if (attachedSessions.length === 0) {
-      log.print(chalk.dim('  No active sessions detected.'));
+      log.print(chalk.dim("  No active sessions detected."));
     } else {
-      attachedSessions.forEach(session => {
-        const projectDisplay = session.project !== 'unknown'
-          ? chalk.bold(session.project)
-          : chalk.dim('unknown project');
-        const branchDisplay = session.branch !== 'unknown'
-          ? chalk.cyan(session.branch)
-          : chalk.dim('unknown branch');
-        const ttyDisplay = session.tty ? chalk.dim(` [${session.tty}]`) : '';
-        log.print(`  ${chalk.green('●')} ${projectDisplay} on ${branchDisplay} (PID ${session.pid})${ttyDisplay}`);
+      attachedSessions.forEach((session) => {
+        const projectDisplay =
+          session.project !== "unknown"
+            ? chalk.bold(session.project)
+            : chalk.dim("unknown project");
+        const branchDisplay =
+          session.branch !== "unknown" ? chalk.cyan(session.branch) : chalk.dim("unknown branch");
+        const ttyDisplay = session.tty ? chalk.dim(` [${session.tty}]`) : "";
+        log.print(
+          `  ${chalk.green("●")} ${projectDisplay} on ${branchDisplay} (PID ${session.pid})${ttyDisplay}`,
+        );
       });
     }
 
-    log.print('\n' + chalk.bold('Orphaned Sessions (detached from terminal):'));
+    log.print(`\n${chalk.bold("Orphaned Sessions (detached from terminal):")}`);
     if (orphanedSessions.length === 0) {
-      log.print(chalk.dim('  No orphaned sessions detected.'));
+      log.print(chalk.dim("  No orphaned sessions detected."));
     } else {
-      orphanedSessions.forEach(session => {
-        const projectDisplay = session.project !== 'unknown'
-          ? chalk.bold(session.project)
-          : chalk.dim('unknown project');
-        const branchDisplay = session.branch !== 'unknown'
-          ? chalk.cyan(session.branch)
-          : chalk.dim('unknown branch');
-        log.print(`  ${chalk.red('●')} ${projectDisplay} on ${branchDisplay} (PID ${session.pid}) ${chalk.red('[orphaned]')}`);
+      orphanedSessions.forEach((session) => {
+        const projectDisplay =
+          session.project !== "unknown"
+            ? chalk.bold(session.project)
+            : chalk.dim("unknown project");
+        const branchDisplay =
+          session.branch !== "unknown" ? chalk.cyan(session.branch) : chalk.dim("unknown branch");
+        log.print(
+          `  ${chalk.red("●")} ${projectDisplay} on ${branchDisplay} (PID ${session.pid}) ${chalk.red("[orphaned]")}`,
+        );
       });
     }
 
-    log.print('');
+    log.print("");
 
     const existingBranches = claudeBranches();
-    const branchesWithCommits = existingBranches.filter(b => b.ahead > 0);
+    const branchesWithCommits = existingBranches.filter((b) => b.ahead > 0);
 
-    const choices = [
-      { name: '➕ Start new session', value: 'new' },
-    ];
+    const choices = [{ name: "➕ Start new session", value: "new" }];
 
     if (branchesWithCommits.length > 0) {
-      choices.push({ name: '🍒 Pull changes for testing', value: 'pull-changes' });
+      choices.push({ name: "🍒 Pull changes for testing", value: "pull-changes" });
     }
 
     if (orphanedSessions.length > 0) {
-      choices.push({ name: `🧹 Kill all orphaned sessions (${orphanedSessions.length})`, value: 'kill-orphaned' });
+      choices.push({
+        name: `🧹 Kill all orphaned sessions (${orphanedSessions.length})`,
+        value: "kill-orphaned",
+      });
     }
 
     if (detectedSessions.length > 0) {
-      choices.push({ name: '🗑️  Select sessions to kill', value: 'kill-select' });
+      choices.push({ name: "🗑️  Select sessions to kill", value: "kill-select" });
     }
 
     if (managed.length > 0) {
-      choices.push({ name: '🛑 Terminate a managed session', value: 'terminate' });
+      choices.push({ name: "🛑 Terminate a managed session", value: "terminate" });
     }
 
-    choices.push({ name: chalk.dim('← Back'), value: 'back' });
+    choices.push({ name: chalk.dim("← Back"), value: "back" });
 
-    const action = await selectWithEscape('Session actions:', choices, 'back');
+    const action = await selectWithEscape("Session actions:", choices, "back");
 
-    if (action === 'back') return;
+    if (action === "back") return;
 
-    if (action === 'kill-orphaned') {
-      const killMethod = await selectWithEscape('How to kill orphaned sessions?', [
-        { name: '🔪 Graceful (SIGTERM) - allows cleanup', value: 'graceful' },
-        { name: '💀 Force (SIGKILL) - immediate termination', value: 'force' },
-        { name: chalk.dim('← Cancel'), value: 'cancel' },
-      ], 'cancel');
+    if (action === "kill-orphaned") {
+      const killMethod = await selectWithEscape(
+        "How to kill orphaned sessions?",
+        [
+          { name: "🔪 Graceful (SIGTERM) - allows cleanup", value: "graceful" },
+          { name: "💀 Force (SIGKILL) - immediate termination", value: "force" },
+          { name: chalk.dim("← Cancel"), value: "cancel" },
+        ],
+        "cancel",
+      );
 
-      if (killMethod === 'cancel') continue;
+      if (killMethod === "cancel") continue;
 
       const confirmed = await confirm({
         message: `Kill ${orphanedSessions.length} orphaned session(s)? This cannot be undone.`,
@@ -1459,14 +1576,16 @@ async function showSessionsMenu(): Promise<void> {
       });
 
       if (confirmed) {
-        const pids = orphanedSessions.map(s => s.pid);
-        const force = killMethod === 'force';
+        const pids = orphanedSessions.map((s) => s.pid);
+        const force = killMethod === "force";
         const result = killMultipleProcesses(pids, force);
         if (result.killed.length > 0) {
           log.info(`Killed ${result.killed.length} orphaned session(s).`);
         }
         if (result.failed.length > 0) {
-          log.warn(`Failed to kill ${result.failed.length} session(s): PIDs ${result.failed.join(', ')}`);
+          log.warn(
+            `Failed to kill ${result.failed.length} session(s): PIDs ${result.failed.join(", ")}`,
+          );
           if (!force) {
             log.info('Tip: Try "Force (SIGKILL)" if graceful termination fails.');
           }
@@ -1475,12 +1594,12 @@ async function showSessionsMenu(): Promise<void> {
       continue;
     }
 
-    if (action === 'kill-select') {
+    if (action === "kill-select") {
       const allSessions = [...attachedSessions, ...orphanedSessions];
-      const sessionChoices = allSessions.map(s => {
-        const projectDisplay = s.project !== 'unknown' ? s.project : 'unknown project';
-        const branchDisplay = s.branch !== 'unknown' ? s.branch : 'unknown branch';
-        const statusLabel = s.isOrphaned ? chalk.red('[orphaned]') : chalk.green('[active]');
+      const sessionChoices = allSessions.map((s) => {
+        const projectDisplay = s.project !== "unknown" ? s.project : "unknown project";
+        const branchDisplay = s.branch !== "unknown" ? s.branch : "unknown branch";
+        const statusLabel = s.isOrphaned ? chalk.red("[orphaned]") : chalk.green("[active]");
         return {
           name: `${projectDisplay} on ${branchDisplay} (PID ${s.pid}) ${statusLabel}`,
           value: s.pid,
@@ -1489,28 +1608,32 @@ async function showSessionsMenu(): Promise<void> {
       });
 
       if (sessionChoices.length === 0) {
-        log.warn('No sessions to kill.');
+        log.warn("No sessions to kill.");
         continue;
       }
 
       const selectedPids = await checkbox({
-        message: 'Select sessions to kill (space to toggle, enter to confirm):',
+        message: "Select sessions to kill (space to toggle, enter to confirm):",
         choices: sessionChoices,
         pageSize: 20,
       });
 
       if (selectedPids.length === 0) {
-        log.warn('No sessions selected.');
+        log.warn("No sessions selected.");
         continue;
       }
 
-      const killMethod = await selectWithEscape('How to kill selected sessions?', [
-        { name: '🔪 Graceful (SIGTERM) - allows cleanup', value: 'graceful' },
-        { name: '💀 Force (SIGKILL) - immediate termination', value: 'force' },
-        { name: chalk.dim('← Cancel'), value: 'cancel' },
-      ], 'cancel');
+      const killMethod = await selectWithEscape(
+        "How to kill selected sessions?",
+        [
+          { name: "🔪 Graceful (SIGTERM) - allows cleanup", value: "graceful" },
+          { name: "💀 Force (SIGKILL) - immediate termination", value: "force" },
+          { name: chalk.dim("← Cancel"), value: "cancel" },
+        ],
+        "cancel",
+      );
 
-      if (killMethod === 'cancel') continue;
+      if (killMethod === "cancel") continue;
 
       const confirmed = await confirm({
         message: `Kill ${selectedPids.length} selected session(s)? This cannot be undone.`,
@@ -1518,13 +1641,15 @@ async function showSessionsMenu(): Promise<void> {
       });
 
       if (confirmed) {
-        const force = killMethod === 'force';
+        const force = killMethod === "force";
         const result = killMultipleProcesses(selectedPids, force);
         if (result.killed.length > 0) {
           log.info(`Killed ${result.killed.length} session(s).`);
         }
         if (result.failed.length > 0) {
-          log.warn(`Failed to kill ${result.failed.length} session(s): PIDs ${result.failed.join(', ')}`);
+          log.warn(
+            `Failed to kill ${result.failed.length} session(s): PIDs ${result.failed.join(", ")}`,
+          );
           if (!force) {
             log.info('Tip: Try "Force (SIGKILL)" if graceful termination fails.');
           }
@@ -1533,47 +1658,57 @@ async function showSessionsMenu(): Promise<void> {
       continue;
     }
 
-    if (action === 'pull-changes') {
-      const branchChoices = branchesWithCommits.map(b => ({
-        name: `${b.name} (${b.ahead} commit${b.ahead > 1 ? 's' : ''} ahead)`,
+    if (action === "pull-changes") {
+      const branchChoices = branchesWithCommits.map((b) => ({
+        name: `${b.name} (${b.ahead} commit${b.ahead > 1 ? "s" : ""} ahead)`,
         value: b.name,
       }));
-      branchChoices.push({ name: chalk.dim('← Cancel'), value: 'cancel' });
+      branchChoices.push({ name: chalk.dim("← Cancel"), value: "cancel" });
 
-      const selectedBranch = await selectWithEscape('Pull changes from which branch?', branchChoices, 'cancel');
+      const selectedBranch = await selectWithEscape(
+        "Pull changes from which branch?",
+        branchChoices,
+        "cancel",
+      );
 
-      if (selectedBranch !== 'cancel') {
+      if (selectedBranch !== "cancel") {
         await pullChangesFromBranch(selectedBranch);
       }
       continue;
     }
 
-    if (action === 'new') {
+    if (action === "new") {
       const selectedProject = await selectProjectForSession();
       if (!selectedProject) continue;
 
       setCurrentProject(selectedProject);
       log.info(`Working in: ${selectedProject.name}`);
 
-      const startType = await selectWithEscape('How would you like to start?', [
-        { name: '🚀 Quick start on main (Recommended)', value: 'main' },
-        { name: '🎫 Start with GitHub issue', value: 'issue' },
-        { name: '🌿 Start on specific branch', value: 'branch' },
-        { name: chalk.dim('← Cancel'), value: 'cancel' },
-      ], 'cancel');
+      const startType = await selectWithEscape(
+        "How would you like to start?",
+        [
+          { name: "🚀 Quick start on main (Recommended)", value: "main" },
+          { name: "🎫 Start with GitHub issue", value: "issue" },
+          { name: "🌿 Start on specific branch", value: "branch" },
+          { name: chalk.dim("← Cancel"), value: "cancel" },
+        ],
+        "cancel",
+      );
 
-      if (startType === 'cancel') continue;
+      if (startType === "cancel") continue;
 
       let selectedBranch: string | undefined;
       let task: string | undefined;
       let createNewBranch = false;
 
-      if (startType === 'issue') {
-        log.info('\nFetching open GitHub issues...');
-        const issuesJson = exec('gh issue list --state open --limit 20 --json number,title', { silent: true });
+      if (startType === "issue") {
+        log.info("\nFetching open GitHub issues...");
+        const issuesJson = exec("gh issue list --state open --limit 20 --json number,title", {
+          silent: true,
+        });
 
         if (!issuesJson) {
-          log.error('Could not fetch GitHub issues. Is gh CLI configured?');
+          log.error("Could not fetch GitHub issues. Is gh CLI configured?");
           continue;
         }
 
@@ -1581,25 +1716,27 @@ async function showSessionsMenu(): Promise<void> {
         try {
           issues = JSON.parse(issuesJson);
         } catch {
-          log.error('Could not parse GitHub issues.');
+          log.error("Could not parse GitHub issues.");
           continue;
         }
 
         if (issues.length === 0) {
-          log.warn('No open issues found.');
+          log.warn("No open issues found.");
           continue;
         }
 
         const issueChoices = [
-          ...issues.map(i => ({ name: `#${i.number} ${i.title}`, value: String(i.number) })),
-          { name: chalk.dim('← Cancel'), value: 'cancel' },
+          ...issues.map((i) => ({ name: `#${i.number} ${i.title}`, value: String(i.number) })),
+          { name: chalk.dim("← Cancel"), value: "cancel" },
         ];
 
-        const selectedIssue = await selectWithEscape('Select an issue:', issueChoices, 'cancel');
+        const selectedIssue = await selectWithEscape("Select an issue:", issueChoices, "cancel");
 
-        if (selectedIssue === 'cancel') continue;
+        if (selectedIssue === "cancel") continue;
 
-        const issueJson = exec(`gh issue view ${selectedIssue} --json title,body`, { silent: true });
+        const issueJson = exec(`gh issue view ${selectedIssue} --json title,body`, {
+          silent: true,
+        });
         if (issueJson) {
           try {
             const issue = JSON.parse(issueJson);
@@ -1612,112 +1749,137 @@ async function showSessionsMenu(): Promise<void> {
 
         const existingBranches = claudeBranches();
         const branchChoiceOptions = [
-          { name: '📍 Main directory (no isolation)', value: 'main' },
-          { name: '🌿 New worktree (isolated directory with new branch)', value: 'create' },
+          { name: "📍 Main directory (no isolation)", value: "main" },
+          { name: "🌿 New worktree (isolated directory with new branch)", value: "create" },
         ];
 
         if (existingBranches.length > 0) {
-          branchChoiceOptions.push({ name: '📂 Existing worktree/branch', value: 'existing' });
+          branchChoiceOptions.push({ name: "📂 Existing worktree/branch", value: "existing" });
         }
 
-        branchChoiceOptions.push({ name: chalk.dim('← Cancel'), value: 'cancel' });
+        branchChoiceOptions.push({ name: chalk.dim("← Cancel"), value: "cancel" });
 
-        const branchChoice = await selectWithEscape('Where should this session work?', branchChoiceOptions, 'cancel');
+        const branchChoice = await selectWithEscape(
+          "Where should this session work?",
+          branchChoiceOptions,
+          "cancel",
+        );
 
-        if (branchChoice === 'cancel') continue;
+        if (branchChoice === "cancel") continue;
 
-        if (branchChoice === 'create') {
-          const issueData = JSON.parse(issueJson || '{}');
+        if (branchChoice === "create") {
+          const issueData = JSON.parse(issueJson || "{}");
           const suggestedName = (issueData.title || `issue-${selectedIssue}`)
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '')
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
             .slice(0, 40);
 
           const branchName = await input({
-            message: 'Branch name (will be prefixed with claude/):',
+            message: "Branch name (will be prefixed with claude/):",
             default: suggestedName,
-            validate: (val) => val.trim() ? true : 'Branch name required',
+            validate: (val) => (val.trim() ? true : "Branch name required"),
           });
 
           selectedBranch = `claude/${branchName.trim()}`;
           createNewBranch = true;
-        } else if (branchChoice === 'existing') {
+        } else if (branchChoice === "existing") {
           const existingBranchChoices = [
-            ...existingBranches.map(b => ({ name: b.name, value: b.name })),
-            { name: chalk.dim('← Cancel'), value: 'cancel' },
+            ...existingBranches.map((b) => ({ name: b.name, value: b.name })),
+            { name: chalk.dim("← Cancel"), value: "cancel" },
           ];
 
-          selectedBranch = await selectWithEscape('Select existing branch:', existingBranchChoices, 'cancel');
+          selectedBranch = await selectWithEscape(
+            "Select existing branch:",
+            existingBranchChoices,
+            "cancel",
+          );
 
-          if (selectedBranch === 'cancel') continue;
+          if (selectedBranch === "cancel") continue;
         } else {
-          selectedBranch = 'main';
+          selectedBranch = "main";
         }
-      } else if (startType === 'branch') {
+      } else if (startType === "branch") {
         const branches = claudeBranches();
         const allBranchesList = allBranches();
 
         const branchChoices = [
-          { name: chalk.green('+ Create new worktree with new branch'), value: 'create-new' },
-          ...branches.map(b => ({ name: `${b.name} (claude branch)`, value: b.name })),
+          { name: chalk.green("+ Create new worktree with new branch"), value: "create-new" },
+          ...branches.map((b) => ({ name: `${b.name} (claude branch)`, value: b.name })),
           ...allBranchesList
-            .filter(b => !b.startsWith(CLAUDE_BRANCH_PREFIX) && b !== 'main')
-            .map(b => ({ name: b, value: b })),
-          { name: chalk.dim('← Cancel'), value: 'cancel' },
+            .filter((b) => !b.startsWith(CLAUDE_BRANCH_PREFIX) && b !== "main")
+            .map((b) => ({ name: b, value: b })),
+          { name: chalk.dim("← Cancel"), value: "cancel" },
         ];
 
-        selectedBranch = await selectWithEscape('Select branch (will use/create worktree):', branchChoices, 'cancel');
+        selectedBranch = await selectWithEscape(
+          "Select branch (will use/create worktree):",
+          branchChoices,
+          "cancel",
+        );
 
-        if (selectedBranch === 'cancel') continue;
+        if (selectedBranch === "cancel") continue;
 
-        if (selectedBranch === 'create-new') {
+        if (selectedBranch === "create-new") {
           const branchName = await input({
-            message: 'Branch name (will be prefixed with claude/):',
-            validate: (val) => val.trim() ? true : 'Branch name required',
+            message: "Branch name (will be prefixed with claude/):",
+            validate: (val) => (val.trim() ? true : "Branch name required"),
           });
           selectedBranch = `claude/${branchName.trim()}`;
           createNewBranch = true;
         }
 
         const taskInput = await input({
-          message: 'Task description (optional, press Enter to skip):',
+          message: "Task description (optional, press Enter to skip):",
         });
         if (taskInput.trim()) {
           task = taskInput.trim();
         }
       } else {
-        selectedBranch = 'main';
+        selectedBranch = "main";
       }
 
-      const mode = await selectWithEscape('Session mode:', [
-        { name: '🛡️  Interactive - prompts for confirmation (Recommended)', value: 'interactive' },
-        { name: '⚡ Headless - auto-accepts all actions', value: 'headless' },
-        { name: chalk.dim('← Cancel'), value: 'cancel' },
-      ], 'cancel');
+      const mode = await selectWithEscape(
+        "Session mode:",
+        [
+          { name: "🛡️  Interactive - prompts for confirmation (Recommended)", value: "interactive" },
+          { name: "⚡ Headless - auto-accepts all actions", value: "headless" },
+          { name: chalk.dim("← Cancel"), value: "cancel" },
+        ],
+        "cancel",
+      );
 
-      if (mode === 'cancel') continue;
+      if (mode === "cancel") continue;
 
-      const headless = mode === 'headless';
+      const headless = mode === "headless";
 
       if (headless && !task) {
         task = await input({
-          message: 'Task for headless session:',
-          validate: (val) => val.trim() ? true : 'Task required for headless mode',
+          message: "Task for headless session:",
+          validate: (val) => (val.trim() ? true : "Task required for headless mode"),
         });
       }
 
-      await spawnClaudeSession({ branch: selectedBranch, createBranch: createNewBranch, headless, task });
-    } else if (action === 'terminate') {
-      const sessionChoices = managed.map(s => ({
+      await spawnClaudeSession({
+        branch: selectedBranch,
+        createBranch: createNewBranch,
+        headless,
+        task,
+      });
+    } else if (action === "terminate") {
+      const sessionChoices = managed.map((s) => ({
         name: `${s.name} on ${s.branch}`,
         value: s.id,
       }));
-      sessionChoices.push({ name: chalk.dim('← Cancel'), value: 'cancel' });
+      sessionChoices.push({ name: chalk.dim("← Cancel"), value: "cancel" });
 
-      const selectedSession = await selectWithEscape('Select session to terminate:', sessionChoices, 'cancel');
+      const selectedSession = await selectWithEscape(
+        "Select session to terminate:",
+        sessionChoices,
+        "cancel",
+      );
 
-      if (selectedSession !== 'cancel') {
+      if (selectedSession !== "cancel") {
         await terminateSession(selectedSession);
       }
     }
@@ -1731,31 +1893,31 @@ async function showStatus(): Promise<void> {
 
   printHeader();
 
-  printSection('Current branch');
+  printSection("Current branch");
   printBoxLine(chalk.green(current));
   printEmptyLine();
 
-  printSection('Claude branches');
+  printSection("Claude branches");
   if (branches.length === 0) {
-    printBoxLine(chalk.dim('No claude/* branches'));
+    printBoxLine(chalk.dim("No claude/* branches"));
   } else {
-    branches.forEach(branch => {
+    branches.forEach((branch) => {
       const display = formatBranchDisplay(branch, current);
       printBoxLine(display);
     });
   }
   printEmptyLine();
 
-  printSection('Sessions');
+  printSection("Sessions");
   if (managed.length === 0) {
-    printBoxLine(chalk.dim('No managed sessions'));
+    printBoxLine(chalk.dim("No managed sessions"));
   } else {
-    managed.forEach(session => {
+    managed.forEach((session) => {
       const runtime = Math.round((Date.now() - session.startTime.getTime()) / 60000);
-      const statusIcon = session.status === 'running' ? chalk.green('●') : chalk.dim('○');
+      const statusIcon = session.status === "running" ? chalk.green("●") : chalk.dim("○");
       const issueMatch = session.task?.match(/GitHub Issue #(\d+)/);
-      const issueLabel = issueMatch ? chalk.yellow(`#${issueMatch[1]}`) + ' ' : '';
-      const worktreeIcon = session.worktreePath ? chalk.cyan('⎔ ') : '';
+      const issueLabel = issueMatch ? `${chalk.yellow(`#${issueMatch[1]}`)} ` : "";
+      const worktreeIcon = session.worktreePath ? chalk.cyan("⎔ ") : "";
       const line = `${statusIcon} ${worktreeIcon}${issueLabel}${session.name} on ${session.branch} [${runtime}m]`;
       printBoxLine(line);
     });
@@ -1763,70 +1925,74 @@ async function showStatus(): Promise<void> {
   printEmptyLine();
 
   if (projectHasAppScripts()) {
-    printSection('App');
-    let appStatusText = '';
+    printSection("App");
+    let appStatusText = "";
     let appStatusColor = chalk.dim;
-    let appStatusIcon = '○';
+    let appStatusIcon = "○";
 
     const processStatus = appProcessStatus();
     const backendRunning = processStatus.backend;
     const frontendRunning = processStatus.frontend;
     const appRunning = appProcess !== null || backendRunning || frontendRunning;
 
-    if (appStatus === 'error') {
-      appStatusText = `Error: ${appErrorMessage ?? 'Check logs'} (use [l] to view, [a] to retry)`;
+    if (appStatus === "error") {
+      appStatusText = `Error: ${appErrorMessage ?? "Check logs"} (use [l] to view, [a] to retry)`;
       appStatusColor = chalk.red;
-      appStatusIcon = '✗';
-    } else if (!appRunning && appStatus !== 'starting') {
+      appStatusIcon = "✗";
+    } else if (!appRunning && appStatus !== "starting") {
       if (appLogsExist()) {
         try {
           const logLines = readAppLogs(50);
-          const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
-          const cleanLog = stripAnsi(logLines.join('\n'));
+          const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
+          const cleanLog = stripAnsi(logLines.join("\n"));
 
-          if (cleanLog.includes('ELIFECYCLE') || cleanLog.includes('failed') || cleanLog.includes('Error')) {
-            appStatus = 'error';
-            appStatusText = 'Error: App crashed (use [l] to view, [a] to retry)';
+          if (
+            cleanLog.includes("ELIFECYCLE") ||
+            cleanLog.includes("failed") ||
+            cleanLog.includes("Error")
+          ) {
+            appStatus = "error";
+            appStatusText = "Error: App crashed (use [l] to view, [a] to retry)";
             appStatusColor = chalk.red;
-            appStatusIcon = '✗';
+            appStatusIcon = "✗";
           } else {
-            appStatusText = 'Stopped (use [a] to start)';
+            appStatusText = "Stopped (use [a] to start)";
             appStatusColor = chalk.dim;
-            appStatusIcon = '○';
+            appStatusIcon = "○";
           }
         } catch {
-          appStatusText = 'Stopped (use [a] to start)';
+          appStatusText = "Stopped (use [a] to start)";
           appStatusColor = chalk.dim;
-          appStatusIcon = '○';
+          appStatusIcon = "○";
         }
       } else {
-        appStatusText = 'Stopped (use [a] to start)';
+        appStatusText = "Stopped (use [a] to start)";
         appStatusColor = chalk.dim;
-        appStatusIcon = '○';
+        appStatusIcon = "○";
       }
     } else if (backendRunning && frontendRunning) {
-      appStatus = 'running';
-      appStatusText = 'Ready (use [x] to stop)';
+      appStatus = "running";
+      appStatusText = "Ready (use [x] to stop)";
       appStatusColor = chalk.green;
-      appStatusIcon = '●';
+      appStatusIcon = "●";
     } else if (backendRunning) {
-      appStatusText = 'Backend ready, frontend starting... (use [x] to stop)';
+      appStatusText = "Backend ready, frontend starting... (use [x] to stop)";
       appStatusColor = chalk.yellow;
-      appStatusIcon = '◐';
+      appStatusIcon = "◐";
     } else if (frontendRunning) {
-      appStatusText = 'Frontend ready, backend starting... (use [x] to stop)';
+      appStatusText = "Frontend ready, backend starting... (use [x] to stop)";
       appStatusColor = chalk.yellow;
-      appStatusIcon = '◐';
+      appStatusIcon = "◐";
     } else {
-      let state = 'Starting...';
+      let state = "Starting...";
       if (appLogsExist()) {
         try {
           const logLines = readAppLogs(50);
-          const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
-          const cleanLog = stripAnsi(logLines.join('\n'));
+          const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
+          const cleanLog = stripAnsi(logLines.join("\n"));
 
-          if (cleanLog.includes('Compiling')) {
-            state = 'Compiling...';
+          if (cleanLog.includes("Compiling")) {
+            state = "Compiling...";
           }
         } catch {
           // ignore
@@ -1834,15 +2000,15 @@ async function showStatus(): Promise<void> {
       }
       appStatusText = `${state} (use [x] to stop)`;
       appStatusColor = chalk.yellow;
-      appStatusIcon = '◐';
+      appStatusIcon = "◐";
     }
 
-    const statusLine = appStatusColor(appStatusIcon) + ' ' + appStatusText;
+    const statusLine = `${appStatusColor(appStatusIcon)} ${appStatusText}`;
     printBoxLine(statusLine);
   }
 
   printFooter();
-  log.print('');
+  log.print("");
 }
 
 interface MenuChoice {
@@ -1854,7 +2020,7 @@ interface MenuChoice {
 async function selectWithEscape<T extends string>(
   message: string,
   choices: Array<{ name: string; value: T }>,
-  _cancelValue: T = 'cancel' as T
+  _cancelValue: T = "cancel" as T,
 ): Promise<T> {
   const result = await select({ message, choices, pageSize: 20 });
   return result as T;
@@ -1863,13 +2029,19 @@ async function selectWithEscape<T extends string>(
 function renderMenu(message: string, choices: MenuChoice[], selectedIndex: number): void {
   const lines = choices.length + 1;
   process.stdout.write(`\x1b[${lines}A`);
-  process.stdout.write('\x1b[0J');
+  process.stdout.write("\x1b[0J");
 
-  log.print(chalk.bold.green('?') + ' ' + chalk.bold(message) + ' ' + chalk.dim('(use arrow keys, enter, or shortcut)'));
+  log.print(
+    chalk.bold.green("?") +
+      " " +
+      chalk.bold(message) +
+      " " +
+      chalk.dim("(use arrow keys, enter, or shortcut)"),
+  );
 
   choices.forEach((choice, index) => {
     const isSelected = index === selectedIndex;
-    const prefix = isSelected ? chalk.cyan('❯ ') : '  ';
+    const prefix = isSelected ? chalk.cyan("❯ ") : "  ";
     const text = isSelected ? chalk.cyan(choice.name) : choice.name;
     log.print(prefix + text);
   });
@@ -1878,16 +2050,22 @@ function renderMenu(message: string, choices: MenuChoice[], selectedIndex: numbe
 async function selectWithShortcuts(
   message: string,
   choices: MenuChoice[],
-  _autoRefreshMs?: number
+  _autoRefreshMs?: number,
 ): Promise<string> {
   return new Promise((resolve) => {
     let selectedIndex = 0;
     const keyMap = new Map(choices.map((c, i) => [c.key.toLowerCase(), i]));
 
-    log.print(chalk.bold.green('?') + ' ' + chalk.bold(message) + ' ' + chalk.dim('(use arrow keys, enter, or shortcut)'));
+    log.print(
+      chalk.bold.green("?") +
+        " " +
+        chalk.bold(message) +
+        " " +
+        chalk.dim("(use arrow keys, enter, or shortcut)"),
+    );
     choices.forEach((choice, index) => {
       const isSelected = index === selectedIndex;
-      const prefix = isSelected ? chalk.cyan('❯ ') : '  ';
+      const prefix = isSelected ? chalk.cyan("❯ ") : "  ";
       const text = isSelected ? chalk.cyan(choice.name) : choice.name;
       log.print(prefix + text);
     });
@@ -1903,56 +2081,56 @@ async function selectWithShortcuts(
 
     const cleanup = () => {
       process.stdin.setRawMode(false);
-      process.stdin.removeAllListeners('keypress');
+      process.stdin.removeAllListeners("keypress");
       rl.close();
     };
 
     const handler = (_str: string | undefined, key: Key) => {
       if (!key) return;
 
-      if (key.name === 'up') {
+      if (key.name === "up") {
         selectedIndex = (selectedIndex - 1 + choices.length) % choices.length;
         renderMenu(message, choices, selectedIndex);
         return;
       }
 
-      if (key.name === 'down') {
+      if (key.name === "down") {
         selectedIndex = (selectedIndex + 1) % choices.length;
         renderMenu(message, choices, selectedIndex);
         return;
       }
 
-      if (key.name === 'return') {
+      if (key.name === "return") {
         cleanup();
-        log.print('');
+        log.print("");
         resolve(choices[selectedIndex].value);
         return;
       }
 
-      if (key.name === 'escape') {
+      if (key.name === "escape") {
         cleanup();
-        log.print('');
-        const backChoice = choices.find(c => c.value === 'back' || c.value === 'quit');
-        resolve(backChoice?.value ?? 'back');
+        log.print("");
+        const backChoice = choices.find((c) => c.value === "back" || c.value === "quit");
+        resolve(backChoice?.value ?? "back");
         return;
       }
 
-      if (key.ctrl && key.name === 'c') {
+      if (key.ctrl && key.name === "c") {
         cleanup();
         process.exit(0);
       }
 
-      const pressed = (key.name ?? key.sequence ?? '').toLowerCase();
+      const pressed = (key.name ?? key.sequence ?? "").toLowerCase();
       const matchIndex = keyMap.get(pressed);
       if (matchIndex !== undefined) {
         cleanup();
-        log.print('');
+        log.print("");
         resolve(choices[matchIndex].value);
         return;
       }
     };
 
-    process.stdin.on('keypress', handler);
+    process.stdin.on("keypress", handler);
   });
 }
 
@@ -1961,90 +2139,107 @@ async function mainMenu(): Promise<void> {
     await showStatus();
 
     const sessionCount = managedSessions.size;
-    const sessionInfo = sessionCount > 0 ? ` (${sessionCount} running)` : '';
+    const sessionInfo = sessionCount > 0 ? ` (${sessionCount} running)` : "";
 
-    const padLabel = (text: string, width: number) => text + ' '.repeat(Math.max(0, width - text.length));
+    const padLabel = (text: string, width: number) =>
+      text + " ".repeat(Math.max(0, width - text.length));
 
     const hasAppScripts = projectHasAppScripts();
 
     const choices: MenuChoice[] = [
-      { name: `📋 ${padLabel('Manage branches', 28)}${chalk.cyan('[b]')}`, value: 'branches', key: 'b' },
-      { name: `🖥️ ${padLabel('Manage sessions' + sessionInfo, 28)}${chalk.cyan('[s]')}`, value: 'sessions', key: 's' },
-      { name: `📥 ${padLabel('Pull changes', 28)}${chalk.cyan('[p]')}`, value: 'pull', key: 'p' },
+      {
+        name: `📋 ${padLabel("Manage branches", 28)}${chalk.cyan("[b]")}`,
+        value: "branches",
+        key: "b",
+      },
+      {
+        name: `🖥️ ${padLabel(`Manage sessions${sessionInfo}`, 28)}${chalk.cyan("[s]")}`,
+        value: "sessions",
+        key: "s",
+      },
+      { name: `📥 ${padLabel("Pull changes", 28)}${chalk.cyan("[p]")}`, value: "pull", key: "p" },
     ];
 
     if (hasAppScripts) {
-      const isWindows = process.platform === 'win32';
-      choices.push(
-        { name: `🚀 ${padLabel('Start app', 28)}${chalk.cyan('[a]')}`, value: 'start', key: 'a' },
-      );
+      const isWindows = process.platform === "win32";
+      choices.push({
+        name: `🚀 ${padLabel("Start app", 28)}${chalk.cyan("[a]")}`,
+        value: "start",
+        key: "a",
+      });
       if (!isWindows) {
-        choices.push(
-          { name: `📄 ${padLabel('View app logs', 28)}${chalk.cyan('[l]')}`, value: 'logs', key: 'l' },
-        );
+        choices.push({
+          name: `📄 ${padLabel("View app logs", 28)}${chalk.cyan("[l]")}`,
+          value: "logs",
+          key: "l",
+        });
       }
-      choices.push(
-        { name: `🛑 ${padLabel('Stop app', 28)}${chalk.cyan('[x]')}`, value: 'stop', key: 'x' },
-      );
+      choices.push({
+        name: `🛑 ${padLabel("Stop app", 28)}${chalk.cyan("[x]")}`,
+        value: "stop",
+        key: "x",
+      });
     }
 
-    choices.push(
-      { name: `🔄 ${padLabel('Refresh', 28)}${chalk.cyan('[r]')}`, value: 'refresh', key: 'r' },
-    );
+    choices.push({
+      name: `🔄 ${padLabel("Refresh", 28)}${chalk.cyan("[r]")}`,
+      value: "refresh",
+      key: "r",
+    });
 
-    if (process.platform === 'win32') {
-      choices.push(
-        { name: `🖥️ ${padLabel('Create desktop shortcut', 28)}${chalk.cyan('[d]')}`, value: 'shortcut', key: 'd' },
-      );
+    if (process.platform === "win32") {
+      choices.push({
+        name: `🖥️ ${padLabel("Create desktop shortcut", 28)}${chalk.cyan("[d]")}`,
+        value: "shortcut",
+        key: "d",
+      });
     }
 
-    choices.push(
-      { name: chalk.dim(`❌ ${padLabel('Quit', 28)}[q]`), value: 'quit', key: 'q' },
-    );
+    choices.push({ name: chalk.dim(`❌ ${padLabel("Quit", 28)}[q]`), value: "quit", key: "q" });
 
-    const action = await selectWithShortcuts('What would you like to do?', choices, 5000);
+    const action = await selectWithShortcuts("What would you like to do?", choices, 5000);
 
     switch (action) {
-      case 'branches':
+      case "branches":
         await showBranchMenu();
         break;
-      case 'sessions':
+      case "sessions":
         await showSessionsMenu();
         break;
-      case 'pull':
+      case "pull":
         await pullChanges();
         break;
-      case 'start':
+      case "start":
         await startApp();
         break;
-      case 'logs':
-        if (process.platform === 'win32') {
+      case "logs":
+        if (process.platform === "win32") {
           log.info('\nOn Windows, app logs are visible in the "App Dev Server" tab.\n');
-          await confirm({ message: 'Press Enter to continue...', default: true });
+          await confirm({ message: "Press Enter to continue...", default: true });
         } else {
           await showAppLogs();
         }
         break;
-      case 'stop':
+      case "stop":
         await stopApp();
         break;
-      case 'refresh':
+      case "refresh":
         // Just loop again
         break;
-      case 'shortcut':
+      case "shortcut":
         await createDesktopShortcut();
         break;
-      case 'quit':
+      case "quit":
         if (appProcess || isAppProcessRunning()) {
           const confirmQuit = await confirm({
-            message: 'App is still running. Stop it before quitting?',
+            message: "App is still running. Stop it before quitting?",
             default: true,
           });
           if (confirmQuit) {
             await stopApp();
           }
         }
-        log.debug('\nGoodbye!');
+        log.debug("\nGoodbye!");
         process.exit(0);
     }
   }
@@ -2055,15 +2250,15 @@ function ensureNamedWindow(): boolean {
 }
 
 async function createDesktopShortcut(): Promise<void> {
-  if (process.platform !== 'win32') {
-    log.warn('Desktop shortcuts are only supported on Windows.');
+  if (process.platform !== "win32") {
+    log.warn("Desktop shortcuts are only supported on Windows.");
     return;
   }
 
-  const desktop = join(homedir(), 'Desktop');
-  const launcherPath = join(desktop, 'ParallelClaude.ps1');
-  const shortcutPath = join(desktop, 'Parallel Claude.lnk');
-  const tempScript = join(tmpdir(), 'create-shortcut.ps1');
+  const desktop = join(homedir(), "Desktop");
+  const launcherPath = join(desktop, "ParallelClaude.ps1");
+  const shortcutPath = join(desktop, "Parallel Claude.lnk");
+  const tempScript = join(tmpdir(), "create-shortcut.ps1");
 
   const launcherContent = `Set-Location "${rootDir()}"
 npx ts-node --transpile-only scripts/parallel-claude.ts
@@ -2072,25 +2267,25 @@ npx ts-node --transpile-only scripts/parallel-claude.ts
   writeFileSync(launcherPath, launcherContent);
 
   const shortcutScript = [
-    '$WshShell = New-Object -ComObject WScript.Shell',
+    "$WshShell = New-Object -ComObject WScript.Shell",
     `$Shortcut = $WshShell.CreateShortcut("${shortcutPath}")`,
     '$Shortcut.TargetPath = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"',
     `$Shortcut.Arguments = '-NoExit -File "${launcherPath}"'`,
     `$Shortcut.WorkingDirectory = "${rootDir()}"`,
-    '$Shortcut.Save()',
-  ].join('\n');
+    "$Shortcut.Save()",
+  ].join("\n");
 
   writeFileSync(tempScript, shortcutScript);
 
   try {
-    execSync(`powershell -ExecutionPolicy Bypass -File "${tempScript}"`, { stdio: 'pipe' });
-    log.info(chalk.green('\n✓ Desktop shortcut created!'));
+    execSync(`powershell -ExecutionPolicy Bypass -File "${tempScript}"`, { stdio: "pipe" });
+    log.info(chalk.green("\n✓ Desktop shortcut created!"));
     log.info('  Right-click it and select "Pin to taskbar" for quick access.\n');
   } catch (err) {
-    log.error('Failed to create desktop shortcut: ' + (err as Error).message);
+    log.error(`Failed to create desktop shortcut: ${(err as Error).message}`);
   }
 
-  await confirm({ message: 'Press Enter to continue...', default: true });
+  await confirm({ message: "Press Enter to continue...", default: true });
 }
 
 async function main(): Promise<void> {
@@ -2098,18 +2293,18 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  log.info('\n  Parallel Claude\n');
+  log.info("\n  Parallel Claude\n");
 
-  const isGitRepo = existsSync(join(DEFAULT_ROOT_DIR, '.git'));
+  const isGitRepo = existsSync(join(DEFAULT_ROOT_DIR, ".git"));
   if (!isGitRepo) {
-    log.error('Error: Not a git repository.');
+    log.error("Error: Not a git repository.");
     process.exit(1);
   }
 
   await mainMenu();
 }
 
-main().catch(error => {
+main().catch((error) => {
   log.error(`Error: ${error.message}`);
   process.exit(1);
 });

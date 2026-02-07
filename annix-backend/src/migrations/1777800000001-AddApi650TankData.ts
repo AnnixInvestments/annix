@@ -1,12 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddApi650TankData1777800000001 implements MigrationInterface {
-  name = 'AddApi650TankData1777800000001';
+  name = "AddApi650TankData1777800000001";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      'Adding API 650 tank construction data for future tank module...',
-    );
+    console.warn("Adding API 650 tank construction data for future tank module...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS tank_nozzle_types (
@@ -155,39 +153,39 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
 
     const nozzleTypes = [
       [
-        'SHELL',
-        'Shell Nozzle',
-        'Nozzle penetrating tank shell',
-        '{SO,WN,LWN,RING,LAP}',
-        'Product inlet/outlet, drain, instrumentation',
+        "SHELL",
+        "Shell Nozzle",
+        "Nozzle penetrating tank shell",
+        "{SO,WN,LWN,RING,LAP}",
+        "Product inlet/outlet, drain, instrumentation",
       ],
       [
-        'ROOF',
-        'Roof Nozzle',
-        'Nozzle penetrating tank roof',
-        '{SO,WN,LAP}',
-        'Venting, gauging, fill connections',
+        "ROOF",
+        "Roof Nozzle",
+        "Nozzle penetrating tank roof",
+        "{SO,WN,LAP}",
+        "Venting, gauging, fill connections",
       ],
       [
-        'BOTTOM',
-        'Bottom Nozzle',
-        'Nozzle penetrating tank bottom',
-        '{SO,WN,LAP}',
-        'Drain, outlet connections',
+        "BOTTOM",
+        "Bottom Nozzle",
+        "Nozzle penetrating tank bottom",
+        "{SO,WN,LAP}",
+        "Drain, outlet connections",
       ],
       [
-        'MANHOLE_SHELL',
-        'Shell Manhole',
-        'Access opening in tank shell',
-        '{FLANGED}',
-        'Personnel and equipment access',
+        "MANHOLE_SHELL",
+        "Shell Manhole",
+        "Access opening in tank shell",
+        "{FLANGED}",
+        "Personnel and equipment access",
       ],
       [
-        'MANHOLE_ROOF',
-        'Roof Manhole',
-        'Access opening in tank roof',
-        '{FLANGED}',
-        'Personnel access, inspection',
+        "MANHOLE_ROOF",
+        "Roof Manhole",
+        "Access opening in tank roof",
+        "{FLANGED}",
+        "Personnel access, inspection",
       ],
     ];
 
@@ -204,57 +202,36 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
     }
 
     const flangeTypes = [
+      ["SLIP_ON", "Slip-on Flange", "SO", "tn or Tf (lesser)", "Fillet weld both sides", null],
+      ["WELD_NECK", "Welding-neck Flange", "WN", "tn", "Full penetration groove weld", 19.0],
       [
-        'SLIP_ON',
-        'Slip-on Flange',
-        'SO',
-        'tn or Tf (lesser)',
-        'Fillet weld both sides',
-        null,
-      ],
-      [
-        'WELD_NECK',
-        'Welding-neck Flange',
-        'WN',
-        'tn',
-        'Full penetration groove weld',
+        "LONG_WELD_NECK",
+        "Long Welding-neck Flange",
+        "LWN",
+        "tn or ts (lesser)",
+        "Extended nozzle design",
         19.0,
       ],
       [
-        'LONG_WELD_NECK',
-        'Long Welding-neck Flange',
-        'LWN',
-        'tn or ts (lesser)',
-        'Extended nozzle design',
-        19.0,
-      ],
-      [
-        'RING_TYPE',
-        'Ring-type Flange',
-        'RING',
-        'tn or Tf (lesser)',
-        'Fillet weld both sides',
+        "RING_TYPE",
+        "Ring-type Flange",
+        "RING",
+        "tn or Tf (lesser)",
+        "Fillet weld both sides",
         null,
       ],
       [
-        'LAP_JOINT',
-        'Lap Joint Flange',
-        'LAP',
-        'tn or Tf (lesser)',
-        'Easy alignment applications',
+        "LAP_JOINT",
+        "Lap Joint Flange",
+        "LAP",
+        "tn or Tf (lesser)",
+        "Easy alignment applications",
         null,
       ],
-      ['BLIND', 'Blind Flange', 'BL', 'N/A', 'Closure flange', null],
+      ["BLIND", "Blind Flange", "BL", "N/A", "Closure flange", null],
     ];
 
-    for (const [
-      code,
-      name,
-      abbr,
-      weldBasis,
-      weldNotes,
-      pwhtThreshold,
-    ] of flangeTypes) {
+    for (const [code, name, abbr, weldBasis, weldNotes, pwhtThreshold] of flangeTypes) {
       await queryRunner.query(
         `
         INSERT INTO tank_flange_types (code, name, abbreviation, weld_size_basis, weld_size_notes, pwht_threshold_mm)
@@ -267,98 +244,18 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
     }
 
     const tolerances = [
-      [
-        'projection',
-        'shell',
-        null,
-        null,
-        6.0,
-        'mm',
-        'Projection from outside of shell',
-      ],
-      [
-        'flange_tilt',
-        'shell',
-        0,
-        12,
-        1.0,
-        'degree',
-        'Nozzles NPS 12 and smaller',
-      ],
-      [
-        'flange_tilt',
-        'shell',
-        12.01,
-        null,
-        0.5,
-        'degree',
-        'Nozzles larger than NPS 12',
-      ],
-      [
-        'flange_face_alignment',
-        'shell',
-        null,
-        null,
-        3.0,
-        'mm',
-        'At outside flange diameter',
-      ],
-      [
-        'bolt_hole_orientation',
-        'shell',
-        null,
-        null,
-        3.0,
-        'mm',
-        'Angular position tolerance',
-      ],
-      [
-        'projection',
-        'roof',
-        null,
-        null,
-        6.0,
-        'mm',
-        'Projection from shell to flange face',
-      ],
-      [
-        'flange_tilt',
-        'roof',
-        null,
-        null,
-        0.5,
-        'degree',
-        'All roof nozzle sizes',
-      ],
-      [
-        'projection',
-        'bottom',
-        null,
-        null,
-        6.0,
-        'mm',
-        'Projection from shell to flange face',
-      ],
-      [
-        'flange_tilt',
-        'bottom',
-        null,
-        null,
-        0.5,
-        'degree',
-        'All bottom nozzle sizes',
-      ],
+      ["projection", "shell", null, null, 6.0, "mm", "Projection from outside of shell"],
+      ["flange_tilt", "shell", 0, 12, 1.0, "degree", "Nozzles NPS 12 and smaller"],
+      ["flange_tilt", "shell", 12.01, null, 0.5, "degree", "Nozzles larger than NPS 12"],
+      ["flange_face_alignment", "shell", null, null, 3.0, "mm", "At outside flange diameter"],
+      ["bolt_hole_orientation", "shell", null, null, 3.0, "mm", "Angular position tolerance"],
+      ["projection", "roof", null, null, 6.0, "mm", "Projection from shell to flange face"],
+      ["flange_tilt", "roof", null, null, 0.5, "degree", "All roof nozzle sizes"],
+      ["projection", "bottom", null, null, 6.0, "mm", "Projection from shell to flange face"],
+      ["flange_tilt", "bottom", null, null, 0.5, "degree", "All bottom nozzle sizes"],
     ];
 
-    for (const [
-      tolType,
-      location,
-      minNps,
-      maxNps,
-      value,
-      unit,
-      notes,
-    ] of tolerances) {
+    for (const [tolType, location, minNps, maxNps, value, unit, notes] of tolerances) {
       await queryRunner.query(
         `
         INSERT INTO tank_nozzle_tolerances (tolerance_type, nozzle_location, min_nps, max_nps, tolerance_value, tolerance_unit, notes)
@@ -371,10 +268,10 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
     }
 
     const manholeSpecs = [
-      ['SHELL', 500, 20, 16, 19, 10, 610, 20, 'M20'],
-      ['SHELL', 600, 24, 19, 22, 10, 730, 24, 'M20'],
-      ['ROOF', 500, 20, 13, 16, 8, 610, 16, 'M16'],
-      ['ROOF', 600, 24, 16, 19, 8, 730, 20, 'M20'],
+      ["SHELL", 500, 20, 16, 19, 10, 610, 20, "M20"],
+      ["SHELL", 600, 24, 19, 22, 10, 730, 24, "M20"],
+      ["ROOF", 500, 20, 13, 16, 8, 610, 16, "M16"],
+      ["ROOF", 600, 24, 16, 19, 8, 730, 20, "M20"],
     ];
 
     for (const [
@@ -395,35 +292,25 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
         ON CONFLICT (manhole_type, nominal_size_mm) DO UPDATE SET
           nominal_size_inch = $3, min_cover_plate_mm = $4, min_bolting_flange_mm = $5, min_neck_thickness_mm = $6, bolt_circle_mm = $7, num_bolts = $8, bolt_size = $9
       `,
-        [
-          type,
-          sizeMm,
-          sizeIn,
-          coverMm,
-          flangeMm,
-          neckMm,
-          boltCircle,
-          numBolts,
-          boltSize,
-        ],
+        [type, sizeMm, sizeIn, coverMm, flangeMm, neckMm, boltCircle, numBolts, boltSize],
       );
     }
 
     const nozzleDimensions = [
-      ['1', 1.0, '40', 3.38, 6, 33.4, 89, 60, 4, 'M12'],
-      ['1-1/2', 1.5, '40', 3.68, 6, 48.3, 115, 83, 4, 'M12'],
-      ['2', 2.0, '40', 3.91, 6, 60.3, 150, 102, 4, 'M16'],
-      ['3', 3.0, '40', 5.49, 6, 88.9, 190, 127, 4, 'M16'],
-      ['4', 4.0, '40', 6.02, 8, 114.3, 229, 157, 8, 'M16'],
-      ['6', 6.0, '40', 7.11, 8, 168.3, 279, 216, 8, 'M20'],
-      ['8', 8.0, '40', 8.18, 10, 219.1, 343, 270, 8, 'M20'],
-      ['10', 10.0, '40', 9.27, 10, 273.0, 406, 324, 12, 'M20'],
-      ['12', 12.0, '40', 10.31, 10, 323.8, 483, 381, 12, 'M20'],
-      ['14', 14.0, 'STD', 9.53, 12, 355.6, 533, 413, 12, 'M24'],
-      ['16', 16.0, 'STD', 9.53, 12, 406.4, 597, 470, 16, 'M24'],
-      ['18', 18.0, 'STD', 9.53, 12, 457.2, 635, 533, 16, 'M24'],
-      ['20', 20.0, 'STD', 9.53, 12, 508.0, 698, 584, 20, 'M24'],
-      ['24', 24.0, 'STD', 9.53, 14, 609.6, 813, 692, 20, 'M27'],
+      ["1", 1.0, "40", 3.38, 6, 33.4, 89, 60, 4, "M12"],
+      ["1-1/2", 1.5, "40", 3.68, 6, 48.3, 115, 83, 4, "M12"],
+      ["2", 2.0, "40", 3.91, 6, 60.3, 150, 102, 4, "M16"],
+      ["3", 3.0, "40", 5.49, 6, 88.9, 190, 127, 4, "M16"],
+      ["4", 4.0, "40", 6.02, 8, 114.3, 229, 157, 8, "M16"],
+      ["6", 6.0, "40", 7.11, 8, 168.3, 279, 216, 8, "M20"],
+      ["8", 8.0, "40", 8.18, 10, 219.1, 343, 270, 8, "M20"],
+      ["10", 10.0, "40", 9.27, 10, 273.0, 406, 324, 12, "M20"],
+      ["12", 12.0, "40", 10.31, 10, 323.8, 483, 381, 12, "M20"],
+      ["14", 14.0, "STD", 9.53, 12, 355.6, 533, 413, 12, "M24"],
+      ["16", 16.0, "STD", 9.53, 12, 406.4, 597, 470, 16, "M24"],
+      ["18", 18.0, "STD", 9.53, 12, 457.2, 635, 533, 16, "M24"],
+      ["20", 20.0, "STD", 9.53, 12, 508.0, 698, 584, 20, "M24"],
+      ["24", 24.0, "STD", 9.53, 14, 609.6, 813, 692, 20, "M27"],
     ];
 
     for (const [
@@ -461,87 +348,33 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
     }
 
     const materialGroups = [
+      ["I", "Group I", "Carbon steel, normalized", -29, 340, true, false, "{ASTM A36,ASTM A283}"],
+      ["II", "Group II", "Carbon steel, as-rolled", -18, 340, true, false, "{ASTM A285,ASTM A516}"],
       [
-        'I',
-        'Group I',
-        'Carbon steel, normalized',
+        "IIA",
+        "Group IIA",
+        "Carbon steel, as-rolled (enhanced)",
         -29,
         340,
         true,
         false,
-        '{ASTM A36,ASTM A283}',
+        "{ASTM A516}",
       ],
+      ["III", "Group III", "Carbon-manganese steel", -46, 340, true, false, "{ASTM A537}"],
       [
-        'II',
-        'Group II',
-        'Carbon steel, as-rolled',
-        -18,
-        340,
-        true,
-        false,
-        '{ASTM A285,ASTM A516}',
-      ],
-      [
-        'IIA',
-        'Group IIA',
-        'Carbon steel, as-rolled (enhanced)',
-        -29,
-        340,
-        true,
-        false,
-        '{ASTM A516}',
-      ],
-      [
-        'III',
-        'Group III',
-        'Carbon-manganese steel',
-        -46,
-        340,
-        true,
-        false,
-        '{ASTM A537}',
-      ],
-      [
-        'IIIA',
-        'Group IIIA',
-        'Carbon-manganese steel, QT',
+        "IIIA",
+        "Group IIIA",
+        "Carbon-manganese steel, QT",
         -46,
         400,
         true,
         false,
-        '{ASTM A537 Cl 2}',
+        "{ASTM A537 Cl 2}",
       ],
-      [
-        'IV',
-        'Group IV',
-        'Nickel alloy steel',
-        -101,
-        340,
-        true,
-        true,
-        '{ASTM A203}',
-      ],
-      [
-        'IVA',
-        'Group IVA',
-        'Nickel alloy steel, QT',
-        -101,
-        340,
-        true,
-        true,
-        '{ASTM A203}',
-      ],
-      ['V', 'Group V', '9% Nickel steel', -196, 340, true, true, '{ASTM A353}'],
-      [
-        'VI',
-        'Group VI',
-        'High-strength low-alloy',
-        -46,
-        340,
-        true,
-        false,
-        '{ASTM A841}',
-      ],
+      ["IV", "Group IV", "Nickel alloy steel", -101, 340, true, true, "{ASTM A203}"],
+      ["IVA", "Group IVA", "Nickel alloy steel, QT", -101, 340, true, true, "{ASTM A203}"],
+      ["V", "Group V", "9% Nickel steel", -196, 340, true, true, "{ASTM A353}"],
+      ["VI", "Group VI", "High-strength low-alloy", -46, 340, true, false, "{ASTM A841}"],
     ];
 
     for (const [
@@ -566,89 +399,57 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
     }
 
     const pipeSpecs = [
+      ["A53", "B", "Pipe, Steel, Black and Hot-Dipped", "General nozzle service", -29, 400, "II"],
       [
-        'A53',
-        'B',
-        'Pipe, Steel, Black and Hot-Dipped',
-        'General nozzle service',
+        "A106",
+        "B",
+        "Seamless Carbon Steel Pipe for High-Temperature",
+        "High temperature service",
         -29,
         400,
-        'II',
+        "II",
       ],
       [
-        'A106',
-        'B',
-        'Seamless Carbon Steel Pipe for High-Temperature',
-        'High temperature service',
-        -29,
-        400,
-        'II',
-      ],
-      [
-        'A333',
-        '6',
-        'Seamless and Welded Steel Pipe for Low-Temperature',
-        'Low temperature service',
+        "A333",
+        "6",
+        "Seamless and Welded Steel Pipe for Low-Temperature",
+        "Low temperature service",
         -46,
         340,
-        'III',
+        "III",
       ],
       [
-        'A524',
-        'I',
-        'Seamless Carbon Steel Pipe for Atmospheric',
-        'Atmospheric service',
+        "A524",
+        "I",
+        "Seamless Carbon Steel Pipe for Atmospheric",
+        "Atmospheric service",
         -29,
         340,
-        'II',
+        "II",
       ],
       [
-        'A524',
-        'II',
-        'Seamless Carbon Steel Pipe for Atmospheric',
-        'Atmospheric service',
+        "A524",
+        "II",
+        "Seamless Carbon Steel Pipe for Atmospheric",
+        "Atmospheric service",
         -29,
         340,
-        'II',
+        "II",
       ],
       [
-        'A671',
-        'CC60',
-        'Electric-Fusion-Welded Steel Pipe',
-        'Large diameter service',
+        "A671",
+        "CC60",
+        "Electric-Fusion-Welded Steel Pipe",
+        "Large diameter service",
         -29,
         340,
-        'II',
+        "II",
       ],
-      [
-        'A358',
-        '304',
-        'EFW Austenitic Stainless Steel Pipe',
-        'Corrosive service',
-        -196,
-        540,
-        null,
-      ],
-      [
-        'A358',
-        '316',
-        'EFW Austenitic Stainless Steel Pipe',
-        'Corrosive service',
-        -196,
-        540,
-        null,
-      ],
+      ["A358", "304", "EFW Austenitic Stainless Steel Pipe", "Corrosive service", -196, 540, null],
+      ["A358", "316", "EFW Austenitic Stainless Steel Pipe", "Corrosive service", -196, 540, null],
     ];
 
-    for (const [
-      spec,
-      grade,
-      desc,
-      app,
-      minTemp,
-      maxTemp,
-      matGroup,
-    ] of pipeSpecs) {
+    for (const [spec, grade, desc, app, minTemp, maxTemp, matGroup] of pipeSpecs) {
       await queryRunner.query(
         `
         INSERT INTO tank_pipe_specs (astm_spec, grade, description, application, min_temp_c, max_temp_c, material_group)
@@ -661,27 +462,9 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
     }
 
     const drainReqs = [
-      [
-        'SWING_DRAIN',
-        '80',
-        600,
-        'Steel pivot-jointed pipe',
-        'Designed for thermal movement',
-      ],
-      [
-        'FLOOR_DRAIN',
-        null,
-        600,
-        'Threaded pipe coupling',
-        'Min spacing from shell',
-      ],
-      [
-        'ROOF_DRAIN',
-        '40',
-        null,
-        'Standard weight pipe',
-        'Internal floating roof tanks',
-      ],
+      ["SWING_DRAIN", "80", 600, "Steel pivot-jointed pipe", "Designed for thermal movement"],
+      ["FLOOR_DRAIN", null, 600, "Threaded pipe coupling", "Min spacing from shell"],
+      ["ROOF_DRAIN", "40", null, "Standard weight pipe", "Internal floating roof tanks"],
     ];
 
     for (const [type, schedule, spacing, material, notes] of drainReqs) {
@@ -697,32 +480,18 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
     }
 
     const roofColumns = [
+      ["PIPE", "Carbon steel pipe", 6.0, true, true, "Preferred for internal floating roof tanks"],
       [
-        'PIPE',
-        'Carbon steel pipe',
-        6.0,
-        true,
-        true,
-        'Preferred for internal floating roof tanks',
-      ],
-      [
-        'STRUCTURAL',
-        'Wide flange or channel',
+        "STRUCTURAL",
+        "Wide flange or channel",
         null,
         false,
         false,
-        'Back-to-back channels or wide flange',
+        "Back-to-back channels or wide flange",
       ],
     ];
 
-    for (const [
-      type,
-      material,
-      minWall,
-      sealing,
-      drainage,
-      notes,
-    ] of roofColumns) {
+    for (const [type, material, minWall, sealing, drainage, notes] of roofColumns) {
       await queryRunner.query(
         `
         INSERT INTO tank_roof_column_specs (column_type, material_type, min_wall_mm, sealing_required, drainage_required, notes)
@@ -734,63 +503,28 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
 
     const weldReqs = [
       [
-        'nozzle_to_shell_outside',
-        'fillet',
-        '0.7 × tn minimum',
+        "nozzle_to_shell_outside",
+        "fillet",
+        "0.7 × tn minimum",
         false,
         null,
-        'Primary structural weld',
+        "Primary structural weld",
       ],
+      ["nozzle_to_shell_inside", "seal", "seal weld", false, null, "If accessible"],
+      ["slip_on_flange_inside", "fillet", "tn or Tf (lesser)", false, null, "Inside flange weld"],
+      ["slip_on_flange_outside", "fillet", "tn or Tf (lesser)", false, null, "Outside flange weld"],
+      ["weld_neck_to_nozzle", "groove", "full penetration", true, 19.0, "PWHT if >19mm"],
       [
-        'nozzle_to_shell_inside',
-        'seal',
-        'seal weld',
+        "reinforcing_pad_to_shell",
+        "fillet",
+        "pad thickness",
         false,
         null,
-        'If accessible',
-      ],
-      [
-        'slip_on_flange_inside',
-        'fillet',
-        'tn or Tf (lesser)',
-        false,
-        null,
-        'Inside flange weld',
-      ],
-      [
-        'slip_on_flange_outside',
-        'fillet',
-        'tn or Tf (lesser)',
-        false,
-        null,
-        'Outside flange weld',
-      ],
-      [
-        'weld_neck_to_nozzle',
-        'groove',
-        'full penetration',
-        true,
-        19.0,
-        'PWHT if >19mm',
-      ],
-      [
-        'reinforcing_pad_to_shell',
-        'fillet',
-        'pad thickness',
-        false,
-        null,
-        'Continuous fillet weld',
+        "Continuous fillet weld",
       ],
     ];
 
-    for (const [
-      location,
-      weldType,
-      throatBasis,
-      fullPen,
-      pwht,
-      notes,
-    ] of weldReqs) {
+    for (const [location, weldType, throatBasis, fullPen, pwht, notes] of weldReqs) {
       await queryRunner.query(
         `
         INSERT INTO tank_weld_requirements (weld_location, weld_type, min_throat_basis, full_penetration_required, pwht_threshold_mm, notes)
@@ -802,19 +536,19 @@ export class AddApi650TankData1777800000001 implements MigrationInterface {
       );
     }
 
-    console.warn('API 650 tank construction data added successfully');
+    console.warn("API 650 tank construction data added successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_weld_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_roof_column_specs`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_drain_requirements`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_pipe_specs`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_material_groups`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_nozzle_dimensions`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_manhole_specs`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_nozzle_tolerances`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_flange_types`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tank_nozzle_types`);
+    await queryRunner.query("DROP TABLE IF EXISTS tank_weld_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS tank_roof_column_specs");
+    await queryRunner.query("DROP TABLE IF EXISTS tank_drain_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS tank_pipe_specs");
+    await queryRunner.query("DROP TABLE IF EXISTS tank_material_groups");
+    await queryRunner.query("DROP TABLE IF EXISTS tank_nozzle_dimensions");
+    await queryRunner.query("DROP TABLE IF EXISTS tank_manhole_specs");
+    await queryRunner.query("DROP TABLE IF EXISTS tank_nozzle_tolerances");
+    await queryRunner.query("DROP TABLE IF EXISTS tank_flange_types");
+    await queryRunner.query("DROP TABLE IF EXISTS tank_nozzle_types");
   }
 }

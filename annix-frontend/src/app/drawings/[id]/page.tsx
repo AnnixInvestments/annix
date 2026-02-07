@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
-import { useToast } from '@/app/components/Toast';
-import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
+import { useParams, useRouter } from "next/navigation";
+import React, { useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import { formatDateTimeZA, nowISO } from "@/app/lib/datetime";
+import type { AnalysisResult } from "@/app/lib/query/hooks";
 import {
-  useDrawingDetail,
-  useDrawingComments,
   useAddDrawingComment,
-  useUploadDrawingVersion,
-  useSubmitDrawingForReview,
   useAnalyzeDrawing,
-} from '@/app/lib/query/hooks';
-import type { AnalysisResult } from '@/app/lib/query/hooks';
+  useDrawingComments,
+  useDrawingDetail,
+  useSubmitDrawingForReview,
+  useUploadDrawingVersion,
+} from "@/app/lib/query/hooks";
+import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
 
 export default function DrawingDetailPage() {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function DrawingDetailPage() {
   const submitForReviewMutation = useSubmitDrawingForReview(drawingId);
   const analyzeMutation = useAnalyzeDrawing(drawingId);
 
-  const [newComment, setNewComment] = useState('');
+  const [newComment, setNewComment] = useState("");
   const [showVersionModal, setShowVersionModal] = useState(false);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -46,31 +46,31 @@ export default function DrawingDetailPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Download failed');
+        throw new Error("Download failed");
       }
 
       const blob = await response.blob();
       const filename =
-        response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') ||
+        response.headers.get("Content-Disposition")?.split("filename=")[1]?.replace(/"/g, "") ||
         drawing?.originalFilename ||
-        'download';
+        "download";
 
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = filename;
       link.click();
       URL.revokeObjectURL(link.href);
     } catch (err) {
-      showToast('Download failed', 'error');
+      showToast("Download failed", "error");
     }
   };
 
   const handleSubmitForReview = async () => {
     try {
       await submitForReviewMutation.mutateAsync();
-      showToast('Drawing submitted for review', 'success');
+      showToast("Drawing submitted for review", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to submit', 'error');
+      showToast(err instanceof Error ? err.message : "Failed to submit", "error");
     }
   };
 
@@ -80,9 +80,9 @@ export default function DrawingDetailPage() {
 
     try {
       await addCommentMutation.mutateAsync(newComment);
-      setNewComment('');
+      setNewComment("");
     } catch (err) {
-      showToast('Failed to add comment', 'error');
+      showToast("Failed to add comment", "error");
     }
   };
 
@@ -90,9 +90,9 @@ export default function DrawingDetailPage() {
     try {
       await uploadVersionMutation.mutateAsync({ file, changeNotes });
       setShowVersionModal(false);
-      showToast('New version uploaded successfully', 'success');
+      showToast("New version uploaded successfully", "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Upload failed', 'error');
+      showToast(err instanceof Error ? err.message : "Upload failed", "error");
     }
   };
 
@@ -107,11 +107,11 @@ export default function DrawingDetailPage() {
       setAnalysisResult({
         success: false,
         components: [],
-        errors: [err instanceof Error ? err.message : 'Analysis failed'],
+        errors: [err instanceof Error ? err.message : "Analysis failed"],
         warnings: [],
         metadata: {
           pageCount: 0,
-          extractionMethod: 'none',
+          extractionMethod: "none",
           analysisTimestamp: nowISO(),
         },
       });
@@ -120,20 +120,20 @@ export default function DrawingDetailPage() {
 
   const statusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'under_review':
-        return 'bg-blue-100 text-blue-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'changes_requested':
-        return 'bg-orange-100 text-orange-800';
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "submitted":
+        return "bg-yellow-100 text-yellow-800";
+      case "under_review":
+        return "bg-blue-100 text-blue-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
+      case "changes_requested":
+        return "bg-orange-100 text-orange-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -163,9 +163,11 @@ export default function DrawingDetailPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error instanceof Error ? error.message : 'Drawing not found'}</p>
+          <p className="text-gray-600 mb-6">
+            {error instanceof Error ? error.message : "Drawing not found"}
+          </p>
           <button
-            onClick={() => router.push('/drawings')}
+            onClick={() => router.push("/drawings")}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Back to Drawings
@@ -175,8 +177,8 @@ export default function DrawingDetailPage() {
     );
   }
 
-  const canSubmit = drawing.status === 'draft' || drawing.status === 'changes_requested';
-  const canUploadVersion = drawing.status !== 'approved';
+  const canSubmit = drawing.status === "draft" || drawing.status === "changes_requested";
+  const canUploadVersion = drawing.status !== "approved";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
@@ -184,7 +186,7 @@ export default function DrawingDetailPage() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => router.push('/drawings')}
+            onClick={() => router.push("/drawings")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <span>←</span>
@@ -197,10 +199,10 @@ export default function DrawingDetailPage() {
                 <h1 className="text-3xl font-bold text-gray-900">{drawing.drawingNumber}</h1>
                 <span
                   className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor(
-                    drawing.status
+                    drawing.status,
                   )}`}
                 >
-                  {drawing.status.replace('_', ' ').toUpperCase()}
+                  {drawing.status.replace("_", " ").toUpperCase()}
                 </span>
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
                   v{drawing.currentVersion}
@@ -338,7 +340,7 @@ export default function DrawingDetailPage() {
                     disabled={!newComment.trim() || addCommentMutation.isPending}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
                   >
-                    {addCommentMutation.isPending ? 'Posting...' : 'Post Comment'}
+                    {addCommentMutation.isPending ? "Posting..." : "Post Comment"}
                   </button>
                 </div>
               </form>
@@ -380,7 +382,7 @@ export default function DrawingDetailPage() {
                 >
                   <span>📥</span> Download Current Version
                 </button>
-                {drawing.mimeType === 'application/pdf' && (
+                {drawing.mimeType === "application/pdf" && (
                   <button
                     onClick={handleAnalyzeDrawing}
                     disabled={analyzeMutation.isPending}
@@ -423,7 +425,7 @@ export default function DrawingDetailPage() {
               <div
                 className={`p-4 rounded-lg ${statusColor(drawing.status)} text-center font-semibold`}
               >
-                {drawing.status.replace('_', ' ').toUpperCase()}
+                {drawing.status.replace("_", " ").toUpperCase()}
               </div>
               <p className="text-sm text-gray-500 text-center mt-2">
                 Last updated: {formatDate(drawing.updatedAt)}
@@ -462,7 +464,9 @@ export default function DrawingDetailPage() {
                   <div className="text-center py-12">
                     <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-gray-600 text-lg">Analyzing PDF drawing...</p>
-                    <p className="text-sm text-gray-500 mt-2">Extracting components and dimensions</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Extracting components and dimensions
+                    </p>
                   </div>
                 ) : analysisResult ? (
                   <div className="space-y-6">
@@ -495,18 +499,18 @@ export default function DrawingDetailPage() {
                       <h3 className="font-semibold text-gray-900 mb-2">Document Info</h3>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="text-gray-500">Pages:</span>{' '}
+                          <span className="text-gray-500">Pages:</span>{" "}
                           <span className="text-gray-900">{analysisResult.metadata.pageCount}</span>
                         </div>
                         {analysisResult.drawingNumber && (
                           <div>
-                            <span className="text-gray-500">Drawing #:</span>{' '}
+                            <span className="text-gray-500">Drawing #:</span>{" "}
                             <span className="text-gray-900">{analysisResult.drawingNumber}</span>
                           </div>
                         )}
                         {analysisResult.projectName && (
                           <div className="col-span-2">
-                            <span className="text-gray-500">Project:</span>{' '}
+                            <span className="text-gray-500">Project:</span>{" "}
                             <span className="text-gray-900">{analysisResult.projectName}</span>
                           </div>
                         )}
@@ -520,7 +524,9 @@ export default function DrawingDetailPage() {
                       </h3>
                       {analysisResult.components.length === 0 ? (
                         <div className="text-center py-8 bg-gray-50 rounded-lg">
-                          <p className="text-gray-500">No components could be extracted from this drawing.</p>
+                          <p className="text-gray-500">
+                            No components could be extracted from this drawing.
+                          </p>
                           <p className="text-sm text-gray-400 mt-2">
                             This may be a scanned document or the format is not recognized.
                           </p>
@@ -531,11 +537,11 @@ export default function DrawingDetailPage() {
                             <div
                               key={index}
                               className={`p-4 rounded-lg border ${
-                                comp.confidence === 'high'
-                                  ? 'bg-green-50 border-green-200'
-                                  : comp.confidence === 'medium'
-                                  ? 'bg-blue-50 border-blue-200'
-                                  : 'bg-gray-50 border-gray-200'
+                                comp.confidence === "high"
+                                  ? "bg-green-50 border-green-200"
+                                  : comp.confidence === "medium"
+                                    ? "bg-blue-50 border-blue-200"
+                                    : "bg-gray-50 border-gray-200"
                               }`}
                             >
                               <div className="flex items-start justify-between">
@@ -548,11 +554,11 @@ export default function DrawingDetailPage() {
                                     )}
                                     <span
                                       className={`px-2 py-0.5 text-xs rounded ${
-                                        comp.confidence === 'high'
-                                          ? 'bg-green-200 text-green-800'
-                                          : comp.confidence === 'medium'
-                                          ? 'bg-blue-200 text-blue-800'
-                                          : 'bg-gray-200 text-gray-600'
+                                        comp.confidence === "high"
+                                          ? "bg-green-200 text-green-800"
+                                          : comp.confidence === "medium"
+                                            ? "bg-blue-200 text-blue-800"
+                                            : "bg-gray-200 text-gray-600"
                                       }`}
                                     >
                                       {comp.confidence} confidence
@@ -561,9 +567,13 @@ export default function DrawingDetailPage() {
                                   <p className="font-medium text-gray-900">{comp.description}</p>
                                   <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-600">
                                     {comp.quantity && (
-                                      <span>Qty: {comp.quantity} {comp.unit}</span>
+                                      <span>
+                                        Qty: {comp.quantity} {comp.unit}
+                                      </span>
                                     )}
-                                    {comp.materialType && <span>Material: {comp.materialType}</span>}
+                                    {comp.materialType && (
+                                      <span>Material: {comp.materialType}</span>
+                                    )}
                                     {comp.dimensions?.diameter && (
                                       <span>Dia: {comp.dimensions.diameter}</span>
                                     )}
@@ -618,7 +628,7 @@ function UploadVersionModal({
   uploading: boolean;
 }) {
   const [file, setFile] = useState<File | null>(null);
-  const [changeNotes, setChangeNotes] = useState('');
+  const [changeNotes, setChangeNotes] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -670,7 +680,7 @@ function UploadVersionModal({
               disabled={!file || uploading}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
             >
-              {uploading ? 'Uploading...' : 'Upload'}
+              {uploading ? "Uploading..." : "Upload"}
             </button>
           </div>
         </form>

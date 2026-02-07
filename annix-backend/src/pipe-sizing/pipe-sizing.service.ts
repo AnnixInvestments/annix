@@ -1,18 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import {
-  PipeSteelGrade,
-  PipeAllowableStress,
-} from './entities/steel-grade-stress.entity';
-import {
-  PipeScheduleWall,
-  PipeNpsOd,
-} from './entities/pipe-schedule-wall.entity';
-import {
-  CalculatePipeThicknessDto,
-  PipeThicknessResultDto,
-} from './dto/pipe-sizing.dto';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CalculatePipeThicknessDto, PipeThicknessResultDto } from "./dto/pipe-sizing.dto";
+import { PipeNpsOd, PipeScheduleWall } from "./entities/pipe-schedule-wall.entity";
+import { PipeAllowableStress, PipeSteelGrade } from "./entities/steel-grade-stress.entity";
 
 @Injectable()
 export class PipeSizingService {
@@ -39,7 +30,7 @@ export class PipeSizingService {
   // Get all steel grades
   async getAllSteelGrades(): Promise<PipeSteelGrade[]> {
     return this.gradeRepo.find({
-      order: { code: 'ASC' },
+      order: { code: "ASC" },
     });
   }
 
@@ -51,7 +42,7 @@ export class PipeSizingService {
   // Get all NPS values with OD
   async getAllNpsOd(): Promise<PipeNpsOd[]> {
     return this.npsOdRepo.find({
-      order: { odInch: 'ASC' },
+      order: { odInch: "ASC" },
     });
   }
 
@@ -59,15 +50,12 @@ export class PipeSizingService {
   async getSchedulesForNps(nps: string): Promise<PipeScheduleWall[]> {
     return this.scheduleWallRepo.find({
       where: { nps },
-      order: { wallThicknessInch: 'ASC' },
+      order: { wallThicknessInch: "ASC" },
     });
   }
 
   // Get allowable stress for material at temperature (with interpolation)
-  async getAllowableStress(
-    materialCode: string,
-    tempF: number,
-  ): Promise<number | null> {
+  async getAllowableStress(materialCode: string, tempF: number): Promise<number | null> {
     // First, check if this grade has an equivalent
     const grade = await this.gradeRepo.findOne({
       where: { code: materialCode },
@@ -86,7 +74,7 @@ export class PipeSizingService {
     // Get stress data for this grade
     const stressData = await this.stressRepo.find({
       where: { gradeId: actualGrade.id },
-      order: { temperatureF: 'ASC' },
+      order: { temperatureF: "ASC" },
     });
 
     if (stressData.length === 0) return null;
@@ -129,7 +117,7 @@ export class PipeSizingService {
   ): Promise<{ schedule: string; wallInch: number; warning?: string } | null> {
     const schedules = await this.scheduleWallRepo.find({
       where: { nps },
-      order: { wallThicknessInch: 'ASC' },
+      order: { wallThicknessInch: "ASC" },
     });
 
     if (schedules.length === 0) return null;
@@ -150,14 +138,12 @@ export class PipeSizingService {
     return {
       schedule: maxSch.schedule,
       wallInch: Number(maxSch.wallThicknessInch),
-      warning: 'Required thickness exceeds maximum standard schedule',
+      warning: "Required thickness exceeds maximum standard schedule",
     };
   }
 
   // Main calculation: Calculate pipe thickness per ASME B31.3
-  async calculatePipeThickness(
-    dto: CalculatePipeThicknessDto,
-  ): Promise<PipeThicknessResultDto> {
+  async calculatePipeThickness(dto: CalculatePipeThicknessDto): Promise<PipeThicknessResultDto> {
     const {
       pressureBar,
       temperatureC,
@@ -217,9 +203,7 @@ export class PipeSizingService {
         result.scheduleWallInch = Math.round(wallInch * 1000) / 1000;
         result.scheduleWallMm = Math.round(wallInch * 25.4 * 100) / 100;
         result.isAdequate = wallInch >= tMInch;
-        result.adequacyMessage = result.isAdequate
-          ? 'Adequate'
-          : 'TOO THIN - Risk of failure';
+        result.adequacyMessage = result.isAdequate ? "Adequate" : "TOO THIN - Risk of failure";
       }
     }
 
@@ -227,10 +211,8 @@ export class PipeSizingService {
     const recommended = await this.getNextSuitableSchedule(nps, tMInch);
     if (recommended) {
       result.recommendedSchedule = recommended.schedule;
-      result.recommendedWallInch =
-        Math.round(recommended.wallInch * 1000) / 1000;
-      result.recommendedWallMm =
-        Math.round(recommended.wallInch * 25.4 * 100) / 100;
+      result.recommendedWallInch = Math.round(recommended.wallInch * 1000) / 1000;
+      result.recommendedWallMm = Math.round(recommended.wallInch * 25.4 * 100) / 100;
       if (recommended.warning) {
         result.scheduleWarning = recommended.warning;
       }
@@ -239,16 +221,14 @@ export class PipeSizingService {
     // Add creep warning for high temperatures
     if (tempF > 700) {
       result.notes +=
-        ' WARNING: Temperature > 700°F (370°C) - consider creep effects and use alloy steels.';
+        " WARNING: Temperature > 700°F (370°C) - consider creep effects and use alloy steels.";
     }
 
     return result;
   }
 
   // Get all stress data for a material
-  async getStressTableForMaterial(
-    materialCode: string,
-  ): Promise<PipeAllowableStress[]> {
+  async getStressTableForMaterial(materialCode: string): Promise<PipeAllowableStress[]> {
     const grade = await this.gradeRepo.findOne({
       where: { code: materialCode },
     });
@@ -265,7 +245,7 @@ export class PipeSizingService {
 
     return this.stressRepo.find({
       where: { gradeId: actualGrade.id },
-      order: { temperatureF: 'ASC' },
+      order: { temperatureF: "ASC" },
     });
   }
 }

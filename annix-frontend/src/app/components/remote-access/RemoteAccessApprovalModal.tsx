@@ -1,11 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import {
-  remoteAccessApi,
-  type RemoteAccessRequestResponse,
-} from '@/app/lib/api/remoteAccessApi';
-import { formatDateTime } from '@/app/lib/datetime';
+import { useState } from "react";
+import { type RemoteAccessRequestResponse, remoteAccessApi } from "@/app/lib/api/remoteAccessApi";
+import { formatDateTime } from "@/app/lib/datetime";
 
 interface RemoteAccessApprovalModalProps {
   isOpen: boolean;
@@ -20,7 +17,7 @@ export default function RemoteAccessApprovalModal({
   request,
   onResponded,
 }: RemoteAccessApprovalModalProps) {
-  const [denialReason, setDenialReason] = useState('');
+  const [denialReason, setDenialReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +33,7 @@ export default function RemoteAccessApprovalModal({
       onResponded();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to respond to request');
+      setError(err instanceof Error ? err.message : "Failed to respond to request");
     } finally {
       setIsSubmitting(false);
     }
@@ -46,15 +43,12 @@ export default function RemoteAccessApprovalModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-300">
         <div
           className="px-8 py-6 flex flex-col items-center"
-          style={{ backgroundColor: '#323288' }}
+          style={{ backgroundColor: "#323288" }}
         >
           <h1 className="text-xl font-bold text-white">Remote Access Request</h1>
         </div>
@@ -85,7 +79,7 @@ export default function RemoteAccessApprovalModal({
               <div>
                 <span className="text-sm text-gray-500">Requested by:</span>
                 <p className="font-medium text-gray-900">
-                  {request.requestedBy?.name || request.requestedBy?.email || 'Unknown'}
+                  {request.requestedBy?.name || request.requestedBy?.email || "Unknown"}
                 </p>
               </div>
               <div>
@@ -102,15 +96,11 @@ export default function RemoteAccessApprovalModal({
               </div>
               <div>
                 <span className="text-sm text-gray-500">Requested at:</span>
-                <p className="font-medium text-gray-900">
-                  {formatDateTime(request.requestedAt)}
-                </p>
+                <p className="font-medium text-gray-900">{formatDateTime(request.requestedAt)}</p>
               </div>
               <div>
                 <span className="text-sm text-gray-500">Expires:</span>
-                <p className="font-medium text-gray-900">
-                  {formatDateTime(request.expiresAt)}
-                </p>
+                <p className="font-medium text-gray-900">{formatDateTime(request.expiresAt)}</p>
               </div>
             </div>
           </div>
@@ -148,23 +138,20 @@ export default function RemoteAccessApprovalModal({
               disabled={isSubmitting}
               className="flex-1 py-2 px-4 border border-red-300 rounded-lg font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
             >
-              {isSubmitting ? 'Processing...' : 'Deny'}
+              {isSubmitting ? "Processing..." : "Deny"}
             </button>
             <button
               onClick={() => handleRespond(true)}
               disabled={isSubmitting}
               className="flex-1 py-2 px-4 rounded-lg font-medium text-white transition-all duration-200 hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: '#16a34a' }}
+              style={{ backgroundColor: "#16a34a" }}
             >
-              {isSubmitting ? 'Processing...' : 'Approve'}
+              {isSubmitting ? "Processing..." : "Approve"}
             </button>
           </div>
         </div>
 
-        <div
-          className="h-1.5"
-          style={{ backgroundColor: '#FFA500' }}
-        />
+        <div className="h-1.5" style={{ backgroundColor: "#FFA500" }} />
       </div>
     </div>
   );

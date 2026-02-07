@@ -1,42 +1,33 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Inject,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere } from 'typeorm';
-import { now } from '../lib/datetime';
-import {
-  Drawing,
-  DrawingStatus,
-  DrawingFileType,
-} from './entities/drawing.entity';
-import { DrawingVersion } from './entities/drawing-version.entity';
-import { DrawingComment, CommentType } from './entities/drawing-comment.entity';
-import { CreateDrawingDto } from './dto/create-drawing.dto';
-import { UpdateDrawingDto } from './dto/update-drawing.dto';
-import { UploadVersionDto } from './dto/upload-version.dto';
-import { CreateDrawingCommentDto } from './dto/create-drawing-comment.dto';
-import { DrawingQueryDto } from './dto/drawing-query.dto';
-import { User } from '../user/entities/user.entity';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/entities/audit-log.entity';
-import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
-import { PaginatedResponse } from '../shared/dto';
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { FindOptionsWhere, Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
+import { now } from "../lib/datetime";
+import { PaginatedResponse } from "../shared/dto";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
+import { User } from "../user/entities/user.entity";
+import { CreateDrawingDto } from "./dto/create-drawing.dto";
+import { CreateDrawingCommentDto } from "./dto/create-drawing-comment.dto";
+import { DrawingQueryDto } from "./dto/drawing-query.dto";
+import { UpdateDrawingDto } from "./dto/update-drawing.dto";
+import { UploadVersionDto } from "./dto/upload-version.dto";
+import { Drawing, DrawingFileType, DrawingStatus } from "./entities/drawing.entity";
+import { CommentType, DrawingComment } from "./entities/drawing-comment.entity";
+import { DrawingVersion } from "./entities/drawing-version.entity";
 
 export type PaginatedResult<T> = PaginatedResponse<T>;
 
 const ALLOWED_MIME_TYPES: Record<string, DrawingFileType> = {
-  'application/pdf': DrawingFileType.PDF,
-  'image/png': DrawingFileType.PNG,
-  'image/jpeg': DrawingFileType.JPG,
-  'image/jpg': DrawingFileType.JPG,
-  'application/acad': DrawingFileType.DWG,
-  'application/x-acad': DrawingFileType.DWG,
-  'application/dxf': DrawingFileType.DXF,
-  'application/x-dxf': DrawingFileType.DXF,
-  'application/octet-stream': DrawingFileType.DWG, // CAD files often come as this
+  "application/pdf": DrawingFileType.PDF,
+  "image/png": DrawingFileType.PNG,
+  "image/jpeg": DrawingFileType.JPG,
+  "image/jpg": DrawingFileType.JPG,
+  "application/acad": DrawingFileType.DWG,
+  "application/x-acad": DrawingFileType.DWG,
+  "application/dxf": DrawingFileType.DXF,
+  "application/x-dxf": DrawingFileType.DXF,
+  "application/octet-stream": DrawingFileType.DWG, // CAD files often come as this
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -57,15 +48,15 @@ export class DrawingsService {
 
   private validateFile(file: Express.Multer.File): DrawingFileType {
     if (file.size > MAX_FILE_SIZE) {
-      throw new BadRequestException('File size exceeds 50MB limit');
+      throw new BadRequestException("File size exceeds 50MB limit");
     }
 
     // Check by extension if mime type is generic
-    const ext = file.originalname.split('.').pop()?.toLowerCase();
+    const ext = file.originalname.split(".").pop()?.toLowerCase();
 
-    if (file.mimetype === 'application/octet-stream') {
-      if (ext === 'dwg') return DrawingFileType.DWG;
-      if (ext === 'dxf') return DrawingFileType.DXF;
+    if (file.mimetype === "application/octet-stream") {
+      if (ext === "dwg") return DrawingFileType.DWG;
+      if (ext === "dxf") return DrawingFileType.DXF;
     }
 
     const fileType = ALLOWED_MIME_TYPES[file.mimetype];
@@ -84,9 +75,7 @@ export class DrawingsService {
         return extTypes[ext];
       }
 
-      throw new BadRequestException(
-        'Invalid file type. Supported: PDF, DWG, DXF, PNG, JPG',
-      );
+      throw new BadRequestException("Invalid file type. Supported: PDF, DWG, DXF, PNG, JPG");
     }
 
     return fileType;
@@ -97,21 +86,18 @@ export class DrawingsService {
     const prefix = `DRW-${year}-`;
 
     const lastDrawing = await this.drawingRepository
-      .createQueryBuilder('drawing')
-      .where('drawing.drawing_number LIKE :prefix', { prefix: `${prefix}%` })
-      .orderBy('drawing.drawing_number', 'DESC')
+      .createQueryBuilder("drawing")
+      .where("drawing.drawing_number LIKE :prefix", { prefix: `${prefix}%` })
+      .orderBy("drawing.drawing_number", "DESC")
       .getOne();
 
     let nextNumber = 1;
     if (lastDrawing) {
-      const lastNumber = parseInt(
-        lastDrawing.drawingNumber.replace(prefix, ''),
-        10,
-      );
+      const lastNumber = parseInt(lastDrawing.drawingNumber.replace(prefix, ""), 10);
       nextNumber = lastNumber + 1;
     }
 
-    return `${prefix}${String(nextNumber).padStart(4, '0')}`;
+    return `${prefix}${String(nextNumber).padStart(4, "0")}`;
   }
 
   async uploadDrawing(
@@ -125,7 +111,7 @@ export class DrawingsService {
     // Upload file
     const currentDate = now();
     const year = currentDate.year;
-    const month = String(currentDate.month).padStart(2, '0');
+    const month = String(currentDate.month).padStart(2, "0");
     const subPath = `drawings/${year}/${month}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
@@ -154,14 +140,14 @@ export class DrawingsService {
       filePath: storageResult.path,
       originalFilename: storageResult.originalFilename,
       fileSizeBytes: storageResult.size,
-      changeNotes: 'Initial upload',
+      changeNotes: "Initial upload",
       uploadedBy: user,
     });
     await this.versionRepository.save(version);
 
     // Audit log
     await this.auditService.log({
-      entityType: 'drawing',
+      entityType: "drawing",
       entityId: savedDrawing.id,
       action: AuditAction.CREATE,
       newValues: {
@@ -185,16 +171,14 @@ export class DrawingsService {
     const drawing = await this.findOne(drawingId);
 
     if (drawing.status === DrawingStatus.APPROVED) {
-      throw new BadRequestException(
-        'Cannot upload new version for approved drawing',
-      );
+      throw new BadRequestException("Cannot upload new version for approved drawing");
     }
 
     this.validateFile(file);
 
     const currentDate = now();
     const year = currentDate.year;
-    const month = String(currentDate.month).padStart(2, '0');
+    const month = String(currentDate.month).padStart(2, "0");
     const subPath = `drawings/${year}/${month}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
@@ -223,7 +207,7 @@ export class DrawingsService {
 
     // Audit log
     await this.auditService.log({
-      entityType: 'drawing',
+      entityType: "drawing",
       entityId: drawing.id,
       action: AuditAction.UPLOAD,
       newValues: {
@@ -257,40 +241,37 @@ export class DrawingsService {
     const skip = (page - 1) * limit;
 
     let queryBuilder = this.drawingRepository
-      .createQueryBuilder('drawing')
-      .leftJoinAndSelect('drawing.uploadedBy', 'uploadedBy')
-      .leftJoinAndSelect('drawing.rfq', 'rfq');
+      .createQueryBuilder("drawing")
+      .leftJoinAndSelect("drawing.uploadedBy", "uploadedBy")
+      .leftJoinAndSelect("drawing.rfq", "rfq");
 
     if (query.status) {
-      queryBuilder = queryBuilder.andWhere('drawing.status = :status', {
+      queryBuilder = queryBuilder.andWhere("drawing.status = :status", {
         status: query.status,
       });
     }
 
     if (query.rfqId) {
-      queryBuilder = queryBuilder.andWhere('drawing.rfq_id = :rfqId', {
+      queryBuilder = queryBuilder.andWhere("drawing.rfq_id = :rfqId", {
         rfqId: query.rfqId,
       });
     }
 
     if (query.uploadedByUserId) {
-      queryBuilder = queryBuilder.andWhere(
-        'drawing.uploaded_by_user_id = :userId',
-        {
-          userId: query.uploadedByUserId,
-        },
-      );
+      queryBuilder = queryBuilder.andWhere("drawing.uploaded_by_user_id = :userId", {
+        userId: query.uploadedByUserId,
+      });
     }
 
     if (query.search) {
       queryBuilder = queryBuilder.andWhere(
-        '(drawing.title ILIKE :search OR drawing.description ILIKE :search OR drawing.drawing_number ILIKE :search)',
+        "(drawing.title ILIKE :search OR drawing.description ILIKE :search OR drawing.drawing_number ILIKE :search)",
         { search: `%${query.search}%` },
       );
     }
 
     const [data, total] = await queryBuilder
-      .orderBy('drawing.updated_at', 'DESC')
+      .orderBy("drawing.updated_at", "DESC")
       .skip(skip)
       .take(limit)
       .getManyAndCount();
@@ -307,7 +288,7 @@ export class DrawingsService {
   async findOne(id: number): Promise<Drawing> {
     const drawing = await this.drawingRepository.findOne({
       where: { id },
-      relations: ['uploadedBy', 'rfq', 'versions', 'versions.uploadedBy'],
+      relations: ["uploadedBy", "rfq", "versions", "versions.uploadedBy"],
     });
 
     if (!drawing) {
@@ -317,15 +298,11 @@ export class DrawingsService {
     return drawing;
   }
 
-  async update(
-    id: number,
-    dto: UpdateDrawingDto,
-    user: User,
-  ): Promise<Drawing> {
+  async update(id: number, dto: UpdateDrawingDto, user: User): Promise<Drawing> {
     const drawing = await this.findOne(id);
 
     if (drawing.status === DrawingStatus.APPROVED) {
-      throw new BadRequestException('Cannot modify approved drawing');
+      throw new BadRequestException("Cannot modify approved drawing");
     }
 
     const oldValues = {
@@ -342,7 +319,7 @@ export class DrawingsService {
     await this.drawingRepository.save(drawing);
 
     await this.auditService.log({
-      entityType: 'drawing',
+      entityType: "drawing",
       entityId: drawing.id,
       action: AuditAction.UPDATE,
       oldValues,
@@ -357,11 +334,11 @@ export class DrawingsService {
     const drawing = await this.findOne(id);
 
     if (drawing.status === DrawingStatus.APPROVED) {
-      throw new BadRequestException('Cannot delete approved drawing');
+      throw new BadRequestException("Cannot delete approved drawing");
     }
 
     await this.auditService.log({
-      entityType: 'drawing',
+      entityType: "drawing",
       entityId: drawing.id,
       action: AuditAction.DELETE,
       oldValues: {
@@ -379,8 +356,8 @@ export class DrawingsService {
 
     return this.versionRepository.find({
       where: { drawing: { id: drawing.id } },
-      relations: ['uploadedBy'],
-      order: { versionNumber: 'DESC' },
+      relations: ["uploadedBy"],
+      order: { versionNumber: "DESC" },
     });
   }
 
@@ -411,7 +388,7 @@ export class DrawingsService {
 
     if (user) {
       await this.auditService.log({
-        entityType: 'drawing',
+        entityType: "drawing",
         entityId: id,
         action: AuditAction.DOWNLOAD,
         newValues: { version: version || drawing.currentVersion },
@@ -438,15 +415,13 @@ export class DrawingsService {
       positionX: dto.positionX,
       positionY: dto.positionY,
       pageNumber: dto.pageNumber,
-      parentComment: dto.parentCommentId
-        ? ({ id: dto.parentCommentId } as any)
-        : undefined,
+      parentComment: dto.parentCommentId ? ({ id: dto.parentCommentId } as any) : undefined,
     });
 
     const savedComment = await this.commentRepository.save(comment);
 
     await this.auditService.log({
-      entityType: 'drawing',
+      entityType: "drawing",
       entityId: drawingId,
       action: AuditAction.ADD_COMMENT,
       newValues: {
@@ -464,15 +439,15 @@ export class DrawingsService {
 
     return this.commentRepository.find({
       where: { drawing: { id: drawingId } },
-      relations: ['user', 'parentComment'],
-      order: { createdAt: 'ASC' },
+      relations: ["user", "parentComment"],
+      order: { createdAt: "ASC" },
     });
   }
 
   async resolveComment(commentId: number, user: User): Promise<DrawingComment> {
     const comment = await this.commentRepository.findOne({
       where: { id: commentId },
-      relations: ['drawing'],
+      relations: ["drawing"],
     });
 
     if (!comment) {
@@ -483,7 +458,7 @@ export class DrawingsService {
     const updatedComment = await this.commentRepository.save(comment);
 
     await this.auditService.log({
-      entityType: 'drawing',
+      entityType: "drawing",
       entityId: comment.drawing.id,
       action: AuditAction.RESOLVE_COMMENT,
       newValues: { commentId },

@@ -1,125 +1,144 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  OneToOne,
-  OneToMany,
+  Entity,
   JoinColumn,
-} from 'typeorm';
-import { User } from '../../user/entities/user.entity';
-import { SupplierCompany } from './supplier-company.entity';
-import { SupplierDeviceBinding } from './supplier-device-binding.entity';
-import { SupplierSession } from './supplier-session.entity';
-import { SupplierLoginAttempt } from './supplier-login-attempt.entity';
-import { SupplierOnboarding } from './supplier-onboarding.entity';
-import { SupplierDocument } from './supplier-document.entity';
-import { SupplierCapability } from './supplier-capability.entity';
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
+import { User } from "../../user/entities/user.entity";
+import { SupplierCapability } from "./supplier-capability.entity";
+import { SupplierCompany } from "./supplier-company.entity";
+import { SupplierDeviceBinding } from "./supplier-device-binding.entity";
+import { SupplierDocument } from "./supplier-document.entity";
+import { SupplierLoginAttempt } from "./supplier-login-attempt.entity";
+import { SupplierOnboarding } from "./supplier-onboarding.entity";
+import { SupplierSession } from "./supplier-session.entity";
 
 export enum SupplierAccountStatus {
-  PENDING = 'pending',
-  ACTIVE = 'active',
-  SUSPENDED = 'suspended',
-  DEACTIVATED = 'deactivated',
+  PENDING = "pending",
+  ACTIVE = "active",
+  SUSPENDED = "suspended",
+  DEACTIVATED = "deactivated",
 }
 
-@Entity('supplier_profiles')
+@Entity("supplier_profiles")
 export class SupplierProfile {
   @PrimaryGeneratedColumn()
   id: number;
 
   // Links to existing User entity (one-to-one)
   @OneToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: "user_id" })
   user: User;
 
-  @Column({ name: 'user_id' })
+  @Column({ name: "user_id" })
   userId: number;
 
   // Links to SupplierCompany (many-to-one, nullable for initial registration)
-  @ManyToOne(() => SupplierCompany, (company) => company.profiles, {
-    nullable: true,
-  })
-  @JoinColumn({ name: 'company_id' })
+  @ManyToOne(
+    () => SupplierCompany,
+    (company) => company.profiles,
+    {
+      nullable: true,
+    },
+  )
+  @JoinColumn({ name: "company_id" })
   company: SupplierCompany;
 
-  @Column({ name: 'company_id', nullable: true })
+  @Column({ name: "company_id", nullable: true })
   companyId: number;
 
   // Personal details (nullable for initial registration)
-  @Column({ name: 'first_name', length: 100, nullable: true })
+  @Column({ name: "first_name", length: 100, nullable: true })
   firstName: string;
 
-  @Column({ name: 'last_name', length: 100, nullable: true })
+  @Column({ name: "last_name", length: 100, nullable: true })
   lastName: string;
 
-  @Column({ name: 'job_title', length: 100, nullable: true })
+  @Column({ name: "job_title", length: 100, nullable: true })
   jobTitle: string;
 
-  @Column({ name: 'direct_phone', length: 30, nullable: true })
+  @Column({ name: "direct_phone", length: 30, nullable: true })
   directPhone: string;
 
-  @Column({ name: 'mobile_phone', length: 30, nullable: true })
+  @Column({ name: "mobile_phone", length: 30, nullable: true })
   mobilePhone: string;
 
   // Account status
   @Column({
-    name: 'account_status',
-    type: 'enum',
+    name: "account_status",
+    type: "enum",
     enum: SupplierAccountStatus,
     default: SupplierAccountStatus.PENDING,
   })
   accountStatus: SupplierAccountStatus;
 
   // Email verification
-  @Column({ name: 'email_verified', default: false })
+  @Column({ name: "email_verified", default: false })
   emailVerified: boolean;
 
   @Column({
-    name: 'email_verification_token',
-    type: 'varchar',
+    name: "email_verification_token",
+    type: "varchar",
     length: 500,
     nullable: true,
   })
   emailVerificationToken: string | null;
 
   @Column({
-    name: 'email_verification_expires',
-    type: 'timestamp',
+    name: "email_verification_expires",
+    type: "timestamp",
     nullable: true,
   })
   emailVerificationExpires: Date | null;
 
   // Suspension tracking
-  @Column({ name: 'suspension_reason', type: 'text', nullable: true })
+  @Column({ name: "suspension_reason", type: "text", nullable: true })
   suspensionReason?: string | null;
 
-  @Column({ name: 'suspended_at', type: 'timestamp', nullable: true })
+  @Column({ name: "suspended_at", type: "timestamp", nullable: true })
   suspendedAt?: Date | null;
 
-  @Column({ name: 'suspended_by', type: 'int', nullable: true })
+  @Column({ name: "suspended_by", type: "int", nullable: true })
   suspendedBy?: number | null;
 
   // Device bindings
-  @OneToMany(() => SupplierDeviceBinding, (binding) => binding.supplierProfile)
+  @OneToMany(
+    () => SupplierDeviceBinding,
+    (binding) => binding.supplierProfile,
+  )
   deviceBindings: SupplierDeviceBinding[];
 
   // Sessions
-  @OneToMany(() => SupplierSession, (session) => session.supplierProfile)
+  @OneToMany(
+    () => SupplierSession,
+    (session) => session.supplierProfile,
+  )
   sessions: SupplierSession[];
 
   // Login attempts
-  @OneToMany(() => SupplierLoginAttempt, (attempt) => attempt.supplierProfile)
+  @OneToMany(
+    () => SupplierLoginAttempt,
+    (attempt) => attempt.supplierProfile,
+  )
   loginAttempts: SupplierLoginAttempt[];
 
   // Onboarding
-  @OneToOne(() => SupplierOnboarding, (onboarding) => onboarding.supplier)
+  @OneToOne(
+    () => SupplierOnboarding,
+    (onboarding) => onboarding.supplier,
+  )
   onboarding: SupplierOnboarding;
 
   // Documents
-  @OneToMany(() => SupplierDocument, (document) => document.supplier)
+  @OneToMany(
+    () => SupplierDocument,
+    (document) => document.supplier,
+  )
   documents: SupplierDocument[];
 
   // Capabilities (FR-P7: Product/Service Mapping)
@@ -129,25 +148,25 @@ export class SupplierProfile {
   )
   capabilities: SupplierCapability[];
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  @Column({ name: 'terms_accepted_at', type: 'timestamp', nullable: true })
+  @Column({ name: "terms_accepted_at", type: "timestamp", nullable: true })
   termsAcceptedAt: Date | null;
 
   @Column({
-    name: 'security_policy_accepted_at',
-    type: 'timestamp',
+    name: "security_policy_accepted_at",
+    type: "timestamp",
     nullable: true,
   })
   securityPolicyAcceptedAt: Date | null;
 
   @Column({
-    name: 'document_storage_accepted_at',
-    type: 'timestamp',
+    name: "document_storage_accepted_at",
+    type: "timestamp",
     nullable: true,
   })
   documentStorageAcceptedAt: Date | null;

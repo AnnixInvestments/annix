@@ -1,7 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { CALLOFF_STATUS, CALLOFF_STATUS_OPTIONS, CalloffStatus } from '@/app/lib/config/rubber/calloffStatus';
+import { useState } from "react";
+import {
+  CALLOFF_STATUS,
+  CALLOFF_STATUS_OPTIONS,
+  CalloffStatus,
+} from "@/app/lib/config/rubber/calloffStatus";
 
 interface CalloffInputProps {
   maxQuantity: number;
@@ -11,13 +15,13 @@ interface CalloffInputProps {
 export function CalloffInput({ maxQuantity, onAdd }: CalloffInputProps) {
   const [quantity, setQuantity] = useState(0);
   const [status, setStatus] = useState<CalloffStatus>(CALLOFF_STATUS.REQUESTED);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState("");
 
   const handleAdd = () => {
     if (quantity > 0) {
       onAdd(quantity, status, notes);
       setQuantity(0);
-      setNotes('');
+      setNotes("");
       setStatus(CALLOFF_STATUS.REQUESTED);
     }
   };
@@ -30,7 +34,12 @@ export function CalloffInput({ maxQuantity, onAdd }: CalloffInputProps) {
           className="p-1 text-gray-400 hover:text-gray-600 border rounded"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </button>
         <input

@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateRetainingRingWeightsTable1778000600000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -27,6 +27,6 @@ export class CreateRetainingRingWeightsTable1778000600000 implements MigrationIn
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS retaining_ring_weights`);
+    await queryRunner.query("DROP TABLE IF EXISTS retaining_ring_weights");
   }
 }

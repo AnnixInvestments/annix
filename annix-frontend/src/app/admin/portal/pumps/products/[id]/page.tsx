@@ -1,35 +1,31 @@
-'use client';
+"use client";
 
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import {
-  PUMP_TYPES,
   API_610_PUMP_TYPES,
-  PUMP_SPECIFICATIONS,
-  PUMP_PRICING_TIERS,
   PUMP_MANUFACTURERS,
-} from '@/app/lib/config/pumps';
-import { Breadcrumb } from '../../components/Breadcrumb';
+  PUMP_PRICING_TIERS,
+  PUMP_SPECIFICATIONS,
+  PUMP_TYPES,
+} from "@/app/lib/config/pumps";
+import { Breadcrumb } from "../../components/Breadcrumb";
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
       <dt className="text-sm font-medium text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{value || '-'}</dd>
+      <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{value || "-"}</dd>
     </div>
   );
 }
 
 function PropertyBadge({ label, color }: { label: string; color: string }) {
-  return (
-    <span className={`px-3 py-1 text-sm font-medium rounded-full ${color}`}>
-      {label}
-    </span>
-  );
+  return <span className={`px-3 py-1 text-sm font-medium rounded-full ${color}`}>{label}</span>;
 }
 
 function formatCurrency(value: number): string {
-  return `R ${value.toLocaleString('en-ZA')}`;
+  return `R ${value.toLocaleString("en-ZA")}`;
 }
 
 export default function PumpProductDetailPage() {
@@ -40,19 +36,21 @@ export default function PumpProductDetailPage() {
   const product = PUMP_TYPES.find((t) => t.value === productId);
   const api610Type = API_610_PUMP_TYPES.find((t) =>
     t.typicalApplications.some((app: string) =>
-      product?.label.toLowerCase().includes(app.toLowerCase().split(' ')[0])
-    )
+      product?.label.toLowerCase().includes(app.toLowerCase().split(" ")[0]),
+    ),
   );
 
-  const pricingTier = PUMP_PRICING_TIERS.newPumps.find((tier) =>
-    tier.value.toLowerCase().includes(product?.category.toLowerCase() || '')
-  ) || PUMP_PRICING_TIERS.newPumps[0];
+  const pricingTier =
+    PUMP_PRICING_TIERS.newPumps.find((tier) =>
+      tier.value.toLowerCase().includes(product?.category.toLowerCase() || ""),
+    ) || PUMP_PRICING_TIERS.newPumps[0];
 
   const relevantManufacturers = PUMP_MANUFACTURERS.filter((mfr) =>
-    (mfr.productsOffered ?? []).some((productOffered: string) =>
-      product?.category.toLowerCase().includes(productOffered.toLowerCase()) ||
-      productOffered.toLowerCase().includes(product?.category.toLowerCase() || '')
-    )
+    (mfr.productsOffered ?? []).some(
+      (productOffered: string) =>
+        product?.category.toLowerCase().includes(productOffered.toLowerCase()) ||
+        productOffered.toLowerCase().includes(product?.category.toLowerCase() || ""),
+    ),
   );
 
   if (!product) {
@@ -71,18 +69,23 @@ export default function PumpProductDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: 'Products', href: '/admin/portal/pumps/products' }, { label: product.label }]} />
+      <Breadcrumb
+        items={[
+          { label: "Products", href: "/admin/portal/pumps/products" },
+          { label: product.label },
+        ]}
+      />
 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{product.label}</h1>
           <p className="mt-1 text-sm text-gray-600">
-            {product.category} pump - {product.apiStandard || 'General purpose'}
+            {product.category} pump - {product.apiStandard || "General purpose"}
           </p>
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => router.push('/admin/portal/pumps/products')}
+            onClick={() => router.push("/admin/portal/pumps/products")}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             Back
@@ -92,7 +95,12 @@ export default function PumpProductDetailPage() {
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
             Edit Product
           </button>
@@ -107,13 +115,13 @@ export default function PumpProductDetailPage() {
           <div className="px-6 py-4">
             <div className="flex flex-wrap gap-2">
               <PropertyBadge
-                label={product.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                label={product.category.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                 color={
-                  product.category === 'centrifugal'
-                    ? 'bg-blue-100 text-blue-700'
-                    : product.category === 'positive_displacement'
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-purple-100 text-purple-700'
+                  product.category === "centrifugal"
+                    ? "bg-blue-100 text-blue-700"
+                    : product.category === "positive_displacement"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-purple-100 text-purple-700"
                 }
               />
               {product.apiStandard && (
@@ -132,7 +140,8 @@ export default function PumpProductDetailPage() {
               <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
                 <dt className="text-sm font-medium text-gray-500">Price Range</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                  {formatCurrency(pricingTier.basePriceRange.min)} - {formatCurrency(pricingTier.basePriceRange.max)}
+                  {formatCurrency(pricingTier.basePriceRange.min)} -{" "}
+                  {formatCurrency(pricingTier.basePriceRange.max)}
                 </dd>
               </div>
               <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
@@ -170,7 +179,10 @@ export default function PumpProductDetailPage() {
               <h3 className="text-sm font-medium text-gray-700 mb-2">Casing Materials</h3>
               <div className="flex flex-wrap gap-1">
                 {PUMP_SPECIFICATIONS.materials.casing.slice(0, 6).map((mat) => (
-                  <span key={mat.value} className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700">
+                  <span
+                    key={mat.value}
+                    className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700"
+                  >
                     {mat.label}
                   </span>
                 ))}
@@ -185,7 +197,10 @@ export default function PumpProductDetailPage() {
               <h3 className="text-sm font-medium text-gray-700 mb-2">Impeller Materials</h3>
               <div className="flex flex-wrap gap-1">
                 {PUMP_SPECIFICATIONS.materials.impeller.slice(0, 6).map((mat) => (
-                  <span key={mat.value} className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700">
+                  <span
+                    key={mat.value}
+                    className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700"
+                  >
                     {mat.label}
                   </span>
                 ))}
@@ -200,7 +215,10 @@ export default function PumpProductDetailPage() {
               <h3 className="text-sm font-medium text-gray-700 mb-2">Seal Types</h3>
               <div className="flex flex-wrap gap-1">
                 {PUMP_SPECIFICATIONS.materials.seal.map((seal) => (
-                  <span key={seal.value} className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700">
+                  <span
+                    key={seal.value}
+                    className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-700"
+                  >
                     {seal.label}
                   </span>
                 ))}
@@ -277,16 +295,26 @@ export default function PumpProductDetailPage() {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex">
-          <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="h-5 w-5 text-blue-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-blue-800">Pump Selection Tip</h3>
             <div className="mt-2 text-sm text-blue-700">
               <p>
-                When selecting a pump, consider the application requirements including flow rate, head,
-                fluid properties (viscosity, temperature, solids content), and system conditions.
-                Use our pump selection guide for assistance.
+                When selecting a pump, consider the application requirements including flow rate,
+                head, fluid properties (viscosity, temperature, solids content), and system
+                conditions. Use our pump selection guide for assistance.
               </p>
             </div>
           </div>

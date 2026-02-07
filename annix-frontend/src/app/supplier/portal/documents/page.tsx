@@ -1,23 +1,54 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { supplierPortalApi, type SupplierDocumentDto, type SupplierCompanyDto } from '@/app/lib/api/supplierApi';
-import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
-import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
-import { formatDateZA } from '@/app/lib/datetime';
-import { log } from '@/app/lib/logger';
-import { nixApi, RegistrationDocumentType, RegistrationVerificationResult } from '@/app/lib/nix/api';
-import NixRegistrationVerifier from '@/app/lib/nix/components/NixRegistrationVerifier';
-import { useSupplierDocuments, useSupplierOnboardingStatus, useSupplierProfile } from '@/app/lib/query/hooks';
+import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
+import { DocumentActionButtons } from "@/app/components/DocumentActionButtons";
+import {
+  DocumentPreviewModal,
+  initialPreviewState,
+  PreviewModalState,
+} from "@/app/components/DocumentPreviewModal";
+import {
+  type SupplierCompanyDto,
+  type SupplierDocumentDto,
+  supplierPortalApi,
+} from "@/app/lib/api/supplierApi";
+import { formatDateZA } from "@/app/lib/datetime";
+import { log } from "@/app/lib/logger";
+import {
+  nixApi,
+  RegistrationDocumentType,
+  RegistrationVerificationResult,
+} from "@/app/lib/nix/api";
+import NixRegistrationVerifier from "@/app/lib/nix/components/NixRegistrationVerifier";
+import {
+  useSupplierDocuments,
+  useSupplierOnboardingStatus,
+  useSupplierProfile,
+} from "@/app/lib/query/hooks";
 
 const documentTypes = [
-  { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', required: true, nixType: 'registration' as RegistrationDocumentType },
-  { value: 'tax_clearance', label: 'Tax Clearance Certificate (SARS)', required: true, nixType: 'vat' as RegistrationDocumentType },
-  { value: 'bee_cert', label: 'BEE/B-BBEE Certificate', required: true, nixType: 'bee' as RegistrationDocumentType },
-  { value: 'iso_cert', label: 'ISO Certification', required: false, nixType: null },
-  { value: 'insurance', label: 'Insurance Certificate', required: false, nixType: null },
-  { value: 'other', label: 'Other Document', required: false, nixType: null },
+  {
+    value: "registration_cert",
+    label: "Company Registration Certificate (CIPC)",
+    required: true,
+    nixType: "registration" as RegistrationDocumentType,
+  },
+  {
+    value: "tax_clearance",
+    label: "Tax Clearance Certificate (SARS)",
+    required: true,
+    nixType: "vat" as RegistrationDocumentType,
+  },
+  {
+    value: "bee_cert",
+    label: "BEE/B-BBEE Certificate",
+    required: true,
+    nixType: "bee" as RegistrationDocumentType,
+  },
+  { value: "iso_cert", label: "ISO Certification", required: false, nixType: null },
+  { value: "insurance", label: "Insurance Certificate", required: false, nixType: null },
+  { value: "other", label: "Other Document", required: false, nixType: null },
 ];
 
 export default function SupplierDocumentsPage() {
@@ -34,14 +65,15 @@ export default function SupplierDocumentsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [selectedType, setSelectedType] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
+  const [selectedType, setSelectedType] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewModal, setPreviewModal] = useState<PreviewModalState>(initialPreviewState);
 
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<RegistrationVerificationResult | null>(null);
+  const [verificationResult, setVerificationResult] =
+    useState<RegistrationVerificationResult | null>(null);
   const [showNixVerifier, setShowNixVerifier] = useState(false);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +84,7 @@ export default function SupplierDocumentsPage() {
     setSuccess(null);
     setPendingFile(file);
 
-    const docTypeConfig = documentTypes.find(dt => dt.value === selectedType);
+    const docTypeConfig = documentTypes.find((dt) => dt.value === selectedType);
     const nixType = docTypeConfig?.nixType;
 
     if (nixType && companyDetails) {
@@ -62,13 +94,13 @@ export default function SupplierDocumentsPage() {
 
       try {
         const expectedData = {
-          companyName: companyDetails.legalName || '',
-          registrationNumber: companyDetails.registrationNumber || '',
-          vatNumber: companyDetails.vatNumber || '',
-          streetAddress: companyDetails.streetAddress || '',
-          city: companyDetails.city || '',
-          provinceState: companyDetails.provinceState || '',
-          postalCode: companyDetails.postalCode || '',
+          companyName: companyDetails.legalName || "",
+          registrationNumber: companyDetails.registrationNumber || "",
+          vatNumber: companyDetails.vatNumber || "",
+          streetAddress: companyDetails.streetAddress || "",
+          city: companyDetails.city || "",
+          provinceState: companyDetails.provinceState || "",
+          postalCode: companyDetails.postalCode || "",
           beeLevel: companyDetails.beeLevel,
           beeExpiryDate: companyDetails.beeCertificateExpiry || undefined,
         };
@@ -77,7 +109,7 @@ export default function SupplierDocumentsPage() {
         setVerificationResult(result);
         setIsVerifying(false);
       } catch (err) {
-        log.error('Nix verification failed:', err);
+        log.error("Nix verification failed:", err);
         setIsVerifying(false);
         setVerificationResult(null);
         await proceedWithUpload(file, null);
@@ -92,33 +124,40 @@ export default function SupplierDocumentsPage() {
     setShowNixVerifier(false);
 
     try {
-      const verificationData = result ? {
-        success: result.success,
-        overallConfidence: result.overallConfidence,
-        allFieldsMatch: result.allFieldsMatch,
-        extractedData: result.extractedData as unknown as Record<string, unknown>,
-        fieldResults: result.fieldResults,
-      } : undefined;
+      const verificationData = result
+        ? {
+            success: result.success,
+            overallConfidence: result.overallConfidence,
+            allFieldsMatch: result.allFieldsMatch,
+            extractedData: result.extractedData as unknown as Record<string, unknown>,
+            fieldResults: result.fieldResults,
+          }
+        : undefined;
 
-      await supplierPortalApi.uploadDocument(file, selectedType, expiryDate || undefined, verificationData);
+      await supplierPortalApi.uploadDocument(
+        file,
+        selectedType,
+        expiryDate || undefined,
+        verificationData,
+      );
       setSuccess(`${file.name} uploaded successfully`);
       await docsQuery.refetch();
       resetUploadState();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setIsUploading(false);
     }
   };
 
   const resetUploadState = () => {
-    setSelectedType('');
-    setExpiryDate('');
+    setSelectedType("");
+    setExpiryDate("");
     setPendingFile(null);
     setVerificationResult(null);
     setShowNixVerifier(false);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -132,8 +171,10 @@ export default function SupplierDocumentsPage() {
     resetUploadState();
   };
 
-  const handleNixApplyCorrections = (corrections: Array<{ field: string; value: string | number }>) => {
-    log.info('Corrections selected:', corrections);
+  const handleNixApplyCorrections = (
+    corrections: Array<{ field: string; value: string | number }>,
+  ) => {
+    log.info("Corrections selected:", corrections);
     if (pendingFile) {
       proceedWithUpload(pendingFile, verificationResult);
     }
@@ -142,10 +183,8 @@ export default function SupplierDocumentsPage() {
   const handleFieldLearned = (fieldName: string, value: string) => {
     log.info(`Nix learned field ${fieldName}: ${value}`);
     if (verificationResult) {
-      const updatedFieldResults = verificationResult.fieldResults.map(field =>
-        field.field === fieldName
-          ? { ...field, extracted: value, match: true }
-          : field
+      const updatedFieldResults = verificationResult.fieldResults.map((field) =>
+        field.field === fieldName ? { ...field, extracted: value, match: true } : field,
       );
       setVerificationResult({
         ...verificationResult,
@@ -159,25 +198,30 @@ export default function SupplierDocumentsPage() {
   };
 
   const handleDelete = async (documentId: number) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+    if (!confirm("Are you sure you want to delete this document?")) return;
 
     try {
       await supplierPortalApi.deleteDocument(documentId);
-      setSuccess('Document deleted successfully');
+      setSuccess("Document deleted successfully");
       await docsQuery.refetch();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed');
+      setError(err instanceof Error ? err.message : "Delete failed");
     }
   };
 
   const handlePreview = async (doc: SupplierDocumentDto) => {
-    setPreviewModal({ ...initialPreviewState, isOpen: true, isLoading: true, filename: doc.fileName });
+    setPreviewModal({
+      ...initialPreviewState,
+      isOpen: true,
+      isLoading: true,
+      filename: doc.fileName,
+    });
     try {
       const { url, mimeType, filename } = await supplierPortalApi.previewDocument(doc.id);
       setPreviewModal({ isOpen: true, url, mimeType, filename, isLoading: false });
     } catch (err) {
       setPreviewModal(initialPreviewState);
-      setError(err instanceof Error ? err.message : 'Failed to preview document');
+      setError(err instanceof Error ? err.message : "Failed to preview document");
     }
   };
 
@@ -185,7 +229,7 @@ export default function SupplierDocumentsPage() {
     try {
       await supplierPortalApi.downloadDocument(doc.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to download document');
+      setError(err instanceof Error ? err.message : "Failed to download document");
     }
   };
 
@@ -202,10 +246,10 @@ export default function SupplierDocumentsPage() {
 
     try {
       await supplierPortalApi.submitOnboarding();
-      setSuccess('Application submitted successfully! Redirecting to dashboard...');
-      setTimeout(() => router.push('/supplier/portal/dashboard'), 2000);
+      setSuccess("Application submitted successfully! Redirecting to dashboard...");
+      setTimeout(() => router.push("/supplier/portal/dashboard"), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit application');
+      setError(err instanceof Error ? err.message : "Failed to submit application");
     } finally {
       setIsSubmitting(false);
     }
@@ -213,13 +257,13 @@ export default function SupplierDocumentsPage() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      valid: 'bg-green-100 text-green-800',
-      invalid: 'bg-red-100 text-red-800',
-      failed: 'bg-red-100 text-red-800',
-      manual_review: 'bg-blue-100 text-blue-800',
+      pending: "bg-yellow-100 text-yellow-800",
+      valid: "bg-green-100 text-green-800",
+      invalid: "bg-red-100 text-red-800",
+      failed: "bg-red-100 text-red-800",
+      manual_review: "bg-blue-100 text-blue-800",
     };
-    return styles[status] || 'bg-gray-100 text-gray-800';
+    return styles[status] || "bg-gray-100 text-gray-800";
   };
 
   const formatFileSize = (bytes: number) => {
@@ -235,7 +279,7 @@ export default function SupplierDocumentsPage() {
   // Check which required documents are missing
   const uploadedTypes = documents.map((d) => d.documentType);
   const missingRequired = documentTypes.filter(
-    (t) => t.required && !uploadedTypes.includes(t.value)
+    (t) => t.required && !uploadedTypes.includes(t.value),
   );
 
   if (docsQuery.isLoading || onboardingQuery.isLoading || profileQuery.isLoading) {
@@ -251,9 +295,7 @@ export default function SupplierDocumentsPage() {
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
-        <p className="mt-1 text-gray-600">
-          Upload and manage your compliance documents
-        </p>
+        <p className="mt-1 text-gray-600">Upload and manage your compliance documents</p>
       </div>
 
       {/* Alerts */}
@@ -273,7 +315,11 @@ export default function SupplierDocumentsPage() {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex">
             <svg className="h-5 w-5 text-yellow-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
             </svg>
             <div>
               <h3 className="text-sm font-medium text-yellow-800">Missing Required Documents</h3>
@@ -292,9 +338,7 @@ export default function SupplierDocumentsPage() {
         <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Document</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Document Type
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
@@ -303,7 +347,7 @@ export default function SupplierDocumentsPage() {
               <option value="">Select type...</option>
               {documentTypes.map((type) => (
                 <option key={type.value} value={type.value}>
-                  {type.label} {type.required ? '*' : ''}
+                  {type.label} {type.required ? "*" : ""}
                 </option>
               ))}
             </select>
@@ -316,15 +360,13 @@ export default function SupplierDocumentsPage() {
               type="date"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
+              min={new Date().toISOString().split("T")[0]}
               max="2099-12-31"
               className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              File
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
             <input
               ref={fileInputRef}
               type="file"
@@ -353,7 +395,9 @@ export default function SupplierDocumentsPage() {
             isVisible={showNixVerifier}
             isProcessing={isVerifying}
             verificationResult={verificationResult}
-            documentType={documentTypes.find(dt => dt.value === selectedType)?.nixType || 'registration'}
+            documentType={
+              documentTypes.find((dt) => dt.value === selectedType)?.nixType || "registration"
+            }
             file={pendingFile}
             onApplyCorrections={handleNixApplyCorrections}
             onProceedWithMismatch={handleNixProceed}
@@ -374,7 +418,7 @@ export default function SupplierDocumentsPage() {
                 disabled={isUploading}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
               >
-                {isUploading ? 'Uploading...' : 'Proceed with Upload'}
+                {isUploading ? "Uploading..." : "Proceed with Upload"}
               </button>
             </div>
           )}
@@ -388,8 +432,18 @@ export default function SupplierDocumentsPage() {
         </div>
         {documents.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+              />
             </svg>
             <p className="mt-2">No documents uploaded yet</p>
           </div>
@@ -422,21 +476,33 @@ export default function SupplierDocumentsPage() {
                 <tr key={doc.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <svg className="h-5 w-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      <svg
+                        className="h-5 w-5 text-gray-400 mr-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                        />
                       </svg>
                       <span className="text-sm text-gray-900">{doc.fileName}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-600">{getDocumentLabel(doc.documentType)}</span>
-                    {doc.isRequired && (
-                      <span className="ml-1 text-red-500">*</span>
-                    )}
+                    <span className="text-sm text-gray-600">
+                      {getDocumentLabel(doc.documentType)}
+                    </span>
+                    {doc.isRequired && <span className="ml-1 text-red-500">*</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(doc.validationStatus)}`}>
-                      {doc.validationStatus.replace(/_/g, ' ').toUpperCase()}
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(doc.validationStatus)}`}
+                    >
+                      {doc.validationStatus.replace(/_/g, " ").toUpperCase()}
                     </span>
                     {doc.validationNotes && (
                       <p className="text-xs text-gray-500 mt-1">{doc.validationNotes}</p>
@@ -472,65 +538,92 @@ export default function SupplierDocumentsPage() {
 
       {/* Complete Onboarding Button - shows when all required documents are uploaded */}
       {missingRequired.length === 0 &&
-       onboardingStatus?.status === 'draft' &&
-       onboardingStatus?.companyDetailsComplete && (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">Ready to Submit</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                All required documents have been uploaded. You can now submit your application for review.
-              </p>
+        onboardingStatus?.status === "draft" &&
+        onboardingStatus?.companyDetailsComplete && (
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Ready to Submit</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  All required documents have been uploaded. You can now submit your application for
+                  review.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleSubmitOnboarding}
+                disabled={isSubmitting}
+                className="px-6 py-3 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Complete Onboarding
+                  </>
+                )}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleSubmitOnboarding}
-              disabled={isSubmitting}
-              className="px-6 py-3 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Complete Onboarding
-                </>
-              )}
-            </button>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Show message if company details incomplete */}
       {missingRequired.length === 0 &&
-       onboardingStatus?.status === 'draft' &&
-       !onboardingStatus?.companyDetailsComplete && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-amber-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div>
-              <p className="text-sm text-amber-800 font-medium">Company Details Incomplete</p>
-              <p className="text-sm text-amber-700 mt-1">
-                Please complete your company details in the{' '}
-                <a href="/supplier/portal/onboarding" className="underline font-medium">
-                  Onboarding section
-                </a>{' '}
-                before submitting your application.
-              </p>
+        onboardingStatus?.status === "draft" &&
+        !onboardingStatus?.companyDetailsComplete && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-amber-600 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <div>
+                <p className="text-sm text-amber-800 font-medium">Company Details Incomplete</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  Please complete your company details in the{" "}
+                  <a href="/supplier/portal/onboarding" className="underline font-medium">
+                    Onboarding section
+                  </a>{" "}
+                  before submitting your application.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }

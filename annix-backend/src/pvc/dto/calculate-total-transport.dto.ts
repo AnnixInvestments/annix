@@ -1,34 +1,34 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsInt,
   IsNumber,
+  IsOptional,
   IsPositive,
   IsString,
-  IsOptional,
-  ValidateNested,
   Min,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+  ValidateNested,
+} from "class-validator";
 
 export class PvcTransportItemDto {
-  @ApiProperty({ description: 'Item type: straight_pipe or fitting code' })
+  @ApiProperty({ description: "Item type: straight_pipe or fitting code" })
   @IsString()
   type: string;
 
-  @ApiProperty({ description: 'Nominal diameter in mm (DN)' })
+  @ApiProperty({ description: "Nominal diameter in mm (DN)" })
   @IsInt()
   @IsPositive()
   nominalDiameter: number;
 
-  @ApiPropertyOptional({ description: 'Pressure rating (required for pipes)' })
+  @ApiPropertyOptional({ description: "Pressure rating (required for pipes)" })
   @IsNumber()
   @IsPositive()
   @IsOptional()
   pressureRating?: number;
 
   @ApiPropertyOptional({
-    description: 'Length in meters (required for straight_pipe)',
+    description: "Length in meters (required for straight_pipe)",
   })
   @IsNumber()
   @IsPositive()
@@ -36,7 +36,7 @@ export class PvcTransportItemDto {
   @IsOptional()
   length?: number;
 
-  @ApiPropertyOptional({ description: 'Quantity of items (default: 1)' })
+  @ApiPropertyOptional({ description: "Quantity of items (default: 1)" })
   @IsInt()
   @IsPositive()
   @IsOptional()
@@ -45,7 +45,7 @@ export class PvcTransportItemDto {
 
 export class CalculatePvcTotalTransportDto {
   @ApiProperty({
-    description: 'Array of items to calculate transport weight',
+    description: "Array of items to calculate transport weight",
     type: [PvcTransportItemDto],
   })
   @IsArray()

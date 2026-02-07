@@ -1,22 +1,22 @@
-import { API_BASE_URL } from '@/lib/api-config';
+import { API_BASE_URL } from "@/lib/api-config";
 import type {
-  HdpeStandard,
-  HdpePipeSpecification,
+  CalculateFittingCostDto,
+  CalculatePipeCostDto,
+  FittingCostResponse,
   HdpeFittingType,
   HdpeFittingWeight,
-  CalculatePipeCostDto,
-  PipeCostResponse,
-  CalculateFittingCostDto,
-  FittingCostResponse,
   HdpeItemInput,
+  HdpePipeSpecification,
+  HdpeStandard,
+  PipeCostResponse,
   TransportWeightResponse,
-} from './types';
+} from "./types";
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
   });
@@ -31,8 +31,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 
 export const hdpeApi = {
   standards: {
-    getAll: (): Promise<HdpeStandard[]> =>
-      fetchJson(`${API_BASE_URL}/hdpe/standards`),
+    getAll: (): Promise<HdpeStandard[]> => fetchJson(`${API_BASE_URL}/hdpe/standards`),
 
     getByCode: (code: string): Promise<HdpeStandard> =>
       fetchJson(`${API_BASE_URL}/hdpe/standards/${code}`),
@@ -50,8 +49,7 @@ export const hdpeApi = {
   },
 
   fittingTypes: {
-    getAll: (): Promise<HdpeFittingType[]> =>
-      fetchJson(`${API_BASE_URL}/hdpe/fitting-types`),
+    getAll: (): Promise<HdpeFittingType[]> => fetchJson(`${API_BASE_URL}/hdpe/fitting-types`),
 
     getByCode: (code: string): Promise<HdpeFittingType> =>
       fetchJson(`${API_BASE_URL}/hdpe/fitting-types/${code}`),
@@ -68,7 +66,7 @@ export const hdpeApi = {
   calculations: {
     calculatePipeCost: (dto: CalculatePipeCostDto): Promise<PipeCostResponse> =>
       fetchJson(`${API_BASE_URL}/hdpe/calculate/pipe`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(dto),
       }),
 
@@ -77,7 +75,7 @@ export const hdpeApi = {
       sdr: number,
       length: number,
       pricePerKg: number,
-      buttweldPrice?: number
+      buttweldPrice?: number,
     ): Promise<PipeCostResponse> => {
       const params = new URLSearchParams({
         nominalBore: nominalBore.toString(),
@@ -86,14 +84,14 @@ export const hdpeApi = {
         pricePerKg: pricePerKg.toString(),
       });
       if (buttweldPrice !== undefined) {
-        params.append('buttweldPrice', buttweldPrice.toString());
+        params.append("buttweldPrice", buttweldPrice.toString());
       }
       return fetchJson(`${API_BASE_URL}/hdpe/calculate/pipe?${params}`);
     },
 
     calculateFittingCost: (dto: CalculateFittingCostDto): Promise<FittingCostResponse> =>
       fetchJson(`${API_BASE_URL}/hdpe/calculate/fitting`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(dto),
       }),
 
@@ -102,7 +100,7 @@ export const hdpeApi = {
       nominalBore: number,
       pricePerKg: number,
       buttweldPrice?: number,
-      stubPrice?: number
+      stubPrice?: number,
     ): Promise<FittingCostResponse> => {
       const params = new URLSearchParams({
         fittingTypeCode,
@@ -110,24 +108,23 @@ export const hdpeApi = {
         pricePerKg: pricePerKg.toString(),
       });
       if (buttweldPrice !== undefined) {
-        params.append('buttweldPrice', buttweldPrice.toString());
+        params.append("buttweldPrice", buttweldPrice.toString());
       }
       if (stubPrice !== undefined) {
-        params.append('stubPrice', stubPrice.toString());
+        params.append("stubPrice", stubPrice.toString());
       }
       return fetchJson(`${API_BASE_URL}/hdpe/calculate/fitting?${params}`);
     },
 
     calculateTransportWeight: (items: HdpeItemInput[]): Promise<TransportWeightResponse> =>
       fetchJson(`${API_BASE_URL}/hdpe/calculate/transport-weight`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ items }),
       }),
   },
 
   metadata: {
-    getNominalBores: (): Promise<number[]> =>
-      fetchJson(`${API_BASE_URL}/hdpe/nominal-bores`),
+    getNominalBores: (): Promise<number[]> => fetchJson(`${API_BASE_URL}/hdpe/nominal-bores`),
 
     getSdrsByNominalBore: (nominalBore: number): Promise<number[]> =>
       fetchJson(`${API_BASE_URL}/hdpe/sdrs/${nominalBore}`),

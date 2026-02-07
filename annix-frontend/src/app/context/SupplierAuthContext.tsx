@@ -1,17 +1,27 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { supplierApiClient, SupplierAuthResponse, SupplierDashboardResponse } from '@/app/lib/api/supplierApi';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import {
+  SupplierAuthResponse,
+  SupplierDashboardResponse,
+  supplierApiClient,
+} from "@/app/lib/api/supplierApi";
 
 interface SupplierAuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
-  supplier: SupplierAuthResponse['supplier'] | null;
+  supplier: SupplierAuthResponse["supplier"] | null;
   dashboard: SupplierDashboardResponse | null;
 }
 
 interface SupplierAuthContextType extends SupplierAuthState {
-  login: (email: string, password: string, deviceFingerprint: string, browserInfo?: Record<string, any>, rememberMe?: boolean) => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+    deviceFingerprint: string,
+    browserInfo?: Record<string, any>,
+    rememberMe?: boolean,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   refreshDashboard: () => Promise<void>;
 }
@@ -48,7 +58,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
           firstName: dashboard.profile.firstName,
           lastName: dashboard.profile.lastName,
           companyName: dashboard.profile.companyName,
-          accountStatus: 'active',
+          accountStatus: "active",
           onboardingStatus: dashboard.onboarding.status,
         },
         dashboard,
@@ -73,22 +83,26 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
     password: string,
     deviceFingerprint: string,
     browserInfo?: Record<string, any>,
-    rememberMe: boolean = false
+    rememberMe: boolean = false,
   ) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
-      const response = await supplierApiClient.login({
-        email,
-        password,
-        deviceFingerprint,
-        browserInfo,
-      }, rememberMe);
+      const response = await supplierApiClient.login(
+        {
+          email,
+          password,
+          deviceFingerprint,
+          browserInfo,
+        },
+        rememberMe,
+      );
 
       const dashboard = await supplierApiClient.getDashboard();
 
-      const supplierName = response.supplier.firstName || response.supplier.companyName || 'Supplier';
-      localStorage.setItem('supplierName', supplierName);
+      const supplierName =
+        response.supplier.firstName || response.supplier.companyName || "Supplier";
+      localStorage.setItem("supplierName", supplierName);
 
       setState({
         isAuthenticated: true,
@@ -108,7 +122,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
     try {
       await supplierApiClient.logout();
     } finally {
-      localStorage.removeItem('supplierName');
+      localStorage.removeItem("supplierName");
       setState({
         isAuthenticated: false,
         isLoading: false,
@@ -155,7 +169,7 @@ export function SupplierAuthProvider({ children }: { children: ReactNode }) {
 export function useSupplierAuth() {
   const context = useContext(SupplierAuthContext);
   if (context === undefined) {
-    throw new Error('useSupplierAuth must be used within a SupplierAuthProvider');
+    throw new Error("useSupplierAuth must be used within a SupplierAuthProvider");
   }
   return context;
 }

@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { formatRelative } from '@/app/lib/datetime';
+import { useState } from "react";
 import {
   ConversationSummary,
   ConversationType,
   RelatedEntityType,
-} from '@/app/lib/api/messagingApi';
+} from "@/app/lib/api/messagingApi";
+import { formatRelative } from "@/app/lib/datetime";
 
 interface ConversationListProps {
   conversations: ConversationSummary[];
@@ -18,17 +18,14 @@ interface ConversationListProps {
 
 function conversationTypeLabel(type: ConversationType): string {
   const labels: Record<ConversationType, string> = {
-    [ConversationType.DIRECT]: 'Direct',
-    [ConversationType.GROUP]: 'Group',
-    [ConversationType.SUPPORT]: 'Support',
+    [ConversationType.DIRECT]: "Direct",
+    [ConversationType.GROUP]: "Group",
+    [ConversationType.SUPPORT]: "Support",
   };
   return labels[type] || type;
 }
 
-function relatedEntityLabel(
-  type: RelatedEntityType,
-  id: number | null,
-): string | null {
+function relatedEntityLabel(type: RelatedEntityType, id: number | null): string | null {
   if (type === RelatedEntityType.GENERAL || !id) return null;
   return `${type} #${id}`;
 }
@@ -42,9 +39,7 @@ export function ConversationList({
 }: ConversationListProps) {
   const [showArchived, setShowArchived] = useState(false);
 
-  const filteredConversations = conversations.filter(
-    (c) => showArchived || !c.isArchived,
-  );
+  const filteredConversations = conversations.filter((c) => showArchived || !c.isArchived);
 
   if (isLoading) {
     return (
@@ -57,9 +52,7 @@ export function ConversationList({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Messages
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Messages</h2>
         <label className="flex items-center text-sm text-gray-600 dark:text-gray-400">
           <input
             type="checkbox"
@@ -73,12 +66,7 @@ export function ConversationList({
 
       {filteredConversations.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-8 text-gray-500 dark:text-gray-400">
-          <svg
-            className="w-12 h-12 mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -96,9 +84,9 @@ export function ConversationList({
               onClick={() => onSelect(conversation)}
               className={`px-4 py-3 border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-colors ${
                 selectedId === conversation.id
-                  ? 'bg-blue-50 dark:bg-blue-900/20'
-                  : 'hover:bg-gray-50 dark:hover:bg-gray-800'
-              } ${conversation.isArchived ? 'opacity-60' : ''}`}
+                  ? "bg-blue-50 dark:bg-blue-900/20"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-800"
+              } ${conversation.isArchived ? "opacity-60" : ""}`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -113,7 +101,7 @@ export function ConversationList({
                     )}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {conversation.participantNames.join(', ') || 'No participants'}
+                    {conversation.participantNames.join(", ") || "No participants"}
                   </p>
                   {conversation.lastMessagePreview && (
                     <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 truncate">

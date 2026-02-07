@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FlangePressureClassController } from './flange-pressure-class.controller';
-import { FlangePressureClassService } from './flange-pressure-class.service';
-import { FlangePressureClass } from './entities/flange-pressure-class.entity';
-import { FlangeStandard } from '../flange-standard/entities/flange-standard.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
+import { FlangePressureClass } from "./entities/flange-pressure-class.entity";
+import { FlangePressureClassController } from "./flange-pressure-class.controller";
+import { FlangePressureClassService } from "./flange-pressure-class.service";
 
-describe('FlangePressureClassController', () => {
+describe("FlangePressureClassController", () => {
   let controller: FlangePressureClassController;
   let service: FlangePressureClassService;
 
@@ -49,17 +49,13 @@ describe('FlangePressureClassController', () => {
       ],
     }).compile();
 
-    controller = module.get<FlangePressureClassController>(
-      FlangePressureClassController,
-    );
-    service = module.get<FlangePressureClassService>(
-      FlangePressureClassService,
-    );
+    controller = module.get<FlangePressureClassController>(FlangePressureClassController);
+    service = module.get<FlangePressureClassService>(FlangePressureClassService);
 
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

@@ -1,11 +1,11 @@
-import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { CreateUserRoleDto } from './create-user-role.dto';
-import { IsOptional, IsString } from 'class-validator';
+import { ApiPropertyOptional, PartialType } from "@nestjs/swagger";
+import { IsOptional, IsString } from "class-validator";
+import { CreateUserRoleDto } from "./create-user-role.dto";
 
 export class UpdateUserRoleDto extends PartialType(CreateUserRoleDto) {
   @ApiPropertyOptional({
-    description: 'Updated role name',
-    example: 'super-admin',
+    description: "Updated role name",
+    example: "super-admin",
   })
   @IsString()
   @IsOptional()

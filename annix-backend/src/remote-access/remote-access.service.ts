@@ -1,32 +1,30 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, MoreThan } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
-import { now, DateTime } from '../lib/datetime';
-import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
-
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { InjectRepository } from "@nestjs/typeorm";
+import { LessThan, MoreThan, Repository } from "typeorm";
+import { EmailService } from "../email/email.service";
+import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
+import { DateTime, now } from "../lib/datetime";
+import { RfqDraft } from "../rfq/entities/rfq-draft.entity";
+import { User } from "../user/entities/user.entity";
 import {
-  RemoteAccessRequest,
-  RemoteAccessRequestType,
-  RemoteAccessDocumentType,
-  RemoteAccessStatus,
-} from './entities/remote-access-request.entity';
-import { User } from '../user/entities/user.entity';
-import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
-import { EmailService } from '../email/email.service';
-import {
-  CreateRemoteAccessRequestDto,
-  RespondToAccessRequestDto,
-  RemoteAccessRequestResponseDto,
-  PendingAccessRequestsResponseDto,
   AccessStatusResponseDto,
-} from './dto/remote-access.dto';
+  CreateRemoteAccessRequestDto,
+  PendingAccessRequestsResponseDto,
+  RemoteAccessRequestResponseDto,
+  RespondToAccessRequestDto,
+} from "./dto/remote-access.dto";
+import {
+  RemoteAccessDocumentType,
+  RemoteAccessRequest,
+  RemoteAccessStatus,
+} from "./entities/remote-access-request.entity";
 
 @Injectable()
 export class RemoteAccessService {
@@ -46,7 +44,7 @@ export class RemoteAccessService {
   ) {}
 
   isFeatureEnabled(): Promise<boolean> {
-    return this.featureFlagsService.isEnabled('REMOTE_ACCESS');
+    return this.featureFlagsService.isEnabled("REMOTE_ACCESS");
   }
 
   async requestAccess(
@@ -54,20 +52,17 @@ export class RemoteAccessService {
     dto: CreateRemoteAccessRequestDto,
   ): Promise<RemoteAccessRequestResponseDto> {
     if (!(await this.isFeatureEnabled())) {
-      throw new BadRequestException('Remote access feature is disabled');
+      throw new BadRequestException("Remote access feature is disabled");
     }
 
     const admin = await this.userRepo.findOne({ where: { id: adminId } });
     if (!admin) {
-      throw new NotFoundException('Admin user not found');
+      throw new NotFoundException("Admin user not found");
     }
 
-    const documentOwner = await this.findDocumentOwner(
-      dto.documentType,
-      dto.documentId,
-    );
+    const documentOwner = await this.findDocumentOwner(dto.documentType, dto.documentId);
     if (!documentOwner) {
-      throw new NotFoundException('Document owner not found');
+      throw new NotFoundException("Document owner not found");
     }
 
     const existingRequest = await this.accessRequestRepo.findOne({
@@ -80,9 +75,7 @@ export class RemoteAccessService {
     });
 
     if (existingRequest) {
-      throw new BadRequestException(
-        'A pending access request already exists for this document',
-      );
+      throw new BadRequestException("A pending access request already exists for this document");
     }
 
     const existingApproval = await this.accessRequestRepo.findOne({
@@ -180,32 +173,28 @@ export class RemoteAccessService {
     };
   }
 
-  async requestStatus(
-    requestId: number,
-  ): Promise<RemoteAccessRequestResponseDto> {
+  async requestStatus(requestId: number): Promise<RemoteAccessRequestResponseDto> {
     const request = await this.accessRequestRepo.findOne({
       where: { id: requestId },
-      relations: ['requestedBy', 'documentOwner'],
+      relations: ["requestedBy", "documentOwner"],
     });
 
     if (!request) {
-      throw new NotFoundException('Access request not found');
+      throw new NotFoundException("Access request not found");
     }
 
     return this.mapToResponse(request);
   }
 
-  async pendingRequestsForOwner(
-    ownerId: number,
-  ): Promise<PendingAccessRequestsResponseDto> {
+  async pendingRequestsForOwner(ownerId: number): Promise<PendingAccessRequestsResponseDto> {
     const requests = await this.accessRequestRepo.find({
       where: {
         documentOwner: { id: ownerId },
         status: RemoteAccessStatus.PENDING,
         expiresAt: MoreThan(now().toJSDate()),
       },
-      relations: ['requestedBy', 'documentOwner'],
-      order: { requestedAt: 'DESC' },
+      relations: ["requestedBy", "documentOwner"],
+      order: { requestedAt: "DESC" },
     });
 
     return {
@@ -221,34 +210,30 @@ export class RemoteAccessService {
   ): Promise<RemoteAccessRequestResponseDto> {
     const request = await this.accessRequestRepo.findOne({
       where: { id: requestId },
-      relations: ['requestedBy', 'documentOwner'],
+      relations: ["requestedBy", "documentOwner"],
     });
 
     if (!request) {
-      throw new NotFoundException('Access request not found');
+      throw new NotFoundException("Access request not found");
     }
 
     if (request.documentOwner.id !== ownerId) {
-      throw new ForbiddenException('You are not the owner of this document');
+      throw new ForbiddenException("You are not the owner of this document");
     }
 
     if (request.status !== RemoteAccessStatus.PENDING) {
-      throw new BadRequestException(
-        'This request has already been responded to',
-      );
+      throw new BadRequestException("This request has already been responded to");
     }
 
     if (request.expiresAt < now().toJSDate()) {
       request.status = RemoteAccessStatus.EXPIRED;
       await this.accessRequestRepo.save(request);
-      throw new BadRequestException('This request has expired');
+      throw new BadRequestException("This request has expired");
     }
 
     if (dto.approved) {
       request.status = RemoteAccessStatus.APPROVED;
-      request.expiresAt = now()
-        .plus({ hours: this.accessExpiryHours })
-        .toJSDate();
+      request.expiresAt = now().plus({ hours: this.accessExpiryHours }).toJSDate();
     } else {
       request.status = RemoteAccessStatus.DENIED;
       request.denialReason = dto.denialReason || null;
@@ -258,7 +243,7 @@ export class RemoteAccessService {
     const savedRequest = await this.accessRequestRepo.save(request);
 
     this.logger.log(
-      `Owner ${ownerId} ${dto.approved ? 'approved' : 'denied'} access request ${requestId}`,
+      `Owner ${ownerId} ${dto.approved ? "approved" : "denied"} access request ${requestId}`,
     );
 
     return this.mapToResponse(savedRequest);
@@ -285,7 +270,7 @@ export class RemoteAccessService {
     if (documentType === RemoteAccessDocumentType.RFQ) {
       const draft = await this.rfqDraftRepo.findOne({
         where: { id: documentId },
-        relations: ['createdBy'],
+        relations: ["createdBy"],
       });
       return draft?.createdBy || null;
     }
@@ -293,11 +278,8 @@ export class RemoteAccessService {
     return null;
   }
 
-  private async sendAccessRequestEmail(
-    request: RemoteAccessRequest,
-  ): Promise<void> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+  private async sendAccessRequestEmail(request: RemoteAccessRequest): Promise<void> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const portalLink = `${frontendUrl}/customer/portal/remote-access`;
 
     const adminName =
@@ -305,10 +287,7 @@ export class RemoteAccessService {
         ? `${request.requestedBy.firstName} ${request.requestedBy.lastName}`
         : request.requestedBy.username || request.requestedBy.email;
 
-    const documentName = await this.documentName(
-      request.documentType,
-      request.documentId,
-    );
+    const documentName = await this.documentName(request.documentType, request.documentId);
 
     const html = `
       <!DOCTYPE html>
@@ -328,7 +307,7 @@ export class RemoteAccessService {
               <strong>Administrator:</strong> ${adminName}<br/>
               <strong>Document:</strong> ${documentName}<br/>
               <strong>Access Type:</strong> ${request.requestType}<br/>
-              <strong>Expires:</strong> ${DateTime.fromJSDate(request.expiresAt).toFormat('dd MMM yyyy HH:mm')}
+              <strong>Expires:</strong> ${DateTime.fromJSDate(request.expiresAt).toFormat("dd MMM yyyy HH:mm")}
             </p>
           </div>
 
@@ -340,7 +319,7 @@ export class RemoteAccessService {
             <p style="margin: 5px 0 0 0;">${request.message}</p>
           </div>
           `
-              : ''
+              : ""
           }
 
           <p style="margin: 30px 0;">
@@ -379,9 +358,7 @@ export class RemoteAccessService {
     return `${documentType} #${documentId}`;
   }
 
-  private mapToResponse(
-    request: RemoteAccessRequest,
-  ): RemoteAccessRequestResponseDto {
+  private mapToResponse(request: RemoteAccessRequest): RemoteAccessRequestResponseDto {
     return {
       id: request.id,
       requestType: request.requestType,
@@ -398,7 +375,7 @@ export class RemoteAccessService {
             name:
               request.requestedBy.firstName && request.requestedBy.lastName
                 ? `${request.requestedBy.firstName} ${request.requestedBy.lastName}`
-                : request.requestedBy.username || '',
+                : request.requestedBy.username || "",
             email: request.requestedBy.email,
           }
         : undefined,
@@ -408,7 +385,7 @@ export class RemoteAccessService {
             name:
               request.documentOwner.firstName && request.documentOwner.lastName
                 ? `${request.documentOwner.firstName} ${request.documentOwner.lastName}`
-                : request.documentOwner.username || '',
+                : request.documentOwner.username || "",
             email: request.documentOwner.email,
           }
         : undefined,

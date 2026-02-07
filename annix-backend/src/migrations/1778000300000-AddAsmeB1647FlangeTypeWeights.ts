@@ -1,15 +1,9 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const asmeB1647AId = await this.flangeStandardId(
-      queryRunner,
-      'ASME B16.47 Series A',
-    );
-    const asmeB1647BId = await this.flangeStandardId(
-      queryRunner,
-      'ASME B16.47 Series B',
-    );
+    const asmeB1647AId = await this.flangeStandardId(queryRunner, "ASME B16.47 Series A");
+    const asmeB1647BId = await this.flangeStandardId(queryRunner, "ASME B16.47 Series B");
 
     const seriesAWeldNeck = this.asmeB1647AWeldNeckWeights();
     const seriesABlind = this.asmeB1647ABlindWeights();
@@ -18,11 +12,8 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
 
     for (const pc of Object.keys(seriesAWeldNeck)) {
       const values = Object.entries(seriesAWeldNeck[pc])
-        .map(
-          ([nb, weight]) =>
-            `(${asmeB1647AId}, '${pc}', 'WN', ${nb}, ${weight})`,
-        )
-        .join(', ');
+        .map(([nb, weight]) => `(${asmeB1647AId}, '${pc}', 'WN', ${nb}, ${weight})`)
+        .join(", ");
       if (values) {
         await queryRunner.query(`
           INSERT INTO flange_type_weights (flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm, weight_kg)
@@ -33,11 +24,8 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
 
     for (const pc of Object.keys(seriesABlind)) {
       const values = Object.entries(seriesABlind[pc])
-        .map(
-          ([nb, weight]) =>
-            `(${asmeB1647AId}, '${pc}', 'BL', ${nb}, ${weight})`,
-        )
-        .join(', ');
+        .map(([nb, weight]) => `(${asmeB1647AId}, '${pc}', 'BL', ${nb}, ${weight})`)
+        .join(", ");
       if (values) {
         await queryRunner.query(`
           INSERT INTO flange_type_weights (flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm, weight_kg)
@@ -48,11 +36,8 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
 
     for (const pc of Object.keys(seriesBWeldNeck)) {
       const values = Object.entries(seriesBWeldNeck[pc])
-        .map(
-          ([nb, weight]) =>
-            `(${asmeB1647BId}, '${pc}', 'WN', ${nb}, ${weight})`,
-        )
-        .join(', ');
+        .map(([nb, weight]) => `(${asmeB1647BId}, '${pc}', 'WN', ${nb}, ${weight})`)
+        .join(", ");
       if (values) {
         await queryRunner.query(`
           INSERT INTO flange_type_weights (flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm, weight_kg)
@@ -63,11 +48,8 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
 
     for (const pc of Object.keys(seriesBBlind)) {
       const values = Object.entries(seriesBBlind[pc])
-        .map(
-          ([nb, weight]) =>
-            `(${asmeB1647BId}, '${pc}', 'BL', ${nb}, ${weight})`,
-        )
-        .join(', ');
+        .map(([nb, weight]) => `(${asmeB1647BId}, '${pc}', 'BL', ${nb}, ${weight})`)
+        .join(", ");
       if (values) {
         await queryRunner.query(`
           INSERT INTO flange_type_weights (flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm, weight_kg)
@@ -78,33 +60,23 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const asmeB1647AId = await this.flangeStandardId(
-      queryRunner,
-      'ASME B16.47 Series A',
-    );
-    const asmeB1647BId = await this.flangeStandardId(
-      queryRunner,
-      'ASME B16.47 Series B',
-    );
+    const asmeB1647AId = await this.flangeStandardId(queryRunner, "ASME B16.47 Series A");
+    const asmeB1647BId = await this.flangeStandardId(queryRunner, "ASME B16.47 Series B");
     await queryRunner.query(
       `DELETE FROM flange_type_weights WHERE flange_standard_id IN (${asmeB1647AId}, ${asmeB1647BId})`,
     );
   }
 
-  private async flangeStandardId(
-    queryRunner: QueryRunner,
-    code: string,
-  ): Promise<string> {
-    const result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = $1`,
-      [code],
-    );
-    return result.length === 0 ? 'NULL' : result[0].id.toString();
+  private async flangeStandardId(queryRunner: QueryRunner, code: string): Promise<string> {
+    const result = await queryRunner.query("SELECT id FROM flange_standards WHERE code = $1", [
+      code,
+    ]);
+    return result.length === 0 ? "NULL" : result[0].id.toString();
   }
 
   private asmeB1647AWeldNeckWeights(): Record<string, Record<number, number>> {
     return {
-      '150': {
+      "150": {
         650: 159.1,
         700: 181.8,
         750: 204.5,
@@ -117,7 +89,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 686.4,
         1500: 854.5,
       },
-      '300': {
+      "300": {
         650: 313.6,
         700: 363.6,
         750: 418.2,
@@ -130,7 +102,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 1436.4,
         1500: 1795.5,
       },
-      '400': {
+      "400": {
         650: 400.0,
         700: 463.6,
         750: 531.8,
@@ -143,7 +115,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 1840.9,
         1500: 2304.5,
       },
-      '600': {
+      "600": {
         650: 513.6,
         700: 595.5,
         750: 686.4,
@@ -156,7 +128,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 2381.8,
         1500: 2986.4,
       },
-      '900': {
+      "900": {
         650: 754.5,
         700: 877.3,
         750: 1013.6,
@@ -172,7 +144,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
 
   private asmeB1647ABlindWeights(): Record<string, Record<number, number>> {
     return {
-      '150': {
+      "150": {
         650: 177.3,
         700: 204.5,
         750: 231.8,
@@ -185,7 +157,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 800.0,
         1500: 1000.0,
       },
-      '300': {
+      "300": {
         650: 350.0,
         700: 409.1,
         750: 472.7,
@@ -198,7 +170,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 1654.5,
         1500: 2077.3,
       },
-      '400': {
+      "400": {
         650: 445.5,
         700: 518.2,
         750: 600.0,
@@ -211,7 +183,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 2136.4,
         1500: 2686.4,
       },
-      '600': {
+      "600": {
         650: 572.7,
         700: 668.2,
         750: 772.7,
@@ -223,7 +195,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 2754.5,
         1500: 3468.2,
       },
-      '900': {
+      "900": {
         650: 840.9,
         700: 986.4,
         750: 1145.5,
@@ -239,7 +211,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
 
   private asmeB1647BWeldNeckWeights(): Record<string, Record<number, number>> {
     return {
-      '75': {
+      "75": {
         650: 95.5,
         700: 109.1,
         750: 122.7,
@@ -252,7 +224,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 427.3,
         1500: 536.4,
       },
-      '150': {
+      "150": {
         650: 131.8,
         700: 150.0,
         750: 168.2,
@@ -265,7 +237,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 590.9,
         1500: 740.9,
       },
-      '300': {
+      "300": {
         650: 254.5,
         700: 295.5,
         750: 340.9,
@@ -283,7 +255,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
 
   private asmeB1647BBlindWeights(): Record<string, Record<number, number>> {
     return {
-      '75': {
+      "75": {
         650: 106.4,
         700: 122.7,
         750: 140.9,
@@ -296,7 +268,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 531.8,
         1500: 677.3,
       },
-      '150': {
+      "150": {
         650: 150.0,
         700: 172.7,
         750: 195.5,
@@ -309,7 +281,7 @@ export class AddAsmeB1647FlangeTypeWeights1778000300000 implements MigrationInte
         1350: 704.5,
         1500: 886.4,
       },
-      '300': {
+      "300": {
         650: 286.4,
         700: 336.4,
         750: 390.9,

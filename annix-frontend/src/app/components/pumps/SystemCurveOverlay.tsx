@@ -1,19 +1,21 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from "react";
 import {
-  PumpCurve,
-  SystemCurveParams,
   calculateSystemCurve,
   findOperatingPoint,
   interpolatePumpCurve,
-} from '@/app/lib/config/pumps/calculations';
-import { PumpCurveChart } from './PumpCurveChart';
+  PumpCurve,
+  SystemCurveParams,
+} from "@/app/lib/config/pumps/calculations";
+import { PumpCurveChart } from "./PumpCurveChart";
 
 interface SystemCurveOverlayProps {
   pumpCurve: PumpCurve;
   initialSystemParams?: Partial<SystemCurveParams>;
-  onOperatingPointChange?: (operatingPoint: { flowM3h: number; headM: number; efficiencyPercent?: number } | null) => void;
+  onOperatingPointChange?: (
+    operatingPoint: { flowM3h: number; headM: number; efficiencyPercent?: number } | null,
+  ) => void;
 }
 
 export function SystemCurveOverlay({
@@ -46,9 +48,9 @@ export function SystemCurveOverlay({
   const operatingAnalysis = useMemo(() => {
     if (!operatingPoint) {
       return {
-        status: 'no_intersection' as const,
-        message: 'No operating point found - pump curve does not intersect system curve',
-        color: 'red',
+        status: "no_intersection" as const,
+        message: "No operating point found - pump curve does not intersect system curve",
+        color: "red",
       };
     }
 
@@ -58,40 +60,40 @@ export function SystemCurveOverlay({
 
     if (operatingPoint.flowM3h < minFlow) {
       return {
-        status: 'below_min' as const,
+        status: "below_min" as const,
         message: `Operating below minimum continuous flow (${minFlow} m³/h) - recirculation risk`,
-        color: 'red',
+        color: "red",
       };
     }
 
     if (flowRatio < 0.7) {
       return {
-        status: 'low_flow' as const,
-        message: 'Operating far left of BEP - reduced efficiency and potential recirculation',
-        color: 'yellow',
+        status: "low_flow" as const,
+        message: "Operating far left of BEP - reduced efficiency and potential recirculation",
+        color: "yellow",
       };
     }
 
     if (flowRatio > 1.2) {
       return {
-        status: 'high_flow' as const,
-        message: 'Operating far right of BEP - increased NPSH and motor load',
-        color: 'yellow',
+        status: "high_flow" as const,
+        message: "Operating far right of BEP - increased NPSH and motor load",
+        color: "yellow",
       };
     }
 
     if (flowRatio >= 0.8 && flowRatio <= 1.1) {
       return {
-        status: 'optimal' as const,
-        message: 'Operating in preferred range near BEP - optimal efficiency',
-        color: 'green',
+        status: "optimal" as const,
+        message: "Operating in preferred range near BEP - optimal efficiency",
+        color: "green",
       };
     }
 
     return {
-      status: 'acceptable' as const,
-      message: 'Operating in acceptable range',
-      color: 'blue',
+      status: "acceptable" as const,
+      message: "Operating in acceptable range",
+      color: "blue",
     };
   }, [operatingPoint, pumpCurve]);
 
@@ -122,13 +124,11 @@ export function SystemCurveOverlay({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Static Head (m)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Static Head (m)</label>
             <input
               type="number"
               value={systemParams.staticHeadM}
-              onChange={(e) => handleParamChange('staticHeadM', parseFloat(e.target.value) || 0)}
+              onChange={(e) => handleParamChange("staticHeadM", parseFloat(e.target.value) || 0)}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
               min={0}
               step={0.5}
@@ -143,7 +143,9 @@ export function SystemCurveOverlay({
             <input
               type="number"
               value={systemParams.frictionLossAtDesignFlowM}
-              onChange={(e) => handleParamChange('frictionLossAtDesignFlowM', parseFloat(e.target.value) || 0)}
+              onChange={(e) =>
+                handleParamChange("frictionLossAtDesignFlowM", parseFloat(e.target.value) || 0)
+              }
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
               min={0}
               step={0.5}
@@ -158,7 +160,7 @@ export function SystemCurveOverlay({
             <input
               type="number"
               value={systemParams.designFlowM3h}
-              onChange={(e) => handleParamChange('designFlowM3h', parseFloat(e.target.value) || 0)}
+              onChange={(e) => handleParamChange("designFlowM3h", parseFloat(e.target.value) || 0)}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
               min={0}
               step={1}
@@ -178,50 +180,100 @@ export function SystemCurveOverlay({
 
       {operatingPoint && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className={`rounded-lg p-4 border ${
-            operatingAnalysis.color === 'green' ? 'bg-green-50 border-green-200' :
-            operatingAnalysis.color === 'yellow' ? 'bg-yellow-50 border-yellow-200' :
-            operatingAnalysis.color === 'red' ? 'bg-red-50 border-red-200' :
-            'bg-blue-50 border-blue-200'
-          }`}>
+          <div
+            className={`rounded-lg p-4 border ${
+              operatingAnalysis.color === "green"
+                ? "bg-green-50 border-green-200"
+                : operatingAnalysis.color === "yellow"
+                  ? "bg-yellow-50 border-yellow-200"
+                  : operatingAnalysis.color === "red"
+                    ? "bg-red-50 border-red-200"
+                    : "bg-blue-50 border-blue-200"
+            }`}
+          >
             <div className="flex items-start gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                operatingAnalysis.color === 'green' ? 'bg-green-100' :
-                operatingAnalysis.color === 'yellow' ? 'bg-yellow-100' :
-                operatingAnalysis.color === 'red' ? 'bg-red-100' :
-                'bg-blue-100'
-              }`}>
-                {operatingAnalysis.color === 'green' && (
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  operatingAnalysis.color === "green"
+                    ? "bg-green-100"
+                    : operatingAnalysis.color === "yellow"
+                      ? "bg-yellow-100"
+                      : operatingAnalysis.color === "red"
+                        ? "bg-red-100"
+                        : "bg-blue-100"
+                }`}
+              >
+                {operatingAnalysis.color === "green" && (
+                  <svg
+                    className="w-5 h-5 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 )}
-                {operatingAnalysis.color === 'yellow' && (
-                  <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                {operatingAnalysis.color === "yellow" && (
+                  <svg
+                    className="w-5 h-5 text-yellow-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
                   </svg>
                 )}
-                {operatingAnalysis.color === 'red' && (
-                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                {operatingAnalysis.color === "red" && (
+                  <svg
+                    className="w-5 h-5 text-red-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 )}
               </div>
               <div>
-                <h4 className={`font-medium ${
-                  operatingAnalysis.color === 'green' ? 'text-green-800' :
-                  operatingAnalysis.color === 'yellow' ? 'text-yellow-800' :
-                  operatingAnalysis.color === 'red' ? 'text-red-800' :
-                  'text-blue-800'
-                }`}>
+                <h4
+                  className={`font-medium ${
+                    operatingAnalysis.color === "green"
+                      ? "text-green-800"
+                      : operatingAnalysis.color === "yellow"
+                        ? "text-yellow-800"
+                        : operatingAnalysis.color === "red"
+                          ? "text-red-800"
+                          : "text-blue-800"
+                  }`}
+                >
                   Operating Point Analysis
                 </h4>
-                <p className={`text-sm mt-1 ${
-                  operatingAnalysis.color === 'green' ? 'text-green-700' :
-                  operatingAnalysis.color === 'yellow' ? 'text-yellow-700' :
-                  operatingAnalysis.color === 'red' ? 'text-red-700' :
-                  'text-blue-700'
-                }`}>
+                <p
+                  className={`text-sm mt-1 ${
+                    operatingAnalysis.color === "green"
+                      ? "text-green-700"
+                      : operatingAnalysis.color === "yellow"
+                        ? "text-yellow-700"
+                        : operatingAnalysis.color === "red"
+                          ? "text-red-700"
+                          : "text-blue-700"
+                  }`}
+                >
                   {operatingAnalysis.message}
                 </p>
               </div>
@@ -242,17 +294,24 @@ export function SystemCurveOverlay({
               {pumpPerformanceAtOperatingPoint?.efficiencyPercent !== undefined && (
                 <div>
                   <span className="text-gray-500">Efficiency:</span>
-                  <span className="ml-2 font-medium">{pumpPerformanceAtOperatingPoint.efficiencyPercent.toFixed(1)}%</span>
+                  <span className="ml-2 font-medium">
+                    {pumpPerformanceAtOperatingPoint.efficiencyPercent.toFixed(1)}%
+                  </span>
                 </div>
               )}
               <div>
                 <span className="text-gray-500">BEP Flow:</span>
-                <span className="ml-2 font-medium">{pumpCurve.bestEfficiencyPoint.flowM3h} m³/h</span>
+                <span className="ml-2 font-medium">
+                  {pumpCurve.bestEfficiencyPoint.flowM3h} m³/h
+                </span>
               </div>
               <div>
                 <span className="text-gray-500">% of BEP:</span>
                 <span className="ml-2 font-medium">
-                  {((operatingPoint.flowM3h / pumpCurve.bestEfficiencyPoint.flowM3h) * 100).toFixed(0)}%
+                  {((operatingPoint.flowM3h / pumpCurve.bestEfficiencyPoint.flowM3h) * 100).toFixed(
+                    0,
+                  )}
+                  %
                 </span>
               </div>
               <div>
@@ -267,14 +326,24 @@ export function SystemCurveOverlay({
       {!operatingPoint && showSystemCurve && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <svg
+              className="w-6 h-6 text-red-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
             <div>
               <h4 className="font-medium text-red-800">No Operating Point Found</h4>
               <p className="text-sm text-red-700 mt-1">
-                The pump curve does not intersect with the system curve.
-                This pump may not be suitable for this application or the system parameters need adjustment.
+                The pump curve does not intersect with the system curve. This pump may not be
+                suitable for this application or the system parameters need adjustment.
               </p>
             </div>
           </div>

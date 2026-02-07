@@ -1,12 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import {
-  generateClientItemNumber,
-  getWallThicknessForSchedule,
-  getPipeEndConfigurationDetails
-} from '@/app/lib/utils/systemUtils';
-import { log } from '@/app/lib/logger';
+import { useState } from "react";
+import { log } from "@/app/lib/logger";
+import { getWallThicknessForSchedule } from "@/app/lib/utils/systemUtils";
 
 // Types
 interface BendEntry {
@@ -25,7 +21,7 @@ interface BendEntry {
     flangeStandardId?: number;
     flangePressureClassId?: number;
     quantityValue: number;
-    quantityType: 'number_of_items';
+    quantityType: "number_of_items";
     workingPressureBar?: number;
     workingTemperatureC?: number;
     useGlobalFlangeSpecs?: boolean;
@@ -59,8 +55,10 @@ interface BendItemsStepProps {
   loading: boolean;
 }
 
-const nominalBores = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600];
-const bendTypes = ['1.5D', '2D', '3D', '5D'];
+const nominalBores = [
+  15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600,
+];
+const bendTypes = ["1.5D", "2D", "3D", "5D"];
 const standardAngles = [15, 22.5, 30, 45, 60, 90];
 
 export default function BendItemsStep({
@@ -72,20 +70,20 @@ export default function BendItemsStep({
   onRemoveEntry,
   onCalculate,
   errors,
-  loading
+  loading,
 }: BendItemsStepProps) {
   const [isCalculating, setIsCalculating] = useState(false);
 
   // Generate item description based on specifications
   const generateItemDescription = (entry: BendEntry) => {
     const specs = entry.specs;
-    const schedule = specs.scheduleNumber || 'TBD';
-    const nb = specs.nominalBoreMm || 'TBD';
-    const bendType = specs.bendType || 'TBD';
-    const degrees = specs.bendDegrees || 'TBD';
-    
+    const schedule = specs.scheduleNumber || "TBD";
+    const nb = specs.nominalBoreMm || "TBD";
+    const bendType = specs.bendType || "TBD";
+    const degrees = specs.bendDegrees || "TBD";
+
     let description = `${nb}NB ${schedule} ${bendType} ${degrees}° Pulled Bend`;
-    
+
     if (specs.numberOfTangents && specs.numberOfTangents > 0) {
       const tangentLengths = specs.tangentLengths || [];
       if (specs.numberOfTangents === 1) {
@@ -96,11 +94,11 @@ export default function BendItemsStep({
       } else {
         description += ` with ${specs.numberOfTangents} tangents`;
         if (tangentLengths.length > 0) {
-          description += ` (${tangentLengths.join('mm, ')}mm)`;
+          description += ` (${tangentLengths.join("mm, ")}mm)`;
         }
       }
     }
-    
+
     return description;
   };
 
@@ -109,72 +107,77 @@ export default function BendItemsStep({
     const pressure = globalSpecs?.workingPressureBar || entry.specs.workingPressureBar;
     const nominalBore = entry.specs.nominalBoreMm;
     const steelSpecId = globalSpecs?.steelSpecificationId;
-    
-    log.debug('🔍 Auto-calculating bend specs:', { pressure, nominalBore, steelSpecId });
-    
+
+    log.debug("🔍 Auto-calculating bend specs:", { pressure, nominalBore, steelSpecId });
+
     if (pressure && nominalBore) {
       try {
-        const { masterDataApi } = await import('@/app/lib/api/client');
-        
+        const { masterDataApi } = await import("@/app/lib/api/client");
+
         // Convert pressure from bar to MPa for API
         const pressureMpa = pressure * 0.1;
-        
-        log.debug('📡 Calling bend API with:', { nominalBore, pressureMpa });
-        
+
+        log.debug("📡 Calling bend API with:", { nominalBore, pressureMpa });
+
         const recommended = await masterDataApi.getRecommendedSpecs(
           nominalBore,
           pressureMpa,
           entry.specs.workingTemperatureC || globalSpecs?.workingTemperatureC || 20,
-          steelSpecId
+          steelSpecId,
         );
-        
-        log.debug('✅ Bend API returned:', recommended);
-        
+
+        log.debug("✅ Bend API returned:", recommended);
+
         return {
           scheduleNumber: recommended.schedule,
           wallThicknessMm: recommended.wallThickness,
           workingPressureBar: pressure,
           minimumSchedule: recommended.schedule,
           minimumWallThickness: recommended.wallThickness,
-          isScheduleOverridden: false
+          isScheduleOverridden: false,
         };
       } catch (error) {
-        log.error('Error auto-calculating bend specs:', error);
+        log.error("Error auto-calculating bend specs:", error);
 
         // Fallback calculation
-        let fallbackSchedule = 'Sch40';
+        let fallbackSchedule = "Sch40";
         let fallbackWallThickness = 3.6;
-        
+
         if (pressure <= 10) {
-          fallbackSchedule = 'Sch10';
+          fallbackSchedule = "Sch10";
           fallbackWallThickness = Math.max(2.0, nominalBore * 0.03);
         } else if (pressure <= 25) {
-          fallbackSchedule = 'Sch20';
+          fallbackSchedule = "Sch20";
           fallbackWallThickness = Math.max(3.0, nominalBore * 0.04);
         } else if (pressure <= 40) {
-          fallbackSchedule = 'Sch40';
+          fallbackSchedule = "Sch40";
           fallbackWallThickness = Math.max(3.6, nominalBore * 0.05);
         } else if (pressure <= 80) {
-          fallbackSchedule = 'Sch80';
+          fallbackSchedule = "Sch80";
           fallbackWallThickness = Math.max(5.5, nominalBore * 0.07);
         } else {
-          fallbackSchedule = 'Sch160';
-          fallbackWallThickness = Math.max(8.0, nominalBore * 0.10);
+          fallbackSchedule = "Sch160";
+          fallbackWallThickness = Math.max(8.0, nominalBore * 0.1);
         }
-        
-        log.debug(`🔧 Using fallback for bend: ${fallbackSchedule} (${fallbackWallThickness}mm) for ${nominalBore}NB at ${pressure} bar`);
-        
+
+        log.debug(
+          `🔧 Using fallback for bend: ${fallbackSchedule} (${fallbackWallThickness}mm) for ${nominalBore}NB at ${pressure} bar`,
+        );
+
         return {
           scheduleNumber: fallbackSchedule,
           wallThicknessMm: fallbackWallThickness,
           workingPressureBar: pressure,
           minimumSchedule: fallbackSchedule,
           minimumWallThickness: fallbackWallThickness,
-          isScheduleOverridden: false
+          isScheduleOverridden: false,
         };
       }
     } else {
-      log.debug('⚠️ Skipping bend auto-calculation - missing pressure or nominal bore:', { pressure, nominalBore });
+      log.debug("⚠️ Skipping bend auto-calculation - missing pressure or nominal bore:", {
+        pressure,
+        nominalBore,
+      });
     }
     return {};
   };
@@ -192,15 +195,19 @@ export default function BendItemsStep({
   };
 
   const calculateBendEntry = async (entry: BendEntry) => {
-    if (!entry.specs.nominalBoreMm || !entry.specs.wallThicknessMm ||
-        !entry.specs.bendType || !entry.specs.bendDegrees) {
-      log.warn('Missing required specifications for bend calculation');
+    if (
+      !entry.specs.nominalBoreMm ||
+      !entry.specs.wallThicknessMm ||
+      !entry.specs.bendType ||
+      !entry.specs.bendDegrees
+    ) {
+      log.warn("Missing required specifications for bend calculation");
       return;
     }
 
     try {
-      const { masterDataApi } = await import('@/app/lib/api/client');
-      
+      const { masterDataApi } = await import("@/app/lib/api/client");
+
       const calculationParams = {
         nominalBoreMm: entry.specs.nominalBoreMm,
         wallThicknessMm: entry.specs.wallThicknessMm,
@@ -211,43 +218,48 @@ export default function BendItemsStep({
         tangentLengths: entry.specs.tangentLengths || [],
         quantity: entry.specs.quantityValue || 1,
         steelSpecificationId: entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId,
-        flangeStandardId: entry.specs.useGlobalFlangeSpecs !== false 
-          ? globalSpecs?.flangeStandardId 
-          : entry.specs.flangeStandardId,
-        flangePressureClassId: entry.specs.useGlobalFlangeSpecs !== false 
-          ? globalSpecs?.flangePressureClassId 
-          : entry.specs.flangePressureClassId
+        flangeStandardId:
+          entry.specs.useGlobalFlangeSpecs !== false
+            ? globalSpecs?.flangeStandardId
+            : entry.specs.flangeStandardId,
+        flangePressureClassId:
+          entry.specs.useGlobalFlangeSpecs !== false
+            ? globalSpecs?.flangePressureClassId
+            : entry.specs.flangePressureClassId,
       };
 
-      log.debug('🔧 Calculating bend with params:', calculationParams);
+      log.debug("🔧 Calculating bend with params:", calculationParams);
 
       const calculation = await masterDataApi.calculateBendSpecifications(calculationParams);
-      
-      log.debug('✅ Bend calculation result:', calculation);
+
+      log.debug("✅ Bend calculation result:", calculation);
 
       onUpdateEntry(entry.id, {
-        calculation: calculation
+        calculation: calculation,
       });
-
     } catch (error) {
-      log.error('Error calculating bend specifications:', error);
+      log.error("Error calculating bend specifications:", error);
 
       // Provide fallback calculation if API fails
       const fallbackCalculation = {
         centerToFaceDimension: entry.specs.nominalBoreMm ? entry.specs.nominalBoreMm * 1.5 : 150,
         bendRadius: entry.specs.nominalBoreMm ? entry.specs.nominalBoreMm * 1.5 : 150,
         totalBendWeight: 10, // Fallback weight
-        totalTangentWeight: (entry.specs.tangentLengths || []).reduce((sum, length) => sum + (length * 0.01), 0),
+        totalTangentWeight: (entry.specs.tangentLengths || []).reduce(
+          (sum, length) => sum + length * 0.01,
+          0,
+        ),
         totalSystemWeight: 15,
         numberOfFlanges: entry.specs.numberOfTangents && entry.specs.numberOfTangents > 0 ? 2 : 0,
-        numberOfFlangeWelds: entry.specs.numberOfTangents && entry.specs.numberOfTangents > 0 ? 2 : 0,
+        numberOfFlangeWelds:
+          entry.specs.numberOfTangents && entry.specs.numberOfTangents > 0 ? 2 : 0,
         numberOfButtWelds: entry.specs.numberOfTangents || 0,
         totalFlangeWeldLength: 0.5,
-        totalButtWeldLength: 0.3
+        totalButtWeldLength: 0.3,
       };
 
       onUpdateEntry(entry.id, {
-        calculation: fallbackCalculation
+        calculation: fallbackCalculation,
       });
     }
   };
@@ -276,7 +288,7 @@ export default function BendItemsStep({
         disabled={isCalculating || loading}
         className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isCalculating || loading ? 'Calculating...' : '🔄 Calculate All'}
+        {isCalculating || loading ? "Calculating..." : "🔄 Calculate All"}
       </button>
     </div>
   );
@@ -326,7 +338,7 @@ export default function BendItemsStep({
                 </label>
                 <input
                   type="text"
-                  value={entry.clientItemNumber || ''}
+                  value={entry.clientItemNumber || ""}
                   onChange={(e) => onUpdateEntry(entry.id, { clientItemNumber: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   placeholder="Auto-generated from customer name (e.g., PLS-0001)"
@@ -349,33 +361,33 @@ export default function BendItemsStep({
                       value={entry.specs.nominalBoreMm}
                       onChange={async (e) => {
                         const nominalBore = Number(e.target.value);
-                        
+
                         onUpdateEntry(entry.id, {
-                          specs: { 
-                            ...entry.specs, 
-                            nominalBoreMm: nominalBore
-                          }
+                          specs: {
+                            ...entry.specs,
+                            nominalBoreMm: nominalBore,
+                          },
                         });
-                        
+
                         // Auto-calculate specs
                         try {
-                          const autoSpecs = await autoCalculateSpecs({ 
-                            specs: { ...entry.specs, nominalBoreMm: nominalBore } 
+                          const autoSpecs = await autoCalculateSpecs({
+                            specs: { ...entry.specs, nominalBoreMm: nominalBore },
                           });
-                          
+
                           const updatedEntry = {
                             ...entry,
-                            specs: { 
-                              ...entry.specs, 
+                            specs: {
+                              ...entry.specs,
                               nominalBoreMm: nominalBore,
-                              ...autoSpecs
-                            }
+                              ...autoSpecs,
+                            },
                           };
-                          
+
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
                         } catch (error) {
-                          log.error('Error auto-calculating bend specs:', error);
+                          log.error("Error auto-calculating bend specs:", error);
                         }
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
@@ -397,35 +409,37 @@ export default function BendItemsStep({
                       {globalSpecs?.workingPressureBar ? (
                         <span className="text-green-600 text-xs ml-2">(Automated)</span>
                       ) : (
-                        <span className="text-orange-600 text-xs ml-2">(Manual Selection Required)</span>
+                        <span className="text-orange-600 text-xs ml-2">
+                          (Manual Selection Required)
+                        </span>
                       )}
                     </label>
-                    
+
                     <div className="space-y-2">
                       <select
-                        value={entry.specs.scheduleNumber || ''}
+                        value={entry.specs.scheduleNumber || ""}
                         onChange={async (e) => {
                           const newSchedule = e.target.value;
-                          
+
                           let autoWallThickness = null;
                           if (newSchedule && entry.specs.nominalBoreMm) {
                             try {
                               autoWallThickness = await getWallThicknessForSchedule(
-                                entry.specs.nominalBoreMm, 
-                                newSchedule
+                                entry.specs.nominalBoreMm,
+                                newSchedule,
                               );
                             } catch (error) {
-                              log.warn('Could not auto-populate wall thickness:', error);
+                              log.warn("Could not auto-populate wall thickness:", error);
                             }
                           }
-                          
+
                           onUpdateEntry(entry.id, {
-                            specs: { 
-                              ...entry.specs, 
+                            specs: {
+                              ...entry.specs,
                               scheduleNumber: newSchedule,
-                              wallThicknessMm: autoWallThickness || entry.specs.wallThicknessMm
+                              wallThicknessMm: autoWallThickness || entry.specs.wallThicknessMm,
                             },
-                            isScheduleOverridden: newSchedule !== entry.minimumSchedule
+                            isScheduleOverridden: newSchedule !== entry.minimumSchedule,
                           });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
@@ -450,10 +464,10 @@ export default function BendItemsStep({
                       <input
                         type="number"
                         step="0.001"
-                        value={entry.specs.wallThicknessMm || ''}
+                        value={entry.specs.wallThicknessMm || ""}
                         onChange={(e) => {
                           onUpdateEntry(entry.id, {
-                            specs: { ...entry.specs, wallThicknessMm: Number(e.target.value) }
+                            specs: { ...entry.specs, wallThicknessMm: Number(e.target.value) },
                           });
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
@@ -469,10 +483,12 @@ export default function BendItemsStep({
                       Bend Type *
                     </label>
                     <select
-                      value={entry.specs.bendType || ''}
-                      onChange={(e) => onUpdateEntry(entry.id, {
-                        specs: { ...entry.specs, bendType: e.target.value }
-                      })}
+                      value={entry.specs.bendType || ""}
+                      onChange={(e) =>
+                        onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, bendType: e.target.value },
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       required
                     >
@@ -492,10 +508,12 @@ export default function BendItemsStep({
                     </label>
                     <div className="flex gap-2">
                       <select
-                        value={entry.specs.bendDegrees || ''}
-                        onChange={(e) => onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, bendDegrees: Number(e.target.value) }
-                        })}
+                        value={entry.specs.bendDegrees || ""}
+                        onChange={(e) =>
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, bendDegrees: Number(e.target.value) },
+                          })
+                        }
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         required
                       >
@@ -511,10 +529,12 @@ export default function BendItemsStep({
                         step="0.1"
                         min="0"
                         max="180"
-                        value={entry.specs.bendDegrees || ''}
-                        onChange={(e) => onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, bendDegrees: Number(e.target.value) }
-                        })}
+                        value={entry.specs.bendDegrees || ""}
+                        onChange={(e) =>
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, bendDegrees: Number(e.target.value) },
+                          })
+                        }
                         className="w-20 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                         placeholder="Custom"
                       />
@@ -538,14 +558,16 @@ export default function BendItemsStep({
                       onChange={(e) => {
                         const count = Number(e.target.value);
                         const currentLengths = entry.specs.tangentLengths || [];
-                        const newLengths = Array(count).fill(0).map((_, i) => currentLengths[i] || 400);
-                        
+                        const newLengths = Array(count)
+                          .fill(0)
+                          .map((_, i) => currentLengths[i] || 400);
+
                         onUpdateEntry(entry.id, {
-                          specs: { 
-                            ...entry.specs, 
+                          specs: {
+                            ...entry.specs,
                             numberOfTangents: count,
-                            tangentLengths: count > 0 ? newLengths : []
-                          }
+                            tangentLengths: count > 0 ? newLengths : [],
+                          },
                         });
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
@@ -565,29 +587,31 @@ export default function BendItemsStep({
                         Tangent Lengths (mm)
                       </label>
                       <div className="space-y-2">
-                        {Array(entry.specs.numberOfTangents).fill(0).map((_, index) => (
-                          <input
-                            key={index}
-                            type="number"
-                            step="1"
-                            min="0"
-                            value={(entry.specs.tangentLengths || [])[index] || ''}
-                            onChange={(e) => {
-                              const newLengths = [...(entry.specs.tangentLengths || [])];
-                              newLengths[index] = Number(e.target.value);
-                              
-                              onUpdateEntry(entry.id, {
-                                specs: { 
-                                  ...entry.specs, 
-                                  tangentLengths: newLengths
-                                }
-                              });
-                            }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                            placeholder={`Tangent ${index + 1} length (mm)`}
-                            required
-                          />
-                        ))}
+                        {Array(entry.specs.numberOfTangents)
+                          .fill(0)
+                          .map((_, index) => (
+                            <input
+                              key={index}
+                              type="number"
+                              step="1"
+                              min="0"
+                              value={(entry.specs.tangentLengths || [])[index] || ""}
+                              onChange={(e) => {
+                                const newLengths = [...(entry.specs.tangentLengths || [])];
+                                newLengths[index] = Number(e.target.value);
+
+                                onUpdateEntry(entry.id, {
+                                  specs: {
+                                    ...entry.specs,
+                                    tangentLengths: newLengths,
+                                  },
+                                });
+                              }}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                              placeholder={`Tangent ${index + 1} length (mm)`}
+                              required
+                            />
+                          ))}
                       </div>
                     </div>
                   )}
@@ -601,14 +625,16 @@ export default function BendItemsStep({
                       type="number"
                       min="1"
                       step="1"
-                      value={entry.specs.quantityValue || ''}
-                      onChange={(e) => onUpdateEntry(entry.id, {
-                        specs: { 
-                          ...entry.specs, 
-                          quantityValue: Number(e.target.value),
-                          quantityType: 'number_of_items'
-                        }
-                      })}
+                      value={entry.specs.quantityValue || ""}
+                      onChange={(e) =>
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            quantityValue: Number(e.target.value),
+                            quantityType: "number_of_items",
+                          },
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       placeholder="Number of bend items"
                       required
@@ -618,24 +644,33 @@ export default function BendItemsStep({
                   {/* Flange Information */}
                   <div className="border-t border-gray-200 pt-3">
                     <h5 className="text-xs font-semibold text-gray-800 mb-2">Flange Information</h5>
-                    
+
                     <div className="space-y-2">
                       <div className="flex items-center">
                         <input
                           type="checkbox"
                           id={`useGlobal_${entry.id}`}
                           checked={entry.specs.useGlobalFlangeSpecs !== false}
-                          onChange={(e) => onUpdateEntry(entry.id, {
-                            specs: { 
-                              ...entry.specs, 
-                              useGlobalFlangeSpecs: e.target.checked,
-                              flangeStandardId: e.target.checked ? undefined : entry.specs.flangeStandardId,
-                              flangePressureClassId: e.target.checked ? undefined : entry.specs.flangePressureClassId
-                            }
-                          })}
+                          onChange={(e) =>
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                useGlobalFlangeSpecs: e.target.checked,
+                                flangeStandardId: e.target.checked
+                                  ? undefined
+                                  : entry.specs.flangeStandardId,
+                                flangePressureClassId: e.target.checked
+                                  ? undefined
+                                  : entry.specs.flangePressureClassId,
+                              },
+                            })
+                          }
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
-                        <label htmlFor={`useGlobal_${entry.id}`} className="ml-2 text-xs text-gray-700">
+                        <label
+                          htmlFor={`useGlobal_${entry.id}`}
+                          className="ml-2 text-xs text-gray-700"
+                        >
                           Use global flange specifications
                         </label>
                       </div>
@@ -643,10 +678,17 @@ export default function BendItemsStep({
                       {entry.specs.useGlobalFlangeSpecs === false && (
                         <div className="space-y-2">
                           <select
-                            value={entry.specs.flangeStandardId || ''}
-                            onChange={(e) => onUpdateEntry(entry.id, { 
-                              specs: { ...entry.specs, flangeStandardId: e.target.value ? Number(e.target.value) : undefined }
-                            })}
+                            value={entry.specs.flangeStandardId || ""}
+                            onChange={(e) =>
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  flangeStandardId: e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined,
+                                },
+                              })
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                           >
                             <option value="">Select flange standard...</option>
@@ -656,18 +698,25 @@ export default function BendItemsStep({
                               </option>
                             ))}
                           </select>
-                          
+
                           <select
-                            value={entry.specs.flangePressureClassId || ''}
-                            onChange={(e) => onUpdateEntry(entry.id, { 
-                              specs: { ...entry.specs, flangePressureClassId: e.target.value ? Number(e.target.value) : undefined }
-                            })}
+                            value={entry.specs.flangePressureClassId || ""}
+                            onChange={(e) =>
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  flangePressureClassId: e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined,
+                                },
+                              })
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                           >
                             <option value="">Select pressure class...</option>
                             {masterData.pressureClasses.map((pc: any) => (
                               <option key={pc.id} value={pc.id}>
-                                {pc.designation?.replace(/\/\d+$/, '') || pc.designation}
+                                {pc.designation?.replace(/\/\d+$/, "") || pc.designation}
                               </option>
                             ))}
                           </select>
@@ -681,17 +730,19 @@ export default function BendItemsStep({
               <div className="flex justify-between items-center mt-4">
                 <button
                   onClick={() => calculateBendEntry(entry)}
-                  disabled={!entry.specs.nominalBoreMm || !entry.specs.wallThicknessMm || 
-                           !entry.specs.bendType || !entry.specs.bendDegrees}
+                  disabled={
+                    !entry.specs.nominalBoreMm ||
+                    !entry.specs.wallThicknessMm ||
+                    !entry.specs.bendType ||
+                    !entry.specs.bendDegrees
+                  }
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
                 >
                   🔄 Calculate Bend
                 </button>
-                
+
                 {entry.calculation && (
-                  <span className="text-sm text-green-600 font-medium">
-                    ✅ Calculated
-                  </span>
+                  <span className="text-sm text-green-600 font-medium">✅ Calculated</span>
                 )}
               </div>
 
@@ -701,26 +752,35 @@ export default function BendItemsStep({
                   <h5 className="text-sm font-semibold text-blue-900 mb-2 border-b border-blue-200 pb-1">
                     📊 Calculated Results
                   </h5>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {/* Bend Dimensions */}
                     <div className="bg-white p-2 rounded">
                       <p className="text-xs text-gray-700 font-medium">Center to Face</p>
-                      <p className="text-lg font-bold text-blue-900">{entry.calculation.centerToFaceDimension?.toFixed(2)}mm</p>
+                      <p className="text-lg font-bold text-blue-900">
+                        {entry.calculation.centerToFaceDimension?.toFixed(2)}mm
+                      </p>
                       {entry.calculation.bendRadius && (
-                        <p className="text-xs text-gray-600">Radius: {entry.calculation.bendRadius?.toFixed(1)}mm</p>
+                        <p className="text-xs text-gray-600">
+                          Radius: {entry.calculation.bendRadius?.toFixed(1)}mm
+                        </p>
                       )}
                     </div>
 
                     {/* Weight */}
                     <div className="bg-white p-2 rounded">
                       <p className="text-xs text-gray-700 font-medium">Total Weight</p>
-                      <p className="text-lg font-bold text-blue-900">{formatWeight(entry.calculation.totalSystemWeight || 0)}</p>
+                      <p className="text-lg font-bold text-blue-900">
+                        {formatWeight(entry.calculation.totalSystemWeight || 0)}
+                      </p>
                       <div className="text-xs text-gray-600">
                         <div>Bend: {formatWeight(entry.calculation.totalBendWeight || 0)}</div>
-                        {entry.calculation.totalTangentWeight && entry.calculation.totalTangentWeight > 0 && (
-                          <div>Tangents: {formatWeight(entry.calculation.totalTangentWeight)}</div>
-                        )}
+                        {entry.calculation.totalTangentWeight &&
+                          entry.calculation.totalTangentWeight > 0 && (
+                            <div>
+                              Tangents: {formatWeight(entry.calculation.totalTangentWeight)}
+                            </div>
+                          )}
                       </div>
                     </div>
 
@@ -728,12 +788,20 @@ export default function BendItemsStep({
                     <div className="bg-white p-2 rounded">
                       <p className="text-xs text-gray-700 font-medium">Welds Required</p>
                       <div className="text-sm">
-                        {entry.calculation.numberOfFlangeWelds && entry.calculation.numberOfFlangeWelds > 0 && (
-                          <div>Flange: {entry.calculation.numberOfFlangeWelds} ({entry.calculation.totalFlangeWeldLength?.toFixed(1)}m)</div>
-                        )}
-                        {entry.calculation.numberOfButtWelds && entry.calculation.numberOfButtWelds > 0 && (
-                          <div>Butt: {entry.calculation.numberOfButtWelds} ({entry.calculation.totalButtWeldLength?.toFixed(1)}m)</div>
-                        )}
+                        {entry.calculation.numberOfFlangeWelds &&
+                          entry.calculation.numberOfFlangeWelds > 0 && (
+                            <div>
+                              Flange: {entry.calculation.numberOfFlangeWelds} (
+                              {entry.calculation.totalFlangeWeldLength?.toFixed(1)}m)
+                            </div>
+                          )}
+                        {entry.calculation.numberOfButtWelds &&
+                          entry.calculation.numberOfButtWelds > 0 && (
+                            <div>
+                              Butt: {entry.calculation.numberOfButtWelds} (
+                              {entry.calculation.totalButtWeldLength?.toFixed(1)}m)
+                            </div>
+                          )}
                       </div>
                     </div>
                   </div>
@@ -754,22 +822,21 @@ export default function BendItemsStep({
             <div className="text-center">
               <p className="text-xs font-medium text-blue-700">Total Quantity</p>
               <p className="text-lg font-bold text-blue-900">
-                {entries.reduce((total: number, entry: BendEntry) => total + entry.specs.quantityValue, 0)}
+                {entries.reduce(
+                  (total: number, entry: BendEntry) => total + entry.specs.quantityValue,
+                  0,
+                )}
               </p>
             </div>
             <div className="text-center">
               <p className="text-xs font-medium text-blue-700">Total Weight</p>
-              <p className="text-lg font-bold text-blue-900">
-                {formatWeight(getTotalWeight())}
-              </p>
+              <p className="text-lg font-bold text-blue-900">{formatWeight(getTotalWeight())}</p>
             </div>
           </div>
         </div>
 
         {/* Bottom action buttons */}
-        <div className="flex justify-end">
-          {actionButtons()}
-        </div>
+        <div className="flex justify-end">{actionButtons()}</div>
       </div>
     </div>
   );

@@ -1,10 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
-import { FittingStandard, FittingType } from './get-fitting-dimensions.dto';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsEnum, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { FittingStandard, FittingType } from "./get-fitting-dimensions.dto";
 
 export class CalculateFittingDto {
   @ApiProperty({
-    description: 'Fitting standard (SABS62 or SABS719)',
+    description: "Fitting standard (SABS62 or SABS719)",
     enum: FittingStandard,
     example: FittingStandard.SABS62,
   })
@@ -12,7 +12,7 @@ export class CalculateFittingDto {
   fittingStandard: FittingStandard;
 
   @ApiProperty({
-    description: 'Type of fitting',
+    description: "Type of fitting",
     enum: FittingType,
     example: FittingType.EQUAL_TEE,
   })
@@ -20,7 +20,7 @@ export class CalculateFittingDto {
   fittingType: FittingType;
 
   @ApiProperty({
-    description: 'Nominal diameter in mm',
+    description: "Nominal diameter in mm",
     example: 100,
   })
   @IsNumber()
@@ -30,7 +30,7 @@ export class CalculateFittingDto {
   @ApiProperty({
     description:
       'Angle range (e.g., "60-90", "45-59", "30-44") - Required for Laterals and Y-Pieces',
-    example: '60-90',
+    example: "60-90",
     required: false,
   })
   @IsOptional()
@@ -38,7 +38,7 @@ export class CalculateFittingDto {
   angleRange?: string;
 
   @ApiProperty({
-    description: 'Pipe length A in mm (for SABS719)',
+    description: "Pipe length A in mm (for SABS719)",
     example: 1000,
     required: false,
   })
@@ -48,7 +48,7 @@ export class CalculateFittingDto {
   pipeLengthAMm?: number;
 
   @ApiProperty({
-    description: 'Pipe length B in mm (for SABS719)',
+    description: "Pipe length B in mm (for SABS719)",
     example: 1000,
     required: false,
   })
@@ -58,7 +58,7 @@ export class CalculateFittingDto {
   pipeLengthBMm?: number;
 
   @ApiProperty({
-    description: 'Steel specification ID',
+    description: "Steel specification ID",
     example: 1,
     required: false,
   })
@@ -67,7 +67,7 @@ export class CalculateFittingDto {
   steelSpecificationId?: number;
 
   @ApiProperty({
-    description: 'Flange standard ID',
+    description: "Flange standard ID",
     example: 1,
     required: false,
   })
@@ -76,7 +76,7 @@ export class CalculateFittingDto {
   flangeStandardId?: number;
 
   @ApiProperty({
-    description: 'Flange pressure class ID',
+    description: "Flange pressure class ID",
     example: 1,
     required: false,
   })
@@ -85,7 +85,7 @@ export class CalculateFittingDto {
   flangePressureClassId?: number;
 
   @ApiProperty({
-    description: 'Quantity of fittings',
+    description: "Quantity of fittings",
     example: 5,
   })
   @IsNumber()
@@ -93,9 +93,8 @@ export class CalculateFittingDto {
   quantityValue: number;
 
   @ApiProperty({
-    description:
-      'Schedule number (e.g., "Sch40", "80", "STD") - Required for SABS719',
-    example: 'Sch40',
+    description: 'Schedule number (e.g., "Sch40", "80", "STD") - Required for SABS719',
+    example: "Sch40",
     required: false,
   })
   @IsOptional()
@@ -103,7 +102,7 @@ export class CalculateFittingDto {
   scheduleNumber?: string;
 
   @ApiProperty({
-    description: 'Working pressure in bar',
+    description: "Working pressure in bar",
     example: 10,
     required: false,
   })
@@ -113,7 +112,7 @@ export class CalculateFittingDto {
   workingPressureBar?: number;
 
   @ApiProperty({
-    description: 'Working temperature in celsius',
+    description: "Working temperature in celsius",
     example: 120,
     required: false,
   })
@@ -124,106 +123,105 @@ export class CalculateFittingDto {
 
 export class FittingCalculationResultDto {
   @ApiProperty({
-    description: 'Total weight of the fitting assembly in kg',
+    description: "Total weight of the fitting assembly in kg",
     example: 45.5,
   })
   totalWeight: number;
 
   @ApiProperty({
-    description: 'Weight of the fitting body itself in kg',
+    description: "Weight of the fitting body itself in kg",
     example: 25.0,
   })
   fittingWeight: number;
 
   @ApiProperty({
-    description: 'Total weight of pipe sections (for SABS719) in kg',
+    description: "Total weight of pipe sections (for SABS719) in kg",
     example: 10.5,
   })
   pipeWeight: number;
 
   @ApiProperty({
-    description: 'Total weight of flanges in kg',
+    description: "Total weight of flanges in kg",
     example: 8.0,
   })
   flangeWeight: number;
 
   @ApiProperty({
-    description: 'Total weight of bolts in kg',
+    description: "Total weight of bolts in kg",
     example: 1.2,
   })
   boltWeight: number;
 
   @ApiProperty({
-    description: 'Total weight of nuts in kg',
+    description: "Total weight of nuts in kg",
     example: 0.8,
   })
   nutWeight: number;
 
   @ApiProperty({
-    description: 'Total weight of gusset plates (for gussetted tees) in kg',
+    description: "Total weight of gusset plates (for gussetted tees) in kg",
     example: 1.5,
     required: false,
   })
   gussetWeight?: number;
 
   @ApiProperty({
-    description: 'Estimated weld weight in kg',
+    description: "Estimated weld weight in kg",
     example: 0.5,
   })
   weldWeight: number;
 
   @ApiProperty({
-    description: 'Number of flanges required',
+    description: "Number of flanges required",
     example: 3,
   })
   numberOfFlanges: number;
 
   @ApiProperty({
-    description: 'Number of flange welds',
+    description: "Number of flange welds",
     example: 3,
   })
   numberOfFlangeWelds: number;
 
   @ApiProperty({
-    description: 'Total length of flange welds in linear meters',
+    description: "Total length of flange welds in linear meters",
     example: 0.942,
   })
   totalFlangeWeldLength: number;
 
   @ApiProperty({
-    description: 'Number of tee/lateral welds (for SABS719)',
+    description: "Number of tee/lateral welds (for SABS719)",
     example: 1,
   })
   numberOfTeeWelds: number;
 
   @ApiProperty({
-    description: 'Total length of tee/lateral welds in linear meters',
+    description: "Total length of tee/lateral welds in linear meters",
     example: 0.314,
   })
   totalTeeWeldLength: number;
 
   @ApiProperty({
-    description: 'Outside diameter in mm',
+    description: "Outside diameter in mm",
     example: 114.3,
   })
   outsideDiameterMm: number;
 
   @ApiProperty({
-    description: 'Wall thickness in mm',
+    description: "Wall thickness in mm",
     example: 6.02,
   })
   wallThicknessMm: number;
 
   @ApiProperty({
-    description:
-      'Total length of gusset welds in linear meters (for gussetted tees)',
+    description: "Total length of gusset welds in linear meters (for gussetted tees)",
     example: 0.45,
     required: false,
   })
   gussetWeldLength?: number;
 
   @ApiProperty({
-    description: 'Gusset section dimension C in mm (for gussetted tees)',
+    description: "Gusset section dimension C in mm (for gussetted tees)",
     example: 102.0,
     required: false,
   })

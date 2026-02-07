@@ -1,19 +1,19 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const bs4504Id = await this.flangeStandardId(queryRunner, 'BS 4504');
+    const bs4504Id = await this.flangeStandardId(queryRunner, "BS 4504");
 
     const pressureClasses = [
-      'PN6',
-      'PN10',
-      'PN16',
-      'PN25',
-      'PN40',
-      'PN64',
-      'Class 150',
-      'Class 300',
-      'Class 600',
+      "PN6",
+      "PN10",
+      "PN16",
+      "PN25",
+      "PN40",
+      "PN64",
+      "Class 150",
+      "Class 300",
+      "Class 600",
     ];
 
     for (const pc of pressureClasses) {
@@ -22,10 +22,8 @@ export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterfa
 
       if (weldNeckWeights) {
         const values = Object.entries(weldNeckWeights)
-          .map(
-            ([nb, weight]) => `(${bs4504Id}, '${pc}', '/2', ${nb}, ${weight})`,
-          )
-          .join(', ');
+          .map(([nb, weight]) => `(${bs4504Id}, '${pc}', '/2', ${nb}, ${weight})`)
+          .join(", ");
         if (values) {
           await queryRunner.query(`
             INSERT INTO flange_type_weights (flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm, weight_kg)
@@ -36,10 +34,8 @@ export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterfa
 
       if (plateWeights) {
         const values = Object.entries(plateWeights)
-          .map(
-            ([nb, weight]) => `(${bs4504Id}, '${pc}', '/3', ${nb}, ${weight})`,
-          )
-          .join(', ');
+          .map(([nb, weight]) => `(${bs4504Id}, '${pc}', '/3', ${nb}, ${weight})`)
+          .join(", ");
         if (values) {
           await queryRunner.query(`
             INSERT INTO flange_type_weights (flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm, weight_kg)
@@ -51,21 +47,17 @@ export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const bs4504Id = await this.flangeStandardId(queryRunner, 'BS 4504');
+    const bs4504Id = await this.flangeStandardId(queryRunner, "BS 4504");
     await queryRunner.query(
       `DELETE FROM flange_type_weights WHERE flange_standard_id = ${bs4504Id}`,
     );
   }
 
-  private async flangeStandardId(
-    queryRunner: QueryRunner,
-    code: string,
-  ): Promise<string> {
-    const result = await queryRunner.query(
-      `SELECT id FROM flange_standards WHERE code = $1`,
-      [code],
-    );
-    return result.length === 0 ? 'NULL' : result[0].id.toString();
+  private async flangeStandardId(queryRunner: QueryRunner, code: string): Promise<string> {
+    const result = await queryRunner.query("SELECT id FROM flange_standards WHERE code = $1", [
+      code,
+    ]);
+    return result.length === 0 ? "NULL" : result[0].id.toString();
   }
 
   private bs4504WeldNeckWeights(): Record<string, Record<number, number>> {
@@ -218,7 +210,7 @@ export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterfa
         500: 260.0,
         600: 400.0,
       },
-      'Class 150': {
+      "Class 150": {
         15: 0.8,
         20: 1.1,
         25: 1.3,
@@ -239,7 +231,7 @@ export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterfa
         500: 175.5,
         600: 255.5,
       },
-      'Class 300': {
+      "Class 300": {
         15: 1.2,
         20: 1.9,
         25: 2.3,
@@ -260,7 +252,7 @@ export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterfa
         500: 221.0,
         600: 343.5,
       },
-      'Class 600': {
+      "Class 600": {
         15: 1.8,
         20: 2.6,
         25: 3.3,
@@ -429,7 +421,7 @@ export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterfa
         500: 210.0,
         600: 340.0,
       },
-      'Class 150': {
+      "Class 150": {
         15: 0.5,
         20: 0.9,
         25: 0.9,
@@ -450,7 +442,7 @@ export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterfa
         500: 74.3,
         600: 99.0,
       },
-      'Class 300': {
+      "Class 300": {
         15: 0.9,
         20: 1.4,
         25: 1.4,
@@ -471,7 +463,7 @@ export class AddBs4504FlangeTypeWeights1778000100000 implements MigrationInterfa
         500: 141.8,
         600: 220.5,
       },
-      'Class 600': {
+      "Class 600": {
         15: 1.4,
         20: 2.0,
         25: 2.3,

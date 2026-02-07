@@ -1,21 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/app/components/Toast';
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { ConversationList, ConversationThread, MessageComposer } from "@/app/components/messaging";
+import { useToast } from "@/app/components/Toast";
+import type { ConversationDetail, ConversationSummary } from "@/app/lib/api/messagingApi";
 import {
-  ConversationList,
-  ConversationThread,
-  MessageComposer,
-} from '@/app/components/messaging';
-import type { ConversationSummary, ConversationDetail } from '@/app/lib/api/messagingApi';
-import { messagingKeys } from '@/app/lib/query/keys';
-import {
-  useAdminConversations,
   useAdminConversationDetail,
+  useAdminConversations,
   useSendAdminMessage,
-} from '@/app/lib/query/hooks';
+} from "@/app/lib/query/hooks";
+import { messagingKeys } from "@/app/lib/query/keys";
 
 export default function AdminMessagesPage() {
   const router = useRouter();
@@ -61,10 +57,7 @@ export default function AdminMessagesPage() {
 
           queryClient.setQueryData<ConversationDetail>(
             messagingKeys.conversations.detail(selectedConversation.id),
-            (old) =>
-              old
-                ? { ...old, messages: [...old.messages, newMessage] }
-                : old,
+            (old) => (old ? { ...old, messages: [...old.messages, newMessage] } : old),
           );
 
           queryClient.setQueryData<{ conversations: ConversationSummary[]; total: number }>(
@@ -87,8 +80,8 @@ export default function AdminMessagesPage() {
           );
         },
         onError: (err: unknown) => {
-          const message = err instanceof Error ? err.message : 'Failed to send message';
-          showToast(message, 'error');
+          const message = err instanceof Error ? err.message : "Failed to send message";
+          showToast(message, "error");
         },
       },
     );
@@ -105,18 +98,16 @@ export default function AdminMessagesPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Messages
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
         <div className="flex gap-4">
           <button
-            onClick={() => router.push('/admin/portal/broadcasts')}
+            onClick={() => router.push("/admin/portal/broadcasts")}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Manage Broadcasts
           </button>
           <button
-            onClick={() => router.push('/admin/portal/response-metrics')}
+            onClick={() => router.push("/admin/portal/response-metrics")}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Response Metrics
@@ -143,7 +134,7 @@ export default function AdminMessagesPage() {
                     {selectedConversation.subject}
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {selectedConversation.participantNames.join(', ')}
+                    {selectedConversation.participantNames.join(", ")}
                   </p>
                 </div>
 
@@ -174,9 +165,7 @@ export default function AdminMessagesPage() {
                   />
                 </svg>
                 <p className="text-lg font-medium">Select a conversation</p>
-                <p className="text-sm">
-                  Choose a conversation from the list to view messages
-                </p>
+                <p className="text-sm">Choose a conversation from the list to view messages</p>
               </div>
             )}
           </div>

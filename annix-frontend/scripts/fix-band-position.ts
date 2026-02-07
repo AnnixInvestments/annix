@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content: string = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content: string = fs.readFileSync(filePath, "utf8");
 
 // Fix Band 1 and Band 2 to appear next to each other (not justify-between)
 const oldBandRow = `                  <div className="flex justify-between items-center">
@@ -16,10 +16,10 @@ const newBandRow = `                  <div className="flex gap-6 items-center">
 
 if (content.includes(oldBandRow)) {
   content = content.replace(oldBandRow, newBandRow);
-  console.log('✅ Fixed Band 1 and Band 2 to appear side by side');
+  console.log("✅ Fixed Band 1 and Band 2 to appear side by side");
 } else {
-  console.log('❌ Could not find Band row pattern');
+  console.log("❌ Could not find Band row pattern");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

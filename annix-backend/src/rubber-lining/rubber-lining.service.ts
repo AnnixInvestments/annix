@@ -1,60 +1,53 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { generateUniqueId, nowMillis } from '../lib/datetime';
-import { RubberType } from './entities/rubber-type.entity';
-import { RubberSpecification } from './entities/rubber-specification.entity';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Repository } from "typeorm";
+import { generateUniqueId, nowMillis } from "../lib/datetime";
 import {
-  RubberApplicationRating,
-  RubberThicknessRecommendation,
-  RubberAdhesionRequirement,
-} from './entities/rubber-application.entity';
-import {
-  RubberProductCoding,
-  ProductCodingType,
-} from './entities/rubber-product-coding.entity';
-import { RubberPricingTier } from './entities/rubber-pricing-tier.entity';
-import { RubberCompany } from './entities/rubber-company.entity';
-import { RubberProduct } from './entities/rubber-product.entity';
-import {
-  RubberOrder,
-  RubberOrderStatus,
-  StatusHistoryEvent,
-} from './entities/rubber-order.entity';
-import { RubberOrderItem } from './entities/rubber-order-item.entity';
-import {
-  RubberTypeDto,
-  RubberSpecificationDto,
-  RubberApplicationRatingDto,
-  RubberThicknessRecommendationDto,
-  RubberAdhesionRequirementDto,
-  RubberRecommendationRequestDto,
-  RubberRecommendationDto,
   LineCalloutDto,
-} from './dto/rubber-lining.dto';
+  RubberAdhesionRequirementDto,
+  RubberApplicationRatingDto,
+  RubberRecommendationDto,
+  RubberRecommendationRequestDto,
+  RubberSpecificationDto,
+  RubberThicknessRecommendationDto,
+  RubberTypeDto,
+} from "./dto/rubber-lining.dto";
 import {
-  RubberProductCodingDto,
-  CreateRubberProductCodingDto,
-  UpdateRubberProductCodingDto,
-  RubberPricingTierDto,
-  CreateRubberPricingTierDto,
-  UpdateRubberPricingTierDto,
-  RubberCompanyDto,
   CreateRubberCompanyDto,
-  UpdateRubberCompanyDto,
-  RubberProductDto,
+  CreateRubberOrderDto,
+  CreateRubberPricingTierDto,
+  CreateRubberProductCodingDto,
   CreateRubberProductDto,
-  UpdateRubberProductDto,
+  ImportProductRowDto,
+  ImportProductRowResultDto,
+  ImportProductsResultDto,
+  RubberCompanyDto,
   RubberOrderDto,
   RubberOrderItemDto,
-  CreateRubberOrderDto,
-  UpdateRubberOrderDto,
-  RubberPriceCalculationRequestDto,
   RubberPriceCalculationDto,
-  ImportProductRowDto,
-  ImportProductsResultDto,
-  ImportProductRowResultDto,
-} from './dto/rubber-portal.dto';
+  RubberPriceCalculationRequestDto,
+  RubberPricingTierDto,
+  RubberProductCodingDto,
+  RubberProductDto,
+  UpdateRubberCompanyDto,
+  UpdateRubberOrderDto,
+  UpdateRubberPricingTierDto,
+  UpdateRubberProductCodingDto,
+  UpdateRubberProductDto,
+} from "./dto/rubber-portal.dto";
+import {
+  RubberAdhesionRequirement,
+  RubberApplicationRating,
+  RubberThicknessRecommendation,
+} from "./entities/rubber-application.entity";
+import { RubberCompany } from "./entities/rubber-company.entity";
+import { RubberOrder, RubberOrderStatus, StatusHistoryEvent } from "./entities/rubber-order.entity";
+import { RubberOrderItem } from "./entities/rubber-order-item.entity";
+import { RubberPricingTier } from "./entities/rubber-pricing-tier.entity";
+import { RubberProduct } from "./entities/rubber-product.entity";
+import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { RubberSpecification } from "./entities/rubber-specification.entity";
+import { RubberType } from "./entities/rubber-type.entity";
 
 @Injectable()
 export class RubberLiningService {
@@ -85,7 +78,7 @@ export class RubberLiningService {
 
   async allRubberTypes(): Promise<RubberTypeDto[]> {
     const types = await this.rubberTypeRepository.find({
-      order: { typeNumber: 'ASC' },
+      order: { typeNumber: "ASC" },
     });
     return types.map(this.mapTypeToDto);
   }
@@ -104,15 +97,13 @@ export class RubberLiningService {
 
   async allSpecifications(): Promise<RubberSpecificationDto[]> {
     const specs = await this.rubberSpecRepository.find({
-      relations: ['rubberType'],
-      order: { rubberTypeId: 'ASC', grade: 'ASC', hardnessClassIrhd: 'ASC' },
+      relations: ["rubberType"],
+      order: { rubberTypeId: "ASC", grade: "ASC", hardnessClassIrhd: "ASC" },
     });
     return specs.map(this.mapSpecToDto);
   }
 
-  async specificationsByType(
-    typeNumber: number,
-  ): Promise<RubberSpecificationDto[]> {
+  async specificationsByType(typeNumber: number): Promise<RubberSpecificationDto[]> {
     const type = await this.rubberTypeRepository.findOne({
       where: { typeNumber },
     });
@@ -120,8 +111,8 @@ export class RubberLiningService {
 
     const specs = await this.rubberSpecRepository.find({
       where: { rubberTypeId: type.id },
-      relations: ['rubberType'],
-      order: { grade: 'ASC', hardnessClassIrhd: 'ASC' },
+      relations: ["rubberType"],
+      order: { grade: "ASC", hardnessClassIrhd: "ASC" },
     });
     return specs.map(this.mapSpecToDto);
   }
@@ -142,7 +133,7 @@ export class RubberLiningService {
         grade: grade.toUpperCase(),
         hardnessClassIrhd: hardnessClass,
       },
-      relations: ['rubberType'],
+      relations: ["rubberType"],
     });
     return spec ? this.mapSpecToDto(spec) : null;
   }
@@ -152,50 +143,46 @@ export class RubberLiningService {
     chemicalCategory?: string,
   ): Promise<RubberApplicationRatingDto[]> {
     const query = this.applicationRatingRepository
-      .createQueryBuilder('rating')
-      .leftJoinAndSelect('rating.rubberType', 'rubberType');
+      .createQueryBuilder("rating")
+      .leftJoinAndSelect("rating.rubberType", "rubberType");
 
     if (typeNumber) {
-      query.andWhere('rubberType.typeNumber = :typeNumber', { typeNumber });
+      query.andWhere("rubberType.typeNumber = :typeNumber", { typeNumber });
     }
 
     if (chemicalCategory) {
-      query.andWhere('rating.chemicalCategory = :chemicalCategory', {
+      query.andWhere("rating.chemicalCategory = :chemicalCategory", {
         chemicalCategory,
       });
     }
 
     const ratings = await query
-      .orderBy('rubberType.typeNumber', 'ASC')
-      .addOrderBy('rating.chemicalCategory', 'ASC')
+      .orderBy("rubberType.typeNumber", "ASC")
+      .addOrderBy("rating.chemicalCategory", "ASC")
       .getMany();
 
     return ratings.map(this.mapApplicationRatingToDto);
   }
 
-  async thicknessRecommendations(): Promise<
-    RubberThicknessRecommendationDto[]
-  > {
+  async thicknessRecommendations(): Promise<RubberThicknessRecommendationDto[]> {
     const recs = await this.thicknessRepository.find({
-      order: { nominalThicknessMm: 'ASC' },
+      order: { nominalThicknessMm: "ASC" },
     });
     return recs.map(this.mapThicknessToDto);
   }
 
-  async adhesionRequirements(
-    typeNumber?: number,
-  ): Promise<RubberAdhesionRequirementDto[]> {
+  async adhesionRequirements(typeNumber?: number): Promise<RubberAdhesionRequirementDto[]> {
     const query = this.adhesionRepository
-      .createQueryBuilder('adhesion')
-      .leftJoinAndSelect('adhesion.rubberType', 'rubberType');
+      .createQueryBuilder("adhesion")
+      .leftJoinAndSelect("adhesion.rubberType", "rubberType");
 
     if (typeNumber) {
-      query.andWhere('rubberType.typeNumber = :typeNumber', { typeNumber });
+      query.andWhere("rubberType.typeNumber = :typeNumber", { typeNumber });
     }
 
     const reqs = await query
-      .orderBy('rubberType.typeNumber', 'ASC')
-      .addOrderBy('adhesion.vulcanizationMethod', 'ASC')
+      .orderBy("rubberType.typeNumber", "ASC")
+      .addOrderBy("adhesion.vulcanizationMethod", "ASC")
       .getMany();
 
     return reqs.map(this.mapAdhesionToDto);
@@ -209,72 +196,49 @@ export class RubberLiningService {
     const warnings: string[] = [];
     let suitableTypeIds: number[] = allTypes.map((t) => t.id);
 
-    if (
-      request.maxTemperatureCelsius !== undefined &&
-      request.maxTemperatureCelsius !== null
-    ) {
+    if (request.maxTemperatureCelsius !== undefined && request.maxTemperatureCelsius !== null) {
       const tempFiltered = allTypes.filter(
         (t) => Number(t.tempMaxCelsius) >= request.maxTemperatureCelsius!,
       );
-      suitableTypeIds = suitableTypeIds.filter((id) =>
-        tempFiltered.some((t) => t.id === id),
-      );
-      reasoning.push(
-        `Filtered for max operating temperature ${request.maxTemperatureCelsius}°C`,
-      );
+      suitableTypeIds = suitableTypeIds.filter((id) => tempFiltered.some((t) => t.id === id));
+      reasoning.push(`Filtered for max operating temperature ${request.maxTemperatureCelsius}°C`);
     }
 
-    if (
-      request.minTemperatureCelsius !== undefined &&
-      request.minTemperatureCelsius !== null
-    ) {
+    if (request.minTemperatureCelsius !== undefined && request.minTemperatureCelsius !== null) {
       const tempFiltered = allTypes.filter(
         (t) => Number(t.tempMinCelsius) <= request.minTemperatureCelsius!,
       );
-      suitableTypeIds = suitableTypeIds.filter((id) =>
-        tempFiltered.some((t) => t.id === id),
-      );
-      reasoning.push(
-        `Filtered for min operating temperature ${request.minTemperatureCelsius}°C`,
-      );
+      suitableTypeIds = suitableTypeIds.filter((id) => tempFiltered.some((t) => t.id === id));
+      reasoning.push(`Filtered for min operating temperature ${request.minTemperatureCelsius}°C`);
     }
 
     if (request.requiresOilResistance) {
       const oilResistant = allTypes.filter(
         (t) =>
-          t.oilResistance === 'excellent' ||
-          t.oilResistance === 'good' ||
-          t.oilResistance === 'medium',
+          t.oilResistance === "excellent" ||
+          t.oilResistance === "good" ||
+          t.oilResistance === "medium",
       );
-      suitableTypeIds = suitableTypeIds.filter((id) =>
-        oilResistant.some((t) => t.id === id),
-      );
-      reasoning.push('Filtered for oil resistance requirement');
+      suitableTypeIds = suitableTypeIds.filter((id) => oilResistant.some((t) => t.id === id));
+      reasoning.push("Filtered for oil resistance requirement");
 
       const type1 = allTypes.find((t) => t.typeNumber === 1);
       if (type1 && suitableTypeIds.includes(type1.id)) {
         suitableTypeIds = suitableTypeIds.filter((id) => id !== type1.id);
-        warnings.push(
-          'Type 1 (Natural/SBR rubber) excluded - not suitable for oil exposure',
-        );
+        warnings.push("Type 1 (Natural/SBR rubber) excluded - not suitable for oil exposure");
       }
     }
 
     if (request.requiresOzoneResistance) {
       const ozoneResistant = allTypes.filter(
-        (t) =>
-          t.ozoneResistance === 'excellent' || t.ozoneResistance === 'good',
+        (t) => t.ozoneResistance === "excellent" || t.ozoneResistance === "good",
       );
-      suitableTypeIds = suitableTypeIds.filter((id) =>
-        ozoneResistant.some((t) => t.id === id),
-      );
-      reasoning.push('Filtered for ozone resistance requirement');
+      suitableTypeIds = suitableTypeIds.filter((id) => ozoneResistant.some((t) => t.id === id));
+      reasoning.push("Filtered for ozone resistance requirement");
 
       const type1 = allTypes.find((t) => t.typeNumber === 1);
       if (type1 && !ozoneResistant.some((t) => t.id === type1.id)) {
-        warnings.push(
-          'Type 1 (Natural/SBR rubber) not recommended for ozone exposure',
-        );
+        warnings.push("Type 1 (Natural/SBR rubber) not recommended for ozone exposure");
       }
     }
 
@@ -282,64 +246,49 @@ export class RubberLiningService {
       const ratings = await this.applicationRatingRepository.find({
         where: {
           chemicalCategory: In(request.chemicalExposure),
-          resistanceRating: In(['excellent', 'good']),
+          resistanceRating: In(["excellent", "good"]),
         },
-        relations: ['rubberType'],
+        relations: ["rubberType"],
       });
 
-      const chemicalSuitableIds = [
-        ...new Set(ratings.map((r) => r.rubberTypeId)),
-      ];
-      suitableTypeIds = suitableTypeIds.filter((id) =>
-        chemicalSuitableIds.includes(id),
-      );
-      reasoning.push(
-        `Filtered for chemical resistance: ${request.chemicalExposure.join(', ')}`,
-      );
+      const chemicalSuitableIds = [...new Set(ratings.map((r) => r.rubberTypeId))];
+      suitableTypeIds = suitableTypeIds.filter((id) => chemicalSuitableIds.includes(id));
+      reasoning.push(`Filtered for chemical resistance: ${request.chemicalExposure.join(", ")}`);
     }
 
-    if (request.abrasionLevel === 'very_high') {
+    if (request.abrasionLevel === "very_high") {
       reasoning.push(
-        'High abrasion environment - consider ceramic-rubber composite or harder rubber grades',
+        "High abrasion environment - consider ceramic-rubber composite or harder rubber grades",
       );
       warnings.push(
-        'Very high abrasion may require additional ceramic tile protection over rubber lining',
+        "Very high abrasion may require additional ceramic tile protection over rubber lining",
       );
     }
 
-    if (request.corrosionLevel === 'very_high') {
+    if (request.corrosionLevel === "very_high") {
       const type2 = allTypes.find((t) => t.typeNumber === 2);
       const type5 = allTypes.find((t) => t.typeNumber === 5);
       if (type2 || type5) {
         reasoning.push(
-          'Very high corrosion - Type 2 (Butyl) or Type 5 (CSM) recommended for chemical resistance',
+          "Very high corrosion - Type 2 (Butyl) or Type 5 (CSM) recommended for chemical resistance",
         );
       }
     }
 
-    const recommendedTypes = allTypes.filter((t) =>
-      suitableTypeIds.includes(t.id),
-    );
+    const recommendedTypes = allTypes.filter((t) => suitableTypeIds.includes(t.id));
 
     let recommendedSpecs: RubberSpecification[] = [];
     if (suitableTypeIds.length > 0) {
       recommendedSpecs = await this.rubberSpecRepository.find({
         where: { rubberTypeId: In(suitableTypeIds) },
-        relations: ['rubberType'],
-        order: { grade: 'ASC', hardnessClassIrhd: 'ASC' },
+        relations: ["rubberType"],
+        order: { grade: "ASC", hardnessClassIrhd: "ASC" },
       });
     }
 
-    if (
-      request.abrasionLevel === 'high' ||
-      request.abrasionLevel === 'very_high'
-    ) {
-      recommendedSpecs = recommendedSpecs.filter(
-        (s) => s.hardnessClassIrhd >= 60,
-      );
-      reasoning.push(
-        'High abrasion requires harder rubber - recommending 60+ IRHD hardness class',
-      );
+    if (request.abrasionLevel === "high" || request.abrasionLevel === "very_high") {
+      recommendedSpecs = recommendedSpecs.filter((s) => s.hardnessClassIrhd >= 60);
+      reasoning.push("High abrasion requires harder rubber - recommending 60+ IRHD hardness class");
     }
 
     return {
@@ -361,23 +310,23 @@ export class RubberLiningService {
     specialProperties: number[] = [],
   ): LineCalloutDto {
     const specialPropertyMap: Record<number, string> = {
-      1: 'I (Heat Resistance)',
-      2: 'II (Ozone Resistance)',
-      3: 'III (Chemical Resistance)',
-      4: 'IV (Abrasion Resistance)',
-      5: 'V (Contaminant Release Resistance)',
-      6: 'VI (Water Resistance)',
-      7: 'VII (Oil Resistance)',
+      1: "I (Heat Resistance)",
+      2: "II (Ozone Resistance)",
+      3: "III (Chemical Resistance)",
+      4: "IV (Abrasion Resistance)",
+      5: "V (Contaminant Release Resistance)",
+      6: "VI (Water Resistance)",
+      7: "VII (Oil Resistance)",
     };
 
     const specialPropsRoman = specialProperties.map(
-      (p) => `(${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'][p - 1]})`,
+      (p) => `(${["I", "II", "III", "IV", "V", "VI", "VII"][p - 1]})`,
     );
     const specialPropsDescriptions = specialProperties.map(
       (p) => specialPropertyMap[p] || `Property ${p}`,
     );
 
-    const fullCallout = `${typeNumber} ${grade} ${hardnessClass}${specialPropsRoman.length > 0 ? ' ' + specialPropsRoman.join(' ') : ''}`;
+    const fullCallout = `${typeNumber} ${grade} ${hardnessClass}${specialPropsRoman.length > 0 ? ` ${specialPropsRoman.join(" ")}` : ""}`;
 
     return {
       type: typeNumber,
@@ -385,18 +334,18 @@ export class RubberLiningService {
       hardnessClass,
       specialProperties: specialPropsDescriptions,
       fullCallout,
-      description: `SANS 1198:2013 Line Call-out: Type ${typeNumber}, Grade ${grade} (${this.gradeDescription(grade)}), ${hardnessClass} IRHD hardness${specialPropsDescriptions.length > 0 ? ', with ' + specialPropsDescriptions.join(', ') : ''}`,
+      description: `SANS 1198:2013 Line Call-out: Type ${typeNumber}, Grade ${grade} (${this.gradeDescription(grade)}), ${hardnessClass} IRHD hardness${specialPropsDescriptions.length > 0 ? `, with ${specialPropsDescriptions.join(", ")}` : ""}`,
     };
   }
 
   private gradeDescription(grade: string): string {
     const descriptions: Record<string, string> = {
-      A: '≥18 MPa tensile strength',
-      B: '≥14 MPa tensile strength',
-      C: '≥7 MPa tensile strength',
-      D: 'Ebonite (hard rubber)',
+      A: "≥18 MPa tensile strength",
+      B: "≥14 MPa tensile strength",
+      C: "≥7 MPa tensile strength",
+      D: "Ebonite (hard rubber)",
     };
-    return descriptions[grade.toUpperCase()] || 'Unknown grade';
+    return descriptions[grade.toUpperCase()] || "Unknown grade";
   }
 
   private mapTypeToDto(type: RubberType): RubberTypeDto {
@@ -431,13 +380,10 @@ export class RubberLiningService {
       elongationAfterAgeingMinPercent: spec.elongationAfterAgeingMinPercent,
       elongationAfterAgeingMaxPercent: spec.elongationAfterAgeingMaxPercent,
       hardnessChangeAfterAgeingMax: spec.hardnessChangeAfterAgeingMax,
-      heatResistance80cHardnessChangeMax:
-        spec.heatResistance80cHardnessChangeMax,
-      heatResistance100cHardnessChangeMax:
-        spec.heatResistance100cHardnessChangeMax,
+      heatResistance80cHardnessChangeMax: spec.heatResistance80cHardnessChangeMax,
+      heatResistance100cHardnessChangeMax: spec.heatResistance100cHardnessChangeMax,
       ozoneResistance: spec.ozoneResistance,
-      chemicalResistanceHardnessChangeMax:
-        spec.chemicalResistanceHardnessChangeMax,
+      chemicalResistanceHardnessChangeMax: spec.chemicalResistanceHardnessChangeMax,
       waterResistanceMaxPercent: spec.waterResistanceMaxPercent,
       oilResistanceMaxPercent: spec.oilResistanceMaxPercent,
       contaminantReleaseMaxPercent: spec.contaminantReleaseMaxPercent,
@@ -445,18 +391,14 @@ export class RubberLiningService {
     };
   }
 
-  private mapApplicationRatingToDto(
-    rating: RubberApplicationRating,
-  ): RubberApplicationRatingDto {
+  private mapApplicationRatingToDto(rating: RubberApplicationRating): RubberApplicationRatingDto {
     return {
       id: rating.id,
       rubberTypeId: rating.rubberTypeId,
       rubberTypeName: rating.rubberType?.typeName || null,
       chemicalCategory: rating.chemicalCategory,
       resistanceRating: rating.resistanceRating,
-      maxTempCelsius: rating.maxTempCelsius
-        ? Number(rating.maxTempCelsius)
-        : null,
+      maxTempCelsius: rating.maxTempCelsius ? Number(rating.maxTempCelsius) : null,
       maxConcentrationPercent: rating.maxConcentrationPercent
         ? Number(rating.maxConcentrationPercent)
         : null,
@@ -464,9 +406,7 @@ export class RubberLiningService {
     };
   }
 
-  private mapThicknessToDto(
-    rec: RubberThicknessRecommendation,
-  ): RubberThicknessRecommendationDto {
+  private mapThicknessToDto(rec: RubberThicknessRecommendation): RubberThicknessRecommendationDto {
     return {
       id: rec.id,
       nominalThicknessMm: Number(rec.nominalThicknessMm),
@@ -477,9 +417,7 @@ export class RubberLiningService {
     };
   }
 
-  private mapAdhesionToDto(
-    req: RubberAdhesionRequirement,
-  ): RubberAdhesionRequirementDto {
+  private mapAdhesionToDto(req: RubberAdhesionRequirement): RubberAdhesionRequirementDto {
     return {
       id: req.id,
       rubberTypeId: req.rubberTypeId,
@@ -490,13 +428,11 @@ export class RubberLiningService {
     };
   }
 
-  async allProductCodings(
-    codingType?: ProductCodingType,
-  ): Promise<RubberProductCodingDto[]> {
+  async allProductCodings(codingType?: ProductCodingType): Promise<RubberProductCodingDto[]> {
     const where = codingType ? { codingType } : {};
     const codings = await this.productCodingRepository.find({
       where,
-      order: { codingType: 'ASC', code: 'ASC' },
+      order: { codingType: "ASC", code: "ASC" },
     });
     return codings.map(this.mapProductCodingToDto);
   }
@@ -506,9 +442,7 @@ export class RubberLiningService {
     return coding ? this.mapProductCodingToDto(coding) : null;
   }
 
-  async createProductCoding(
-    dto: CreateRubberProductCodingDto,
-  ): Promise<RubberProductCodingDto> {
+  async createProductCoding(dto: CreateRubberProductCodingDto): Promise<RubberProductCodingDto> {
     const coding = this.productCodingRepository.create({
       ...dto,
       firebaseUid: `pg_${generateUniqueId()}`,
@@ -535,7 +469,7 @@ export class RubberLiningService {
 
   async allPricingTiers(): Promise<RubberPricingTierDto[]> {
     const tiers = await this.pricingTierRepository.find({
-      order: { pricingFactor: 'ASC' },
+      order: { pricingFactor: "ASC" },
     });
     return tiers.map(this.mapPricingTierToDto);
   }
@@ -545,9 +479,7 @@ export class RubberLiningService {
     return tier ? this.mapPricingTierToDto(tier) : null;
   }
 
-  async createPricingTier(
-    dto: CreateRubberPricingTierDto,
-  ): Promise<RubberPricingTierDto> {
+  async createPricingTier(dto: CreateRubberPricingTierDto): Promise<RubberPricingTierDto> {
     const tier = this.pricingTierRepository.create({
       ...dto,
       firebaseUid: `pg_${generateUniqueId()}`,
@@ -574,8 +506,8 @@ export class RubberLiningService {
 
   async allCompanies(): Promise<RubberCompanyDto[]> {
     const companies = await this.companyRepository.find({
-      relations: ['pricingTier'],
-      order: { name: 'ASC' },
+      relations: ["pricingTier"],
+      order: { name: "ASC" },
     });
     return companies.map((c) => this.mapCompanyToDto(c));
   }
@@ -583,7 +515,7 @@ export class RubberLiningService {
   async companyById(id: number): Promise<RubberCompanyDto | null> {
     const company = await this.companyRepository.findOne({
       where: { id },
-      relations: ['pricingTier'],
+      relations: ["pricingTier"],
     });
     return company ? this.mapCompanyToDto(company) : null;
   }
@@ -604,26 +536,20 @@ export class RubberLiningService {
     const saved = await this.companyRepository.save(company);
     const result = await this.companyRepository.findOne({
       where: { id: saved.id },
-      relations: ['pricingTier'],
+      relations: ["pricingTier"],
     });
     return this.mapCompanyToDto(result!);
   }
 
-  async updateCompany(
-    id: number,
-    dto: UpdateRubberCompanyDto,
-  ): Promise<RubberCompanyDto | null> {
+  async updateCompany(id: number, dto: UpdateRubberCompanyDto): Promise<RubberCompanyDto | null> {
     const company = await this.companyRepository.findOne({ where: { id } });
     if (!company) return null;
 
     if (dto.name !== undefined) company.name = dto.name;
     if (dto.code !== undefined) company.code = dto.code || null;
-    if (dto.pricingTierId !== undefined)
-      company.pricingTierId = dto.pricingTierId || null;
-    if (dto.availableProducts !== undefined)
-      company.availableProducts = dto.availableProducts;
-    if (dto.isCompoundOwner !== undefined)
-      company.isCompoundOwner = dto.isCompoundOwner;
+    if (dto.pricingTierId !== undefined) company.pricingTierId = dto.pricingTierId || null;
+    if (dto.availableProducts !== undefined) company.availableProducts = dto.availableProducts;
+    if (dto.isCompoundOwner !== undefined) company.isCompoundOwner = dto.isCompoundOwner;
     if (dto.vatNumber !== undefined) company.vatNumber = dto.vatNumber || null;
     if (dto.registrationNumber !== undefined)
       company.registrationNumber = dto.registrationNumber || null;
@@ -633,7 +559,7 @@ export class RubberLiningService {
     await this.companyRepository.save(company);
     const result = await this.companyRepository.findOne({
       where: { id },
-      relations: ['pricingTier'],
+      relations: ["pricingTier"],
     });
     return this.mapCompanyToDto(result!);
   }
@@ -645,7 +571,7 @@ export class RubberLiningService {
 
   async allProducts(): Promise<RubberProductDto[]> {
     const products = await this.productRepository.find({
-      order: { title: 'ASC' },
+      order: { title: "ASC" },
     });
     const codings = await this.productCodingRepository.find();
     const companies = await this.companyRepository.find();
@@ -670,17 +596,19 @@ export class RubberLiningService {
       field: string;
       expectedType: ProductCodingType;
     }> = [
-      { uid: dto.compoundFirebaseUid, field: 'compound', expectedType: ProductCodingType.COMPOUND },
-      { uid: dto.typeFirebaseUid, field: 'type', expectedType: ProductCodingType.TYPE },
-      { uid: dto.colourFirebaseUid, field: 'colour', expectedType: ProductCodingType.COLOUR },
-      { uid: dto.hardnessFirebaseUid, field: 'hardness', expectedType: ProductCodingType.HARDNESS },
-      { uid: dto.curingMethodFirebaseUid, field: 'curingMethod', expectedType: ProductCodingType.CURING_METHOD },
-      { uid: dto.gradeFirebaseUid, field: 'grade', expectedType: ProductCodingType.GRADE },
+      { uid: dto.compoundFirebaseUid, field: "compound", expectedType: ProductCodingType.COMPOUND },
+      { uid: dto.typeFirebaseUid, field: "type", expectedType: ProductCodingType.TYPE },
+      { uid: dto.colourFirebaseUid, field: "colour", expectedType: ProductCodingType.COLOUR },
+      { uid: dto.hardnessFirebaseUid, field: "hardness", expectedType: ProductCodingType.HARDNESS },
+      {
+        uid: dto.curingMethodFirebaseUid,
+        field: "curingMethod",
+        expectedType: ProductCodingType.CURING_METHOD,
+      },
+      { uid: dto.gradeFirebaseUid, field: "grade", expectedType: ProductCodingType.GRADE },
     ];
 
-    const codingUidsToValidate = codingValidations
-      .filter((v) => v.uid)
-      .map((v) => v.uid!);
+    const codingUidsToValidate = codingValidations.filter((v) => v.uid).map((v) => v.uid!);
 
     if (codingUidsToValidate.length > 0) {
       const codings = await this.productCodingRepository.find({
@@ -691,7 +619,9 @@ export class RubberLiningService {
         if (validation.uid) {
           const coding = codings.find((c) => c.firebaseUid === validation.uid);
           if (!coding) {
-            errors.push(`Invalid ${validation.field}: coding with UID '${validation.uid}' not found`);
+            errors.push(
+              `Invalid ${validation.field}: coding with UID '${validation.uid}' not found`,
+            );
           } else if (coding.codingType !== validation.expectedType) {
             errors.push(
               `Invalid ${validation.field}: coding '${validation.uid}' is type '${coding.codingType}', expected '${validation.expectedType}'`,
@@ -706,14 +636,18 @@ export class RubberLiningService {
         where: { firebaseUid: dto.compoundOwnerFirebaseUid },
       });
       if (!company) {
-        errors.push(`Invalid compoundOwner: company with UID '${dto.compoundOwnerFirebaseUid}' not found`);
+        errors.push(
+          `Invalid compoundOwner: company with UID '${dto.compoundOwnerFirebaseUid}' not found`,
+        );
       } else if (!company.isCompoundOwner) {
-        errors.push(`Invalid compoundOwner: company '${company.name}' is not marked as a compound owner`);
+        errors.push(
+          `Invalid compoundOwner: company '${company.name}' is not marked as a compound owner`,
+        );
       }
     }
 
     if (errors.length > 0) {
-      throw new BadRequestException(errors.join('; '));
+      throw new BadRequestException(errors.join("; "));
     }
   }
 
@@ -740,26 +674,20 @@ export class RubberLiningService {
     return this.mapProductToDto(saved, codings, companies);
   }
 
-  async updateProduct(
-    id: number,
-    dto: UpdateRubberProductDto,
-  ): Promise<RubberProductDto | null> {
+  async updateProduct(id: number, dto: UpdateRubberProductDto): Promise<RubberProductDto | null> {
     const product = await this.productRepository.findOne({ where: { id } });
     if (!product) return null;
 
     await this.validateProductCodingRelationships(dto);
 
     if (dto.title !== undefined) product.title = dto.title || null;
-    if (dto.description !== undefined)
-      product.description = dto.description || null;
-    if (dto.specificGravity !== undefined)
-      product.specificGravity = dto.specificGravity || null;
+    if (dto.description !== undefined) product.description = dto.description || null;
+    if (dto.specificGravity !== undefined) product.specificGravity = dto.specificGravity || null;
     if (dto.compoundOwnerFirebaseUid !== undefined)
       product.compoundOwnerFirebaseUid = dto.compoundOwnerFirebaseUid || null;
     if (dto.compoundFirebaseUid !== undefined)
       product.compoundFirebaseUid = dto.compoundFirebaseUid || null;
-    if (dto.typeFirebaseUid !== undefined)
-      product.typeFirebaseUid = dto.typeFirebaseUid || null;
+    if (dto.typeFirebaseUid !== undefined) product.typeFirebaseUid = dto.typeFirebaseUid || null;
     if (dto.costPerKg !== undefined) product.costPerKg = dto.costPerKg || null;
     if (dto.colourFirebaseUid !== undefined)
       product.colourFirebaseUid = dto.colourFirebaseUid || null;
@@ -767,8 +695,7 @@ export class RubberLiningService {
       product.hardnessFirebaseUid = dto.hardnessFirebaseUid || null;
     if (dto.curingMethodFirebaseUid !== undefined)
       product.curingMethodFirebaseUid = dto.curingMethodFirebaseUid || null;
-    if (dto.gradeFirebaseUid !== undefined)
-      product.gradeFirebaseUid = dto.gradeFirebaseUid || null;
+    if (dto.gradeFirebaseUid !== undefined) product.gradeFirebaseUid = dto.gradeFirebaseUid || null;
     if (dto.markup !== undefined) product.markup = dto.markup || null;
 
     const saved = await this.productRepository.save(product);
@@ -829,31 +756,37 @@ export class RubberLiningService {
       if (row.colour && !colourUid) errors.push(`Colour '${row.colour}' not found`);
       if (row.hardness && !hardnessUid) errors.push(`Hardness '${row.hardness}' not found`);
       if (row.grade && !gradeUid) errors.push(`Grade '${row.grade}' not found`);
-      if (row.curingMethod && !curingMethodUid) errors.push(`Curing method '${row.curingMethod}' not found`);
-      if (row.compoundOwner && !compoundOwnerUid) errors.push(`Compound owner '${row.compoundOwner}' not found or not marked as compound owner`);
+      if (row.curingMethod && !curingMethodUid)
+        errors.push(`Curing method '${row.curingMethod}' not found`);
+      if (row.compoundOwner && !compoundOwnerUid)
+        errors.push(
+          `Compound owner '${row.compoundOwner}' not found or not marked as compound owner`,
+        );
 
       if (errors.length > 0) {
         failed++;
         results.push({
           rowIndex: i,
-          status: 'failed',
+          status: "failed",
           title: row.title || null,
           errors,
         });
         continue;
       }
 
-      let existingProduct = row.firebaseUid
+      const existingProduct = row.firebaseUid
         ? existingProducts.find((p) => p.firebaseUid === row.firebaseUid)
-        : existingProducts.find((p) => p.title && row.title && p.title.toLowerCase() === row.title.toLowerCase());
+        : existingProducts.find(
+            (p) => p.title && row.title && p.title.toLowerCase() === row.title.toLowerCase(),
+          );
 
       if (existingProduct && !updateExisting) {
         skipped++;
         results.push({
           rowIndex: i,
-          status: 'skipped',
+          status: "skipped",
           title: row.title || null,
-          errors: ['Product already exists and updateExisting is false'],
+          errors: ["Product already exists and updateExisting is false"],
           productId: existingProduct.id,
         });
         continue;
@@ -863,7 +796,8 @@ export class RubberLiningService {
         if (existingProduct) {
           if (row.title !== undefined) existingProduct.title = row.title || null;
           if (row.description !== undefined) existingProduct.description = row.description || null;
-          if (row.specificGravity !== undefined) existingProduct.specificGravity = row.specificGravity || null;
+          if (row.specificGravity !== undefined)
+            existingProduct.specificGravity = row.specificGravity || null;
           if (row.costPerKg !== undefined) existingProduct.costPerKg = row.costPerKg || null;
           if (row.markup !== undefined) existingProduct.markup = row.markup || null;
           if (typeUid !== undefined) existingProduct.typeFirebaseUid = typeUid;
@@ -871,14 +805,16 @@ export class RubberLiningService {
           if (colourUid !== undefined) existingProduct.colourFirebaseUid = colourUid;
           if (hardnessUid !== undefined) existingProduct.hardnessFirebaseUid = hardnessUid;
           if (gradeUid !== undefined) existingProduct.gradeFirebaseUid = gradeUid;
-          if (curingMethodUid !== undefined) existingProduct.curingMethodFirebaseUid = curingMethodUid;
-          if (compoundOwnerUid !== undefined) existingProduct.compoundOwnerFirebaseUid = compoundOwnerUid;
+          if (curingMethodUid !== undefined)
+            existingProduct.curingMethodFirebaseUid = curingMethodUid;
+          if (compoundOwnerUid !== undefined)
+            existingProduct.compoundOwnerFirebaseUid = compoundOwnerUid;
 
           await this.productRepository.save(existingProduct);
           updated++;
           results.push({
             rowIndex: i,
-            status: 'updated',
+            status: "updated",
             title: row.title || null,
             errors: [],
             productId: existingProduct.id,
@@ -904,7 +840,7 @@ export class RubberLiningService {
           created++;
           results.push({
             rowIndex: i,
-            status: 'created',
+            status: "created",
             title: row.title || null,
             errors: [],
             productId: saved.id,
@@ -914,9 +850,9 @@ export class RubberLiningService {
         failed++;
         results.push({
           rowIndex: i,
-          status: 'failed',
+          status: "failed",
           title: row.title || null,
-          errors: [err instanceof Error ? err.message : 'Unknown error'],
+          errors: [err instanceof Error ? err.message : "Unknown error"],
         });
       }
     }
@@ -935,8 +871,8 @@ export class RubberLiningService {
     const where = status !== undefined ? { status } : {};
     const orders = await this.orderRepository.find({
       where,
-      relations: ['company', 'items', 'items.product'],
-      order: { createdAt: 'DESC' },
+      relations: ["company", "items", "items.product"],
+      order: { createdAt: "DESC" },
     });
     return orders.map((o) => this.mapOrderToDto(o));
   }
@@ -944,18 +880,18 @@ export class RubberLiningService {
   async orderById(id: number): Promise<RubberOrderDto | null> {
     const order = await this.orderRepository.findOne({
       where: { id },
-      relations: ['company', 'items', 'items.product'],
+      relations: ["company", "items", "items.product"],
     });
     return order ? this.mapOrderToDto(order) : null;
   }
 
   async createOrder(dto: CreateRubberOrderDto): Promise<RubberOrderDto> {
     const lastOrder = await this.orderRepository
-      .createQueryBuilder('order')
-      .orderBy('order.id', 'DESC')
+      .createQueryBuilder("order")
+      .orderBy("order.id", "DESC")
       .getOne();
     const nextNumber = (lastOrder?.id || 0) + 1;
-    const orderNumber = dto.orderNumber || `ORD-${String(nextNumber).padStart(5, '0')}`;
+    const orderNumber = dto.orderNumber || `ORD-${String(nextNumber).padStart(5, "0")}`;
 
     const order = this.orderRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
@@ -983,15 +919,12 @@ export class RubberLiningService {
 
     const result = await this.orderRepository.findOne({
       where: { id: savedOrder.id },
-      relations: ['company', 'items', 'items.product'],
+      relations: ["company", "items", "items.product"],
     });
     return this.mapOrderToDto(result!);
   }
 
-  async updateOrder(
-    id: number,
-    dto: UpdateRubberOrderDto,
-  ): Promise<RubberOrderDto | null> {
+  async updateOrder(id: number, dto: UpdateRubberOrderDto): Promise<RubberOrderDto | null> {
     const order = await this.orderRepository.findOne({ where: { id } });
     if (!order) return null;
 
@@ -1028,7 +961,7 @@ export class RubberLiningService {
 
     const result = await this.orderRepository.findOne({
       where: { id },
-      relations: ['company', 'items', 'items.product'],
+      relations: ["company", "items", "items.product"],
     });
     return this.mapOrderToDto(result!);
   }
@@ -1068,7 +1001,7 @@ export class RubberLiningService {
     });
     const company = await this.companyRepository.findOne({
       where: { id: request.companyId },
-      relations: ['pricingTier'],
+      relations: ["pricingTier"],
     });
 
     if (!product || !company) return null;
@@ -1080,8 +1013,7 @@ export class RubberLiningService {
 
     const pricePerKg = costPerKg * (markup / 100);
     const salePricePerKg = pricePerKg * (pricingFactor / 100);
-    const kgPerRoll =
-      request.thickness * (request.width / 1000) * request.length * specificGravity;
+    const kgPerRoll = request.thickness * (request.width / 1000) * request.length * specificGravity;
     const totalKg = kgPerRoll * request.quantity;
     const totalPrice = totalKg * salePricePerKg;
 
@@ -1100,9 +1032,7 @@ export class RubberLiningService {
     };
   }
 
-  private mapProductCodingToDto(
-    coding: RubberProductCoding,
-  ): RubberProductCodingDto {
+  private mapProductCodingToDto(coding: RubberProductCoding): RubberProductCodingDto {
     return {
       id: coding.id,
       firebaseUid: coding.firebaseUid,
@@ -1128,9 +1058,7 @@ export class RubberLiningService {
       code: company.code,
       pricingTierId: company.pricingTierId,
       pricingTierName: company.pricingTier?.name || null,
-      pricingFactor: company.pricingTier
-        ? Number(company.pricingTier.pricingFactor)
-        : null,
+      pricingFactor: company.pricingTier ? Number(company.pricingTier.pricingFactor) : null,
       availableProducts: company.availableProducts,
       isCompoundOwner: company.isCompoundOwner,
       vatNumber: company.vatNumber,
@@ -1184,9 +1112,7 @@ export class RubberLiningService {
       firebaseUid: product.firebaseUid,
       title: product.title,
       description: product.description,
-      specificGravity: product.specificGravity
-        ? Number(product.specificGravity)
-        : null,
+      specificGravity: product.specificGravity ? Number(product.specificGravity) : null,
       compoundOwnerName: companyName(product.compoundOwnerFirebaseUid),
       compoundOwnerFirebaseUid: product.compoundOwnerFirebaseUid,
       compoundName: codingName(product.compoundFirebaseUid),
@@ -1209,14 +1135,14 @@ export class RubberLiningService {
 
   private mapOrderToDto(order: RubberOrder): RubberOrderDto {
     const statusLabels: Record<RubberOrderStatus, string> = {
-      [RubberOrderStatus.NEW]: 'New',
-      [RubberOrderStatus.DRAFT]: 'Draft',
-      [RubberOrderStatus.CANCELLED]: 'Cancelled',
-      [RubberOrderStatus.PARTIALLY_SUBMITTED]: 'Partially Submitted',
-      [RubberOrderStatus.SUBMITTED]: 'Submitted',
-      [RubberOrderStatus.MANUFACTURING]: 'Manufacturing',
-      [RubberOrderStatus.DELIVERING]: 'Delivering',
-      [RubberOrderStatus.COMPLETE]: 'Complete',
+      [RubberOrderStatus.NEW]: "New",
+      [RubberOrderStatus.DRAFT]: "Draft",
+      [RubberOrderStatus.CANCELLED]: "Cancelled",
+      [RubberOrderStatus.PARTIALLY_SUBMITTED]: "Partially Submitted",
+      [RubberOrderStatus.SUBMITTED]: "Submitted",
+      [RubberOrderStatus.MANUFACTURING]: "Manufacturing",
+      [RubberOrderStatus.DELIVERING]: "Delivering",
+      [RubberOrderStatus.COMPLETE]: "Complete",
     };
 
     return {
@@ -1224,7 +1150,7 @@ export class RubberLiningService {
       orderNumber: order.orderNumber,
       companyOrderNumber: order.companyOrderNumber,
       status: order.status,
-      statusLabel: statusLabels[order.status] || 'Unknown',
+      statusLabel: statusLabels[order.status] || "Unknown",
       companyId: order.companyId,
       companyName: order.company?.name || null,
       items: (order.items || []).map((item) => this.mapOrderItemToDto(item)),
@@ -1251,14 +1177,10 @@ export class RubberLiningService {
     const width = Number(item.width) || 0;
     const length = Number(item.length) || 0;
     const quantity = Number(item.quantity) || 0;
-    const specificGravity = item.product
-      ? Number(item.product.specificGravity) || 1
-      : 1;
+    const specificGravity = item.product ? Number(item.product.specificGravity) || 1 : 1;
 
     const kgPerRoll =
-      thickness && width && length
-        ? thickness * (width / 1000) * length * specificGravity
-        : null;
+      thickness && width && length ? thickness * (width / 1000) * length * specificGravity : null;
     const totalKg = kgPerRoll && quantity ? kgPerRoll * quantity : null;
 
     return {

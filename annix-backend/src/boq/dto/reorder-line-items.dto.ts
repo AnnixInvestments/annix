@@ -1,9 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNumber, ArrayMinSize } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { ArrayMinSize, IsArray, IsNumber } from "class-validator";
 
 export class ReorderLineItemsDto {
   @ApiProperty({
-    description: 'Array of line item IDs in the new order',
+    description: "Array of line item IDs in the new order",
     type: [Number],
   })
   @IsArray()

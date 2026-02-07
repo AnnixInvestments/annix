@@ -1,29 +1,33 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {
-  customerOnboardingApi,
-  customerDocumentApi,
-  type CustomerDocument,
-} from "@/app/lib/api/customerApi";
-import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
-import { useCustomerOnboardingStatus, useCustomerDocuments } from '@/app/lib/query/hooks';
-import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from "@/app/components/DocumentPreviewModal";
+import React, { useEffect, useState } from "react";
 import { DocumentActionButtons } from "@/app/components/DocumentActionButtons";
+import {
+  DocumentPreviewModal,
+  initialPreviewState,
+  PreviewModalState,
+} from "@/app/components/DocumentPreviewModal";
 import { CurrencySelect, DEFAULT_CURRENCY } from "@/app/components/ui/CurrencySelect";
+import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
+import {
+  type CustomerDocument,
+  customerDocumentApi,
+  customerOnboardingApi,
+} from "@/app/lib/api/customerApi";
 import { currencyCodeForCountry } from "@/app/lib/currencies";
+import { useCustomerDocuments, useCustomerOnboardingStatus } from "@/app/lib/query/hooks";
 
 const DOCUMENT_TYPES = [
-  { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', required: true },
-  { value: 'tax_clearance', label: 'Tax Clearance Certificate (SARS)', required: true },
-  { value: 'bee_cert', label: 'BEE/B-BBEE Certificate', required: true },
-  { value: 'insurance', label: 'Insurance Certificate', required: true },
-  { value: 'proof_of_address', label: 'Proof of Address', required: true },
-  { value: 'other', label: 'Other Supporting Documents', required: false },
+  { value: "registration_cert", label: "Company Registration Certificate (CIPC)", required: true },
+  { value: "tax_clearance", label: "Tax Clearance Certificate (SARS)", required: true },
+  { value: "bee_cert", label: "BEE/B-BBEE Certificate", required: true },
+  { value: "insurance", label: "Insurance Certificate", required: true },
+  { value: "proof_of_address", label: "Proof of Address", required: true },
+  { value: "other", label: "Other Supporting Documents", required: false },
 ];
 
-type Step = 'status' | 'company' | 'documents' | 'review';
+type Step = "status" | "company" | "documents" | "review";
 
 export default function CustomerOnboardingPage() {
   const router = useRouter();
@@ -34,22 +38,22 @@ export default function CustomerOnboardingPage() {
   const onboardingStatus = onboardingQuery.data ?? null;
   const documents = documentsQuery.data ?? [];
 
-  const [currentStep, setCurrentStep] = useState<Step>('status');
+  const [currentStep, setCurrentStep] = useState<Step>("status");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [companyData, setCompanyData] = useState({
-    legalName: '',
-    tradingName: '',
-    registrationNumber: '',
-    vatNumber: '',
-    streetAddress: '',
-    city: '',
-    provinceState: '',
-    postalCode: '',
-    country: 'South Africa',
+    legalName: "",
+    tradingName: "",
+    registrationNumber: "",
+    vatNumber: "",
+    streetAddress: "",
+    city: "",
+    provinceState: "",
+    postalCode: "",
+    country: "South Africa",
     currencyCode: DEFAULT_CURRENCY,
-    primaryPhone: '',
+    primaryPhone: "",
     beeLevel: null as number | null,
   });
 
@@ -60,18 +64,21 @@ export default function CustomerOnboardingPage() {
   useEffect(() => {
     if (!onboardingStatus) return;
 
-    if (onboardingStatus.status === 'approved') {
-      router.push('/customer/portal/dashboard');
-    } else if (onboardingStatus.status === 'submitted' || onboardingStatus.status === 'under_review') {
-      setCurrentStep('status');
-    } else if (onboardingStatus.status === 'rejected') {
-      setCurrentStep('status');
+    if (onboardingStatus.status === "approved") {
+      router.push("/customer/portal/dashboard");
+    } else if (
+      onboardingStatus.status === "submitted" ||
+      onboardingStatus.status === "under_review"
+    ) {
+      setCurrentStep("status");
+    } else if (onboardingStatus.status === "rejected") {
+      setCurrentStep("status");
     } else if (!onboardingStatus.companyDetailsComplete) {
-      setCurrentStep('company');
+      setCurrentStep("company");
     } else if (!onboardingStatus.documentsComplete) {
-      setCurrentStep('documents');
+      setCurrentStep("documents");
     } else {
-      setCurrentStep('review');
+      setCurrentStep("review");
     }
   }, [onboardingStatus, router]);
 
@@ -82,7 +89,7 @@ export default function CustomerOnboardingPage() {
   const handleCompanyChange = (field: string, value: string) => {
     setCompanyData((prev) => {
       const updates: Record<string, string> = { [field]: value };
-      if (field === 'country') {
+      if (field === "country") {
         const suggestedCurrency = currencyCodeForCountry(value);
         if (suggestedCurrency) {
           updates.currencyCode = suggestedCurrency;
@@ -98,9 +105,9 @@ export default function CustomerOnboardingPage() {
       setError(null);
       await customerOnboardingApi.updateCompanyDetails(companyData);
       await refreshData();
-      setCurrentStep('documents');
+      setCurrentStep("documents");
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save company details');
+      setError(e instanceof Error ? e.message : "Failed to save company details");
     } finally {
       setIsSubmitting(false);
     }
@@ -112,15 +119,15 @@ export default function CustomerOnboardingPage() {
 
     // Validate file
     const maxSize = 10 * 1024 * 1024; // 10MB
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
 
     if (file.size > maxSize) {
-      setUploadError('File size must be less than 10MB');
+      setUploadError("File size must be less than 10MB");
       return;
     }
 
     if (!allowedTypes.includes(file.type)) {
-      setUploadError('Only PDF, JPG, and PNG files are allowed');
+      setUploadError("Only PDF, JPG, and PNG files are allowed");
       return;
     }
 
@@ -130,10 +137,10 @@ export default function CustomerOnboardingPage() {
       await customerDocumentApi.uploadDocument(file, documentType);
       await refreshData();
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Failed to upload document');
+      setUploadError(e instanceof Error ? e.message : "Failed to upload document");
     } finally {
       setUploadingDoc(null);
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
@@ -144,14 +151,19 @@ export default function CustomerOnboardingPage() {
       await customerDocumentApi.deleteDocument(id);
       await refreshData();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete document');
+      setError(e instanceof Error ? e.message : "Failed to delete document");
     }
   };
 
   const handlePreview = async (doc: CustomerDocument) => {
     try {
       setError(null);
-      setPreviewModal({ ...initialPreviewState, isOpen: true, isLoading: true, filename: doc.fileName });
+      setPreviewModal({
+        ...initialPreviewState,
+        isOpen: true,
+        isLoading: true,
+        filename: doc.fileName,
+      });
       const { url, mimeType, filename } = await customerDocumentApi.previewDocument(doc.id);
       setPreviewModal({ isOpen: true, url, mimeType, filename, isLoading: false });
     } catch (e) {
@@ -177,7 +189,11 @@ export default function CustomerOnboardingPage() {
   };
 
   const handleSubmitOnboarding = async () => {
-    if (!confirm('Are you sure you want to submit your onboarding for review? You will not be able to make changes until the review is complete.')) {
+    if (
+      !confirm(
+        "Are you sure you want to submit your onboarding for review? You will not be able to make changes until the review is complete.",
+      )
+    ) {
       return;
     }
 
@@ -188,7 +204,7 @@ export default function CustomerOnboardingPage() {
       await refreshData();
       await refreshProfile();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to submit onboarding');
+      setError(e instanceof Error ? e.message : "Failed to submit onboarding");
     } finally {
       setIsSubmitting(false);
     }
@@ -200,11 +216,11 @@ export default function CustomerOnboardingPage() {
 
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { bg: string; text: string; label: string }> = {
-      draft: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft' },
-      submitted: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Submitted' },
-      under_review: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Under Review' },
-      approved: { bg: 'bg-green-100', text: 'text-green-700', label: 'Approved' },
-      rejected: { bg: 'bg-red-100', text: 'text-red-700', label: 'Rejected' },
+      draft: { bg: "bg-gray-100", text: "text-gray-700", label: "Draft" },
+      submitted: { bg: "bg-blue-100", text: "text-blue-700", label: "Submitted" },
+      under_review: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Under Review" },
+      approved: { bg: "bg-green-100", text: "text-green-700", label: "Approved" },
+      rejected: { bg: "bg-red-100", text: "text-red-700", label: "Rejected" },
     };
     const badge = badges[status] || badges.draft;
     return (
@@ -216,11 +232,11 @@ export default function CustomerOnboardingPage() {
 
   const getValidationStatusBadge = (status: string) => {
     const badges: Record<string, { bg: string; text: string; label: string }> = {
-      pending: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Pending Review' },
-      valid: { bg: 'bg-green-100', text: 'text-green-700', label: 'Valid' },
-      invalid: { bg: 'bg-red-100', text: 'text-red-700', label: 'Invalid' },
-      failed: { bg: 'bg-red-100', text: 'text-red-700', label: 'Failed' },
-      manual_review: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Manual Review' },
+      pending: { bg: "bg-gray-100", text: "text-gray-700", label: "Pending Review" },
+      valid: { bg: "bg-green-100", text: "text-green-700", label: "Valid" },
+      invalid: { bg: "bg-red-100", text: "text-red-700", label: "Invalid" },
+      failed: { bg: "bg-red-100", text: "text-red-700", label: "Failed" },
+      manual_review: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Manual Review" },
     };
     const badge = badges[status] || badges.pending;
     return (
@@ -243,33 +259,40 @@ export default function CustomerOnboardingPage() {
 
   const renderStepIndicator = () => (
     <div className="flex items-center justify-center mb-8">
-      {(['company', 'documents', 'review'] as const).map((step, index) => (
+      {(["company", "documents", "review"] as const).map((step, index) => (
         <React.Fragment key={step}>
           <button
             onClick={() => {
-              if (onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected') {
+              if (onboardingStatus?.status === "draft" || onboardingStatus?.status === "rejected") {
                 setCurrentStep(step);
               }
             }}
-            disabled={onboardingStatus?.status !== 'draft' && onboardingStatus?.status !== 'rejected'}
+            disabled={
+              onboardingStatus?.status !== "draft" && onboardingStatus?.status !== "rejected"
+            }
             className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
               currentStep === step
-                ? 'border-blue-600 bg-blue-600 text-white'
-                : step === 'company' && onboardingStatus?.companyDetailsComplete
-                ? 'border-green-500 bg-green-500 text-white'
-                : step === 'documents' && onboardingStatus?.documentsComplete
-                ? 'border-green-500 bg-green-500 text-white'
-                : 'border-gray-300 text-gray-500'
+                ? "border-blue-600 bg-blue-600 text-white"
+                : step === "company" && onboardingStatus?.companyDetailsComplete
+                  ? "border-green-500 bg-green-500 text-white"
+                  : step === "documents" && onboardingStatus?.documentsComplete
+                    ? "border-green-500 bg-green-500 text-white"
+                    : "border-gray-300 text-gray-500"
             } ${
-              onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected'
-                ? 'cursor-pointer hover:opacity-80'
-                : 'cursor-not-allowed'
+              onboardingStatus?.status === "draft" || onboardingStatus?.status === "rejected"
+                ? "cursor-pointer hover:opacity-80"
+                : "cursor-not-allowed"
             }`}
           >
-            {(step === 'company' && onboardingStatus?.companyDetailsComplete) ||
-            (step === 'documents' && onboardingStatus?.documentsComplete) ? (
+            {(step === "company" && onboardingStatus?.companyDetailsComplete) ||
+            (step === "documents" && onboardingStatus?.documentsComplete) ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             ) : (
               index + 1
@@ -278,10 +301,10 @@ export default function CustomerOnboardingPage() {
           {index < 2 && (
             <div
               className={`w-20 h-1 ${
-                (step === 'company' && onboardingStatus?.companyDetailsComplete) ||
-                (step === 'documents' && onboardingStatus?.documentsComplete)
-                  ? 'bg-green-500'
-                  : 'bg-gray-300'
+                (step === "company" && onboardingStatus?.companyDetailsComplete) ||
+                (step === "documents" && onboardingStatus?.documentsComplete)
+                  ? "bg-green-500"
+                  : "bg-gray-300"
               }`}
             />
           )}
@@ -298,7 +321,7 @@ export default function CustomerOnboardingPage() {
           {onboardingStatus && getStatusBadge(onboardingStatus.status)}
         </div>
 
-        {onboardingStatus?.status === 'rejected' && (
+        {onboardingStatus?.status === "rejected" && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <h3 className="text-lg font-medium text-red-800 mb-2">Action Required</h3>
             <p className="text-red-700 mb-2">
@@ -310,26 +333,36 @@ export default function CustomerOnboardingPage() {
               </p>
             )}
             <div className="mt-4 flex flex-wrap gap-3">
-              {onboardingStatus.rejectionReason?.toLowerCase().includes('document') ? (
+              {onboardingStatus.rejectionReason?.toLowerCase().includes("document") ? (
                 <a
                   href="/customer/portal/documents"
                   className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 inline-flex items-center"
                 >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                   Go to Documents
                 </a>
               ) : (
                 <button
-                  onClick={() => setCurrentStep('company')}
+                  onClick={() => setCurrentStep("company")}
                   className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                 >
                   Update Application
                 </button>
               )}
               <button
-                onClick={() => setCurrentStep('company')}
+                onClick={() => setCurrentStep("company")}
                 className="px-4 py-2 border border-red-600 text-red-600 rounded-md hover:bg-red-50"
               >
                 Edit Company Details
@@ -338,7 +371,8 @@ export default function CustomerOnboardingPage() {
           </div>
         )}
 
-        {(onboardingStatus?.status === 'submitted' || onboardingStatus?.status === 'under_review') && (
+        {(onboardingStatus?.status === "submitted" ||
+          onboardingStatus?.status === "under_review") && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
             <div className="flex items-start">
               <svg
@@ -371,8 +405,18 @@ export default function CustomerOnboardingPage() {
               <span className="text-gray-700">Company Details</span>
               {onboardingStatus?.companyDetailsComplete ? (
                 <span className="text-green-600 flex items-center">
-                  <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-5 h-5 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                   Complete
                 </span>
@@ -387,8 +431,18 @@ export default function CustomerOnboardingPage() {
               <span className="text-gray-700">Documents</span>
               {onboardingStatus?.documentsComplete ? (
                 <span className="text-green-600 flex items-center">
-                  <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-5 h-5 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                   Complete
                 </span>
@@ -399,10 +453,10 @@ export default function CustomerOnboardingPage() {
           </div>
         </div>
 
-        {onboardingStatus?.status === 'draft' && (
+        {onboardingStatus?.status === "draft" && (
           <div className="mt-6">
             <button
-              onClick={() => setCurrentStep('company')}
+              onClick={() => setCurrentStep("company")}
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Continue Onboarding
@@ -425,7 +479,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="text"
             value={companyData.legalName}
-            onChange={(e) => handleCompanyChange('legalName', e.target.value)}
+            onChange={(e) => handleCompanyChange("legalName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -435,7 +489,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="text"
             value={companyData.tradingName}
-            onChange={(e) => handleCompanyChange('tradingName', e.target.value)}
+            onChange={(e) => handleCompanyChange("tradingName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -447,7 +501,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="text"
             value={companyData.registrationNumber}
-            onChange={(e) => handleCompanyChange('registrationNumber', e.target.value)}
+            onChange={(e) => handleCompanyChange("registrationNumber", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -457,7 +511,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="text"
             value={companyData.vatNumber}
-            onChange={(e) => handleCompanyChange('vatNumber', e.target.value)}
+            onChange={(e) => handleCompanyChange("vatNumber", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -465,15 +519,15 @@ export default function CustomerOnboardingPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">B-BBEE Level</label>
           <select
-            value={companyData.beeLevel === null ? '' : String(companyData.beeLevel)}
+            value={companyData.beeLevel === null ? "" : String(companyData.beeLevel)}
             onChange={(e) => {
               const value = e.target.value;
-              if (value === '') {
-                setCompanyData(prev => ({ ...prev, beeLevel: null }));
-              } else if (value === '0') {
-                setCompanyData(prev => ({ ...prev, beeLevel: 0 }));
+              if (value === "") {
+                setCompanyData((prev) => ({ ...prev, beeLevel: null }));
+              } else if (value === "0") {
+                setCompanyData((prev) => ({ ...prev, beeLevel: 0 }));
               } else {
-                setCompanyData(prev => ({ ...prev, beeLevel: parseInt(value, 10) }));
+                setCompanyData((prev) => ({ ...prev, beeLevel: parseInt(value, 10) }));
               }
             }}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -498,7 +552,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="tel"
             value={companyData.primaryPhone}
-            onChange={(e) => handleCompanyChange('primaryPhone', e.target.value)}
+            onChange={(e) => handleCompanyChange("primaryPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -510,7 +564,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="text"
             value={companyData.streetAddress}
-            onChange={(e) => handleCompanyChange('streetAddress', e.target.value)}
+            onChange={(e) => handleCompanyChange("streetAddress", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -522,7 +576,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="text"
             value={companyData.city}
-            onChange={(e) => handleCompanyChange('city', e.target.value)}
+            onChange={(e) => handleCompanyChange("city", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -534,7 +588,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="text"
             value={companyData.provinceState}
-            onChange={(e) => handleCompanyChange('provinceState', e.target.value)}
+            onChange={(e) => handleCompanyChange("provinceState", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -546,7 +600,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="text"
             value={companyData.postalCode}
-            onChange={(e) => handleCompanyChange('postalCode', e.target.value)}
+            onChange={(e) => handleCompanyChange("postalCode", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -558,7 +612,7 @@ export default function CustomerOnboardingPage() {
           <input
             type="text"
             value={companyData.country}
-            onChange={(e) => handleCompanyChange('country', e.target.value)}
+            onChange={(e) => handleCompanyChange("country", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
@@ -569,7 +623,7 @@ export default function CustomerOnboardingPage() {
           </label>
           <CurrencySelect
             value={companyData.currencyCode}
-            onChange={(value) => handleCompanyChange('currencyCode', value)}
+            onChange={(value) => handleCompanyChange("currencyCode", value)}
             className="mt-1"
           />
         </div>
@@ -583,7 +637,7 @@ export default function CustomerOnboardingPage() {
 
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('status')}
+          onClick={() => setCurrentStep("status")}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
@@ -593,7 +647,7 @@ export default function CustomerOnboardingPage() {
           disabled={isSubmitting}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
         >
-          {isSubmitting ? 'Saving...' : 'Save & Continue'}
+          {isSubmitting ? "Saving..." : "Save & Continue"}
         </button>
       </div>
     </div>
@@ -603,7 +657,8 @@ export default function CustomerOnboardingPage() {
     <div className="bg-white shadow rounded-lg p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-2">Required Documents</h2>
       <p className="text-gray-600 mb-6">
-        Please upload the following documents. All required documents must be uploaded before submitting.
+        Please upload the following documents. All required documents must be uploaded before
+        submitting.
       </p>
 
       {uploadError && (
@@ -644,11 +699,11 @@ export default function CustomerOnboardingPage() {
                       <span
                         className={`px-4 py-2 text-sm font-medium rounded-md ${
                           uploadingDoc === docType.value
-                            ? 'bg-gray-200 text-gray-500'
-                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            ? "bg-gray-200 text-gray-500"
+                            : "bg-blue-100 text-blue-700 hover:bg-blue-200"
                         }`}
                       >
-                        {uploadingDoc === docType.value ? 'Uploading...' : 'Upload'}
+                        {uploadingDoc === docType.value ? "Uploading..." : "Upload"}
                       </span>
                       <input
                         type="file"
@@ -668,13 +723,13 @@ export default function CustomerOnboardingPage() {
 
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('company')}
+          onClick={() => setCurrentStep("company")}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
         </button>
         <button
-          onClick={() => setCurrentStep('review')}
+          onClick={() => setCurrentStep("review")}
           className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
         >
           Continue to Review
@@ -699,7 +754,7 @@ export default function CustomerOnboardingPage() {
           </div>
           {!onboardingStatus?.companyDetailsComplete && (
             <button
-              onClick={() => setCurrentStep('company')}
+              onClick={() => setCurrentStep("company")}
               className="text-sm text-blue-600 hover:underline"
             >
               Complete company details
@@ -720,21 +775,41 @@ export default function CustomerOnboardingPage() {
             {onboardingStatus?.requiredDocuments?.map((doc) => (
               <div key={doc.type} className="flex items-center text-sm">
                 {doc.uploaded ? (
-                  <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <svg
+                    className="w-4 h-4 text-green-600 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-4 h-4 text-red-600 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 )}
-                <span className={doc.uploaded ? 'text-gray-700' : 'text-red-600'}>{doc.label}</span>
+                <span className={doc.uploaded ? "text-gray-700" : "text-red-600"}>{doc.label}</span>
               </div>
             ))}
           </div>
           {!onboardingStatus?.documentsComplete && (
             <button
-              onClick={() => setCurrentStep('documents')}
+              onClick={() => setCurrentStep("documents")}
               className="mt-2 text-sm text-blue-600 hover:underline"
             >
               Upload missing documents
@@ -751,7 +826,7 @@ export default function CustomerOnboardingPage() {
 
       <div className="flex justify-between mt-8">
         <button
-          onClick={() => setCurrentStep('documents')}
+          onClick={() => setCurrentStep("documents")}
           className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
         >
           Back
@@ -765,7 +840,7 @@ export default function CustomerOnboardingPage() {
           }
           className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? 'Submitting...' : 'Submit for Review'}
+          {isSubmitting ? "Submitting..." : "Submit for Review"}
         </button>
       </div>
     </div>
@@ -778,7 +853,7 @@ export default function CustomerOnboardingPage() {
         <p className="text-gray-600">Complete your registration to access all features</p>
       </div>
 
-      {currentStep !== 'status' && renderStepIndicator()}
+      {currentStep !== "status" && renderStepIndicator()}
 
       {currentStep === "status" && renderStatusPage()}
       {currentStep === "company" && renderCompanyStep()}

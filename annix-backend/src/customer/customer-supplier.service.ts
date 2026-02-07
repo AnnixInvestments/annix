@@ -1,38 +1,33 @@
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  BadRequestException,
-  ForbiddenException,
-  ConflictException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-
-import { now } from '../lib/datetime';
-
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { MoreThan, Repository } from "typeorm";
+import { v4 as uuidv4 } from "uuid";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
+import { EmailService } from "../email/email.service";
+import { now } from "../lib/datetime";
+import { SupplierCapability } from "../supplier/entities/supplier-capability.entity";
+import { SupplierCompany } from "../supplier/entities/supplier-company.entity";
 import {
-  CustomerProfile,
+  SupplierAccountStatus,
+  SupplierProfile,
+} from "../supplier/entities/supplier-profile.entity";
+import { DirectoryQueryDto, DirectorySupplierDto } from "./dto/supplier-directory.dto";
+import {
+  CustomerBlockedSupplier,
   CustomerCompany,
   CustomerPreferredSupplier,
-  CustomerBlockedSupplier,
-  SupplierInvitation,
+  CustomerProfile,
   CustomerRole,
-} from './entities';
-import { SupplierInvitationStatus } from './entities/supplier-invitation.entity';
-import {
-  SupplierProfile,
-  SupplierAccountStatus,
-} from '../supplier/entities/supplier-profile.entity';
-import { SupplierCompany } from '../supplier/entities/supplier-company.entity';
-import { SupplierCapability } from '../supplier/entities/supplier-capability.entity';
-import { AuditService } from '../audit/audit.service';
-import {
-  DirectoryQueryDto,
-  DirectorySupplierDto,
-} from './dto/supplier-directory.dto';
-import { AuditAction } from '../audit/entities/audit-log.entity';
-import { EmailService } from '../email/email.service';
+  SupplierInvitation,
+} from "./entities";
+import { SupplierInvitationStatus } from "./entities/supplier-invitation.entity";
 
 const INVITATION_EXPIRY_DAYS = 7;
 
@@ -64,17 +59,17 @@ export class CustomerSupplierService {
   async getPreferredSuppliers(customerId: number) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     const suppliers = await this.preferredSupplierRepo.find({
       where: { customerCompanyId: profile.companyId, isActive: true },
-      relations: ['supplierProfile', 'supplierProfile.company', 'addedBy'],
-      order: { priority: 'ASC', createdAt: 'DESC' },
+      relations: ["supplierProfile", "supplierProfile.company", "addedBy"],
+      order: { priority: "ASC", createdAt: "DESC" },
     });
 
     return suppliers.map((s) => ({
@@ -84,9 +79,7 @@ export class CustomerSupplierService {
       supplierEmail: s.supplierProfile?.user?.email || s.supplierEmail,
       priority: s.priority,
       notes: s.notes ?? undefined,
-      addedBy: s.addedBy
-        ? `${s.addedBy.firstName} ${s.addedBy.lastName}`
-        : undefined,
+      addedBy: s.addedBy ? `${s.addedBy.firstName} ${s.addedBy.lastName}` : undefined,
       createdAt: s.createdAt,
       isRegistered: !!s.supplierProfileId,
     }));
@@ -105,18 +98,16 @@ export class CustomerSupplierService {
   ) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     // Only admins can add suppliers
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException(
-        'Only customer admins can manage preferred suppliers',
-      );
+      throw new ForbiddenException("Only customer admins can manage preferred suppliers");
     }
 
     // Check if supplier already exists
@@ -130,9 +121,7 @@ export class CustomerSupplierService {
       });
 
       if (existing) {
-        throw new ConflictException(
-          'Supplier is already in your preferred list',
-        );
+        throw new ConflictException("Supplier is already in your preferred list");
       }
     }
 
@@ -150,7 +139,7 @@ export class CustomerSupplierService {
     const saved = await this.preferredSupplierRepo.save(supplier);
 
     await this.auditService.log({
-      entityType: 'customer_preferred_supplier',
+      entityType: "customer_preferred_supplier",
       entityId: saved.id,
       action: AuditAction.CREATE,
       newValues: {
@@ -163,7 +152,7 @@ export class CustomerSupplierService {
 
     return {
       id: saved.id,
-      message: 'Supplier added to preferred list',
+      message: "Supplier added to preferred list",
     };
   }
 
@@ -178,13 +167,11 @@ export class CustomerSupplierService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException(
-        'Only customer admins can manage preferred suppliers',
-      );
+      throw new ForbiddenException("Only customer admins can manage preferred suppliers");
     }
 
     const supplier = await this.preferredSupplierRepo.findOne({
@@ -196,7 +183,7 @@ export class CustomerSupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException('Preferred supplier not found');
+      throw new NotFoundException("Preferred supplier not found");
     }
 
     if (data.priority !== undefined) supplier.priority = data.priority;
@@ -205,33 +192,27 @@ export class CustomerSupplierService {
     await this.preferredSupplierRepo.save(supplier);
 
     await this.auditService.log({
-      entityType: 'customer_preferred_supplier',
+      entityType: "customer_preferred_supplier",
       entityId: supplierId,
       action: AuditAction.UPDATE,
       newValues: data,
       ipAddress: clientIp,
     });
 
-    return { success: true, message: 'Supplier updated' };
+    return { success: true, message: "Supplier updated" };
   }
 
-  async removePreferredSupplier(
-    customerId: number,
-    supplierId: number,
-    clientIp: string,
-  ) {
+  async removePreferredSupplier(customerId: number, supplierId: number, clientIp: string) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException(
-        'Only customer admins can manage preferred suppliers',
-      );
+      throw new ForbiddenException("Only customer admins can manage preferred suppliers");
     }
 
     const supplier = await this.preferredSupplierRepo.findOne({
@@ -239,21 +220,21 @@ export class CustomerSupplierService {
     });
 
     if (!supplier) {
-      throw new NotFoundException('Preferred supplier not found');
+      throw new NotFoundException("Preferred supplier not found");
     }
 
     supplier.isActive = false;
     await this.preferredSupplierRepo.save(supplier);
 
     await this.auditService.log({
-      entityType: 'customer_preferred_supplier',
+      entityType: "customer_preferred_supplier",
       entityId: supplierId,
       action: AuditAction.DELETE,
       newValues: { deactivated: true },
       ipAddress: clientIp,
     });
 
-    return { success: true, message: 'Supplier removed from preferred list' };
+    return { success: true, message: "Supplier removed from preferred list" };
   }
 
   // Supplier Invitations
@@ -264,13 +245,13 @@ export class CustomerSupplierService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     const invitations = await this.invitationRepo.find({
       where: { customerCompanyId: profile.companyId },
-      relations: ['invitedBy', 'supplierProfile'],
-      order: { createdAt: 'DESC' },
+      relations: ["invitedBy", "supplierProfile"],
+      order: { createdAt: "DESC" },
     });
 
     return invitations.map((inv) => ({
@@ -281,9 +262,7 @@ export class CustomerSupplierService {
       createdAt: inv.createdAt,
       expiresAt: inv.expiresAt,
       acceptedAt: inv.acceptedAt ?? undefined,
-      invitedBy: inv.invitedBy
-        ? `${inv.invitedBy.firstName} ${inv.invitedBy.lastName}`
-        : undefined,
+      invitedBy: inv.invitedBy ? `${inv.invitedBy.firstName} ${inv.invitedBy.lastName}` : undefined,
       isExpired: now().toJSDate() > inv.expiresAt,
     }));
   }
@@ -299,17 +278,15 @@ export class CustomerSupplierService {
   ) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException(
-        'Only customer admins can send supplier invitations',
-      );
+      throw new ForbiddenException("Only customer admins can send supplier invitations");
     }
 
     // Check if active invitation already exists
@@ -323,20 +300,18 @@ export class CustomerSupplierService {
     });
 
     if (existingInvitation) {
-      throw new ConflictException(
-        'An active invitation already exists for this email',
-      );
+      throw new ConflictException("An active invitation already exists for this email");
     }
 
     // Check if supplier is already registered
     const existingSupplier = await this.supplierProfileRepo.findOne({
       where: { user: { email: data.email } },
-      relations: ['user'],
+      relations: ["user"],
     });
 
     if (existingSupplier) {
       throw new BadRequestException(
-        'This supplier is already registered. Add them directly to your preferred list.',
+        "This supplier is already registered. Add them directly to your preferred list.",
       );
     }
 
@@ -366,7 +341,7 @@ export class CustomerSupplierService {
     );
 
     await this.auditService.log({
-      entityType: 'supplier_invitation',
+      entityType: "supplier_invitation",
       entityId: saved.id,
       action: AuditAction.CREATE,
       newValues: {
@@ -378,28 +353,22 @@ export class CustomerSupplierService {
 
     return {
       id: saved.id,
-      message: 'Invitation sent successfully',
+      message: "Invitation sent successfully",
       expiresAt: saved.expiresAt,
     };
   }
 
-  async cancelInvitation(
-    customerId: number,
-    invitationId: number,
-    clientIp: string,
-  ) {
+  async cancelInvitation(customerId: number, invitationId: number, clientIp: string) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException(
-        'Only customer admins can manage invitations',
-      );
+      throw new ForbiddenException("Only customer admins can manage invitations");
     }
 
     const invitation = await this.invitationRepo.findOne({
@@ -407,45 +376,39 @@ export class CustomerSupplierService {
     });
 
     if (!invitation) {
-      throw new NotFoundException('Invitation not found');
+      throw new NotFoundException("Invitation not found");
     }
 
     if (invitation.status !== SupplierInvitationStatus.PENDING) {
-      throw new BadRequestException('Can only cancel pending invitations');
+      throw new BadRequestException("Can only cancel pending invitations");
     }
 
     invitation.status = SupplierInvitationStatus.CANCELLED;
     await this.invitationRepo.save(invitation);
 
     await this.auditService.log({
-      entityType: 'supplier_invitation',
+      entityType: "supplier_invitation",
       entityId: invitationId,
       action: AuditAction.UPDATE,
       newValues: { status: SupplierInvitationStatus.CANCELLED },
       ipAddress: clientIp,
     });
 
-    return { success: true, message: 'Invitation cancelled' };
+    return { success: true, message: "Invitation cancelled" };
   }
 
-  async resendInvitation(
-    customerId: number,
-    invitationId: number,
-    clientIp: string,
-  ) {
+  async resendInvitation(customerId: number, invitationId: number, clientIp: string) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException(
-        'Only customer admins can manage invitations',
-      );
+      throw new ForbiddenException("Only customer admins can manage invitations");
     }
 
     const invitation = await this.invitationRepo.findOne({
@@ -453,14 +416,12 @@ export class CustomerSupplierService {
     });
 
     if (!invitation) {
-      throw new NotFoundException('Invitation not found');
+      throw new NotFoundException("Invitation not found");
     }
 
     // Generate new token and extend expiry
     invitation.token = uuidv4();
-    invitation.expiresAt = now()
-      .plus({ days: INVITATION_EXPIRY_DAYS })
-      .toJSDate();
+    invitation.expiresAt = now().plus({ days: INVITATION_EXPIRY_DAYS }).toJSDate();
     invitation.status = SupplierInvitationStatus.PENDING;
 
     await this.invitationRepo.save(invitation);
@@ -474,7 +435,7 @@ export class CustomerSupplierService {
     );
 
     await this.auditService.log({
-      entityType: 'supplier_invitation',
+      entityType: "supplier_invitation",
       entityId: invitationId,
       action: AuditAction.UPDATE,
       newValues: { resent: true, newExpiresAt: invitation.expiresAt },
@@ -483,7 +444,7 @@ export class CustomerSupplierService {
 
     return {
       success: true,
-      message: 'Invitation resent',
+      message: "Invitation resent",
       expiresAt: invitation.expiresAt,
     };
   }
@@ -496,7 +457,7 @@ export class CustomerSupplierService {
         status: SupplierInvitationStatus.PENDING,
         expiresAt: MoreThan(now().toJSDate()),
       },
-      relations: ['customerCompany'],
+      relations: ["customerCompany"],
     });
 
     if (!invitation) {
@@ -507,8 +468,7 @@ export class CustomerSupplierService {
       id: invitation.id,
       email: invitation.email,
       customerCompanyName:
-        invitation.customerCompany.tradingName ||
-        invitation.customerCompany.legalName,
+        invitation.customerCompany.tradingName || invitation.customerCompany.legalName,
       supplierCompanyName: invitation.supplierCompanyName,
     };
   }
@@ -593,26 +553,26 @@ export class CustomerSupplierService {
   // Supplier Directory
 
   private readonly productLabelMap: Record<string, string> = {
-    fabricated_steel: 'Steel Pipes',
-    fasteners_gaskets: 'Nuts, Bolts, Washers & Gaskets',
-    surface_protection: 'Surface Protection',
-    hdpe: 'HDPE Pipes',
-    pvc: 'PVC Pipes',
-    structural_steel: 'Structural Steel',
-    pumps: 'Pumps & Pump Parts',
-    valves_meters_instruments: 'Valves, Meters & Instruments',
-    valves_instruments: 'Valves & Instruments',
-    transport_install: 'Transport/Install',
-    pipe_steel_work: 'Pipe Brackets & Steel Work',
-    straight_pipe: 'Straight Pipe',
-    bends: 'Bends',
-    flanges: 'Flanges',
-    fittings: 'Fittings',
-    valves: 'Valves',
-    fabrication: 'Fabrication',
-    coating: 'Coating',
-    inspection: 'Inspection',
-    other: 'Other',
+    fabricated_steel: "Steel Pipes",
+    fasteners_gaskets: "Nuts, Bolts, Washers & Gaskets",
+    surface_protection: "Surface Protection",
+    hdpe: "HDPE Pipes",
+    pvc: "PVC Pipes",
+    structural_steel: "Structural Steel",
+    pumps: "Pumps & Pump Parts",
+    valves_meters_instruments: "Valves, Meters & Instruments",
+    valves_instruments: "Valves & Instruments",
+    transport_install: "Transport/Install",
+    pipe_steel_work: "Pipe Brackets & Steel Work",
+    straight_pipe: "Straight Pipe",
+    bends: "Bends",
+    flanges: "Flanges",
+    fittings: "Fittings",
+    valves: "Valves",
+    fabrication: "Fabrication",
+    coating: "Coating",
+    inspection: "Inspection",
+    other: "Other",
   };
 
   async supplierDirectory(
@@ -621,31 +581,31 @@ export class CustomerSupplierService {
   ): Promise<DirectorySupplierDto[]> {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
-      relations: ['company'],
+      relations: ["company"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     const queryBuilder = this.supplierProfileRepo
-      .createQueryBuilder('sp')
-      .leftJoinAndSelect('sp.company', 'company')
-      .leftJoinAndSelect('sp.capabilities', 'cap', 'cap.is_active = true')
-      .where('sp.account_status = :status', {
+      .createQueryBuilder("sp")
+      .leftJoinAndSelect("sp.company", "company")
+      .leftJoinAndSelect("sp.capabilities", "cap", "cap.is_active = true")
+      .where("sp.account_status = :status", {
         status: SupplierAccountStatus.ACTIVE,
       })
-      .andWhere('company.id IS NOT NULL');
+      .andWhere("company.id IS NOT NULL");
 
     if (filters?.search) {
       queryBuilder.andWhere(
-        '(LOWER(company.legal_name) LIKE :search OR LOWER(company.trading_name) LIKE :search)',
+        "(LOWER(company.legal_name) LIKE :search OR LOWER(company.trading_name) LIKE :search)",
         { search: `%${filters.search.toLowerCase()}%` },
       );
     }
 
     if (filters?.province) {
-      queryBuilder.andWhere('LOWER(company.province_state) = :province', {
+      queryBuilder.andWhere("LOWER(company.province_state) = :province", {
         province: filters.province.toLowerCase(),
       });
     }
@@ -655,16 +615,12 @@ export class CustomerSupplierService {
     const preferredSuppliers = await this.preferredSupplierRepo.find({
       where: { customerCompanyId: profile.companyId, isActive: true },
     });
-    const preferredMap = new Map(
-      preferredSuppliers.map((ps) => [ps.supplierProfileId, ps]),
-    );
+    const preferredMap = new Map(preferredSuppliers.map((ps) => [ps.supplierProfileId, ps]));
 
     const blockedSuppliers = await this.blockedSupplierRepo.find({
       where: { customerCompanyId: profile.companyId, isActive: true },
     });
-    const blockedMap = new Map(
-      blockedSuppliers.map((bs) => [bs.supplierProfileId, bs]),
-    );
+    const blockedMap = new Map(blockedSuppliers.map((bs) => [bs.supplierProfileId, bs]));
 
     const results: DirectorySupplierDto[] = suppliers
       .map((supplier): DirectorySupplierDto | null => {
@@ -683,22 +639,19 @@ export class CustomerSupplierService {
         const preferred = preferredMap.get(supplier.id);
         const blocked = blockedMap.get(supplier.id);
 
-        let status: 'preferred' | 'blocked' | 'none' = 'none';
+        let status: "preferred" | "blocked" | "none" = "none";
         if (blocked) {
-          status = 'blocked';
+          status = "blocked";
         } else if (preferred) {
-          status = 'preferred';
+          status = "preferred";
         }
 
         return {
           supplierProfileId: supplier.id,
-          companyName:
-            supplier.company?.tradingName || supplier.company?.legalName || '',
-          province: supplier.company?.provinceState || '',
+          companyName: supplier.company?.tradingName || supplier.company?.legalName || "",
+          province: supplier.company?.provinceState || "",
           products,
-          productLabels: products.map(
-            (p) => this.productLabelMap[p] || p,
-          ),
+          productLabels: products.map((p) => this.productLabelMap[p] || p),
           status,
           preferredSupplierId: preferred?.id,
           blockedSupplierId: blocked?.id,
@@ -720,11 +673,11 @@ export class CustomerSupplierService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException('Only customer admins can block suppliers');
+      throw new ForbiddenException("Only customer admins can block suppliers");
     }
 
     const supplierProfile = await this.supplierProfileRepo.findOne({
@@ -732,7 +685,7 @@ export class CustomerSupplierService {
     });
 
     if (!supplierProfile) {
-      throw new NotFoundException('Supplier not found');
+      throw new NotFoundException("Supplier not found");
     }
 
     const existingBlock = await this.blockedSupplierRepo.findOne({
@@ -744,7 +697,7 @@ export class CustomerSupplierService {
     });
 
     if (existingBlock) {
-      throw new ConflictException('Supplier is already blocked');
+      throw new ConflictException("Supplier is already blocked");
     }
 
     const existingPreferred = await this.preferredSupplierRepo.findOne({
@@ -760,7 +713,7 @@ export class CustomerSupplierService {
       await this.preferredSupplierRepo.save(existingPreferred);
 
       await this.auditService.log({
-        entityType: 'customer_preferred_supplier',
+        entityType: "customer_preferred_supplier",
         entityId: existingPreferred.id,
         action: AuditAction.DELETE,
         newValues: { removedDueToBlock: true },
@@ -779,7 +732,7 @@ export class CustomerSupplierService {
     const saved = await this.blockedSupplierRepo.save(blocked);
 
     await this.auditService.log({
-      entityType: 'customer_blocked_supplier',
+      entityType: "customer_blocked_supplier",
       entityId: saved.id,
       action: AuditAction.CREATE,
       newValues: { supplierProfileId, reason },
@@ -788,27 +741,21 @@ export class CustomerSupplierService {
 
     return {
       id: saved.id,
-      message: 'Supplier blocked successfully',
+      message: "Supplier blocked successfully",
     };
   }
 
-  async unblockSupplier(
-    customerId: number,
-    supplierProfileId: number,
-    clientIp: string,
-  ) {
+  async unblockSupplier(customerId: number, supplierProfileId: number, clientIp: string) {
     const profile = await this.profileRepo.findOne({
       where: { id: customerId },
     });
 
     if (!profile) {
-      throw new NotFoundException('Customer profile not found');
+      throw new NotFoundException("Customer profile not found");
     }
 
     if (profile.role !== CustomerRole.CUSTOMER_ADMIN) {
-      throw new ForbiddenException(
-        'Only customer admins can unblock suppliers',
-      );
+      throw new ForbiddenException("Only customer admins can unblock suppliers");
     }
 
     const blocked = await this.blockedSupplierRepo.findOne({
@@ -820,20 +767,20 @@ export class CustomerSupplierService {
     });
 
     if (!blocked) {
-      throw new NotFoundException('Blocked supplier not found');
+      throw new NotFoundException("Blocked supplier not found");
     }
 
     blocked.isActive = false;
     await this.blockedSupplierRepo.save(blocked);
 
     await this.auditService.log({
-      entityType: 'customer_blocked_supplier',
+      entityType: "customer_blocked_supplier",
       entityId: blocked.id,
       action: AuditAction.DELETE,
       newValues: { unblocked: true },
       ipAddress: clientIp,
     });
 
-    return { success: true, message: 'Supplier unblocked successfully' };
+    return { success: true, message: "Supplier unblocked successfully" };
   }
 }

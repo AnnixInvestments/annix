@@ -1,16 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { pipeSteelWorkApi } from '@/app/lib/pipe-steel-work/api';
-import { FALLBACK_STANDARD_PLATE_SIZES, StandardPlateSize } from '@/app/lib/config/rfq/bracketsAndPlates';
-import { log } from '@/app/lib/logger';
+import { useEffect, useState } from "react";
+import {
+  FALLBACK_STANDARD_PLATE_SIZES,
+  StandardPlateSize,
+} from "@/app/lib/config/rfq/bracketsAndPlates";
+import { log } from "@/app/lib/logger";
+import { pipeSteelWorkApi } from "@/app/lib/pipe-steel-work/api";
 
 export interface UseStandardPlateSizesReturn {
   plateSizes: StandardPlateSize[];
   isLoading: boolean;
   error: string | null;
   plateSizeById: (id: string) => StandardPlateSize | null;
-  plateSizesByCategory: (category: 'small' | 'medium' | 'large') => StandardPlateSize[];
+  plateSizesByCategory: (category: "small" | "medium" | "large") => StandardPlateSize[];
   refetch: () => void;
 }
 
@@ -33,16 +36,16 @@ export function useStandardPlateSizes(): UseStandardPlateSizesReturn {
           lengthMm: s.lengthMm,
           widthMm: s.widthMm,
           thicknessMm: s.thicknessMm,
-          category: s.category as 'small' | 'medium' | 'large',
+          category: s.category as "small" | "medium" | "large",
         }));
         setPlateSizes(mappedSizes);
         log.debug(`Loaded ${mappedSizes.length} standard plate sizes from API`);
       } else {
-        log.debug('No plate sizes from API, using fallback');
+        log.debug("No plate sizes from API, using fallback");
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load plate sizes';
-      log.warn('Failed to fetch plate sizes from API, using fallback:', errorMessage);
+      const errorMessage = err instanceof Error ? err.message : "Failed to load plate sizes";
+      log.warn("Failed to fetch plate sizes from API, using fallback:", errorMessage);
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -57,7 +60,7 @@ export function useStandardPlateSizes(): UseStandardPlateSizesReturn {
     return plateSizes.find((s) => s.id === id) || null;
   };
 
-  const plateSizesByCategory = (category: 'small' | 'medium' | 'large'): StandardPlateSize[] => {
+  const plateSizesByCategory = (category: "small" | "medium" | "large"): StandardPlateSize[] => {
     return plateSizes.filter((s) => s.category === category);
   };
 

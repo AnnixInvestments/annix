@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { useToast } from '@/app/components/Toast';
-import { ConversationThread, MessageComposer } from '@/app/components/messaging';
-import { customerMessagingApi } from '@/app/lib/api/messagingApi';
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { ConversationThread, MessageComposer } from "@/app/components/messaging";
+import { useToast } from "@/app/components/Toast";
+import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
+import { customerMessagingApi } from "@/app/lib/api/messagingApi";
 import {
+  useArchiveCustomerConversation,
   useCustomerConversationDetail,
   useSendCustomerMessage,
-  useArchiveCustomerConversation,
-} from '@/app/lib/query/hooks';
+} from "@/app/lib/query/hooks";
 
 export default function CustomerConversationDetailPage() {
   const router = useRouter();
@@ -25,7 +25,9 @@ export default function CustomerConversationDetailPage() {
 
   const conversation = conversationQuery.data ?? null;
   const [currentUserId, setCurrentUserId] = useState<number>(0);
-  const [localMessages, setLocalMessages] = useState<typeof conversation extends null ? never : NonNullable<typeof conversation>['messages']>([]);
+  const [localMessages, setLocalMessages] = useState<
+    typeof conversation extends null ? never : NonNullable<typeof conversation>["messages"]
+  >([]);
 
   useEffect(() => {
     if (conversation) {
@@ -44,10 +46,10 @@ export default function CustomerConversationDetailPage() {
       showToast(
         conversationQuery.error instanceof Error
           ? conversationQuery.error.message
-          : 'Failed to load conversation',
-        'error',
+          : "Failed to load conversation",
+        "error",
       );
-      router.push('/customer/messages');
+      router.push("/customer/messages");
     }
   }, [conversationQuery.error, showToast, router]);
 
@@ -66,7 +68,7 @@ export default function CustomerConversationDetailPage() {
 
       setLocalMessages((prev) => [...prev, newMessage]);
     } catch (error: any) {
-      showToast(error.message || 'Failed to send message', 'error');
+      showToast(error.message || "Failed to send message", "error");
     }
   };
 
@@ -75,10 +77,10 @@ export default function CustomerConversationDetailPage() {
 
     try {
       await archiveMutation.mutateAsync(conversation.id);
-      showToast('Conversation archived', 'success');
-      router.push('/customer/messages');
+      showToast("Conversation archived", "success");
+      router.push("/customer/messages");
     } catch (error: any) {
-      showToast(error.message || 'Failed to archive conversation', 'error');
+      showToast(error.message || "Failed to archive conversation", "error");
     }
   };
 
@@ -95,7 +97,7 @@ export default function CustomerConversationDetailPage() {
       <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500">
         <p>Conversation not found</p>
         <button
-          onClick={() => router.push('/customer/messages')}
+          onClick={() => router.push("/customer/messages")}
           className="mt-4 text-blue-600 hover:text-blue-700"
         >
           Back to Messages
@@ -108,15 +110,10 @@ export default function CustomerConversationDetailPage() {
     <div className="max-w-4xl mx-auto">
       <div className="mb-6 flex items-center gap-4">
         <button
-          onClick={() => router.push('/customer/messages')}
+          onClick={() => router.push("/customer/messages")}
           className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -130,7 +127,7 @@ export default function CustomerConversationDetailPage() {
             {conversation.subject}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {conversation.participantNames.join(', ')}
+            {conversation.participantNames.join(", ")}
           </p>
         </div>
         {!conversation.isArchived && (
@@ -145,10 +142,7 @@ export default function CustomerConversationDetailPage() {
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <div className="flex flex-col min-h-[600px]">
-          <ConversationThread
-            messages={localMessages}
-            currentUserId={currentUserId}
-          />
+          <ConversationThread messages={localMessages} currentUserId={currentUserId} />
 
           <MessageComposer
             onSend={handleSendMessage}

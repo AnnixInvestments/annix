@@ -1,10 +1,11 @@
 // export class CreatePipePressureDto {}
-import { IsNumber, IsOptional, IsNotEmpty } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+
+import { ApiProperty } from "@nestjs/swagger";
+import { IsNotEmpty, IsNumber, IsOptional } from "class-validator";
 
 export class CreatePipePressureDto {
   @ApiProperty({
-    description: 'Temperature in °C (nullable)',
+    description: "Temperature in °C (nullable)",
     example: 371,
     required: false,
   })
@@ -13,7 +14,7 @@ export class CreatePipePressureDto {
   temperature_c?: number;
 
   @ApiProperty({
-    description: 'Maximum working pressure in MPa (nullable)',
+    description: "Maximum working pressure in MPa (nullable)",
     example: 7.27,
     required: false,
   })
@@ -21,7 +22,7 @@ export class CreatePipePressureDto {
   @IsNumber()
   max_working_pressure_mpa?: number;
 
-  @ApiProperty({ description: 'Allowable stress in MPa', example: 99 })
+  @ApiProperty({ description: "Allowable stress in MPa", example: 99 })
   @IsNumber()
   @IsNotEmpty()
   allowable_stress_mpa: number;

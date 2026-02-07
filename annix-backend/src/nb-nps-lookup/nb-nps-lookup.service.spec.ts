@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NbNpsLookupService } from './nb-nps-lookup.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { NbNpsLookup } from './entities/nb-nps-lookup.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { NbNpsLookup } from "./entities/nb-nps-lookup.entity";
+import { NbNpsLookupService } from "./nb-nps-lookup.service";
 
-describe('NbNpsLookupService', () => {
+describe("NbNpsLookupService", () => {
   let service: NbNpsLookupService;
 
   const mockRepo = {
@@ -28,12 +28,12 @@ describe('NbNpsLookupService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new NB NPS lookup', async () => {
+  describe("create", () => {
+    it("should create a new NB NPS lookup", async () => {
       const dto = { nb_mm: 50, nps_inch: 2, outside_diameter_mm: 60.3 };
       const entity = { id: 1, ...dto } as NbNpsLookup;
 
@@ -50,7 +50,7 @@ describe('NbNpsLookupService', () => {
       expect(mockRepo.save).toHaveBeenCalledWith(dto);
     });
 
-    it('should throw BadRequestException if NB NPS lookup already exists', async () => {
+    it("should throw BadRequestException if NB NPS lookup already exists", async () => {
       const dto = { nb_mm: 50, nps_inch: 2, outside_diameter_mm: 60.3 };
       mockRepo.findOne.mockResolvedValue({ id: 1, ...dto });
 
@@ -58,8 +58,8 @@ describe('NbNpsLookupService', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return array of NB NPS lookups', async () => {
+  describe("findAll", () => {
+    it("should return array of NB NPS lookups", async () => {
       const result = [{ id: 1, nb_mm: 50 }] as NbNpsLookup[];
       mockRepo.find.mockResolvedValue(result);
 
@@ -68,8 +68,8 @@ describe('NbNpsLookupService', () => {
     });
   });
 
-  describe('findOne', () => {
-    it('should return an NB NPS lookup by id', async () => {
+  describe("findOne", () => {
+    it("should return an NB NPS lookup by id", async () => {
       const result = { id: 1, nb_mm: 50 } as NbNpsLookup;
       mockRepo.findOne.mockResolvedValue(result);
 
@@ -79,15 +79,15 @@ describe('NbNpsLookupService', () => {
       });
     });
 
-    it('should throw NotFoundException if NB NPS lookup not found', async () => {
+    it("should throw NotFoundException if NB NPS lookup not found", async () => {
       mockRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('remove', () => {
-    it('should delete an NB NPS lookup', async () => {
+  describe("remove", () => {
+    it("should delete an NB NPS lookup", async () => {
       const entity = { id: 1, nb_mm: 50 } as NbNpsLookup;
       mockRepo.findOne.mockResolvedValue(entity);
       mockRepo.remove.mockResolvedValue(undefined);

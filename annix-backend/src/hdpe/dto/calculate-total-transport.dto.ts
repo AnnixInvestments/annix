@@ -1,12 +1,5 @@
-import {
-  IsArray,
-  ValidateNested,
-  IsString,
-  IsInt,
-  IsNumber,
-  IsOptional,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type } from "class-transformer";
+import { IsArray, IsInt, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
 
 export class HdpeItemDto {
   @IsString()

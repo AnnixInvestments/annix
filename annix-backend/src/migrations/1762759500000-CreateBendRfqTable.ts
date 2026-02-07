@@ -1,13 +1,11 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateBendRfqTable1762759500000 implements MigrationInterface {
-  name = 'CreateBendRfqTable1762759500000';
+  name = "CreateBendRfqTable1762759500000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add 'bend' to the RfqItemType enum
-    await queryRunner.query(
-      `ALTER TYPE "rfq_items_item_type_enum" ADD VALUE 'bend'`,
-    );
+    await queryRunner.query(`ALTER TYPE "rfq_items_item_type_enum" ADD VALUE 'bend'`);
 
     // Create the bend_rfqs table
     await queryRunner.query(`

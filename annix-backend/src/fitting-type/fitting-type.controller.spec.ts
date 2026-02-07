@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FittingTypeController } from './fitting-type.controller';
-import { FittingTypeService } from './fitting-type.service';
-import { FittingType } from './entities/fitting-type.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { FittingType } from "./entities/fitting-type.entity";
+import { FittingTypeController } from "./fitting-type.controller";
+import { FittingTypeService } from "./fitting-type.service";
 
-describe('FittingTypeController', () => {
+describe("FittingTypeController", () => {
   let controller: FittingTypeController;
   let service: FittingTypeService;
 
@@ -42,7 +42,7 @@ describe('FittingTypeController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

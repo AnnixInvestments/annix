@@ -1,20 +1,20 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { MulterModule } from '@nestjs/platform-express';
-import { Boq } from './entities/boq.entity';
-import { BoqLineItem } from './entities/boq-line-item.entity';
-import { BoqSection } from './entities/boq-section.entity';
-import { BoqSupplierAccess } from './entities/boq-supplier-access.entity';
-import { BoqController } from './boq.controller';
-import { BoqService } from './boq.service';
-import { BoqParserService } from './boq-parser.service';
-import { BoqDistributionService } from './boq-distribution.service';
-import { SupplierModule } from '../supplier/supplier.module';
-import { EmailModule } from '../email/email.module';
-import { Rfq } from '../rfq/entities/rfq.entity';
-import { RfqItem } from '../rfq/entities/rfq-item.entity';
-import { FlangeStandard } from '../flange-standard/entities/flange-standard.entity';
-import { FlangePressureClass } from '../flange-pressure-class/entities/flange-pressure-class.entity';
+import { forwardRef, Module } from "@nestjs/common";
+import { MulterModule } from "@nestjs/platform-express";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { EmailModule } from "../email/email.module";
+import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pressure-class.entity";
+import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
+import { Rfq } from "../rfq/entities/rfq.entity";
+import { RfqItem } from "../rfq/entities/rfq-item.entity";
+import { SupplierModule } from "../supplier/supplier.module";
+import { BoqController } from "./boq.controller";
+import { BoqService } from "./boq.service";
+import { BoqDistributionService } from "./boq-distribution.service";
+import { BoqParserService } from "./boq-parser.service";
+import { Boq } from "./entities/boq.entity";
+import { BoqLineItem } from "./entities/boq-line-item.entity";
+import { BoqSection } from "./entities/boq-section.entity";
+import { BoqSupplierAccess } from "./entities/boq-supplier-access.entity";
 
 @Module({
   imports: [

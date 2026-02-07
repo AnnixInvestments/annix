@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content = fs.readFileSync(filePath, "utf8");
 
 // Gasket weight lookup table (weights in kg)
 // Based on EN 1514-1 dimensions for PN16 flanges
@@ -79,17 +79,17 @@ if (match) {
   const bnwWeightPattern = /const BNW_WEIGHT_PER_HOLE:.*?\};/s;
   const bnwMatch = content.match(bnwWeightPattern);
 
-  if (bnwMatch && !content.includes('GASKET_WEIGHTS')) {
+  if (bnwMatch && !content.includes("GASKET_WEIGHTS")) {
     const insertPoint = bnwMatch.index + bnwMatch[0].length;
-    content = content.substring(0, insertPoint) + '\n' + gasketWeightTable + content.substring(insertPoint);
-    console.log('✅ Added GASKET_WEIGHTS lookup table');
-  } else if (content.includes('GASKET_WEIGHTS')) {
-    console.log('⚠️ GASKET_WEIGHTS already exists');
+    content = `${content.substring(0, insertPoint)}\n${gasketWeightTable}${content.substring(insertPoint)}`;
+    console.log("✅ Added GASKET_WEIGHTS lookup table");
+  } else if (content.includes("GASKET_WEIGHTS")) {
+    console.log("⚠️ GASKET_WEIGHTS already exists");
   } else {
-    console.log('❌ Could not find BNW_WEIGHT_PER_HOLE table');
+    console.log("❌ Could not find BNW_WEIGHT_PER_HOLE table");
   }
 } else {
-  console.log('❌ Could not find BOLT_HOLES_PER_FLANGE table');
+  console.log("❌ Could not find BOLT_HOLES_PER_FLANGE table");
 }
 
 // 2. Update the gasket line item to show weight
@@ -123,9 +123,9 @@ const newGasketLine = `{showBnw && totalFlanges > 0 && globalSpecs?.gasketType &
 
 if (content.includes(oldGasketLine)) {
   content = content.replace(oldGasketLine, newGasketLine);
-  console.log('✅ Updated gasket line item with weight');
+  console.log("✅ Updated gasket line item with weight");
 } else {
-  console.log('❌ Could not find gasket line item to update');
+  console.log("❌ Could not find gasket line item to update");
 }
 
 // 3. Update getTotalWeight to include gasket weights
@@ -198,10 +198,10 @@ const newGetTotalWeight = `const getTotalWeight = () => {
 
 if (content.includes(oldGetTotalWeight)) {
   content = content.replace(oldGetTotalWeight, newGetTotalWeight);
-  console.log('✅ Updated getTotalWeight to include gasket weights');
+  console.log("✅ Updated getTotalWeight to include gasket weights");
 } else {
-  console.log('❌ Could not find getTotalWeight function');
+  console.log("❌ Could not find getTotalWeight function");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

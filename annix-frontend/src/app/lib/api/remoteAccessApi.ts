@@ -1,8 +1,8 @@
-import { API_BASE_URL } from '@/lib/api-config';
+import { API_BASE_URL } from "@/lib/api-config";
 
-export type RemoteAccessRequestType = 'VIEW' | 'EDIT';
-export type RemoteAccessDocumentType = 'RFQ' | 'BOQ';
-export type RemoteAccessStatus = 'PENDING' | 'APPROVED' | 'DENIED' | 'EXPIRED';
+export type RemoteAccessRequestType = "VIEW" | "EDIT";
+export type RemoteAccessDocumentType = "RFQ" | "BOQ";
+export type RemoteAccessStatus = "PENDING" | "APPROVED" | "DENIED" | "EXPIRED";
 
 export interface CreateRemoteAccessRequestDto {
   requestType: RemoteAccessRequestType;
@@ -69,13 +69,13 @@ class RemoteAccessApiClient {
 
   private adminHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('adminAccessToken');
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("adminAccessToken");
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        headers["Authorization"] = `Bearer ${token}`;
       }
     }
 
@@ -84,13 +84,13 @@ class RemoteAccessApiClient {
 
   private customerHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('customerAccessToken');
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("customerAccessToken");
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        headers["Authorization"] = `Bearer ${token}`;
       }
     }
 
@@ -123,13 +123,13 @@ class RemoteAccessApiClient {
   }
 
   async isFeatureEnabled(): Promise<boolean> {
-    const result = await this.request<FeatureEnabledResponse>('/remote-access/enabled');
+    const result = await this.request<FeatureEnabledResponse>("/remote-access/enabled");
     return result.enabled;
   }
 
   async requestAccess(dto: CreateRemoteAccessRequestDto): Promise<RemoteAccessRequestResponse> {
-    return this.request<RemoteAccessRequestResponse>('/remote-access/request', {
-      method: 'POST',
+    return this.request<RemoteAccessRequestResponse>("/remote-access/request", {
+      method: "POST",
       body: JSON.stringify(dto),
     });
   }
@@ -148,11 +148,7 @@ class RemoteAccessApiClient {
   }
 
   async pendingRequests(): Promise<PendingAccessRequestsResponse> {
-    return this.request<PendingAccessRequestsResponse>(
-      '/remote-access/pending',
-      {},
-      true,
-    );
+    return this.request<PendingAccessRequestsResponse>("/remote-access/pending", {}, true);
   }
 
   async respondToRequest(
@@ -162,7 +158,7 @@ class RemoteAccessApiClient {
     return this.request<RemoteAccessRequestResponse>(
       `/remote-access/${requestId}/respond`,
       {
-        method: 'PUT',
+        method: "PUT",
         body: JSON.stringify(dto),
       },
       true,

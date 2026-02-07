@@ -1,11 +1,11 @@
-'use client'
+"use client";
 
-import { useTheme } from './ThemeProvider'
-import { Tooltip } from './Tooltip'
+import { useTheme } from "./ThemeProvider";
+import { Tooltip } from "./Tooltip";
 
 export function ThemeToggle() {
-  const { resolvedTheme, toggleTheme } = useTheme()
-  const tooltipText = `Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const tooltipText = `Switch to ${resolvedTheme === "light" ? "dark" : "light"} mode`;
 
   return (
     <Tooltip text={tooltipText} position="bottom">
@@ -14,7 +14,7 @@ export function ThemeToggle() {
         className="p-2 rounded-lg transition-colors hover:bg-amix-navy-light"
         aria-label={tooltipText}
       >
-        {resolvedTheme === 'light' ? (
+        {resolvedTheme === "light" ? (
           <svg
             className="w-5 h-5 text-amix-orange"
             fill="none"
@@ -45,5 +45,5 @@ export function ThemeToggle() {
         )}
       </button>
     </Tooltip>
-  )
+  );
 }

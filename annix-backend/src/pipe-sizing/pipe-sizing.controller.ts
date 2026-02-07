@@ -1,41 +1,38 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
-import { PipeSizingService } from './pipe-sizing.service';
-import { CalculatePipeThicknessDto } from './dto/pipe-sizing.dto';
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
+import { CalculatePipeThicknessDto } from "./dto/pipe-sizing.dto";
+import { PipeSizingService } from "./pipe-sizing.service";
 
-@Controller('pipe-sizing')
+@Controller("pipe-sizing")
 export class PipeSizingController {
   constructor(private readonly pipeSizingService: PipeSizingService) {}
 
-  @Get('steel-grades')
+  @Get("steel-grades")
   getAllSteelGrades() {
     return this.pipeSizingService.getAllSteelGrades();
   }
 
-  @Get('steel-grades/by-code')
-  getSteelGradeByCode(@Query('code') code: string) {
+  @Get("steel-grades/by-code")
+  getSteelGradeByCode(@Query("code") code: string) {
     return this.pipeSizingService.getSteelGradeByCode(code);
   }
 
-  @Get('nps-od')
+  @Get("nps-od")
   getAllNpsOd() {
     return this.pipeSizingService.getAllNpsOd();
   }
 
-  @Get('schedules')
-  getSchedulesForNps(@Query('nps') nps: string) {
+  @Get("schedules")
+  getSchedulesForNps(@Query("nps") nps: string) {
     return this.pipeSizingService.getSchedulesForNps(nps);
   }
 
-  @Get('allowable-stress')
+  @Get("allowable-stress")
   async getAllowableStress(
-    @Query('materialCode') materialCode: string,
-    @Query('temperatureC') temperatureC: string,
+    @Query("materialCode") materialCode: string,
+    @Query("temperatureC") temperatureC: string,
   ) {
     const tempF = Number(temperatureC) * 1.8 + 32;
-    const stress = await this.pipeSizingService.getAllowableStress(
-      materialCode,
-      tempF,
-    );
+    const stress = await this.pipeSizingService.getAllowableStress(materialCode, tempF);
     return {
       materialCode,
       temperatureC: Number(temperatureC),
@@ -44,24 +41,24 @@ export class PipeSizingController {
     };
   }
 
-  @Get('stress-table')
-  getStressTableForMaterial(@Query('materialCode') materialCode: string) {
+  @Get("stress-table")
+  getStressTableForMaterial(@Query("materialCode") materialCode: string) {
     return this.pipeSizingService.getStressTableForMaterial(materialCode);
   }
 
-  @Post('calculate')
+  @Post("calculate")
   calculatePipeThickness(@Body() dto: CalculatePipeThicknessDto) {
     return this.pipeSizingService.calculatePipeThickness(dto);
   }
 
-  @Get('calculate')
+  @Get("calculate")
   calculatePipeThicknessGet(
-    @Query('pressureBar') pressureBar: string,
-    @Query('temperatureC') temperatureC: string,
-    @Query('nps') nps: string,
-    @Query('materialCode') materialCode: string,
-    @Query('selectedSchedule') selectedSchedule?: string,
-    @Query('corrosionAllowanceMm') corrosionAllowanceMm?: string,
+    @Query("pressureBar") pressureBar: string,
+    @Query("temperatureC") temperatureC: string,
+    @Query("nps") nps: string,
+    @Query("materialCode") materialCode: string,
+    @Query("selectedSchedule") selectedSchedule?: string,
+    @Query("corrosionAllowanceMm") corrosionAllowanceMm?: string,
   ) {
     return this.pipeSizingService.calculatePipeThickness({
       pressureBar: Number(pressureBar),
@@ -69,20 +66,15 @@ export class PipeSizingController {
       nps,
       materialCode,
       selectedSchedule,
-      corrosionAllowanceMm: corrosionAllowanceMm
-        ? Number(corrosionAllowanceMm)
-        : 0,
+      corrosionAllowanceMm: corrosionAllowanceMm ? Number(corrosionAllowanceMm) : 0,
     });
   }
 
-  @Get('recommended-schedule')
+  @Get("recommended-schedule")
   async getRecommendedSchedule(
-    @Query('nps') nps: string,
-    @Query('requiredThicknessInch') requiredThicknessInch: string,
+    @Query("nps") nps: string,
+    @Query("requiredThicknessInch") requiredThicknessInch: string,
   ) {
-    return this.pipeSizingService.getNextSuitableSchedule(
-      nps,
-      Number(requiredThicknessInch),
-    );
+    return this.pipeSizingService.getNextSuitableSchedule(nps, Number(requiredThicknessInch));
   }
 }

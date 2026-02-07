@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { ToastProvider } from './Toast'
-import { ThemeProvider } from './ThemeProvider'
-import { QueryProvider } from '@/app/lib/query/QueryProvider'
+import { QueryProvider } from "@/app/lib/query/QueryProvider";
+import { ThemeProvider } from "./ThemeProvider";
+import { ToastProvider } from "./Toast";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -11,5 +11,5 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <ToastProvider>{children}</ToastProvider>
       </ThemeProvider>
     </QueryProvider>
-  )
+  );
 }

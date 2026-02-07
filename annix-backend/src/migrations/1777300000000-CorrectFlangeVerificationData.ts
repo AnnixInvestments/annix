@@ -1,161 +1,157 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CorrectFlangeVerificationData1777300000000 implements MigrationInterface {
-  name = 'CorrectFlangeVerificationData1777300000000';
+  name = "CorrectFlangeVerificationData1777300000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      'Correcting flange verification data with proper join queries...',
-    );
+    console.warn("Correcting flange verification data with proper join queries...");
 
-    await queryRunner.query(
-      `DELETE FROM data_verification_logs WHERE category = 'Flanges'`,
-    );
+    await queryRunner.query(`DELETE FROM data_verification_logs WHERE category = 'Flanges'`);
 
     const verificationChecks = [
       {
-        category: 'Flanges',
-        standard: 'BS 4504',
-        checkType: 'PN6 Coverage',
+        category: "Flanges",
+        standard: "BS 4504",
+        checkType: "PN6 Coverage",
         expectedMin: 15,
-        standardCode: 'BS 4504',
-        pressurePattern: '6/%',
+        standardCode: "BS 4504",
+        pressurePattern: "6/%",
       },
       {
-        category: 'Flanges',
-        standard: 'BS 4504',
-        checkType: 'PN10 Coverage',
+        category: "Flanges",
+        standard: "BS 4504",
+        checkType: "PN10 Coverage",
         expectedMin: 15,
-        standardCode: 'BS 4504',
-        pressurePattern: '10/%',
+        standardCode: "BS 4504",
+        pressurePattern: "10/%",
       },
       {
-        category: 'Flanges',
-        standard: 'BS 4504',
-        checkType: 'PN16 Coverage',
+        category: "Flanges",
+        standard: "BS 4504",
+        checkType: "PN16 Coverage",
         expectedMin: 15,
-        standardCode: 'BS 4504',
-        pressurePattern: '16/%',
+        standardCode: "BS 4504",
+        pressurePattern: "16/%",
       },
       {
-        category: 'Flanges',
-        standard: 'BS 4504',
-        checkType: 'PN25 Coverage',
+        category: "Flanges",
+        standard: "BS 4504",
+        checkType: "PN25 Coverage",
         expectedMin: 15,
-        standardCode: 'BS 4504',
-        pressurePattern: '25/%',
+        standardCode: "BS 4504",
+        pressurePattern: "25/%",
       },
       {
-        category: 'Flanges',
-        standard: 'BS 4504',
-        checkType: 'PN40 Coverage',
+        category: "Flanges",
+        standard: "BS 4504",
+        checkType: "PN40 Coverage",
         expectedMin: 15,
-        standardCode: 'BS 4504',
-        pressurePattern: '40/%',
+        standardCode: "BS 4504",
+        pressurePattern: "40/%",
       },
       {
-        category: 'Flanges',
-        standard: 'SABS 1123',
-        checkType: 'T1000 Coverage',
+        category: "Flanges",
+        standard: "SABS 1123",
+        checkType: "T1000 Coverage",
         expectedMin: 15,
-        standardCode: 'SABS 1123',
-        pressurePattern: '1000/%',
+        standardCode: "SABS 1123",
+        pressurePattern: "1000/%",
       },
       {
-        category: 'Flanges',
-        standard: 'SABS 1123',
-        checkType: 'T1600 Coverage',
+        category: "Flanges",
+        standard: "SABS 1123",
+        checkType: "T1600 Coverage",
         expectedMin: 15,
-        standardCode: 'SABS 1123',
-        pressurePattern: '1600/%',
+        standardCode: "SABS 1123",
+        pressurePattern: "1600/%",
       },
       {
-        category: 'Flanges',
-        standard: 'SABS 1123',
-        checkType: 'T2500 Coverage',
+        category: "Flanges",
+        standard: "SABS 1123",
+        checkType: "T2500 Coverage",
         expectedMin: 15,
-        standardCode: 'SABS 1123',
-        pressurePattern: '2500/%',
+        standardCode: "SABS 1123",
+        pressurePattern: "2500/%",
       },
       {
-        category: 'Flanges',
-        standard: 'SABS 1123',
-        checkType: 'T4000 Coverage',
+        category: "Flanges",
+        standard: "SABS 1123",
+        checkType: "T4000 Coverage",
         expectedMin: 15,
-        standardCode: 'SABS 1123',
-        pressurePattern: '4000/%',
+        standardCode: "SABS 1123",
+        pressurePattern: "4000/%",
       },
       {
-        category: 'Flanges',
-        standard: 'BS 10',
-        checkType: 'Table D Coverage',
+        category: "Flanges",
+        standard: "BS 10",
+        checkType: "Table D Coverage",
         expectedMin: 10,
-        standardCode: 'BS 10',
-        pressurePattern: 'T/D',
+        standardCode: "BS 10",
+        pressurePattern: "T/D",
       },
       {
-        category: 'Flanges',
-        standard: 'BS 10',
-        checkType: 'Table E Coverage',
+        category: "Flanges",
+        standard: "BS 10",
+        checkType: "Table E Coverage",
         expectedMin: 10,
-        standardCode: 'BS 10',
-        pressurePattern: 'T/E',
+        standardCode: "BS 10",
+        pressurePattern: "T/E",
       },
       {
-        category: 'Flanges',
-        standard: 'BS 10',
-        checkType: 'Table F Coverage',
+        category: "Flanges",
+        standard: "BS 10",
+        checkType: "Table F Coverage",
         expectedMin: 10,
-        standardCode: 'BS 10',
-        pressurePattern: 'T/F',
+        standardCode: "BS 10",
+        pressurePattern: "T/F",
       },
       {
-        category: 'Flanges',
-        standard: 'ASME B16.5',
-        checkType: 'Class 150 Coverage',
+        category: "Flanges",
+        standard: "ASME B16.5",
+        checkType: "Class 150 Coverage",
         expectedMin: 20,
-        standardCode: 'ASME B16.5',
-        pressurePattern: '150%',
+        standardCode: "ASME B16.5",
+        pressurePattern: "150%",
       },
       {
-        category: 'Flanges',
-        standard: 'ASME B16.5',
-        checkType: 'Class 300 Coverage',
+        category: "Flanges",
+        standard: "ASME B16.5",
+        checkType: "Class 300 Coverage",
         expectedMin: 20,
-        standardCode: 'ASME B16.5',
-        pressurePattern: '300%',
+        standardCode: "ASME B16.5",
+        pressurePattern: "300%",
       },
       {
-        category: 'Flanges',
-        standard: 'ASME B16.5',
-        checkType: 'Class 600 Coverage',
+        category: "Flanges",
+        standard: "ASME B16.5",
+        checkType: "Class 600 Coverage",
         expectedMin: 15,
-        standardCode: 'ASME B16.5',
-        pressurePattern: '600%',
+        standardCode: "ASME B16.5",
+        pressurePattern: "600%",
       },
       {
-        category: 'Flanges',
-        standard: 'ASME B16.5',
-        checkType: 'Class 900 Coverage',
+        category: "Flanges",
+        standard: "ASME B16.5",
+        checkType: "Class 900 Coverage",
         expectedMin: 10,
-        standardCode: 'ASME B16.5',
-        pressurePattern: '900%',
+        standardCode: "ASME B16.5",
+        pressurePattern: "900%",
       },
       {
-        category: 'Flanges',
-        standard: 'ASME B16.5',
-        checkType: 'Class 1500 Coverage',
+        category: "Flanges",
+        standard: "ASME B16.5",
+        checkType: "Class 1500 Coverage",
         expectedMin: 10,
-        standardCode: 'ASME B16.5',
-        pressurePattern: '1500%',
+        standardCode: "ASME B16.5",
+        pressurePattern: "1500%",
       },
       {
-        category: 'Flanges',
-        standard: 'ASME B16.5',
-        checkType: 'Class 2500 Coverage',
+        category: "Flanges",
+        standard: "ASME B16.5",
+        checkType: "Class 2500 Coverage",
         expectedMin: 8,
-        standardCode: 'ASME B16.5',
-        pressurePattern: '2500%',
+        standardCode: "ASME B16.5",
+        pressurePattern: "2500%",
       },
     ];
 
@@ -169,8 +165,8 @@ export class CorrectFlangeVerificationData1777300000000 implements MigrationInte
       `;
 
       const result = await queryRunner.query(query);
-      const actualCount = parseInt(result[0]?.count || '0', 10);
-      const status = actualCount >= check.expectedMin ? 'PASS' : 'REVIEW';
+      const actualCount = parseInt(result[0]?.count || "0", 10);
+      const status = actualCount >= check.expectedMin ? "PASS" : "REVIEW";
       const details = `Found ${actualCount} records, expected minimum ${check.expectedMin}`;
 
       await queryRunner.query(`
@@ -184,12 +180,10 @@ export class CorrectFlangeVerificationData1777300000000 implements MigrationInte
     const summaryResult = await queryRunner.query(`
       SELECT status, COUNT(*) as count FROM data_verification_logs WHERE category = 'Flanges' GROUP BY status
     `);
-    console.warn('Corrected flange verification summary:', summaryResult);
+    console.warn("Corrected flange verification summary:", summaryResult);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DELETE FROM data_verification_logs WHERE category = 'Flanges'`,
-    );
+    await queryRunner.query(`DELETE FROM data_verification_logs WHERE category = 'Flanges'`);
   }
 }

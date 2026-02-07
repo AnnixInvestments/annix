@@ -1,22 +1,22 @@
-import { API_BASE_URL } from '@/lib/api-config';
+import { API_BASE_URL } from "@/lib/api-config";
 import type {
-  PvcStandard,
-  PvcPipeSpecification,
+  CalculatePvcFittingCostDto,
+  CalculatePvcPipeCostDto,
+  PvcFittingCostResponse,
   PvcFittingType,
   PvcFittingWeight,
-  CalculatePvcPipeCostDto,
-  PvcPipeCostResponse,
-  CalculatePvcFittingCostDto,
-  PvcFittingCostResponse,
   PvcItemInput,
+  PvcPipeCostResponse,
+  PvcPipeSpecification,
+  PvcStandard,
   PvcTransportWeightResponse,
-} from './types';
+} from "./types";
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
   });
@@ -31,8 +31,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 
 export const pvcApi = {
   standards: {
-    getAll: (): Promise<PvcStandard[]> =>
-      fetchJson(`${API_BASE_URL}/pvc/standards`),
+    getAll: (): Promise<PvcStandard[]> => fetchJson(`${API_BASE_URL}/pvc/standards`),
 
     getByCode: (code: string): Promise<PvcStandard> =>
       fetchJson(`${API_BASE_URL}/pvc/standards/${code}`),
@@ -53,15 +52,18 @@ export const pvcApi = {
     getByNominalDiameter: (nominalDiameter: number): Promise<PvcPipeSpecification[]> =>
       fetchJson(`${API_BASE_URL}/pvc/pipe-specifications/dn/${nominalDiameter}`),
 
-    getByDnAndPn: (nominalDiameter: number, pressureRating: number, pvcType?: string): Promise<PvcPipeSpecification> => {
+    getByDnAndPn: (
+      nominalDiameter: number,
+      pressureRating: number,
+      pvcType?: string,
+    ): Promise<PvcPipeSpecification> => {
       const url = `${API_BASE_URL}/pvc/pipe-specifications/dn/${nominalDiameter}/pn/${pressureRating}`;
       return fetchJson(pvcType ? `${url}?pvcType=${pvcType}` : url);
     },
   },
 
   fittingTypes: {
-    getAll: (): Promise<PvcFittingType[]> =>
-      fetchJson(`${API_BASE_URL}/pvc/fitting-types`),
+    getAll: (): Promise<PvcFittingType[]> => fetchJson(`${API_BASE_URL}/pvc/fitting-types`),
 
     getByCode: (code: string): Promise<PvcFittingType> =>
       fetchJson(`${API_BASE_URL}/pvc/fitting-types/${code}`),
@@ -71,7 +73,11 @@ export const pvcApi = {
     getByFittingType: (fittingTypeId: number): Promise<PvcFittingWeight[]> =>
       fetchJson(`${API_BASE_URL}/pvc/fitting-weights/${fittingTypeId}`),
 
-    getByCodeAndDn: (fittingTypeCode: string, nominalDiameter: number, pressureRating?: number): Promise<PvcFittingWeight> => {
+    getByCodeAndDn: (
+      fittingTypeCode: string,
+      nominalDiameter: number,
+      pressureRating?: number,
+    ): Promise<PvcFittingWeight> => {
       const url = `${API_BASE_URL}/pvc/fitting-weights/${fittingTypeCode}/dn/${nominalDiameter}`;
       return fetchJson(pressureRating ? `${url}?pressureRating=${pressureRating}` : url);
     },
@@ -80,7 +86,7 @@ export const pvcApi = {
   calculations: {
     calculatePipeCost: (dto: CalculatePvcPipeCostDto): Promise<PvcPipeCostResponse> =>
       fetchJson(`${API_BASE_URL}/pvc/calculate/pipe`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(dto),
       }),
 
@@ -90,7 +96,7 @@ export const pvcApi = {
       length: number,
       pricePerKg: number,
       pvcType?: string,
-      cementJointPrice?: number
+      cementJointPrice?: number,
     ): Promise<PvcPipeCostResponse> => {
       const params = new URLSearchParams({
         nominalDiameter: nominalDiameter.toString(),
@@ -99,17 +105,17 @@ export const pvcApi = {
         pricePerKg: pricePerKg.toString(),
       });
       if (pvcType) {
-        params.append('pvcType', pvcType);
+        params.append("pvcType", pvcType);
       }
       if (cementJointPrice !== undefined) {
-        params.append('cementJointPrice', cementJointPrice.toString());
+        params.append("cementJointPrice", cementJointPrice.toString());
       }
       return fetchJson(`${API_BASE_URL}/pvc/calculate/pipe?${params}`);
     },
 
     calculateFittingCost: (dto: CalculatePvcFittingCostDto): Promise<PvcFittingCostResponse> =>
       fetchJson(`${API_BASE_URL}/pvc/calculate/fitting`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(dto),
       }),
 
@@ -118,7 +124,7 @@ export const pvcApi = {
       nominalDiameter: number,
       pricePerKg: number,
       pressureRating?: number,
-      cementJointPrice?: number
+      cementJointPrice?: number,
     ): Promise<PvcFittingCostResponse> => {
       const params = new URLSearchParams({
         fittingTypeCode,
@@ -126,17 +132,17 @@ export const pvcApi = {
         pricePerKg: pricePerKg.toString(),
       });
       if (pressureRating !== undefined) {
-        params.append('pressureRating', pressureRating.toString());
+        params.append("pressureRating", pressureRating.toString());
       }
       if (cementJointPrice !== undefined) {
-        params.append('cementJointPrice', cementJointPrice.toString());
+        params.append("cementJointPrice", cementJointPrice.toString());
       }
       return fetchJson(`${API_BASE_URL}/pvc/calculate/fitting?${params}`);
     },
 
     calculateTransportWeight: (items: PvcItemInput[]): Promise<PvcTransportWeightResponse> =>
       fetchJson(`${API_BASE_URL}/pvc/calculate/transport-weight`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ items }),
       }),
   },

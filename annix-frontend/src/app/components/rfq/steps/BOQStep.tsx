@@ -1,16 +1,36 @@
-'use client';
+"use client";
 
-import React, { useState, useCallback } from 'react';
-import * as XLSX from 'xlsx';
-import { RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
-import { flangeWeightSync as getFlangeWeight, bnwSetInfoSync as getBnwSetInfo, gasketWeightSync as getGasketWeight, blankFlangeSurfaceAreaSync as blankFlangeSurfaceArea } from '@/app/lib/hooks/useFlangeWeights';
-import { DEFAULT_PIPE_LENGTH_M } from '@/app/lib/config/rfq';
-import { boltSetCountPerBend, boltSetCountPerPipe, boltSetCountPerFitting } from '@/app/lib/config/rfq/pipeEndOptions';
-import { nowISO, formatDateLongZA, fromJSDate } from '@/app/lib/datetime';
-import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { useOptionalAdminAuth } from '@/app/context/AdminAuthContext';
+import React, { useCallback, useState } from "react";
+import * as XLSX from "xlsx";
+import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
+import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
+import { DEFAULT_PIPE_LENGTH_M } from "@/app/lib/config/rfq";
+import {
+  boltSetCountPerBend,
+  boltSetCountPerFitting,
+  boltSetCountPerPipe,
+} from "@/app/lib/config/rfq/pipeEndOptions";
+import { formatDateLongZA, fromJSDate, nowISO } from "@/app/lib/datetime";
+import {
+  blankFlangeSurfaceAreaSync as blankFlangeSurfaceArea,
+  bnwSetInfoSync as getBnwSetInfo,
+  flangeWeightSync as getFlangeWeight,
+  gasketWeightSync as getGasketWeight,
+} from "@/app/lib/hooks/useFlangeWeights";
+import { GlobalSpecs, RfqFormData } from "@/app/lib/hooks/useRfqForm";
 
-export default function BOQStep({ rfqData, entries, globalSpecs, requiredProducts, masterData, onPrevStep, onSubmit, onResubmit, isEditing, loading }: {
+export default function BOQStep({
+  rfqData,
+  entries,
+  globalSpecs,
+  requiredProducts,
+  masterData,
+  onPrevStep,
+  onSubmit,
+  onResubmit,
+  isEditing,
+  loading,
+}: {
   rfqData: RfqFormData;
   entries: any[];
   globalSpecs: GlobalSpecs;
@@ -28,46 +48,56 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
   const isUnregisteredCustomer = !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state
-  type RestrictionPopupType = 'export';
-  const [restrictionPopup, setRestrictionPopup] = useState<{ type: RestrictionPopupType; x: number; y: number } | null>(null);
+  type RestrictionPopupType = "export";
+  const [restrictionPopup, setRestrictionPopup] = useState<{
+    type: RestrictionPopupType;
+    x: number;
+    y: number;
+  } | null>(null);
 
-  const showRestrictionPopup = useCallback((type: RestrictionPopupType) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setRestrictionPopup({ type, x: e.clientX, y: e.clientY });
-  }, []);
+  const showRestrictionPopup = useCallback(
+    (type: RestrictionPopupType) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setRestrictionPopup({ type, x: e.clientX, y: e.clientY });
+    },
+    [],
+  );
   const formatDate = (date: Date | string | undefined) => {
-    if (!date) return 'Not specified';
-    if (typeof date === 'string') {
+    if (!date) return "Not specified";
+    if (typeof date === "string") {
       return formatDateLongZA(date);
     }
-    return fromJSDate(date).toLocaleString({ year: 'numeric', month: 'long', day: 'numeric' });
+    return fromJSDate(date).toLocaleString({ year: "numeric", month: "long", day: "numeric" });
   };
 
   const formatWeight = (weight: number | undefined) => {
-    if (!weight || isNaN(weight)) return '0.00 kg';
+    if (!weight || Number.isNaN(weight)) return "0.00 kg";
     return `${weight.toFixed(2)} kg`;
   };
 
   // Get flange spec string
   const getFlangeSpec = (entry: any) => {
     const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-    const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-    const flangeStandard = flangeStandardId && masterData?.flangeStandards
-      ? masterData.flangeStandards.find((s: any) => s.id === flangeStandardId)?.code
-      : '';
-    const pressureClass = flangePressureClassId && masterData?.pressureClasses
-      ? masterData.pressureClasses.find((p: any) => p.id === flangePressureClassId)?.designation
-      : '';
-    return flangeStandard && pressureClass ? `${flangeStandard} ${pressureClass}` : 'PN16';
+    const flangePressureClassId =
+      entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+    const flangeStandard =
+      flangeStandardId && masterData?.flangeStandards
+        ? masterData.flangeStandards.find((s: any) => s.id === flangeStandardId)?.code
+        : "";
+    const pressureClass =
+      flangePressureClassId && masterData?.pressureClasses
+        ? masterData.pressureClasses.find((p: any) => p.id === flangePressureClassId)?.designation
+        : "";
+    return flangeStandard && pressureClass ? `${flangeStandard} ${pressureClass}` : "PN16";
   };
 
   // Get steel spec name
   const getSteelSpecName = (entry: any) => {
     const steelSpecId = entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
     return steelSpecId && masterData?.steelSpecs
-      ? masterData.steelSpecs.find((s: any) => s.id === steelSpecId)?.steelSpecName || 'Steel'
-      : 'Steel';
+      ? masterData.steelSpecs.find((s: any) => s.id === steelSpecId)?.steelSpecName || "Steel"
+      : "Steel";
   };
 
   // ======================
@@ -81,7 +111,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
     unit: string;
     weight: number;
     entries: string[];
-    welds?: Record<string, number>;  // e.g., { "Pipe Weld": 2.5, "Flange Weld": 1.2 }
+    welds?: Record<string, number>; // e.g., { "Pipe Weld": 2.5, "Flange Weld": 1.2 }
     intAreaM2?: number;
     extAreaM2?: number;
   };
@@ -97,60 +127,82 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
   // Helper to get PHYSICAL flange count from end configuration (includes loose flanges)
   // Returns: { fixed: number of weld-neck flanges, loose: number of loose/slip-on flanges, rotating: number of rotating flanges }
-  const getPhysicalFlangeCount = (config: string, itemType: string): { fixed: number; loose: number; rotating: number } => {
+  const getPhysicalFlangeCount = (
+    config: string,
+    itemType: string,
+  ): { fixed: number; loose: number; rotating: number } => {
     // Pipe and Bend configurations
-    if (itemType === 'bend' || itemType === 'straight_pipe' || !itemType) {
+    if (itemType === "bend" || itemType === "straight_pipe" || !itemType) {
       switch (config) {
-        case 'PE': return { fixed: 0, loose: 0, rotating: 0 };
-        case 'FOE': return { fixed: 1, loose: 0, rotating: 0 };
-        case 'FBE': return { fixed: 2, loose: 0, rotating: 0 };
-        case 'FOE_LF': return { fixed: 1, loose: 1, rotating: 0 }; // 1 fixed + 1 loose = 2 physical flanges
-        case 'FOE_RF': return { fixed: 1, loose: 0, rotating: 1 }; // 1 fixed + 1 rotating = 2 physical flanges
-        case '2X_RF': return { fixed: 0, loose: 0, rotating: 2 }; // 2 rotating flanges
-        case '2xLF': return { fixed: 0, loose: 4, rotating: 0 }; // 2 stub-on + 2 loose backing flanges = 4 flanges
-        default: return { fixed: 0, loose: 0, rotating: 0 };
+        case "PE":
+          return { fixed: 0, loose: 0, rotating: 0 };
+        case "FOE":
+          return { fixed: 1, loose: 0, rotating: 0 };
+        case "FBE":
+          return { fixed: 2, loose: 0, rotating: 0 };
+        case "FOE_LF":
+          return { fixed: 1, loose: 1, rotating: 0 }; // 1 fixed + 1 loose = 2 physical flanges
+        case "FOE_RF":
+          return { fixed: 1, loose: 0, rotating: 1 }; // 1 fixed + 1 rotating = 2 physical flanges
+        case "2X_RF":
+          return { fixed: 0, loose: 0, rotating: 2 }; // 2 rotating flanges
+        case "2xLF":
+          return { fixed: 0, loose: 4, rotating: 0 }; // 2 stub-on + 2 loose backing flanges = 4 flanges
+        default:
+          return { fixed: 0, loose: 0, rotating: 0 };
       }
     }
     // Fitting configurations
-    if (itemType === 'fitting') {
+    if (itemType === "fitting") {
       switch (config) {
-        case 'PE': return { fixed: 0, loose: 0, rotating: 0 };
-        case 'FAE': return { fixed: 3, loose: 0, rotating: 0 }; // Flanged All Ends (3 fixed)
-        case 'F2E': return { fixed: 2, loose: 0, rotating: 0 };
-        case 'F2E_LF': return { fixed: 2, loose: 1, rotating: 0 }; // 2 fixed + 1 loose
-        case 'F2E_RF': return { fixed: 2, loose: 0, rotating: 1 }; // 2 fixed + 1 rotating
-        case '3X_RF': return { fixed: 0, loose: 0, rotating: 3 }; // 3 rotating
-        case '2X_RF_FOE': return { fixed: 1, loose: 0, rotating: 2 }; // 1 fixed + 2 rotating
-        default: return { fixed: 0, loose: 0, rotating: 0 };
+        case "PE":
+          return { fixed: 0, loose: 0, rotating: 0 };
+        case "FAE":
+          return { fixed: 3, loose: 0, rotating: 0 }; // Flanged All Ends (3 fixed)
+        case "F2E":
+          return { fixed: 2, loose: 0, rotating: 0 };
+        case "F2E_LF":
+          return { fixed: 2, loose: 1, rotating: 0 }; // 2 fixed + 1 loose
+        case "F2E_RF":
+          return { fixed: 2, loose: 0, rotating: 1 }; // 2 fixed + 1 rotating
+        case "3X_RF":
+          return { fixed: 0, loose: 0, rotating: 3 }; // 3 rotating
+        case "2X_RF_FOE":
+          return { fixed: 1, loose: 0, rotating: 2 }; // 1 fixed + 2 rotating
+        default:
+          return { fixed: 0, loose: 0, rotating: 0 };
       }
     }
     return { fixed: 0, loose: 0, rotating: 0 };
   };
 
   // Legacy helper for backward compatibility - returns total main flanges
-  const getFlangeCountFromConfig = (config: string, itemType: string): { main: number; branch: number } => {
+  const getFlangeCountFromConfig = (
+    config: string,
+    itemType: string,
+  ): { main: number; branch: number } => {
     const counts = getPhysicalFlangeCount(config, itemType);
     const totalMain = counts.fixed + counts.loose + counts.rotating;
     // For fittings, branch flanges are handled separately
-    if (itemType === 'fitting') {
-      if (config === 'FAE' || config === '3X_RF' || config === '2X_RF_FOE') {
+    if (itemType === "fitting") {
+      if (config === "FAE" || config === "3X_RF" || config === "2X_RF_FOE") {
         return { main: 2, branch: 1 }; // Main run has 2 flanges, branch has 1
       }
-      if (config === 'F2E_LF' || config === 'F2E_RF') {
+      if (config === "F2E_LF" || config === "F2E_RF") {
         return { main: 1, branch: 1 }; // 1 main flange + 1 branch flange (loose/rotating)
       }
-      if (config === 'F2E') return { main: 2, branch: 0 };
-      if (config === 'PE') return { main: 0, branch: 0 };
+      if (config === "F2E") return { main: 2, branch: 0 };
+      if (config === "PE") return { main: 0, branch: 0 };
       return { main: totalMain, branch: 0 };
     }
     return { main: totalMain, branch: 0 };
   };
 
   const getFlangeTypeName = (config: string): string => {
-    if (!config || config === 'PE') return 'Slip On';
-    if (config.includes('LF') || config.includes('_L')) return 'Slip On';
-    if (config.includes('RF') || config.includes('_R')) return 'Rotating';
-    return 'Slip On';
+    if (!config || config === "PE") return "Slip On";
+    if (config.includes("LF") || config.includes("_L")) return "Slip On";
+    if (config.includes("RF") || config.includes("_R")) return "Rotating";
+    return "Slip On";
   };
 
   // Process each entry
@@ -160,29 +212,31 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
     const steelSpec = getSteelSpecName(entry);
     const flangeSpec = getFlangeSpec(entry);
 
-    if (entry.itemType === 'bend') {
+    if (entry.itemType === "bend") {
       // BEND
       const nb = entry.specs?.nominalBoreMm || 100;
       const angle = entry.specs?.bendDegrees || 90;
-      const bendType = entry.specs?.bendRadiusType || entry.specs?.bendType || '1.5D';
-      const schedule = entry.specs?.scheduleNumber || '';
+      const bendType = entry.specs?.bendRadiusType || entry.specs?.bendType || "1.5D";
+      const schedule = entry.specs?.scheduleNumber || "";
 
       const key = `BEND_${nb}_${angle}_${bendType}_${steelSpec}_${schedule}`;
       const existing = consolidatedBends.get(key);
-      const bendWeight = entry.calculation?.totalWeight || ((entry.calculation?.bendWeight || 0) + (entry.calculation?.tangentWeight || 0));
+      const bendWeight =
+        entry.calculation?.totalWeight ||
+        (entry.calculation?.bendWeight || 0) + (entry.calculation?.tangentWeight || 0);
 
       // Calculate bend weld lengths
       const segments = entry.specs?.numberOfSegments || 5;
       const mitreWelds = segments - 1;
       const od = entry.calculation?.outsideDiameterMm || 0;
       const wt = entry.calculation?.wallThicknessMm || 0;
-      const mitreWeldLength = mitreWelds * qty * (Math.PI * od / 1000);
+      const mitreWeldLength = mitreWelds * qty * ((Math.PI * od) / 1000);
 
       // Calculate bend surface areas from specs (like ReviewSubmitStep)
-      const bendRadiusType = entry.specs?.bendType || entry.specs?.bendRadiusType || '1.5D';
-      const radiusFactor = parseFloat(bendRadiusType.replace('D', '')) || 1.5;
+      const bendRadiusType = entry.specs?.bendType || entry.specs?.bendRadiusType || "1.5D";
+      const radiusFactor = parseFloat(bendRadiusType.replace("D", "")) || 1.5;
       const bendRadiusMm = nb * radiusFactor;
-      const bendAngleRad = ((angle) * Math.PI) / 180;
+      const bendAngleRad = (angle * Math.PI) / 180;
       const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
 
       // Add tangent lengths
@@ -199,14 +253,14 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
       // Build welds object
       const welds: Record<string, number> = {};
-      if (mitreWeldLength > 0) welds['Mitre Weld'] = mitreWeldLength;
+      if (mitreWeldLength > 0) welds["Mitre Weld"] = mitreWeldLength;
 
       // Flange welds for bends
-      const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-      const bendFlangeCount = getFlangeCountFromConfig(bendEndConfig, 'bend');
+      const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+      const bendFlangeCount = getFlangeCountFromConfig(bendEndConfig, "bend");
       if (bendFlangeCount.main > 0) {
-        const flangeWeldLength = bendFlangeCount.main * qty * (Math.PI * od / 1000) * 2; // x2 for inside + outside
-        if (flangeWeldLength > 0) welds['Flange Weld'] = flangeWeldLength;
+        const flangeWeldLength = bendFlangeCount.main * qty * ((Math.PI * od) / 1000) * 2; // x2 for inside + outside
+        if (flangeWeldLength > 0) welds["Flange Weld"] = flangeWeldLength;
       }
 
       if (existing) {
@@ -214,15 +268,24 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         existing.weight += bendWeight * qty;
         existing.entries.push(itemNumber);
         // Accumulate welds and areas
-        if (mitreWeldLength > 0) existing.welds = { ...existing.welds, 'Mitre Weld': (existing.welds?.['Mitre Weld'] || 0) + mitreWeldLength };
-        if (welds['Flange Weld']) existing.welds = { ...existing.welds, 'Flange Weld': (existing.welds?.['Flange Weld'] || 0) + welds['Flange Weld'] };
+        if (mitreWeldLength > 0)
+          existing.welds = {
+            ...existing.welds,
+            "Mitre Weld": (existing.welds?.["Mitre Weld"] || 0) + mitreWeldLength,
+          };
+        if (welds["Flange Weld"])
+          existing.welds = {
+            ...existing.welds,
+            "Flange Weld": (existing.welds?.["Flange Weld"] || 0) + welds["Flange Weld"],
+          };
         existing.intAreaM2 = (existing.intAreaM2 || 0) + intAreaM2;
         existing.extAreaM2 = (existing.extAreaM2 || 0) + extAreaM2;
       } else {
         consolidatedBends.set(key, {
-          description: `${nb}NB ${angle}° ${bendType} Bend ${steelSpec} ${schedule ? 'Sch' + schedule.replace('Sch', '') : ''}`.trim(),
+          description:
+            `${nb}NB ${angle}° ${bendType} Bend ${steelSpec} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}`.trim(),
           qty: qty,
-          unit: 'Each',
+          unit: "Each",
           weight: bendWeight * qty,
           entries: [itemNumber],
           welds: Object.keys(welds).length > 0 ? welds : undefined,
@@ -232,18 +295,24 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
       }
 
       // Flanges for bends (using bendEndConfig declared above)
-      const flangeCount = getFlangeCountFromConfig(bendEndConfig, 'bend');
+      const flangeCount = getFlangeCountFromConfig(bendEndConfig, "bend");
       const flangeTypeName = getFlangeTypeName(bendEndConfig);
       const bendFlangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-      const bendFlangeStandardCode = bendFlangeStandardId && masterData?.flangeStandards
-        ? masterData.flangeStandards.find((s: any) => s.id === bendFlangeStandardId)?.code
-        : '';
+      const bendFlangeStandardCode =
+        bendFlangeStandardId && masterData?.flangeStandards
+          ? masterData.flangeStandards.find((s: any) => s.id === bendFlangeStandardId)?.code
+          : "";
       const bendFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
       if (flangeCount.main > 0) {
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
-        const flangeWeight = getFlangeWeight(nb, flangeSpec.split(' ').pop() || 'PN16', bendFlangeStandardCode, bendFlangeTypeCode);
+        const flangeWeight = getFlangeWeight(
+          nb,
+          flangeSpec.split(" ").pop() || "PN16",
+          bendFlangeStandardCode,
+          bendFlangeTypeCode,
+        );
 
         if (existingFlange) {
           existingFlange.qty += flangeQty;
@@ -253,14 +322,14 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${flangeTypeName} Flange ${flangeSpec}`,
             qty: flangeQty,
-            unit: 'Each',
+            unit: "Each",
             weight: flangeWeight * flangeQty,
-            entries: [itemNumber]
+            entries: [itemNumber],
           });
         }
 
         // BNW for bend flanges - use bolt set count (2 same-sized ends = 1 bolt set)
-        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(' ').pop() || 'PN16');
+        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(" ").pop() || "PN16");
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
@@ -274,9 +343,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           consolidatedBnwSets.set(bnwKey, {
             description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
             qty: boltSetQty,
-            unit: 'sets',
+            unit: "sets",
             weight: bnwWeight * boltSetQty,
-            entries: [itemNumber]
+            entries: [itemNumber],
           });
         }
 
@@ -294,9 +363,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             consolidatedGaskets.set(gasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
               qty: flangeQty,
-              unit: 'Each',
+              unit: "Each",
               weight: gasketWeight * flangeQty,
-              entries: [itemNumber]
+              entries: [itemNumber],
             });
           }
         }
@@ -313,7 +382,12 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           // Stub flange - stubs are typically Slip On flanges
           const stubFlangeKey = `FLANGE_${stubNb}_${flangeSpec}_${flangeTypeName}`;
           const existingStubFlange = consolidatedFlanges.get(stubFlangeKey);
-          const stubFlangeWeight = getFlangeWeight(stubNb, flangeSpec.split(' ').pop() || 'PN16', bendFlangeStandardCode, bendFlangeTypeCode);
+          const stubFlangeWeight = getFlangeWeight(
+            stubNb,
+            flangeSpec.split(" ").pop() || "PN16",
+            bendFlangeStandardCode,
+            bendFlangeTypeCode,
+          );
 
           if (existingStubFlange) {
             existingStubFlange.qty += qty;
@@ -325,14 +399,14 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             consolidatedFlanges.set(stubFlangeKey, {
               description: `${stubNb}NB ${flangeTypeName} Flange ${flangeSpec}`,
               qty: qty,
-              unit: 'Each',
+              unit: "Each",
               weight: stubFlangeWeight * qty,
-              entries: [itemNumber]
+              entries: [itemNumber],
             });
           }
 
           // Stub BNW set - each stub flange needs its own bolt set
-          const stubBnwInfo = getBnwSetInfo(stubNb, flangeSpec.split(' ').pop() || 'PN16');
+          const stubBnwInfo = getBnwSetInfo(stubNb, flangeSpec.split(" ").pop() || "PN16");
           const stubBnwKey = `BNW_${stubBnwInfo.boltSize}_x${stubBnwInfo.holesPerFlange}_${stubNb}NB_${flangeSpec}`;
           const existingStubBnw = consolidatedBnwSets.get(stubBnwKey);
           const stubBnwWeight = stubBnwInfo.weightPerHole * stubBnwInfo.holesPerFlange;
@@ -347,9 +421,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             consolidatedBnwSets.set(stubBnwKey, {
               description: `${stubBnwInfo.boltSize} BNW Set x${stubBnwInfo.holesPerFlange} for ${stubNb}NB ${flangeSpec}`,
               qty: qty,
-              unit: 'sets',
+              unit: "sets",
               weight: stubBnwWeight * qty,
-              entries: [itemNumber]
+              entries: [itemNumber],
             });
           }
 
@@ -369,9 +443,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
               consolidatedGaskets.set(stubGasketKey, {
                 description: `${globalSpecs.gasketType} Gasket ${stubNb}NB ${flangeSpec}`,
                 qty: qty,
-                unit: 'Each',
+                unit: "Each",
                 weight: stubGasketWeight * qty,
-                entries: [itemNumber]
+                entries: [itemNumber],
               });
             }
           }
@@ -384,7 +458,13 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
-        const blankWeight = getFlangeWeight(blankNb, flangeSpec.split(' ').pop() || 'PN16', bendFlangeStandardCode, bendFlangeTypeCode) * 0.6;
+        const blankWeight =
+          getFlangeWeight(
+            blankNb,
+            flangeSpec.split(" ").pop() || "PN16",
+            bendFlangeStandardCode,
+            bendFlangeTypeCode,
+          ) * 0.6;
         const blankSurfaceArea = blankFlangeSurfaceArea(blankNb);
         const blankExtArea = blankSurfaceArea.external * blankQty;
         const blankIntArea = blankSurfaceArea.internal * blankQty;
@@ -401,59 +481,61 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           consolidatedBlankFlanges.set(blankFlangeKey, {
             description: `${blankNb}NB Blank Flange ${flangeSpec}`,
             qty: blankQty,
-            unit: 'Each',
+            unit: "Each",
             weight: blankWeight * blankQty,
             entries: [itemNumber],
             extAreaM2: blankExtArea,
-            intAreaM2: blankIntArea
+            intAreaM2: blankIntArea,
           });
         }
       }
-
-    } else if (entry.itemType === 'fitting') {
+    } else if (entry.itemType === "fitting") {
       // FITTING
       const nb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 100;
-      const branchNb = entry.specs?.branchNominalDiameterMm || entry.specs?.branchNominalBoreMm || nb;
-      const fittingType = entry.specs?.fittingType || 'TEE';
-      const schedule = entry.specs?.scheduleNumber || '';
+      const branchNb =
+        entry.specs?.branchNominalDiameterMm || entry.specs?.branchNominalBoreMm || nb;
+      const fittingType = entry.specs?.fittingType || "TEE";
+      const schedule = entry.specs?.scheduleNumber || "";
 
       const key = `FITTING_${fittingType}_${nb}_${branchNb}_${steelSpec}_${schedule}`;
       const existing = consolidatedFittings.get(key);
       const fittingWeight = entry.calculation?.totalWeight || entry.calculation?.fittingWeight || 0;
 
       // Format fitting type for display
-      let displayType = fittingType.replace(/_/g, ' ').toLowerCase()
-        .split(' ')
+      let displayType = fittingType
+        .replace(/_/g, " ")
+        .toLowerCase()
+        .split(" ")
         .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ');
-      if (['SHORT_TEE', 'GUSSET_TEE', 'EQUAL_TEE'].includes(fittingType)) {
-        displayType = displayType.replace(/Tee/i, 'Equal Tee');
+        .join(" ");
+      if (["SHORT_TEE", "GUSSET_TEE", "EQUAL_TEE"].includes(fittingType)) {
+        displayType = displayType.replace(/Tee/i, "Equal Tee");
       }
 
       // Calculate fitting weld lengths and surface areas
       const od = entry.calculation?.outsideDiameterMm || 0;
       const wt = entry.calculation?.wallThicknessMm || 0;
-      const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-      const fittingFlangeCount = getFlangeCountFromConfig(fittingEndConfig, 'fitting');
+      const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+      const fittingFlangeCount = getFlangeCountFromConfig(fittingEndConfig, "fitting");
 
       // Branch dimensions
       const branchOd = entry.calculation?.branchOutsideDiameterMm || od;
       const branchWt = entry.calculation?.branchWallThicknessMm || wt;
 
       // Calculate fitting welds (tee weld + flange welds)
-      const teeWeldLength = qty * (Math.PI * od / 1000); // One tee weld per fitting
+      const teeWeldLength = qty * ((Math.PI * od) / 1000); // One tee weld per fitting
       let flangeWeldLength = 0;
       if (fittingFlangeCount.main > 0) {
-        flangeWeldLength = fittingFlangeCount.main * qty * (Math.PI * od / 1000) * 2;
+        flangeWeldLength = fittingFlangeCount.main * qty * ((Math.PI * od) / 1000) * 2;
       }
       if (fittingFlangeCount.branch > 0) {
-        flangeWeldLength += fittingFlangeCount.branch * qty * (Math.PI * branchOd / 1000) * 2;
+        flangeWeldLength += fittingFlangeCount.branch * qty * ((Math.PI * branchOd) / 1000) * 2;
       }
 
       // Calculate fitting surface area from specs (like ReviewSubmitStep)
       const lengthA = entry.specs?.pipeLengthAMm || 0;
       const lengthB = entry.specs?.pipeLengthBMm || 0;
-      const teeHeight = entry.specs?.teeHeightMm || entry.calculation?.teeHeightMm || (branchNb * 2);
+      const teeHeight = entry.specs?.teeHeightMm || entry.calculation?.teeHeightMm || branchNb * 2;
 
       // Run length = Section A + Section B
       const runLengthM = (lengthA + lengthB) / 1000;
@@ -476,23 +558,32 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
       // Build welds object
       const welds: Record<string, number> = {};
-      if (teeWeldLength > 0) welds['Tee Weld'] = teeWeldLength;
-      if (flangeWeldLength > 0) welds['Flange Weld'] = flangeWeldLength;
+      if (teeWeldLength > 0) welds["Tee Weld"] = teeWeldLength;
+      if (flangeWeldLength > 0) welds["Flange Weld"] = flangeWeldLength;
 
       if (existing) {
         existing.qty += qty;
         existing.weight += fittingWeight * qty;
         existing.entries.push(itemNumber);
         // Accumulate welds and areas
-        if (teeWeldLength > 0) existing.welds = { ...existing.welds, 'Tee Weld': (existing.welds?.['Tee Weld'] || 0) + teeWeldLength };
-        if (flangeWeldLength > 0) existing.welds = { ...existing.welds, 'Flange Weld': (existing.welds?.['Flange Weld'] || 0) + flangeWeldLength };
+        if (teeWeldLength > 0)
+          existing.welds = {
+            ...existing.welds,
+            "Tee Weld": (existing.welds?.["Tee Weld"] || 0) + teeWeldLength,
+          };
+        if (flangeWeldLength > 0)
+          existing.welds = {
+            ...existing.welds,
+            "Flange Weld": (existing.welds?.["Flange Weld"] || 0) + flangeWeldLength,
+          };
         existing.intAreaM2 = (existing.intAreaM2 || 0) + intAreaM2;
         existing.extAreaM2 = (existing.extAreaM2 || 0) + extAreaM2;
       } else {
         consolidatedFittings.set(key, {
-          description: `${nb}NB${branchNb !== nb ? 'x' + branchNb + 'NB' : ''} ${displayType} ${steelSpec} ${schedule ? 'Sch' + schedule.replace('Sch', '') : ''}`.trim(),
+          description:
+            `${nb}NB${branchNb !== nb ? `x${branchNb}NB` : ""} ${displayType} ${steelSpec} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}`.trim(),
           qty: qty,
-          unit: 'Each',
+          unit: "Each",
           weight: fittingWeight * qty,
           entries: [itemNumber],
           welds: Object.keys(welds).length > 0 ? welds : undefined,
@@ -502,14 +593,16 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
       }
 
       // Flanges for fittings (using fittingEndConfig declared above)
-      const flangeCount = getFlangeCountFromConfig(fittingEndConfig, 'fitting');
+      const flangeCount = getFlangeCountFromConfig(fittingEndConfig, "fitting");
       const fittingFlangeTypeName = getFlangeTypeName(fittingEndConfig);
       const isEqualBranch = branchNb === nb;
       const fittingBoltSets = boltSetCountPerFitting(fittingEndConfig, isEqualBranch);
-      const fittingFlangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-      const fittingFlangeStandardCode = fittingFlangeStandardId && masterData?.flangeStandards
-        ? masterData.flangeStandards.find((s: any) => s.id === fittingFlangeStandardId)?.code
-        : '';
+      const fittingFlangeStandardId =
+        entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+      const fittingFlangeStandardCode =
+        fittingFlangeStandardId && masterData?.flangeStandards
+          ? masterData.flangeStandards.find((s: any) => s.id === fittingFlangeStandardId)?.code
+          : "";
       const fittingFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
 
       // Main flanges
@@ -517,7 +610,12 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${fittingFlangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
-        const flangeWeight = getFlangeWeight(nb, flangeSpec.split(' ').pop() || 'PN16', fittingFlangeStandardCode, fittingFlangeTypeCode);
+        const flangeWeight = getFlangeWeight(
+          nb,
+          flangeSpec.split(" ").pop() || "PN16",
+          fittingFlangeStandardCode,
+          fittingFlangeTypeCode,
+        );
 
         if (existingFlange) {
           existingFlange.qty += flangeQty;
@@ -527,14 +625,14 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${fittingFlangeTypeName} Flange ${flangeSpec}`,
             qty: flangeQty,
-            unit: 'Each',
+            unit: "Each",
             weight: flangeWeight * flangeQty,
-            entries: [itemNumber]
+            entries: [itemNumber],
           });
         }
 
         // BNW for main flanges - use bolt set count (3 same-sized ends = 2 bolt sets)
-        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(' ').pop() || 'PN16');
+        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(" ").pop() || "PN16");
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
@@ -549,9 +647,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             consolidatedBnwSets.set(bnwKey, {
               description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
               qty: mainBoltSetQty,
-              unit: 'sets',
+              unit: "sets",
               weight: bnwWeight * mainBoltSetQty,
-              entries: [itemNumber]
+              entries: [itemNumber],
             });
           }
         }
@@ -570,9 +668,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             consolidatedGaskets.set(gasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
               qty: flangeQty,
-              unit: 'Each',
+              unit: "Each",
               weight: gasketWeight * flangeQty,
-              entries: [itemNumber]
+              entries: [itemNumber],
             });
           }
         }
@@ -583,7 +681,12 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         const branchFlangeKey = `FLANGE_${branchNb}_${flangeSpec}_${fittingFlangeTypeName}`;
         const existingBranchFlange = consolidatedFlanges.get(branchFlangeKey);
         const branchFlangeQty = flangeCount.branch * qty;
-        const branchFlangeWeight = getFlangeWeight(branchNb, flangeSpec.split(' ').pop() || 'PN16', fittingFlangeStandardCode, fittingFlangeTypeCode);
+        const branchFlangeWeight = getFlangeWeight(
+          branchNb,
+          flangeSpec.split(" ").pop() || "PN16",
+          fittingFlangeStandardCode,
+          fittingFlangeTypeCode,
+        );
 
         if (existingBranchFlange) {
           existingBranchFlange.qty += branchFlangeQty;
@@ -593,14 +696,14 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           consolidatedFlanges.set(branchFlangeKey, {
             description: `${branchNb}NB ${fittingFlangeTypeName} Flange ${flangeSpec}`,
             qty: branchFlangeQty,
-            unit: 'Each',
+            unit: "Each",
             weight: branchFlangeWeight * branchFlangeQty,
-            entries: [itemNumber]
+            entries: [itemNumber],
           });
         }
 
         // BNW for branch flanges - use bolt set count for branch (only counts when different size)
-        const branchBnwInfo = getBnwSetInfo(branchNb, flangeSpec.split(' ').pop() || 'PN16');
+        const branchBnwInfo = getBnwSetInfo(branchNb, flangeSpec.split(" ").pop() || "PN16");
         const branchBnwKey = `BNW_${branchBnwInfo.boltSize}_x${branchBnwInfo.holesPerFlange}_${branchNb}NB_${flangeSpec}`;
         const existingBranchBnw = consolidatedBnwSets.get(branchBnwKey);
         const branchBnwWeight = branchBnwInfo.weightPerHole * branchBnwInfo.holesPerFlange;
@@ -615,9 +718,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             consolidatedBnwSets.set(branchBnwKey, {
               description: `${branchBnwInfo.boltSize} BNW Set x${branchBnwInfo.holesPerFlange} for ${branchNb}NB ${flangeSpec}`,
               qty: branchBoltSetQty,
-              unit: 'sets',
+              unit: "sets",
               weight: branchBnwWeight * branchBoltSetQty,
-              entries: [itemNumber]
+              entries: [itemNumber],
             });
           }
         }
@@ -636,9 +739,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             consolidatedGaskets.set(branchGasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${branchNb}NB ${flangeSpec}`,
               qty: branchFlangeQty,
-              unit: 'Each',
+              unit: "Each",
               weight: branchGasketWeight * branchFlangeQty,
-              entries: [itemNumber]
+              entries: [itemNumber],
             });
           }
         }
@@ -650,7 +753,13 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
-        const blankWeight = getFlangeWeight(blankNb, flangeSpec.split(' ').pop() || 'PN16', fittingFlangeStandardCode, fittingFlangeTypeCode) * 0.6;
+        const blankWeight =
+          getFlangeWeight(
+            blankNb,
+            flangeSpec.split(" ").pop() || "PN16",
+            fittingFlangeStandardCode,
+            fittingFlangeTypeCode,
+          ) * 0.6;
         const blankSurfaceArea = blankFlangeSurfaceArea(blankNb);
         const blankExtArea = blankSurfaceArea.external * blankQty;
         const blankIntArea = blankSurfaceArea.internal * blankQty;
@@ -667,19 +776,18 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           consolidatedBlankFlanges.set(blankFlangeKey, {
             description: `${blankNb}NB Blank Flange ${flangeSpec}`,
             qty: blankQty,
-            unit: 'Each',
+            unit: "Each",
             weight: blankWeight * blankQty,
             entries: [itemNumber],
             extAreaM2: blankExtArea,
-            intAreaM2: blankIntArea
+            intAreaM2: blankIntArea,
           });
         }
       }
-
     } else {
       // STRAIGHT PIPE
       const nb = entry.specs?.nominalBoreMm || 100;
-      const schedule = entry.specs?.scheduleNumber || '';
+      const schedule = entry.specs?.scheduleNumber || "";
       const pipeLength = entry.specs?.individualPipeLength || DEFAULT_PIPE_LENGTH_M;
       const pipeQty = entry.calculation?.calculatedPipeCount || qty;
 
@@ -688,11 +796,11 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
       const pipeWeight = entry.calculation?.totalPipeWeight || 0;
 
       // Calculate weld lengths from entry calculation
-      const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+      const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
       const flangeWeldLength = entry.calculation?.totalFlangeWeldLength || 0;
       const pipeWeldCount = entry.calculation?.pipeWeldsPerUnit || 0;
       const od = entry.calculation?.outsideDiameterMm || 0;
-      const pipeWeldLength = pipeWeldCount * pipeQty * (Math.PI * od / 1000); // circumference per weld
+      const pipeWeldLength = pipeWeldCount * pipeQty * ((Math.PI * od) / 1000); // circumference per weld
 
       // Calculate surface areas
       const totalLength = entry.calculation?.calculatedTotalLength || pipeLength * pipeQty;
@@ -704,23 +812,32 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
       // Build welds object
       const welds: Record<string, number> = {};
-      if (pipeWeldLength > 0) welds['Pipe Weld'] = pipeWeldLength;
-      if (flangeWeldLength > 0) welds['Flange Weld'] = flangeWeldLength;
+      if (pipeWeldLength > 0) welds["Pipe Weld"] = pipeWeldLength;
+      if (flangeWeldLength > 0) welds["Flange Weld"] = flangeWeldLength;
 
       if (existing) {
         existing.qty += pipeQty;
         existing.weight += pipeWeight;
         existing.entries.push(itemNumber);
         // Accumulate welds and areas
-        if (pipeWeldLength > 0) existing.welds = { ...existing.welds, 'Pipe Weld': (existing.welds?.['Pipe Weld'] || 0) + pipeWeldLength };
-        if (flangeWeldLength > 0) existing.welds = { ...existing.welds, 'Flange Weld': (existing.welds?.['Flange Weld'] || 0) + flangeWeldLength };
+        if (pipeWeldLength > 0)
+          existing.welds = {
+            ...existing.welds,
+            "Pipe Weld": (existing.welds?.["Pipe Weld"] || 0) + pipeWeldLength,
+          };
+        if (flangeWeldLength > 0)
+          existing.welds = {
+            ...existing.welds,
+            "Flange Weld": (existing.welds?.["Flange Weld"] || 0) + flangeWeldLength,
+          };
         existing.intAreaM2 = (existing.intAreaM2 || 0) + intAreaM2;
         existing.extAreaM2 = (existing.extAreaM2 || 0) + extAreaM2;
       } else {
         consolidatedPipes.set(key, {
-          description: `${nb}NB ${schedule ? 'Sch' + schedule.replace('Sch', '') : ''} ${steelSpec} Pipe x${pipeLength}m`.trim(),
+          description:
+            `${nb}NB ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""} ${steelSpec} Pipe x${pipeLength}m`.trim(),
           qty: pipeQty,
-          unit: 'Each',
+          unit: "Each",
           weight: pipeWeight,
           entries: [itemNumber],
           welds: Object.keys(welds).length > 0 ? welds : undefined,
@@ -730,18 +847,24 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
       }
 
       // Flanges for pipes (using pipeEndConfig declared above)
-      const flangeCount = getFlangeCountFromConfig(pipeEndConfig, 'pipe');
+      const flangeCount = getFlangeCountFromConfig(pipeEndConfig, "pipe");
       const pipeFlangeTypeName = getFlangeTypeName(pipeEndConfig);
       const pipeFlangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-      const pipeFlangeStandardCode = pipeFlangeStandardId && masterData?.flangeStandards
-        ? masterData.flangeStandards.find((s: any) => s.id === pipeFlangeStandardId)?.code
-        : '';
+      const pipeFlangeStandardCode =
+        pipeFlangeStandardId && masterData?.flangeStandards
+          ? masterData.flangeStandards.find((s: any) => s.id === pipeFlangeStandardId)?.code
+          : "";
       const pipeFlangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
       if (flangeCount.main > 0) {
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${pipeFlangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * pipeQty;
-        const flangeWeight = getFlangeWeight(nb, flangeSpec.split(' ').pop() || 'PN16', pipeFlangeStandardCode, pipeFlangeTypeCode);
+        const flangeWeight = getFlangeWeight(
+          nb,
+          flangeSpec.split(" ").pop() || "PN16",
+          pipeFlangeStandardCode,
+          pipeFlangeTypeCode,
+        );
 
         if (existingFlange) {
           existingFlange.qty += flangeQty;
@@ -751,14 +874,14 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${pipeFlangeTypeName} Flange ${flangeSpec}`,
             qty: flangeQty,
-            unit: 'Each',
+            unit: "Each",
             weight: flangeWeight * flangeQty,
-            entries: [itemNumber]
+            entries: [itemNumber],
           });
         }
 
         // BNW for pipe flanges - use bolt set count (2 same-sized ends = 1 bolt set)
-        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(' ').pop() || 'PN16');
+        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(" ").pop() || "PN16");
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
@@ -773,9 +896,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             consolidatedBnwSets.set(bnwKey, {
               description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpec}`,
               qty: pipeBoltSetQty,
-              unit: 'sets',
+              unit: "sets",
               weight: bnwWeight * pipeBoltSetQty,
-              entries: [itemNumber]
+              entries: [itemNumber],
             });
           }
         }
@@ -794,9 +917,9 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             consolidatedGaskets.set(gasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
               qty: flangeQty,
-              unit: 'Each',
+              unit: "Each",
               weight: gasketWeight * flangeQty,
-              entries: [itemNumber]
+              entries: [itemNumber],
             });
           }
         }
@@ -808,7 +931,13 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         const blankFlangeKey = `BLANK_FLANGE_${blankNb}_${flangeSpec}`;
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * pipeQty;
-        const blankWeight = getFlangeWeight(blankNb, flangeSpec.split(' ').pop() || 'PN16', pipeFlangeStandardCode, pipeFlangeTypeCode) * 0.6;
+        const blankWeight =
+          getFlangeWeight(
+            blankNb,
+            flangeSpec.split(" ").pop() || "PN16",
+            pipeFlangeStandardCode,
+            pipeFlangeTypeCode,
+          ) * 0.6;
         const blankSurfaceArea = blankFlangeSurfaceArea(blankNb);
         const blankExtArea = blankSurfaceArea.external * blankQty;
         const blankIntArea = blankSurfaceArea.internal * blankQty;
@@ -823,11 +952,11 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           consolidatedBlankFlanges.set(blankFlangeKey, {
             description: `${blankNb}NB Blank Flange ${flangeSpec}`,
             qty: blankQty,
-            unit: 'Each',
+            unit: "Each",
             weight: blankWeight * blankQty,
             entries: [itemNumber],
             extAreaM2: blankExtArea,
-            intAreaM2: blankIntArea
+            intAreaM2: blankIntArea,
           });
         }
       }
@@ -836,44 +965,56 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
   // Calculate totals
   let totalWeight = 0;
-  consolidatedPipes.forEach(item => totalWeight += item.weight);
-  consolidatedBends.forEach(item => totalWeight += item.weight);
-  consolidatedFittings.forEach(item => totalWeight += item.weight);
-  consolidatedFlanges.forEach(item => totalWeight += item.weight);
-  consolidatedBnwSets.forEach(item => totalWeight += item.weight);
-  consolidatedGaskets.forEach(item => totalWeight += item.weight);
-  consolidatedBlankFlanges.forEach(item => totalWeight += item.weight);
+  consolidatedPipes.forEach((item) => (totalWeight += item.weight));
+  consolidatedBends.forEach((item) => (totalWeight += item.weight));
+  consolidatedFittings.forEach((item) => (totalWeight += item.weight));
+  consolidatedFlanges.forEach((item) => (totalWeight += item.weight));
+  consolidatedBnwSets.forEach((item) => (totalWeight += item.weight));
+  consolidatedGaskets.forEach((item) => (totalWeight += item.weight));
+  consolidatedBlankFlanges.forEach((item) => (totalWeight += item.weight));
 
   // Dark mode background mapping for header rows
   const darkBgMap: Record<string, string> = {
-    'bg-blue-50': 'dark:bg-blue-900/30',
-    'bg-purple-50': 'dark:bg-purple-900/30',
-    'bg-green-50': 'dark:bg-green-900/30',
-    'bg-cyan-50': 'dark:bg-cyan-900/30',
-    'bg-gray-50': 'dark:bg-gray-800/50',
-    'bg-orange-50': 'dark:bg-orange-900/30',
-    'bg-teal-50': 'dark:bg-teal-900/30',
+    "bg-blue-50": "dark:bg-blue-900/30",
+    "bg-purple-50": "dark:bg-purple-900/30",
+    "bg-green-50": "dark:bg-green-900/30",
+    "bg-cyan-50": "dark:bg-cyan-900/30",
+    "bg-gray-50": "dark:bg-gray-800/50",
+    "bg-orange-50": "dark:bg-orange-900/30",
+    "bg-teal-50": "dark:bg-teal-900/30",
   };
 
   // Dark mode text color mapping
   const darkTextMap: Record<string, string> = {
-    'text-blue-700': 'dark:text-blue-300',
-    'text-purple-700': 'dark:text-purple-300',
-    'text-green-700': 'dark:text-green-300',
-    'text-cyan-700': 'dark:text-cyan-300',
-    'text-gray-700': 'dark:text-gray-300',
-    'text-orange-700': 'dark:text-orange-300',
-    'text-teal-700': 'dark:text-teal-300',
+    "text-blue-700": "dark:text-blue-300",
+    "text-purple-700": "dark:text-purple-300",
+    "text-green-700": "dark:text-green-300",
+    "text-cyan-700": "dark:text-cyan-300",
+    "text-gray-700": "dark:text-gray-300",
+    "text-orange-700": "dark:text-orange-300",
+    "text-teal-700": "dark:text-teal-300",
   };
 
   // Render consolidated BOQ table with consistent columns
   const renderConsolidatedTable = (
     title: string,
-    items: Map<string, { description: string; qty: number; unit: string; weight: number; entries: string[]; welds?: Record<string, number>; intAreaM2?: number; extAreaM2?: number }>,
+    items: Map<
+      string,
+      {
+        description: string;
+        qty: number;
+        unit: string;
+        weight: number;
+        entries: string[];
+        welds?: Record<string, number>;
+        intAreaM2?: number;
+        extAreaM2?: number;
+      }
+    >,
     bgColor: string,
     textColor: string,
     showWeldColumns: boolean = false,
-    showAreaColumns: boolean = false
+    showAreaColumns: boolean = false,
   ) => {
     if (items.size === 0) return null;
 
@@ -884,74 +1025,136 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
     // Collect all unique weld types across items
     const allWeldTypes = new Set<string>();
     if (showWeldColumns) {
-      itemsArray.forEach(item => {
+      itemsArray.forEach((item) => {
         if (item.welds) {
-          Object.keys(item.welds).forEach(wt => allWeldTypes.add(wt));
+          Object.keys(item.welds).forEach((wt) => allWeldTypes.add(wt));
         }
       });
     }
     const weldTypesList = Array.from(allWeldTypes);
 
     // Check if any items have area data
-    const hasAreaData = showAreaColumns && itemsArray.some(item => (item.intAreaM2 && item.intAreaM2 > 0) || (item.extAreaM2 && item.extAreaM2 > 0));
+    const hasAreaData =
+      showAreaColumns &&
+      itemsArray.some(
+        (item) => (item.intAreaM2 && item.intAreaM2 > 0) || (item.extAreaM2 && item.extAreaM2 > 0),
+      );
 
     // Get dark mode variants
-    const darkBg = darkBgMap[bgColor] || 'dark:bg-gray-800/50';
-    const darkText = darkTextMap[textColor] || 'dark:text-gray-300';
+    const darkBg = darkBgMap[bgColor] || "dark:bg-gray-800/50";
+    const darkText = darkTextMap[textColor] || "dark:text-gray-300";
 
     return (
       <div className="mb-6">
-        <h4 className={`text-md font-semibold ${textColor} ${darkText} mb-2 flex items-center justify-between`}>
-          <span>{title} ({sectionTotalQty} total, {items.size} {items.size === 1 ? 'type' : 'types'})</span>
-          <span className="text-sm font-normal text-gray-500 dark:text-gray-400">Section Weight: {formatWeight(sectionWeight)}</span>
+        <h4
+          className={`text-md font-semibold ${textColor} ${darkText} mb-2 flex items-center justify-between`}
+        >
+          <span>
+            {title} ({sectionTotalQty} total, {items.size} {items.size === 1 ? "type" : "types"})
+          </span>
+          <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
+            Section Weight: {formatWeight(sectionWeight)}
+          </span>
         </h4>
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse table-fixed">
             <thead>
-              <tr className={`${bgColor} ${darkBg} border-b-2 border-gray-300 dark:border-gray-600`}>
-                <th className={`text-left py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-20`}>From</th>
-                <th className={`text-center py-2 px-2 font-semibold ${textColor} ${darkText} w-10`}>#</th>
-                <th className={`text-left py-2 px-2 font-semibold ${textColor} ${darkText}`}>Description</th>
-                <th className={`text-center py-2 px-2 font-semibold ${textColor} ${darkText} w-14`}>Qty</th>
-                <th className={`text-center py-2 px-2 font-semibold ${textColor} ${darkText} w-14`}>Unit</th>
+              <tr
+                className={`${bgColor} ${darkBg} border-b-2 border-gray-300 dark:border-gray-600`}
+              >
+                <th
+                  className={`text-left py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-20`}
+                >
+                  From
+                </th>
+                <th className={`text-center py-2 px-2 font-semibold ${textColor} ${darkText} w-10`}>
+                  #
+                </th>
+                <th className={`text-left py-2 px-2 font-semibold ${textColor} ${darkText}`}>
+                  Description
+                </th>
+                <th className={`text-center py-2 px-2 font-semibold ${textColor} ${darkText} w-14`}>
+                  Qty
+                </th>
+                <th className={`text-center py-2 px-2 font-semibold ${textColor} ${darkText} w-14`}>
+                  Unit
+                </th>
                 {showWeldColumns && (
-                  <th className={`text-right py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-20`}>Weld (m)</th>
+                  <th
+                    className={`text-right py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-20`}
+                  >
+                    Weld (m)
+                  </th>
                 )}
                 {showAreaColumns && (
                   <>
-                    <th className={`text-right py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-16`}>Int m²</th>
-                    <th className={`text-right py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-16`}>Ext m²</th>
+                    <th
+                      className={`text-right py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-16`}
+                    >
+                      Int m²
+                    </th>
+                    <th
+                      className={`text-right py-2 px-2 font-semibold text-xs ${textColor} ${darkText} w-16`}
+                    >
+                      Ext m²
+                    </th>
                   </>
                 )}
-                <th className={`text-right py-2 px-2 font-semibold ${textColor} ${darkText} w-24`}>Weight</th>
+                <th className={`text-right py-2 px-2 font-semibold ${textColor} ${darkText} w-24`}>
+                  Weight
+                </th>
               </tr>
             </thead>
             <tbody>
               {itemsArray.map((item, idx) => {
-                const totalWeld = item.welds ? Object.values(item.welds).reduce((sum, v) => sum + v, 0) : 0;
-                const rowBg = idx % 2 === 0
-                  ? 'bg-transparent'
-                  : 'bg-gray-50 dark:bg-gray-800/30';
+                const totalWeld = item.welds
+                  ? Object.values(item.welds).reduce((sum, v) => sum + v, 0)
+                  : 0;
+                const rowBg = idx % 2 === 0 ? "bg-transparent" : "bg-gray-50 dark:bg-gray-800/30";
                 return (
                   <tr
                     key={idx}
                     className={`border-b border-gray-200 dark:border-gray-700 ${rowBg} hover:bg-gray-100 dark:hover:bg-gray-700/50`}
                   >
-                    <td className="py-2 px-2 text-xs text-gray-600 dark:text-gray-400 truncate" title={item.entries.join(', ')}>{item.entries.join(', ')}</td>
-                    <td className="py-2 px-2 text-center text-gray-900 dark:text-gray-100">{idx + 1}</td>
-                    <td className="py-2 px-2 text-gray-900 dark:text-gray-100 truncate" title={item.description}>{item.description}</td>
-                    <td className="py-2 px-2 text-center font-medium text-gray-900 dark:text-gray-100">{item.qty}</td>
-                    <td className="py-2 px-2 text-center text-gray-700 dark:text-gray-300">{item.unit}</td>
+                    <td
+                      className="py-2 px-2 text-xs text-gray-600 dark:text-gray-400 truncate"
+                      title={item.entries.join(", ")}
+                    >
+                      {item.entries.join(", ")}
+                    </td>
+                    <td className="py-2 px-2 text-center text-gray-900 dark:text-gray-100">
+                      {idx + 1}
+                    </td>
+                    <td
+                      className="py-2 px-2 text-gray-900 dark:text-gray-100 truncate"
+                      title={item.description}
+                    >
+                      {item.description}
+                    </td>
+                    <td className="py-2 px-2 text-center font-medium text-gray-900 dark:text-gray-100">
+                      {item.qty}
+                    </td>
+                    <td className="py-2 px-2 text-center text-gray-700 dark:text-gray-300">
+                      {item.unit}
+                    </td>
                     {showWeldColumns && (
-                      <td className="py-2 px-2 text-right text-xs text-gray-700 dark:text-gray-300">{totalWeld > 0 ? totalWeld.toFixed(1) : '-'}</td>
+                      <td className="py-2 px-2 text-right text-xs text-gray-700 dark:text-gray-300">
+                        {totalWeld > 0 ? totalWeld.toFixed(1) : "-"}
+                      </td>
                     )}
                     {showAreaColumns && (
                       <>
-                        <td className="py-2 px-2 text-right text-xs text-gray-700 dark:text-gray-300">{item.intAreaM2 ? item.intAreaM2.toFixed(2) : '-'}</td>
-                        <td className="py-2 px-2 text-right text-xs text-gray-700 dark:text-gray-300">{item.extAreaM2 ? item.extAreaM2.toFixed(2) : '-'}</td>
+                        <td className="py-2 px-2 text-right text-xs text-gray-700 dark:text-gray-300">
+                          {item.intAreaM2 ? item.intAreaM2.toFixed(2) : "-"}
+                        </td>
+                        <td className="py-2 px-2 text-right text-xs text-gray-700 dark:text-gray-300">
+                          {item.extAreaM2 ? item.extAreaM2.toFixed(2) : "-"}
+                        </td>
                       </>
                     )}
-                    <td className="py-2 px-2 text-right text-gray-900 dark:text-gray-100">{formatWeight(item.weight)}</td>
+                    <td className="py-2 px-2 text-right text-gray-900 dark:text-gray-100">
+                      {formatWeight(item.weight)}
+                    </td>
                   </tr>
                 );
               })}
@@ -971,7 +1174,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
       items: Map<string, ConsolidatedItem>,
       sectionName: string,
       includeWelds: boolean = false,
-      includeAreas: boolean = false
+      includeAreas: boolean = false,
     ) => {
       const data: any[] = [];
       let rowNum = 1;
@@ -979,37 +1182,37 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
       // Collect all weld types if needed
       const allWeldTypes = new Set<string>();
       if (includeWelds) {
-        Array.from(items.values()).forEach(item => {
+        Array.from(items.values()).forEach((item) => {
           if (item.welds) {
-            Object.keys(item.welds).forEach(wt => allWeldTypes.add(wt));
+            Object.keys(item.welds).forEach((wt) => allWeldTypes.add(wt));
           }
         });
       }
       const weldTypesList = Array.from(allWeldTypes);
 
-      Array.from(items.values()).forEach(item => {
+      Array.from(items.values()).forEach((item) => {
         const row: any = {
-          'From Items': item.entries.join(', '),
-          '#': rowNum++,
-          'Description': item.description,
-          'Qty': item.qty,
-          'Unit': item.unit,
+          "From Items": item.entries.join(", "),
+          "#": rowNum++,
+          Description: item.description,
+          Qty: item.qty,
+          Unit: item.unit,
         };
 
         // Add weld columns
         if (includeWelds) {
-          weldTypesList.forEach(wt => {
-            row[`${wt} (m)`] = item.welds?.[wt]?.toFixed(2) || '';
+          weldTypesList.forEach((wt) => {
+            row[`${wt} (m)`] = item.welds?.[wt]?.toFixed(2) || "";
           });
         }
 
         // Add area columns
         if (includeAreas) {
-          row['Int m²'] = item.intAreaM2?.toFixed(2) || '';
-          row['Ext m²'] = item.extAreaM2?.toFixed(2) || '';
+          row["Int m²"] = item.intAreaM2?.toFixed(2) || "";
+          row["Ext m²"] = item.extAreaM2?.toFixed(2) || "";
         }
 
-        row['Weight (kg)'] = item.weight.toFixed(2);
+        row["Weight (kg)"] = item.weight.toFixed(2);
         data.push(row);
       });
 
@@ -1021,112 +1224,138 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
     let globalRowNum = 1;
 
     const addToCombined = (items: Map<string, ConsolidatedItem>, category: string) => {
-      Array.from(items.values()).forEach(item => {
+      Array.from(items.values()).forEach((item) => {
         const totalWeld = item.welds ? Object.values(item.welds).reduce((sum, v) => sum + v, 0) : 0;
         combinedData.push({
-          '#': globalRowNum++,
-          'Category': category,
-          'Description': item.description,
-          'Qty': item.qty,
-          'Unit': item.unit,
-          'Weld (m)': totalWeld > 0 ? totalWeld.toFixed(2) : '',
-          'Int m²': item.intAreaM2?.toFixed(2) || '',
-          'Ext m²': item.extAreaM2?.toFixed(2) || '',
-          'Weight (kg)': item.weight.toFixed(2),
-          'From Items': item.entries.join(', '),
+          "#": globalRowNum++,
+          Category: category,
+          Description: item.description,
+          Qty: item.qty,
+          Unit: item.unit,
+          "Weld (m)": totalWeld > 0 ? totalWeld.toFixed(2) : "",
+          "Int m²": item.intAreaM2?.toFixed(2) || "",
+          "Ext m²": item.extAreaM2?.toFixed(2) || "",
+          "Weight (kg)": item.weight.toFixed(2),
+          "From Items": item.entries.join(", "),
         });
       });
     };
 
     // Add all categories to combined sheet
-    addToCombined(consolidatedPipes, 'Straight Pipes');
-    addToCombined(consolidatedBends, 'Bends');
-    addToCombined(consolidatedFittings, 'Fittings');
-    addToCombined(consolidatedFlanges, 'Flanges');
-    addToCombined(consolidatedBlankFlanges, 'Blank Flanges');
-    addToCombined(consolidatedBnwSets, 'BNW Sets');
-    addToCombined(consolidatedGaskets, 'Gaskets');
+    addToCombined(consolidatedPipes, "Straight Pipes");
+    addToCombined(consolidatedBends, "Bends");
+    addToCombined(consolidatedFittings, "Fittings");
+    addToCombined(consolidatedFlanges, "Flanges");
+    addToCombined(consolidatedBlankFlanges, "Blank Flanges");
+    addToCombined(consolidatedBnwSets, "BNW Sets");
+    addToCombined(consolidatedGaskets, "Gaskets");
 
     // Add Combined BOQ as first sheet
     if (combinedData.length > 0) {
       const combinedWs = XLSX.utils.json_to_sheet(combinedData);
-      XLSX.utils.book_append_sheet(workbook, combinedWs, 'Combined BOQ');
+      XLSX.utils.book_append_sheet(workbook, combinedWs, "Combined BOQ");
     }
 
     // Add sheets for each category
     if (consolidatedPipes.size > 0) {
-      const pipesData = mapToExcelData(consolidatedPipes, 'Straight Pipes', true, true);
+      const pipesData = mapToExcelData(consolidatedPipes, "Straight Pipes", true, true);
       const ws = XLSX.utils.json_to_sheet(pipesData);
-      XLSX.utils.book_append_sheet(workbook, ws, 'Straight Pipes');
+      XLSX.utils.book_append_sheet(workbook, ws, "Straight Pipes");
     }
 
     if (consolidatedBends.size > 0) {
-      const bendsData = mapToExcelData(consolidatedBends, 'Bends', true, true);
+      const bendsData = mapToExcelData(consolidatedBends, "Bends", true, true);
       const ws = XLSX.utils.json_to_sheet(bendsData);
-      XLSX.utils.book_append_sheet(workbook, ws, 'Bends');
+      XLSX.utils.book_append_sheet(workbook, ws, "Bends");
     }
 
     if (consolidatedFittings.size > 0) {
-      const fittingsData = mapToExcelData(consolidatedFittings, 'Fittings', true, true);
+      const fittingsData = mapToExcelData(consolidatedFittings, "Fittings", true, true);
       const ws = XLSX.utils.json_to_sheet(fittingsData);
-      XLSX.utils.book_append_sheet(workbook, ws, 'Fittings');
+      XLSX.utils.book_append_sheet(workbook, ws, "Fittings");
     }
 
     if (consolidatedFlanges.size > 0) {
-      const flangesData = mapToExcelData(consolidatedFlanges, 'Flanges');
+      const flangesData = mapToExcelData(consolidatedFlanges, "Flanges");
       const ws = XLSX.utils.json_to_sheet(flangesData);
-      XLSX.utils.book_append_sheet(workbook, ws, 'Flanges');
+      XLSX.utils.book_append_sheet(workbook, ws, "Flanges");
     }
 
     if (consolidatedBlankFlanges.size > 0) {
-      const blankFlangesData = mapToExcelData(consolidatedBlankFlanges, 'Blank Flanges', false, true);
+      const blankFlangesData = mapToExcelData(
+        consolidatedBlankFlanges,
+        "Blank Flanges",
+        false,
+        true,
+      );
       const ws = XLSX.utils.json_to_sheet(blankFlangesData);
-      XLSX.utils.book_append_sheet(workbook, ws, 'Blank Flanges');
+      XLSX.utils.book_append_sheet(workbook, ws, "Blank Flanges");
     }
 
     if (consolidatedBnwSets.size > 0) {
-      const bnwData = mapToExcelData(consolidatedBnwSets, 'BNW Sets');
+      const bnwData = mapToExcelData(consolidatedBnwSets, "BNW Sets");
       const ws = XLSX.utils.json_to_sheet(bnwData);
-      XLSX.utils.book_append_sheet(workbook, ws, 'BNW Sets');
+      XLSX.utils.book_append_sheet(workbook, ws, "BNW Sets");
     }
 
     if (consolidatedGaskets.size > 0) {
-      const gasketsData = mapToExcelData(consolidatedGaskets, 'Gaskets');
+      const gasketsData = mapToExcelData(consolidatedGaskets, "Gaskets");
       const ws = XLSX.utils.json_to_sheet(gasketsData);
-      XLSX.utils.book_append_sheet(workbook, ws, 'Gaskets');
+      XLSX.utils.book_append_sheet(workbook, ws, "Gaskets");
     }
 
     // Calculate total quantities for summary
-    const totalPipeQty = Array.from(consolidatedPipes.values()).reduce((sum, item) => sum + item.qty, 0);
-    const totalBendQty = Array.from(consolidatedBends.values()).reduce((sum, item) => sum + item.qty, 0);
-    const totalFittingQty = Array.from(consolidatedFittings.values()).reduce((sum, item) => sum + item.qty, 0);
-    const totalFlangeQty = Array.from(consolidatedFlanges.values()).reduce((sum, item) => sum + item.qty, 0);
-    const totalBlankFlangeQty = Array.from(consolidatedBlankFlanges.values()).reduce((sum, item) => sum + item.qty, 0);
-    const totalBnwSetQty = Array.from(consolidatedBnwSets.values()).reduce((sum, item) => sum + item.qty, 0);
-    const totalGasketQty = Array.from(consolidatedGaskets.values()).reduce((sum, item) => sum + item.qty, 0);
+    const totalPipeQty = Array.from(consolidatedPipes.values()).reduce(
+      (sum, item) => sum + item.qty,
+      0,
+    );
+    const totalBendQty = Array.from(consolidatedBends.values()).reduce(
+      (sum, item) => sum + item.qty,
+      0,
+    );
+    const totalFittingQty = Array.from(consolidatedFittings.values()).reduce(
+      (sum, item) => sum + item.qty,
+      0,
+    );
+    const totalFlangeQty = Array.from(consolidatedFlanges.values()).reduce(
+      (sum, item) => sum + item.qty,
+      0,
+    );
+    const totalBlankFlangeQty = Array.from(consolidatedBlankFlanges.values()).reduce(
+      (sum, item) => sum + item.qty,
+      0,
+    );
+    const totalBnwSetQty = Array.from(consolidatedBnwSets.values()).reduce(
+      (sum, item) => sum + item.qty,
+      0,
+    );
+    const totalGasketQty = Array.from(consolidatedGaskets.values()).reduce(
+      (sum, item) => sum + item.qty,
+      0,
+    );
 
     // Add a summary sheet
     const summaryData = [
-      { 'Category': 'Project', 'Value': rfqData.projectName || 'Untitled' },
-      { 'Category': 'Customer', 'Value': rfqData.customerName || '-' },
-      { 'Category': 'Total Items', 'Value': entries.length },
-      { 'Category': 'Total Estimated Weight (kg)', 'Value': totalWeight.toFixed(2) },
-      { 'Category': '', 'Value': '' },
-      { 'Category': 'Section', 'Value': 'Total Qty' },
-      { 'Category': 'Straight Pipes', 'Value': totalPipeQty },
-      { 'Category': 'Bends', 'Value': totalBendQty },
-      { 'Category': 'Fittings', 'Value': totalFittingQty },
-      { 'Category': 'Flanges', 'Value': totalFlangeQty },
-      { 'Category': 'Blank Flanges', 'Value': totalBlankFlangeQty },
-      { 'Category': 'BNW Sets', 'Value': totalBnwSetQty },
-      { 'Category': 'Gaskets', 'Value': totalGasketQty },
+      { Category: "Project", Value: rfqData.projectName || "Untitled" },
+      { Category: "Customer", Value: rfqData.customerName || "-" },
+      { Category: "Total Items", Value: entries.length },
+      { Category: "Total Estimated Weight (kg)", Value: totalWeight.toFixed(2) },
+      { Category: "", Value: "" },
+      { Category: "Section", Value: "Total Qty" },
+      { Category: "Straight Pipes", Value: totalPipeQty },
+      { Category: "Bends", Value: totalBendQty },
+      { Category: "Fittings", Value: totalFittingQty },
+      { Category: "Flanges", Value: totalFlangeQty },
+      { Category: "Blank Flanges", Value: totalBlankFlangeQty },
+      { Category: "BNW Sets", Value: totalBnwSetQty },
+      { Category: "Gaskets", Value: totalGasketQty },
     ];
     const summaryWs = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, summaryWs, 'Summary');
+    XLSX.utils.book_append_sheet(workbook, summaryWs, "Summary");
 
     // Generate filename with project name and date
-    const projectName = (rfqData.projectName || 'BOQ').replace(/[^a-zA-Z0-9]/g, '_');
-    const dateStr = nowISO().split('T')[0];
+    const projectName = (rfqData.projectName || "BOQ").replace(/[^a-zA-Z0-9]/g, "_");
+    const dateStr = nowISO().split("T")[0];
     const filename = `${projectName}_BOQ_${dateStr}.xlsx`;
 
     // Write and download
@@ -1140,11 +1369,13 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         <div className="flex justify-between items-start">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Bill of Quantities (BOQ)</h2>
-            <p className="text-gray-600">Consolidated Material Requirements - Similar items pooled together</p>
+            <p className="text-gray-600">
+              Consolidated Material Requirements - Similar items pooled together
+            </p>
           </div>
           <div className="text-right">
             <p className="text-sm text-gray-500">Project</p>
-            <p className="text-xl font-bold text-blue-600">{rfqData.projectName || 'Untitled'}</p>
+            <p className="text-xl font-bold text-blue-600">{rfqData.projectName || "Untitled"}</p>
           </div>
         </div>
       </div>
@@ -1154,63 +1385,92 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
           <div>
             <p className="text-gray-500 font-medium">Customer</p>
-            <p className="text-gray-900">{rfqData.customerName || '-'}</p>
+            <p className="text-gray-900">{rfqData.customerName || "-"}</p>
           </div>
           <div>
             <p className="text-gray-500 font-medium">Steel Spec</p>
-            <p className="font-medium">{(() => {
-              // Get effective steel spec for each item (item override or global fallback)
-              const getEffectiveSteelSpecId = (entry: any) => entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-              const effectiveSpecs = entries.map((entry: any) => getEffectiveSteelSpecId(entry)).filter(Boolean);
+            <p className="font-medium">
+              {(() => {
+                // Get effective steel spec for each item (item override or global fallback)
+                const getEffectiveSteelSpecId = (entry: any) =>
+                  entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                const effectiveSpecs = entries
+                  .map((entry: any) => getEffectiveSteelSpecId(entry))
+                  .filter(Boolean);
 
-              // If no specs from entries, try global directly
-              if (effectiveSpecs.length === 0) {
-                if (globalSpecs?.steelSpecificationId) {
-                  return masterData?.steelSpecs?.find((s: any) => s.id === globalSpecs.steelSpecificationId)?.steelSpecName || '-';
+                // If no specs from entries, try global directly
+                if (effectiveSpecs.length === 0) {
+                  if (globalSpecs?.steelSpecificationId) {
+                    return (
+                      masterData?.steelSpecs?.find(
+                        (s: any) => s.id === globalSpecs.steelSpecificationId,
+                      )?.steelSpecName || "-"
+                    );
+                  }
+                  return "-";
                 }
-                return '-';
-              }
 
-              const firstSpec = effectiveSpecs[0];
-              const allSame = effectiveSpecs.every((id: number) => id === firstSpec);
-              if (allSame) {
-                return masterData?.steelSpecs?.find((s: any) => s.id === firstSpec)?.steelSpecName || '-';
-              }
-              return 'SEE IN ITEM';
-            })()}</p>
+                const firstSpec = effectiveSpecs[0];
+                const allSame = effectiveSpecs.every((id: number) => id === firstSpec);
+                if (allSame) {
+                  return (
+                    masterData?.steelSpecs?.find((s: any) => s.id === firstSpec)?.steelSpecName ||
+                    "-"
+                  );
+                }
+                return "SEE IN ITEM";
+              })()}
+            </p>
           </div>
           <div>
             <p className="text-gray-500 font-medium">Flange Standard</p>
-            <p className="text-gray-900">{(() => {
-              // Get effective flange standard for each item
-              const getEffectiveFlangeStdId = (entry: any) => entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-              const getEffectivePressureClassId = (entry: any) => entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-              const effectiveFlanges = entries.map((entry: any) => ({
-                stdId: getEffectiveFlangeStdId(entry),
-                pcId: getEffectivePressureClassId(entry)
-              })).filter((f: any) => f.stdId);
+            <p className="text-gray-900">
+              {(() => {
+                // Get effective flange standard for each item
+                const getEffectiveFlangeStdId = (entry: any) =>
+                  entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                const getEffectivePressureClassId = (entry: any) =>
+                  entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                const effectiveFlanges = entries
+                  .map((entry: any) => ({
+                    stdId: getEffectiveFlangeStdId(entry),
+                    pcId: getEffectivePressureClassId(entry),
+                  }))
+                  .filter((f: any) => f.stdId);
 
-              // If no specs from entries, try global directly
-              if (effectiveFlanges.length === 0) {
-                if (globalSpecs?.flangeStandardId) {
-                  const flangeCode = masterData?.flangeStandards?.find((s: any) => s.id === globalSpecs.flangeStandardId)?.code || '';
-                  const pressureClass = globalSpecs?.flangePressureClassId
-                    ? masterData?.pressureClasses?.find((p: any) => p.id === globalSpecs.flangePressureClassId)?.designation || ''
-                    : '';
-                  return (flangeCode + (pressureClass ? ' ' + pressureClass : '')).trim() || '-';
+                // If no specs from entries, try global directly
+                if (effectiveFlanges.length === 0) {
+                  if (globalSpecs?.flangeStandardId) {
+                    const flangeCode =
+                      masterData?.flangeStandards?.find(
+                        (s: any) => s.id === globalSpecs.flangeStandardId,
+                      )?.code || "";
+                    const pressureClass = globalSpecs?.flangePressureClassId
+                      ? masterData?.pressureClasses?.find(
+                          (p: any) => p.id === globalSpecs.flangePressureClassId,
+                        )?.designation || ""
+                      : "";
+                    return (flangeCode + (pressureClass ? ` ${pressureClass}` : "")).trim() || "-";
+                  }
+                  return "-";
                 }
-                return '-';
-              }
 
-              const firstFlange = effectiveFlanges[0];
-              const allSame = effectiveFlanges.every((f: any) => f.stdId === firstFlange.stdId && f.pcId === firstFlange.pcId);
-              if (allSame) {
-                const flangeCode = masterData?.flangeStandards?.find((s: any) => s.id === firstFlange.stdId)?.code || '';
-                const pressureClass = masterData?.pressureClasses?.find((p: any) => p.id === firstFlange.pcId)?.designation || '';
-                return (flangeCode + (pressureClass ? ' ' + pressureClass : '')).trim() || '-';
-              }
-              return 'SEE IN ITEM';
-            })()}</p>
+                const firstFlange = effectiveFlanges[0];
+                const allSame = effectiveFlanges.every(
+                  (f: any) => f.stdId === firstFlange.stdId && f.pcId === firstFlange.pcId,
+                );
+                if (allSame) {
+                  const flangeCode =
+                    masterData?.flangeStandards?.find((s: any) => s.id === firstFlange.stdId)
+                      ?.code || "";
+                  const pressureClass =
+                    masterData?.pressureClasses?.find((p: any) => p.id === firstFlange.pcId)
+                      ?.designation || "";
+                  return (flangeCode + (pressureClass ? ` ${pressureClass}` : "")).trim() || "-";
+                }
+                return "SEE IN ITEM";
+              })()}
+            </p>
           </div>
           <div>
             <p className="text-gray-500 font-medium">Bolts & Nuts</p>
@@ -1218,7 +1478,7 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
           </div>
           <div>
             <p className="text-gray-500 font-medium">Gasket Type</p>
-            <p className="text-gray-900">{globalSpecs?.gasketType || '-'}</p>
+            <p className="text-gray-900">{globalSpecs?.gasketType || "-"}</p>
           </div>
           <div>
             <p className="text-gray-500 font-medium">Total Items</p>
@@ -1234,25 +1494,80 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         </h3>
 
         {/* Pipes - show weld and area columns */}
-        {renderConsolidatedTable('Straight Pipes', consolidatedPipes, 'bg-blue-50', 'text-blue-700', true, true)}
+        {renderConsolidatedTable(
+          "Straight Pipes",
+          consolidatedPipes,
+          "bg-blue-50",
+          "text-blue-700",
+          true,
+          true,
+        )}
 
         {/* Bends - show weld and area columns */}
-        {renderConsolidatedTable('Bends', consolidatedBends, 'bg-purple-50', 'text-purple-700', true, true)}
+        {renderConsolidatedTable(
+          "Bends",
+          consolidatedBends,
+          "bg-purple-50",
+          "text-purple-700",
+          true,
+          true,
+        )}
 
         {/* Fittings - show weld and area columns */}
-        {renderConsolidatedTable('Fittings (Tees, Laterals, Reducers)', consolidatedFittings, 'bg-green-50', 'text-green-700', true, true)}
+        {renderConsolidatedTable(
+          "Fittings (Tees, Laterals, Reducers)",
+          consolidatedFittings,
+          "bg-green-50",
+          "text-green-700",
+          true,
+          true,
+        )}
 
         {/* Flanges */}
-        {renderConsolidatedTable('Flanges', consolidatedFlanges, 'bg-cyan-50', 'text-cyan-700', false, false)}
+        {renderConsolidatedTable(
+          "Flanges",
+          consolidatedFlanges,
+          "bg-cyan-50",
+          "text-cyan-700",
+          false,
+          false,
+        )}
 
         {/* Blank Flanges - show area columns */}
-        {renderConsolidatedTable('Blank Flanges', consolidatedBlankFlanges, 'bg-gray-50', 'text-gray-700', false, true)}
+        {renderConsolidatedTable(
+          "Blank Flanges",
+          consolidatedBlankFlanges,
+          "bg-gray-50",
+          "text-gray-700",
+          false,
+          true,
+        )}
 
         {/* BNW Sets - always show if there are flanges */}
-        {(requiredProducts.includes('fasteners_gaskets') || consolidatedFlanges.size > 0 || consolidatedBlankFlanges.size > 0) && renderConsolidatedTable('Bolt, Nut & Washer Sets', consolidatedBnwSets, 'bg-orange-50', 'text-orange-700', false, false)}
+        {(requiredProducts.includes("fasteners_gaskets") ||
+          consolidatedFlanges.size > 0 ||
+          consolidatedBlankFlanges.size > 0) &&
+          renderConsolidatedTable(
+            "Bolt, Nut & Washer Sets",
+            consolidatedBnwSets,
+            "bg-orange-50",
+            "text-orange-700",
+            false,
+            false,
+          )}
 
         {/* Gaskets - always show if there are flanges */}
-        {(requiredProducts.includes('fasteners_gaskets') || consolidatedFlanges.size > 0 || consolidatedBlankFlanges.size > 0) && renderConsolidatedTable('Gaskets', consolidatedGaskets, 'bg-teal-50', 'text-teal-700', false, false)}
+        {(requiredProducts.includes("fasteners_gaskets") ||
+          consolidatedFlanges.size > 0 ||
+          consolidatedBlankFlanges.size > 0) &&
+          renderConsolidatedTable(
+            "Gaskets",
+            consolidatedGaskets,
+            "bg-teal-50",
+            "text-teal-700",
+            false,
+            false,
+          )}
 
         {/* Total Weight Summary */}
         <div className="mt-6 pt-4 border-t border-gray-200">
@@ -1265,7 +1580,11 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
 
       {/* Notes */}
       <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-600">
-        <p><strong className="text-gray-700">Note:</strong> This BOQ consolidates similar items across all line items. The "From Items" column shows which original line items contribute to each consolidated entry. Weights are estimates based on standard dimensions.</p>
+        <p>
+          <strong className="text-gray-700">Note:</strong> This BOQ consolidates similar items
+          across all line items. The "From Items" column shows which original line items contribute
+          to each consolidated entry. Weights are estimates based on standard dimensions.
+        </p>
       </div>
 
       {/* Navigation & Actions */}
@@ -1283,38 +1602,56 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
         </div>
         <div className="flex gap-4">
           <button
-            onClick={isUnregisteredCustomer ? showRestrictionPopup('export') : exportToExcel}
+            onClick={isUnregisteredCustomer ? showRestrictionPopup("export") : exportToExcel}
             className={`px-6 py-2 rounded-lg transition-colors flex items-center gap-2 ${
               isUnregisteredCustomer
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700 text-white'
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-green-600 hover:bg-green-700 text-white"
             }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
             </svg>
             Export Excel
             {isUnregisteredCustomer && (
               <svg className="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
               </svg>
             )}
           </button>
           <button
-            onClick={isUnregisteredCustomer ? showRestrictionPopup('export') : () => window.print()}
+            onClick={isUnregisteredCustomer ? showRestrictionPopup("export") : () => window.print()}
             className={`px-6 py-2 border rounded-lg transition-colors flex items-center gap-2 ${
               isUnregisteredCustomer
-                ? 'bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700'
+                ? "bg-gray-200 border-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700"
             }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+              />
             </svg>
             Print BOQ
             {isUnregisteredCustomer && (
               <svg className="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
               </svg>
             )}
           </button>
@@ -1327,8 +1664,19 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
               {loading ? (
                 <>
                   <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Re-Submitting...
                 </>
@@ -1336,44 +1684,64 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
                 <>
                   Re-Submit RFQ
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
                   </svg>
                 </>
               )}
             </button>
-          ) : onSubmit && (
-            <button
-              onClick={onSubmit}
-              disabled={loading}
-              className="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  Submit RFQ for Quotation
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </>
-              )}
-            </button>
+          ) : (
+            onSubmit && (
+              <button
+                onClick={onSubmit}
+                disabled={loading}
+                className="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    Submit RFQ for Quotation
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </>
+                )}
+              </button>
+            )
           )}
         </div>
       </div>
 
       {/* Restriction Popup for unregistered customers */}
       {restrictionPopup && (
-        <div
-          className="fixed inset-0 z-50"
-          onClick={() => setRestrictionPopup(null)}
-        >
+        <div className="fixed inset-0 z-50" onClick={() => setRestrictionPopup(null)}>
           <div
             className="absolute bg-white rounded-lg shadow-xl border border-gray-200 p-4 max-w-xs"
             style={{
@@ -1385,7 +1753,11 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
             <div className="flex items-start gap-3">
               <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
                 <svg className="w-5 h-5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  <path
+                    fillRule="evenodd"
+                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </div>
               <div>
@@ -1406,7 +1778,11 @@ export default function BOQStep({ rfqData, entries, globalSpecs, requiredProduct
               className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
               </svg>
             </button>
           </div>

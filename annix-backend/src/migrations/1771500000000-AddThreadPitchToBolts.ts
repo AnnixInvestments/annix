@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddThreadPitchToBolts1771500000000 implements MigrationInterface {
-  name = 'AddThreadPitchToBolts1771500000000';
+  name = "AddThreadPitchToBolts1771500000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding thread_pitch_mm column to bolts table...');
+    console.warn("Adding thread_pitch_mm column to bolts table...");
 
     await queryRunner.query(`
       ALTER TABLE bolts ADD COLUMN IF NOT EXISTS thread_pitch_mm FLOAT NULL
@@ -35,7 +35,7 @@ export class AddThreadPitchToBolts1771500000000 implements MigrationInterface {
       64: 6.0,
     };
 
-    const bolts = await queryRunner.query(`SELECT id, designation FROM bolts`);
+    const bolts = await queryRunner.query("SELECT id, designation FROM bolts");
 
     for (const bolt of bolts) {
       const match = bolt.designation.match(/M(\d+)/i);
@@ -50,12 +50,10 @@ export class AddThreadPitchToBolts1771500000000 implements MigrationInterface {
       }
     }
 
-    console.warn('Thread pitch values populated for all bolts.');
+    console.warn("Thread pitch values populated for all bolts.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE bolts DROP COLUMN IF EXISTS thread_pitch_mm`,
-    );
+    await queryRunner.query("ALTER TABLE bolts DROP COLUMN IF EXISTS thread_pitch_mm");
   }
 }

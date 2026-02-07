@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '@/lib/api-config';
+import { API_BASE_URL } from "@/lib/api-config";
 
 export type FeatureFlagsResponse = Record<string, boolean>;
 
@@ -21,13 +21,13 @@ class FeatureFlagsApiClient {
 
   private adminHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('adminAccessToken');
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("adminAccessToken");
       if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+        headers["Authorization"] = `Bearer ${token}`;
       }
     }
 
@@ -38,7 +38,7 @@ class FeatureFlagsApiClient {
     const response = await fetch(`${this.baseURL}/feature-flags`);
 
     if (!response.ok) {
-      throw new Error('Failed to fetch feature flags');
+      throw new Error("Failed to fetch feature flags");
     }
 
     return response.json();
@@ -50,27 +50,22 @@ class FeatureFlagsApiClient {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch feature flag details');
+      throw new Error("Failed to fetch feature flag details");
     }
 
     return response.json();
   }
 
-  async updateFlag(
-    flagKey: string,
-    enabled: boolean,
-  ): Promise<FeatureFlagDetail> {
+  async updateFlag(flagKey: string, enabled: boolean): Promise<FeatureFlagDetail> {
     const response = await fetch(`${this.baseURL}/feature-flags`, {
-      method: 'PUT',
+      method: "PUT",
       headers: this.adminHeaders(),
       body: JSON.stringify({ flagKey, enabled }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.message || 'Failed to update feature flag',
-      );
+      throw new Error(errorData.message || "Failed to update feature flag");
     }
 
     return response.json();

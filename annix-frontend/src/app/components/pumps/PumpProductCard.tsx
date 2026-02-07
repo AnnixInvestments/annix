@@ -1,7 +1,6 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
+import Link from "next/link";
 
 export interface PumpProductCardData {
   id: number;
@@ -9,8 +8,8 @@ export interface PumpProductCardData {
   title: string;
   description?: string | null;
   pumpType: string;
-  category: 'centrifugal' | 'positive_displacement' | 'specialty';
-  status: 'active' | 'inactive' | 'discontinued';
+  category: "centrifugal" | "positive_displacement" | "specialty";
+  status: "active" | "inactive" | "discontinued";
   manufacturer: string;
   modelNumber?: string | null;
   flowRateMin?: number | null;
@@ -33,22 +32,26 @@ interface PumpProductCardProps {
 }
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  centrifugal: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' },
-  positive_displacement: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' },
-  specialty: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200' },
+  centrifugal: { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-200" },
+  positive_displacement: { bg: "bg-green-100", text: "text-green-700", border: "border-green-200" },
+  specialty: { bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-200" },
 };
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  active: { bg: 'bg-green-100', text: 'text-green-700' },
-  inactive: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-  discontinued: { bg: 'bg-red-100', text: 'text-red-700' },
+  active: { bg: "bg-green-100", text: "text-green-700" },
+  inactive: { bg: "bg-yellow-100", text: "text-yellow-700" },
+  discontinued: { bg: "bg-red-100", text: "text-red-700" },
 };
 
 function formatCurrency(value: number): string {
-  return `R ${value.toLocaleString('en-ZA', { minimumFractionDigits: 0 })}`;
+  return `R ${value.toLocaleString("en-ZA", { minimumFractionDigits: 0 })}`;
 }
 
-function formatRange(min: number | null | undefined, max: number | null | undefined, unit: string): string {
+function formatRange(
+  min: number | null | undefined,
+  max: number | null | undefined,
+  unit: string,
+): string {
   if (min !== null && min !== undefined && max !== null && max !== undefined) {
     return `${min} - ${max} ${unit}`;
   }
@@ -58,11 +61,11 @@ function formatRange(min: number | null | undefined, max: number | null | undefi
   if (max !== null && max !== undefined) {
     return `Up to ${max} ${unit}`;
   }
-  return '-';
+  return "-";
 }
 
 function categoryLabel(category: string): string {
-  return category.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  return category.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
 export function PumpProductCard({
@@ -78,28 +81,38 @@ export function PumpProductCard({
   const cardContent = (
     <div
       className={`bg-white rounded-lg shadow-sm border transition-all hover:shadow-md ${
-        selected ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200'
-      } ${onSelect ? 'cursor-pointer' : ''}`}
+        selected ? "ring-2 ring-blue-500 border-blue-500" : "border-gray-200"
+      } ${onSelect ? "cursor-pointer" : ""}`}
       onClick={onSelect ? () => onSelect(product) : undefined}
     >
       <div className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${categoryColor.bg} ${categoryColor.text}`}>
+              <span
+                className={`px-2 py-0.5 text-xs font-medium rounded-full ${categoryColor.bg} ${categoryColor.text}`}
+              >
                 {categoryLabel(product.category)}
               </span>
-              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}>
+              <span
+                className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor.bg} ${statusColor.text}`}
+              >
                 {product.status}
               </span>
             </div>
             <h3 className="text-base font-semibold text-gray-900 truncate">{product.title}</h3>
-            <p className="text-sm text-gray-500">{product.manufacturer} {product.modelNumber && `- ${product.modelNumber}`}</p>
+            <p className="text-sm text-gray-500">
+              {product.manufacturer} {product.modelNumber && `- ${product.modelNumber}`}
+            </p>
           </div>
           {product.imageUrl && (
             <div className="flex-shrink-0 ml-3">
               <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden">
-                <img src={product.imageUrl} alt={product.title} className="w-full h-full object-cover" />
+                <img
+                  src={product.imageUrl}
+                  alt={product.title}
+                  className="w-full h-full object-cover"
+                />
               </div>
             </div>
           )}
@@ -113,13 +126,13 @@ export function PumpProductCard({
           <div>
             <span className="text-gray-500">Flow Rate:</span>
             <span className="ml-1 font-medium text-gray-900">
-              {formatRange(product.flowRateMin, product.flowRateMax, 'm³/h')}
+              {formatRange(product.flowRateMin, product.flowRateMax, "m³/h")}
             </span>
           </div>
           <div>
             <span className="text-gray-500">Head:</span>
             <span className="ml-1 font-medium text-gray-900">
-              {formatRange(product.headMin, product.headMax, 'm')}
+              {formatRange(product.headMin, product.headMax, "m")}
             </span>
           </div>
           {product.motorPowerKw && (
@@ -130,8 +143,12 @@ export function PumpProductCard({
           )}
           <div>
             <span className="text-gray-500">Stock:</span>
-            <span className={`ml-1 font-medium ${(product.stockQuantity ?? 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {(product.stockQuantity ?? 0) > 0 ? `${product.stockQuantity} available` : 'Out of stock'}
+            <span
+              className={`ml-1 font-medium ${(product.stockQuantity ?? 0) > 0 ? "text-green-600" : "text-red-600"}`}
+            >
+              {(product.stockQuantity ?? 0) > 0
+                ? `${product.stockQuantity} available`
+                : "Out of stock"}
             </span>
           </div>
         </div>
@@ -154,7 +171,9 @@ export function PumpProductCard({
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <div>
             {product.listPrice ? (
-              <span className="text-lg font-bold text-gray-900">{formatCurrency(product.listPrice)}</span>
+              <span className="text-lg font-bold text-gray-900">
+                {formatCurrency(product.listPrice)}
+              </span>
             ) : (
               <span className="text-sm text-gray-500">Request quote</span>
             )}

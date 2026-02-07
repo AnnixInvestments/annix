@@ -1,17 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
-import { now, fromJSDate } from '../lib/datetime';
-import { EmailService } from '../email/email.service';
-import { User } from '../user/entities/user.entity';
-import {
-  Message,
-  Conversation,
-  Broadcast,
-  SlaConfig,
-  BroadcastPriority,
-} from './entities';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { EmailService } from "../email/email.service";
+import { fromJSDate } from "../lib/datetime";
+import { User } from "../user/entities/user.entity";
+import { Broadcast, BroadcastPriority, Conversation, Message, SlaConfig } from "./entities";
 
 @Injectable()
 export class MessageNotificationService {
@@ -30,27 +24,20 @@ export class MessageNotificationService {
     sender: User,
     recipients: User[],
   ): Promise<void> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
 
-    const senderName =
-      `${sender.firstName || ''} ${sender.lastName || ''}`.trim() || 'Someone';
+    const senderName = `${sender.firstName || ""} ${sender.lastName || ""}`.trim() || "Someone";
     const messagePreview =
-      message.content.length > 200
-        ? message.content.substring(0, 200) + '...'
-        : message.content;
+      message.content.length > 200 ? `${message.content.substring(0, 200)}...` : message.content;
 
     await Promise.all(
       recipients.map(async (recipient) => {
         if (!recipient.email) {
-          this.logger.warn(
-            `Cannot send notification to user ${recipient.id}: no email address`,
-          );
+          this.logger.warn(`Cannot send notification to user ${recipient.id}: no email address`);
           return;
         }
 
-        const recipientName =
-          `${recipient.firstName || ''}`.trim() || 'there';
+        const recipientName = `${recipient.firstName || ""}`.trim() || "there";
         const portalPath = this.determinePortalPath(recipient);
         const conversationLink = `${frontendUrl}${portalPath}/messages/${conversation.id}`;
 
@@ -78,29 +65,23 @@ export class MessageNotificationService {
         });
 
         if (!success) {
-          this.logger.error(
-            `Failed to send new message notification to ${recipient.email}`,
-          );
+          this.logger.error(`Failed to send new message notification to ${recipient.email}`);
         }
       }),
     );
   }
 
   async notifyBroadcast(broadcast: Broadcast, recipients: User[]): Promise<void> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
 
     await Promise.all(
       recipients.map(async (recipient) => {
         if (!recipient.email) {
-          this.logger.warn(
-            `Cannot send broadcast to user ${recipient.id}: no email address`,
-          );
+          this.logger.warn(`Cannot send broadcast to user ${recipient.id}: no email address`);
           return;
         }
 
-        const recipientName =
-          `${recipient.firstName || ''}`.trim() || 'there';
+        const recipientName = `${recipient.firstName || ""}`.trim() || "there";
         const portalPath = this.determinePortalPath(recipient);
         const broadcastLink = `${frontendUrl}${portalPath}/broadcasts`;
 
@@ -135,9 +116,7 @@ export class MessageNotificationService {
         });
 
         if (!success) {
-          this.logger.error(
-            `Failed to send broadcast notification to ${recipient.email}`,
-          );
+          this.logger.error(`Failed to send broadcast notification to ${recipient.email}`);
         }
       }),
     );
@@ -149,8 +128,7 @@ export class MessageNotificationService {
     overdueRecipient: User,
     slaConfig: SlaConfig,
   ): Promise<void> {
-    const frontendUrl =
-      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
 
     if (!overdueRecipient.email) {
       this.logger.warn(
@@ -159,16 +137,12 @@ export class MessageNotificationService {
       return;
     }
 
-    const recipientName =
-      `${overdueRecipient.firstName || ''}`.trim() || 'there';
+    const recipientName = `${overdueRecipient.firstName || ""}`.trim() || "there";
     const portalPath = this.determinePortalPath(overdueRecipient);
     const conversationLink = `${frontendUrl}${portalPath}/messages/${conversation.id}`;
 
     const hoursOverdue = Math.floor(
-      fromJSDate(pendingMessage.sentAt)
-        .diffNow('hours')
-        .hours * -1 -
-        slaConfig.responseTimeHours,
+      fromJSDate(pendingMessage.sentAt).diffNow("hours").hours * -1 - slaConfig.responseTimeHours,
     );
 
     const html = this.overdueResponseEmailHtml(
@@ -204,31 +178,31 @@ export class MessageNotificationService {
   private determinePortalPath(user: User): string {
     const roles = user.roles?.map((r) => r.name.toLowerCase()) || [];
 
-    if (roles.includes('admin')) {
-      return '/admin/portal';
-    } else if (roles.includes('supplier')) {
-      return '/supplier/portal';
+    if (roles.includes("admin")) {
+      return "/admin/portal";
+    } else if (roles.includes("supplier")) {
+      return "/supplier/portal";
     } else {
-      return '/customer/portal';
+      return "/customer/portal";
     }
   }
 
   private priorityToLabel(priority: BroadcastPriority): string {
     const labels: Record<BroadcastPriority, string> = {
-      [BroadcastPriority.LOW]: 'Low Priority',
-      [BroadcastPriority.NORMAL]: 'Normal',
-      [BroadcastPriority.HIGH]: 'High Priority',
-      [BroadcastPriority.URGENT]: 'URGENT',
+      [BroadcastPriority.LOW]: "Low Priority",
+      [BroadcastPriority.NORMAL]: "Normal",
+      [BroadcastPriority.HIGH]: "High Priority",
+      [BroadcastPriority.URGENT]: "URGENT",
     };
     return labels[priority];
   }
 
   private priorityToColor(priority: BroadcastPriority): string {
     const colors: Record<BroadcastPriority, string> = {
-      [BroadcastPriority.LOW]: '#6b7280',
-      [BroadcastPriority.NORMAL]: '#2563eb',
-      [BroadcastPriority.HIGH]: '#f59e0b',
-      [BroadcastPriority.URGENT]: '#dc2626',
+      [BroadcastPriority.LOW]: "#6b7280",
+      [BroadcastPriority.NORMAL]: "#2563eb",
+      [BroadcastPriority.HIGH]: "#f59e0b",
+      [BroadcastPriority.URGENT]: "#dc2626",
     };
     return colors[priority];
   }
@@ -316,7 +290,7 @@ This is an automated notification from the Annix platform.
     const priorityBadge =
       priority === BroadcastPriority.URGENT || priority === BroadcastPriority.HIGH
         ? `<span style="background-color: ${priorityColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${priorityLabel}</span>`
-        : '';
+        : "";
 
     return `
       <!DOCTYPE html>
@@ -362,7 +336,7 @@ This is an automated notification from the Annix platform.
     const priorityPrefix =
       priority === BroadcastPriority.URGENT || priority === BroadcastPriority.HIGH
         ? `[${priorityLabel}] `
-        : '';
+        : "";
 
     return `
 ${priorityPrefix}${title}

@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { type SupplierBoqListItem, type SupplierBoqStatus } from '@/app/lib/api/supplierApi';
-import { formatDateZA, fromISO, now } from '@/app/lib/datetime';
-import { useSupplierBoqs } from '@/app/lib/query/hooks';
+import Link from "next/link";
+import { useState } from "react";
+import { type SupplierBoqListItem, type SupplierBoqStatus } from "@/app/lib/api/supplierApi";
+import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
+import { useSupplierBoqs } from "@/app/lib/query/hooks";
 
 const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label: string }> = {
-  pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
-  viewed: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Viewed' },
-  quoted: { bg: 'bg-green-100', text: 'text-green-800', label: 'Quoted' },
-  declined: { bg: 'bg-red-100', text: 'text-red-800', label: 'Declined' },
-  expired: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Expired' },
+  pending: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Pending" },
+  viewed: { bg: "bg-blue-100", text: "text-blue-800", label: "Viewed" },
+  quoted: { bg: "bg-green-100", text: "text-green-800", label: "Quoted" },
+  declined: { bg: "bg-red-100", text: "text-red-800", label: "Declined" },
+  expired: { bg: "bg-gray-100", text: "text-gray-800", label: "Expired" },
 };
 
 const isBoqOpen = (boq: SupplierBoqListItem): boolean => {
-  if (boq.status === 'expired' || boq.status === 'declined' || boq.status === 'quoted') {
+  if (boq.status === "expired" || boq.status === "declined" || boq.status === "quoted") {
     return false;
   }
   if (boq.projectInfo?.requiredDate) {
@@ -27,17 +27,17 @@ const isBoqOpen = (boq: SupplierBoqListItem): boolean => {
 
 const getDaysUntilDeadline = (dateString?: string): number | null => {
   if (!dateString) return null;
-  const deadline = fromISO(dateString).startOf('day');
-  const today = now().startOf('day');
-  const diffDays = deadline.diff(today, 'days').days;
+  const deadline = fromISO(dateString).startOf("day");
+  const today = now().startOf("day");
+  const diffDays = deadline.diff(today, "days").days;
   return Math.ceil(diffDays);
 };
 
 export default function SupplierBoqsPage() {
-  const [filterStatus, setFilterStatus] = useState<SupplierBoqStatus | 'all'>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<SupplierBoqStatus | "all">("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const statusFilter = filterStatus === 'all' ? undefined : filterStatus;
+  const statusFilter = filterStatus === "all" ? undefined : filterStatus;
   const boqsQuery = useSupplierBoqs(statusFilter);
   const boqs = boqsQuery.data ?? [];
 
@@ -53,7 +53,7 @@ export default function SupplierBoqsPage() {
   });
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return '-';
+    if (!dateString) return "-";
     return formatDateZA(dateString);
   };
 
@@ -81,7 +81,7 @@ export default function SupplierBoqsPage() {
           <div>
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as SupplierBoqStatus | 'all')}
+              onChange={(e) => setFilterStatus(e.target.value as SupplierBoqStatus | "all")}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="all">All Statuses</option>
@@ -104,7 +104,9 @@ export default function SupplierBoqsPage() {
           </div>
         ) : boqsQuery.error ? (
           <div className="text-center py-12">
-            <div className="text-red-600 mb-4">{boqsQuery.error instanceof Error ? boqsQuery.error.message : 'Failed to load BOQs'}</div>
+            <div className="text-red-600 mb-4">
+              {boqsQuery.error instanceof Error ? boqsQuery.error.message : "Failed to load BOQs"}
+            </div>
             <button
               onClick={() => boqsQuery.refetch()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -129,9 +131,9 @@ export default function SupplierBoqsPage() {
             </svg>
             <h3 className="mt-4 text-lg font-medium text-gray-900">No BOQ requests</h3>
             <p className="mt-2 text-sm text-gray-500">
-              {searchTerm || filterStatus !== 'all'
-                ? 'No BOQs match your search criteria.'
-                : 'You have not received any quotation requests yet.'}
+              {searchTerm || filterStatus !== "all"
+                ? "No BOQs match your search criteria."
+                : "You have not received any quotation requests yet."}
             </p>
           </div>
         ) : (
@@ -177,7 +179,7 @@ export default function SupplierBoqsPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-sm text-gray-900">
-                          {boq.customerInfo?.company || boq.customerInfo?.name || '-'}
+                          {boq.customerInfo?.company || boq.customerInfo?.name || "-"}
                         </div>
                         {boq.customerInfo?.email && (
                           <div className="text-xs text-gray-500">{boq.customerInfo.email}</div>
@@ -185,18 +187,16 @@ export default function SupplierBoqsPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-sm text-gray-900">
-                          {boq.projectInfo?.name || boq.title || '-'}
+                          {boq.projectInfo?.name || boq.title || "-"}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            open
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'
+                            open ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {open ? 'Open' : 'Closed'}
+                          {open ? "Open" : "Closed"}
                         </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -209,17 +209,17 @@ export default function SupplierBoqsPage() {
                               <div
                                 className={`text-xs ${
                                   daysUntil <= 3
-                                    ? 'text-red-600 font-medium'
+                                    ? "text-red-600 font-medium"
                                     : daysUntil <= 7
-                                    ? 'text-yellow-600'
-                                    : 'text-gray-500'
+                                      ? "text-yellow-600"
+                                      : "text-gray-500"
                                 }`}
                               >
                                 {daysUntil === 0
-                                  ? 'Closes today'
+                                  ? "Closes today"
                                   : daysUntil === 1
-                                  ? '1 day left'
-                                  : `${daysUntil} days left`}
+                                    ? "1 day left"
+                                    : `${daysUntil} days left`}
                               </div>
                             )}
                           </div>

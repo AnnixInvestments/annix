@@ -47,7 +47,7 @@ export interface ComparisonMetric {
   unit: string;
   values: (number | string | null)[];
   bestIndex: number;
-  comparison: 'lower' | 'higher' | 'equal';
+  comparison: "lower" | "higher" | "equal";
 }
 
 export interface PumpComparisonResult {
@@ -114,13 +114,18 @@ export const comparePumpQuotes = (quotes: PumpQuote[]): PumpComparisonResult => 
 const compareSpecifications = (quotes: PumpQuote[]): ComparisonMetric[] => {
   const metrics: ComparisonMetric[] = [];
 
-  const specKeys: { key: keyof PumpQuoteSpecification; name: string; unit: string; comparison: 'lower' | 'higher' | 'equal' }[] = [
-    { key: 'flowRateM3h', name: 'Flow Rate', unit: 'm³/h', comparison: 'higher' },
-    { key: 'headM', name: 'Head', unit: 'm', comparison: 'higher' },
-    { key: 'powerKw', name: 'Motor Power', unit: 'kW', comparison: 'lower' },
-    { key: 'efficiency', name: 'Efficiency', unit: '%', comparison: 'higher' },
-    { key: 'npshRequired', name: 'NPSHr', unit: 'm', comparison: 'lower' },
-    { key: 'speedRpm', name: 'Speed', unit: 'RPM', comparison: 'equal' },
+  const specKeys: {
+    key: keyof PumpQuoteSpecification;
+    name: string;
+    unit: string;
+    comparison: "lower" | "higher" | "equal";
+  }[] = [
+    { key: "flowRateM3h", name: "Flow Rate", unit: "m³/h", comparison: "higher" },
+    { key: "headM", name: "Head", unit: "m", comparison: "higher" },
+    { key: "powerKw", name: "Motor Power", unit: "kW", comparison: "lower" },
+    { key: "efficiency", name: "Efficiency", unit: "%", comparison: "higher" },
+    { key: "npshRequired", name: "NPSHr", unit: "m", comparison: "lower" },
+    { key: "speedRpm", name: "Speed", unit: "RPM", comparison: "equal" },
   ];
 
   specKeys.forEach(({ key, name, unit, comparison }) => {
@@ -128,19 +133,19 @@ const compareSpecifications = (quotes: PumpQuote[]): ComparisonMetric[] => {
       const firstItem = q.items[0];
       if (!firstItem) return null;
       const value = firstItem.specifications[key];
-      return typeof value === 'number' ? value : null;
+      return typeof value === "number" ? value : null;
     });
 
     const numericValues = values.filter((v): v is number => v !== null);
     if (numericValues.length === 0) return;
 
     let bestIndex = 0;
-    if (comparison === 'higher') {
+    if (comparison === "higher") {
       const maxVal = Math.max(...numericValues);
-      bestIndex = values.findIndex((v) => v === maxVal);
-    } else if (comparison === 'lower') {
+      bestIndex = values.indexOf(maxVal);
+    } else if (comparison === "lower") {
       const minVal = Math.min(...numericValues);
-      bestIndex = values.findIndex((v) => v === minVal);
+      bestIndex = values.indexOf(minVal);
     }
 
     metrics.push({
@@ -157,11 +162,11 @@ const compareSpecifications = (quotes: PumpQuote[]): ComparisonMetric[] => {
   if (numericLeadTimes.length > 0) {
     const minLeadTime = Math.min(...numericLeadTimes);
     metrics.push({
-      name: 'Lead Time',
-      unit: 'weeks',
+      name: "Lead Time",
+      unit: "weeks",
       values: leadTimes,
-      bestIndex: leadTimes.findIndex((v) => v === minLeadTime),
-      comparison: 'lower',
+      bestIndex: leadTimes.indexOf(minLeadTime),
+      comparison: "lower",
     });
   }
 
@@ -170,11 +175,11 @@ const compareSpecifications = (quotes: PumpQuote[]): ComparisonMetric[] => {
   if (numericWarranties.length > 0) {
     const maxWarranty = Math.max(...numericWarranties);
     metrics.push({
-      name: 'Warranty',
-      unit: 'months',
+      name: "Warranty",
+      unit: "months",
       values: warranties,
-      bestIndex: warranties.findIndex((v) => v === maxWarranty),
-      comparison: 'higher',
+      bestIndex: warranties.indexOf(maxWarranty),
+      comparison: "higher",
     });
   }
 
@@ -183,67 +188,76 @@ const compareSpecifications = (quotes: PumpQuote[]): ComparisonMetric[] => {
 
 const generateRecommendations = (
   quotes: PumpQuote[],
-  specComparison: ComparisonMetric[]
+  specComparison: ComparisonMetric[],
 ): string[] => {
   const recommendations: string[] = [];
 
   if (quotes.length < 2) {
-    recommendations.push('Request additional quotes for better comparison');
+    recommendations.push("Request additional quotes for better comparison");
     return recommendations;
   }
 
   const prices = quotes.map((q) => q.totalPrice);
   const lowestPrice = Math.min(...prices);
   const highestPrice = Math.max(...prices);
-  const priceSpreadPercent = lowestPrice > 0 ? ((highestPrice - lowestPrice) / lowestPrice) * 100 : 0;
+  const priceSpreadPercent =
+    lowestPrice > 0 ? ((highestPrice - lowestPrice) / lowestPrice) * 100 : 0;
 
   if (priceSpreadPercent > 30) {
-    recommendations.push(`Significant price variation (${Math.round(priceSpreadPercent)}%) - investigate reasons for difference`);
+    recommendations.push(
+      `Significant price variation (${Math.round(priceSpreadPercent)}%) - investigate reasons for difference`,
+    );
   }
 
-  const efficiencyMetric = specComparison.find((m) => m.name === 'Efficiency');
+  const efficiencyMetric = specComparison.find((m) => m.name === "Efficiency");
   if (efficiencyMetric) {
-    const effValues = efficiencyMetric.values.filter((v): v is number => typeof v === 'number');
+    const effValues = efficiencyMetric.values.filter((v): v is number => typeof v === "number");
     if (effValues.length > 1) {
       const maxEff = Math.max(...effValues);
       const minEff = Math.min(...effValues);
       if (maxEff - minEff > 5) {
-        recommendations.push(`Efficiency varies by ${Math.round(maxEff - minEff)}% - higher efficiency reduces operating costs`);
+        recommendations.push(
+          `Efficiency varies by ${Math.round(maxEff - minEff)}% - higher efficiency reduces operating costs`,
+        );
       }
     }
   }
 
-  const npshMetric = specComparison.find((m) => m.name === 'NPSHr');
+  const npshMetric = specComparison.find((m) => m.name === "NPSHr");
   if (npshMetric) {
-    const npshValues = npshMetric.values.filter((v): v is number => typeof v === 'number');
+    const npshValues = npshMetric.values.filter((v): v is number => typeof v === "number");
     if (npshValues.length > 0) {
       const maxNpsh = Math.max(...npshValues);
       if (maxNpsh > 5) {
-        recommendations.push(`High NPSHr values detected - verify site NPSH available`);
+        recommendations.push("High NPSHr values detected - verify site NPSH available");
       }
     }
   }
 
-  const leadTimeMetric = specComparison.find((m) => m.name === 'Lead Time');
+  const leadTimeMetric = specComparison.find((m) => m.name === "Lead Time");
   if (leadTimeMetric) {
-    const leadValues = leadTimeMetric.values.filter((v): v is number => typeof v === 'number');
+    const leadValues = leadTimeMetric.values.filter((v): v is number => typeof v === "number");
     if (leadValues.length > 1) {
       const maxLead = Math.max(...leadValues);
       const minLead = Math.min(...leadValues);
       if (maxLead - minLead > 4) {
-        recommendations.push(`Lead times vary significantly (${minLead}-${maxLead} weeks) - consider project schedule`);
+        recommendations.push(
+          `Lead times vary significantly (${minLead}-${maxLead} weeks) - consider project schedule`,
+        );
       }
     }
   }
 
-  const warrantyMetric = specComparison.find((m) => m.name === 'Warranty');
+  const warrantyMetric = specComparison.find((m) => m.name === "Warranty");
   if (warrantyMetric) {
-    const warrantyValues = warrantyMetric.values.filter((v): v is number => typeof v === 'number');
+    const warrantyValues = warrantyMetric.values.filter((v): v is number => typeof v === "number");
     if (warrantyValues.length > 1) {
       const maxWarranty = Math.max(...warrantyValues);
       const minWarranty = Math.min(...warrantyValues);
       if (maxWarranty - minWarranty >= 12) {
-        recommendations.push(`Warranty periods differ significantly (${minWarranty}-${maxWarranty} months)`);
+        recommendations.push(
+          `Warranty periods differ significantly (${minWarranty}-${maxWarranty} months)`,
+        );
       }
     }
   }
@@ -269,9 +283,13 @@ const generateRecommendations = (
   });
 
   if (bestOverallIdx === bestPriceIdx) {
-    recommendations.push(`${quotes[bestPriceIdx].supplierName} offers best overall value (lowest price with competitive specs)`);
+    recommendations.push(
+      `${quotes[bestPriceIdx].supplierName} offers best overall value (lowest price with competitive specs)`,
+    );
   } else {
-    recommendations.push(`Consider ${quotes[bestOverallIdx].supplierName} for best overall specifications`);
+    recommendations.push(
+      `Consider ${quotes[bestOverallIdx].supplierName} for best overall specifications`,
+    );
     recommendations.push(`${quotes[bestPriceIdx].supplierName} offers lowest price`);
   }
 
@@ -280,7 +298,7 @@ const generateRecommendations = (
 
 const calculateOverallScores = (
   quotes: PumpQuote[],
-  specComparison: ComparisonMetric[]
+  specComparison: ComparisonMetric[],
 ): { supplierId: number; score: number; rank: number }[] => {
   const scores = quotes.map((quote, idx) => {
     let score = 0;
@@ -373,32 +391,30 @@ export const calculateLifecycleCost = (inputs: LifecycleCostInputs): LifecycleCo
 
   Array.from({ length: expectedLifeYears }).forEach((_, year) => {
     const yearlyOperatingCost = annualEnergyCost + maintenanceCostPerYear;
-    const discountFactor = 1 / Math.pow(1 + r, year + 1);
+    const discountFactor = 1 / (1 + r) ** (year + 1);
     npvLifecycleCost += yearlyOperatingCost * discountFactor;
   });
 
   const totalOperatingHours = operatingHoursPerYear * expectedLifeYears;
-  const costPerOperatingHour = totalOperatingHours > 0
-    ? totalLifecycleCost / totalOperatingHours
-    : 0;
+  const costPerOperatingHour =
+    totalOperatingHours > 0 ? totalLifecycleCost / totalOperatingHours : 0;
 
-  const energyCostPercent = totalLifecycleCost > 0
-    ? (totalEnergyCost / totalLifecycleCost) * 100
-    : 0;
+  const energyCostPercent =
+    totalLifecycleCost > 0 ? (totalEnergyCost / totalLifecycleCost) * 100 : 0;
 
   const breakdown = [
     {
-      category: 'Purchase & Installation',
+      category: "Purchase & Installation",
       cost: totalPurchaseCost,
       percent: totalLifecycleCost > 0 ? (totalPurchaseCost / totalLifecycleCost) * 100 : 0,
     },
     {
-      category: 'Energy',
+      category: "Energy",
       cost: totalEnergyCost,
       percent: totalLifecycleCost > 0 ? (totalEnergyCost / totalLifecycleCost) * 100 : 0,
     },
     {
-      category: 'Maintenance',
+      category: "Maintenance",
       cost: totalMaintenanceCost,
       percent: totalLifecycleCost > 0 ? (totalMaintenanceCost / totalLifecycleCost) * 100 : 0,
     },
@@ -423,7 +439,7 @@ export const calculateLifecycleCost = (inputs: LifecycleCostInputs): LifecycleCo
 
 export const compareLifecycleCosts = (
   quotes: PumpQuote[],
-  commonInputs: Omit<LifecycleCostInputs, 'purchasePrice' | 'powerKw' | 'efficiency'>
+  commonInputs: Omit<LifecycleCostInputs, "purchasePrice" | "powerKw" | "efficiency">,
 ): { quote: PumpQuote; lifecycleCost: LifecycleCostResult }[] => {
   return quotes.map((quote) => {
     const firstItem = quote.items[0];

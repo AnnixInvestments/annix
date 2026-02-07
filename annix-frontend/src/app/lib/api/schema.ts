@@ -4,4999 +4,4999 @@
  */
 
 export interface paths {
-    "/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AppController_getHello"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/bend-dimension/calculate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["BendDimensionController_calculate"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["AppController_getHello"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/bend-dimension/calculate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/steel-specification": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all steel specifications */
-        get: operations["SteelSpecificationController_findAll"];
-        put?: never;
-        /** Create a new steel specification */
-        post: operations["SteelSpecificationController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["BendDimensionController_calculate"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/steel-specification": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/steel-specification/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a steel specification by ID */
-        get: operations["SteelSpecificationController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a steel specification by ID */
-        delete: operations["SteelSpecificationController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a steel specification by ID */
-        patch: operations["SteelSpecificationController_update"];
-        trace?: never;
+    /** Get all steel specifications */
+    get: operations["SteelSpecificationController_findAll"];
+    put?: never;
+    /** Create a new steel specification */
+    post: operations["SteelSpecificationController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/steel-specification/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/nominal-outside-diameter-mm": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all nominal outside diameters */
-        get: operations["NominalOutsideDiameterMmController_findAll"];
-        put?: never;
-        /** Create a nominal outside diameter */
-        post: operations["NominalOutsideDiameterMmController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a steel specification by ID */
+    get: operations["SteelSpecificationController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a steel specification by ID */
+    delete: operations["SteelSpecificationController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a steel specification by ID */
+    patch: operations["SteelSpecificationController_update"];
+    trace?: never;
+  };
+  "/nominal-outside-diameter-mm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/nominal-outside-diameter-mm/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a nominal outside diameter by ID */
-        get: operations["NominalOutsideDiameterMmController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a nominal outside diameter */
-        delete: operations["NominalOutsideDiameterMmController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a nominal outside diameter */
-        patch: operations["NominalOutsideDiameterMmController_update"];
-        trace?: never;
+    /** Get all nominal outside diameters */
+    get: operations["NominalOutsideDiameterMmController_findAll"];
+    put?: never;
+    /** Create a nominal outside diameter */
+    post: operations["NominalOutsideDiameterMmController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/nominal-outside-diameter-mm/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/user": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all users */
-        get: operations["UserController_findAll"];
-        put?: never;
-        /** Create a new user */
-        post: operations["UserController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a nominal outside diameter by ID */
+    get: operations["NominalOutsideDiameterMmController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a nominal outside diameter */
+    delete: operations["NominalOutsideDiameterMmController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a nominal outside diameter */
+    patch: operations["NominalOutsideDiameterMmController_update"];
+    trace?: never;
+  };
+  "/user": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/user/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a user by ID */
-        get: operations["UserController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a user by ID */
-        delete: operations["UserController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a user by ID */
-        patch: operations["UserController_update"];
-        trace?: never;
+    /** Get all users */
+    get: operations["UserController_findAll"];
+    put?: never;
+    /** Create a new user */
+    post: operations["UserController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/user/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/user-roles": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all roles */
-        get: operations["UserRolesController_findAll"];
-        put?: never;
-        /** Create a new role */
-        post: operations["UserRolesController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a user by ID */
+    get: operations["UserController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a user by ID */
+    delete: operations["UserController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a user by ID */
+    patch: operations["UserController_update"];
+    trace?: never;
+  };
+  "/user-roles": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/user-roles/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a role by ID */
-        get: operations["UserRolesController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a role by ID */
-        delete: operations["UserRolesController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a role by ID */
-        patch: operations["UserRolesController_update"];
-        trace?: never;
+    /** Get all roles */
+    get: operations["UserRolesController_findAll"];
+    put?: never;
+    /** Create a new role */
+    post: operations["UserRolesController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/user-roles/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Login and get JWT token */
-        post: operations["AuthController_login"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a role by ID */
+    get: operations["UserRolesController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a role by ID */
+    delete: operations["UserRolesController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a role by ID */
+    patch: operations["UserRolesController_update"];
+    trace?: never;
+  };
+  "/auth/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/pipe-dimensions/{nominalId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create a pipe dimension for a certain nominalId */
-        post: operations["PipeDimensionController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Login and get JWT token */
+    post: operations["AuthController_login"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/pipe-dimensions/{nominalId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/pipe-dimensions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all pipe dimensions */
-        get: operations["PipeDimensionController_findAll"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Create a pipe dimension for a certain nominalId */
+    post: operations["PipeDimensionController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/pipe-dimensions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/pipe-dimensions/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all pipe dimensions by ID */
-        get: operations["PipeDimensionController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a pipe dimension */
-        delete: operations["PipeDimensionController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a pipe dimension */
-        patch: operations["PipeDimensionController_update"];
-        trace?: never;
+    /** Get all pipe dimensions */
+    get: operations["PipeDimensionController_findAll"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/pipe-dimensions/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/pipe-pressures": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all pipe pressures */
-        get: operations["PipePressureController_findAll"];
-        put?: never;
-        /** Create a pipe pressure entry */
-        post: operations["PipePressureController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get all pipe dimensions by ID */
+    get: operations["PipeDimensionController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a pipe dimension */
+    delete: operations["PipeDimensionController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a pipe dimension */
+    patch: operations["PipeDimensionController_update"];
+    trace?: never;
+  };
+  "/pipe-pressures": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/pipe-pressures/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a pipe pressure by ID */
-        get: operations["PipePressureController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a pipe pressure entry */
-        delete: operations["PipePressureController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a pipe pressure entry */
-        patch: operations["PipePressureController_update"];
-        trace?: never;
+    /** Get all pipe pressures */
+    get: operations["PipePressureController_findAll"];
+    put?: never;
+    /** Create a pipe pressure entry */
+    post: operations["PipePressureController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/pipe-pressures/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/angle-range": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all angle ranges */
-        get: operations["AngleRangeController_findAll"];
-        put?: never;
-        /** Create a new angle range */
-        post: operations["AngleRangeController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a pipe pressure by ID */
+    get: operations["PipePressureController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a pipe pressure entry */
+    delete: operations["PipePressureController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a pipe pressure entry */
+    patch: operations["PipePressureController_update"];
+    trace?: never;
+  };
+  "/angle-range": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/angle-range/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get an angle range by ID */
-        get: operations["AngleRangeController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete an angle range */
-        delete: operations["AngleRangeController_remove"];
-        options?: never;
-        head?: never;
-        /** Update an angle range */
-        patch: operations["AngleRangeController_update"];
-        trace?: never;
+    /** Get all angle ranges */
+    get: operations["AngleRangeController_findAll"];
+    put?: never;
+    /** Create a new angle range */
+    post: operations["AngleRangeController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/angle-range/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all fittings */
-        get: operations["FittingController_findAll"];
-        put?: never;
-        /** Create a new fitting */
-        post: operations["FittingController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get an angle range by ID */
+    get: operations["AngleRangeController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete an angle range */
+    delete: operations["AngleRangeController_remove"];
+    options?: never;
+    head?: never;
+    /** Update an angle range */
+    patch: operations["AngleRangeController_update"];
+    trace?: never;
+  };
+  "/fitting": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a fitting by ID */
-        get: operations["FittingController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a fitting */
-        delete: operations["FittingController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a fitting */
-        patch: operations["FittingController_update"];
-        trace?: never;
+    /** Get all fittings */
+    get: operations["FittingController_findAll"];
+    put?: never;
+    /** Create a new fitting */
+    post: operations["FittingController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/fitting/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting-bore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all fitting bores */
-        get: operations["FittingBoreController_findAll"];
-        put?: never;
-        /** Create a fitting bore */
-        post: operations["FittingBoreController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a fitting by ID */
+    get: operations["FittingController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a fitting */
+    delete: operations["FittingController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a fitting */
+    patch: operations["FittingController_update"];
+    trace?: never;
+  };
+  "/fitting-bore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting-bore/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a fitting bore by ID */
-        get: operations["FittingBoreController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a fitting bore */
-        delete: operations["FittingBoreController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a fitting bore */
-        patch: operations["FittingBoreController_update"];
-        trace?: never;
+    /** Get all fitting bores */
+    get: operations["FittingBoreController_findAll"];
+    put?: never;
+    /** Create a fitting bore */
+    post: operations["FittingBoreController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/fitting-bore/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting-dimension": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all fitting dimensions with relations */
-        get: operations["FittingDimensionController_findAll"];
-        put?: never;
-        /** Create a new fitting dimension */
-        post: operations["FittingDimensionController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a fitting bore by ID */
+    get: operations["FittingBoreController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a fitting bore */
+    delete: operations["FittingBoreController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a fitting bore */
+    patch: operations["FittingBoreController_update"];
+    trace?: never;
+  };
+  "/fitting-dimension": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting-dimension/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a fitting dimension by ID */
-        get: operations["FittingDimensionController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a fitting dimension */
-        delete: operations["FittingDimensionController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a fitting dimension */
-        patch: operations["FittingDimensionController_update"];
-        trace?: never;
+    /** Get all fitting dimensions with relations */
+    get: operations["FittingDimensionController_findAll"];
+    put?: never;
+    /** Create a new fitting dimension */
+    post: operations["FittingDimensionController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/fitting-dimension/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting-type": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all fitting types */
-        get: operations["FittingTypeController_findAll"];
-        put?: never;
-        /** Create a new fitting type */
-        post: operations["FittingTypeController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a fitting dimension by ID */
+    get: operations["FittingDimensionController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a fitting dimension */
+    delete: operations["FittingDimensionController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a fitting dimension */
+    patch: operations["FittingDimensionController_update"];
+    trace?: never;
+  };
+  "/fitting-type": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting-type/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a fitting type by ID */
-        get: operations["FittingTypeController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a fitting type */
-        delete: operations["FittingTypeController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a fitting type */
-        patch: operations["FittingTypeController_update"];
-        trace?: never;
+    /** Get all fitting types */
+    get: operations["FittingTypeController_findAll"];
+    put?: never;
+    /** Create a new fitting type */
+    post: operations["FittingTypeController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/fitting-type/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting-variant": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all fitting variant */
-        get: operations["FittingVariantController_findAll"];
-        put?: never;
-        /** Create a fitting variant */
-        post: operations["FittingVariantController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a fitting type by ID */
+    get: operations["FittingTypeController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a fitting type */
+    delete: operations["FittingTypeController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a fitting type */
+    patch: operations["FittingTypeController_update"];
+    trace?: never;
+  };
+  "/fitting-variant": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/fitting-variant/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a fitting variant by ID */
-        get: operations["FittingVariantController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a fitting variant */
-        delete: operations["FittingVariantController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a fitting variant */
-        patch: operations["FittingVariantController_update"];
-        trace?: never;
+    /** Get all fitting variant */
+    get: operations["FittingVariantController_findAll"];
+    put?: never;
+    /** Create a fitting variant */
+    post: operations["FittingVariantController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/fitting-variant/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/flange-standard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all flange standards with relations */
-        get: operations["FlangeStandardController_findAll"];
-        put?: never;
-        /** Create a new flange standard */
-        post: operations["FlangeStandardController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a fitting variant by ID */
+    get: operations["FittingVariantController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a fitting variant */
+    delete: operations["FittingVariantController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a fitting variant */
+    patch: operations["FittingVariantController_update"];
+    trace?: never;
+  };
+  "/flange-standard": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/flange-standard/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a flange standard by ID */
-        get: operations["FlangeStandardController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a flange standard */
-        delete: operations["FlangeStandardController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a flange standard */
-        patch: operations["FlangeStandardController_update"];
-        trace?: never;
+    /** Get all flange standards with relations */
+    get: operations["FlangeStandardController_findAll"];
+    put?: never;
+    /** Create a new flange standard */
+    post: operations["FlangeStandardController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/flange-standard/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/flange-pressure-class": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all flange pressure classs with relations */
-        get: operations["FlangePressureClassController_findAll"];
-        put?: never;
-        /** Create a new flange pressure class */
-        post: operations["FlangePressureClassController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a flange standard by ID */
+    get: operations["FlangeStandardController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a flange standard */
+    delete: operations["FlangeStandardController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a flange standard */
+    patch: operations["FlangeStandardController_update"];
+    trace?: never;
+  };
+  "/flange-pressure-class": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/flange-pressure-class/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a flange pressure class by ID */
-        get: operations["FlangePressureClassController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a flange pressure class */
-        delete: operations["FlangePressureClassController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a flange pressure class */
-        patch: operations["FlangePressureClassController_update"];
-        trace?: never;
+    /** Get all flange pressure classs with relations */
+    get: operations["FlangePressureClassController_findAll"];
+    put?: never;
+    /** Create a new flange pressure class */
+    post: operations["FlangePressureClassController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/flange-pressure-class/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/bolt": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all bolts with relations */
-        get: operations["BoltController_findAll"];
-        put?: never;
-        /** Create a new bolt */
-        post: operations["BoltController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a flange pressure class by ID */
+    get: operations["FlangePressureClassController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a flange pressure class */
+    delete: operations["FlangePressureClassController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a flange pressure class */
+    patch: operations["FlangePressureClassController_update"];
+    trace?: never;
+  };
+  "/bolt": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/bolt/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["BoltController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a bolt */
-        delete: operations["BoltController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a bolt */
-        patch: operations["BoltController_update"];
-        trace?: never;
+    /** Get all bolts with relations */
+    get: operations["BoltController_findAll"];
+    put?: never;
+    /** Create a new bolt */
+    post: operations["BoltController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/bolt/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/bolt-mass": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all bolt masses with relations */
-        get: operations["BoltMassController_findAll"];
-        put?: never;
-        /** Create a new bolt mass */
-        post: operations["BoltMassController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get: operations["BoltController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a bolt */
+    delete: operations["BoltController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a bolt */
+    patch: operations["BoltController_update"];
+    trace?: never;
+  };
+  "/bolt-mass": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/bolt-mass/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a bolt mass by ID */
-        get: operations["BoltMassController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a bolt mass */
-        delete: operations["BoltMassController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a bolt mass */
-        patch: operations["BoltMassController_update"];
-        trace?: never;
+    /** Get all bolt masses with relations */
+    get: operations["BoltMassController_findAll"];
+    put?: never;
+    /** Create a new bolt mass */
+    post: operations["BoltMassController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/bolt-mass/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/flange-dimension": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all bolt masss with relations */
-        get: operations["FlangeDimensionController_findAll"];
-        put?: never;
-        /** Create a new bolt mass */
-        post: operations["FlangeDimensionController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a bolt mass by ID */
+    get: operations["BoltMassController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a bolt mass */
+    delete: operations["BoltMassController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a bolt mass */
+    patch: operations["BoltMassController_update"];
+    trace?: never;
+  };
+  "/flange-dimension": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/flange-dimension/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a bolt mass by ID */
-        get: operations["FlangeDimensionController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a bolt mass */
-        delete: operations["FlangeDimensionController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a bolt mass */
-        patch: operations["FlangeDimensionController_update"];
-        trace?: never;
+    /** Get all bolt masss with relations */
+    get: operations["FlangeDimensionController_findAll"];
+    put?: never;
+    /** Create a new bolt mass */
+    post: operations["FlangeDimensionController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/flange-dimension/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/nut-mass": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all nut masss with relations */
-        get: operations["NutMassController_findAll"];
-        put?: never;
-        /** Create a new nut mass */
-        post: operations["NutMassController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a bolt mass by ID */
+    get: operations["FlangeDimensionController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a bolt mass */
+    delete: operations["FlangeDimensionController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a bolt mass */
+    patch: operations["FlangeDimensionController_update"];
+    trace?: never;
+  };
+  "/nut-mass": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/nut-mass/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a nut mass by ID */
-        get: operations["NutMassController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a nut mass */
-        delete: operations["NutMassController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a nut mass */
-        patch: operations["NutMassController_update"];
-        trace?: never;
+    /** Get all nut masss with relations */
+    get: operations["NutMassController_findAll"];
+    put?: never;
+    /** Create a new nut mass */
+    post: operations["NutMassController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/nut-mass/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/nb-nps-lookup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Retrieve all NB/NPS lookup entries */
-        get: operations["NbNpsLookupController_findAll"];
-        put?: never;
-        /** Create a new NB/NPS lookup entry */
-        post: operations["NbNpsLookupController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a nut mass by ID */
+    get: operations["NutMassController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a nut mass */
+    delete: operations["NutMassController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a nut mass */
+    patch: operations["NutMassController_update"];
+    trace?: never;
+  };
+  "/nb-nps-lookup": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/nb-nps-lookup/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Retrieve a single NB/NPS lookup entry by ID */
-        get: operations["NbNpsLookupController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a NB/NPS lookup entry by ID */
-        delete: operations["NbNpsLookupController_remove"];
-        options?: never;
-        head?: never;
-        /** Update an existing NB/NPS lookup entry */
-        patch: operations["NbNpsLookupController_update"];
-        trace?: never;
+    /** Retrieve all NB/NPS lookup entries */
+    get: operations["NbNpsLookupController_findAll"];
+    put?: never;
+    /** Create a new NB/NPS lookup entry */
+    post: operations["NbNpsLookupController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/nb-nps-lookup/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/weld-type": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all weld types */
-        get: operations["WeldTypeController_findAll"];
-        put?: never;
-        /** Create a new weld type */
-        post: operations["WeldTypeController_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Retrieve a single NB/NPS lookup entry by ID */
+    get: operations["NbNpsLookupController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a NB/NPS lookup entry by ID */
+    delete: operations["NbNpsLookupController_remove"];
+    options?: never;
+    head?: never;
+    /** Update an existing NB/NPS lookup entry */
+    patch: operations["NbNpsLookupController_update"];
+    trace?: never;
+  };
+  "/weld-type": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/weld-type/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a weld type by ID */
-        get: operations["WeldTypeController_findOne"];
-        put?: never;
-        post?: never;
-        /** Delete a weld type */
-        delete: operations["WeldTypeController_remove"];
-        options?: never;
-        head?: never;
-        /** Update a weld type */
-        patch: operations["WeldTypeController_update"];
-        trace?: never;
+    /** Get all weld types */
+    get: operations["WeldTypeController_findAll"];
+    put?: never;
+    /** Create a new weld type */
+    post: operations["WeldTypeController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/weld-type/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/rfq/straight-pipe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create RFQ for straight pipe
-         * @description Create a new RFQ for straight pipe fabrication.
-         *
-         *         This endpoint handles the calculation of:
-         *         - Pipe weight using formula: ((OD-WT)*WT)*0.02466 = Kg/m
-         *         - Total quantity requirements
-         *         - Welding requirements (butt welds, flange welds)
-         *         - Material specifications
-         *
-         *         Example from client: "Customer requires 500NB pipe for a 10bar pipeline"
-         *         Input: SANS 719>500>Sch20>12.192>8000m>1000/3
-         */
-        post: operations["RfqController_createStraightPipeRfq"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get a weld type by ID */
+    get: operations["WeldTypeController_findOne"];
+    put?: never;
+    post?: never;
+    /** Delete a weld type */
+    delete: operations["WeldTypeController_remove"];
+    options?: never;
+    head?: never;
+    /** Update a weld type */
+    patch: operations["WeldTypeController_update"];
+    trace?: never;
+  };
+  "/rfq/straight-pipe": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/rfq/straight-pipe/calculate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Calculate straight pipe requirements
-         * @description Calculate pipe weight, quantities, and welding requirements without creating an RFQ.
-         *
-         *         Useful for getting estimates before submitting a formal RFQ.
-         */
-        post: operations["RfqController_calculateStraightPipeRequirements"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Create RFQ for straight pipe
+     * @description Create a new RFQ for straight pipe fabrication.
+     *
+     *         This endpoint handles the calculation of:
+     *         - Pipe weight using formula: ((OD-WT)*WT)*0.02466 = Kg/m
+     *         - Total quantity requirements
+     *         - Welding requirements (butt welds, flange welds)
+     *         - Material specifications
+     *
+     *         Example from client: "Customer requires 500NB pipe for a 10bar pipeline"
+     *         Input: SANS 719>500>Sch20>12.192>8000m>1000/3
+     */
+    post: operations["RfqController_createStraightPipeRfq"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/rfq/straight-pipe/calculate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/rfq": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all RFQs */
-        get: operations["RfqController_getAllRfqs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Calculate straight pipe requirements
+     * @description Calculate pipe weight, quantities, and welding requirements without creating an RFQ.
+     *
+     *         Useful for getting estimates before submitting a formal RFQ.
+     */
+    post: operations["RfqController_calculateStraightPipeRequirements"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/rfq": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/rfq/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get RFQ by ID */
-        get: operations["RfqController_getRfqById"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get all RFQs */
+    get: operations["RfqController_getAllRfqs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/rfq/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/rfq/straight-pipe/{id}/recalculate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Recalculate straight pipe RFQ
-         * @description Recalculate weights and requirements for an existing straight pipe RFQ
-         */
-        post: operations["RfqController_recalculateStraightPipeRfq"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get RFQ by ID */
+    get: operations["RfqController_getRfqById"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/rfq/straight-pipe/{id}/recalculate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    get?: never;
+    put?: never;
+    /**
+     * Recalculate straight pipe RFQ
+     * @description Recalculate weights and requirements for an existing straight pipe RFQ
+     */
+    post: operations["RfqController_recalculateStraightPipeRfq"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        CreateSteelSpecificationDto: {
-            /**
-             * @description Name of the steel specification
-             * @example A36 Steel
-             */
-            steelSpecName: string;
-        };
-        UpdateSteelSpecificationDto: {
-            /**
-             * @description Name of the steel specification
-             * @example A36 Steel
-             */
-            steelSpecName?: string;
-        };
-        CreateNominalOutsideDiameterMmDto: {
-            /**
-             * @description Nominal diameter in mm
-             * @example 50
-             */
-            nominal_diameter_mm: number;
-            /**
-             * @description Outside diameter in mm
-             * @example 60.32
-             */
-            outside_diameter_mm: number;
-        };
-        UpdateNominalOutsideDiameterMmDto: {
-            /**
-             * @description Nominal diameter in mm
-             * @example 50
-             */
-            nominal_diameter_mm?: number;
-            /**
-             * @description Outside diameter in mm
-             * @example 60.32
-             */
-            outside_diameter_mm?: number;
-        };
-        CreateUserDto: {
-            /** @example john_doe */
-            username: string;
-            /** @example john@example.com */
-            email: string;
-            /** @example StrongPassword123! */
-            password: string;
-        };
-        UserRole: {
-            /**
-             * @description Primary key
-             * @example 1
-             */
-            id: number;
-            /**
-             * @description Role name
-             * @example admin
-             */
-            name: string;
-        };
-        User: {
-            /**
-             * @description Primary key
-             * @example 1
-             */
-            id: number;
-            /**
-             * @description Unique username
-             * @example john_doe
-             */
-            username: string;
-            /**
-             * @description User email address
-             * @example john@example.com
-             */
-            email: string;
-            /** @description Hashed password (never expose in responses) */
-            password: string;
-            /** @description Random salt used for password hashing */
-            salt: string;
-            /** @description Roles assigned to the user */
-            roles: components["schemas"]["UserRole"][];
-        };
-        UpdateUserDto: {
-            /** @example john_doe */
-            username?: string;
-            /** @example john@example.com */
-            email?: string;
-            /** @example StrongPassword123! */
-            password?: string;
-        };
-        CreateUserRoleDto: {
-            /**
-             * @description Name of the role
-             * @example admin
-             */
-            name: string;
-        };
-        UpdateUserRoleDto: {
-            /**
-             * @description Updated role name
-             * @example super-admin
-             */
-            name?: string;
-        };
-        LoginUserDto: {
-            /** @example user@example.com */
-            email: string;
-            /** @example password123 */
-            password: string;
-        };
-        CreatePipeDimensionDto: {
-            /**
-             * @description Wall thickness in millimetres
-             * @example 2.77
-             */
-            wall_thickness_mm: number;
-            /**
-             * @description Internal diameter in millimetres (nullable)
-             * @example 15.76
-             */
-            internal_diameter_mm?: number;
-            /**
-             * @description Mass per metre in kg/m
-             * @example 1.27
-             */
-            mass_kgm: number;
-            /**
-             * @description Schedule designation (e.g., STD, XS, XXS)
-             * @example STD
-             */
-            schedule_designation?: string;
-            /**
-             * @description Schedule number (e.g., 40, 80, 160)
-             * @example 40
-             */
-            schedule_number?: number;
-            /** @description SteelSpecification ID */
-            steelSpecificationId: number;
-            /** @description nominalOutsideDiameter ID */
-            nominalOutsideDiameterId: number;
-        };
-        PipeDimension: Record<string, never>;
-        UpdatePipeDimensionDto: {
-            /**
-             * @description Wall thickness in millimetres
-             * @example 2.77
-             */
-            wall_thickness_mm?: number;
-            /**
-             * @description Internal diameter in millimetres (nullable)
-             * @example 15.76
-             */
-            internal_diameter_mm?: number;
-            /**
-             * @description Mass per metre in kg/m
-             * @example 1.27
-             */
-            mass_kgm?: number;
-            /**
-             * @description Schedule designation (e.g., STD, XS, XXS)
-             * @example STD
-             */
-            schedule_designation?: string;
-            /**
-             * @description Schedule number (e.g., 40, 80, 160)
-             * @example 40
-             */
-            schedule_number?: number;
-            /** @description SteelSpecification ID */
-            steelSpecificationId?: number;
-            /** @description nominalOutsideDiameter ID */
-            nominalOutsideDiameterId?: number;
-        };
-        CreatePipePressureDto: {
-            /**
-             * @description Temperature in °C (nullable)
-             * @example 371
-             */
-            temperature_c?: number;
-            /**
-             * @description Maximum working pressure in MPa (nullable)
-             * @example 7.27
-             */
-            max_working_pressure_mpa?: number;
-            /**
-             * @description Allowable stress in MPa
-             * @example 99
-             */
-            allowable_stress_mpa: number;
-        };
-        PipePressure: Record<string, never>;
-        UpdatePipePressureDto: {
-            /**
-             * @description Temperature in °C (nullable)
-             * @example 371
-             */
-            temperature_c?: number;
-            /**
-             * @description Maximum working pressure in MPa (nullable)
-             * @example 7.27
-             */
-            max_working_pressure_mpa?: number;
-            /**
-             * @description Allowable stress in MPa
-             * @example 99
-             */
-            allowable_stress_mpa?: number;
-        };
-        CreateAngleRangeDto: {
-            /**
-             * @description Minimum angle in degrees
-             * @example 30
-             */
-            angle_min: number;
-            /**
-             * @description Maximum angle in degrees
-             * @example 90
-             */
-            angle_max: number;
-        };
-        UpdateAngleRangeDto: {
-            /**
-             * @description Minimum angle in degrees
-             * @example 30
-             */
-            angle_min?: number;
-            /**
-             * @description Maximum angle in degrees
-             * @example 90
-             */
-            angle_max?: number;
-        };
-        CreateFittingDto: {
-            /**
-             * @description SteelSpecification ID
-             * @example 1
-             */
-            steelSpecificationId: number;
-            /**
-             * @description FittingType ID
-             * @example 2
-             */
-            fittingTypeId: number;
-        };
-        UpdateFittingDto: {
-            /**
-             * @description SteelSpecification ID
-             * @example 1
-             */
-            steelSpecificationId?: number;
-            /**
-             * @description FittingType ID
-             * @example 2
-             */
-            fittingTypeId?: number;
-        };
-        CreateFittingBoreDto: {
-            /**
-             * @description Bore position (e.g. A, B, D, inlet, outlet)
-             * @example A
-             */
-            borePosition: string;
-            /**
-             * @description Nominal + OD ID from nominal_outside_diameters table
-             * @example 5
-             */
-            nominalId: number;
-            /**
-             * @description FittingVariant ID from fitting_variant table
-             * @example 2
-             */
-            variantId: number;
-        };
-        UpdateFittingBoreDto: {
-            /**
-             * @description Bore position (e.g. A, B, D, inlet, outlet)
-             * @example A
-             */
-            borePosition?: string;
-            /**
-             * @description Nominal + OD ID from nominal_outside_diameters table
-             * @example 5
-             */
-            nominalId?: number;
-            /**
-             * @description FittingVariant ID from fitting_variant table
-             * @example 2
-             */
-            variantId?: number;
-        };
-        CreateFittingDimensionDto: {
-            /**
-             * @description Dimension name (e.g. A, B, C)
-             * @example C
-             */
-            dimensionName: string;
-            /**
-             * @description Dimension value in millimetres
-             * @example 120
-             */
-            dimensionValueMm: number;
-            /**
-             * @description Angle range ID (nullable)
-             * @example 1
-             */
-            angleRangeId?: number;
-            /**
-             * @description FittingVariant ID
-             * @example 1
-             */
-            variantId: number;
-        };
-        UpdateFittingDimensionDto: {
-            /**
-             * @description Dimension name (e.g. A, B, C)
-             * @example C
-             */
-            dimensionName?: string;
-            /**
-             * @description Dimension value in millimetres
-             * @example 120
-             */
-            dimensionValueMm?: number;
-            /**
-             * @description Angle range ID (nullable)
-             * @example 1
-             */
-            angleRangeId?: number;
-            /**
-             * @description FittingVariant ID
-             * @example 1
-             */
-            variantId?: number;
-        };
-        CreateFittingTypeDto: {
-            /**
-             * @description Name of the fitting type
-             * @example Elbow
-             */
-            name: string;
-        };
-        UpdateFittingTypeDto: {
-            /**
-             * @description Name of the fitting type
-             * @example Elbow
-             */
-            name?: string;
-        };
-        CreateFittingVariantDto: {
-            /**
-             * @description Parent Fitting ID
-             * @example 1
-             */
-            fittingId: number;
-            /** @description List of bores for this fitting variant */
-            bores: components["schemas"]["CreateFittingBoreDto"][];
-            /** @description Optional dimensions for this fitting variant */
-            dimensions?: components["schemas"]["CreateFittingDimensionDto"][];
-        };
-        UpdateFittingVariantDto: {
-            /**
-             * @description Parent Fitting ID
-             * @example 1
-             */
-            fittingId?: number;
-            /** @description List of bores for this fitting variant */
-            bores?: components["schemas"]["CreateFittingBoreDto"][];
-            /** @description Optional dimensions for this fitting variant */
-            dimensions?: components["schemas"]["CreateFittingDimensionDto"][];
-        };
-        CreateFlangeStandardDto: {
-            /**
-             * @description Code of the flange standard
-             * @example BS 4504
-             */
-            code: string;
-        };
-        UpdateFlangeStandardDto: {
-            /**
-             * @description Code of the flange standard
-             * @example BS 4504
-             */
-            code?: string;
-        };
-        CreateFlangePressureClassDto: {
-            /**
-             * @description Designation of the pressure class
-             * @example PN16
-             */
-            designation: string;
-            /**
-             * @description Reference to the flange standard (FK)
-             * @example 1
-             */
-            standardId: number;
-        };
-        UpdateFlangePressureClassDto: {
-            /**
-             * @description Designation of the pressure class
-             * @example PN16
-             */
-            designation?: string;
-            /**
-             * @description Reference to the flange standard (FK)
-             * @example 1
-             */
-            standardId?: number;
-        };
-        CreateBoltDto: {
-            /**
-             * @description Bolt designation
-             * @example M12
-             */
-            designation: string;
-        };
-        UpdateBoltDto: {
-            /**
-             * @description Bolt designation
-             * @example M12
-             */
-            designation?: string;
-        };
-        CreateBoltMassDto: {
-            /**
-             * @description Bolt ID
-             * @example 1
-             */
-            boltId: number;
-            /**
-             * @description Length of the bolt in mm
-             * @example 50
-             */
-            length_mm: number;
-            /**
-             * @description Mass of the bolt in kg
-             * @example 0.137
-             */
-            mass_kg: number;
-        };
-        UpdateBoltMassDto: {
-            /**
-             * @description Bolt ID
-             * @example 1
-             */
-            boltId?: number;
-            /**
-             * @description Length of the bolt in mm
-             * @example 50
-             */
-            length_mm?: number;
-            /**
-             * @description Mass of the bolt in kg
-             * @example 0.137
-             */
-            mass_kg?: number;
-        };
-        CreateFlangeDimensionDto: {
-            /**
-             * @description Reference to the nominal bore/outside diameter (FK)
-             * @example 1
-             */
-            nominalOutsideDiameterId: number;
-            /**
-             * @description Reference to the flange standard (FK)
-             * @example 2
-             */
-            standardId: number;
-            /**
-             * @description Reference to the pressure class (FK)
-             * @example 3
-             */
-            pressureClassId: number;
-            /**
-             * @description Reference to the bolt type/size (FK)
-             * @example 5
-             */
-            boltId?: number;
-            /**
-             * @description Outside diameter of the flange (mm)
-             * @example 610
-             */
-            D: number;
-            /**
-             * @description Flange thickness (mm)
-             * @example 22
-             */
-            b: number;
-            /**
-             * @description Bolt hole diameter (mm)
-             * @example 18
-             */
-            d4: number;
-            /**
-             * @description Recess / tolerance (mm)
-             * @example 3
-             */
-            f: number;
-            /**
-             * @description Number of bolt holes
-             * @example 16
-             */
-            num_holes: number;
-            /**
-             * @description Inner bolt circle diameter (mm)
-             * @example 550
-             */
-            d1: number;
-            /**
-             * @description Pitch circle diameter (mm)
-             * @example 565
-             */
-            pcd: number;
-            /**
-             * @description Mass of flange (kg)
-             * @example 12.5
-             */
-            mass_kg: number;
-        };
-        UpdateFlangeDimensionDto: {
-            /**
-             * @description Reference to the nominal bore/outside diameter (FK)
-             * @example 1
-             */
-            nominalOutsideDiameterId?: number;
-            /**
-             * @description Reference to the flange standard (FK)
-             * @example 2
-             */
-            standardId?: number;
-            /**
-             * @description Reference to the pressure class (FK)
-             * @example 3
-             */
-            pressureClassId?: number;
-            /**
-             * @description Reference to the bolt type/size (FK)
-             * @example 5
-             */
-            boltId?: number;
-            /**
-             * @description Outside diameter of the flange (mm)
-             * @example 610
-             */
-            D?: number;
-            /**
-             * @description Flange thickness (mm)
-             * @example 22
-             */
-            b?: number;
-            /**
-             * @description Bolt hole diameter (mm)
-             * @example 18
-             */
-            d4?: number;
-            /**
-             * @description Recess / tolerance (mm)
-             * @example 3
-             */
-            f?: number;
-            /**
-             * @description Number of bolt holes
-             * @example 16
-             */
-            num_holes?: number;
-            /**
-             * @description Inner bolt circle diameter (mm)
-             * @example 550
-             */
-            d1?: number;
-            /**
-             * @description Pitch circle diameter (mm)
-             * @example 565
-             */
-            pcd?: number;
-            /**
-             * @description Mass of flange (kg)
-             * @example 12.5
-             */
-            mass_kg?: number;
-        };
-        CreateNutMassDto: {
-            /**
-             * @description Bolt ID
-             * @example 1
-             */
-            boltId: number;
-            /**
-             * @description Mass of a single nut in kilograms
-             * @example 0.017
-             */
-            mass_kg: number;
-        };
-        UpdateNutMassDto: {
-            /**
-             * @description Bolt ID
-             * @example 1
-             */
-            boltId?: number;
-            /**
-             * @description Mass of a single nut in kilograms
-             * @example 0.017
-             */
-            mass_kg?: number;
-        };
-        CreateNbNpsLookupDto: {
-            /**
-             * @description Nominal Bore (DN) in millimeters
-             * @example 100
-             */
-            nb_mm: number;
-            /**
-             * @description Nominal Pipe Size (NPS) in inches
-             * @example 4
-             */
-            nps_inch: number;
-            /**
-             * @description Outside Diameter (OD) in millimeters
-             * @example 114.3
-             */
-            outside_diameter_mm: number;
-        };
-        NbNpsLookup: Record<string, never>;
-        UpdateNbNpsLookupDto: {
-            /**
-             * @description Nominal Bore (DN) in millimeters
-             * @example 100
-             */
-            nb_mm?: number;
-            /**
-             * @description Nominal Pipe Size (NPS) in inches
-             * @example 4
-             */
-            nps_inch?: number;
-            /**
-             * @description Outside Diameter (OD) in millimeters
-             * @example 114.3
-             */
-            outside_diameter_mm?: number;
-        };
-        CreateWeldTypeDto: {
-            /**
-             * @description Weld type code (short identifier)
-             * @example FWP
-             */
-            code: string;
-            /**
-             * @description Full description of the weld type
-             * @example Flange Weld Pipes (Over 2.5m)
-             */
-            description: string;
-        };
-        UpdateWeldTypeDto: {
-            /**
-             * @description Weld type code (short identifier)
-             * @example FWP
-             */
-            code?: string;
-            /**
-             * @description Full description of the weld type
-             * @example Flange Weld Pipes (Over 2.5m)
-             */
-            description?: string;
-        };
-        CreateRfqDto: {
-            /**
-             * @description Project name
-             * @example 10 Bar Pipeline Project
-             */
-            project_name: string;
-            /** @description Project description */
-            description?: string;
-            /**
-             * @description Required completion date
-             * @example 2024-12-31
-             */
-            required_date?: string;
-            /** @description Customer name */
-            customer_name?: string;
-            /** @description Customer email */
-            customer_email?: string;
-            /** @description Customer phone number */
-            customer_phone?: string;
-            /** @description Additional notes */
-            notes?: string;
-        };
-        CreateStraightPipeRfqDto: {
-            /**
-             * @description Nominal bore in millimeters
-             * @example 500
-             */
-            nominal_bore_mm: number;
-            /**
-             * @description Type of pipe schedule specification
-             * @enum {string}
-             */
-            schedule_type: "schedule" | "wall_thickness";
-            /**
-             * @description Schedule number (e.g., Sch20, Sch40)
-             * @example Sch20
-             */
-            schedule_number?: string;
-            /**
-             * @description Wall thickness in millimeters
-             * @example 15.09
-             */
-            wall_thickness_mm?: number;
-            /**
-             * @description Length of individual pipe in specified unit
-             * @example 12.192
-             */
-            individual_pipe_length: number;
-            /**
-             * @description Unit for pipe length
-             * @enum {string}
-             */
-            length_unit: "meters" | "feet";
-            /**
-             * @description How quantity is specified
-             * @enum {string}
-             */
-            quantity_type: "total_length" | "number_of_pipes";
-            /**
-             * @description Quantity value - either total meters or number of pipes
-             * @example 8000
-             */
-            quantity_value: number;
-            /**
-             * @description Working pressure in bar
-             * @example 10
-             */
-            working_pressure_bar: number;
-            /**
-             * @description Working temperature in Celsius
-             * @example 120
-             */
-            working_temperature_c?: number;
-            /** @description Steel specification ID */
-            steel_specification_id?: number;
-            /** @description Nominal outside diameter ID */
-            nominal_outside_diameter_id?: number;
-            /** @description Flange standard ID */
-            flange_standard_id?: number;
-            /** @description Flange pressure class ID */
-            flange_pressure_class_id?: number;
-        };
-        CreateStraightPipeRfqWithItemDto: {
-            rfq: components["schemas"]["CreateRfqDto"];
-            straight_pipe: components["schemas"]["CreateStraightPipeRfqDto"];
-            /**
-             * @description Item description
-             * @example 500NB Sch20 Straight Pipe for 10 Bar Pipeline
-             */
-            item_description: string;
-            /** @description Additional notes for this item */
-            item_notes?: string;
-        };
-        StraightPipeCalculationResultDto: {
-            /** @description Weight per meter of pipe in kg/m */
-            pipe_weight_per_meter: number;
-            /** @description Total weight of all pipes in kg */
-            total_pipe_weight: number;
-            /** @description Number of individual pipes needed */
-            calculated_pipe_count: number;
-            /** @description Total length of all pipes in meters */
-            calculated_total_length: number;
-            /** @description Number of flanges required */
-            number_of_flanges: number;
-            /** @description Number of butt welds required */
-            number_of_butt_welds: number;
-            /** @description Total length of butt welds in linear meters */
-            total_butt_weld_length: number;
-            /** @description Number of flange welds required */
-            number_of_flange_welds: number;
-            /** @description Total length of flange welds in linear meters */
-            total_flange_weld_length: number;
-            /** @description Outside diameter used in calculations */
-            outside_diameter_mm?: number;
-            /** @description Wall thickness used in calculations */
-            wall_thickness_mm?: number;
-        };
-        StraightPipeRfqResponseDto: {
-            id: number;
-            nominal_bore_mm: number;
-            /** @enum {string} */
-            schedule_type: "schedule" | "wall_thickness";
-            schedule_number?: string;
-            wall_thickness_mm?: number;
-            individual_pipe_length: number;
-            /** @enum {string} */
-            length_unit: "meters" | "feet";
-            /** @enum {string} */
-            quantity_type: "total_length" | "number_of_pipes";
-            quantity_value: number;
-            working_pressure_bar: number;
-            working_temperature_c?: number;
-            calculations?: components["schemas"]["StraightPipeCalculationResultDto"];
-            steel_specification_id?: number;
-            steel_specification_name?: string;
-            flange_standard_id?: number;
-            flange_standard_code?: string;
-            flange_pressure_class_id?: number;
-            flange_pressure_class_designation?: string;
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
-        };
-        RfqItemResponseDto: {
-            id: number;
-            line_number: number;
-            item_type: string;
-            description: string;
-            quantity: number;
-            unit_weight_kg?: number;
-            total_weight_kg?: number;
-            unit_price?: number;
-            total_price?: number;
-            notes?: string;
-            straight_pipe_specs?: components["schemas"]["StraightPipeRfqResponseDto"][];
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
-        };
-        RfqResponseDto: {
-            id: number;
-            rfq_number: string;
-            project_name: string;
-            description?: string;
-            /** @enum {string} */
-            status: "draft" | "submitted" | "in_review" | "quoted" | "accepted" | "rejected";
-            total_estimated_weight?: number;
-            total_quoted_price?: number;
-            /** Format: date-time */
-            required_date?: string;
-            customer_name?: string;
-            customer_email?: string;
-            customer_phone?: string;
-            notes?: string;
-            created_by_user_id?: number;
-            items: components["schemas"]["RfqItemResponseDto"][];
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            updated_at: string;
-        };
+  schemas: {
+    CreateSteelSpecificationDto: {
+      /**
+       * @description Name of the steel specification
+       * @example A36 Steel
+       */
+      steelSpecName: string;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    UpdateSteelSpecificationDto: {
+      /**
+       * @description Name of the steel specification
+       * @example A36 Steel
+       */
+      steelSpecName?: string;
+    };
+    CreateNominalOutsideDiameterMmDto: {
+      /**
+       * @description Nominal diameter in mm
+       * @example 50
+       */
+      nominal_diameter_mm: number;
+      /**
+       * @description Outside diameter in mm
+       * @example 60.32
+       */
+      outside_diameter_mm: number;
+    };
+    UpdateNominalOutsideDiameterMmDto: {
+      /**
+       * @description Nominal diameter in mm
+       * @example 50
+       */
+      nominal_diameter_mm?: number;
+      /**
+       * @description Outside diameter in mm
+       * @example 60.32
+       */
+      outside_diameter_mm?: number;
+    };
+    CreateUserDto: {
+      /** @example john_doe */
+      username: string;
+      /** @example john@example.com */
+      email: string;
+      /** @example StrongPassword123! */
+      password: string;
+    };
+    UserRole: {
+      /**
+       * @description Primary key
+       * @example 1
+       */
+      id: number;
+      /**
+       * @description Role name
+       * @example admin
+       */
+      name: string;
+    };
+    User: {
+      /**
+       * @description Primary key
+       * @example 1
+       */
+      id: number;
+      /**
+       * @description Unique username
+       * @example john_doe
+       */
+      username: string;
+      /**
+       * @description User email address
+       * @example john@example.com
+       */
+      email: string;
+      /** @description Hashed password (never expose in responses) */
+      password: string;
+      /** @description Random salt used for password hashing */
+      salt: string;
+      /** @description Roles assigned to the user */
+      roles: components["schemas"]["UserRole"][];
+    };
+    UpdateUserDto: {
+      /** @example john_doe */
+      username?: string;
+      /** @example john@example.com */
+      email?: string;
+      /** @example StrongPassword123! */
+      password?: string;
+    };
+    CreateUserRoleDto: {
+      /**
+       * @description Name of the role
+       * @example admin
+       */
+      name: string;
+    };
+    UpdateUserRoleDto: {
+      /**
+       * @description Updated role name
+       * @example super-admin
+       */
+      name?: string;
+    };
+    LoginUserDto: {
+      /** @example user@example.com */
+      email: string;
+      /** @example password123 */
+      password: string;
+    };
+    CreatePipeDimensionDto: {
+      /**
+       * @description Wall thickness in millimetres
+       * @example 2.77
+       */
+      wall_thickness_mm: number;
+      /**
+       * @description Internal diameter in millimetres (nullable)
+       * @example 15.76
+       */
+      internal_diameter_mm?: number;
+      /**
+       * @description Mass per metre in kg/m
+       * @example 1.27
+       */
+      mass_kgm: number;
+      /**
+       * @description Schedule designation (e.g., STD, XS, XXS)
+       * @example STD
+       */
+      schedule_designation?: string;
+      /**
+       * @description Schedule number (e.g., 40, 80, 160)
+       * @example 40
+       */
+      schedule_number?: number;
+      /** @description SteelSpecification ID */
+      steelSpecificationId: number;
+      /** @description nominalOutsideDiameter ID */
+      nominalOutsideDiameterId: number;
+    };
+    PipeDimension: Record<string, never>;
+    UpdatePipeDimensionDto: {
+      /**
+       * @description Wall thickness in millimetres
+       * @example 2.77
+       */
+      wall_thickness_mm?: number;
+      /**
+       * @description Internal diameter in millimetres (nullable)
+       * @example 15.76
+       */
+      internal_diameter_mm?: number;
+      /**
+       * @description Mass per metre in kg/m
+       * @example 1.27
+       */
+      mass_kgm?: number;
+      /**
+       * @description Schedule designation (e.g., STD, XS, XXS)
+       * @example STD
+       */
+      schedule_designation?: string;
+      /**
+       * @description Schedule number (e.g., 40, 80, 160)
+       * @example 40
+       */
+      schedule_number?: number;
+      /** @description SteelSpecification ID */
+      steelSpecificationId?: number;
+      /** @description nominalOutsideDiameter ID */
+      nominalOutsideDiameterId?: number;
+    };
+    CreatePipePressureDto: {
+      /**
+       * @description Temperature in °C (nullable)
+       * @example 371
+       */
+      temperature_c?: number;
+      /**
+       * @description Maximum working pressure in MPa (nullable)
+       * @example 7.27
+       */
+      max_working_pressure_mpa?: number;
+      /**
+       * @description Allowable stress in MPa
+       * @example 99
+       */
+      allowable_stress_mpa: number;
+    };
+    PipePressure: Record<string, never>;
+    UpdatePipePressureDto: {
+      /**
+       * @description Temperature in °C (nullable)
+       * @example 371
+       */
+      temperature_c?: number;
+      /**
+       * @description Maximum working pressure in MPa (nullable)
+       * @example 7.27
+       */
+      max_working_pressure_mpa?: number;
+      /**
+       * @description Allowable stress in MPa
+       * @example 99
+       */
+      allowable_stress_mpa?: number;
+    };
+    CreateAngleRangeDto: {
+      /**
+       * @description Minimum angle in degrees
+       * @example 30
+       */
+      angle_min: number;
+      /**
+       * @description Maximum angle in degrees
+       * @example 90
+       */
+      angle_max: number;
+    };
+    UpdateAngleRangeDto: {
+      /**
+       * @description Minimum angle in degrees
+       * @example 30
+       */
+      angle_min?: number;
+      /**
+       * @description Maximum angle in degrees
+       * @example 90
+       */
+      angle_max?: number;
+    };
+    CreateFittingDto: {
+      /**
+       * @description SteelSpecification ID
+       * @example 1
+       */
+      steelSpecificationId: number;
+      /**
+       * @description FittingType ID
+       * @example 2
+       */
+      fittingTypeId: number;
+    };
+    UpdateFittingDto: {
+      /**
+       * @description SteelSpecification ID
+       * @example 1
+       */
+      steelSpecificationId?: number;
+      /**
+       * @description FittingType ID
+       * @example 2
+       */
+      fittingTypeId?: number;
+    };
+    CreateFittingBoreDto: {
+      /**
+       * @description Bore position (e.g. A, B, D, inlet, outlet)
+       * @example A
+       */
+      borePosition: string;
+      /**
+       * @description Nominal + OD ID from nominal_outside_diameters table
+       * @example 5
+       */
+      nominalId: number;
+      /**
+       * @description FittingVariant ID from fitting_variant table
+       * @example 2
+       */
+      variantId: number;
+    };
+    UpdateFittingBoreDto: {
+      /**
+       * @description Bore position (e.g. A, B, D, inlet, outlet)
+       * @example A
+       */
+      borePosition?: string;
+      /**
+       * @description Nominal + OD ID from nominal_outside_diameters table
+       * @example 5
+       */
+      nominalId?: number;
+      /**
+       * @description FittingVariant ID from fitting_variant table
+       * @example 2
+       */
+      variantId?: number;
+    };
+    CreateFittingDimensionDto: {
+      /**
+       * @description Dimension name (e.g. A, B, C)
+       * @example C
+       */
+      dimensionName: string;
+      /**
+       * @description Dimension value in millimetres
+       * @example 120
+       */
+      dimensionValueMm: number;
+      /**
+       * @description Angle range ID (nullable)
+       * @example 1
+       */
+      angleRangeId?: number;
+      /**
+       * @description FittingVariant ID
+       * @example 1
+       */
+      variantId: number;
+    };
+    UpdateFittingDimensionDto: {
+      /**
+       * @description Dimension name (e.g. A, B, C)
+       * @example C
+       */
+      dimensionName?: string;
+      /**
+       * @description Dimension value in millimetres
+       * @example 120
+       */
+      dimensionValueMm?: number;
+      /**
+       * @description Angle range ID (nullable)
+       * @example 1
+       */
+      angleRangeId?: number;
+      /**
+       * @description FittingVariant ID
+       * @example 1
+       */
+      variantId?: number;
+    };
+    CreateFittingTypeDto: {
+      /**
+       * @description Name of the fitting type
+       * @example Elbow
+       */
+      name: string;
+    };
+    UpdateFittingTypeDto: {
+      /**
+       * @description Name of the fitting type
+       * @example Elbow
+       */
+      name?: string;
+    };
+    CreateFittingVariantDto: {
+      /**
+       * @description Parent Fitting ID
+       * @example 1
+       */
+      fittingId: number;
+      /** @description List of bores for this fitting variant */
+      bores: components["schemas"]["CreateFittingBoreDto"][];
+      /** @description Optional dimensions for this fitting variant */
+      dimensions?: components["schemas"]["CreateFittingDimensionDto"][];
+    };
+    UpdateFittingVariantDto: {
+      /**
+       * @description Parent Fitting ID
+       * @example 1
+       */
+      fittingId?: number;
+      /** @description List of bores for this fitting variant */
+      bores?: components["schemas"]["CreateFittingBoreDto"][];
+      /** @description Optional dimensions for this fitting variant */
+      dimensions?: components["schemas"]["CreateFittingDimensionDto"][];
+    };
+    CreateFlangeStandardDto: {
+      /**
+       * @description Code of the flange standard
+       * @example BS 4504
+       */
+      code: string;
+    };
+    UpdateFlangeStandardDto: {
+      /**
+       * @description Code of the flange standard
+       * @example BS 4504
+       */
+      code?: string;
+    };
+    CreateFlangePressureClassDto: {
+      /**
+       * @description Designation of the pressure class
+       * @example PN16
+       */
+      designation: string;
+      /**
+       * @description Reference to the flange standard (FK)
+       * @example 1
+       */
+      standardId: number;
+    };
+    UpdateFlangePressureClassDto: {
+      /**
+       * @description Designation of the pressure class
+       * @example PN16
+       */
+      designation?: string;
+      /**
+       * @description Reference to the flange standard (FK)
+       * @example 1
+       */
+      standardId?: number;
+    };
+    CreateBoltDto: {
+      /**
+       * @description Bolt designation
+       * @example M12
+       */
+      designation: string;
+    };
+    UpdateBoltDto: {
+      /**
+       * @description Bolt designation
+       * @example M12
+       */
+      designation?: string;
+    };
+    CreateBoltMassDto: {
+      /**
+       * @description Bolt ID
+       * @example 1
+       */
+      boltId: number;
+      /**
+       * @description Length of the bolt in mm
+       * @example 50
+       */
+      length_mm: number;
+      /**
+       * @description Mass of the bolt in kg
+       * @example 0.137
+       */
+      mass_kg: number;
+    };
+    UpdateBoltMassDto: {
+      /**
+       * @description Bolt ID
+       * @example 1
+       */
+      boltId?: number;
+      /**
+       * @description Length of the bolt in mm
+       * @example 50
+       */
+      length_mm?: number;
+      /**
+       * @description Mass of the bolt in kg
+       * @example 0.137
+       */
+      mass_kg?: number;
+    };
+    CreateFlangeDimensionDto: {
+      /**
+       * @description Reference to the nominal bore/outside diameter (FK)
+       * @example 1
+       */
+      nominalOutsideDiameterId: number;
+      /**
+       * @description Reference to the flange standard (FK)
+       * @example 2
+       */
+      standardId: number;
+      /**
+       * @description Reference to the pressure class (FK)
+       * @example 3
+       */
+      pressureClassId: number;
+      /**
+       * @description Reference to the bolt type/size (FK)
+       * @example 5
+       */
+      boltId?: number;
+      /**
+       * @description Outside diameter of the flange (mm)
+       * @example 610
+       */
+      D: number;
+      /**
+       * @description Flange thickness (mm)
+       * @example 22
+       */
+      b: number;
+      /**
+       * @description Bolt hole diameter (mm)
+       * @example 18
+       */
+      d4: number;
+      /**
+       * @description Recess / tolerance (mm)
+       * @example 3
+       */
+      f: number;
+      /**
+       * @description Number of bolt holes
+       * @example 16
+       */
+      num_holes: number;
+      /**
+       * @description Inner bolt circle diameter (mm)
+       * @example 550
+       */
+      d1: number;
+      /**
+       * @description Pitch circle diameter (mm)
+       * @example 565
+       */
+      pcd: number;
+      /**
+       * @description Mass of flange (kg)
+       * @example 12.5
+       */
+      mass_kg: number;
+    };
+    UpdateFlangeDimensionDto: {
+      /**
+       * @description Reference to the nominal bore/outside diameter (FK)
+       * @example 1
+       */
+      nominalOutsideDiameterId?: number;
+      /**
+       * @description Reference to the flange standard (FK)
+       * @example 2
+       */
+      standardId?: number;
+      /**
+       * @description Reference to the pressure class (FK)
+       * @example 3
+       */
+      pressureClassId?: number;
+      /**
+       * @description Reference to the bolt type/size (FK)
+       * @example 5
+       */
+      boltId?: number;
+      /**
+       * @description Outside diameter of the flange (mm)
+       * @example 610
+       */
+      D?: number;
+      /**
+       * @description Flange thickness (mm)
+       * @example 22
+       */
+      b?: number;
+      /**
+       * @description Bolt hole diameter (mm)
+       * @example 18
+       */
+      d4?: number;
+      /**
+       * @description Recess / tolerance (mm)
+       * @example 3
+       */
+      f?: number;
+      /**
+       * @description Number of bolt holes
+       * @example 16
+       */
+      num_holes?: number;
+      /**
+       * @description Inner bolt circle diameter (mm)
+       * @example 550
+       */
+      d1?: number;
+      /**
+       * @description Pitch circle diameter (mm)
+       * @example 565
+       */
+      pcd?: number;
+      /**
+       * @description Mass of flange (kg)
+       * @example 12.5
+       */
+      mass_kg?: number;
+    };
+    CreateNutMassDto: {
+      /**
+       * @description Bolt ID
+       * @example 1
+       */
+      boltId: number;
+      /**
+       * @description Mass of a single nut in kilograms
+       * @example 0.017
+       */
+      mass_kg: number;
+    };
+    UpdateNutMassDto: {
+      /**
+       * @description Bolt ID
+       * @example 1
+       */
+      boltId?: number;
+      /**
+       * @description Mass of a single nut in kilograms
+       * @example 0.017
+       */
+      mass_kg?: number;
+    };
+    CreateNbNpsLookupDto: {
+      /**
+       * @description Nominal Bore (DN) in millimeters
+       * @example 100
+       */
+      nb_mm: number;
+      /**
+       * @description Nominal Pipe Size (NPS) in inches
+       * @example 4
+       */
+      nps_inch: number;
+      /**
+       * @description Outside Diameter (OD) in millimeters
+       * @example 114.3
+       */
+      outside_diameter_mm: number;
+    };
+    NbNpsLookup: Record<string, never>;
+    UpdateNbNpsLookupDto: {
+      /**
+       * @description Nominal Bore (DN) in millimeters
+       * @example 100
+       */
+      nb_mm?: number;
+      /**
+       * @description Nominal Pipe Size (NPS) in inches
+       * @example 4
+       */
+      nps_inch?: number;
+      /**
+       * @description Outside Diameter (OD) in millimeters
+       * @example 114.3
+       */
+      outside_diameter_mm?: number;
+    };
+    CreateWeldTypeDto: {
+      /**
+       * @description Weld type code (short identifier)
+       * @example FWP
+       */
+      code: string;
+      /**
+       * @description Full description of the weld type
+       * @example Flange Weld Pipes (Over 2.5m)
+       */
+      description: string;
+    };
+    UpdateWeldTypeDto: {
+      /**
+       * @description Weld type code (short identifier)
+       * @example FWP
+       */
+      code?: string;
+      /**
+       * @description Full description of the weld type
+       * @example Flange Weld Pipes (Over 2.5m)
+       */
+      description?: string;
+    };
+    CreateRfqDto: {
+      /**
+       * @description Project name
+       * @example 10 Bar Pipeline Project
+       */
+      project_name: string;
+      /** @description Project description */
+      description?: string;
+      /**
+       * @description Required completion date
+       * @example 2024-12-31
+       */
+      required_date?: string;
+      /** @description Customer name */
+      customer_name?: string;
+      /** @description Customer email */
+      customer_email?: string;
+      /** @description Customer phone number */
+      customer_phone?: string;
+      /** @description Additional notes */
+      notes?: string;
+    };
+    CreateStraightPipeRfqDto: {
+      /**
+       * @description Nominal bore in millimeters
+       * @example 500
+       */
+      nominal_bore_mm: number;
+      /**
+       * @description Type of pipe schedule specification
+       * @enum {string}
+       */
+      schedule_type: "schedule" | "wall_thickness";
+      /**
+       * @description Schedule number (e.g., Sch20, Sch40)
+       * @example Sch20
+       */
+      schedule_number?: string;
+      /**
+       * @description Wall thickness in millimeters
+       * @example 15.09
+       */
+      wall_thickness_mm?: number;
+      /**
+       * @description Length of individual pipe in specified unit
+       * @example 12.192
+       */
+      individual_pipe_length: number;
+      /**
+       * @description Unit for pipe length
+       * @enum {string}
+       */
+      length_unit: "meters" | "feet";
+      /**
+       * @description How quantity is specified
+       * @enum {string}
+       */
+      quantity_type: "total_length" | "number_of_pipes";
+      /**
+       * @description Quantity value - either total meters or number of pipes
+       * @example 8000
+       */
+      quantity_value: number;
+      /**
+       * @description Working pressure in bar
+       * @example 10
+       */
+      working_pressure_bar: number;
+      /**
+       * @description Working temperature in Celsius
+       * @example 120
+       */
+      working_temperature_c?: number;
+      /** @description Steel specification ID */
+      steel_specification_id?: number;
+      /** @description Nominal outside diameter ID */
+      nominal_outside_diameter_id?: number;
+      /** @description Flange standard ID */
+      flange_standard_id?: number;
+      /** @description Flange pressure class ID */
+      flange_pressure_class_id?: number;
+    };
+    CreateStraightPipeRfqWithItemDto: {
+      rfq: components["schemas"]["CreateRfqDto"];
+      straight_pipe: components["schemas"]["CreateStraightPipeRfqDto"];
+      /**
+       * @description Item description
+       * @example 500NB Sch20 Straight Pipe for 10 Bar Pipeline
+       */
+      item_description: string;
+      /** @description Additional notes for this item */
+      item_notes?: string;
+    };
+    StraightPipeCalculationResultDto: {
+      /** @description Weight per meter of pipe in kg/m */
+      pipe_weight_per_meter: number;
+      /** @description Total weight of all pipes in kg */
+      total_pipe_weight: number;
+      /** @description Number of individual pipes needed */
+      calculated_pipe_count: number;
+      /** @description Total length of all pipes in meters */
+      calculated_total_length: number;
+      /** @description Number of flanges required */
+      number_of_flanges: number;
+      /** @description Number of butt welds required */
+      number_of_butt_welds: number;
+      /** @description Total length of butt welds in linear meters */
+      total_butt_weld_length: number;
+      /** @description Number of flange welds required */
+      number_of_flange_welds: number;
+      /** @description Total length of flange welds in linear meters */
+      total_flange_weld_length: number;
+      /** @description Outside diameter used in calculations */
+      outside_diameter_mm?: number;
+      /** @description Wall thickness used in calculations */
+      wall_thickness_mm?: number;
+    };
+    StraightPipeRfqResponseDto: {
+      id: number;
+      nominal_bore_mm: number;
+      /** @enum {string} */
+      schedule_type: "schedule" | "wall_thickness";
+      schedule_number?: string;
+      wall_thickness_mm?: number;
+      individual_pipe_length: number;
+      /** @enum {string} */
+      length_unit: "meters" | "feet";
+      /** @enum {string} */
+      quantity_type: "total_length" | "number_of_pipes";
+      quantity_value: number;
+      working_pressure_bar: number;
+      working_temperature_c?: number;
+      calculations?: components["schemas"]["StraightPipeCalculationResultDto"];
+      steel_specification_id?: number;
+      steel_specification_name?: string;
+      flange_standard_id?: number;
+      flange_standard_code?: string;
+      flange_pressure_class_id?: number;
+      flange_pressure_class_designation?: string;
+      /** Format: date-time */
+      created_at: string;
+      /** Format: date-time */
+      updated_at: string;
+    };
+    RfqItemResponseDto: {
+      id: number;
+      line_number: number;
+      item_type: string;
+      description: string;
+      quantity: number;
+      unit_weight_kg?: number;
+      total_weight_kg?: number;
+      unit_price?: number;
+      total_price?: number;
+      notes?: string;
+      straight_pipe_specs?: components["schemas"]["StraightPipeRfqResponseDto"][];
+      /** Format: date-time */
+      created_at: string;
+      /** Format: date-time */
+      updated_at: string;
+    };
+    RfqResponseDto: {
+      id: number;
+      rfq_number: string;
+      project_name: string;
+      description?: string;
+      /** @enum {string} */
+      status: "draft" | "submitted" | "in_review" | "quoted" | "accepted" | "rejected";
+      total_estimated_weight?: number;
+      total_quoted_price?: number;
+      /** Format: date-time */
+      required_date?: string;
+      customer_name?: string;
+      customer_email?: string;
+      customer_phone?: string;
+      notes?: string;
+      created_by_user_id?: number;
+      items: components["schemas"]["RfqItemResponseDto"][];
+      /** Format: date-time */
+      created_at: string;
+      /** Format: date-time */
+      updated_at: string;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    AppController_getHello: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BendDimensionController_calculate: {
-        parameters: {
-            query: {
-                nbMm: number;
-                degree: number;
-                multiplier: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    SteelSpecificationController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of steel specifications retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    SteelSpecificationController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateSteelSpecificationDto"];
-            };
-        };
-        responses: {
-            /** @description Steel specification successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate steel specification */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    SteelSpecificationController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Steel specification retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Steel specification not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    SteelSpecificationController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Steel specification deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Steel specification not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    SteelSpecificationController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateSteelSpecificationDto"];
-            };
-        };
-        responses: {
-            /** @description Steel specification updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate steel specification */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Steel specification not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NominalOutsideDiameterMmController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of nominal outside diameter retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NominalOutsideDiameterMmController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateNominalOutsideDiameterMmDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NominalOutsideDiameterMmController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Nominal outside diameter retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Nominal outside diameter not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NominalOutsideDiameterMmController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Nominal outside diameter deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Nominal outside diameter not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NominalOutsideDiameterMmController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateNominalOutsideDiameterMmDto"];
-            };
-        };
-        responses: {
-            /** @description Nominal outside diameter updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate nominal outside diameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Nominal outside diameter not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UserController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of users */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"][];
-                };
-            };
-        };
-    };
-    UserController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateUserDto"];
-            };
-        };
-        responses: {
-            /** @description User created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
-    UserController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description User found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-            /** @description Unauthorized - missing or invalid JWT token */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Forbidden - user does not have required role */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description User not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UserController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description User deleted */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description User not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UserController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateUserDto"];
-            };
-        };
-        responses: {
-            /** @description User updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["User"];
-                };
-            };
-        };
-    };
-    UserRolesController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of roles */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRole"][];
-                };
-            };
-        };
-    };
-    UserRolesController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateUserRoleDto"];
-            };
-        };
-        responses: {
-            /** @description Role created successfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRole"];
-                };
-            };
-            /** @description Role already exists */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UserRolesController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Role found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRole"];
-                };
-            };
-            /** @description Role not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UserRolesController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Role deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Role not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    UserRolesController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateUserRoleDto"];
-            };
-        };
-        responses: {
-            /** @description Role updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserRole"];
-                };
-            };
-            /** @description Role not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AuthController_login: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoginUserDto"];
-            };
-        };
-        responses: {
-            /** @description JWT access token returned */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid credentials */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PipeDimensionController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreatePipeDimensionDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PipeDimensionController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of pipe dimensions */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipeDimension"][];
-                };
-            };
-        };
-    };
-    PipeDimensionController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description User found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipeDimension"];
-                };
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Pipe dimension not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PipeDimensionController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Pipe dimension deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Pipe dimension not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PipeDimensionController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdatePipeDimensionDto"];
-            };
-        };
-        responses: {
-            /** @description Pipe dimension updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipeDimension"];
-                };
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Pipe dimension not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PipePressureController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of pipe pressures */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipePressure"][];
-                };
-            };
-        };
-    };
-    PipePressureController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                pipeDimensionId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreatePipePressureDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipePressure"];
-                };
-            };
-            /** @description Invalid request or duplicate pipe pressure */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PipePressureController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Pipe Pressure found */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipePressure"];
-                };
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Pipe pressure not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PipePressureController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Pipe Pressure deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipePressure"];
-                };
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Pipe pressure not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    PipePressureController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdatePipePressureDto"];
-            };
-        };
-        responses: {
-            /** @description Pipe Pressure updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PipePressure"];
-                };
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Pipe pressure not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AngleRangeController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of angle ranges retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AngleRangeController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateAngleRangeDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AngleRangeController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Angle range retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Angle range not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AngleRangeController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Angle range deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Angle range not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    AngleRangeController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateAngleRangeDto"];
-            };
-        };
-        responses: {
-            /** @description Angle range updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate angle range */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Angle range not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of fittings retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFittingDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fittings retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fittings not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fittings deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fittings not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFittingDto"];
-            };
-        };
-        responses: {
-            /** @description Fittings updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate fittings */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fittings not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingBoreController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of fitting bores retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingBoreController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFittingBoreDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingBoreController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fitting bore retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting bore not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingBoreController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fitting bore deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting bore not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingBoreController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFittingBoreDto"];
-            };
-        };
-        responses: {
-            /** @description Fitting bore updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate fitting bore */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting bore not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingDimensionController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of fitting dimensions retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingDimensionController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFittingDimensionDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingDimensionController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fitting dimension retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting dimension not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingDimensionController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fitting dimension deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting dimension not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingDimensionController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFittingDimensionDto"];
-            };
-        };
-        responses: {
-            /** @description Fitting dimension updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate fitting dimension */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting dimension not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingTypeController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of fitting types retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingTypeController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFittingTypeDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingTypeController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fitting types retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting types not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingTypeController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fitting type deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting type not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingTypeController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFittingTypeDto"];
-            };
-        };
-        responses: {
-            /** @description Fitting type updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate fitting type */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting type not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingVariantController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of fitting variants retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingVariantController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFittingVariantDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingVariantController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fitting variant retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting variant not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingVariantController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Fitting variant deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting variant not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FittingVariantController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFittingVariantDto"];
-            };
-        };
-        responses: {
-            /** @description Fitting variant updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate fitting variant */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Fitting variant not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeStandardController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of flange standards retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeStandardController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFlangeStandardDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeStandardController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Flange standard retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Flange standard not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeStandardController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Flange standard deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Flange standard not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeStandardController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFlangeStandardDto"];
-            };
-        };
-        responses: {
-            /** @description Flange standard updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate flange standard */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Flange standard not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangePressureClassController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of flange pressure classs retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangePressureClassController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFlangePressureClassDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangePressureClassController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Flange pressure class retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Flange pressure class not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangePressureClassController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Flange pressure class deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Flange pressure class not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangePressureClassController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFlangePressureClassDto"];
-            };
-        };
-        responses: {
-            /** @description Flange pressure class updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate flange pressure class */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Flange pressure class not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of fitting bolts retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateBoltDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Bolts retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bolts not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Bolt deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bolt not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateBoltDto"];
-            };
-        };
-        responses: {
-            /** @description Bolt updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate bolt */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bolt not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltMassController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of bolt masses retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltMassController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateBoltMassDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltMassController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Bolt mass retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bolt mass not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltMassController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description bolt mass deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description bolt mass not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    BoltMassController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateBoltMassDto"];
-            };
-        };
-        responses: {
-            /** @description Bolt mass updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate bolt mass */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bolt mass not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeDimensionController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of bolt masss retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeDimensionController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateFlangeDimensionDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeDimensionController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description bolt mass retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description bolt mass not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeDimensionController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Bolt mass deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bolt mass not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    FlangeDimensionController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFlangeDimensionDto"];
-            };
-        };
-        responses: {
-            /** @description Bolt mass updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate bolt mass */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Bolt mass not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NutMassController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of nut masss retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NutMassController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateNutMassDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NutMassController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Nut mass retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Nut mass not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NutMassController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Nut mass deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Nut mass not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NutMassController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateNutMassDto"];
-            };
-        };
-        responses: {
-            /** @description Nut mass updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid request or duplicate nut mass */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Nut mass not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NbNpsLookupController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description All lookups returned */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NbNpsLookup"][];
-                };
-            };
-        };
-    };
-    NbNpsLookupController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateNbNpsLookupDto"];
-            };
-        };
-        responses: {
-            /** @description Lookup created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NbNpsLookup"];
-                };
-            };
-            /** @description Duplicate entry */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NbNpsLookupController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Single lookup returned */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NbNpsLookup"];
-                };
-            };
-            /** @description Lookup not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NbNpsLookupController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Lookup deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Lookup not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    NbNpsLookupController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateNbNpsLookupDto"];
-            };
-        };
-        responses: {
-            /** @description Lookup updated */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["NbNpsLookup"];
-                };
-            };
-            /** @description Duplicate entry */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Lookup not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    WeldTypeController_findAll: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of weld types retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    WeldTypeController_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateWeldTypeDto"];
-            };
-        };
-        responses: {
-            /** @description Successfully created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Duplicate or invalid data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    WeldTypeController_findOne: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Weld type retrieved successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid ID parameter */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Weld type not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    WeldTypeController_remove: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Weld type deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Weld type not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    WeldTypeController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateWeldTypeDto"];
-            };
-        };
-        responses: {
-            /** @description Weld type updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Weld type not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    RfqController_createStraightPipeRfq: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateStraightPipeRfqWithItemDto"];
-            };
-        };
-        responses: {
-            /** @description RFQ created successfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqResponseDto"];
-                };
-            };
-            /** @description Bad request - validation errors or missing required data */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    RfqController_calculateStraightPipeRequirements: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Calculations completed successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StraightPipeCalculationResultDto"];
-                };
-            };
-        };
-    };
-    RfqController_getAllRfqs: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of all RFQs */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqResponseDto"][];
-                };
-            };
-        };
-    };
-    RfqController_getRfqById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description RFQ details */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RfqResponseDto"];
-                };
-            };
-            /** @description RFQ not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    RfqController_recalculateStraightPipeRfq: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Recalculation completed */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StraightPipeCalculationResultDto"];
-                };
-            };
-            /** @description Straight pipe RFQ not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
+  AppController_getHello: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BendDimensionController_calculate: {
+    parameters: {
+      query: {
+        nbMm: number;
+        degree: number;
+        multiplier: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SteelSpecificationController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of steel specifications retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SteelSpecificationController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateSteelSpecificationDto"];
+      };
+    };
+    responses: {
+      /** @description Steel specification successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate steel specification */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SteelSpecificationController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Steel specification retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Steel specification not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SteelSpecificationController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Steel specification deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Steel specification not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SteelSpecificationController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateSteelSpecificationDto"];
+      };
+    };
+    responses: {
+      /** @description Steel specification updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate steel specification */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Steel specification not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NominalOutsideDiameterMmController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of nominal outside diameter retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NominalOutsideDiameterMmController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateNominalOutsideDiameterMmDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NominalOutsideDiameterMmController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Nominal outside diameter retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Nominal outside diameter not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NominalOutsideDiameterMmController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Nominal outside diameter deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Nominal outside diameter not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NominalOutsideDiameterMmController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateNominalOutsideDiameterMmDto"];
+      };
+    };
+    responses: {
+      /** @description Nominal outside diameter updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate nominal outside diameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Nominal outside diameter not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UserController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of users */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["User"][];
+        };
+      };
+    };
+  };
+  UserController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateUserDto"];
+      };
+    };
+    responses: {
+      /** @description User created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["User"];
+        };
+      };
+    };
+  };
+  UserController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description User found */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["User"];
+        };
+      };
+      /** @description Unauthorized - missing or invalid JWT token */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Forbidden - user does not have required role */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description User not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UserController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description User deleted */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description User not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UserController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateUserDto"];
+      };
+    };
+    responses: {
+      /** @description User updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["User"];
+        };
+      };
+    };
+  };
+  UserRolesController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of roles */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserRole"][];
+        };
+      };
+    };
+  };
+  UserRolesController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateUserRoleDto"];
+      };
+    };
+    responses: {
+      /** @description Role created successfully */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserRole"];
+        };
+      };
+      /** @description Role already exists */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UserRolesController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Role found */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserRole"];
+        };
+      };
+      /** @description Role not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UserRolesController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Role deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Role not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  UserRolesController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateUserRoleDto"];
+      };
+    };
+    responses: {
+      /** @description Role updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserRole"];
+        };
+      };
+      /** @description Role not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AuthController_login: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["LoginUserDto"];
+      };
+    };
+    responses: {
+      /** @description JWT access token returned */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid credentials */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  PipeDimensionController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreatePipeDimensionDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  PipeDimensionController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of pipe dimensions */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PipeDimension"][];
+        };
+      };
+    };
+  };
+  PipeDimensionController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description User found */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PipeDimension"];
+        };
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Pipe dimension not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  PipeDimensionController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Pipe dimension deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Pipe dimension not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  PipeDimensionController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdatePipeDimensionDto"];
+      };
+    };
+    responses: {
+      /** @description Pipe dimension updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PipeDimension"];
+        };
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Pipe dimension not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  PipePressureController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of pipe pressures */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PipePressure"][];
+        };
+      };
+    };
+  };
+  PipePressureController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        pipeDimensionId: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreatePipePressureDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PipePressure"];
+        };
+      };
+      /** @description Invalid request or duplicate pipe pressure */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  PipePressureController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Pipe Pressure found */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PipePressure"];
+        };
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Pipe pressure not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  PipePressureController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Pipe Pressure deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PipePressure"];
+        };
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Pipe pressure not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  PipePressureController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdatePipePressureDto"];
+      };
+    };
+    responses: {
+      /** @description Pipe Pressure updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PipePressure"];
+        };
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Pipe pressure not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AngleRangeController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of angle ranges retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AngleRangeController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateAngleRangeDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AngleRangeController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Angle range retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Angle range not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AngleRangeController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Angle range deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Angle range not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AngleRangeController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateAngleRangeDto"];
+      };
+    };
+    responses: {
+      /** @description Angle range updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate angle range */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Angle range not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of fittings retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFittingDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fittings retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fittings not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fittings deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fittings not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFittingDto"];
+      };
+    };
+    responses: {
+      /** @description Fittings updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate fittings */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fittings not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingBoreController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of fitting bores retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingBoreController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFittingBoreDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingBoreController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fitting bore retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting bore not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingBoreController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fitting bore deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting bore not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingBoreController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFittingBoreDto"];
+      };
+    };
+    responses: {
+      /** @description Fitting bore updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate fitting bore */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting bore not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingDimensionController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of fitting dimensions retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingDimensionController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFittingDimensionDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingDimensionController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fitting dimension retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting dimension not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingDimensionController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fitting dimension deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting dimension not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingDimensionController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFittingDimensionDto"];
+      };
+    };
+    responses: {
+      /** @description Fitting dimension updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate fitting dimension */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting dimension not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingTypeController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of fitting types retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingTypeController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFittingTypeDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingTypeController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fitting types retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting types not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingTypeController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fitting type deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting type not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingTypeController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFittingTypeDto"];
+      };
+    };
+    responses: {
+      /** @description Fitting type updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate fitting type */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting type not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingVariantController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of fitting variants retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingVariantController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFittingVariantDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingVariantController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fitting variant retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting variant not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingVariantController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Fitting variant deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting variant not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FittingVariantController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFittingVariantDto"];
+      };
+    };
+    responses: {
+      /** @description Fitting variant updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate fitting variant */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Fitting variant not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeStandardController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of flange standards retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeStandardController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFlangeStandardDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeStandardController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Flange standard retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Flange standard not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeStandardController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Flange standard deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Flange standard not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeStandardController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFlangeStandardDto"];
+      };
+    };
+    responses: {
+      /** @description Flange standard updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate flange standard */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Flange standard not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangePressureClassController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of flange pressure classs retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangePressureClassController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFlangePressureClassDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangePressureClassController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Flange pressure class retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Flange pressure class not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangePressureClassController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Flange pressure class deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Flange pressure class not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangePressureClassController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFlangePressureClassDto"];
+      };
+    };
+    responses: {
+      /** @description Flange pressure class updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate flange pressure class */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Flange pressure class not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of fitting bolts retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateBoltDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bolts retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bolts not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bolt deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bolt not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateBoltDto"];
+      };
+    };
+    responses: {
+      /** @description Bolt updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate bolt */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bolt not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltMassController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of bolt masses retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltMassController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateBoltMassDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltMassController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bolt mass retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bolt mass not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltMassController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description bolt mass deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description bolt mass not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BoltMassController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateBoltMassDto"];
+      };
+    };
+    responses: {
+      /** @description Bolt mass updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate bolt mass */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bolt mass not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeDimensionController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of bolt masss retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeDimensionController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateFlangeDimensionDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeDimensionController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description bolt mass retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description bolt mass not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeDimensionController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Bolt mass deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bolt mass not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FlangeDimensionController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFlangeDimensionDto"];
+      };
+    };
+    responses: {
+      /** @description Bolt mass updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate bolt mass */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bolt mass not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NutMassController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of nut masss retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NutMassController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateNutMassDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NutMassController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Nut mass retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Nut mass not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NutMassController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Nut mass deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Nut mass not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NutMassController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateNutMassDto"];
+      };
+    };
+    responses: {
+      /** @description Nut mass updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid request or duplicate nut mass */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Nut mass not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NbNpsLookupController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description All lookups returned */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NbNpsLookup"][];
+        };
+      };
+    };
+  };
+  NbNpsLookupController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateNbNpsLookupDto"];
+      };
+    };
+    responses: {
+      /** @description Lookup created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NbNpsLookup"];
+        };
+      };
+      /** @description Duplicate entry */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NbNpsLookupController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Single lookup returned */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NbNpsLookup"];
+        };
+      };
+      /** @description Lookup not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NbNpsLookupController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Lookup deleted */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Lookup not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  NbNpsLookupController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateNbNpsLookupDto"];
+      };
+    };
+    responses: {
+      /** @description Lookup updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NbNpsLookup"];
+        };
+      };
+      /** @description Duplicate entry */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Lookup not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  WeldTypeController_findAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of weld types retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  WeldTypeController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateWeldTypeDto"];
+      };
+    };
+    responses: {
+      /** @description Successfully created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Duplicate or invalid data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  WeldTypeController_findOne: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Weld type retrieved successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid ID parameter */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Weld type not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  WeldTypeController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Weld type deleted successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Weld type not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  WeldTypeController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateWeldTypeDto"];
+      };
+    };
+    responses: {
+      /** @description Weld type updated successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Weld type not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  RfqController_createStraightPipeRfq: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateStraightPipeRfqWithItemDto"];
+      };
+    };
+    responses: {
+      /** @description RFQ created successfully */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RfqResponseDto"];
+        };
+      };
+      /** @description Bad request - validation errors or missing required data */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  RfqController_calculateStraightPipeRequirements: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Calculations completed successfully */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StraightPipeCalculationResultDto"];
+        };
+      };
+    };
+  };
+  RfqController_getAllRfqs: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of all RFQs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RfqResponseDto"][];
+        };
+      };
+    };
+  };
+  RfqController_getRfqById: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description RFQ details */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RfqResponseDto"];
+        };
+      };
+      /** @description RFQ not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  RfqController_recalculateStraightPipeRfq: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Recalculation completed */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StraightPipeCalculationResultDto"];
+        };
+      };
+      /** @description Straight pipe RFQ not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
 }

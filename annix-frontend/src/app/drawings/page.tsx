@@ -1,18 +1,18 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useDrawings, type Drawing } from '@/app/lib/query/hooks';
-import { formatDateZA } from '@/app/lib/datetime';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
+import { type Drawing, useDrawings } from "@/app/lib/query/hooks";
 
 export default function DrawingsListPage() {
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
 
   const { data, isLoading, error, refetch } = useDrawings({
-    status: statusFilter !== 'all' ? statusFilter : undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
     search: searchTerm || undefined,
     page,
     limit: 20,
@@ -31,20 +31,20 @@ export default function DrawingsListPage() {
 
   const statusColorClass = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'submitted':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'under_review':
-        return 'bg-blue-100 text-blue-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'changes_requested':
-        return 'bg-orange-100 text-orange-800';
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "submitted":
+        return "bg-yellow-100 text-yellow-800";
+      case "under_review":
+        return "bg-blue-100 text-blue-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
+      case "changes_requested":
+        return "bg-orange-100 text-orange-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -56,17 +56,17 @@ export default function DrawingsListPage() {
 
   const fileIcon = (fileType: string) => {
     switch (fileType.toLowerCase()) {
-      case 'pdf':
-        return '📄';
-      case 'dwg':
-      case 'dxf':
-        return '📐';
-      case 'png':
-      case 'jpg':
-      case 'jpeg':
-        return '🖼️';
+      case "pdf":
+        return "📄";
+      case "dwg":
+      case "dxf":
+        return "📐";
+      case "png":
+      case "jpg":
+      case "jpeg":
+        return "🖼️";
       default:
-        return '📁';
+        return "📁";
     }
   };
 
@@ -111,10 +111,12 @@ export default function DrawingsListPage() {
               <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 Drawings
               </h1>
-              <p className="text-gray-600 mt-2">Manage your technical drawings and specifications</p>
+              <p className="text-gray-600 mt-2">
+                Manage your technical drawings and specifications
+              </p>
             </div>
             <button
-              onClick={() => router.push('/drawings/upload')}
+              onClick={() => router.push("/drawings/upload")}
               className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               + Upload Drawing
@@ -129,7 +131,7 @@ export default function DrawingsListPage() {
                 placeholder="Search by drawing number, title..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 className="flex-1 px-4 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <button
@@ -163,7 +165,7 @@ export default function DrawingsListPage() {
         {/* Drawing Count */}
         <div className="mb-4">
           <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{drawings.length}</span> of{' '}
+            Showing <span className="font-semibold">{drawings.length}</span> of{" "}
             <span className="font-semibold">{pagination.total}</span> drawings
           </p>
         </div>
@@ -176,13 +178,13 @@ export default function DrawingsListPage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Drawings Found</h3>
             <p className="text-gray-600 mb-6">
-              {searchTerm || statusFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Get started by uploading your first drawing'}
+              {searchTerm || statusFilter !== "all"
+                ? "Try adjusting your filters"
+                : "Get started by uploading your first drawing"}
             </p>
-            {!searchTerm && statusFilter === 'all' && (
+            {!searchTerm && statusFilter === "all" && (
               <button
-                onClick={() => router.push('/drawings/upload')}
+                onClick={() => router.push("/drawings/upload")}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold transition-all"
               >
                 Upload Your First Drawing
@@ -211,10 +213,10 @@ export default function DrawingsListPage() {
                             </h3>
                             <span
                               className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColorClass(
-                                drawing.status
+                                drawing.status,
                               )}`}
                             >
-                              {drawing.status.replace('_', ' ').toUpperCase()}
+                              {drawing.status.replace("_", " ").toUpperCase()}
                             </span>
                             <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
                               v{drawing.currentVersion}

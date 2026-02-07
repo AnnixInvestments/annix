@@ -1,8 +1,6 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddBeeExpiryNotificationField1778005000000
-  implements MigrationInterface
-{
+export class AddBeeExpiryNotificationField1778005000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE customer_companies

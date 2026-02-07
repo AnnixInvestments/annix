@@ -1,42 +1,35 @@
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { now } from '../lib/datetime';
-
-import {
-  SupplierProfile,
-  SupplierAccountStatus,
-  SupplierCompany,
-  SupplierOnboarding,
-  SupplierOnboardingStatus,
-  SupplierDocument,
-  SupplierDocumentValidationStatus,
-} from './entities';
-import {
-  RejectSupplierDto,
-  SuspendSupplierDto,
-  ReviewDocumentDto,
-  SupplierListItemDto,
-  SupplierDetailDto,
-} from './dto';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/entities/audit-log.entity';
-import { EmailService } from '../email/email.service';
-import { User } from '../user/entities/user.entity';
-import { S3StorageService } from '../storage/s3-storage.service';
-import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
-import { MessagingService } from '../messaging/messaging.service';
-import { ConversationType, RelatedEntityType } from '../messaging/entities';
-import {
+  CustomerPreferredSupplier,
   SupplierInvitation,
   SupplierInvitationStatus,
-  CustomerPreferredSupplier,
-} from '../customer/entities';
+} from "../customer/entities";
+import { EmailService } from "../email/email.service";
+import { now } from "../lib/datetime";
+import { ConversationType, RelatedEntityType } from "../messaging/entities";
+import { MessagingService } from "../messaging/messaging.service";
+import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
+import { S3StorageService } from "../storage/s3-storage.service";
+import { User } from "../user/entities/user.entity";
+import {
+  RejectSupplierDto,
+  ReviewDocumentDto,
+  SupplierDetailDto,
+  SupplierListItemDto,
+  SuspendSupplierDto,
+} from "./dto";
+import {
+  SupplierAccountStatus,
+  SupplierCompany,
+  SupplierDocument,
+  SupplierOnboarding,
+  SupplierOnboardingStatus,
+  SupplierProfile,
+} from "./entities";
 
 @Injectable()
 export class SupplierAdminService {
@@ -78,14 +71,14 @@ export class SupplierAdminService {
     totalPages: number;
   }> {
     const queryBuilder = this.profileRepo
-      .createQueryBuilder('profile')
-      .leftJoinAndSelect('profile.user', 'user')
-      .leftJoinAndSelect('profile.company', 'company')
-      .leftJoinAndSelect('profile.onboarding', 'onboarding')
-      .orderBy('profile.createdAt', 'DESC');
+      .createQueryBuilder("profile")
+      .leftJoinAndSelect("profile.user", "user")
+      .leftJoinAndSelect("profile.company", "company")
+      .leftJoinAndSelect("profile.onboarding", "onboarding")
+      .orderBy("profile.createdAt", "DESC");
 
     if (accountStatus) {
-      queryBuilder.andWhere('profile.accountStatus = :accountStatus', { accountStatus });
+      queryBuilder.andWhere("profile.accountStatus = :accountStatus", { accountStatus });
     }
 
     const total = await queryBuilder.getCount();
@@ -103,8 +96,7 @@ export class SupplierAdminService {
       lastName: profile.lastName,
       companyName: profile.company?.tradingName || profile.company?.legalName,
       accountStatus: profile.accountStatus,
-      onboardingStatus:
-        profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
+      onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
       createdAt: profile.createdAt,
     }));
 
@@ -121,8 +113,8 @@ export class SupplierAdminService {
           status: SupplierOnboardingStatus.SUBMITTED,
         },
       },
-      relations: ['user', 'company', 'onboarding'],
-      order: { createdAt: 'ASC' },
+      relations: ["user", "company", "onboarding"],
+      order: { createdAt: "ASC" },
     });
 
     return profiles.map((profile) => ({
@@ -143,11 +135,11 @@ export class SupplierAdminService {
   async getSupplierDetails(supplierId: number): Promise<SupplierDetailDto> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['user', 'company', 'onboarding', 'documents'],
+      relations: ["user", "company", "onboarding", "documents"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier not found');
+      throw new NotFoundException("Supplier not found");
     }
 
     return {
@@ -157,8 +149,7 @@ export class SupplierAdminService {
       lastName: profile.lastName,
       companyName: profile.company?.tradingName || profile.company?.legalName,
       accountStatus: profile.accountStatus,
-      onboardingStatus:
-        profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
+      onboardingStatus: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
       createdAt: profile.createdAt,
       company: profile.company
         ? {
@@ -186,8 +177,7 @@ export class SupplierAdminService {
       })),
       onboarding: {
         status: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
-        companyDetailsComplete:
-          profile.onboarding?.companyDetailsComplete || false,
+        companyDetailsComplete: profile.onboarding?.companyDetailsComplete || false,
         documentsComplete: profile.onboarding?.documentsComplete || false,
         submittedAt: profile.onboarding?.submittedAt,
         rejectionReason: profile.onboarding?.rejectionReason ?? undefined,
@@ -212,7 +202,7 @@ export class SupplierAdminService {
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     const oldStatus = document.validationStatus;
@@ -225,7 +215,7 @@ export class SupplierAdminService {
     const savedDocument = await this.documentRepo.save(document);
 
     await this.auditService.log({
-      entityType: 'supplier_document',
+      entityType: "supplier_document",
       entityId: documentId,
       action: AuditAction.UPDATE,
       oldValues: { validationStatus: oldStatus },
@@ -250,23 +240,23 @@ export class SupplierAdminService {
   ): Promise<{ success: boolean; message: string }> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['user', 'company', 'onboarding'],
+      relations: ["user", "company", "onboarding"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier not found');
+      throw new NotFoundException("Supplier not found");
     }
 
     const onboarding = profile.onboarding;
     if (!onboarding) {
-      throw new NotFoundException('Onboarding record not found');
+      throw new NotFoundException("Onboarding record not found");
     }
 
     if (
       onboarding.status !== SupplierOnboardingStatus.SUBMITTED &&
       onboarding.status !== SupplierOnboardingStatus.UNDER_REVIEW
     ) {
-      throw new BadRequestException('Onboarding is not in a reviewable status');
+      throw new BadRequestException("Onboarding is not in a reviewable status");
     }
 
     // Update onboarding status
@@ -283,9 +273,7 @@ export class SupplierAdminService {
     if (profile.user?.email) {
       await this.emailService.sendSupplierApprovalEmail(
         profile.user.email,
-        profile.company?.tradingName ||
-          profile.company?.legalName ||
-          'Your Company',
+        profile.company?.tradingName || profile.company?.legalName || "Your Company",
       );
     }
 
@@ -293,22 +281,20 @@ export class SupplierAdminService {
     if (profile.userId) {
       try {
         const companyName =
-          profile.company?.tradingName ||
-          profile.company?.legalName ||
-          'your company';
+          profile.company?.tradingName || profile.company?.legalName || "your company";
         await this.messagingService.createConversation(adminUserId, {
-          subject: 'Welcome to Annix - Your Account is Approved',
+          subject: "Welcome to Annix - Your Account is Approved",
           participantIds: [profile.userId],
           conversationType: ConversationType.DIRECT,
           relatedEntityType: RelatedEntityType.GENERAL,
           initialMessage:
             `Congratulations! Your supplier account for ${companyName} has been fully approved.\n\n` +
-            `You now have full access to the Annix platform and can:\n` +
-            `• View and respond to RFQ opportunities\n` +
-            `• Submit quotes and manage your BOQs\n` +
-            `• Update your company profile and capabilities\n\n` +
-            `If you have any questions, feel free to reply to this message.\n\n` +
-            `Welcome aboard!`,
+            "You now have full access to the Annix platform and can:\n" +
+            "• View and respond to RFQ opportunities\n" +
+            "• Submit quotes and manage your BOQs\n" +
+            "• Update your company profile and capabilities\n\n" +
+            "If you have any questions, feel free to reply to this message.\n\n" +
+            "Welcome aboard!",
         });
       } catch (err) {
         this.logger.warn(
@@ -337,7 +323,7 @@ export class SupplierAdminService {
     }
 
     await this.auditService.log({
-      entityType: 'supplier_onboarding',
+      entityType: "supplier_onboarding",
       entityId: onboarding.id,
       action: AuditAction.APPROVE,
       newValues: {
@@ -349,7 +335,7 @@ export class SupplierAdminService {
 
     return {
       success: true,
-      message: 'Supplier onboarding approved successfully',
+      message: "Supplier onboarding approved successfully",
     };
   }
 
@@ -364,23 +350,23 @@ export class SupplierAdminService {
   ): Promise<{ success: boolean; message: string }> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['user', 'company', 'onboarding'],
+      relations: ["user", "company", "onboarding"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier not found');
+      throw new NotFoundException("Supplier not found");
     }
 
     const onboarding = profile.onboarding;
     if (!onboarding) {
-      throw new NotFoundException('Onboarding record not found');
+      throw new NotFoundException("Onboarding record not found");
     }
 
     if (
       onboarding.status !== SupplierOnboardingStatus.SUBMITTED &&
       onboarding.status !== SupplierOnboardingStatus.UNDER_REVIEW
     ) {
-      throw new BadRequestException('Onboarding is not in a reviewable status');
+      throw new BadRequestException("Onboarding is not in a reviewable status");
     }
 
     // Update onboarding status
@@ -395,16 +381,14 @@ export class SupplierAdminService {
     if (profile.user?.email) {
       await this.emailService.sendSupplierRejectionEmail(
         profile.user.email,
-        profile.company?.tradingName ||
-          profile.company?.legalName ||
-          'Your Company',
+        profile.company?.tradingName || profile.company?.legalName || "Your Company",
         dto.rejectionReason,
         dto.remediationSteps,
       );
     }
 
     await this.auditService.log({
-      entityType: 'supplier_onboarding',
+      entityType: "supplier_onboarding",
       entityId: onboarding.id,
       action: AuditAction.REJECT,
       newValues: {
@@ -417,7 +401,7 @@ export class SupplierAdminService {
 
     return {
       success: true,
-      message: 'Supplier onboarding rejected',
+      message: "Supplier onboarding rejected",
     };
   }
 
@@ -434,18 +418,18 @@ export class SupplierAdminService {
     });
 
     if (!onboarding) {
-      throw new NotFoundException('Onboarding record not found');
+      throw new NotFoundException("Onboarding record not found");
     }
 
     if (onboarding.status !== SupplierOnboardingStatus.SUBMITTED) {
-      throw new BadRequestException('Onboarding is not in submitted status');
+      throw new BadRequestException("Onboarding is not in submitted status");
     }
 
     onboarding.status = SupplierOnboardingStatus.UNDER_REVIEW;
     await this.onboardingRepo.save(onboarding);
 
     await this.auditService.log({
-      entityType: 'supplier_onboarding',
+      entityType: "supplier_onboarding",
       entityId: onboarding.id,
       action: AuditAction.UPDATE,
       newValues: {
@@ -472,7 +456,7 @@ export class SupplierAdminService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier not found');
+      throw new NotFoundException("Supplier not found");
     }
 
     profile.accountStatus = SupplierAccountStatus.SUSPENDED;
@@ -482,7 +466,7 @@ export class SupplierAdminService {
     await this.profileRepo.save(profile);
 
     await this.auditService.log({
-      entityType: 'supplier_profile',
+      entityType: "supplier_profile",
       entityId: supplierId,
       action: AuditAction.UPDATE,
       newValues: {
@@ -494,7 +478,7 @@ export class SupplierAdminService {
     });
 
     await this.secureDocumentsService.deactivateEntityFolder(
-      'supplier',
+      "supplier",
       supplierId,
       `Account suspended: ${dto.reason}`,
     );
@@ -515,7 +499,7 @@ export class SupplierAdminService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier not found');
+      throw new NotFoundException("Supplier not found");
     }
 
     profile.accountStatus = SupplierAccountStatus.ACTIVE;
@@ -525,7 +509,7 @@ export class SupplierAdminService {
     await this.profileRepo.save(profile);
 
     await this.auditService.log({
-      entityType: 'supplier_profile',
+      entityType: "supplier_profile",
       entityId: supplierId,
       action: AuditAction.UPDATE,
       newValues: {
@@ -535,7 +519,7 @@ export class SupplierAdminService {
       ipAddress: clientIp,
     });
 
-    await this.secureDocumentsService.reactivateEntityFolder('supplier', supplierId);
+    await this.secureDocumentsService.reactivateEntityFolder("supplier", supplierId);
 
     return { success: true };
   }
@@ -543,11 +527,11 @@ export class SupplierAdminService {
   async getDocumentReviewData(supplierId: number, documentId: number) {
     const document = await this.documentRepo.findOne({
       where: { id: documentId, supplierId },
-      relations: ['supplier', 'supplier.company', 'reviewedBy'],
+      relations: ["supplier", "supplier.company", "reviewedBy"],
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     const url = await this.storageService.getPresignedUrl(document.filePath);
@@ -569,7 +553,11 @@ export class SupplierAdminService {
 
     const extractedData = document.ocrExtractedData ?? {};
 
-    const fieldComparison = this.buildFieldComparison(expectedData, extractedData, document.fieldResults ?? []);
+    const fieldComparison = this.buildFieldComparison(
+      expectedData,
+      extractedData,
+      document.fieldResults ?? [],
+    );
 
     return {
       documentId: document.id,
@@ -601,11 +589,26 @@ export class SupplierAdminService {
   private buildFieldComparison(
     expected: Record<string, any>,
     extracted: Record<string, any>,
-    fieldResults: { fieldName: string; expected: string; extracted: string; matches: boolean; similarity: number }[],
+    fieldResults: {
+      fieldName: string;
+      expected: string;
+      extracted: string;
+      matches: boolean;
+      similarity: number;
+    }[],
   ) {
     const fieldResultsMap = new Map(fieldResults.map((fr) => [fr.fieldName, fr]));
 
-    const fields = ['companyName', 'registrationNumber', 'vatNumber', 'streetAddress', 'city', 'provinceState', 'postalCode', 'beeLevel'];
+    const fields = [
+      "companyName",
+      "registrationNumber",
+      "vatNumber",
+      "streetAddress",
+      "city",
+      "provinceState",
+      "postalCode",
+      "beeLevel",
+    ];
 
     return fields.map((field) => {
       const storedResult = fieldResultsMap.get(field);
@@ -695,10 +698,10 @@ export class SupplierAdminService {
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
-    if (document.mimeType !== 'application/pdf') {
+    if (document.mimeType !== "application/pdf") {
       const url = await this.storageService.getPresignedUrl(document.filePath);
       return {
         pages: [url],
@@ -716,35 +719,36 @@ export class SupplierAdminService {
   }
 
   private async convertPdfToImages(pdfBuffer: Buffer): Promise<string[]> {
-    const { exec } = await import('child_process');
-    const { promisify } = await import('util');
-    const fs = await import('fs/promises');
-    const path = await import('path');
-    const os = await import('os');
+    const { exec } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const os = await import("node:os");
 
     const execAsync = promisify(exec);
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'pdf-preview-'));
-    const inputPath = path.join(tempDir, 'input.pdf');
-    const outputPattern = path.join(tempDir, 'page-%d.png');
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pdf-preview-"));
+    const inputPath = path.join(tempDir, "input.pdf");
+    const outputPattern = path.join(tempDir, "page-%d.png");
 
-    this.logger.log('[PDF Preview] Starting conversion');
+    this.logger.log("[PDF Preview] Starting conversion");
 
     try {
       await fs.writeFile(inputPath, pdfBuffer);
 
-      const gsCommand = process.platform === 'win32'
-        ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
-        : 'gs';
+      const gsCommand =
+        process.platform === "win32"
+          ? '"C:\\Program Files\\gs\\gs10.06.0\\bin\\gswin64c.exe"'
+          : "gs";
       const command = `${gsCommand} -dNOPAUSE -dBATCH -dSAFER -sDEVICE=png16m -r150 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 "-sOutputFile=${outputPattern}" "${inputPath}"`;
 
       await execAsync(command, { timeout: 60000 });
 
       const files = await fs.readdir(tempDir);
       const pngFiles = files
-        .filter((f: string) => f.startsWith('page-') && f.endsWith('.png'))
+        .filter((f: string) => f.startsWith("page-") && f.endsWith(".png"))
         .sort((a: string, b: string) => {
-          const numA = parseInt(a.match(/page-(\d+)/)?.[1] || '0', 10);
-          const numB = parseInt(b.match(/page-(\d+)/)?.[1] || '0', 10);
+          const numA = parseInt(a.match(/page-(\d+)/)?.[1] || "0", 10);
+          const numB = parseInt(b.match(/page-(\d+)/)?.[1] || "0", 10);
           return numA - numB;
         });
 
@@ -752,15 +756,17 @@ export class SupplierAdminService {
       for (const file of pngFiles) {
         const filePath = path.join(tempDir, file);
         const imageBuffer = await fs.readFile(filePath);
-        base64Images.push(`data:image/png;base64,${imageBuffer.toString('base64')}`);
+        base64Images.push(`data:image/png;base64,${imageBuffer.toString("base64")}`);
       }
 
       await fs.rm(tempDir, { recursive: true, force: true });
 
       return base64Images;
     } catch (error: any) {
-      this.logger.error('[PDF Preview] Error:', error.message);
-      await import('fs/promises').then(fs => fs.rm(tempDir, { recursive: true, force: true }).catch(() => {}));
+      this.logger.error("[PDF Preview] Error:", error.message);
+      await import("node:fs/promises").then((fs) =>
+        fs.rm(tempDir, { recursive: true, force: true }).catch(() => {}),
+      );
       throw error;
     }
   }

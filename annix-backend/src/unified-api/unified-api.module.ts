@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { UnifiedApiController } from './unified-api.controller';
-import { UnifiedApiService } from './unified-api.service';
+import { Module } from "@nestjs/common";
+import { UnifiedApiController } from "./unified-api.controller";
+import { UnifiedApiService } from "./unified-api.service";
 
 @Module({
   controllers: [UnifiedApiController],

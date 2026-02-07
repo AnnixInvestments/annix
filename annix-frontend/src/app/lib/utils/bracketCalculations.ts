@@ -4,8 +4,8 @@ import {
   BracketType,
   CompensationPlateDimensions,
   CompensationPlateEntry,
-} from '@/app/lib/config/rfq/bracketsAndPlates';
-import { SteelMaterial, steelMaterialById } from '@/app/lib/config/rfq/steelMaterials';
+} from "@/app/lib/config/rfq/bracketsAndPlates";
+import { steelMaterialById } from "@/app/lib/config/rfq/steelMaterials";
 
 export interface BracketCalculationResult {
   volumeM3: number;
@@ -23,7 +23,11 @@ export interface PlateCalculationResult {
 
 const mmToMeters = (mm: number): number => mm / 1000;
 
-const calculateRectangularVolumeM3 = (lengthMm: number, widthMm: number, thicknessMm: number): number => {
+const calculateRectangularVolumeM3 = (
+  lengthMm: number,
+  widthMm: number,
+  thicknessMm: number,
+): number => {
   const lengthM = mmToMeters(lengthMm);
   const widthM = mmToMeters(widthMm);
   const thicknessM = mmToMeters(thicknessMm);
@@ -58,12 +62,15 @@ export const calculateFlatBracketVolume = (dimensions: BracketDimensions): numbe
   return calculateRectangularVolumeM3(leg1LengthMm, widthMm, thicknessMm);
 };
 
-export const calculateBracketVolume = (bracketType: BracketType, dimensions: BracketDimensions): number => {
-  if (bracketType === 'L_BRACKET' || bracketType === 'CUSTOM') {
+export const calculateBracketVolume = (
+  bracketType: BracketType,
+  dimensions: BracketDimensions,
+): number => {
+  if (bracketType === "L_BRACKET" || bracketType === "CUSTOM") {
     return calculateLBracketVolume(dimensions);
-  } else if (bracketType === 'U_BRACKET') {
+  } else if (bracketType === "U_BRACKET") {
     return calculateUBracketVolume(dimensions);
-  } else if (bracketType === 'FLAT_BRACKET') {
+  } else if (bracketType === "FLAT_BRACKET") {
     return calculateFlatBracketVolume(dimensions);
   }
   return calculateLBracketVolume(dimensions);
@@ -74,7 +81,7 @@ export const calculateBracket = (
   dimensions: BracketDimensions,
   materialId: string,
   costPerKgOverride: number | null,
-  quantity: number
+  quantity: number,
 ): BracketCalculationResult => {
   const material = steelMaterialById(materialId);
   if (!material) {
@@ -96,14 +103,18 @@ export const calculateBracket = (
 };
 
 export const calculatePlateVolume = (dimensions: CompensationPlateDimensions): number => {
-  return calculateRectangularVolumeM3(dimensions.lengthMm, dimensions.widthMm, dimensions.thicknessMm);
+  return calculateRectangularVolumeM3(
+    dimensions.lengthMm,
+    dimensions.widthMm,
+    dimensions.thicknessMm,
+  );
 };
 
 export const calculateCompensationPlate = (
   dimensions: CompensationPlateDimensions,
   materialId: string,
   costPerKgOverride: number | null,
-  quantity: number
+  quantity: number,
 ): PlateCalculationResult => {
   const material = steelMaterialById(materialId);
   if (!material) {
@@ -130,7 +141,7 @@ export const recalculateBracketEntry = (entry: BracketEntry): BracketEntry => {
     entry.dimensions,
     entry.materialId,
     entry.costPerKgOverride,
-    entry.quantity
+    entry.quantity,
   );
 
   return {
@@ -146,7 +157,7 @@ export const recalculatePlateEntry = (entry: CompensationPlateEntry): Compensati
     entry.dimensions,
     entry.materialId,
     entry.costPerKgOverride,
-    entry.quantity
+    entry.quantity,
   );
 
   return {
@@ -161,31 +172,31 @@ export const validateBracketDimensions = (dimensions: BracketDimensions): string
   const errors: string[] = [];
 
   if (dimensions.leg1LengthMm <= 0) {
-    errors.push('Leg 1 length must be greater than 0');
+    errors.push("Leg 1 length must be greater than 0");
   }
   if (dimensions.leg1LengthMm > 2000) {
-    errors.push('Leg 1 length exceeds maximum (2000mm)');
+    errors.push("Leg 1 length exceeds maximum (2000mm)");
   }
   if (dimensions.leg2LengthMm <= 0) {
-    errors.push('Leg 2 length must be greater than 0');
+    errors.push("Leg 2 length must be greater than 0");
   }
   if (dimensions.leg2LengthMm > 2000) {
-    errors.push('Leg 2 length exceeds maximum (2000mm)');
+    errors.push("Leg 2 length exceeds maximum (2000mm)");
   }
   if (dimensions.widthMm <= 0) {
-    errors.push('Width must be greater than 0');
+    errors.push("Width must be greater than 0");
   }
   if (dimensions.widthMm > 500) {
-    errors.push('Width exceeds maximum (500mm)');
+    errors.push("Width exceeds maximum (500mm)");
   }
   if (dimensions.thicknessMm <= 0) {
-    errors.push('Thickness must be greater than 0');
+    errors.push("Thickness must be greater than 0");
   }
   if (dimensions.thicknessMm > 50) {
-    errors.push('Thickness exceeds maximum (50mm)');
+    errors.push("Thickness exceeds maximum (50mm)");
   }
   if (dimensions.angleDegrees < 30 || dimensions.angleDegrees > 180) {
-    errors.push('Angle must be between 30 and 180 degrees');
+    errors.push("Angle must be between 30 and 180 degrees");
   }
 
   return errors;
@@ -195,22 +206,22 @@ export const validatePlateDimensions = (dimensions: CompensationPlateDimensions)
   const errors: string[] = [];
 
   if (dimensions.lengthMm <= 0) {
-    errors.push('Length must be greater than 0');
+    errors.push("Length must be greater than 0");
   }
   if (dimensions.lengthMm > 1000) {
-    errors.push('Length exceeds maximum (1000mm)');
+    errors.push("Length exceeds maximum (1000mm)");
   }
   if (dimensions.widthMm <= 0) {
-    errors.push('Width must be greater than 0');
+    errors.push("Width must be greater than 0");
   }
   if (dimensions.widthMm > 1000) {
-    errors.push('Width exceeds maximum (1000mm)');
+    errors.push("Width exceeds maximum (1000mm)");
   }
   if (dimensions.thicknessMm <= 0) {
-    errors.push('Thickness must be greater than 0');
+    errors.push("Thickness must be greater than 0");
   }
   if (dimensions.thicknessMm > 50) {
-    errors.push('Thickness exceeds maximum (50mm)');
+    errors.push("Thickness exceeds maximum (50mm)");
   }
 
   return errors;
@@ -218,7 +229,7 @@ export const validatePlateDimensions = (dimensions: CompensationPlateDimensions)
 
 export const summarizeBracketsAndPlates = (
   brackets: BracketEntry[],
-  plates: CompensationPlateEntry[]
+  plates: CompensationPlateEntry[],
 ): {
   totalBrackets: number;
   totalPlates: number;
@@ -231,7 +242,10 @@ export const summarizeBracketsAndPlates = (
 } => {
   const totalBrackets = brackets.reduce((sum, b) => sum + b.quantity, 0);
   const totalPlates = plates.reduce((sum, p) => sum + p.quantity, 0);
-  const totalBracketWeight = brackets.reduce((sum, b) => sum + b.calculatedWeightKg * b.quantity, 0);
+  const totalBracketWeight = brackets.reduce(
+    (sum, b) => sum + b.calculatedWeightKg * b.quantity,
+    0,
+  );
   const totalPlateWeight = plates.reduce((sum, p) => sum + p.calculatedWeightKg * p.quantity, 0);
   const totalBracketCost = brackets.reduce((sum, b) => sum + b.calculatedTotalCost, 0);
   const totalPlateCost = plates.reduce((sum, p) => sum + p.calculatedTotalCost, 0);
@@ -249,9 +263,9 @@ export const summarizeBracketsAndPlates = (
 };
 
 export const formatCurrency = (amount: number): string => {
-  return `R ${amount.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `R ${amount.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 export const formatWeight = (kg: number): string => {
-  return `${kg.toLocaleString('en-ZA', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;
+  return `${kg.toLocaleString("en-ZA", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} kg`;
 };

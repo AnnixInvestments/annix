@@ -1,40 +1,40 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableIndex } from "typeorm";
 
 export class CreateRfqSequencesTable1769400000000 implements MigrationInterface {
-  name = 'CreateRfqSequencesTable1769400000000';
+  name = "CreateRfqSequencesTable1769400000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(
       new Table({
-        name: 'rfq_sequences',
+        name: "rfq_sequences",
         columns: [
           {
-            name: 'id',
-            type: 'int',
+            name: "id",
+            type: "int",
             isPrimary: true,
             isGenerated: true,
-            generationStrategy: 'increment',
+            generationStrategy: "increment",
           },
           {
-            name: 'year',
-            type: 'int',
+            name: "year",
+            type: "int",
             isUnique: true,
           },
           {
-            name: 'last_sequence',
-            type: 'int',
+            name: "last_sequence",
+            type: "int",
             default: 0,
           },
           {
-            name: 'created_at',
-            type: 'timestamp',
-            default: 'CURRENT_TIMESTAMP',
+            name: "created_at",
+            type: "timestamp",
+            default: "CURRENT_TIMESTAMP",
           },
           {
-            name: 'updated_at',
-            type: 'timestamp',
-            default: 'CURRENT_TIMESTAMP',
-            onUpdate: 'CURRENT_TIMESTAMP',
+            name: "updated_at",
+            type: "timestamp",
+            default: "CURRENT_TIMESTAMP",
+            onUpdate: "CURRENT_TIMESTAMP",
           },
         ],
       }),
@@ -42,10 +42,10 @@ export class CreateRfqSequencesTable1769400000000 implements MigrationInterface 
     );
 
     await queryRunner.createIndex(
-      'rfq_sequences',
+      "rfq_sequences",
       new TableIndex({
-        name: 'IDX_rfq_sequences_year',
-        columnNames: ['year'],
+        name: "IDX_rfq_sequences_year",
+        columnNames: ["year"],
         isUnique: true,
       }),
     );
@@ -64,7 +64,7 @@ export class CreateRfqSequencesTable1769400000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropIndex('rfq_sequences', 'IDX_rfq_sequences_year');
-    await queryRunner.dropTable('rfq_sequences');
+    await queryRunner.dropIndex("rfq_sequences", "IDX_rfq_sequences_year");
+    await queryRunner.dropTable("rfq_sequences");
   }
 }

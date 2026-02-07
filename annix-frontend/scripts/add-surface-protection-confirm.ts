@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content = fs.readFileSync(filePath, "utf8");
 
 // Add Confirm Surface Protection button before the closing of the Surface Protection section
 // The section ends with:  </div>\n          </div>\n        )}\n\n            {/* Confirm Button for Steel Pipe Specifications */}
@@ -39,22 +39,24 @@ const newEnding = `        </div>
 
 if (content.includes(oldEnding)) {
   content = content.replace(oldEnding, newEnding);
-  console.log('✅ Added Confirm Surface Protection button');
+  console.log("✅ Added Confirm Surface Protection button");
 } else {
-  console.log('❌ Could not find the ending pattern');
+  console.log("❌ Could not find the ending pattern");
 }
 
 // Now update the summary box condition to also check for surfaceProtectionConfirmed
-const oldSummaryCondition = `{globalSpecs?.externalCoatingConfirmed && (globalSpecs?.externalCoatingRecommendation || globalSpecs?.externalCoatingType) && (`;
+const oldSummaryCondition =
+  "{globalSpecs?.externalCoatingConfirmed && (globalSpecs?.externalCoatingRecommendation || globalSpecs?.externalCoatingType) && (";
 
-const newSummaryCondition = `{(globalSpecs?.surfaceProtectionConfirmed || globalSpecs?.externalCoatingConfirmed) && (globalSpecs?.externalCoatingRecommendation || globalSpecs?.externalCoatingType) && (`;
+const newSummaryCondition =
+  "{(globalSpecs?.surfaceProtectionConfirmed || globalSpecs?.externalCoatingConfirmed) && (globalSpecs?.externalCoatingRecommendation || globalSpecs?.externalCoatingType) && (";
 
 if (content.includes(oldSummaryCondition)) {
   content = content.replace(oldSummaryCondition, newSummaryCondition);
-  console.log('✅ Updated summary box condition');
+  console.log("✅ Updated summary box condition");
 } else {
-  console.log('❌ Could not find summary condition');
+  console.log("❌ Could not find summary condition");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

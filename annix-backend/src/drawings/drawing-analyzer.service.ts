@@ -1,7 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { now } from '../lib/datetime';
+import { Injectable } from "@nestjs/common";
+import { now } from "../lib/datetime";
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse');
+const pdfParse = require("pdf-parse");
 
 export interface ExtractedComponent {
   itemNumber?: string;
@@ -17,7 +18,7 @@ export interface ExtractedComponent {
   quantity?: number;
   unit?: string;
   notes?: string;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
 }
 
 export interface DrawingAnalysisResult {
@@ -46,7 +47,7 @@ export class DrawingAnalyzerService {
   ];
 
   private readonly materialPatterns = [
-    /(?:material|mat|spec)[\s:]*([a-z0-9\s\-\/]+)/gi,
+    /(?:material|mat|spec)[\s:]*([a-z0-9\s\-/]+)/gi,
     /(?:astm|asme|api|en|iso|sabs)\s*[a-z]?\d+/gi,
     /(?:carbon\s*steel|stainless\s*steel|cs|ss|duplex|alloy)/gi,
   ];
@@ -56,23 +57,15 @@ export class DrawingAnalyzerService {
     patterns: RegExp[];
   }[] = [
     {
-      type: 'straight_pipe',
+      type: "straight_pipe",
       patterns: [/pipe/i, /tube/i, /straight\s*pipe/i, /line\s*pipe/i],
     },
     {
-      type: 'bend',
-      patterns: [
-        /bend/i,
-        /elbow/i,
-        /\d+°?\s*bend/i,
-        /\d+°?\s*elbow/i,
-        /45°/i,
-        /90°/i,
-        /180°/i,
-      ],
+      type: "bend",
+      patterns: [/bend/i, /elbow/i, /\d+°?\s*bend/i, /\d+°?\s*elbow/i, /45°/i, /90°/i, /180°/i],
     },
     {
-      type: 'fitting',
+      type: "fitting",
       patterns: [
         /tee/i,
         /reducer/i,
@@ -89,18 +82,11 @@ export class DrawingAnalyzerService {
       ],
     },
     {
-      type: 'flange',
-      patterns: [
-        /flange/i,
-        /wn\s*flange/i,
-        /so\s*flange/i,
-        /blind/i,
-        /spectacle/i,
-        /lap\s*joint/i,
-      ],
+      type: "flange",
+      patterns: [/flange/i, /wn\s*flange/i, /so\s*flange/i, /blind/i, /spectacle/i, /lap\s*joint/i],
     },
     {
-      type: 'valve',
+      type: "valve",
       patterns: [
         /valve/i,
         /gate/i,
@@ -113,16 +99,8 @@ export class DrawingAnalyzerService {
       ],
     },
     {
-      type: 'support',
-      patterns: [
-        /support/i,
-        /hanger/i,
-        /bracket/i,
-        /clamp/i,
-        /anchor/i,
-        /guide/i,
-        /shoe/i,
-      ],
+      type: "support",
+      patterns: [/support/i, /hanger/i, /bracket/i, /clamp/i, /anchor/i, /guide/i, /shoe/i],
     },
   ];
 
@@ -134,7 +112,7 @@ export class DrawingAnalyzerService {
       warnings: [],
       metadata: {
         pageCount: 0,
-        extractionMethod: 'pdf-parse',
+        extractionMethod: "pdf-parse",
         analysisTimestamp: now().toJSDate(),
       },
     };
@@ -147,8 +125,8 @@ export class DrawingAnalyzerService {
 
       if (!pdfData.text || pdfData.text.trim().length < 50) {
         result.warnings.push(
-          'PDF contains minimal or no extractable text. This may be a scanned document or image-based PDF. ' +
-            'Consider uploading a text-based PDF or manually entering the component data.',
+          "PDF contains minimal or no extractable text. This may be a scanned document or image-based PDF. " +
+            "Consider uploading a text-based PDF or manually entering the component data.",
         );
       }
 
@@ -164,27 +142,25 @@ export class DrawingAnalyzerService {
 
       if (components.length === 0) {
         result.warnings.push(
-          'No components could be automatically extracted. ' +
-            'This may be due to non-standard formatting or a complex drawing layout.',
+          "No components could be automatically extracted. " +
+            "This may be due to non-standard formatting or a complex drawing layout.",
         );
       } else {
         result.success = true;
       }
 
       // Add confidence warning
-      const lowConfidenceCount = components.filter(
-        (c) => c.confidence === 'low',
-      ).length;
+      const lowConfidenceCount = components.filter((c) => c.confidence === "low").length;
       if (lowConfidenceCount > components.length / 2) {
         result.warnings.push(
           `${lowConfidenceCount} of ${components.length} extracted components have low confidence. ` +
-            'Please review and verify the extracted data before creating RFQ items.',
+            "Please review and verify the extracted data before creating RFQ items.",
         );
       }
     } catch (error) {
       result.errors.push(`PDF parsing failed: ${error.message}`);
       result.warnings.push(
-        'Unable to parse PDF. The file may be corrupted, password-protected, or in an unsupported format.',
+        "Unable to parse PDF. The file may be corrupted, password-protected, or in an unsupported format.",
       );
     }
 
@@ -201,14 +177,14 @@ export class DrawingAnalyzerService {
       drawingNumber?: string;
       projectName?: string;
     } = {};
-    const lines = text.split('\n').filter((l) => l.trim());
+    const lines = text.split("\n").filter((l) => l.trim());
 
     // Look for drawing number patterns
     const drawingNumberPatterns = [
-      /(?:drawing\s*(?:no|number|#)?[\s:]*)([\w\-\/]+)/i,
-      /(?:dwg\s*(?:no|#)?[\s:]*)([\w\-\/]+)/i,
-      /(DRW[\-\s]?\d{4}[\-\s]?\d+)/i,
-      /([A-Z]{2,4}[\-\/]\d{3,}[\-\/]?\w*)/i,
+      /(?:drawing\s*(?:no|number|#)?[\s:]*)([\w\-/]+)/i,
+      /(?:dwg\s*(?:no|#)?[\s:]*)([\w\-/]+)/i,
+      /(DRW[-\s]?\d{4}[-\s]?\d+)/i,
+      /([A-Z]{2,4}[-/]\d{3,}[-/]?\w*)/i,
     ];
 
     for (const pattern of drawingNumberPatterns) {
@@ -232,7 +208,7 @@ export class DrawingAnalyzerService {
         if (titleCandidate.length > 5 && titleCandidate.length < 200) {
           if (!result.title) {
             result.title = titleCandidate;
-          } else if (pattern.source.includes('project')) {
+          } else if (pattern.source.includes("project")) {
             result.projectName = titleCandidate;
           }
         }
@@ -244,7 +220,7 @@ export class DrawingAnalyzerService {
 
   private extractComponents(text: string): ExtractedComponent[] {
     const components: ExtractedComponent[] = [];
-    const lines = text.split('\n').filter((l) => l.trim());
+    const lines = text.split("\n").filter((l) => l.trim());
 
     // Try to find a parts list or BOM section
     const bomStartPatterns = [
@@ -261,7 +237,6 @@ export class DrawingAnalyzerService {
       for (const pattern of bomStartPatterns) {
         if (pattern.test(line)) {
           inBomSection = true;
-          continue;
         }
       }
 
@@ -282,10 +257,7 @@ export class DrawingAnalyzerService {
     lineIndex: number,
   ): ExtractedComponent | null {
     // Skip very short lines or lines that look like headers
-    if (
-      line.length < 5 ||
-      /^(item|qty|description|material|size|spec)$/i.test(line)
-    ) {
+    if (line.length < 5 || /^(item|qty|description|material|size|spec)$/i.test(line)) {
       return null;
     }
 
@@ -306,14 +278,14 @@ export class DrawingAnalyzerService {
 
     const component: ExtractedComponent = {
       description: line,
-      confidence: 'low',
+      confidence: "low",
     };
 
     // Try to extract item number
-    const itemNumMatch = line.match(/^(\d+[\.\-]?\d*)\s+/);
+    const itemNumMatch = line.match(/^(\d+[.-]?\d*)\s+/);
     if (itemNumMatch) {
       component.itemNumber = itemNumMatch[1];
-      component.description = line.replace(itemNumMatch[0], '').trim();
+      component.description = line.replace(itemNumMatch[0], "").trim();
     }
 
     // Try to extract quantity
@@ -341,14 +313,13 @@ export class DrawingAnalyzerService {
     let confidenceScore = 0;
     if (component.itemNumber) confidenceScore++;
     if (component.quantity) confidenceScore++;
-    if (component.dimensions && Object.keys(component.dimensions).length > 0)
-      confidenceScore++;
+    if (component.dimensions && Object.keys(component.dimensions).length > 0) confidenceScore++;
     if (component.materialType) confidenceScore++;
 
     if (confidenceScore >= 3) {
-      component.confidence = 'high';
+      component.confidence = "high";
     } else if (confidenceScore >= 1) {
-      component.confidence = 'medium';
+      component.confidence = "medium";
     }
 
     // Set unit based on type
@@ -357,8 +328,8 @@ export class DrawingAnalyzerService {
     return component;
   }
 
-  private extractDimensions(text: string): ExtractedComponent['dimensions'] {
-    const dimensions: ExtractedComponent['dimensions'] = {};
+  private extractDimensions(text: string): ExtractedComponent["dimensions"] {
+    const dimensions: ExtractedComponent["dimensions"] = {};
 
     // Extract diameter
     const diaPatterns = [
@@ -443,29 +414,26 @@ export class DrawingAnalyzerService {
 
   private getDefaultUnit(componentType: string): string {
     switch (componentType) {
-      case 'straight_pipe':
-        return 'm';
-      case 'coating':
-      case 'lining':
-        return 'm²';
+      case "straight_pipe":
+        return "m";
+      case "coating":
+      case "lining":
+        return "m²";
       default:
-        return 'ea';
+        return "ea";
     }
   }
 
-  private deduplicateComponents(
-    components: ExtractedComponent[],
-  ): ExtractedComponent[] {
+  private deduplicateComponents(components: ExtractedComponent[]): ExtractedComponent[] {
     const seen = new Map<string, ExtractedComponent>();
 
     for (const comp of components) {
-      const key = comp.description.toLowerCase().replace(/\s+/g, ' ').trim();
+      const key = comp.description.toLowerCase().replace(/\s+/g, " ").trim();
       const existing = seen.get(key);
 
       if (
         !existing ||
-        this.getConfidenceValue(comp.confidence) >
-          this.getConfidenceValue(existing.confidence)
+        this.getConfidenceValue(comp.confidence) > this.getConfidenceValue(existing.confidence)
       ) {
         seen.set(key, comp);
       }
@@ -474,13 +442,13 @@ export class DrawingAnalyzerService {
     return Array.from(seen.values());
   }
 
-  private getConfidenceValue(confidence: 'high' | 'medium' | 'low'): number {
+  private getConfidenceValue(confidence: "high" | "medium" | "low"): number {
     switch (confidence) {
-      case 'high':
+      case "high":
         return 3;
-      case 'medium':
+      case "medium":
         return 2;
-      case 'low':
+      case "low":
         return 1;
     }
   }
@@ -492,7 +460,7 @@ export class DrawingAnalyzerService {
       description: comp.description,
       itemType: this.detectItemTypeFromDescription(comp.description),
       quantity: comp.quantity || 1,
-      unitOfMeasure: comp.unit || 'ea',
+      unitOfMeasure: comp.unit || "ea",
       specifications: {
         material: comp.materialType,
         dimensions: comp.dimensions,
@@ -510,6 +478,6 @@ export class DrawingAnalyzerService {
         }
       }
     }
-    return 'custom';
+    return "custom";
   }
 }

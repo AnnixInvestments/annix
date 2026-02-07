@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content: string = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content: string = fs.readFileSync(filePath, "utf8");
 
 // The problem: Steel Pipes unconfirmed block at line 3556 never closes
 // The fragment <> from line 3557 never closes with </>
@@ -32,21 +32,21 @@ const newPattern = `            </div>
 
 if (content.includes(oldPattern)) {
   content = content.replace(oldPattern, newPattern);
-  console.log('Fixed: Added missing closures for Steel Pipes section');
-  console.log('Added: </> to close fragment');
-  console.log('Added: )} to close !steelPipesSpecsConfirmed conditional');
-  console.log('Added: </div> to close Steel Pipes inner div');
-  console.log('Added: )} to close showSteelPipes conditional');
+  console.log("Fixed: Added missing closures for Steel Pipes section");
+  console.log("Added: </> to close fragment");
+  console.log("Added: )} to close !steelPipesSpecsConfirmed conditional");
+  console.log("Added: </div> to close Steel Pipes inner div");
+  console.log("Added: )} to close showSteelPipes conditional");
 } else {
-  console.log('Could not find the exact pattern');
+  console.log("Could not find the exact pattern");
 
   // Debug: show what's in the file around that area
-  const lines = content.split('\n');
-  console.log('Lines around 3843-3848:');
+  const lines = content.split("\n");
+  console.log("Lines around 3843-3848:");
   for (let i = 3842; i < 3850 && i < lines.length; i++) {
-    console.log(`${i+1}: "${lines[i]}"`);
+    console.log(`${i + 1}: "${lines[i]}"`);
   }
 }
 
 fs.writeFileSync(filePath, content);
-console.log('File saved');
+console.log("File saved");

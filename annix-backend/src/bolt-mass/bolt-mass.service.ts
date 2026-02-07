@@ -1,14 +1,10 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { CreateBoltMassDto } from './dto/create-bolt-mass.dto';
-import { UpdateBoltMassDto } from './dto/update-bolt-mass.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { BoltMass } from './entities/bolt-mass.entity';
-import { Bolt } from 'src/bolt/entities/bolt.entity';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Bolt } from "src/bolt/entities/bolt.entity";
+import { Repository } from "typeorm";
+import { CreateBoltMassDto } from "./dto/create-bolt-mass.dto";
+import { UpdateBoltMassDto } from "./dto/update-bolt-mass.dto";
+import { BoltMass } from "./entities/bolt-mass.entity";
 
 @Injectable()
 export class BoltMassService {
@@ -25,20 +21,20 @@ export class BoltMassService {
     const exists = await this.boltMassRepo.findOne({
       where: { bolt: { id: dto.boltId }, length_mm: dto.length_mm },
     });
-    if (exists) throw new BadRequestException(`BoltMass already exists`);
+    if (exists) throw new BadRequestException("BoltMass already exists");
 
     const mass = this.boltMassRepo.create({ bolt, ...dto });
     return this.boltMassRepo.save(mass);
   }
 
   async findAll(): Promise<BoltMass[]> {
-    return this.boltMassRepo.find({ relations: ['bolt'] });
+    return this.boltMassRepo.find({ relations: ["bolt"] });
   }
 
   async findOne(id: number): Promise<BoltMass> {
     const mass = await this.boltMassRepo.findOne({
       where: { id },
-      relations: ['bolt'],
+      relations: ["bolt"],
     });
     if (!mass) throw new NotFoundException(`BoltMass ${id} not found`);
     return mass;

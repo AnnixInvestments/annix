@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { PipeSchedule } from './entities/pipe-schedule.entity';
-import { MaterialAllowableStress } from './entities/material-allowable-stress.entity';
-import { PipeScheduleService } from './pipe-schedule.service';
-import { PipeScheduleController } from './pipe-schedule.controller';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { MaterialAllowableStress } from "./entities/material-allowable-stress.entity";
+import { PipeSchedule } from "./entities/pipe-schedule.entity";
+import { PipeScheduleController } from "./pipe-schedule.controller";
+import { PipeScheduleService } from "./pipe-schedule.service";
 
 @Module({
   imports: [TypeOrmModule.forFeature([PipeSchedule, MaterialAllowableStress])],

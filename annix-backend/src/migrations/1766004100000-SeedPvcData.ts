@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class SeedPvcData1766004100000 implements MigrationInterface {
-  name = 'SeedPvcData1766004100000';
+  name = "SeedPvcData1766004100000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Insert PVC standards
@@ -121,9 +121,9 @@ export class SeedPvcData1766004100000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DELETE FROM pvc_fitting_weights');
-    await queryRunner.query('DELETE FROM pvc_cement_prices');
-    await queryRunner.query('DELETE FROM pvc_fitting_types');
-    await queryRunner.query('DELETE FROM pvc_standards');
+    await queryRunner.query("DELETE FROM pvc_fitting_weights");
+    await queryRunner.query("DELETE FROM pvc_cement_prices");
+    await queryRunner.query("DELETE FROM pvc_fitting_types");
+    await queryRunner.query("DELETE FROM pvc_standards");
   }
 }

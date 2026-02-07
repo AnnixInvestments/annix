@@ -1,31 +1,51 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import Link from "next/link";
+import React, { useState } from "react";
+import { DocumentActionButtons } from "@/app/components/DocumentActionButtons";
 import {
-  customerDocumentApi,
-  type CustomerDocument,
+  DocumentPreviewModal,
+  initialPreviewState,
+  PreviewModalState,
+} from "@/app/components/DocumentPreviewModal";
+import {
   type CustomerCompanyDto,
-} from '@/app/lib/api/customerApi';
+  type CustomerDocument,
+  customerDocumentApi,
+} from "@/app/lib/api/customerApi";
+import { formatDateZA } from "@/app/lib/datetime";
+import { log } from "@/app/lib/logger";
 import {
+  nixApi,
+  RegistrationDocumentType,
+  RegistrationVerificationResult,
+} from "@/app/lib/nix/api";
+import NixRegistrationVerifier from "@/app/lib/nix/components/NixRegistrationVerifier";
+import {
+  useCustomerCompany,
   useCustomerDocuments,
   useCustomerOnboardingStatus,
-  useCustomerCompany,
-} from '@/app/lib/query/hooks';
-import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
-import { DocumentActionButtons } from '@/app/components/DocumentActionButtons';
-import { formatDateZA } from '@/app/lib/datetime';
-import { log } from '@/app/lib/logger';
-import { nixApi, RegistrationDocumentType, RegistrationVerificationResult } from '@/app/lib/nix/api';
-import NixRegistrationVerifier from '@/app/lib/nix/components/NixRegistrationVerifier';
+} from "@/app/lib/query/hooks";
 
 const DOCUMENT_TYPES = [
-  { value: 'registration_cert', label: 'Company Registration Certificate (CIPC)', nixType: 'registration' as RegistrationDocumentType },
-  { value: 'tax_clearance', label: 'Tax Clearance Certificate (SARS)', nixType: 'vat' as RegistrationDocumentType },
-  { value: 'bee_cert', label: 'BEE/B-BBEE Certificate', nixType: 'bee' as RegistrationDocumentType },
-  { value: 'insurance', label: 'Insurance Certificate', nixType: null },
-  { value: 'proof_of_address', label: 'Proof of Address', nixType: null },
-  { value: 'other', label: 'Other', nixType: null },
+  {
+    value: "registration_cert",
+    label: "Company Registration Certificate (CIPC)",
+    nixType: "registration" as RegistrationDocumentType,
+  },
+  {
+    value: "tax_clearance",
+    label: "Tax Clearance Certificate (SARS)",
+    nixType: "vat" as RegistrationDocumentType,
+  },
+  {
+    value: "bee_cert",
+    label: "BEE/B-BBEE Certificate",
+    nixType: "bee" as RegistrationDocumentType,
+  },
+  { value: "insurance", label: "Insurance Certificate", nixType: null },
+  { value: "proof_of_address", label: "Proof of Address", nixType: null },
+  { value: "other", label: "Other", nixType: null },
 ];
 
 export default function CustomerDocumentsPage() {
@@ -41,19 +61,27 @@ export default function CustomerDocumentsPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedType, setSelectedType] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
+  const [selectedType, setSelectedType] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewModal, setPreviewModal] = useState<PreviewModalState>(initialPreviewState);
 
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<RegistrationVerificationResult | null>(null);
+  const [verificationResult, setVerificationResult] =
+    useState<RegistrationVerificationResult | null>(null);
   const [showNixVerifier, setShowNixVerifier] = useState(false);
 
-  const hasRejectedDocuments = documents.some(d => d.validationStatus === 'invalid');
-  const canUpload = onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected' || hasRejectedDocuments;
+  const hasRejectedDocuments = documents.some((d) => d.validationStatus === "invalid");
+  const canUpload =
+    onboardingStatus?.status === "draft" ||
+    onboardingStatus?.status === "rejected" ||
+    hasRejectedDocuments;
   const canDeleteDocument = (doc: CustomerDocument) => {
-    return onboardingStatus?.status === 'draft' || onboardingStatus?.status === 'rejected' || doc.validationStatus === 'invalid';
+    return (
+      onboardingStatus?.status === "draft" ||
+      onboardingStatus?.status === "rejected" ||
+      doc.validationStatus === "invalid"
+    );
   };
 
   const refreshData = async () => {
@@ -69,22 +97,22 @@ export default function CustomerDocumentsPage() {
     if (!file) return;
 
     const maxSize = 10 * 1024 * 1024; // 10MB
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
 
     if (file.size > maxSize) {
-      setUploadError('File size must be less than 10MB');
+      setUploadError("File size must be less than 10MB");
       return;
     }
 
     if (!allowedTypes.includes(file.type)) {
-      setUploadError('Only PDF, JPG, and PNG files are allowed');
+      setUploadError("Only PDF, JPG, and PNG files are allowed");
       return;
     }
 
     setSelectedFile(file);
     setUploadError(null);
 
-    const docTypeConfig = DOCUMENT_TYPES.find(dt => dt.value === selectedType);
+    const docTypeConfig = DOCUMENT_TYPES.find((dt) => dt.value === selectedType);
     const nixType = docTypeConfig?.nixType;
 
     if (nixType && companyDetails) {
@@ -94,13 +122,13 @@ export default function CustomerDocumentsPage() {
 
       try {
         const expectedData = {
-          companyName: companyDetails.legalName || '',
-          registrationNumber: companyDetails.registrationNumber || '',
-          vatNumber: companyDetails.vatNumber || '',
-          streetAddress: companyDetails.streetAddress || '',
-          city: companyDetails.city || '',
-          provinceState: companyDetails.provinceState || '',
-          postalCode: companyDetails.postalCode || '',
+          companyName: companyDetails.legalName || "",
+          registrationNumber: companyDetails.registrationNumber || "",
+          vatNumber: companyDetails.vatNumber || "",
+          streetAddress: companyDetails.streetAddress || "",
+          city: companyDetails.city || "",
+          provinceState: companyDetails.provinceState || "",
+          postalCode: companyDetails.postalCode || "",
           beeLevel: companyDetails.beeLevel ?? undefined,
         };
 
@@ -108,7 +136,7 @@ export default function CustomerDocumentsPage() {
         setVerificationResult(result);
         setIsVerifying(false);
       } catch (err) {
-        log.error('Nix verification failed:', err);
+        log.error("Nix verification failed:", err);
         setIsVerifying(false);
         setVerificationResult(null);
       }
@@ -117,7 +145,7 @@ export default function CustomerDocumentsPage() {
 
   const handleUpload = async () => {
     if (!selectedFile || !selectedType) {
-      setUploadError('Please select a file and document type');
+      setUploadError("Please select a file and document type");
       return;
     }
 
@@ -126,33 +154,40 @@ export default function CustomerDocumentsPage() {
       setUploadError(null);
       setShowNixVerifier(false);
 
-      const verificationData = verificationResult ? {
-        success: verificationResult.success,
-        overallConfidence: verificationResult.overallConfidence,
-        allFieldsMatch: verificationResult.allFieldsMatch,
-        extractedData: verificationResult.extractedData as unknown as Record<string, unknown>,
-        fieldResults: verificationResult.fieldResults,
-      } : undefined;
+      const verificationData = verificationResult
+        ? {
+            success: verificationResult.success,
+            overallConfidence: verificationResult.overallConfidence,
+            allFieldsMatch: verificationResult.allFieldsMatch,
+            extractedData: verificationResult.extractedData as unknown as Record<string, unknown>,
+            fieldResults: verificationResult.fieldResults,
+          }
+        : undefined;
 
-      await customerDocumentApi.uploadDocument(selectedFile, selectedType, expiryDate || undefined, verificationData);
+      await customerDocumentApi.uploadDocument(
+        selectedFile,
+        selectedType,
+        expiryDate || undefined,
+        verificationData,
+      );
       await refreshData();
       setShowUploadModal(false);
       resetUploadForm();
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Failed to upload document');
+      setUploadError(e instanceof Error ? e.message : "Failed to upload document");
     } finally {
       setUploadingDoc(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
+    if (!confirm("Are you sure you want to delete this document?")) return;
 
     try {
       await customerDocumentApi.deleteDocument(id);
       await refreshData();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete document');
+      setError(e instanceof Error ? e.message : "Failed to delete document");
     }
   };
 
@@ -161,19 +196,24 @@ export default function CustomerDocumentsPage() {
       setError(null);
       await customerDocumentApi.downloadDocument(doc.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to download document');
+      setError(e instanceof Error ? e.message : "Failed to download document");
     }
   };
 
   const handlePreview = async (doc: CustomerDocument) => {
     try {
       setError(null);
-      setPreviewModal({ ...initialPreviewState, isOpen: true, isLoading: true, filename: doc.fileName });
+      setPreviewModal({
+        ...initialPreviewState,
+        isOpen: true,
+        isLoading: true,
+        filename: doc.fileName,
+      });
       const { url, mimeType, filename } = await customerDocumentApi.previewDocument(doc.id);
       setPreviewModal({ isOpen: true, url, mimeType, filename, isLoading: false });
     } catch (e) {
       setPreviewModal(initialPreviewState);
-      setError(e instanceof Error ? e.message : 'Failed to preview document');
+      setError(e instanceof Error ? e.message : "Failed to preview document");
     }
   };
 
@@ -186,8 +226,8 @@ export default function CustomerDocumentsPage() {
 
   const resetUploadForm = () => {
     setSelectedFile(null);
-    setSelectedType('');
-    setExpiryDate('');
+    setSelectedType("");
+    setExpiryDate("");
     setUploadError(null);
     setReuploadDocType(null);
     setVerificationResult(null);
@@ -205,7 +245,9 @@ export default function CustomerDocumentsPage() {
   };
 
   const handleNixApplyCorrections = () => {
-    log.info('Applying corrections is not supported in document upload - corrections should be made to company profile');
+    log.info(
+      "Applying corrections is not supported in document upload - corrections should be made to company profile",
+    );
   };
 
   const getDocumentTypeLabel = (type: string) => {
@@ -214,11 +256,11 @@ export default function CustomerDocumentsPage() {
 
   const getValidationStatusBadge = (status: string) => {
     const badges: Record<string, { bg: string; text: string; label: string }> = {
-      pending: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Pending Review' },
-      valid: { bg: 'bg-green-100', text: 'text-green-700', label: 'Valid' },
-      invalid: { bg: 'bg-red-100', text: 'text-red-700', label: 'Invalid' },
-      failed: { bg: 'bg-red-100', text: 'text-red-700', label: 'Failed' },
-      manual_review: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Under Review' },
+      pending: { bg: "bg-gray-100", text: "text-gray-700", label: "Pending Review" },
+      valid: { bg: "bg-green-100", text: "text-green-700", label: "Valid" },
+      invalid: { bg: "bg-red-100", text: "text-red-700", label: "Invalid" },
+      failed: { bg: "bg-red-100", text: "text-red-700", label: "Failed" },
+      manual_review: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Under Review" },
     };
     const badge = badges[status] || badges.pending;
     return (
@@ -240,7 +282,7 @@ export default function CustomerDocumentsPage() {
 
   const [reuploadDocType, setReuploadDocType] = useState<string | null>(null);
 
-  const rejectedDocuments = documents.filter(d => d.validationStatus === 'invalid');
+  const rejectedDocuments = documents.filter((d) => d.validationStatus === "invalid");
 
   const handleReupload = (docType: string) => {
     setReuploadDocType(docType);
@@ -264,25 +306,49 @@ export default function CustomerDocumentsPage() {
       {rejectedDocuments.length > 0 && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <svg
+              className="w-6 h-6 text-red-600 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
             </svg>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-red-800">Action Required - Documents Rejected</h3>
+              <h3 className="text-lg font-semibold text-red-800">
+                Action Required - Documents Rejected
+              </h3>
               <p className="text-sm text-red-700 mt-1">
                 {rejectedDocuments.length === 1
-                  ? 'One of your documents has been rejected and needs to be re-uploaded.'
+                  ? "One of your documents has been rejected and needs to be re-uploaded."
                   : `${rejectedDocuments.length} documents have been rejected and need to be re-uploaded.`}
               </p>
               <p className="text-sm text-red-700 mt-2">
-                Please review the rejection reasons below, then either delete and re-upload the document with correct information,
-                or <Link href="/customer/portal/company" className="font-semibold underline hover:text-red-900">review your company profile</Link> to ensure all details are accurate.
+                Please review the rejection reasons below, then either delete and re-upload the
+                document with correct information, or{" "}
+                <Link
+                  href="/customer/portal/company"
+                  className="font-semibold underline hover:text-red-900"
+                >
+                  review your company profile
+                </Link>{" "}
+                to ensure all details are accurate.
               </p>
               <div className="mt-3 space-y-2">
                 {rejectedDocuments.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between bg-white rounded-lg p-3 border border-red-200">
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between bg-white rounded-lg p-3 border border-red-200"
+                  >
                     <div>
-                      <span className="font-medium text-gray-900">{getDocumentTypeLabel(doc.documentType)}</span>
+                      <span className="font-medium text-gray-900">
+                        {getDocumentTypeLabel(doc.documentType)}
+                      </span>
                       {doc.validationNotes && (
                         <p className="text-sm text-red-600 mt-1">Reason: {doc.validationNotes}</p>
                       )}
@@ -309,8 +375,18 @@ export default function CustomerDocumentsPage() {
                   href="/customer/portal/company"
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
                   </svg>
                   Review Company Profile
                 </Link>
@@ -331,12 +407,17 @@ export default function CustomerDocumentsPage() {
             disabled={!canUpload}
             className={`px-4 py-2 rounded-md flex items-center ${
               canUpload
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
             Upload Document
           </button>
@@ -371,7 +452,8 @@ export default function CustomerDocumentsPage() {
           </svg>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Documents</h3>
           <p className="text-gray-600 mb-4">
-            You haven&apos;t uploaded any documents yet. Click the button above to upload your first document.
+            You haven&apos;t uploaded any documents yet. Click the button above to upload your first
+            document.
           </p>
         </div>
       ) : (
@@ -401,7 +483,9 @@ export default function CustomerDocumentsPage() {
                 <tr key={doc.id}>
                   <td className="px-6 py-4 max-w-xs">
                     <div>
-                      <div className="font-medium text-gray-900 truncate" title={doc.fileName}>{doc.fileName}</div>
+                      <div className="font-medium text-gray-900 truncate" title={doc.fileName}>
+                        {doc.fileName}
+                      </div>
                       <div className="text-sm text-gray-500">{formatFileSize(doc.fileSize)}</div>
                     </div>
                   </td>
@@ -424,7 +508,7 @@ export default function CustomerDocumentsPage() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {doc.validationStatus === 'invalid' && (
+                      {doc.validationStatus === "invalid" && (
                         <button
                           onClick={() => handleReupload(doc.documentType)}
                           className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 transition-colors"
@@ -438,7 +522,11 @@ export default function CustomerDocumentsPage() {
                         onDownload={() => handleDownload(doc)}
                         onDelete={() => handleDelete(doc.id)}
                         canDelete={canDeleteDocument(doc)}
-                        deleteDisabledReason={doc.validationStatus === 'invalid' ? undefined : 'Cannot delete when onboarding is under review'}
+                        deleteDisabledReason={
+                          doc.validationStatus === "invalid"
+                            ? undefined
+                            : "Cannot delete when onboarding is under review"
+                        }
                       />
                     </div>
                   </td>
@@ -508,7 +596,10 @@ export default function CustomerDocumentsPage() {
                       isVisible={showNixVerifier}
                       isProcessing={isVerifying}
                       verificationResult={verificationResult}
-                      documentType={DOCUMENT_TYPES.find(dt => dt.value === selectedType)?.nixType || 'registration'}
+                      documentType={
+                        DOCUMENT_TYPES.find((dt) => dt.value === selectedType)?.nixType ||
+                        "registration"
+                      }
                       onApplyCorrections={handleNixApplyCorrections}
                       onProceedWithMismatch={handleNixProceed}
                       onRetryUpload={handleNixCancel}
@@ -525,7 +616,7 @@ export default function CustomerDocumentsPage() {
                     type="date"
                     value={expiryDate}
                     onChange={(e) => setExpiryDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date().toISOString().split("T")[0]}
                     max="2099-12-31"
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
@@ -553,7 +644,7 @@ export default function CustomerDocumentsPage() {
                   disabled={uploadingDoc || !selectedFile || !selectedType || isVerifying}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {uploadingDoc ? 'Uploading...' : isVerifying ? 'Verifying...' : 'Upload'}
+                  {uploadingDoc ? "Uploading..." : isVerifying ? "Verifying..." : "Upload"}
                 </button>
               </div>
             </div>

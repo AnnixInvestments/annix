@@ -1,25 +1,21 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddPipeEndConfigurationColumn1761663467548 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      '🔧 Adding pipe_end_configuration column to straight_pipe_rfqs...',
-    );
+    console.warn("🔧 Adding pipe_end_configuration column to straight_pipe_rfqs...");
 
     // Check if column already exists
-    const table = await queryRunner.getTable('straight_pipe_rfqs');
-    const hasColumn = table?.columns.find(
-      (col) => col.name === 'pipe_end_configuration',
-    );
+    const table = await queryRunner.getTable("straight_pipe_rfqs");
+    const hasColumn = table?.columns.find((col) => col.name === "pipe_end_configuration");
 
     if (!hasColumn) {
       await queryRunner.query(`
                 ALTER TABLE "straight_pipe_rfqs" 
                 ADD COLUMN "pipe_end_configuration" character varying(20)
             `);
-      console.warn('✅ pipe_end_configuration column added successfully');
+      console.warn("✅ pipe_end_configuration column added successfully");
     } else {
-      console.warn('✅ pipe_end_configuration column already exists');
+      console.warn("✅ pipe_end_configuration column already exists");
     }
   }
 

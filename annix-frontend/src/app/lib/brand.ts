@@ -8,40 +8,40 @@
 // Brand Colors
 export const brandColors = {
   // Primary navy blue background
-  navy: '#323288',
-  navyLight: '#4a4da3',
-  navyDark: '#252560',
+  navy: "#323288",
+  navyLight: "#4a4da3",
+  navyDark: "#252560",
 
   // Accent orange color
-  orange: '#FFA500',
-  orangeLight: '#FFB733',
-  orangeDark: '#CC8400',
+  orange: "#FFA500",
+  orangeLight: "#FFB733",
+  orangeDark: "#CC8400",
 
   // Supporting colors
-  white: '#FFFFFF',
-  offWhite: '#F5F5F5',
+  white: "#FFFFFF",
+  offWhite: "#F5F5F5",
 
   // Text colors
-  textOnNavy: '#FFFFFF',
-  textOnWhite: '#323288',
+  textOnNavy: "#FFFFFF",
+  textOnWhite: "#323288",
 } as const;
 
 // CSS class names for brand styling
 export const brandClasses = {
   // Background classes
-  bgNavy: 'bg-amix-navy',
-  bgOrange: 'bg-amix-orange',
+  bgNavy: "bg-amix-navy",
+  bgOrange: "bg-amix-orange",
 
   // Text classes
-  textNavy: 'text-amix-navy',
-  textOrange: 'text-amix-orange',
-  textOnNavy: 'text-white',
+  textNavy: "text-amix-navy",
+  textOrange: "text-amix-orange",
+  textOnNavy: "text-white",
 
   // Gradient for branding
-  gradientNavyOrange: 'bg-gradient-to-r from-amix-navy to-amix-orange',
+  gradientNavyOrange: "bg-gradient-to-r from-amix-navy to-amix-orange",
 
   // Signature font class
-  signatureFont: 'font-amix-signature',
+  signatureFont: "font-amix-signature",
 } as const;
 
 // Font configurations
@@ -49,12 +49,12 @@ export const brandFonts = {
   // Main signature/cursive font for "Amix" branding
   signature: {
     family: '"Great Vibes", cursive',
-    className: 'font-amix-signature',
+    className: "font-amix-signature",
   },
   // Body text font
   body: {
-    family: 'Inter, system-ui, sans-serif',
-    className: 'font-sans',
+    family: "Inter, system-ui, sans-serif",
+    className: "font-sans",
   },
 } as const;
 
@@ -75,6 +75,6 @@ export const brandStyles = {
 
 // Tailwind-compatible color values for use in className strings
 export const tw = {
-  navy: '[#323288]',
-  orange: '[#FFA500]',
+  navy: "[#323288]",
+  orange: "[#FFA500]",
 } as const;

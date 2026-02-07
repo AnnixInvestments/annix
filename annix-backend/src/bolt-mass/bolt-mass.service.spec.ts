@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { BoltMassService } from './bolt-mass.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { BoltMass } from './entities/bolt-mass.entity';
-import { Bolt } from '../bolt/entities/bolt.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { Bolt } from "../bolt/entities/bolt.entity";
+import { BoltMassService } from "./bolt-mass.service";
+import { BoltMass } from "./entities/bolt-mass.entity";
 
-describe('BoltMassService', () => {
+describe("BoltMassService", () => {
   let service: BoltMassService;
 
   const mockBoltMassRepo = {
@@ -34,12 +34,12 @@ describe('BoltMassService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new bolt mass', async () => {
+  describe("create", () => {
+    it("should create a new bolt mass", async () => {
       const dto = { boltId: 1, length_mm: 100, mass_kg: 0.5 };
       const bolt = { id: 1 } as Bolt;
       const entity = { id: 1, bolt, ...dto } as BoltMass;
@@ -60,14 +60,14 @@ describe('BoltMassService', () => {
       expect(mockBoltMassRepo.create).toHaveBeenCalledWith({ bolt, ...dto });
     });
 
-    it('should throw NotFoundException if bolt not found', async () => {
+    it("should throw NotFoundException if bolt not found", async () => {
       const dto = { boltId: 1, length_mm: 100, mass_kg: 0.5 };
       mockBoltRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.create(dto)).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw BadRequestException if bolt mass already exists', async () => {
+    it("should throw BadRequestException if bolt mass already exists", async () => {
       const dto = { boltId: 1, length_mm: 100, mass_kg: 0.5 };
       const bolt = { id: 1 } as Bolt;
       const existing = { id: 2 } as BoltMass;
@@ -79,39 +79,39 @@ describe('BoltMassService', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return array of bolt masses', async () => {
+  describe("findAll", () => {
+    it("should return array of bolt masses", async () => {
       const result = [{ id: 1 }] as BoltMass[];
       mockBoltMassRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
       expect(mockBoltMassRepo.find).toHaveBeenCalledWith({
-        relations: ['bolt'],
+        relations: ["bolt"],
       });
     });
   });
 
-  describe('findOne', () => {
-    it('should return a bolt mass by id', async () => {
+  describe("findOne", () => {
+    it("should return a bolt mass by id", async () => {
       const result = { id: 1 } as BoltMass;
       mockBoltMassRepo.findOne.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
       expect(mockBoltMassRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['bolt'],
+        relations: ["bolt"],
       });
     });
 
-    it('should throw NotFoundException if bolt mass not found', async () => {
+    it("should throw NotFoundException if bolt mass not found", async () => {
       mockBoltMassRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('remove', () => {
-    it('should delete a bolt mass', async () => {
+  describe("remove", () => {
+    it("should delete a bolt mass", async () => {
       const entity = { id: 1 } as BoltMass;
       mockBoltMassRepo.findOne.mockResolvedValue(entity);
       mockBoltMassRepo.remove.mockResolvedValue(undefined);

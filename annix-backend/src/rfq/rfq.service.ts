@@ -1,67 +1,61 @@
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Not, Repository } from "typeorm";
+import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
+import { Boq } from "../boq/entities/boq.entity";
+import { BoqSupplierAccess, SupplierBoqStatus } from "../boq/entities/boq-supplier-access.entity";
+import { EmailService } from "../email/email.service";
+import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
+import { fromISO, now } from "../lib/datetime";
+import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
+import { NutMass } from "../nut-mass/entities/nut-mass.entity";
+import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
+import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
+import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
+import { User } from "../user/entities/user.entity";
+import { BendCalculationResultDto } from "./dto/bend-calculation-result.dto";
+import { CreateBendRfqDto } from "./dto/create-bend-rfq.dto";
+import { CreateBendRfqWithItemDto } from "./dto/create-bend-rfq-with-item.dto";
+import { CreateStraightPipeRfqWithItemDto } from "./dto/create-rfq-item.dto";
+import { CreateUnifiedRfqDto } from "./dto/create-unified-rfq.dto";
+import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
+import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
+import { RfqResponseDto, StraightPipeCalculationResultDto } from "./dto/rfq-response.dto";
+import { BendRfq } from "./entities/bend-rfq.entity";
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  ForbiddenException,
-  Inject,
-  Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not, In } from 'typeorm';
-import { now, fromISO } from '../lib/datetime';
-import { Rfq, RfqStatus } from './entities/rfq.entity';
-import { RfqItem, RfqItemType } from './entities/rfq-item.entity';
+  BellowsJointType,
+  BellowsMaterial,
+  ExpansionJointRfq,
+  ExpansionJointType,
+  FabricatedLoopType,
+} from "./entities/expansion-joint-rfq.entity";
+import { FittingRfq } from "./entities/fitting-rfq.entity";
+import { InstrumentCategory, InstrumentRfq } from "./entities/instrument-rfq.entity";
 import {
-  StraightPipeRfq,
+  PumpCategory,
+  PumpMotorType,
+  PumpRfq,
+  PumpSealType,
+  PumpServiceType,
+} from "./entities/pump-rfq.entity";
+import { Rfq, RfqStatus } from "./entities/rfq.entity";
+import { RfqDocument } from "./entities/rfq-document.entity";
+import { RfqDraft } from "./entities/rfq-draft.entity";
+import { RfqItem, RfqItemType } from "./entities/rfq-item.entity";
+import { RfqSequence } from "./entities/rfq-sequence.entity";
+import {
   LengthUnit,
   QuantityType,
   ScheduleType,
-} from './entities/straight-pipe-rfq.entity';
-import { BendRfq } from './entities/bend-rfq.entity';
-import { FittingRfq } from './entities/fitting-rfq.entity';
+  StraightPipeRfq,
+} from "./entities/straight-pipe-rfq.entity";
 import {
-  ExpansionJointRfq,
-  ExpansionJointType,
-  BellowsJointType,
-  BellowsMaterial,
-  FabricatedLoopType,
-} from './entities/expansion-joint-rfq.entity';
-import { ValveRfq, ValveActuatorType, ValveFailPosition, ValveCategory } from './entities/valve-rfq.entity';
-import { InstrumentRfq, InstrumentCategory } from './entities/instrument-rfq.entity';
-import { PumpRfq, PumpCategory, PumpServiceType, PumpMotorType, PumpSealType } from './entities/pump-rfq.entity';
-import { RfqDocument } from './entities/rfq-document.entity';
-import { RfqDraft } from './entities/rfq-draft.entity';
-import { RfqSequence } from './entities/rfq-sequence.entity';
-import { User } from '../user/entities/user.entity';
-import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
-import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
-import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
-import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
-import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
-import { NutMass } from '../nut-mass/entities/nut-mass.entity';
-import { Boq } from '../boq/entities/boq.entity';
-import {
-  BoqSupplierAccess,
-  SupplierBoqStatus,
-} from '../boq/entities/boq-supplier-access.entity';
-import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
-import { EmailService } from '../email/email.service';
-import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
-import { CreateStraightPipeRfqWithItemDto } from './dto/create-rfq-item.dto';
-import { CreateBendRfqWithItemDto } from './dto/create-bend-rfq-with-item.dto';
-import { CreateBendRfqDto } from './dto/create-bend-rfq.dto';
-import { CreateUnifiedRfqDto } from './dto/create-unified-rfq.dto';
-import {
-  StraightPipeCalculationResultDto,
-  RfqResponseDto,
-} from './dto/rfq-response.dto';
-import { BendCalculationResultDto } from './dto/bend-calculation-result.dto';
-import { RfqDocumentResponseDto } from './dto/rfq-document.dto';
-import {
-  SaveRfqDraftDto,
-  RfqDraftResponseDto,
-  RfqDraftFullResponseDto,
-} from './dto/rfq-draft.dto';
+  ValveActuatorType,
+  ValveCategory,
+  ValveFailPosition,
+  ValveRfq,
+} from "./entities/valve-rfq.entity";
 
 // Maximum number of documents allowed per RFQ
 const MAX_DOCUMENTS_PER_RFQ = 10;
@@ -139,7 +133,7 @@ export class RfqService {
     sequence.lastSequence += 1;
     await this.rfqSequenceRepository.save(sequence);
 
-    return `RFQ-${currentYear}-${String(sequence.lastSequence).padStart(4, '0')}`;
+    return `RFQ-${currentYear}-${String(sequence.lastSequence).padStart(4, "0")}`;
   }
 
   async rfqStatistics(): Promise<{
@@ -150,7 +144,7 @@ export class RfqService {
     const currentYear = now().year;
 
     const sequences = await this.rfqSequenceRepository.find({
-      order: { year: 'DESC' },
+      order: { year: "DESC" },
     });
 
     const currentYearSequence = sequences.find((s) => s.year === currentYear);
@@ -166,7 +160,7 @@ export class RfqService {
   }
 
   async calculateStraightPipeRequirements(
-    dto: CreateStraightPipeRfqWithItemDto['straightPipe'],
+    dto: CreateStraightPipeRfqWithItemDto["straightPipe"],
   ): Promise<StraightPipeCalculationResultDto> {
     // Find pipe dimensions based on NB and schedule/wall thickness
     let pipeDimension: PipeDimension | null = null;
@@ -214,26 +208,23 @@ export class RfqService {
           schedule_designation: normalizedSchedule,
           ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
         },
-        relations: ['nominalOutsideDiameter', 'steelSpecification'],
+        relations: ["nominalOutsideDiameter", "steelSpecification"],
       });
-    } else if (
-      dto.scheduleType === ScheduleType.WALL_THICKNESS &&
-      dto.wallThicknessMm
-    ) {
+    } else if (dto.scheduleType === ScheduleType.WALL_THICKNESS && dto.wallThicknessMm) {
       pipeDimension = await this.pipeDimensionRepository.findOne({
         where: {
           nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalBoreMm },
           wall_thickness_mm: dto.wallThicknessMm,
           ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
         },
-        relations: ['nominalOutsideDiameter', 'steelSpecification'],
+        relations: ["nominalOutsideDiameter", "steelSpecification"],
       });
     }
 
     if (!pipeDimension) {
       const scheduleInfo =
         dto.scheduleType === ScheduleType.SCHEDULE && dto.scheduleNumber
-          ? `schedule ${dto.scheduleNumber}${dto.scheduleNumber !== normalizeScheduleNumber(dto.scheduleNumber) ? ` (normalized to: ${normalizeScheduleNumber(dto.scheduleNumber)})` : ''}`
+          ? `schedule ${dto.scheduleNumber}${dto.scheduleNumber !== normalizeScheduleNumber(dto.scheduleNumber) ? ` (normalized to: ${normalizeScheduleNumber(dto.scheduleNumber)})` : ""}`
           : `wall thickness ${dto.wallThicknessMm}mm`;
 
       throw new NotFoundException(
@@ -247,9 +238,7 @@ export class RfqService {
     });
 
     if (!nbNpsLookup) {
-      throw new NotFoundException(
-        `NB-NPS lookup not found for ${dto.nominalBoreMm}NB`,
-      );
+      throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalBoreMm}NB`);
     }
 
     const outsideDiameterMm = nbNpsLookup.outside_diameter_mm;
@@ -265,11 +254,7 @@ export class RfqService {
       // Weight (kg/m) = π × WT × (OD - WT) × Density / 1,000,000
       const steelDensity = 7.85; // kg/dm³ (default for carbon steel)
       pipeWeightPerMeter =
-        (Math.PI *
-          wallThicknessMm *
-          (outsideDiameterMm - wallThicknessMm) *
-          steelDensity) /
-        1000;
+        (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * steelDensity) / 1000;
     }
 
     // Convert length to meters if needed
@@ -326,7 +311,7 @@ export class RfqService {
             standard: { id: dto.flangeStandardId },
             pressureClass: { id: dto.flangePressureClassId },
           },
-          relations: ['bolt', 'nominalOutsideDiameter'],
+          relations: ["bolt", "nominalOutsideDiameter"],
         });
 
         if (flangeDimension) {
@@ -340,12 +325,12 @@ export class RfqService {
 
             // Find the closest available bolt length
             const boltMass = await this.boltMassRepository
-              .createQueryBuilder('bm')
-              .where('bm.bolt = :boltId', { boltId: flangeDimension.bolt.id })
-              .andWhere('bm.length_mm >= :minLength', {
+              .createQueryBuilder("bm")
+              .where("bm.bolt = :boltId", { boltId: flangeDimension.bolt.id })
+              .andWhere("bm.length_mm >= :minLength", {
                 minLength: estimatedBoltLengthMm,
               })
-              .orderBy('bm.length_mm', 'ASC')
+              .orderBy("bm.length_mm", "ASC")
               .getOne();
 
             if (boltMass) {
@@ -369,9 +354,9 @@ export class RfqService {
       } catch (error) {
         this.logger.warn(
           `Flange weight calculation failed: ${error.message}. ` +
-          `Flange Standard ID: ${dto.flangeStandardId}, ` +
-          `Pressure Class ID: ${dto.flangePressureClassId}, ` +
-          `Nominal Bore: ${dto.nominalBoreMm}`,
+            `Flange Standard ID: ${dto.flangeStandardId}, ` +
+            `Pressure Class ID: ${dto.flangePressureClassId}, ` +
+            `Nominal Bore: ${dto.nominalBoreMm}`,
         );
       }
     }
@@ -403,14 +388,10 @@ export class RfqService {
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: StraightPipeCalculationResultDto }> {
     // Find user (optional - for when authentication is implemented)
-    const user = await this.userRepository
-      .findOne({ where: { id: userId } })
-      .catch(() => null);
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
 
     // Calculate requirements first
-    const calculation = await this.calculateStraightPipeRequirements(
-      dto.straightPipe,
-    );
+    const calculation = await this.calculateStraightPipeRequirements(dto.straightPipe);
 
     // Generate RFQ number
     const rfqNumber = await this.nextRfqNumber();
@@ -432,8 +413,7 @@ export class RfqService {
       description: dto.itemDescription,
       itemType: RfqItemType.STRAIGHT_PIPE,
       quantity: calculation.calculatedPipeCount,
-      weightPerUnitKg:
-        calculation.totalSystemWeight / calculation.calculatedPipeCount,
+      weightPerUnitKg: calculation.totalSystemWeight / calculation.calculatedPipeCount,
       totalWeightKg: calculation.totalSystemWeight,
       notes: dto.itemNotes,
       rfq: savedRfq,
@@ -473,7 +453,7 @@ export class RfqService {
     // Reload RFQ with relations
     const finalRfq = await this.rfqRepository.findOne({
       where: { id: savedRfq.id },
-      relations: ['items', 'items.straightPipeDetails'],
+      relations: ["items", "items.straightPipeDetails"],
     });
 
     return { rfq: finalRfq!, calculation };
@@ -483,9 +463,7 @@ export class RfqService {
     dto: CreateUnifiedRfqDto,
     userId: number,
   ): Promise<{ rfq: Rfq; itemsCreated: number }> {
-    const user = await this.userRepository
-      .findOne({ where: { id: userId } })
-      .catch(() => null);
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
 
     const rfqNumber = await this.nextRfqNumber();
 
@@ -505,26 +483,21 @@ export class RfqService {
     });
 
     const savedRfq = await this.rfqRepository.save(rfq);
-    this.logger.log(
-      `Created unified RFQ ${rfqNumber} with ${dto.items.length} items`,
-    );
+    this.logger.log(`Created unified RFQ ${rfqNumber} with ${dto.items.length} items`);
 
     let lineNumber = 0;
     for (const item of dto.items) {
       lineNumber++;
 
-      if (item.itemType === 'straight_pipe' && item.straightPipe) {
-        const calculation = await this.calculateStraightPipeRequirements(
-          item.straightPipe as any,
-        );
+      if (item.itemType === "straight_pipe" && item.straightPipe) {
+        const calculation = await this.calculateStraightPipeRequirements(item.straightPipe as any);
 
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.STRAIGHT_PIPE,
           quantity: calculation.calculatedPipeCount,
-          weightPerUnitKg:
-            calculation.totalSystemWeight / calculation.calculatedPipeCount,
+          weightPerUnitKg: calculation.totalSystemWeight / calculation.calculatedPipeCount,
           totalWeightKg: calculation.totalSystemWeight,
           notes: item.notes,
           rfq: savedRfq,
@@ -568,10 +541,8 @@ export class RfqService {
         }
 
         await this.straightPipeRfqRepository.save(straightPipeRfq);
-        this.logger.log(
-          `Created straight pipe item #${lineNumber}: ${item.description}`,
-        );
-      } else if (item.itemType === 'bend' && item.bend) {
+        this.logger.log(`Created straight pipe item #${lineNumber}: ${item.description}`);
+      } else if (item.itemType === "bend" && item.bend) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -598,7 +569,7 @@ export class RfqService {
           centerToFaceMm: item.bend.centerToFaceMm,
           calculationData: item.bend.calculationData,
           quantityValue: item.bend.quantityValue || 1,
-          quantityType: item.bend.quantityType || 'number_of_items',
+          quantityType: item.bend.quantityType || "number_of_items",
           workingPressureBar: item.bend.workingPressureBar || 10,
           workingTemperatureC: item.bend.workingTemperatureC || 20,
           steelSpecificationId: item.bend.steelSpecificationId || 2,
@@ -610,10 +581,8 @@ export class RfqService {
         });
 
         await this.bendRfqRepository.save(bendRfq);
-        this.logger.log(
-          `Created bend item #${lineNumber}: ${item.description}`,
-        );
-      } else if (item.itemType === 'fitting' && item.fitting) {
+        this.logger.log(`Created bend item #${lineNumber}: ${item.description}`);
+      } else if (item.itemType === "fitting" && item.fitting) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -639,7 +608,7 @@ export class RfqService {
           blankFlangeCount: item.fitting.blankFlangeCount,
           blankFlangePositions: item.fitting.blankFlangePositions,
           quantityValue: item.fitting.quantityValue || 1,
-          quantityType: item.fitting.quantityType || 'number_of_items',
+          quantityType: item.fitting.quantityType || "number_of_items",
           workingPressureBar: item.fitting.workingPressureBar,
           workingTemperatureC: item.fitting.workingTemperatureC,
           totalWeightKg: item.totalWeightKg,
@@ -648,10 +617,8 @@ export class RfqService {
         });
 
         await this.fittingRfqRepository.save(fittingRfq);
-        this.logger.log(
-          `Created fitting item #${lineNumber}: ${item.description}`,
-        );
-      } else if (item.itemType === 'expansion_joint' && item.expansionJoint) {
+        this.logger.log(`Created fitting item #${lineNumber}: ${item.description}`);
+      } else if (item.itemType === "expansion_joint" && item.expansionJoint) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -665,17 +632,14 @@ export class RfqService {
         const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const expansionJointRfq = this.expansionJointRfqRepository.create({
-          expansionJointType: item.expansionJoint
-            .expansionJointType as ExpansionJointType,
+          expansionJointType: item.expansionJoint.expansionJointType as ExpansionJointType,
           nominalDiameterMm: item.expansionJoint.nominalDiameterMm,
           scheduleNumber: item.expansionJoint.scheduleNumber,
           wallThicknessMm: item.expansionJoint.wallThicknessMm,
           outsideDiameterMm: item.expansionJoint.outsideDiameterMm,
           quantityValue: item.expansionJoint.quantityValue || 1,
-          bellowsJointType: item.expansionJoint
-            .bellowsJointType as BellowsJointType,
-          bellowsMaterial: item.expansionJoint
-            .bellowsMaterial as BellowsMaterial,
+          bellowsJointType: item.expansionJoint.bellowsJointType as BellowsJointType,
+          bellowsMaterial: item.expansionJoint.bellowsMaterial as BellowsMaterial,
           axialMovementMm: item.expansionJoint.axialMovementMm,
           lateralMovementMm: item.expansionJoint.lateralMovementMm,
           angularMovementDeg: item.expansionJoint.angularMovementDeg,
@@ -695,10 +659,8 @@ export class RfqService {
         });
 
         await this.expansionJointRfqRepository.save(expansionJointRfq);
-        this.logger.log(
-          `Created expansion joint item #${lineNumber}: ${item.description}`,
-        );
-      } else if (item.itemType === 'valve' && item.valve) {
+        this.logger.log(`Created expansion joint item #${lineNumber}: ${item.description}`);
+      } else if (item.itemType === "valve" && item.valve) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -750,7 +712,7 @@ export class RfqService {
 
         await this.valveRfqRepository.save(valveRfq);
         this.logger.log(`Created valve item #${lineNumber}: ${item.description}`);
-      } else if (item.itemType === 'instrument' && item.instrument) {
+      } else if (item.itemType === "instrument" && item.instrument) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -794,10 +756,8 @@ export class RfqService {
         });
 
         await this.instrumentRfqRepository.save(instrumentRfq);
-        this.logger.log(
-          `Created instrument item #${lineNumber}: ${item.description}`,
-        );
-      } else if (item.itemType === 'pump' && item.pump) {
+        this.logger.log(`Created instrument item #${lineNumber}: ${item.description}`);
+      } else if (item.itemType === "pump" && item.pump) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -842,7 +802,7 @@ export class RfqService {
           frequency: item.pump.frequency,
           motorEfficiency: item.pump.motorEfficiency,
           enclosure: item.pump.enclosure,
-          hazardousArea: item.pump.hazardousArea || 'none',
+          hazardousArea: item.pump.hazardousArea || "none",
           certifications: item.pump.certifications || [],
           sparePartCategory: item.pump.sparePartCategory,
           spareParts: item.pump.spareParts,
@@ -865,14 +825,14 @@ export class RfqService {
     const finalRfq = await this.rfqRepository.findOne({
       where: { id: savedRfq.id },
       relations: [
-        'items',
-        'items.straightPipeDetails',
-        'items.bendDetails',
-        'items.fittingDetails',
-        'items.expansionJointDetails',
-        'items.valveDetails',
-        'items.instrumentDetails',
-        'items.pumpDetails',
+        "items",
+        "items.straightPipeDetails",
+        "items.bendDetails",
+        "items.fittingDetails",
+        "items.expansionJointDetails",
+        "items.valveDetails",
+        "items.instrumentDetails",
+        "items.pumpDetails",
       ],
     });
 
@@ -886,7 +846,7 @@ export class RfqService {
   ): Promise<{ rfq: Rfq; itemsUpdated: number }> {
     const existingRfq = await this.rfqRepository.findOne({
       where: { id },
-      relations: ['items'],
+      relations: ["items"],
     });
 
     if (!existingRfq) {
@@ -895,9 +855,7 @@ export class RfqService {
 
     if (existingRfq.items && existingRfq.items.length > 0) {
       await this.rfqItemRepository.delete({ rfq: { id } });
-      this.logger.log(
-        `Deleted ${existingRfq.items.length} existing items from RFQ ${id}`,
-      );
+      this.logger.log(`Deleted ${existingRfq.items.length} existing items from RFQ ${id}`);
     }
 
     let totalWeight = 0;
@@ -920,26 +878,21 @@ export class RfqService {
     existingRfq.status = RfqStatus.SUBMITTED;
 
     const savedRfq = await this.rfqRepository.save(existingRfq);
-    this.logger.log(
-      `Updated RFQ ${existingRfq.rfqNumber} with ${dto.items.length} new items`,
-    );
+    this.logger.log(`Updated RFQ ${existingRfq.rfqNumber} with ${dto.items.length} new items`);
 
     let lineNumber = 0;
     for (const item of dto.items) {
       lineNumber++;
 
-      if (item.itemType === 'straight_pipe' && item.straightPipe) {
-        const calculation = await this.calculateStraightPipeRequirements(
-          item.straightPipe as any,
-        );
+      if (item.itemType === "straight_pipe" && item.straightPipe) {
+        const calculation = await this.calculateStraightPipeRequirements(item.straightPipe as any);
 
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
           itemType: RfqItemType.STRAIGHT_PIPE,
           quantity: calculation.calculatedPipeCount,
-          weightPerUnitKg:
-            calculation.totalSystemWeight / calculation.calculatedPipeCount,
+          weightPerUnitKg: calculation.totalSystemWeight / calculation.calculatedPipeCount,
           totalWeightKg: calculation.totalSystemWeight,
           notes: item.notes,
           rfq: savedRfq,
@@ -983,7 +936,7 @@ export class RfqService {
         }
 
         await this.straightPipeRfqRepository.save(straightPipeRfq);
-      } else if (item.itemType === 'bend' && item.bend) {
+      } else if (item.itemType === "bend" && item.bend) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -1010,7 +963,7 @@ export class RfqService {
           centerToFaceMm: item.bend.centerToFaceMm,
           calculationData: item.bend.calculationData,
           quantityValue: item.bend.quantityValue || 1,
-          quantityType: item.bend.quantityType || 'number_of_items',
+          quantityType: item.bend.quantityType || "number_of_items",
           workingPressureBar: item.bend.workingPressureBar || 10,
           workingTemperatureC: item.bend.workingTemperatureC || 20,
           steelSpecificationId: item.bend.steelSpecificationId || 2,
@@ -1022,7 +975,7 @@ export class RfqService {
         });
 
         await this.bendRfqRepository.save(bendRfq);
-      } else if (item.itemType === 'fitting' && item.fitting) {
+      } else if (item.itemType === "fitting" && item.fitting) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -1048,7 +1001,7 @@ export class RfqService {
           blankFlangeCount: item.fitting.blankFlangeCount,
           blankFlangePositions: item.fitting.blankFlangePositions,
           quantityValue: item.fitting.quantityValue || 1,
-          quantityType: item.fitting.quantityType || 'number_of_items',
+          quantityType: item.fitting.quantityType || "number_of_items",
           workingPressureBar: item.fitting.workingPressureBar,
           workingTemperatureC: item.fitting.workingTemperatureC,
           totalWeightKg: item.totalWeightKg,
@@ -1057,7 +1010,7 @@ export class RfqService {
         });
 
         await this.fittingRfqRepository.save(fittingRfq);
-      } else if (item.itemType === 'expansion_joint' && item.expansionJoint) {
+      } else if (item.itemType === "expansion_joint" && item.expansionJoint) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -1071,17 +1024,14 @@ export class RfqService {
         const savedRfqItem = await this.rfqItemRepository.save(rfqItem);
 
         const expansionJointRfq = this.expansionJointRfqRepository.create({
-          expansionJointType: item.expansionJoint
-            .expansionJointType as ExpansionJointType,
+          expansionJointType: item.expansionJoint.expansionJointType as ExpansionJointType,
           nominalDiameterMm: item.expansionJoint.nominalDiameterMm,
           scheduleNumber: item.expansionJoint.scheduleNumber,
           wallThicknessMm: item.expansionJoint.wallThicknessMm,
           outsideDiameterMm: item.expansionJoint.outsideDiameterMm,
           quantityValue: item.expansionJoint.quantityValue || 1,
-          bellowsJointType: item.expansionJoint
-            .bellowsJointType as BellowsJointType,
-          bellowsMaterial: item.expansionJoint
-            .bellowsMaterial as BellowsMaterial,
+          bellowsJointType: item.expansionJoint.bellowsJointType as BellowsJointType,
+          bellowsMaterial: item.expansionJoint.bellowsMaterial as BellowsMaterial,
           axialMovementMm: item.expansionJoint.axialMovementMm,
           lateralMovementMm: item.expansionJoint.lateralMovementMm,
           angularMovementDeg: item.expansionJoint.angularMovementDeg,
@@ -1101,7 +1051,7 @@ export class RfqService {
         });
 
         await this.expansionJointRfqRepository.save(expansionJointRfq);
-      } else if (item.itemType === 'valve' && item.valve) {
+      } else if (item.itemType === "valve" && item.valve) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -1152,7 +1102,7 @@ export class RfqService {
         });
 
         await this.valveRfqRepository.save(valveRfq);
-      } else if (item.itemType === 'instrument' && item.instrument) {
+      } else if (item.itemType === "instrument" && item.instrument) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -1196,7 +1146,7 @@ export class RfqService {
         });
 
         await this.instrumentRfqRepository.save(instrumentRfq);
-      } else if (item.itemType === 'pump' && item.pump) {
+      } else if (item.itemType === "pump" && item.pump) {
         const rfqItem = this.rfqItemRepository.create({
           lineNumber,
           description: item.description,
@@ -1241,7 +1191,7 @@ export class RfqService {
           frequency: item.pump.frequency,
           motorEfficiency: item.pump.motorEfficiency,
           enclosure: item.pump.enclosure,
-          hazardousArea: item.pump.hazardousArea || 'none',
+          hazardousArea: item.pump.hazardousArea || "none",
           certifications: item.pump.certifications || [],
           sparePartCategory: item.pump.sparePartCategory,
           spareParts: item.pump.spareParts,
@@ -1263,14 +1213,14 @@ export class RfqService {
     const finalRfq = await this.rfqRepository.findOne({
       where: { id: savedRfq.id },
       relations: [
-        'items',
-        'items.straightPipeDetails',
-        'items.bendDetails',
-        'items.fittingDetails',
-        'items.expansionJointDetails',
-        'items.valveDetails',
-        'items.instrumentDetails',
-        'items.pumpDetails',
+        "items",
+        "items.straightPipeDetails",
+        "items.bendDetails",
+        "items.fittingDetails",
+        "items.expansionJointDetails",
+        "items.valveDetails",
+        "items.instrumentDetails",
+        "items.pumpDetails",
       ],
     });
 
@@ -1280,8 +1230,8 @@ export class RfqService {
   async findAllRfqs(userId?: number): Promise<RfqResponseDto[]> {
     // For now, ignore userId filtering since created_by_id column doesn't exist
     const rfqs = await this.rfqRepository.find({
-      relations: ['items'],
-      order: { createdAt: 'DESC' },
+      relations: ["items"],
+      order: { createdAt: "DESC" },
     });
 
     return rfqs.map((rfq) => ({
@@ -1307,17 +1257,17 @@ export class RfqService {
     const rfq = await this.rfqRepository.findOne({
       where: { id },
       relations: [
-        'items',
-        'items.straightPipeDetails',
-        'items.straightPipeDetails.steelSpecification',
-        'items.bendDetails',
-        'items.fittingDetails',
-        'items.expansionJointDetails',
-        'items.valveDetails',
-        'items.instrumentDetails',
-        'items.pumpDetails',
-        'drawings',
-        'boqs',
+        "items",
+        "items.straightPipeDetails",
+        "items.straightPipeDetails.steelSpecification",
+        "items.bendDetails",
+        "items.fittingDetails",
+        "items.expansionJointDetails",
+        "items.valveDetails",
+        "items.instrumentDetails",
+        "items.pumpDetails",
+        "drawings",
+        "boqs",
       ],
     });
 
@@ -1328,9 +1278,7 @@ export class RfqService {
     return rfq;
   }
 
-  async calculateBendRequirements(
-    dto: CreateBendRfqDto,
-  ): Promise<BendCalculationResultDto> {
+  async calculateBendRequirements(dto: CreateBendRfqDto): Promise<BendCalculationResultDto> {
     // For now, use a comprehensive calculation based on the bend specifications
     // This would integrate with proper bend tables and pricing in a full implementation
 
@@ -1345,11 +1293,9 @@ export class RfqService {
       flangeWeight: approximateWeight * 0.1,
       numberOfFlanges: dto.numberOfTangents + 1,
       numberOfFlangeWelds: dto.numberOfTangents,
-      totalFlangeWeldLength:
-        (dto.numberOfTangents * Math.PI * dto.nominalBoreMm) / 1000,
+      totalFlangeWeldLength: (dto.numberOfTangents * Math.PI * dto.nominalBoreMm) / 1000,
       numberOfButtWelds: dto.numberOfTangents > 0 ? 1 : 0,
-      totalButtWeldLength:
-        dto.numberOfTangents > 0 ? (Math.PI * dto.nominalBoreMm) / 1000 : 0,
+      totalButtWeldLength: dto.numberOfTangents > 0 ? (Math.PI * dto.nominalBoreMm) / 1000 : 0,
       outsideDiameterMm: dto.nominalBoreMm + 20, // Simplified OD calculation
       wallThicknessMm: this.getWallThicknessFromSchedule(dto.scheduleNumber),
     };
@@ -1357,7 +1303,7 @@ export class RfqService {
 
   private calculateBendWeight(dto: CreateBendRfqDto): number {
     // Simplified weight calculation based on nominal bore and bend specifications
-    const baseWeight = Math.pow(dto.nominalBoreMm / 25, 2) * 2; // Base bend weight
+    const baseWeight = (dto.nominalBoreMm / 25) ** 2 * 2; // Base bend weight
     const tangentWeight = dto.tangentLengths.reduce((total, length) => {
       return total + (length / 1000) * (dto.nominalBoreMm / 25) * 7.85; // Steel density approximation
     }, 0);
@@ -1373,7 +1319,7 @@ export class RfqService {
   }
 
   private getBendRadius(bendType: string, nominalBoreMm: number): number {
-    const multiplier = parseFloat(bendType.replace('D', '')) || 1.5;
+    const multiplier = parseFloat(bendType.replace("D", "")) || 1.5;
     return nominalBoreMm * multiplier;
   }
 
@@ -1395,9 +1341,7 @@ export class RfqService {
     userId: number,
   ): Promise<{ rfq: Rfq; calculation: BendCalculationResultDto }> {
     // Find user (optional - for when authentication is implemented)
-    const user = await this.userRepository
-      .findOne({ where: { id: userId } })
-      .catch(() => null);
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
 
     // Calculate bend requirements first
     const calculation = await this.calculateBendRequirements(dto.bend);
@@ -1458,15 +1402,13 @@ export class RfqService {
   ): Promise<RfqDocumentResponseDto> {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      throw new BadRequestException(
-        `File size exceeds maximum allowed size of 50MB`,
-      );
+      throw new BadRequestException("File size exceeds maximum allowed size of 50MB");
     }
 
     // Find the RFQ
     const rfq = await this.rfqRepository.findOne({
       where: { id: rfqId },
-      relations: ['documents'],
+      relations: ["documents"],
     });
 
     if (!rfq) {
@@ -1511,8 +1453,8 @@ export class RfqService {
 
     const documents = await this.rfqDocumentRepository.find({
       where: { rfq: { id: rfqId } },
-      relations: ['uploadedBy'],
-      order: { createdAt: 'DESC' },
+      relations: ["uploadedBy"],
+      order: { createdAt: "DESC" },
     });
 
     return documents.map((doc) => this.mapDocumentToResponse(doc));
@@ -1521,7 +1463,7 @@ export class RfqService {
   async getDocumentById(documentId: number): Promise<RfqDocument> {
     const document = await this.rfqDocumentRepository.findOne({
       where: { id: documentId },
-      relations: ['rfq', 'uploadedBy'],
+      relations: ["rfq", "uploadedBy"],
     });
 
     if (!document) {
@@ -1531,9 +1473,7 @@ export class RfqService {
     return document;
   }
 
-  async downloadDocument(
-    documentId: number,
-  ): Promise<{ buffer: Buffer; document: RfqDocument }> {
+  async downloadDocument(documentId: number): Promise<{ buffer: Buffer; document: RfqDocument }> {
     const document = await this.getDocumentById(documentId);
     const buffer = await this.storageService.download(document.filePath);
 
@@ -1573,7 +1513,7 @@ export class RfqService {
   private async generateDraftNumber(): Promise<string> {
     const year = now().year;
     const draftCount = await this.rfqDraftRepository.count();
-    return `DRAFT-${year}-${String(draftCount + 1).padStart(4, '0')}`;
+    return `DRAFT-${year}-${String(draftCount + 1).padStart(4, "0")}`;
   }
 
   private readonly stepPercentages: Record<number, number> = {
@@ -1595,10 +1535,7 @@ export class RfqService {
   /**
    * Save or update an RFQ draft
    */
-  async saveDraft(
-    dto: SaveRfqDraftDto,
-    userId: number,
-  ): Promise<RfqDraftResponseDto> {
+  async saveDraft(dto: SaveRfqDraftDto, userId: number): Promise<RfqDraftResponseDto> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
@@ -1612,14 +1549,10 @@ export class RfqService {
         where: { id: dto.draftId, createdBy: { id: userId } },
       });
       if (!existingDraft) {
-        throw new NotFoundException(
-          `Draft with ID ${dto.draftId} not found or access denied`,
-        );
+        throw new NotFoundException(`Draft with ID ${dto.draftId} not found or access denied`);
       }
       if (existingDraft.isConverted) {
-        throw new BadRequestException(
-          'Cannot update a draft that has been converted to an RFQ',
-        );
+        throw new BadRequestException("Cannot update a draft that has been converted to an RFQ");
       }
       draft = existingDraft;
     } else {
@@ -1630,10 +1563,8 @@ export class RfqService {
     }
 
     // Update draft fields
-    draft.customerRfqReference =
-      dto.customerRfqReference || dto.formData.customerRfqReference;
-    draft.projectName =
-      dto.projectName || dto.formData.projectName || 'Untitled Draft';
+    draft.customerRfqReference = dto.customerRfqReference || dto.formData.customerRfqReference;
+    draft.projectName = dto.projectName || dto.formData.projectName || "Untitled Draft";
     draft.currentStep = dto.currentStep;
     draft.formData = dto.formData;
     draft.globalSpecs = dto.globalSpecs;
@@ -1649,10 +1580,10 @@ export class RfqService {
 
   async getDrafts(userId: number): Promise<RfqDraftResponseDto[]> {
     const drafts = await this.rfqDraftRepository
-      .createQueryBuilder('draft')
-      .leftJoinAndSelect('draft.convertedRfq', 'rfq')
-      .where('draft.created_by_user_id = :userId', { userId })
-      .orderBy('draft.updated_at', 'DESC')
+      .createQueryBuilder("draft")
+      .leftJoinAndSelect("draft.convertedRfq", "rfq")
+      .where("draft.created_by_user_id = :userId", { userId })
+      .orderBy("draft.updated_at", "DESC")
       .getMany();
 
     const convertedRfqIds = drafts
@@ -1675,9 +1606,7 @@ export class RfqService {
     return drafts.map((draft) => {
       const response = this.mapDraftToResponse(draft);
       if (draft.isConverted && draft.convertedRfqId) {
-        response.supplierCounts = supplierCountsMap.get(
-          draft.convertedRfqId,
-        ) || {
+        response.supplierCounts = supplierCountsMap.get(draft.convertedRfqId) || {
           pending: 0,
           declined: 0,
           intendToQuote: 0,
@@ -1700,11 +1629,11 @@ export class RfqService {
     >
   > {
     const boqs = await this.boqRepository
-      .createQueryBuilder('boq')
-      .select(['boq.id', 'boq.rfq'])
-      .innerJoin('boq.rfq', 'rfq')
-      .addSelect('rfq.id')
-      .where('rfq.id IN (:...rfqIds)', { rfqIds })
+      .createQueryBuilder("boq")
+      .select(["boq.id", "boq.rfq"])
+      .innerJoin("boq.rfq", "rfq")
+      .addSelect("rfq.id")
+      .where("rfq.id IN (:...rfqIds)", { rfqIds })
       .getMany();
 
     if (boqs.length === 0) {
@@ -1715,13 +1644,13 @@ export class RfqService {
     const boqIds = boqs.map((b) => b.id);
 
     const counts = await this.boqSupplierAccessRepository
-      .createQueryBuilder('access')
-      .select('access.boq_id', 'boqId')
-      .addSelect('access.status', 'status')
-      .addSelect('COUNT(DISTINCT access.supplier_profile_id)', 'count')
-      .where('access.boq_id IN (:...boqIds)', { boqIds })
-      .groupBy('access.boq_id')
-      .addGroupBy('access.status')
+      .createQueryBuilder("access")
+      .select("access.boq_id", "boqId")
+      .addSelect("access.status", "status")
+      .addSelect("COUNT(DISTINCT access.supplier_profile_id)", "count")
+      .where("access.boq_id IN (:...boqIds)", { boqIds })
+      .groupBy("access.boq_id")
+      .addGroupBy("access.status")
       .getRawMany<{ boqId: number; status: string; count: string }>();
 
     const resultMap = new Map<
@@ -1781,7 +1710,7 @@ export class RfqService {
   }> {
     const boqs = await this.boqRepository.find({
       where: { rfq: { id: rfqId } },
-      select: ['id'],
+      select: ["id"],
     });
 
     if (boqs.length === 0) {
@@ -1791,11 +1720,11 @@ export class RfqService {
     const boqIds = boqs.map((b) => b.id);
 
     const counts = await this.boqSupplierAccessRepository
-      .createQueryBuilder('access')
-      .select('access.status', 'status')
-      .addSelect('COUNT(DISTINCT access.supplier_profile_id)', 'count')
-      .where('access.boq_id IN (:...boqIds)', { boqIds })
-      .groupBy('access.status')
+      .createQueryBuilder("access")
+      .select("access.status", "status")
+      .addSelect("COUNT(DISTINCT access.supplier_profile_id)", "count")
+      .where("access.boq_id IN (:...boqIds)", { boqIds })
+      .groupBy("access.status")
       .getRawMany();
 
     const result = { pending: 0, declined: 0, intendToQuote: 0, quoted: 0 };
@@ -1824,20 +1753,15 @@ export class RfqService {
   /**
    * Get a single draft with full data
    */
-  async getDraftById(
-    draftId: number,
-    userId: number,
-  ): Promise<RfqDraftFullResponseDto> {
+  async getDraftById(draftId: number, userId: number): Promise<RfqDraftFullResponseDto> {
     const draft = await this.rfqDraftRepository
-      .createQueryBuilder('draft')
-      .where('draft.id = :draftId', { draftId })
-      .andWhere('draft.created_by_user_id = :userId', { userId })
+      .createQueryBuilder("draft")
+      .where("draft.id = :draftId", { draftId })
+      .andWhere("draft.created_by_user_id = :userId", { userId })
       .getOne();
 
     if (!draft) {
-      throw new NotFoundException(
-        `Draft with ID ${draftId} not found or access denied`,
-      );
+      throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);
     }
 
     return this.mapDraftToFullResponse(draft);
@@ -1846,20 +1770,15 @@ export class RfqService {
   /**
    * Get a draft by draft number
    */
-  async getDraftByNumber(
-    draftNumber: string,
-    userId: number,
-  ): Promise<RfqDraftFullResponseDto> {
+  async getDraftByNumber(draftNumber: string, userId: number): Promise<RfqDraftFullResponseDto> {
     const draft = await this.rfqDraftRepository
-      .createQueryBuilder('draft')
-      .where('draft.draft_number = :draftNumber', { draftNumber })
-      .andWhere('draft.created_by_user_id = :userId', { userId })
+      .createQueryBuilder("draft")
+      .where("draft.draft_number = :draftNumber", { draftNumber })
+      .andWhere("draft.created_by_user_id = :userId", { userId })
       .getOne();
 
     if (!draft) {
-      throw new NotFoundException(
-        `Draft ${draftNumber} not found or access denied`,
-      );
+      throw new NotFoundException(`Draft ${draftNumber} not found or access denied`);
     }
 
     return this.mapDraftToFullResponse(draft);
@@ -1870,21 +1789,17 @@ export class RfqService {
    */
   async deleteDraft(draftId: number, userId: number): Promise<void> {
     const draft = await this.rfqDraftRepository
-      .createQueryBuilder('draft')
-      .where('draft.id = :draftId', { draftId })
-      .andWhere('draft.created_by_user_id = :userId', { userId })
+      .createQueryBuilder("draft")
+      .where("draft.id = :draftId", { draftId })
+      .andWhere("draft.created_by_user_id = :userId", { userId })
       .getOne();
 
     if (!draft) {
-      throw new NotFoundException(
-        `Draft with ID ${draftId} not found or access denied`,
-      );
+      throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);
     }
 
     if (draft.isConverted) {
-      throw new BadRequestException(
-        'Cannot delete a draft that has been converted to an RFQ',
-      );
+      throw new BadRequestException("Cannot delete a draft that has been converted to an RFQ");
     }
 
     await this.rfqDraftRepository.remove(draft);
@@ -1893,11 +1808,7 @@ export class RfqService {
   /**
    * Mark a draft as converted to RFQ
    */
-  async markDraftAsConverted(
-    draftId: number,
-    rfqId: number,
-    userId: number,
-  ): Promise<void> {
+  async markDraftAsConverted(draftId: number, rfqId: number, userId: number): Promise<void> {
     const draft = await this.rfqDraftRepository.findOne({
       where: { id: draftId, createdBy: { id: userId } },
     });
@@ -1914,9 +1825,7 @@ export class RfqService {
    */
   private mapDraftToResponse(draft: RfqDraft): RfqDraftResponseDto {
     const rfqStatus = draft.convertedRfq?.status;
-    const status = draft.isConverted
-      ? rfqStatus || RfqStatus.SUBMITTED
-      : RfqStatus.DRAFT;
+    const status = draft.isConverted ? rfqStatus || RfqStatus.SUBMITTED : RfqStatus.DRAFT;
 
     return {
       id: draft.id,
@@ -1956,7 +1865,7 @@ export class RfqService {
   }> {
     const rfq = await this.rfqRepository.findOne({
       where: { id: rfqId },
-      relations: ['boqs'],
+      relations: ["boqs"],
     });
 
     if (!rfq) {
@@ -1979,46 +1888,35 @@ export class RfqService {
 
     const boqIds = boqs.map((boq) => boq.id);
 
-    const allSupplierAccessRecords =
-      await this.boqSupplierAccessRepository.find({
-        where: {
-          boqId: In(boqIds),
-          status: Not(SupplierBoqStatus.DECLINED),
-        },
-      });
+    const allSupplierAccessRecords = await this.boqSupplierAccessRepository.find({
+      where: {
+        boqId: In(boqIds),
+        status: Not(SupplierBoqStatus.DECLINED),
+      },
+    });
 
     if (allSupplierAccessRecords.length === 0) {
-      this.logger.log(
-        `No supplier access records found for RFQ ${rfq.rfqNumber}`,
-      );
+      this.logger.log(`No supplier access records found for RFQ ${rfq.rfqNumber}`);
       return { suppliersNotified: 0, suppliersSkipped: 0 };
     }
 
     const supplierProfileIds = [
-      ...new Set(
-        allSupplierAccessRecords.map((access) => access.supplierProfileId),
-      ),
+      ...new Set(allSupplierAccessRecords.map((access) => access.supplierProfileId)),
     ];
 
     const supplierProfiles = await this.supplierProfileRepository.find({
       where: { id: In(supplierProfileIds) },
-      relations: ['user', 'company'],
+      relations: ["user", "company"],
     });
 
-    const supplierProfileMap = new Map(
-      supplierProfiles.map((profile) => [profile.id, profile]),
-    );
+    const supplierProfileMap = new Map(supplierProfiles.map((profile) => [profile.id, profile]));
 
     for (const access of allSupplierAccessRecords) {
       try {
-        const supplierProfile = supplierProfileMap.get(
-          access.supplierProfileId,
-        );
+        const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
 
         if (!supplierProfile?.user?.email) {
-          this.logger.warn(
-            `Supplier profile ${access.supplierProfileId} has no email - skipping`,
-          );
+          this.logger.warn(`Supplier profile ${access.supplierProfileId} has no email - skipping`);
           suppliersSkipped++;
           continue;
         }
@@ -2037,17 +1935,12 @@ export class RfqService {
 
         if (success) {
           suppliersNotified++;
-          this.logger.log(
-            `Notified supplier ${supplierProfile.user.email} of RFQ update`,
-          );
+          this.logger.log(`Notified supplier ${supplierProfile.user.email} of RFQ update`);
         } else {
           suppliersSkipped++;
         }
       } catch (error) {
-        this.logger.error(
-          `Failed to notify supplier ${access.supplierProfileId}:`,
-          error,
-        );
+        this.logger.error(`Failed to notify supplier ${access.supplierProfileId}:`, error);
         suppliersSkipped++;
       }
     }

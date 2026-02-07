@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -106,9 +106,7 @@ export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterfac
     await this.seedBracketTypeData(queryRunner);
   }
 
-  private async seedSupportSpacingData(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
+  private async seedSupportSpacingData(queryRunner: QueryRunner): Promise<void> {
     const spacingData = [
       { nb: 15, nps: '1/2"', water: 2.1, vapor: 2.7, rod: 10 },
       { nb: 20, nps: '3/4"', water: 2.4, vapor: 3.0, rod: 10 },
@@ -144,9 +142,9 @@ export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterfac
   private async seedBracketTypeData(queryRunner: QueryRunner): Promise<void> {
     const bracketData = [
       {
-        typeCode: 'CLEVIS_HANGER',
-        displayName: 'Clevis Hanger',
-        description: 'For suspended pipelines, allows slight movement',
+        typeCode: "CLEVIS_HANGER",
+        displayName: "Clevis Hanger",
+        description: "For suspended pipelines, allows slight movement",
         minNb: 15,
         maxNb: 600,
         weightFactor: 0.8,
@@ -156,9 +154,9 @@ export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterfac
         isAnchorType: false,
       },
       {
-        typeCode: 'THREE_BOLT_CLAMP',
-        displayName: 'Three-Bolt Pipe Clamp',
-        description: 'Heavy-duty support for larger pipes',
+        typeCode: "THREE_BOLT_CLAMP",
+        displayName: "Three-Bolt Pipe Clamp",
+        description: "Heavy-duty support for larger pipes",
         minNb: 100,
         maxNb: 900,
         weightFactor: 1.5,
@@ -168,9 +166,9 @@ export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterfac
         isAnchorType: false,
       },
       {
-        typeCode: 'WELDED_BRACKET',
-        displayName: 'Welded Bracket',
-        description: 'Fixed support welded to structure',
+        typeCode: "WELDED_BRACKET",
+        displayName: "Welded Bracket",
+        description: "Fixed support welded to structure",
         minNb: 15,
         maxNb: 900,
         weightFactor: 2.0,
@@ -180,9 +178,9 @@ export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterfac
         isAnchorType: true,
       },
       {
-        typeCode: 'PIPE_SADDLE',
-        displayName: 'Pipe Saddle',
-        description: 'Base-mounted support with curved cradle',
+        typeCode: "PIPE_SADDLE",
+        displayName: "Pipe Saddle",
+        description: "Base-mounted support with curved cradle",
         minNb: 150,
         maxNb: 900,
         weightFactor: 2.5,
@@ -192,9 +190,9 @@ export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterfac
         isAnchorType: false,
       },
       {
-        typeCode: 'U_BOLT',
-        displayName: 'U-Bolt Clamp',
-        description: 'Simple, economical support for smaller pipes',
+        typeCode: "U_BOLT",
+        displayName: "U-Bolt Clamp",
+        description: "Simple, economical support for smaller pipes",
         minNb: 15,
         maxNb: 150,
         weightFactor: 0.5,
@@ -204,9 +202,9 @@ export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterfac
         isAnchorType: false,
       },
       {
-        typeCode: 'ROLLER_SUPPORT',
-        displayName: 'Roller Support',
-        description: 'Allows axial thermal expansion movement',
+        typeCode: "ROLLER_SUPPORT",
+        displayName: "Roller Support",
+        description: "Allows axial thermal expansion movement",
         minNb: 50,
         maxNb: 900,
         weightFactor: 3.0,
@@ -216,9 +214,9 @@ export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterfac
         isAnchorType: false,
       },
       {
-        typeCode: 'SLIDE_PLATE',
-        displayName: 'Slide Plate',
-        description: 'Low-friction support for thermal expansion',
+        typeCode: "SLIDE_PLATE",
+        displayName: "Slide Plate",
+        description: "Low-friction support for thermal expansion",
         minNb: 200,
         maxNb: 900,
         weightFactor: 2.5,
@@ -245,11 +243,11 @@ export class CreatePipeSteelWorkTables1769500000000 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS pipe_steel_work_rfqs`);
-    await queryRunner.query(`DROP TABLE IF EXISTS bracket_types`);
-    await queryRunner.query(`DROP TABLE IF EXISTS pipe_support_spacing`);
-    await queryRunner.query(`DROP TYPE IF EXISTS support_standard`);
-    await queryRunner.query(`DROP TYPE IF EXISTS bracket_type`);
-    await queryRunner.query(`DROP TYPE IF EXISTS pipe_steel_work_type`);
+    await queryRunner.query("DROP TABLE IF EXISTS pipe_steel_work_rfqs");
+    await queryRunner.query("DROP TABLE IF EXISTS bracket_types");
+    await queryRunner.query("DROP TABLE IF EXISTS pipe_support_spacing");
+    await queryRunner.query("DROP TYPE IF EXISTS support_standard");
+    await queryRunner.query("DROP TYPE IF EXISTS bracket_type");
+    await queryRunner.query("DROP TYPE IF EXISTS pipe_steel_work_type");
   }
 }

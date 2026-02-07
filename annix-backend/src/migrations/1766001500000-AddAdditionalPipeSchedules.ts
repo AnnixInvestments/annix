@@ -1,124 +1,122 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      '📊 Adding additional pipe schedules (Sch 10, 20, 30, 60, 100, 140)...',
-    );
+    console.warn("📊 Adding additional pipe schedules (Sch 10, 20, 30, 60, 100, 140)...");
 
     // NPS data with OD info
     const npsData: {
       [nps: string]: { odInch: number; odMm: number; nbMm: number };
     } = {
-      '1/2': { odInch: 0.84, odMm: 21.34, nbMm: 15 },
-      '3/4': { odInch: 1.05, odMm: 26.67, nbMm: 20 },
-      '1': { odInch: 1.315, odMm: 33.4, nbMm: 25 },
-      '1-1/4': { odInch: 1.66, odMm: 42.16, nbMm: 32 },
-      '1-1/2': { odInch: 1.9, odMm: 48.26, nbMm: 40 },
-      '2': { odInch: 2.375, odMm: 60.33, nbMm: 50 },
-      '2-1/2': { odInch: 2.875, odMm: 73.03, nbMm: 65 },
-      '3': { odInch: 3.5, odMm: 88.9, nbMm: 80 },
-      '3-1/2': { odInch: 4.0, odMm: 101.6, nbMm: 90 },
-      '4': { odInch: 4.5, odMm: 114.3, nbMm: 100 },
-      '5': { odInch: 5.563, odMm: 141.3, nbMm: 125 },
-      '6': { odInch: 6.625, odMm: 168.28, nbMm: 150 },
-      '8': { odInch: 8.625, odMm: 219.08, nbMm: 200 },
-      '10': { odInch: 10.75, odMm: 273.05, nbMm: 250 },
-      '12': { odInch: 12.75, odMm: 323.85, nbMm: 300 },
-      '14': { odInch: 14.0, odMm: 355.6, nbMm: 350 },
-      '16': { odInch: 16.0, odMm: 406.4, nbMm: 400 },
-      '18': { odInch: 18.0, odMm: 457.2, nbMm: 450 },
-      '20': { odInch: 20.0, odMm: 508.0, nbMm: 500 },
-      '24': { odInch: 24.0, odMm: 609.6, nbMm: 600 },
+      "1/2": { odInch: 0.84, odMm: 21.34, nbMm: 15 },
+      "3/4": { odInch: 1.05, odMm: 26.67, nbMm: 20 },
+      "1": { odInch: 1.315, odMm: 33.4, nbMm: 25 },
+      "1-1/4": { odInch: 1.66, odMm: 42.16, nbMm: 32 },
+      "1-1/2": { odInch: 1.9, odMm: 48.26, nbMm: 40 },
+      "2": { odInch: 2.375, odMm: 60.33, nbMm: 50 },
+      "2-1/2": { odInch: 2.875, odMm: 73.03, nbMm: 65 },
+      "3": { odInch: 3.5, odMm: 88.9, nbMm: 80 },
+      "3-1/2": { odInch: 4.0, odMm: 101.6, nbMm: 90 },
+      "4": { odInch: 4.5, odMm: 114.3, nbMm: 100 },
+      "5": { odInch: 5.563, odMm: 141.3, nbMm: 125 },
+      "6": { odInch: 6.625, odMm: 168.28, nbMm: 150 },
+      "8": { odInch: 8.625, odMm: 219.08, nbMm: 200 },
+      "10": { odInch: 10.75, odMm: 273.05, nbMm: 250 },
+      "12": { odInch: 12.75, odMm: 323.85, nbMm: 300 },
+      "14": { odInch: 14.0, odMm: 355.6, nbMm: 350 },
+      "16": { odInch: 16.0, odMm: 406.4, nbMm: 400 },
+      "18": { odInch: 18.0, odMm: 457.2, nbMm: 450 },
+      "20": { odInch: 20.0, odMm: 508.0, nbMm: 500 },
+      "24": { odInch: 24.0, odMm: 609.6, nbMm: 600 },
     };
 
     // Additional schedules to add - complete ASME B36.10/B36.19 data
     const additionalSchedules: { [nps: string]: { [sch: string]: number } } = {
       // NPS 2" - adding missing intermediate schedules
-      '2': {
-        '10': 0.109,
-        '20': 0.109,
-        '30': 0.154,
-        '60': 0.218,
+      "2": {
+        "10": 0.109,
+        "20": 0.109,
+        "30": 0.154,
+        "60": 0.218,
       },
       // NPS 3" - adding missing intermediate schedules
-      '3': {
-        '10': 0.12,
-        '20': 0.216,
-        '30': 0.3,
-        '60': 0.3,
+      "3": {
+        "10": 0.12,
+        "20": 0.216,
+        "30": 0.3,
+        "60": 0.3,
       },
       // NPS 4" - adding missing schedules
-      '4': {
-        '10': 0.12,
-        '20': 0.188,
-        '30': 0.237,
-        '60': 0.337,
-        '100': 0.438,
-        '140': 0.531,
+      "4": {
+        "10": 0.12,
+        "20": 0.188,
+        "30": 0.237,
+        "60": 0.337,
+        "100": 0.438,
+        "140": 0.531,
       },
       // NPS 5" - adding schedules
-      '5': {
-        '10': 0.134,
-        '20': 0.188,
-        '30': 0.258,
-        '60': 0.375,
-        '100': 0.5,
-        '140': 0.625,
+      "5": {
+        "10": 0.134,
+        "20": 0.188,
+        "30": 0.258,
+        "60": 0.375,
+        "100": 0.5,
+        "140": 0.625,
       },
       // NPS 6" - adding schedules 20, 30, 60, 100, 140
-      '6': {
-        '20': 0.28,
-        '30': 0.432,
-        '60': 0.432,
-        '100': 0.562,
-        '140': 0.719,
+      "6": {
+        "20": 0.28,
+        "30": 0.432,
+        "60": 0.432,
+        "100": 0.562,
+        "140": 0.719,
       },
       // NPS 8" - ensure we have all schedules per user data
-      '8': {
-        '10': 0.148,
+      "8": {
+        "10": 0.148,
         STD: 0.322,
         XS: 0.5,
       },
       // NPS 10" - complete data
-      '10': {
-        '10': 0.165,
+      "10": {
+        "10": 0.165,
         STD: 0.365,
         XS: 0.5,
       },
       // NPS 12" - complete data
-      '12': {
-        '10': 0.18,
+      "12": {
+        "10": 0.18,
         STD: 0.375,
         XS: 0.5,
       },
       // NPS 14" - add 5S, STD, XS
-      '14': {
-        '5S': 0.156,
+      "14": {
+        "5S": 0.156,
         STD: 0.375,
         XS: 0.5,
       },
       // NPS 16"
-      '16': {
-        '5S': 0.165,
+      "16": {
+        "5S": 0.165,
         STD: 0.375,
         XS: 0.5,
       },
       // NPS 18"
-      '18': {
-        '5S': 0.165,
+      "18": {
+        "5S": 0.165,
         STD: 0.375,
         XS: 0.5,
       },
       // NPS 20"
-      '20': {
-        '5S': 0.188,
+      "20": {
+        "5S": 0.188,
         STD: 0.375,
         XS: 0.5,
       },
       // NPS 24"
-      '24': {
-        '5S': 0.218,
+      "24": {
+        "5S": 0.218,
         STD: 0.375,
         XS: 0.5,
       },
@@ -147,7 +145,7 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
             wallMm,
             npsInfo.odInch,
             npsInfo.odMm,
-            'ASME B36.10',
+            "ASME B36.10",
           ],
         );
       }
@@ -155,7 +153,7 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
     }
 
     // Add SABS 62 pipe schedules (South African standard) - commonly used locally
-    console.warn('📊 Adding SABS 62 pipe schedule data...');
+    console.warn("📊 Adding SABS 62 pipe schedule data...");
 
     const sabs62Data: {
       nbMm: number;
@@ -257,12 +255,12 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
         [
           nps,
           pipe.nbMm,
-          'Light',
+          "Light",
           pipe.lightWallMm / 25.4,
           pipe.lightWallMm,
           odInch,
           pipe.odMm,
-          'SABS 62',
+          "SABS 62",
         ],
       );
 
@@ -276,12 +274,12 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
         [
           nps,
           pipe.nbMm,
-          'Medium',
+          "Medium",
           pipe.mediumWallMm / 25.4,
           pipe.mediumWallMm,
           odInch,
           pipe.odMm,
-          'SABS 62',
+          "SABS 62",
         ],
       );
 
@@ -295,19 +293,19 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
         [
           nps,
           pipe.nbMm,
-          'Heavy',
+          "Heavy",
           pipe.heavyWallMm / 25.4,
           pipe.heavyWallMm,
           odInch,
           pipe.odMm,
-          'SABS 62',
+          "SABS 62",
         ],
       );
     }
-    console.warn('  ✓ Added SABS 62 schedules (Light, Medium, Heavy)');
+    console.warn("  ✓ Added SABS 62 schedules (Light, Medium, Heavy)");
 
     // Add SABS 719 ERW pipe schedules
-    console.warn('📊 Adding SABS 719 pipe schedule data...');
+    console.warn("📊 Adding SABS 719 pipe schedule data...");
 
     const sabs719Data: {
       nbMm: number;
@@ -431,12 +429,12 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
         [
           nps,
           pipe.nbMm,
-          'Class 4',
+          "Class 4",
           pipe.class4WallMm / 25.4,
           pipe.class4WallMm,
           odInch,
           pipe.odMm,
-          'SABS 719',
+          "SABS 719",
         ],
       );
 
@@ -452,12 +450,12 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
         [
           nps,
           pipe.nbMm,
-          'Class 6',
+          "Class 6",
           pipe.class6WallMm / 25.4,
           pipe.class6WallMm,
           odInch,
           pipe.odMm,
-          'SABS 719',
+          "SABS 719",
         ],
       );
 
@@ -473,12 +471,12 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
         [
           nps,
           pipe.nbMm,
-          'Class 10',
+          "Class 10",
           pipe.class10WallMm / 25.4,
           pipe.class10WallMm,
           odInch,
           pipe.odMm,
-          'SABS 719',
+          "SABS 719",
         ],
       );
 
@@ -494,27 +492,27 @@ export class AddAdditionalPipeSchedules1766001500000 implements MigrationInterfa
         [
           nps,
           pipe.nbMm,
-          'Class 16',
+          "Class 16",
           pipe.class16WallMm / 25.4,
           pipe.class16WallMm,
           odInch,
           pipe.odMm,
-          'SABS 719',
+          "SABS 719",
         ],
       );
     }
-    console.warn('  ✓ Added SABS 719 schedules (Class 4, 6, 10, 16)');
+    console.warn("  ✓ Added SABS 719 schedules (Class 4, 6, 10, 16)");
 
-    console.warn('✅ Additional pipe schedules migration complete!');
+    console.warn("✅ Additional pipe schedules migration complete!");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('⏮️ Removing additional schedules...');
+    console.warn("⏮️ Removing additional schedules...");
     // Remove SABS standards
     await queryRunner.query(
       `DELETE FROM pipe_schedules WHERE standard_code IN ('SABS 62', 'SABS 719')`,
     );
     // Remove additional ASME schedules (would need more specific criteria)
-    console.warn('✅ Rollback complete');
+    console.warn("✅ Rollback complete");
   }
 }

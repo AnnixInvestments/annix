@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
-  name = 'AddAsmeVNdeData1777800000003';
+  name = "AddAsmeVNdeData1777800000003";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding ASME Section V NDE data for Quality Module...');
+    console.warn("Adding ASME Section V NDE data for Quality Module...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS nde_methods (
@@ -126,88 +126,64 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
 
     const ndeMethods = [
       [
-        'RT',
-        'Radiographic',
-        'Radiographic Examination',
+        "RT",
+        "Radiographic",
+        "Radiographic Examination",
         2,
-        'Volumetric weld examination',
+        "Volumetric weld examination",
         false,
         true,
       ],
       [
-        'UT',
-        'Ultrasonic',
-        'Ultrasonic Examination',
+        "UT",
+        "Ultrasonic",
+        "Ultrasonic Examination",
         4,
-        'Volumetric weld/material examination',
+        "Volumetric weld/material examination",
         false,
         true,
       ],
       [
-        'PT',
-        'Liquid Penetrant',
-        'Liquid Penetrant Examination',
+        "PT",
+        "Liquid Penetrant",
+        "Liquid Penetrant Examination",
         6,
-        'Surface defect detection',
+        "Surface defect detection",
         true,
         false,
       ],
       [
-        'MT',
-        'Magnetic Particle',
-        'Magnetic Particle Examination',
+        "MT",
+        "Magnetic Particle",
+        "Magnetic Particle Examination",
         7,
-        'Surface/near-surface defects (ferromagnetic)',
+        "Surface/near-surface defects (ferromagnetic)",
         true,
         true,
       ],
       [
-        'ET',
-        'Eddy Current',
-        'Eddy Current Examination',
+        "ET",
+        "Eddy Current",
+        "Eddy Current Examination",
         8,
-        'Tubing examination, surface defects',
+        "Tubing examination, surface defects",
         true,
         false,
       ],
+      ["VT", "Visual", "Visual Examination", 9, "Surface condition inspection", true, false],
+      ["LT", "Leak Testing", "Leak Testing", 10, "Pressure boundary integrity", false, false],
       [
-        'VT',
-        'Visual',
-        'Visual Examination',
-        9,
-        'Surface condition inspection',
-        true,
-        false,
-      ],
-      [
-        'LT',
-        'Leak Testing',
-        'Leak Testing',
-        10,
-        'Pressure boundary integrity',
-        false,
-        false,
-      ],
-      [
-        'AE',
-        'Acoustic Emission',
-        'Acoustic Emission Examination',
+        "AE",
+        "Acoustic Emission",
+        "Acoustic Emission Examination",
         12,
-        'In-service monitoring',
+        "In-service monitoring",
         false,
         true,
       ],
     ];
 
-    for (const [
-      code,
-      name,
-      fullName,
-      article,
-      use,
-      surface,
-      subsurface,
-    ] of ndeMethods) {
+    for (const [code, name, fullName, article, use, surface, subsurface] of ndeMethods) {
       await queryRunner.query(
         `
         INSERT INTO nde_methods (code, name, full_name, asme_article, primary_use, detects_surface, detects_subsurface)
@@ -221,37 +197,37 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
     }
 
     const effectiveness = [
-      ['surface_crack', 'RT', 'good', null],
-      ['surface_crack', 'UT', 'fair', null],
-      ['surface_crack', 'PT', 'excellent', 'Best for open surface cracks'],
-      ['surface_crack', 'MT', 'excellent', 'Ferromagnetic materials only'],
-      ['surface_crack', 'ET', 'good', null],
-      ['surface_crack', 'VT', 'fair', 'Requires adequate opening'],
-      ['subsurface_crack', 'RT', 'good', 'Orientation dependent'],
-      ['subsurface_crack', 'UT', 'excellent', 'Best volumetric method'],
-      ['subsurface_crack', 'MT', 'fair', 'Near-surface only'],
-      ['porosity', 'RT', 'excellent', 'Best for porosity detection'],
-      ['porosity', 'UT', 'good', 'Scattered porosity difficult'],
-      ['slag_inclusion', 'RT', 'excellent', 'Excellent density contrast'],
-      ['slag_inclusion', 'UT', 'good', null],
-      ['lack_of_fusion', 'RT', 'good', 'Orientation dependent'],
-      ['lack_of_fusion', 'UT', 'excellent', 'Best for planar defects'],
-      ['incomplete_penetration', 'RT', 'good', null],
-      ['incomplete_penetration', 'UT', 'excellent', null],
-      ['incomplete_penetration', 'VT', 'fair', 'Root side access required'],
-      ['undercut', 'RT', 'fair', null],
-      ['undercut', 'UT', 'fair', null],
-      ['undercut', 'PT', 'good', null],
-      ['undercut', 'MT', 'good', null],
-      ['undercut', 'VT', 'excellent', 'Best method for undercut'],
-      ['lamination', 'RT', 'fair', 'Orientation limits detection'],
-      ['lamination', 'UT', 'excellent', 'Straight beam examination'],
-      ['lamination', 'ET', 'good', 'For tubing'],
-      ['seam', 'RT', 'fair', null],
-      ['seam', 'UT', 'good', null],
-      ['seam', 'PT', 'good', null],
-      ['seam', 'MT', 'good', null],
-      ['seam', 'ET', 'excellent', 'Best for pipe/tube seams'],
+      ["surface_crack", "RT", "good", null],
+      ["surface_crack", "UT", "fair", null],
+      ["surface_crack", "PT", "excellent", "Best for open surface cracks"],
+      ["surface_crack", "MT", "excellent", "Ferromagnetic materials only"],
+      ["surface_crack", "ET", "good", null],
+      ["surface_crack", "VT", "fair", "Requires adequate opening"],
+      ["subsurface_crack", "RT", "good", "Orientation dependent"],
+      ["subsurface_crack", "UT", "excellent", "Best volumetric method"],
+      ["subsurface_crack", "MT", "fair", "Near-surface only"],
+      ["porosity", "RT", "excellent", "Best for porosity detection"],
+      ["porosity", "UT", "good", "Scattered porosity difficult"],
+      ["slag_inclusion", "RT", "excellent", "Excellent density contrast"],
+      ["slag_inclusion", "UT", "good", null],
+      ["lack_of_fusion", "RT", "good", "Orientation dependent"],
+      ["lack_of_fusion", "UT", "excellent", "Best for planar defects"],
+      ["incomplete_penetration", "RT", "good", null],
+      ["incomplete_penetration", "UT", "excellent", null],
+      ["incomplete_penetration", "VT", "fair", "Root side access required"],
+      ["undercut", "RT", "fair", null],
+      ["undercut", "UT", "fair", null],
+      ["undercut", "PT", "good", null],
+      ["undercut", "MT", "good", null],
+      ["undercut", "VT", "excellent", "Best method for undercut"],
+      ["lamination", "RT", "fair", "Orientation limits detection"],
+      ["lamination", "UT", "excellent", "Straight beam examination"],
+      ["lamination", "ET", "good", "For tubing"],
+      ["seam", "RT", "fair", null],
+      ["seam", "UT", "good", null],
+      ["seam", "PT", "good", null],
+      ["seam", "MT", "good", null],
+      ["seam", "ET", "excellent", "Best for pipe/tube seams"],
     ];
 
     for (const [defect, method, effect, notes] of effectiveness) {
@@ -268,43 +244,35 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
 
     const rtTechniques = [
       [
-        'SWSI',
-        'Single Wall Single Image',
-        'Inside pipe (panoramic or sequential)',
+        "SWSI",
+        "Single Wall Single Image",
+        "Inside pipe (panoramic or sequential)",
         '> 3.5" OD',
         1,
-        '360 deg panoramic or 120 deg each',
-        'Source inside, film outside',
+        "360 deg panoramic or 120 deg each",
+        "Source inside, film outside",
       ],
       [
-        'DWSI',
-        'Double Wall Single Image',
-        'Outside pipe',
+        "DWSI",
+        "Double Wall Single Image",
+        "Outside pipe",
         '> 3.5" OD',
         2,
-        '90 deg apart minimum',
-        'Source outside, film opposite',
+        "90 deg apart minimum",
+        "Source outside, film opposite",
       ],
       [
-        'DWDI',
-        'Double Wall Double Image',
-        'Outside pipe',
+        "DWDI",
+        "Double Wall Double Image",
+        "Outside pipe",
         '< 3.5" OD',
         2,
-        '90 or 120 deg apart',
-        'Elliptical image, both walls visible',
+        "90 or 120 deg apart",
+        "Elliptical image, both walls visible",
       ],
     ];
 
-    for (const [
-      code,
-      name,
-      location,
-      odRange,
-      minExp,
-      coverage,
-      notes,
-    ] of rtTechniques) {
+    for (const [code, name, location, odRange, minExp, coverage, notes] of rtTechniques) {
       await queryRunner.query(
         `
         INSERT INTO rt_pipe_techniques (technique_code, technique_name, source_location, applicable_od_range, min_exposures, angular_coverage, notes)
@@ -318,25 +286,13 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
     }
 
     const utAngles = [
-      [
-        0,
-        null,
-        null,
-        'Lamination detection, thickness measurement',
-        'longitudinal',
-      ],
-      [45, 40, 50, 'General weld examination, good corner reflection', 'shear'],
-      [60, 55, 65, 'Weld root examination, fusion line defects', 'shear'],
-      [70, 65, 75, 'Near-surface defects, thin materials', 'shear'],
+      [0, null, null, "Lamination detection, thickness measurement", "longitudinal"],
+      [45, 40, 50, "General weld examination, good corner reflection", "shear"],
+      [60, 55, 65, "Weld root examination, fusion line defects", "shear"],
+      [70, 65, 75, "Near-surface defects, thin materials", "shear"],
     ];
 
-    for (const [
-      nominal,
-      rangeMin,
-      rangeMax,
-      application,
-      beamType,
-    ] of utAngles) {
+    for (const [nominal, rangeMin, rangeMax, application, beamType] of utAngles) {
       await queryRunner.query(
         `
         INSERT INTO ut_search_angles (nominal_angle_deg, actual_range_min, actual_range_max, primary_application, beam_type)
@@ -349,69 +305,29 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
     }
 
     const ptTypes = [
+      ["I", "A", "Fluorescent", "Water washable", "Water", "Low-Medium", "General fluorescent"],
       [
-        'I',
-        'A',
-        'Fluorescent',
-        'Water washable',
-        'Water',
-        'Low-Medium',
-        'General fluorescent',
+        "I",
+        "B",
+        "Fluorescent",
+        "Post-emulsifiable lipophilic",
+        "Lipophilic emulsifier",
+        "High",
+        "High sensitivity",
       ],
+      ["I", "C", "Fluorescent", "Solvent removable", "Solvent", "Medium-High", "Localized areas"],
       [
-        'I',
-        'B',
-        'Fluorescent',
-        'Post-emulsifiable lipophilic',
-        'Lipophilic emulsifier',
-        'High',
-        'High sensitivity',
+        "I",
+        "D",
+        "Fluorescent",
+        "Post-emulsifiable hydrophilic",
+        "Hydrophilic emulsifier",
+        "Very High",
+        "Maximum sensitivity",
       ],
-      [
-        'I',
-        'C',
-        'Fluorescent',
-        'Solvent removable',
-        'Solvent',
-        'Medium-High',
-        'Localized areas',
-      ],
-      [
-        'I',
-        'D',
-        'Fluorescent',
-        'Post-emulsifiable hydrophilic',
-        'Hydrophilic emulsifier',
-        'Very High',
-        'Maximum sensitivity',
-      ],
-      [
-        'II',
-        'A',
-        'Visible dye',
-        'Water washable',
-        'Water',
-        'Low',
-        'General visible',
-      ],
-      [
-        'II',
-        'C',
-        'Visible dye',
-        'Solvent removable',
-        'Solvent',
-        'Medium',
-        'Field use',
-      ],
-      [
-        'III',
-        'A',
-        'Dual mode',
-        'Water washable',
-        'Water',
-        'Medium',
-        'Versatile applications',
-      ],
+      ["II", "A", "Visible dye", "Water washable", "Water", "Low", "General visible"],
+      ["II", "C", "Visible dye", "Solvent removable", "Solvent", "Medium", "Field use"],
+      ["III", "A", "Dual mode", "Water washable", "Water", "Medium", "Versatile applications"],
     ];
 
     for (const [
@@ -431,32 +347,18 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
           type_name = $3, method_name = $4, removal_method = $5,
           sensitivity_level = $6, typical_application = $7
       `,
-        [
-          typeCode,
-          methodCode,
-          typeName,
-          methodName,
-          removal,
-          sensitivity,
-          application,
-        ],
+        [typeCode, methodCode, typeName, methodName, removal, sensitivity, application],
       );
     }
 
     const ptParams = [
-      ['surface_temp_min', '40', null, '°F (4°C)', null],
-      ['surface_temp_max', null, '125', '°F (52°C)', null],
-      ['penetrant_dwell_min', '5', null, 'minutes', 'Minimum for Type I/II'],
-      ['developer_dwell_min', '10', null, 'minutes', null],
-      [
-        'developer_dwell_max',
-        null,
-        '60',
-        'minutes',
-        'Extended time may mask indications',
-      ],
-      ['surface_roughness_max', null, '125', 'microinches (Ra)', '3.2 μm'],
-      ['drying_time_min', '5', null, 'minutes', 'After cleaning'],
+      ["surface_temp_min", "40", null, "°F (4°C)", null],
+      ["surface_temp_max", null, "125", "°F (52°C)", null],
+      ["penetrant_dwell_min", "5", null, "minutes", "Minimum for Type I/II"],
+      ["developer_dwell_min", "10", null, "minutes", null],
+      ["developer_dwell_max", null, "60", "minutes", "Extended time may mask indications"],
+      ["surface_roughness_max", null, "125", "microinches (Ra)", "3.2 μm"],
+      ["drying_time_min", "5", null, "minutes", "After cleaning"],
     ];
 
     for (const [param, minVal, maxVal, unit, notes] of ptParams) {
@@ -473,47 +375,35 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
 
     const mtMethods = [
       [
-        'Yoke (AC)',
-        'Local area examination',
-        'Between poles',
-        '30-60 A/cm at poles',
-        'Most common field method',
+        "Yoke (AC)",
+        "Local area examination",
+        "Between poles",
+        "30-60 A/cm at poles",
+        "Most common field method",
       ],
       [
-        'Yoke (DC)',
-        'Local area examination',
-        'Between poles',
-        '40 A/cm minimum',
-        'Better subsurface detection',
+        "Yoke (DC)",
+        "Local area examination",
+        "Between poles",
+        "40 A/cm minimum",
+        "Better subsurface detection",
       ],
       [
-        'Prods',
-        'Local area examination',
-        'Between prods',
-        '100-125 A per inch spacing',
-        'Caution: arc burns possible',
+        "Prods",
+        "Local area examination",
+        "Between prods",
+        "100-125 A per inch spacing",
+        "Caution: arc burns possible",
       ],
+      ["Coil", "Circular parts", "Longitudinal", "Per procedure", "Detects transverse defects"],
       [
-        'Coil',
-        'Circular parts',
-        'Longitudinal',
-        'Per procedure',
-        'Detects transverse defects',
+        "Central conductor",
+        "Tubular parts",
+        "Circular",
+        "Per procedure",
+        "Detects longitudinal defects",
       ],
-      [
-        'Central conductor',
-        'Tubular parts',
-        'Circular',
-        'Per procedure',
-        'Detects longitudinal defects',
-      ],
-      [
-        'Head shot',
-        'Through part',
-        'Circular',
-        'Per procedure',
-        'Requires electrical contact',
-      ],
+      ["Head shot", "Through part", "Circular", "Per procedure", "Requires electrical contact"],
     ];
 
     for (const [method, application, direction, strength, notes] of mtMethods) {
@@ -529,62 +419,44 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
     }
 
     const acceptanceCriteria = [
-      ['crack', 'RT', 'Not acceptable', 'All codes', null],
-      ['crack', 'UT', 'Not acceptable', 'All codes', null],
-      ['crack', 'PT', 'Not acceptable', 'All codes', 'Any linear indication'],
-      ['crack', 'MT', 'Not acceptable', 'All codes', 'Any linear indication'],
-      ['incomplete_fusion', 'RT', 'Not acceptable', 'All codes', null],
-      ['incomplete_fusion', 'UT', 'Not acceptable', 'All codes', null],
+      ["crack", "RT", "Not acceptable", "All codes", null],
+      ["crack", "UT", "Not acceptable", "All codes", null],
+      ["crack", "PT", "Not acceptable", "All codes", "Any linear indication"],
+      ["crack", "MT", "Not acceptable", "All codes", "Any linear indication"],
+      ["incomplete_fusion", "RT", "Not acceptable", "All codes", null],
+      ["incomplete_fusion", "UT", "Not acceptable", "All codes", null],
       [
-        'incomplete_penetration',
-        'RT',
-        'Per referencing code',
-        'Varies by code',
-        'Some codes allow limited IP',
+        "incomplete_penetration",
+        "RT",
+        "Per referencing code",
+        "Varies by code",
+        "Some codes allow limited IP",
       ],
-      ['incomplete_penetration', 'UT', 'Not acceptable', 'Most codes', null],
-      ['slag_isolated', 'RT', 'Length ≤ 2/3t', 'Typical', 't = thickness'],
-      ['slag_isolated', 'UT', 'Per DAC level', 'Procedure dependent', null],
+      ["incomplete_penetration", "UT", "Not acceptable", "Most codes", null],
+      ["slag_isolated", "RT", "Length ≤ 2/3t", "Typical", "t = thickness"],
+      ["slag_isolated", "UT", "Per DAC level", "Procedure dependent", null],
       [
-        'porosity',
-        'RT',
-        'Per acceptance charts',
-        'ASME VIII Appendix 4',
-        'Size and distribution limits',
+        "porosity",
+        "RT",
+        "Per acceptance charts",
+        "ASME VIII Appendix 4",
+        "Size and distribution limits",
       ],
-      ['porosity', 'UT', 'Per DAC level', 'Procedure dependent', null],
+      ["porosity", "UT", "Per DAC level", "Procedure dependent", null],
       [
-        'undercut',
-        'VT',
+        "undercut",
+        "VT",
         '1/32" (0.8mm) max depth',
-        'Typical',
+        "Typical",
         '10% of wall or 1/32", whichever is less',
       ],
-      ['linear_indication', 'PT', 'Length ≤ 1/16" (1.5mm)', 'Typical', null],
-      ['linear_indication', 'MT', 'Length ≤ 1/16" (1.5mm)', 'Typical', null],
-      [
-        'rounded_indication',
-        'PT',
-        '≤ 3/16" (5mm) diameter',
-        'Typical',
-        'Single indication',
-      ],
-      [
-        'rounded_indication',
-        'MT',
-        '≤ 3/16" (5mm) diameter',
-        'Typical',
-        'Single indication',
-      ],
+      ["linear_indication", "PT", 'Length ≤ 1/16" (1.5mm)', "Typical", null],
+      ["linear_indication", "MT", 'Length ≤ 1/16" (1.5mm)', "Typical", null],
+      ["rounded_indication", "PT", '≤ 3/16" (5mm) diameter', "Typical", "Single indication"],
+      ["rounded_indication", "MT", '≤ 3/16" (5mm) diameter', "Typical", "Single indication"],
     ];
 
-    for (const [
-      indication,
-      method,
-      limit,
-      reference,
-      notes,
-    ] of acceptanceCriteria) {
+    for (const [indication, method, limit, reference, notes] of acceptanceCriteria) {
       await queryRunner.query(
         `
         INSERT INTO nde_acceptance_criteria (indication_type, nde_method, acceptance_limit, code_reference, notes)
@@ -598,21 +470,21 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
 
     const certLevels = [
       [
-        'I',
-        'Perform examination per written instruction',
-        'Setup under supervision, scanning, recording',
+        "I",
+        "Perform examination per written instruction",
+        "Setup under supervision, scanning, recording",
         true,
       ],
       [
-        'II',
-        'Set up, calibrate, interpret, evaluate',
-        'Independent examination, reporting, training Level I',
+        "II",
+        "Set up, calibrate, interpret, evaluate",
+        "Independent examination, reporting, training Level I",
         false,
       ],
       [
-        'III',
-        'Develop procedures, interpret codes, train',
-        'Program management, procedure qualification, auditing',
+        "III",
+        "Develop procedures, interpret codes, train",
+        "Program management, procedure qualification, auditing",
         false,
       ],
     ];
@@ -630,24 +502,16 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
     }
 
     const docRequirements = [
-      ['component_id', 'Unique identification of component examined', true],
-      ['examination_area', 'Location and extent of examination', true],
-      ['procedure_reference', 'Procedure number and revision', true],
-      ['equipment', 'Serial numbers and calibration status', true],
-      [
-        'technique_parameters',
-        'Parameters used (angles, frequencies, etc.)',
-        true,
-      ],
-      ['results', 'Indications found and disposition', true],
-      ['personnel', 'Examiner name and certification level', true],
-      ['examination_date', 'Date of examination', true],
-      [
-        'acceptance_standard',
-        'Code or specification used for acceptance',
-        true,
-      ],
-      ['sketch_or_map', 'Location sketch for recordable indications', false],
+      ["component_id", "Unique identification of component examined", true],
+      ["examination_area", "Location and extent of examination", true],
+      ["procedure_reference", "Procedure number and revision", true],
+      ["equipment", "Serial numbers and calibration status", true],
+      ["technique_parameters", "Parameters used (angles, frequencies, etc.)", true],
+      ["results", "Indications found and disposition", true],
+      ["personnel", "Examiner name and certification level", true],
+      ["examination_date", "Date of examination", true],
+      ["acceptance_standard", "Code or specification used for acceptance", true],
+      ["sketch_or_map", "Location sketch for recordable indications", false],
     ];
 
     for (const [item, info, mandatory] of docRequirements) {
@@ -662,21 +526,19 @@ export class AddAsmeVNdeData1777800000003 implements MigrationInterface {
       );
     }
 
-    console.warn('ASME Section V NDE data added successfully');
+    console.warn("ASME Section V NDE data added successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS nde_documentation_requirements`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS nde_certification_levels`);
-    await queryRunner.query(`DROP TABLE IF EXISTS nde_acceptance_criteria`);
-    await queryRunner.query(`DROP TABLE IF EXISTS mt_magnetization_methods`);
-    await queryRunner.query(`DROP TABLE IF EXISTS pt_process_parameters`);
-    await queryRunner.query(`DROP TABLE IF EXISTS pt_penetrant_types`);
-    await queryRunner.query(`DROP TABLE IF EXISTS ut_search_angles`);
-    await queryRunner.query(`DROP TABLE IF EXISTS rt_pipe_techniques`);
-    await queryRunner.query(`DROP TABLE IF EXISTS nde_method_effectiveness`);
-    await queryRunner.query(`DROP TABLE IF EXISTS nde_methods`);
+    await queryRunner.query("DROP TABLE IF EXISTS nde_documentation_requirements");
+    await queryRunner.query("DROP TABLE IF EXISTS nde_certification_levels");
+    await queryRunner.query("DROP TABLE IF EXISTS nde_acceptance_criteria");
+    await queryRunner.query("DROP TABLE IF EXISTS mt_magnetization_methods");
+    await queryRunner.query("DROP TABLE IF EXISTS pt_process_parameters");
+    await queryRunner.query("DROP TABLE IF EXISTS pt_penetrant_types");
+    await queryRunner.query("DROP TABLE IF EXISTS ut_search_angles");
+    await queryRunner.query("DROP TABLE IF EXISTS rt_pipe_techniques");
+    await queryRunner.query("DROP TABLE IF EXISTS nde_method_effectiveness");
+    await queryRunner.query("DROP TABLE IF EXISTS nde_methods");
   }
 }

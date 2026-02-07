@@ -1,30 +1,27 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { formatDateTime, formatRelative } from '@/app/lib/datetime';
-import {
-  BroadcastPriority,
-  BroadcastTarget,
-} from '@/app/lib/api/messagingApi';
-import { useAdminBroadcasts } from '@/app/lib/query/hooks';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { BroadcastPriority, BroadcastTarget } from "@/app/lib/api/messagingApi";
+import { formatDateTime, formatRelative } from "@/app/lib/datetime";
+import { useAdminBroadcasts } from "@/app/lib/query/hooks";
 
 function priorityBadge(priority: BroadcastPriority) {
   const styles: Record<BroadcastPriority, string> = {
-    [BroadcastPriority.LOW]: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
-    [BroadcastPriority.NORMAL]: 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400',
-    [BroadcastPriority.HIGH]: 'bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-400',
-    [BroadcastPriority.URGENT]: 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400',
+    [BroadcastPriority.LOW]: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
+    [BroadcastPriority.NORMAL]: "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400",
+    [BroadcastPriority.HIGH]: "bg-amber-100 text-amber-600 dark:bg-amber-900 dark:text-amber-400",
+    [BroadcastPriority.URGENT]: "bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400",
   };
   return styles[priority];
 }
 
 function targetLabel(target: BroadcastTarget): string {
   const labels: Record<BroadcastTarget, string> = {
-    [BroadcastTarget.ALL]: 'All Users',
-    [BroadcastTarget.CUSTOMERS]: 'Customers Only',
-    [BroadcastTarget.SUPPLIERS]: 'Suppliers Only',
-    [BroadcastTarget.SPECIFIC]: 'Specific Users',
+    [BroadcastTarget.ALL]: "All Users",
+    [BroadcastTarget.CUSTOMERS]: "Customers Only",
+    [BroadcastTarget.SUPPLIERS]: "Suppliers Only",
+    [BroadcastTarget.SPECIFIC]: "Specific Users",
   };
   return labels[target];
 }
@@ -50,15 +47,10 @@ export default function AdminBroadcastsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => router.push('/admin/portal/messages')}
+            onClick={() => router.push("/admin/portal/messages")}
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -67,9 +59,7 @@ export default function AdminBroadcastsPage() {
               />
             </svg>
           </button>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Broadcasts
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Broadcasts</h1>
         </div>
         <div className="flex items-center gap-4">
           <label className="flex items-center text-sm text-gray-600 dark:text-gray-400">
@@ -82,15 +72,10 @@ export default function AdminBroadcastsPage() {
             Show expired
           </label>
           <button
-            onClick={() => router.push('/admin/portal/broadcasts/new')}
+            onClick={() => router.push("/admin/portal/broadcasts/new")}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -124,10 +109,7 @@ export default function AdminBroadcastsPage() {
       ) : (
         <div className="space-y-4">
           {broadcasts.map((broadcast) => (
-            <div
-              key={broadcast.id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow p-6"
-            >
+            <div key={broadcast.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
@@ -148,12 +130,7 @@ export default function AdminBroadcastsPage() {
 
               <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -164,12 +141,7 @@ export default function AdminBroadcastsPage() {
                   {targetLabel(broadcast.targetAudience)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -186,12 +158,7 @@ export default function AdminBroadcastsPage() {
                   {broadcast.readCount} / {broadcast.totalRecipients} read
                 </span>
                 <span className="flex items-center gap-1">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"

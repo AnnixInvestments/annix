@@ -1,10 +1,9 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import type { ActivityItem } from '@/app/lib/api/adminApi';
-import { fromISO, now } from '@/app/lib/datetime';
-import { useAdminDashboard } from '@/app/lib/query/hooks';
+import { useRouter } from "next/navigation";
+import type { ActivityItem } from "@/app/lib/api/adminApi";
+import { fromISO, now } from "@/app/lib/datetime";
+import { useAdminDashboard } from "@/app/lib/query/hooks";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -18,7 +17,7 @@ export default function AdminDashboardPage() {
     const diffMs = currentTime.toMillis() - date.toMillis();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
 
     const diffHours = Math.floor(diffMins / 60);
@@ -27,7 +26,7 @@ export default function AdminDashboardPage() {
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `${diffDays}d ago`;
 
-    return date.toLocaleString({ year: 'numeric', month: 'short', day: 'numeric' });
+    return date.toLocaleString({ year: "numeric", month: "short", day: "numeric" });
   };
 
   if (dashboardQuery.isLoading) {
@@ -45,8 +44,18 @@ export default function AdminDashboardPage() {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <div className="flex items-start">
-          <svg className="w-6 h-6 text-red-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-6 h-6 text-red-600 mr-3 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div>
             <h3 className="text-sm font-medium text-red-800">Error loading dashboard</h3>
@@ -78,7 +87,12 @@ export default function AdminDashboardPage() {
           className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
           </svg>
           Refresh
         </button>
@@ -88,15 +102,25 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Customers Card - Clickable */}
         <button
-          onClick={() => router.push('/admin/portal/customers')}
+          onClick={() => router.push("/admin/portal/customers")}
           className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
         >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 rounded-md bg-blue-500 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
                   </svg>
                 </div>
               </div>
@@ -104,9 +128,21 @@ export default function AdminDashboardPage() {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Total Customers</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">{stats.totalCustomers}</div>
-                    <svg className="ml-auto w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <div className="text-2xl font-semibold text-gray-900">
+                      {stats.totalCustomers}
+                    </div>
+                    <svg
+                      className="ml-auto w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   </dd>
                 </dl>
@@ -117,15 +153,25 @@ export default function AdminDashboardPage() {
 
         {/* Total Suppliers Card - Clickable */}
         <button
-          onClick={() => router.push('/admin/portal/suppliers')}
+          onClick={() => router.push("/admin/portal/suppliers")}
           className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
         >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 rounded-md bg-green-500 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
                   </svg>
                 </div>
               </div>
@@ -133,9 +179,21 @@ export default function AdminDashboardPage() {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Total Suppliers</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">{stats.totalSuppliers}</div>
-                    <svg className="ml-auto w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <div className="text-2xl font-semibold text-gray-900">
+                      {stats.totalSuppliers}
+                    </div>
+                    <svg
+                      className="ml-auto w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   </dd>
                 </dl>
@@ -146,15 +204,25 @@ export default function AdminDashboardPage() {
 
         {/* Total RFQs Card - Clickable */}
         <button
-          onClick={() => router.push('/admin/portal/rfqs')}
+          onClick={() => router.push("/admin/portal/rfqs")}
           className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
         >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 rounded-md bg-purple-500 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                 </div>
               </div>
@@ -163,8 +231,18 @@ export default function AdminDashboardPage() {
                   <dt className="text-sm font-medium text-gray-500 truncate">Total RFQs</dt>
                   <dd className="flex items-baseline">
                     <div className="text-2xl font-semibold text-gray-900">{stats.totalRfqs}</div>
-                    <svg className="ml-auto w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <svg
+                      className="ml-auto w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   </dd>
                 </dl>
@@ -175,15 +253,25 @@ export default function AdminDashboardPage() {
 
         {/* Pending Approvals Card - Clickable */}
         <button
-          onClick={() => router.push('/admin/portal/approvals')}
+          onClick={() => router.push("/admin/portal/approvals")}
           className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
         >
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 rounded-md bg-orange-500 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
               </div>
@@ -191,13 +279,26 @@ export default function AdminDashboardPage() {
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Pending Approvals</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">{stats.pendingApprovals.total}</div>
-                    <svg className="ml-auto w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    <div className="text-2xl font-semibold text-gray-900">
+                      {stats.pendingApprovals.total}
+                    </div>
+                    <svg
+                      className="ml-auto w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
                     </svg>
                   </dd>
                   <dd className="mt-1 text-xs text-gray-500">
-                    {stats.pendingApprovals.customers} customers, {stats.pendingApprovals.suppliers} suppliers
+                    {stats.pendingApprovals.customers} customers, {stats.pendingApprovals.suppliers}{" "}
+                    suppliers
                   </dd>
                 </dl>
               </div>
@@ -213,16 +314,28 @@ export default function AdminDashboardPage() {
             <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">System Health</h3>
             <dl className="grid grid-cols-1 gap-5 sm:grid-cols-3">
               <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
-                <dt className="text-sm font-medium text-gray-500 truncate">Active Customer Sessions</dt>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.systemHealth.activeCustomerSessions}</dd>
+                <dt className="text-sm font-medium text-gray-500 truncate">
+                  Active Customer Sessions
+                </dt>
+                <dd className="mt-1 text-3xl font-semibold text-gray-900">
+                  {stats.systemHealth.activeCustomerSessions}
+                </dd>
               </div>
               <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
-                <dt className="text-sm font-medium text-gray-500 truncate">Active Supplier Sessions</dt>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.systemHealth.activeSupplierSessions}</dd>
+                <dt className="text-sm font-medium text-gray-500 truncate">
+                  Active Supplier Sessions
+                </dt>
+                <dd className="mt-1 text-3xl font-semibold text-gray-900">
+                  {stats.systemHealth.activeSupplierSessions}
+                </dd>
               </div>
               <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
-                <dt className="text-sm font-medium text-gray-500 truncate">Active Admin Sessions</dt>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">{stats.systemHealth.activeAdminSessions}</dd>
+                <dt className="text-sm font-medium text-gray-500 truncate">
+                  Active Admin Sessions
+                </dt>
+                <dd className="mt-1 text-3xl font-semibold text-gray-900">
+                  {stats.systemHealth.activeAdminSessions}
+                </dd>
               </div>
             </dl>
           </div>
@@ -248,8 +361,18 @@ export default function AdminDashboardPage() {
                       <div>
                         <div className="relative px-1">
                           <div className="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center ring-8 ring-white">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            <svg
+                              className="w-5 h-5 text-white"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                              />
                             </svg>
                           </div>
                         </div>
@@ -268,7 +391,9 @@ export default function AdminDashboardPage() {
                           <p>{activity.details}</p>
                         </div>
                         <div className="mt-1 flex items-center space-x-2">
-                          <span className="text-xs text-gray-500">{formatDate(activity.timestamp)}</span>
+                          <span className="text-xs text-gray-500">
+                            {formatDate(activity.timestamp)}
+                          </span>
                           {activity.ipAddress && (
                             <>
                               <span className="text-gray-300">•</span>

@@ -2,7 +2,7 @@
 
 ## Code Style
 - **No comments in code**: Use self-documenting method names instead of inline comments
-- **Follow project lint/prettier**: Obey existing eslint and prettier settings (single quotes per .prettierrc)
+- **Follow project lint/biome**: Obey existing Biome formatting (double quotes per biome.json) and ESLint custom rules
 - **Minimal changes**: Keep patches targeted and scoped to request
 - **Follow existing patterns**: Don't introduce new patterns without discussion
 - **No imperative loops**: Replace `for`/`while` constructs with declarative array operations (`map`, `reduce`, `filter`, etc.) so that functions remain side-effect free where possible
@@ -78,14 +78,18 @@
 - **Proceed without asking for simple yes/no questions**: The user's answer is always "Yes" for confirmation-type questions
 - **Only ask when there are multiple different approaches**: If there are genuinely different outcomes or architectural decisions to choose from, then ask
 
+### Branching
+- **No pull requests**: This project commits directly to `main`
+- **No feature branches**: Unless explicitly requested for worktree-based parallel work
+- **Worktrees**: When used, cherry-pick the result onto `main` and clean up the worktree/branch
+
 ### Commit Process
 1. Stage changes with `git add`
 2. Show the user what will be committed (`git status`)
 3. Propose a commit message
 4. **ASK**: "May I commit with this message?"
 5. Wait for explicit "yes" before running `git commit`
-6. **Rebase to local main**: Use `git rebase main` (never merge) so user can review locally
-7. Only push to remote when user explicitly approves
+6. Only push to remote when user explicitly approves
 
 ### Commit Standards
 - **Complete features only**: Each commit should represent a complete, logical feature - not intermediate iterations

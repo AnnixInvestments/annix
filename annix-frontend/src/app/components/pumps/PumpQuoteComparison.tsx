@@ -1,12 +1,11 @@
-'use client';
+"use client";
 
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from "react";
 import {
-  PumpQuote,
   comparePumpQuotes,
   PumpComparisonResult,
-  ComparisonMetric,
-} from '@/app/lib/config/pumps/pumpComparison';
+  PumpQuote,
+} from "@/app/lib/config/pumps/pumpComparison";
 
 interface PumpQuoteComparisonProps {
   quotes: PumpQuote[];
@@ -14,16 +13,16 @@ interface PumpQuoteComparisonProps {
   selectedQuoteId?: number;
 }
 
-function formatCurrency(value: number, currency = 'ZAR'): string {
-  const prefix = currency === 'ZAR' ? 'R' : currency;
-  return `${prefix} ${value.toLocaleString('en-ZA', { minimumFractionDigits: 0 })}`;
+function formatCurrency(value: number, currency = "ZAR"): string {
+  const prefix = currency === "ZAR" ? "R" : currency;
+  return `${prefix} ${value.toLocaleString("en-ZA", { minimumFractionDigits: 0 })}`;
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-ZA', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+  return new Date(dateString).toLocaleDateString("en-ZA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   });
 }
 
@@ -32,7 +31,7 @@ export function PumpQuoteComparison({
   onSelectQuote,
   selectedQuoteId,
 }: PumpQuoteComparisonProps) {
-  const [sortBy, setSortBy] = useState<'price' | 'score' | 'date'>('price');
+  const [sortBy, setSortBy] = useState<"price" | "score" | "date">("price");
 
   const comparison = useMemo<PumpComparisonResult>(() => {
     return comparePumpQuotes(quotes);
@@ -40,15 +39,17 @@ export function PumpQuoteComparison({
 
   const sortedQuotes = useMemo(() => {
     const sorted = [...quotes];
-    if (sortBy === 'price') {
+    if (sortBy === "price") {
       sorted.sort((a, b) => a.totalPrice - b.totalPrice);
-    } else if (sortBy === 'score') {
+    } else if (sortBy === "score") {
       sorted.sort((a, b) => {
-        const scoreA = comparison.overallScores.find((s) => s.supplierId === a.supplierId)?.score ?? 0;
-        const scoreB = comparison.overallScores.find((s) => s.supplierId === b.supplierId)?.score ?? 0;
+        const scoreA =
+          comparison.overallScores.find((s) => s.supplierId === a.supplierId)?.score ?? 0;
+        const scoreB =
+          comparison.overallScores.find((s) => s.supplierId === b.supplierId)?.score ?? 0;
         return scoreB - scoreA;
       });
-    } else if (sortBy === 'date') {
+    } else if (sortBy === "date") {
       sorted.sort((a, b) => new Date(b.quoteDate).getTime() - new Date(a.quoteDate).getTime());
     }
     return sorted;
@@ -57,11 +58,23 @@ export function PumpQuoteComparison({
   if (quotes.length === 0) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-        <svg className="mx-auto h-12 w-12 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <svg
+          className="mx-auto h-12 w-12 text-yellow-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
         </svg>
         <h3 className="mt-2 text-sm font-medium text-yellow-800">No quotes to compare</h3>
-        <p className="mt-1 text-sm text-yellow-600">Request quotes from suppliers to enable comparison</p>
+        <p className="mt-1 text-sm text-yellow-600">
+          Request quotes from suppliers to enable comparison
+        </p>
       </div>
     );
   }
@@ -98,8 +111,18 @@ export function PumpQuoteComparison({
       {comparison.recommendations.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex">
-            <svg className="h-5 w-5 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="h-5 w-5 text-blue-400 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <div className="ml-3">
               <h3 className="text-sm font-medium text-blue-800">Recommendations</h3>
@@ -119,7 +142,7 @@ export function PumpQuoteComparison({
           <label className="text-sm text-gray-600">Sort by:</label>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'price' | 'score' | 'date')}
+            onChange={(e) => setSortBy(e.target.value as "price" | "score" | "date")}
             className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="price">Price</option>
@@ -144,7 +167,10 @@ export function PumpQuoteComparison({
                   Score
                 </th>
                 {comparison.specificationComparison.map((metric) => (
-                  <th key={metric.name} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    key={metric.name}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     {metric.name}
                   </th>
                 ))}
@@ -159,20 +185,26 @@ export function PumpQuoteComparison({
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedQuotes.map((quote, idx) => {
                 const isBestPrice = quote.totalPrice === comparison.priceComparison.lowestPrice;
-                const scoreInfo = comparison.overallScores.find((s) => s.supplierId === quote.supplierId);
+                const scoreInfo = comparison.overallScores.find(
+                  (s) => s.supplierId === quote.supplierId,
+                );
                 const isSelected = selectedQuoteId === quote.supplierId;
 
                 return (
                   <tr
                     key={quote.supplierId}
-                    className={`${isBestPrice ? 'bg-green-50' : ''} ${isSelected ? 'ring-2 ring-inset ring-blue-500' : ''} hover:bg-gray-50`}
+                    className={`${isBestPrice ? "bg-green-50" : ""} ${isSelected ? "ring-2 ring-inset ring-blue-500" : ""} hover:bg-gray-50`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{quote.supplierName}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {quote.supplierName}
+                          </div>
                           {quote.warrantyMonths && (
-                            <div className="text-xs text-gray-500">{quote.warrantyMonths}mo warranty</div>
+                            <div className="text-xs text-gray-500">
+                              {quote.warrantyMonths}mo warranty
+                            </div>
                           )}
                         </div>
                         {isBestPrice && (
@@ -187,7 +219,9 @@ export function PumpQuoteComparison({
                         {formatCurrency(quote.totalPrice, quote.currency)}
                       </div>
                       {quote.leadTimeWeeks && (
-                        <div className="text-xs text-gray-500">{quote.leadTimeWeeks} weeks lead time</div>
+                        <div className="text-xs text-gray-500">
+                          {quote.leadTimeWeeks} weeks lead time
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -208,8 +242,10 @@ export function PumpQuoteComparison({
 
                       return (
                         <td key={metric.name} className="px-6 py-4 whitespace-nowrap">
-                          <span className={`text-sm ${isBest ? 'font-bold text-green-700' : 'text-gray-900'}`}>
-                            {value !== null ? `${value} ${metric.unit}` : '-'}
+                          <span
+                            className={`text-sm ${isBest ? "font-bold text-green-700" : "text-gray-900"}`}
+                          >
+                            {value !== null ? `${value} ${metric.unit}` : "-"}
                           </span>
                         </td>
                       );
@@ -244,16 +280,23 @@ export function PumpQuoteComparison({
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium text-gray-700">{metric.name}</span>
                   <span className="text-xs text-gray-500">
-                    {metric.comparison === 'higher' ? 'Higher is better' : metric.comparison === 'lower' ? 'Lower is better' : 'Equal is ideal'}
+                    {metric.comparison === "higher"
+                      ? "Higher is better"
+                      : metric.comparison === "lower"
+                        ? "Lower is better"
+                        : "Equal is ideal"}
                   </span>
                 </div>
                 <div className="flex items-center gap-4">
                   {quotes.map((quote, idx) => {
                     const value = metric.values[idx];
                     const isBest = metric.bestIndex === idx;
-                    const numericValues = metric.values.filter((v): v is number => typeof v === 'number');
+                    const numericValues = metric.values.filter(
+                      (v): v is number => typeof v === "number",
+                    );
                     const maxVal = numericValues.length > 0 ? Math.max(...numericValues) : 1;
-                    const pct = typeof value === 'number' && maxVal > 0 ? (value / maxVal) * 100 : 0;
+                    const pct =
+                      typeof value === "number" && maxVal > 0 ? (value / maxVal) * 100 : 0;
 
                     return (
                       <div key={quote.supplierId} className="flex-1">
@@ -261,12 +304,14 @@ export function PumpQuoteComparison({
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
                             <div
-                              className={`h-full rounded-full ${isBest ? 'bg-green-500' : 'bg-blue-400'}`}
+                              className={`h-full rounded-full ${isBest ? "bg-green-500" : "bg-blue-400"}`}
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <span className={`text-sm ${isBest ? 'font-bold text-green-700' : 'text-gray-600'}`}>
-                            {value !== null ? `${value}` : '-'}
+                          <span
+                            className={`text-sm ${isBest ? "font-bold text-green-700" : "text-gray-600"}`}
+                          >
+                            {value !== null ? `${value}` : "-"}
                           </span>
                         </div>
                       </div>

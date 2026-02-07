@@ -1,24 +1,16 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Sabs62FittingDimension } from '../sabs62-fitting-dimension/entities/sabs62-fitting-dimension.entity';
-import { Sabs719FittingDimension } from '../sabs719-fitting-dimension/entities/sabs719-fitting-dimension.entity';
-import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
-import { NbNpsLookup } from '../nb-nps-lookup/entities/nb-nps-lookup.entity';
-import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
-import { BoltMass } from '../bolt-mass/entities/bolt-mass.entity';
-import { NutMass } from '../nut-mass/entities/nut-mass.entity';
-import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
-import { FittingStandard, FittingType } from './dto/get-fitting-dimensions.dto';
-import {
-  CalculateFittingDto,
-  FittingCalculationResultDto,
-} from './dto/calculate-fitting.dto';
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
+import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
+import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
+import { NutMass } from "../nut-mass/entities/nut-mass.entity";
+import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
+import { Sabs62FittingDimension } from "../sabs62-fitting-dimension/entities/sabs62-fitting-dimension.entity";
+import { Sabs719FittingDimension } from "../sabs719-fitting-dimension/entities/sabs719-fitting-dimension.entity";
+import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
+import { CalculateFittingDto, FittingCalculationResultDto } from "./dto/calculate-fitting.dto";
+import { FittingStandard, FittingType } from "./dto/get-fitting-dimensions.dto";
 
 @Injectable()
 export class FittingService {
@@ -50,17 +42,9 @@ export class FittingService {
     angleRange?: string,
   ) {
     if (standard === FittingStandard.SABS62) {
-      return this.getSabs62FittingDimensions(
-        fittingType,
-        nominalDiameterMm,
-        angleRange,
-      );
+      return this.getSabs62FittingDimensions(fittingType, nominalDiameterMm, angleRange);
     } else {
-      return this.getSabs719FittingDimensions(
-        fittingType,
-        nominalDiameterMm,
-        angleRange,
-      );
+      return this.getSabs719FittingDimensions(fittingType, nominalDiameterMm, angleRange);
     }
   }
 
@@ -70,21 +54,21 @@ export class FittingService {
     angleRange?: string,
   ) {
     const queryBuilder = this.sabs62Repository
-      .createQueryBuilder('fitting')
-      .where('fitting.fittingType = :fittingType', { fittingType })
-      .andWhere('fitting.nominalDiameterMm = :nominalDiameterMm', {
+      .createQueryBuilder("fitting")
+      .where("fitting.fittingType = :fittingType", { fittingType })
+      .andWhere("fitting.nominalDiameterMm = :nominalDiameterMm", {
         nominalDiameterMm,
       });
 
     if (angleRange) {
-      queryBuilder.andWhere('fitting.angleRange = :angleRange', { angleRange });
+      queryBuilder.andWhere("fitting.angleRange = :angleRange", { angleRange });
     }
 
     const fitting = await queryBuilder.getOne();
 
     if (!fitting) {
       throw new NotFoundException(
-        `SABS62 fitting not found for type ${fittingType}, diameter ${nominalDiameterMm}mm${angleRange ? `, angle range ${angleRange}` : ''}`,
+        `SABS62 fitting not found for type ${fittingType}, diameter ${nominalDiameterMm}mm${angleRange ? `, angle range ${angleRange}` : ""}`,
       );
     }
 
@@ -97,14 +81,14 @@ export class FittingService {
     angleRange?: string,
   ) {
     const queryBuilder = this.sabs719Repository
-      .createQueryBuilder('fitting')
-      .where('fitting.fittingType = :fittingType', { fittingType })
-      .andWhere('fitting.nominalDiameterMm = :nominalDiameterMm', {
+      .createQueryBuilder("fitting")
+      .where("fitting.fittingType = :fittingType", { fittingType })
+      .andWhere("fitting.nominalDiameterMm = :nominalDiameterMm", {
         nominalDiameterMm,
       });
 
     if (angleRange) {
-      queryBuilder.andWhere('fitting.angleRange = :angleRange', { angleRange });
+      queryBuilder.andWhere("fitting.angleRange = :angleRange", { angleRange });
     }
 
     const fitting = await queryBuilder.getOne();
@@ -121,14 +105,14 @@ export class FittingService {
   async getAvailableFittingTypes(standard: FittingStandard) {
     if (standard === FittingStandard.SABS62) {
       const types = await this.sabs62Repository
-        .createQueryBuilder('fitting')
-        .select('DISTINCT fitting.fittingType', 'fittingType')
+        .createQueryBuilder("fitting")
+        .select("DISTINCT fitting.fittingType", "fittingType")
         .getRawMany();
       return types.map((t) => t.fittingType);
     } else {
       const types = await this.sabs719Repository
-        .createQueryBuilder('fitting')
-        .select('DISTINCT fitting.fittingType', 'fittingType')
+        .createQueryBuilder("fitting")
+        .select("DISTINCT fitting.fittingType", "fittingType")
         .getRawMany();
       return types.map((t) => t.fittingType);
     }
@@ -137,42 +121,37 @@ export class FittingService {
   async getAvailableSizes(standard: FittingStandard, fittingType: FittingType) {
     if (standard === FittingStandard.SABS62) {
       const sizes = await this.sabs62Repository
-        .createQueryBuilder('fitting')
-        .select('DISTINCT fitting.nominalDiameterMm', 'nominalDiameterMm')
-        .where('fitting.fittingType = :fittingType', { fittingType })
-        .orderBy('fitting.nominalDiameterMm', 'ASC')
+        .createQueryBuilder("fitting")
+        .select("DISTINCT fitting.nominalDiameterMm", "nominalDiameterMm")
+        .where("fitting.fittingType = :fittingType", { fittingType })
+        .orderBy("fitting.nominalDiameterMm", "ASC")
         .getRawMany();
       return sizes.map((s) => parseFloat(s.nominalDiameterMm));
     } else {
       const sizes = await this.sabs719Repository
-        .createQueryBuilder('fitting')
-        .select('DISTINCT fitting.nominalDiameterMm', 'nominalDiameterMm')
-        .where('fitting.fittingType = :fittingType', { fittingType })
-        .orderBy('fitting.nominalDiameterMm', 'ASC')
+        .createQueryBuilder("fitting")
+        .select("DISTINCT fitting.nominalDiameterMm", "nominalDiameterMm")
+        .where("fitting.fittingType = :fittingType", { fittingType })
+        .orderBy("fitting.nominalDiameterMm", "ASC")
         .getRawMany();
       return sizes.map((s) => parseFloat(s.nominalDiameterMm));
     }
   }
 
-  async getAvailableAngleRanges(
-    fittingType: FittingType,
-    nominalDiameterMm: number,
-  ) {
+  async getAvailableAngleRanges(fittingType: FittingType, nominalDiameterMm: number) {
     const angleRanges = await this.sabs62Repository
-      .createQueryBuilder('fitting')
-      .select('DISTINCT fitting.angleRange', 'angleRange')
-      .where('fitting.fittingType = :fittingType', { fittingType })
-      .andWhere('fitting.nominalDiameterMm = :nominalDiameterMm', {
+      .createQueryBuilder("fitting")
+      .select("DISTINCT fitting.angleRange", "angleRange")
+      .where("fitting.fittingType = :fittingType", { fittingType })
+      .andWhere("fitting.nominalDiameterMm = :nominalDiameterMm", {
         nominalDiameterMm,
       })
-      .andWhere('fitting.angleRange IS NOT NULL')
+      .andWhere("fitting.angleRange IS NOT NULL")
       .getRawMany();
     return angleRanges.map((a) => a.angleRange).filter(Boolean);
   }
 
-  async calculateFitting(
-    dto: CalculateFittingDto,
-  ): Promise<FittingCalculationResultDto> {
+  async calculateFitting(dto: CalculateFittingDto): Promise<FittingCalculationResultDto> {
     if (dto.fittingStandard === FittingStandard.SABS719) {
       return this.calculateSabs719Fitting(dto);
     } else {
@@ -187,14 +166,10 @@ export class FittingService {
 
     // Validate required fields for SABS719
     if (!dto.scheduleNumber) {
-      throw new BadRequestException(
-        'Schedule number is required for SABS719 fittings',
-      );
+      throw new BadRequestException("Schedule number is required for SABS719 fittings");
     }
     if (dto.pipeLengthAMm === undefined || dto.pipeLengthBMm === undefined) {
-      throw new BadRequestException(
-        'Pipe lengths A and B are required for SABS719 fittings',
-      );
+      throw new BadRequestException("Pipe lengths A and B are required for SABS719 fittings");
     }
 
     // Get fitting dimensions from SABS719 table
@@ -248,7 +223,7 @@ export class FittingService {
           schedule_designation: scheduleFormat,
           ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
         },
-        relations: ['nominalOutsideDiameter', 'steelSpecification'],
+        relations: ["nominalOutsideDiameter", "steelSpecification"],
       });
       if (pipeDimension) break;
     }
@@ -265,9 +240,7 @@ export class FittingService {
     });
 
     if (!nbNpsLookup) {
-      throw new NotFoundException(
-        `NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`,
-      );
+      throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`);
     }
 
     const outsideDiameterMm = nbNpsLookup.outside_diameter_mm;
@@ -280,11 +253,7 @@ export class FittingService {
     } else {
       const steelDensity = 7.85; // kg/dm³
       pipeWeightPerMeter =
-        (Math.PI *
-          wallThicknessMm *
-          (outsideDiameterMm - wallThicknessMm) *
-          steelDensity) /
-        1000;
+        (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * steelDensity) / 1000;
     }
 
     // Calculate weights for pipe sections (convert mm to m)
@@ -298,16 +267,16 @@ export class FittingService {
     // For gusset tees: dimensionBMm is the center-to-face height
     let branchPipeWeight = 0;
     const isTeeType = [
-      'SHORT_TEE',
-      'GUSSET_TEE',
-      'EQUAL_TEE',
-      'UNEQUAL_SHORT_TEE',
-      'UNEQUAL_GUSSET_TEE',
-      'SHORT_REDUCING_TEE',
-      'GUSSET_REDUCING_TEE',
+      "SHORT_TEE",
+      "GUSSET_TEE",
+      "EQUAL_TEE",
+      "UNEQUAL_SHORT_TEE",
+      "UNEQUAL_GUSSET_TEE",
+      "SHORT_REDUCING_TEE",
+      "GUSSET_REDUCING_TEE",
     ].includes(dto.fittingType);
-    const isGussetType = dto.fittingType.includes('GUSSET');
-    const isLateralType = ['LATERAL', 'Y_PIECE'].includes(dto.fittingType);
+    const isGussetType = dto.fittingType.includes("GUSSET");
+    const isLateralType = ["LATERAL", "Y_PIECE"].includes(dto.fittingType);
 
     if (isTeeType && fittingDimensions) {
       // Use dimensionBMm for gusset tees, dimensionAMm for short tees
@@ -321,8 +290,7 @@ export class FittingService {
       branchPipeWeight = pipeWeightPerMeter * (branchHeightMm / 1000);
     }
 
-    const totalPipeWeight =
-      (runPipeWeight + branchPipeWeight) * dto.quantityValue;
+    const totalPipeWeight = (runPipeWeight + branchPipeWeight) * dto.quantityValue;
 
     // Calculate gusset weight for gusset tees
     // Gussets are triangular reinforcement plates welded between run and branch pipes
@@ -338,13 +306,8 @@ export class FittingService {
       gussetSectionMm = fittingDimensions.dimensionCMm || 0;
 
       // Fallback: if C is not available, calculate from B - A
-      if (
-        !gussetSectionMm &&
-        fittingDimensions.dimensionBMm &&
-        fittingDimensions.dimensionAMm
-      ) {
-        gussetSectionMm =
-          fittingDimensions.dimensionBMm - fittingDimensions.dimensionAMm;
+      if (!gussetSectionMm && fittingDimensions.dimensionBMm && fittingDimensions.dimensionAMm) {
+        gussetSectionMm = fittingDimensions.dimensionBMm - fittingDimensions.dimensionAMm;
       }
 
       if (gussetSectionMm > 0) {
@@ -371,8 +334,7 @@ export class FittingService {
         const singleGussetWeldLengthMm = hypotenuseMm + 2 * gussetLegMm;
 
         // 2 gussets per tee, convert to meters
-        gussetWeldLength =
-          ((2 * singleGussetWeldLengthMm) / 1000) * dto.quantityValue;
+        gussetWeldLength = ((2 * singleGussetWeldLengthMm) / 1000) * dto.quantityValue;
       }
     }
 
@@ -410,7 +372,7 @@ export class FittingService {
             standard: { id: dto.flangeStandardId },
             pressureClass: { id: dto.flangePressureClassId },
           },
-          relations: ['bolt', 'nominalOutsideDiameter'],
+          relations: ["bolt", "nominalOutsideDiameter"],
         });
 
         if (flangeDimension) {
@@ -420,12 +382,12 @@ export class FittingService {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);
 
             const boltMass = await this.boltMassRepository
-              .createQueryBuilder('bm')
-              .where('bm.bolt = :boltId', { boltId: flangeDimension.bolt.id })
-              .andWhere('bm.length_mm >= :minLength', {
+              .createQueryBuilder("bm")
+              .where("bm.bolt = :boltId", { boltId: flangeDimension.bolt.id })
+              .andWhere("bm.length_mm >= :minLength", {
                 minLength: estimatedBoltLengthMm,
               })
-              .orderBy('bm.length_mm', 'ASC')
+              .orderBy("bm.length_mm", "ASC")
               .getOne();
 
             if (boltMass) {
@@ -444,7 +406,7 @@ export class FittingService {
           }
         }
       } catch (error) {
-        this.logger.warn('Flange weight calculation failed:', error.message);
+        this.logger.warn("Flange weight calculation failed:", error.message);
       }
     }
 
@@ -499,9 +461,7 @@ export class FittingService {
     });
 
     if (!nbNpsLookup) {
-      throw new NotFoundException(
-        `NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`,
-      );
+      throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`);
     }
 
     const outsideDiameterMm = nbNpsLookup.outside_diameter_mm;
@@ -521,10 +481,9 @@ export class FittingService {
     const estimatedVolumeM3 =
       (fittingDimensions.centreToFaceCMm / 1000) * // mm to m
       Math.PI *
-      Math.pow(outsideDiameterMm / 1000, 2) * // (mm to m)²
+      (outsideDiameterMm / 1000) ** 2 * // (mm to m)²
       0.5; // factor for tee/cross/lateral shape
-    const fittingWeight =
-      estimatedVolumeM3 * steelDensityKgM3 * dto.quantityValue;
+    const fittingWeight = estimatedVolumeM3 * steelDensityKgM3 * dto.quantityValue;
 
     // For SABS62, typically 3 flanges for tees/crosses/laterals
     const numberOfFlangesPerFitting = 3;
@@ -573,7 +532,7 @@ export class FittingService {
           schedule_designation: normalizedSchedule,
           ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
         },
-        relations: ['nominalOutsideDiameter', 'steelSpecification'],
+        relations: ["nominalOutsideDiameter", "steelSpecification"],
       });
 
       if (pipeDimension) {
@@ -591,21 +550,20 @@ export class FittingService {
         }
 
         // Run pipe: user-specified lengths A and B
-        const runPipeLength =
-          (dto.pipeLengthAMm || 0) + (dto.pipeLengthBMm || 0);
+        const runPipeLength = (dto.pipeLengthAMm || 0) + (dto.pipeLengthBMm || 0);
 
         // Branch pipe: for tees and laterals, add the branch height from fitting dimensions
         let branchPipeLength = 0;
         const isTeeType = [
-          'SHORT_TEE',
-          'GUSSET_TEE',
-          'EQUAL_TEE',
-          'UNEQUAL_SHORT_TEE',
-          'UNEQUAL_GUSSET_TEE',
-          'SHORT_REDUCING_TEE',
-          'GUSSET_REDUCING_TEE',
+          "SHORT_TEE",
+          "GUSSET_TEE",
+          "EQUAL_TEE",
+          "UNEQUAL_SHORT_TEE",
+          "UNEQUAL_GUSSET_TEE",
+          "SHORT_REDUCING_TEE",
+          "GUSSET_REDUCING_TEE",
         ].includes(dto.fittingType);
-        const isLateralType = ['LATERAL', 'Y_PIECE'].includes(dto.fittingType);
+        const isLateralType = ["LATERAL", "Y_PIECE"].includes(dto.fittingType);
 
         if ((isTeeType || isLateralType) && fittingDimensions) {
           // Use centreToFaceCMm as the branch height
@@ -613,8 +571,7 @@ export class FittingService {
         }
 
         const totalTangentLength = runPipeLength + branchPipeLength;
-        totalPipeWeight =
-          pipeWeightPerMeter * (totalTangentLength / 1000) * dto.quantityValue;
+        totalPipeWeight = pipeWeightPerMeter * (totalTangentLength / 1000) * dto.quantityValue;
       }
     }
 
@@ -633,7 +590,7 @@ export class FittingService {
             standard: { id: dto.flangeStandardId },
             pressureClass: { id: dto.flangePressureClassId },
           },
-          relations: ['bolt', 'nominalOutsideDiameter'],
+          relations: ["bolt", "nominalOutsideDiameter"],
         });
 
         if (flangeDimension) {
@@ -643,12 +600,12 @@ export class FittingService {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);
 
             const boltMass = await this.boltMassRepository
-              .createQueryBuilder('bm')
-              .where('bm.bolt = :boltId', { boltId: flangeDimension.bolt.id })
-              .andWhere('bm.length_mm >= :minLength', {
+              .createQueryBuilder("bm")
+              .where("bm.bolt = :boltId", { boltId: flangeDimension.bolt.id })
+              .andWhere("bm.length_mm >= :minLength", {
                 minLength: estimatedBoltLengthMm,
               })
-              .orderBy('bm.length_mm', 'ASC')
+              .orderBy("bm.length_mm", "ASC")
               .getOne();
 
             if (boltMass) {
@@ -667,7 +624,7 @@ export class FittingService {
           }
         }
       } catch (error) {
-        this.logger.warn('Flange weight calculation failed:', error.message);
+        this.logger.warn("Flange weight calculation failed:", error.message);
       }
     }
 

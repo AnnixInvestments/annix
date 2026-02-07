@@ -1,14 +1,14 @@
-import { IsOptional, IsString, IsEnum, IsNumber, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type } from "class-transformer";
+import { IsEnum, IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 export enum RfqStatus {
-  DRAFT = 'DRAFT',
-  PENDING = 'PENDING',
-  QUOTED = 'QUOTED',
-  ACCEPTED = 'ACCEPTED',
-  REJECTED = 'REJECTED',
-  CANCELLED = 'CANCELLED',
-  UNREGISTERED = 'UNREGISTERED',
+  DRAFT = "DRAFT",
+  PENDING = "PENDING",
+  QUOTED = "QUOTED",
+  ACCEPTED = "ACCEPTED",
+  REJECTED = "REJECTED",
+  CANCELLED = "CANCELLED",
+  UNREGISTERED = "UNREGISTERED",
 }
 
 export class RfqQueryDto {
@@ -39,7 +39,7 @@ export class RfqQueryDto {
 
   @IsOptional()
   @IsString()
-  sortOrder?: 'ASC' | 'DESC';
+  sortOrder?: "ASC" | "DESC";
 
   @IsOptional()
   @Type(() => Number)

@@ -1,1 +1,1 @@
-export * from './stainless-steel-grade.entity';
+export * from "./stainless-steel-grade.entity";

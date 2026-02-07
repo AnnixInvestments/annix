@@ -1,8 +1,8 @@
-import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
-import { ObjectLiteral, Repository, MoreThanOrEqual } from 'typeorm';
-import { now } from '../../lib/datetime';
-import { AUTH_CONSTANTS } from './auth.constants';
-import { LogLoginAttemptData } from './auth.interfaces';
+import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import { MoreThanOrEqual, ObjectLiteral, Repository } from "typeorm";
+import { now } from "../../lib/datetime";
+import { AUTH_CONSTANTS } from "./auth.constants";
+import { LogLoginAttemptData } from "./auth.interfaces";
 
 @Injectable()
 export class RateLimitingService {
@@ -13,9 +13,7 @@ export class RateLimitingService {
     email: string,
   ): Promise<void> {
     try {
-      const lockoutTime = now()
-        .minus({ minutes: AUTH_CONSTANTS.LOGIN_LOCKOUT_MINUTES })
-        .toJSDate();
+      const lockoutTime = now().minus({ minutes: AUTH_CONSTANTS.LOGIN_LOCKOUT_MINUTES }).toJSDate();
 
       const recentAttempts = await repo.count({
         where: {
@@ -34,10 +32,7 @@ export class RateLimitingService {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      this.logger.warn(
-        'Failed to check login attempts (table may not exist): ' +
-          error.message,
-      );
+      this.logger.warn(`Failed to check login attempts (table may not exist): ${error.message}`);
     }
   }
 
@@ -66,9 +61,7 @@ export class RateLimitingService {
       const attempt = repo.create(attemptData as any);
       await repo.save(attempt);
     } catch (error) {
-      this.logger.warn(
-        'Failed to log login attempt (table may not exist): ' + error.message,
-      );
+      this.logger.warn(`Failed to log login attempt (table may not exist): ${error.message}`);
     }
   }
 }

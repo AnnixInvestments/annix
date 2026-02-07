@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AngleRangeController } from './angle-range.controller';
-import { AngleRangeService } from './angle-range.service';
-import { AngleRange } from './entities/angle-range.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { AngleRangeController } from "./angle-range.controller";
+import { AngleRangeService } from "./angle-range.service";
+import { AngleRange } from "./entities/angle-range.entity";
 
-describe('AngleRangeController', () => {
+describe("AngleRangeController", () => {
   let controller: AngleRangeController;
   let service: AngleRangeService;
 
@@ -39,7 +39,7 @@ describe('AngleRangeController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

@@ -1,33 +1,36 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { WORKING_PRESSURE_BAR, WORKING_TEMPERATURE_CELSIUS } from '@/app/lib/config/rfq';
+import React from "react";
+import { WORKING_PRESSURE_BAR, WORKING_TEMPERATURE_CELSIUS } from "@/app/lib/config/rfq";
 
-type ColorScheme = 'blue' | 'purple' | 'green';
+type ColorScheme = "blue" | "purple" | "green";
 
-const colorClasses: Record<ColorScheme, {
-  container: string;
-  label: string;
-  button: string;
-  input: string;
-}> = {
+const colorClasses: Record<
+  ColorScheme,
+  {
+    container: string;
+    label: string;
+    button: string;
+    input: string;
+  }
+> = {
   blue: {
-    container: 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700',
-    label: 'text-blue-600 dark:text-blue-400',
-    button: 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300',
-    input: 'focus:ring-blue-500',
+    container: "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700",
+    label: "text-blue-600 dark:text-blue-400",
+    button: "text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300",
+    input: "focus:ring-blue-500",
   },
   purple: {
-    container: 'bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700',
-    label: 'text-purple-600 dark:text-purple-400',
-    button: 'text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300',
-    input: 'focus:ring-purple-500',
+    container: "bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700",
+    label: "text-purple-600 dark:text-purple-400",
+    button: "text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300",
+    input: "focus:ring-purple-500",
   },
   green: {
-    container: 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700',
-    label: 'text-green-600 dark:text-green-400',
-    button: 'text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300',
-    input: 'focus:ring-green-500',
+    container: "bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700",
+    label: "text-green-600 dark:text-green-400",
+    button: "text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300",
+    input: "focus:ring-green-500",
   },
 };
 
@@ -64,18 +67,19 @@ export function WorkingConditionsSection({
   pressureTooltip,
   temperatureTooltip,
   extraFields,
-  className = '',
+  className = "",
 }: WorkingConditionsSectionProps) {
   const colors = colorClasses[color];
   const hasOverride = workingPressureBar !== undefined || workingTemperatureC !== undefined;
-  const effectivePressure = workingPressureBar ?? globalPressureBar ?? '';
-  const effectiveTemperature = workingTemperatureC ?? globalTemperatureC ?? '';
+  const effectivePressure = workingPressureBar ?? globalPressureBar ?? "";
+  const effectiveTemperature = workingTemperatureC ?? globalTemperatureC ?? "";
 
-  const gridClass = gridCols === 2
-    ? 'grid grid-cols-2 gap-3'
-    : gridCols === 4
-      ? 'grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3'
-      : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3';
+  const gridClass =
+    gridCols === 2
+      ? "grid grid-cols-2 gap-3"
+      : gridCols === 4
+        ? "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3"
+        : "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3";
 
   return (
     <div className={`${colors.container} rounded-lg p-3 mt-3 ${className}`}>
@@ -128,7 +132,9 @@ export function WorkingConditionsSection({
           >
             <option value="">Select pressure...</option>
             {WORKING_PRESSURE_BAR.map((pressure) => (
-              <option key={pressure} value={pressure}>{pressure} bar</option>
+              <option key={pressure} value={pressure}>
+                {pressure} bar
+              </option>
             ))}
           </select>
         </div>
@@ -160,7 +166,9 @@ export function WorkingConditionsSection({
           >
             <option value="">Select temperature...</option>
             {WORKING_TEMPERATURE_CELSIUS.map((temp) => (
-              <option key={temp} value={temp}>{temp}°C</option>
+              <option key={temp} value={temp}>
+                {temp}°C
+              </option>
             ))}
           </select>
         </div>

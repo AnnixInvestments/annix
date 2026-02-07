@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { WeldThicknessPipeRecommendation } from './entities/weld-thickness-pipe-recommendation.entity';
-import { WeldThicknessFittingRecommendation } from './entities/weld-thickness-fitting-recommendation.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { WeldThicknessFittingRecommendation } from "./entities/weld-thickness-fitting-recommendation.entity";
+import { WeldThicknessPipeRecommendation } from "./entities/weld-thickness-pipe-recommendation.entity";
 
 export interface WeldThicknessResult {
   found: boolean;
@@ -96,9 +96,7 @@ export class WeldThicknessService {
 
     return {
       found: true,
-      weldThicknessMm: this.roundToWeldIncrement(
-        Number(fitting.wall_thickness_mm),
-      ),
+      weldThicknessMm: this.roundToWeldIncrement(Number(fitting.wall_thickness_mm)),
       fittingClass,
       dn,
       odMm: null, // OD not stored in new schema
@@ -126,9 +124,7 @@ export class WeldThicknessService {
 
     return fittings.map((fitting) => ({
       found: true,
-      weldThicknessMm: this.roundToWeldIncrement(
-        Number(fitting.wall_thickness_mm),
-      ),
+      weldThicknessMm: this.roundToWeldIncrement(Number(fitting.wall_thickness_mm)),
       fittingClass: fitting.fitting_class,
       dn,
       odMm: null,
@@ -147,7 +143,7 @@ export class WeldThicknessService {
     temperatureC: number = 20,
   ): Promise<WeldThicknessResult | null> {
     const closestTemp = this.findClosestTemperature(temperatureC);
-    const classOrder = ['STD', 'XH', 'XXH'];
+    const classOrder = ["STD", "XH", "XXH"];
 
     for (const fittingClass of classOrder) {
       const fitting = await this.fittingRecommendationRepository.findOne({
@@ -161,9 +157,7 @@ export class WeldThicknessService {
       if (fitting && Number(fitting.max_pressure_bar) >= designPressureBar) {
         return {
           found: true,
-          weldThicknessMm: this.roundToWeldIncrement(
-            Number(fitting.wall_thickness_mm),
-          ),
+          weldThicknessMm: this.roundToWeldIncrement(Number(fitting.wall_thickness_mm)),
           fittingClass,
           dn,
           odMm: null,
@@ -178,7 +172,7 @@ export class WeldThicknessService {
     const xxhFitting = await this.fittingRecommendationRepository.findOne({
       where: {
         nominal_bore_mm: dn,
-        fitting_class: 'XXH',
+        fitting_class: "XXH",
         temperature_celsius: closestTemp,
       },
     });
@@ -186,15 +180,13 @@ export class WeldThicknessService {
     if (xxhFitting) {
       return {
         found: true,
-        weldThicknessMm: this.roundToWeldIncrement(
-          Number(xxhFitting.wall_thickness_mm),
-        ),
-        fittingClass: 'XXH',
+        weldThicknessMm: this.roundToWeldIncrement(Number(xxhFitting.wall_thickness_mm)),
+        fittingClass: "XXH",
         dn,
         odMm: null,
         maxPressureBar: Number(xxhFitting.max_pressure_bar),
         temperatureC,
-        schedule: 'XXH',
+        schedule: "XXH",
         notes: `WARNING: Design pressure ${designPressureBar} bar exceeds XXH rating of ${xxhFitting.max_pressure_bar} bar at ${temperatureC}°C. Special design required.`,
       };
     }
@@ -216,7 +208,7 @@ export class WeldThicknessService {
       where: {
         nominal_bore_mm: dn,
         schedule,
-        steel_type: 'CARBON_STEEL',
+        steel_type: "CARBON_STEEL",
         temperature_celsius: closestTemp,
       },
     });
@@ -254,18 +246,16 @@ export class WeldThicknessService {
    */
   async getAllCarbonSteelPipes(): Promise<WeldThicknessPipeRecommendation[]> {
     return this.pipeRecommendationRepository.find({
-      where: { steel_type: 'CARBON_STEEL' },
+      where: { steel_type: "CARBON_STEEL" },
     });
   }
 
   /**
    * Get all stainless steel pipes data
    */
-  async getAllStainlessSteelPipes(): Promise<
-    WeldThicknessPipeRecommendation[]
-  > {
+  async getAllStainlessSteelPipes(): Promise<WeldThicknessPipeRecommendation[]> {
     return this.pipeRecommendationRepository.find({
-      where: { steel_type: 'STAINLESS_STEEL' },
+      where: { steel_type: "STAINLESS_STEEL" },
     });
   }
 
@@ -274,9 +264,9 @@ export class WeldThicknessService {
    */
   async getAvailableFittingDns(): Promise<number[]> {
     const result = await this.fittingRecommendationRepository
-      .createQueryBuilder('fitting')
-      .select('DISTINCT fitting.nominal_bore_mm', 'dn')
-      .orderBy('fitting.nominal_bore_mm', 'ASC')
+      .createQueryBuilder("fitting")
+      .select("DISTINCT fitting.nominal_bore_mm", "dn")
+      .orderBy("fitting.nominal_bore_mm", "ASC")
       .getRawMany();
 
     return result.map((r) => r.dn);
@@ -291,14 +281,14 @@ export class WeldThicknessService {
   }> {
     const [pipeTemps, fittingTemps] = await Promise.all([
       this.pipeRecommendationRepository
-        .createQueryBuilder('pipe')
-        .select('DISTINCT pipe.temperature_celsius', 'temp')
-        .orderBy('pipe.temperature_celsius', 'ASC')
+        .createQueryBuilder("pipe")
+        .select("DISTINCT pipe.temperature_celsius", "temp")
+        .orderBy("pipe.temperature_celsius", "ASC")
         .getRawMany(),
       this.fittingRecommendationRepository
-        .createQueryBuilder('fitting')
-        .select('DISTINCT fitting.temperature_celsius', 'temp')
-        .orderBy('fitting.temperature_celsius', 'ASC')
+        .createQueryBuilder("fitting")
+        .select("DISTINCT fitting.temperature_celsius", "temp")
+        .orderBy("fitting.temperature_celsius", "ASC")
         .getRawMany(),
     ]);
 
@@ -310,26 +300,22 @@ export class WeldThicknessService {
 
   // Helper methods
   private normalizeFittingClass(schedule: string): string | null {
-    if (!schedule) return 'STD';
+    if (!schedule) return "STD";
 
-    const upper = schedule.toUpperCase().replace(/\s+/g, ' ').trim();
+    const upper = schedule.toUpperCase().replace(/\s+/g, " ").trim();
 
     // Try partial matching
-    if (
-      upper.includes('XXS') ||
-      upper.includes('XXH') ||
-      upper.includes('160')
-    ) {
-      return 'XXH';
+    if (upper.includes("XXS") || upper.includes("XXH") || upper.includes("160")) {
+      return "XXH";
     }
-    if (upper.includes('XS') || upper.includes('XH') || upper.includes('80')) {
-      return 'XH';
+    if (upper.includes("XS") || upper.includes("XH") || upper.includes("80")) {
+      return "XH";
     }
-    if (upper.includes('STD') || upper.includes('40')) {
-      return 'STD';
+    if (upper.includes("STD") || upper.includes("40")) {
+      return "STD";
     }
 
-    return 'STD';
+    return "STD";
   }
 
   /**

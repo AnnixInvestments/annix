@@ -22,9 +22,9 @@ const GASKET_RULES: GasketRule[] = [
     maxTempC: 260,
     minPressureClass: 600,
     maxPressureClass: 2500,
-    gasketCode: 'SW-CGI-316-IR',
-    gasketName: 'Spiral Wound - CGI/316SS with Inner Ring - 3.2mm',
-    reason: 'High pressure service requires inner ring for blowout protection',
+    gasketCode: "SW-CGI-316-IR",
+    gasketName: "Spiral Wound - CGI/316SS with Inner Ring - 3.2mm",
+    reason: "High pressure service requires inner ring for blowout protection",
     priority: 10,
   },
   {
@@ -32,9 +32,9 @@ const GASKET_RULES: GasketRule[] = [
     maxTempC: 450,
     minPressureClass: 150,
     maxPressureClass: 2500,
-    gasketCode: 'SW-Graphite-316',
-    gasketName: 'Spiral Wound - Graphite/316SS - 4.5mm (High Temp)',
-    reason: 'High temperature service requires graphite filler for thermal stability',
+    gasketCode: "SW-Graphite-316",
+    gasketName: "Spiral Wound - Graphite/316SS - 4.5mm (High Temp)",
+    reason: "High temperature service requires graphite filler for thermal stability",
     priority: 15,
   },
   {
@@ -43,9 +43,9 @@ const GASKET_RULES: GasketRule[] = [
     minPressureClass: 150,
     maxPressureClass: 2500,
     isStainless: true,
-    gasketCode: 'Graphite-3.0',
-    gasketName: 'Flexible Graphite - 3.0mm (High Temp to 450°C)',
-    reason: 'High temperature with stainless steel - graphite provides excellent sealing',
+    gasketCode: "Graphite-3.0",
+    gasketName: "Flexible Graphite - 3.0mm (High Temp to 450°C)",
+    reason: "High temperature with stainless steel - graphite provides excellent sealing",
     priority: 14,
   },
   {
@@ -54,9 +54,9 @@ const GASKET_RULES: GasketRule[] = [
     minPressureClass: 150,
     maxPressureClass: 600,
     isStainless: true,
-    gasketCode: 'SW-PTFE-316',
-    gasketName: 'Spiral Wound - PTFE/316SS - 3.2mm (Chemical Service)',
-    reason: 'Stainless steel system - PTFE filler for chemical compatibility',
+    gasketCode: "SW-PTFE-316",
+    gasketName: "Spiral Wound - PTFE/316SS - 3.2mm (Chemical Service)",
+    reason: "Stainless steel system - PTFE filler for chemical compatibility",
     priority: 12,
   },
   {
@@ -64,9 +64,9 @@ const GASKET_RULES: GasketRule[] = [
     maxTempC: 260,
     minPressureClass: 150,
     maxPressureClass: 600,
-    gasketCode: 'SW-CGI-316',
-    gasketName: 'Spiral Wound - CGI/316SS - 3.2mm (Standard)',
-    reason: 'Standard service - spiral wound provides reliable sealing across temperature cycles',
+    gasketCode: "SW-CGI-316",
+    gasketName: "Spiral Wound - CGI/316SS - 3.2mm (Standard)",
+    reason: "Standard service - spiral wound provides reliable sealing across temperature cycles",
     priority: 5,
   },
   {
@@ -74,9 +74,9 @@ const GASKET_RULES: GasketRule[] = [
     maxTempC: 150,
     minPressureClass: 150,
     maxPressureClass: 300,
-    gasketCode: 'CAF-3.0',
-    gasketName: 'Compressed Asbestos Free (CAF) - 3.0mm',
-    reason: 'Low to medium pressure, moderate temperature - cost-effective fiber gasket',
+    gasketCode: "CAF-3.0",
+    gasketName: "Compressed Asbestos Free (CAF) - 3.0mm",
+    reason: "Low to medium pressure, moderate temperature - cost-effective fiber gasket",
     priority: 3,
   },
   {
@@ -84,9 +84,9 @@ const GASKET_RULES: GasketRule[] = [
     maxTempC: 120,
     minPressureClass: 150,
     maxPressureClass: 150,
-    gasketCode: 'EPDM-3.0',
-    gasketName: 'EPDM Rubber - 3.0mm (Water/Steam)',
-    reason: 'Low pressure water/steam service - excellent elastomer sealing',
+    gasketCode: "EPDM-3.0",
+    gasketName: "EPDM Rubber - 3.0mm (Water/Steam)",
+    reason: "Low pressure water/steam service - excellent elastomer sealing",
     priority: 2,
   },
 ];
@@ -100,13 +100,13 @@ function extractPressureClassNumber(designation: string | undefined): number {
 export function recommendGasket(
   temperatureCelsius: number | undefined,
   pressureClassDesignation: string | undefined,
-  isStainless: boolean = false
+  isStainless: boolean = false,
 ): GasketRecommendation {
   if (temperatureCelsius === undefined) {
     return {
-      gasketCode: 'SW-CGI-316',
-      gasketName: 'Spiral Wound - CGI/316SS - 3.2mm (Standard)',
-      reason: 'Default recommendation - spiral wound suitable for most applications',
+      gasketCode: "SW-CGI-316",
+      gasketName: "Spiral Wound - CGI/316SS - 3.2mm (Standard)",
+      reason: "Default recommendation - spiral wound suitable for most applications",
     };
   }
 
@@ -114,7 +114,8 @@ export function recommendGasket(
 
   const matchingRules = GASKET_RULES.filter((rule) => {
     const tempMatch = temperatureCelsius >= rule.minTempC && temperatureCelsius <= rule.maxTempC;
-    const pressureMatch = pressureClass >= rule.minPressureClass && pressureClass <= rule.maxPressureClass;
+    const pressureMatch =
+      pressureClass >= rule.minPressureClass && pressureClass <= rule.maxPressureClass;
     const stainlessMatch = rule.isStainless === undefined || rule.isStainless === isStainless;
     return tempMatch && pressureMatch && stainlessMatch;
   });
@@ -122,27 +123,27 @@ export function recommendGasket(
   if (matchingRules.length === 0) {
     if (temperatureCelsius > 450) {
       return {
-        gasketCode: 'RTJ-R-Inconel',
-        gasketName: 'RTJ Ring - Inconel 625 (High Temp/Corrosive)',
-        reason: 'Extreme temperature - metal ring joint recommended, consult engineer',
+        gasketCode: "RTJ-R-Inconel",
+        gasketName: "RTJ Ring - Inconel 625 (High Temp/Corrosive)",
+        reason: "Extreme temperature - metal ring joint recommended, consult engineer",
       };
     }
     if (temperatureCelsius < -50) {
       return {
-        gasketCode: 'SW-PTFE-316',
-        gasketName: 'Spiral Wound - PTFE/316SS - 3.2mm (Chemical Service)',
-        reason: 'Cryogenic service - PTFE maintains flexibility at low temperatures',
+        gasketCode: "SW-PTFE-316",
+        gasketName: "Spiral Wound - PTFE/316SS - 3.2mm (Chemical Service)",
+        reason: "Cryogenic service - PTFE maintains flexibility at low temperatures",
       };
     }
     return {
-      gasketCode: 'SW-CGI-316',
-      gasketName: 'Spiral Wound - CGI/316SS - 3.2mm (Standard)',
-      reason: 'Default recommendation for unmatched conditions',
+      gasketCode: "SW-CGI-316",
+      gasketName: "Spiral Wound - CGI/316SS - 3.2mm (Standard)",
+      reason: "Default recommendation for unmatched conditions",
     };
   }
 
   const bestRule = matchingRules.reduce((best, current) =>
-    current.priority > best.priority ? current : best
+    current.priority > best.priority ? current : best,
   );
 
   return {

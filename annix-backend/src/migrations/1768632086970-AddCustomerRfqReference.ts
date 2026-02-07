@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddCustomerRfqReference1768632086970 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {

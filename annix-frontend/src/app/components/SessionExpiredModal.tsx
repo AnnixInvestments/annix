@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import AmixLogo from './AmixLogo';
+import { useEffect, useState } from "react";
+import AmixLogo from "./AmixLogo";
 
 // Simple event emitter for session expiry
 type SessionExpiredListener = () => void;
@@ -9,12 +9,12 @@ const listeners: Set<SessionExpiredListener> = new Set();
 
 export const sessionExpiredEvent = {
   emit: () => {
-    listeners.forEach(listener => listener());
+    listeners.forEach((listener) => listener());
   },
   subscribe: (listener: SessionExpiredListener) => {
     listeners.add(listener);
     return () => listeners.delete(listener);
-  }
+  },
 };
 
 interface SessionExpiredModalProps {
@@ -32,7 +32,9 @@ interface SessionExpiredModalProps {
  * 1. Add <SessionExpiredModal /> to your layout
  * 2. Call sessionExpiredEvent.emit() when a 401 error occurs
  */
-export default function SessionExpiredModal({ loginUrl = '/customer/login' }: SessionExpiredModalProps) {
+export default function SessionExpiredModal({
+  loginUrl = "/customer/login",
+}: SessionExpiredModalProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -46,14 +48,14 @@ export default function SessionExpiredModal({ loginUrl = '/customer/login' }: Se
 
   const handleLogin = () => {
     // Clear all auth tokens
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('customerAccessToken');
-      localStorage.removeItem('customerRefreshToken');
-      localStorage.removeItem('supplierAccessToken');
-      localStorage.removeItem('supplierRefreshToken');
-      localStorage.removeItem('adminAccessToken');
-      localStorage.removeItem('adminRefreshToken');
-      localStorage.removeItem('authToken');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("customerAccessToken");
+      localStorage.removeItem("customerRefreshToken");
+      localStorage.removeItem("supplierAccessToken");
+      localStorage.removeItem("supplierRefreshToken");
+      localStorage.removeItem("adminAccessToken");
+      localStorage.removeItem("adminRefreshToken");
+      localStorage.removeItem("authToken");
     }
     // Redirect to login
     window.location.href = loginUrl;
@@ -74,7 +76,7 @@ export default function SessionExpiredModal({ loginUrl = '/customer/login' }: Se
         {/* Navy header with logo */}
         <div
           className="px-8 py-6 flex flex-col items-center"
-          style={{ backgroundColor: '#323288' }}
+          style={{ backgroundColor: "#323288" }}
         >
           <AmixLogo size="lg" showText useSignatureFont />
         </div>
@@ -98,33 +100,27 @@ export default function SessionExpiredModal({ loginUrl = '/customer/login' }: Se
             </svg>
           </div>
 
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            Session Expired
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Session Expired</h2>
 
           <p className="text-gray-600 mb-6">
-            Your session has expired for security reasons. Please log in again to continue using the application.
+            Your session has expired for security reasons. Please log in again to continue using the
+            application.
           </p>
 
           {/* Login button */}
           <button
             onClick={handleLogin}
             className="w-full py-3 px-6 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg active:scale-[0.98]"
-            style={{ backgroundColor: '#FFA500' }}
+            style={{ backgroundColor: "#FFA500" }}
           >
             Log In Again
           </button>
 
-          <p className="mt-4 text-xs text-gray-400">
-            Your unsaved changes may have been lost
-          </p>
+          <p className="mt-4 text-xs text-gray-400">Your unsaved changes may have been lost</p>
         </div>
 
         {/* Bottom accent bar */}
-        <div
-          className="h-1.5"
-          style={{ backgroundColor: '#FFA500' }}
-        />
+        <div className="h-1.5" style={{ backgroundColor: "#FFA500" }} />
       </div>
     </div>
   );

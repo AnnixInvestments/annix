@@ -1,33 +1,36 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { PvcPipeCalculator, PvcFittingCalculator, PvcSpecsTable } from './components';
-import { pvcApi, PvcStandard, PVC_TYPES } from '@/app/lib/pvc';
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { PVC_TYPES, PvcStandard, pvcApi } from "@/app/lib/pvc";
+import { PvcFittingCalculator, PvcPipeCalculator, PvcSpecsTable } from "./components";
 
-type TabType = 'specifications' | 'pipe-calculator' | 'fitting-calculator';
+type TabType = "specifications" | "pipe-calculator" | "fitting-calculator";
 
 const DEFAULT_PRICE_PER_KG = 35;
 const DEFAULT_CEMENT_JOINT_PRICE = 5;
 
 export default function PvcPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('specifications');
+  const [activeTab, setActiveTab] = useState<TabType>("specifications");
   const [pricePerKg, setPricePerKg] = useState(DEFAULT_PRICE_PER_KG);
   const [cementJointPrice, setCementJointPrice] = useState(DEFAULT_CEMENT_JOINT_PRICE);
   const [standards, setStandards] = useState<PvcStandard[]>([]);
 
   useEffect(() => {
-    document.title = 'PVC Pipes | Annix';
+    document.title = "PVC Pipes | Annix";
   }, []);
 
   useEffect(() => {
-    pvcApi.standards.getAll().then(setStandards).catch(() => setStandards([]));
+    pvcApi.standards
+      .getAll()
+      .then(setStandards)
+      .catch(() => setStandards([]));
   }, []);
 
   const tabs = [
-    { id: 'specifications' as const, label: 'Specifications', icon: '📋' },
-    { id: 'pipe-calculator' as const, label: 'Pipe Calculator', icon: '📏' },
-    { id: 'fitting-calculator' as const, label: 'Fitting Calculator', icon: '🔧' },
+    { id: "specifications" as const, label: "Specifications", icon: "📋" },
+    { id: "pipe-calculator" as const, label: "Pipe Calculator", icon: "📏" },
+    { id: "fitting-calculator" as const, label: "Fitting Calculator", icon: "🔧" },
   ];
 
   return (
@@ -39,7 +42,12 @@ export default function PvcPage() {
             className="inline-flex items-center text-blue-300 hover:text-blue-200 transition-colors"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             Back to Home
           </Link>
@@ -97,8 +105,8 @@ export default function PvcPage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
                   }`}
                 >
                   <span>{tab.icon}</span>
@@ -109,20 +117,14 @@ export default function PvcPage() {
           </div>
 
           <div className="p-6">
-            {activeTab === 'specifications' && <PvcSpecsTable />}
+            {activeTab === "specifications" && <PvcSpecsTable />}
 
-            {activeTab === 'pipe-calculator' && (
-              <PvcPipeCalculator
-                pricePerKg={pricePerKg}
-                cementJointPrice={cementJointPrice}
-              />
+            {activeTab === "pipe-calculator" && (
+              <PvcPipeCalculator pricePerKg={pricePerKg} cementJointPrice={cementJointPrice} />
             )}
 
-            {activeTab === 'fitting-calculator' && (
-              <PvcFittingCalculator
-                pricePerKg={pricePerKg}
-                cementJointPrice={cementJointPrice}
-              />
+            {activeTab === "fitting-calculator" && (
+              <PvcFittingCalculator pricePerKg={pricePerKg} cementJointPrice={cementJointPrice} />
             )}
           </div>
 
@@ -152,11 +154,11 @@ export default function PvcPage() {
               PVC-U Material
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Unplasticized PVC (PVC-U) per EN 1452 is rigid, chemically resistant,
-              and ideal for cold water pressure applications.
+              Unplasticized PVC (PVC-U) per EN 1452 is rigid, chemically resistant, and ideal for
+              cold water pressure applications.
             </p>
             <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-              Density: {PVC_TYPES['PVC-U'].density} kg/m³
+              Density: {PVC_TYPES["PVC-U"].density} kg/m³
             </div>
           </div>
 
@@ -165,8 +167,8 @@ export default function PvcPage() {
               Pressure Ratings
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              PN (Nominal Pressure) values range from PN 6 to PN 25 bar.
-              Higher PN = thicker wall = higher pressure capacity.
+              PN (Nominal Pressure) values range from PN 6 to PN 25 bar. Higher PN = thicker wall =
+              higher pressure capacity.
             </p>
             <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
               Common: PN 6, 10, 16
@@ -178,8 +180,8 @@ export default function PvcPage() {
               Solvent Cement Joints
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              PVC pipes are typically joined using solvent cement (socket fusion),
-              creating permanent, leak-proof connections.
+              PVC pipes are typically joined using solvent cement (socket fusion), creating
+              permanent, leak-proof connections.
             </p>
             <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
               Joint costs added per connection

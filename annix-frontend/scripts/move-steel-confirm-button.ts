@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content = fs.readFileSync(filePath, "utf8");
 
 // Step 1: Remove the misplaced Steel confirm button from after Surface Protection
 const misplacedButton = `
@@ -31,9 +31,9 @@ const withoutMisplacedButton = `
 
 if (content.includes(misplacedButton)) {
   content = content.replace(misplacedButton, withoutMisplacedButton);
-  console.log('✅ Removed misplaced Steel confirm button');
+  console.log("✅ Removed misplaced Steel confirm button");
 } else {
-  console.log('❌ Could not find misplaced button pattern');
+  console.log("❌ Could not find misplaced button pattern");
 }
 
 // Step 2: Add the Steel confirm button in the correct place (before Surface Protection)
@@ -69,10 +69,10 @@ const steelConfirmButtonCorrect = `            </div>
 
 if (content.includes(beforeSurfaceProtection)) {
   content = content.replace(beforeSurfaceProtection, steelConfirmButtonCorrect);
-  console.log('✅ Added Steel confirm button in correct location');
+  console.log("✅ Added Steel confirm button in correct location");
 } else {
-  console.log('❌ Could not find location to add Steel button');
+  console.log("❌ Could not find location to add Steel button");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

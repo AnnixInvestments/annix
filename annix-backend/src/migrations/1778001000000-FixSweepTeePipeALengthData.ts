@@ -1,8 +1,6 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class FixSweepTeePipeALengthData1778001000000
-  implements MigrationInterface
-{
+export class FixSweepTeePipeALengthData1778001000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const correctMediumRadiusData = [
       { nb: 200, bendRadius: 405, pipeALength: 610 },

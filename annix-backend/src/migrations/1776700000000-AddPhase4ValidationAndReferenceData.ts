@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddPhase4ValidationAndReferenceData1776700000000 implements MigrationInterface {
-  name = 'AddPhase4ValidationAndReferenceData1776700000000';
+  name = "AddPhase4ValidationAndReferenceData1776700000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Phase 4: Adding validation and reference data...');
+    console.warn("Phase 4: Adding validation and reference data...");
 
     await this.createBendSegmentRulesTable(queryRunner);
     await this.createDuckfootElbowDimensionsTable(queryRunner);
@@ -12,13 +12,11 @@ export class AddPhase4ValidationAndReferenceData1776700000000 implements Migrati
     await this.populateDuckfootElbowDimensions(queryRunner);
     await this.correctSabs719BendData(queryRunner);
 
-    console.warn('Phase 4 migration complete.');
+    console.warn("Phase 4 migration complete.");
   }
 
-  private async createBendSegmentRulesTable(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Creating bend segment rules table...');
+  private async createBendSegmentRulesTable(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Creating bend segment rules table...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS bend_segment_rules (
@@ -35,10 +33,8 @@ export class AddPhase4ValidationAndReferenceData1776700000000 implements Migrati
     `);
   }
 
-  private async createDuckfootElbowDimensionsTable(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Creating duckfoot elbow dimensions table...');
+  private async createDuckfootElbowDimensionsTable(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Creating duckfoot elbow dimensions table...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS duckfoot_elbow_dimensions (
@@ -54,94 +50,92 @@ export class AddPhase4ValidationAndReferenceData1776700000000 implements Migrati
     `);
   }
 
-  private async populateBendSegmentRules(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Populating bend segment rules from MPS manual...');
+  private async populateBendSegmentRules(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Populating bend segment rules from MPS manual...");
 
     const rules = [
       {
-        type: 'short',
+        type: "short",
         minAngle: 0,
         maxAngle: 22.5,
         minSeg: 2,
         maxSeg: 2,
-        col: 'C',
-        desc: 'Up to and including 22.5°',
+        col: "C",
+        desc: "Up to and including 22.5°",
       },
       {
-        type: 'short',
+        type: "short",
         minAngle: 22.5,
         maxAngle: 45,
         minSeg: 2,
         maxSeg: 3,
-        col: 'B',
-        desc: 'Over 22.5° up to and including 45°',
+        col: "B",
+        desc: "Over 22.5° up to and including 45°",
       },
       {
-        type: 'short',
+        type: "short",
         minAngle: 45,
         maxAngle: 90,
         minSeg: 3,
         maxSeg: 4,
-        col: 'A',
-        desc: 'Over 45° up to and including 90°',
+        col: "A",
+        desc: "Over 45° up to and including 90°",
       },
 
       {
-        type: 'medium',
+        type: "medium",
         minAngle: 0,
         maxAngle: 22.5,
         minSeg: 2,
         maxSeg: 3,
-        col: 'C',
-        desc: 'Up to and including 22.5°',
+        col: "C",
+        desc: "Up to and including 22.5°",
       },
       {
-        type: 'medium',
+        type: "medium",
         minAngle: 22.5,
         maxAngle: 45,
         minSeg: 3,
         maxSeg: 4,
-        col: 'B',
-        desc: 'Over 22.5° up to and including 45°',
+        col: "B",
+        desc: "Over 22.5° up to and including 45°",
       },
       {
-        type: 'medium',
+        type: "medium",
         minAngle: 45,
         maxAngle: 90,
         minSeg: 4,
         maxSeg: 5,
-        col: 'A',
-        desc: 'Over 45° up to and including 90°',
+        col: "A",
+        desc: "Over 45° up to and including 90°",
       },
 
       {
-        type: 'long',
+        type: "long",
         minAngle: 0,
         maxAngle: 22.5,
         minSeg: 2,
         maxSeg: 3,
-        col: 'C',
-        desc: 'Up to and including 22.5°',
+        col: "C",
+        desc: "Up to and including 22.5°",
       },
       {
-        type: 'long',
+        type: "long",
         minAngle: 22.5,
         maxAngle: 45,
         minSeg: 3,
         maxSeg: 5,
-        col: 'B',
-        desc: 'Over 22.5° up to and including 45°',
+        col: "B",
+        desc: "Over 22.5° up to and including 45°",
       },
       {
-        type: 'long',
+        type: "long",
         minAngle: 45,
         maxAngle: 90,
         minSeg: 5,
         maxSeg: 7,
-        col: 'A',
-        desc: 'Over 45° up to and including 90°',
+        col: "A",
+        desc: "Over 45° up to and including 90°",
       },
     ];
 
@@ -153,15 +147,11 @@ export class AddPhase4ValidationAndReferenceData1776700000000 implements Migrati
       `);
     }
 
-    console.warn('Bend segment rules populated.');
+    console.warn("Bend segment rules populated.");
   }
 
-  private async populateDuckfootElbowDimensions(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn(
-      'Populating duckfoot elbow dimensions from MPS manual page 30...',
-    );
+  private async populateDuckfootElbowDimensions(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Populating duckfoot elbow dimensions from MPS manual page 30...");
 
     const duckfootData = [
       { nb: 200, od: 219.1, x: 355.0, y: 230.0, t2: 10.0, t1: 6.0 },
@@ -189,14 +179,12 @@ export class AddPhase4ValidationAndReferenceData1776700000000 implements Migrati
       `);
     }
 
-    console.warn('Duckfoot elbow dimensions populated.');
+    console.warn("Duckfoot elbow dimensions populated.");
   }
 
-  private async correctSabs719BendData(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
+  private async correctSabs719BendData(queryRunner: QueryRunner): Promise<void> {
     console.warn(
-      'Correcting SABS 719 bend center-to-face data based on MPS manual cross-reference...',
+      "Correcting SABS 719 bend center-to-face data based on MPS manual cross-reference...",
     );
 
     const tableExists = await queryRunner.query(`
@@ -207,7 +195,7 @@ export class AddPhase4ValidationAndReferenceData1776700000000 implements Migrati
     `);
 
     if (!tableExists[0]?.exists) {
-      console.warn('Creating sabs_719_bend_dimensions table...');
+      console.warn("Creating sabs_719_bend_dimensions table...");
 
       await queryRunner.query(`
         CREATE TABLE IF NOT EXISTS sabs_719_bend_dimensions (
@@ -315,13 +303,13 @@ export class AddPhase4ValidationAndReferenceData1776700000000 implements Migrati
     }
 
     console.warn(
-      'SABS 719 bend data corrected and extended with missing sizes (550, 650, 850 NB).',
+      "SABS 719 bend data corrected and extended with missing sizes (550, 650, 850 NB).",
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS sabs_719_bend_dimensions`);
-    await queryRunner.query(`DROP TABLE IF EXISTS duckfoot_elbow_dimensions`);
-    await queryRunner.query(`DROP TABLE IF EXISTS bend_segment_rules`);
+    await queryRunner.query("DROP TABLE IF EXISTS sabs_719_bend_dimensions");
+    await queryRunner.query("DROP TABLE IF EXISTS duckfoot_elbow_dimensions");
+    await queryRunner.query("DROP TABLE IF EXISTS bend_segment_rules");
   }
 }

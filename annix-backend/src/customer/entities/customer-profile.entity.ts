@@ -1,75 +1,78 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  OneToOne,
-  OneToMany,
+  Entity,
   JoinColumn,
-} from 'typeorm';
-import { User } from '../../user/entities/user.entity';
-import { CustomerCompany } from './customer-company.entity';
-import { CustomerDeviceBinding } from './customer-device-binding.entity';
-import { CustomerSession } from './customer-session.entity';
-import { CustomerLoginAttempt } from './customer-login-attempt.entity';
-import { CustomerOnboarding } from './customer-onboarding.entity';
-import { CustomerDocument } from './customer-document.entity';
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
+import { User } from "../../user/entities/user.entity";
+import { CustomerCompany } from "./customer-company.entity";
+import { CustomerDeviceBinding } from "./customer-device-binding.entity";
+import { CustomerDocument } from "./customer-document.entity";
+import { CustomerLoginAttempt } from "./customer-login-attempt.entity";
+import { CustomerOnboarding } from "./customer-onboarding.entity";
+import { CustomerSession } from "./customer-session.entity";
 
 export enum CustomerAccountStatus {
-  PENDING = 'pending',
-  ACTIVE = 'active',
-  SUSPENDED = 'suspended',
-  DEACTIVATED = 'deactivated',
+  PENDING = "pending",
+  ACTIVE = "active",
+  SUSPENDED = "suspended",
+  DEACTIVATED = "deactivated",
 }
 
 export enum CustomerRole {
-  CUSTOMER_ADMIN = 'customer_admin',
-  CUSTOMER_STANDARD = 'customer_standard',
+  CUSTOMER_ADMIN = "customer_admin",
+  CUSTOMER_STANDARD = "customer_standard",
 }
 
-@Entity('customer_profiles')
+@Entity("customer_profiles")
 export class CustomerProfile {
   @PrimaryGeneratedColumn()
   id: number;
 
   // Links to existing User entity (one-to-one)
   @OneToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: "user_id" })
   user: User;
 
-  @Column({ name: 'user_id' })
+  @Column({ name: "user_id" })
   userId: number;
 
   // Links to CustomerCompany (many-to-one)
-  @ManyToOne(() => CustomerCompany, (company) => company.profiles)
-  @JoinColumn({ name: 'company_id' })
+  @ManyToOne(
+    () => CustomerCompany,
+    (company) => company.profiles,
+  )
+  @JoinColumn({ name: "company_id" })
   company: CustomerCompany;
 
-  @Column({ name: 'company_id' })
+  @Column({ name: "company_id" })
   companyId: number;
 
   // Personal details
-  @Column({ name: 'first_name', length: 100 })
+  @Column({ name: "first_name", length: 100 })
   firstName: string;
 
-  @Column({ name: 'last_name', length: 100 })
+  @Column({ name: "last_name", length: 100 })
   lastName: string;
 
-  @Column({ name: 'job_title', length: 100, nullable: true })
+  @Column({ name: "job_title", length: 100, nullable: true })
   jobTitle: string;
 
-  @Column({ name: 'direct_phone', length: 30, nullable: true })
+  @Column({ name: "direct_phone", length: 30, nullable: true })
   directPhone: string;
 
-  @Column({ name: 'mobile_phone', length: 30, nullable: true })
+  @Column({ name: "mobile_phone", length: 30, nullable: true })
   mobilePhone: string;
 
   // Role within customer organization
   @Column({
-    name: 'role',
-    type: 'enum',
+    name: "role",
+    type: "enum",
     enum: CustomerRole,
     default: CustomerRole.CUSTOMER_ADMIN,
   })
@@ -77,81 +80,96 @@ export class CustomerProfile {
 
   // Account status
   @Column({
-    name: 'account_status',
-    type: 'enum',
+    name: "account_status",
+    type: "enum",
     enum: CustomerAccountStatus,
     default: CustomerAccountStatus.PENDING,
   })
   accountStatus: CustomerAccountStatus;
 
   // Email verification
-  @Column({ name: 'email_verified', default: false })
+  @Column({ name: "email_verified", default: false })
   emailVerified: boolean;
 
   @Column({
-    name: 'email_verification_token',
-    type: 'varchar',
+    name: "email_verification_token",
+    type: "varchar",
     length: 500,
     nullable: true,
   })
   emailVerificationToken: string | null;
 
   @Column({
-    name: 'email_verification_expires',
-    type: 'timestamp',
+    name: "email_verification_expires",
+    type: "timestamp",
     nullable: true,
   })
   emailVerificationExpires: Date | null;
 
-  @Column({ name: 'suspension_reason', type: 'text', nullable: true })
+  @Column({ name: "suspension_reason", type: "text", nullable: true })
   suspensionReason?: string | null;
 
-  @Column({ name: 'suspended_at', type: 'timestamp', nullable: true })
+  @Column({ name: "suspended_at", type: "timestamp", nullable: true })
   suspendedAt?: Date | null;
 
-  @Column({ name: 'suspended_by', type: 'int', nullable: true })
+  @Column({ name: "suspended_by", type: "int", nullable: true })
   suspendedBy?: number | null; // Admin user ID
 
   // Device bindings
-  @OneToMany(() => CustomerDeviceBinding, (binding) => binding.customerProfile)
+  @OneToMany(
+    () => CustomerDeviceBinding,
+    (binding) => binding.customerProfile,
+  )
   deviceBindings: CustomerDeviceBinding[];
 
   // Sessions
-  @OneToMany(() => CustomerSession, (session) => session.customerProfile)
+  @OneToMany(
+    () => CustomerSession,
+    (session) => session.customerProfile,
+  )
   sessions: CustomerSession[];
 
   // Login attempts
-  @OneToMany(() => CustomerLoginAttempt, (attempt) => attempt.customerProfile)
+  @OneToMany(
+    () => CustomerLoginAttempt,
+    (attempt) => attempt.customerProfile,
+  )
   loginAttempts: CustomerLoginAttempt[];
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 
-  @Column({ name: 'terms_accepted_at', type: 'timestamp', nullable: true })
+  @Column({ name: "terms_accepted_at", type: "timestamp", nullable: true })
   termsAcceptedAt: Date;
 
   @Column({
-    name: 'security_policy_accepted_at',
-    type: 'timestamp',
+    name: "security_policy_accepted_at",
+    type: "timestamp",
     nullable: true,
   })
   securityPolicyAcceptedAt: Date;
 
   @Column({
-    name: 'document_storage_accepted_at',
-    type: 'timestamp',
+    name: "document_storage_accepted_at",
+    type: "timestamp",
     nullable: true,
   })
   documentStorageAcceptedAt: Date | null;
 
   // Onboarding
-  @OneToOne(() => CustomerOnboarding, (onboarding) => onboarding.customer)
+  @OneToOne(
+    () => CustomerOnboarding,
+    (onboarding) => onboarding.customer,
+  )
   onboarding: CustomerOnboarding;
 
   // Documents
-  @OneToMany(() => CustomerDocument, (document) => document.customer)
+  @OneToMany(
+    () => CustomerDocument,
+    (document) => document.customer,
+  )
   documents: CustomerDocument[];
 }

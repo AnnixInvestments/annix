@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from "react";
 
 interface PumpRfqItem {
   id: string;
-  serviceType: 'new_pump' | 'spare_parts' | 'repair_service' | 'rental';
+  serviceType: "new_pump" | "spare_parts" | "repair_service" | "rental";
   pumpType?: string;
   pumpCategory?: string;
   flowRate?: number;
@@ -52,26 +52,26 @@ interface SupplierQuote {
 }
 
 const DELIVERY_TERMS = [
-  { value: 'ex_works', label: 'Ex Works (EXW)' },
-  { value: 'fob', label: 'Free on Board (FOB)' },
-  { value: 'cif', label: 'Cost, Insurance & Freight (CIF)' },
-  { value: 'dap', label: 'Delivered at Place (DAP)' },
-  { value: 'ddp', label: 'Delivered Duty Paid (DDP)' },
+  { value: "ex_works", label: "Ex Works (EXW)" },
+  { value: "fob", label: "Free on Board (FOB)" },
+  { value: "cif", label: "Cost, Insurance & Freight (CIF)" },
+  { value: "dap", label: "Delivered at Place (DAP)" },
+  { value: "ddp", label: "Delivered Duty Paid (DDP)" },
 ];
 
 const PAYMENT_TERMS = [
-  { value: 'cod', label: 'Cash on Delivery' },
-  { value: 'net_30', label: 'Net 30 Days' },
-  { value: 'net_60', label: 'Net 60 Days' },
-  { value: 'pro_forma', label: '100% Pro-forma' },
-  { value: 'deposit_balance', label: '50% Deposit, 50% on Delivery' },
+  { value: "cod", label: "Cash on Delivery" },
+  { value: "net_30", label: "Net 30 Days" },
+  { value: "net_60", label: "Net 60 Days" },
+  { value: "pro_forma", label: "100% Pro-forma" },
+  { value: "deposit_balance", label: "50% Deposit, 50% on Delivery" },
 ];
 
 const SERVICE_TYPE_LABELS: Record<string, string> = {
-  new_pump: 'New Pump Supply',
-  spare_parts: 'Spare Parts',
-  repair_service: 'Repair Service',
-  rental: 'Pump Rental',
+  new_pump: "New Pump Supply",
+  spare_parts: "Spare Parts",
+  repair_service: "Repair Service",
+  rental: "Pump Rental",
 };
 
 const VAT_RATE = 0.15;
@@ -88,14 +88,14 @@ export function SupplierQuoteForm({
   const [validUntil, setValidUntil] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() + 30);
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   });
-  const [currency, setCurrency] = useState('ZAR');
-  const [deliveryTerms, setDeliveryTerms] = useState('dap');
-  const [paymentTerms, setPaymentTerms] = useState('net_30');
-  const [generalNotes, setGeneralNotes] = useState('');
+  const [currency, setCurrency] = useState("ZAR");
+  const [deliveryTerms, setDeliveryTerms] = useState("dap");
+  const [paymentTerms, setPaymentTerms] = useState("net_30");
+  const [generalNotes, setGeneralNotes] = useState("");
   const [termsAndConditions, setTermsAndConditions] = useState(
-    '1. Prices are valid for the period stated above.\n2. Delivery times are estimates and subject to change.\n3. All prices exclude VAT unless otherwise stated.\n4. Payment terms as stated above.'
+    "1. Prices are valid for the period stated above.\n2. Delivery times are estimates and subject to change.\n3. All prices exclude VAT unless otherwise stated.\n4. Payment terms as stated above.",
   );
 
   const [lineItems, setLineItems] = useState<QuoteLineItem[]>(
@@ -104,18 +104,18 @@ export function SupplierQuoteForm({
       unitPrice: 0,
       quantity: item.quantity,
       leadTimeDays: 14,
-      notes: '',
+      notes: "",
       alternativeOffered: false,
-      alternativeDescription: '',
+      alternativeDescription: "",
       alternativeUnitPrice: 0,
-    }))
+    })),
   );
 
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const updateLineItem = (rfqItemId: string, updates: Partial<QuoteLineItem>) => {
     setLineItems((prev) =>
-      prev.map((item) => (item.rfqItemId === rfqItemId ? { ...item, ...updates } : item))
+      prev.map((item) => (item.rfqItemId === rfqItemId ? { ...item, ...updates } : item)),
     );
   };
 
@@ -134,9 +134,10 @@ export function SupplierQuoteForm({
   const totals = useMemo(() => {
     const subtotal = lineItems.reduce((sum, item) => {
       const baseTotal = item.unitPrice * item.quantity;
-      const altTotal = item.alternativeOffered && item.alternativeUnitPrice
-        ? item.alternativeUnitPrice * item.quantity
-        : 0;
+      const altTotal =
+        item.alternativeOffered && item.alternativeUnitPrice
+          ? item.alternativeUnitPrice * item.quantity
+          : 0;
       return sum + baseTotal + altTotal;
     }, 0);
 
@@ -187,10 +188,13 @@ export function SupplierQuoteForm({
   };
 
   const rfqItemMap = useMemo(() => {
-    return rfqItems.reduce((acc, item) => {
-      acc[item.id] = item;
-      return acc;
-    }, {} as Record<string, PumpRfqItem>);
+    return rfqItems.reduce(
+      (acc, item) => {
+        acc[item.id] = item;
+        return acc;
+      },
+      {} as Record<string, PumpRfqItem>,
+    );
   }, [rfqItems]);
 
   return (
@@ -302,7 +306,10 @@ export function SupplierQuoteForm({
               const lineTotal = lineItem.unitPrice * lineItem.quantity;
 
               return (
-                <div key={lineItem.rfqItemId} className="border border-gray-200 rounded-lg overflow-hidden">
+                <div
+                  key={lineItem.rfqItemId}
+                  className="border border-gray-200 rounded-lg overflow-hidden"
+                >
                   <div
                     className="p-4 bg-gray-50 cursor-pointer flex items-center justify-between"
                     onClick={() => toggleExpanded(lineItem.rfqItemId)}
@@ -314,7 +321,7 @@ export function SupplierQuoteForm({
                           {SERVICE_TYPE_LABELS[rfqItem.serviceType]}
                         </span>
                         <span className="font-medium text-gray-900">
-                          {rfqItem.pumpType || rfqItem.existingPumpModel || 'Pump Item'}
+                          {rfqItem.pumpType || rfqItem.existingPumpModel || "Pump Item"}
                         </span>
                         <span className="text-gray-500 ml-2">x {rfqItem.quantity}</span>
                       </div>
@@ -322,16 +329,22 @@ export function SupplierQuoteForm({
                     <div className="flex items-center gap-4">
                       {lineItem.unitPrice > 0 && (
                         <span className="font-medium text-gray-900">
-                          {currency} {lineTotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                          {currency}{" "}
+                          {lineTotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                         </span>
                       )}
                       <svg
-                        className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -356,7 +369,7 @@ export function SupplierQuoteForm({
                           </label>
                           <input
                             type="number"
-                            value={lineItem.unitPrice || ''}
+                            value={lineItem.unitPrice || ""}
                             onChange={(e) =>
                               updateLineItem(lineItem.rfqItemId, {
                                 unitPrice: parseFloat(e.target.value) || 0,
@@ -370,13 +383,15 @@ export function SupplierQuoteForm({
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Quantity
+                          </label>
                           <input
                             type="number"
                             value={lineItem.quantity}
                             onChange={(e) =>
                               updateLineItem(lineItem.rfqItemId, {
-                                quantity: parseInt(e.target.value) || 1,
+                                quantity: parseInt(e.target.value, 10) || 1,
                               })
                             }
                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
@@ -390,10 +405,10 @@ export function SupplierQuoteForm({
                           </label>
                           <input
                             type="number"
-                            value={lineItem.leadTimeDays || ''}
+                            value={lineItem.leadTimeDays || ""}
                             onChange={(e) =>
                               updateLineItem(lineItem.rfqItemId, {
-                                leadTimeDays: parseInt(e.target.value) || 0,
+                                leadTimeDays: parseInt(e.target.value, 10) || 0,
                               })
                             }
                             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
@@ -404,10 +419,14 @@ export function SupplierQuoteForm({
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Notes
+                        </label>
                         <textarea
-                          value={lineItem.notes || ''}
-                          onChange={(e) => updateLineItem(lineItem.rfqItemId, { notes: e.target.value })}
+                          value={lineItem.notes || ""}
+                          onChange={(e) =>
+                            updateLineItem(lineItem.rfqItemId, { notes: e.target.value })
+                          }
                           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
                           rows={2}
                           placeholder="Any additional notes for this item..."
@@ -426,7 +445,9 @@ export function SupplierQuoteForm({
                             }
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
-                          <span className="text-sm font-medium text-gray-700">Offer Alternative Product</span>
+                          <span className="text-sm font-medium text-gray-700">
+                            Offer Alternative Product
+                          </span>
                         </label>
 
                         {lineItem.alternativeOffered && (
@@ -437,7 +458,7 @@ export function SupplierQuoteForm({
                               </label>
                               <input
                                 type="text"
-                                value={lineItem.alternativeDescription || ''}
+                                value={lineItem.alternativeDescription || ""}
                                 onChange={(e) =>
                                   updateLineItem(lineItem.rfqItemId, {
                                     alternativeDescription: e.target.value,
@@ -453,7 +474,7 @@ export function SupplierQuoteForm({
                               </label>
                               <input
                                 type="number"
-                                value={lineItem.alternativeUnitPrice || ''}
+                                value={lineItem.alternativeUnitPrice || ""}
                                 onChange={(e) =>
                                   updateLineItem(lineItem.rfqItemId, {
                                     alternativeUnitPrice: parseFloat(e.target.value) || 0,
@@ -512,19 +533,21 @@ export function SupplierQuoteForm({
               <div className="flex justify-between gap-8 text-sm">
                 <span className="text-gray-600">Subtotal:</span>
                 <span className="font-medium">
-                  {currency} {totals.subtotal.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  {currency} {totals.subtotal.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex justify-between gap-8 text-sm">
                 <span className="text-gray-600">VAT (15%):</span>
                 <span className="font-medium">
-                  {currency} {totals.vatAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  {currency}{" "}
+                  {totals.vatAmount.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex justify-between gap-8 text-lg pt-2 border-t border-gray-200">
                 <span className="font-medium text-gray-900">Total:</span>
                 <span className="font-bold text-gray-900">
-                  {currency} {totals.totalAmount.toLocaleString('en-ZA', { minimumFractionDigits: 2 })}
+                  {currency}{" "}
+                  {totals.totalAmount.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
                 </span>
               </div>
             </div>
@@ -534,8 +557,8 @@ export function SupplierQuoteForm({
               disabled={!isValid}
               className={`px-6 py-2 rounded-md font-medium ${
                 isValid
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ? "bg-green-600 text-white hover:bg-green-700"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
             >
               Submit Quote

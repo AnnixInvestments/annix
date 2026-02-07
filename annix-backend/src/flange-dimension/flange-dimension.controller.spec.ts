@@ -1,14 +1,14 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FlangeDimensionController } from './flange-dimension.controller';
-import { FlangeDimensionService } from './flange-dimension.service';
-import { FlangeDimension } from './entities/flange-dimension.entity';
-import { NominalOutsideDiameterMm } from '../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity';
-import { FlangeStandard } from '../flange-standard/entities/flange-standard.entity';
-import { FlangePressureClass } from '../flange-pressure-class/entities/flange-pressure-class.entity';
-import { Bolt } from '../bolt/entities/bolt.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { Bolt } from "../bolt/entities/bolt.entity";
+import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pressure-class.entity";
+import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
+import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
+import { FlangeDimension } from "./entities/flange-dimension.entity";
+import { FlangeDimensionController } from "./flange-dimension.controller";
+import { FlangeDimensionService } from "./flange-dimension.service";
 
-describe('FlangeDimensionController', () => {
+describe("FlangeDimensionController", () => {
   let controller: FlangeDimensionController;
   let service: FlangeDimensionService;
 
@@ -72,15 +72,13 @@ describe('FlangeDimensionController', () => {
       ],
     }).compile();
 
-    controller = module.get<FlangeDimensionController>(
-      FlangeDimensionController,
-    );
+    controller = module.get<FlangeDimensionController>(FlangeDimensionController);
     service = module.get<FlangeDimensionService>(FlangeDimensionService);
 
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

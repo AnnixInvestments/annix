@@ -1,7 +1,7 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { FlangeTypeService } from './flange-type.service';
+import { Controller, Get, Param } from "@nestjs/common";
+import { FlangeTypeService } from "./flange-type.service";
 
-@Controller('flange-types')
+@Controller("flange-types")
 export class FlangeTypeController {
   constructor(private readonly flangeTypeService: FlangeTypeService) {}
 
@@ -10,13 +10,13 @@ export class FlangeTypeController {
     return this.flangeTypeService.findAll();
   }
 
-  @Get('code/:code')
-  findByCode(@Param('code') code: string) {
+  @Get("code/:code")
+  findByCode(@Param("code") code: string) {
     return this.flangeTypeService.findByCode(code);
   }
 
-  @Get('abbreviation/:abbreviation')
-  findByAbbreviation(@Param('abbreviation') abbreviation: string) {
+  @Get("abbreviation/:abbreviation")
+  findByAbbreviation(@Param("abbreviation") abbreviation: string) {
     return this.flangeTypeService.findByAbbreviation(abbreviation);
   }
 }

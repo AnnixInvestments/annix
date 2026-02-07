@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, ReactNode, useCallback, useContext, useState } from "react";
 
-type MaxWidth = 'max-w-7xl' | 'max-w-full';
+type MaxWidth = "max-w-7xl" | "max-w-full";
 
 interface LayoutContextValue {
   maxWidth: MaxWidth;
@@ -13,10 +13,10 @@ interface LayoutContextValue {
 const LayoutContext = createContext<LayoutContextValue | null>(null);
 
 export function LayoutProvider({ children }: { children: ReactNode }) {
-  const [maxWidth, setMaxWidth] = useState<MaxWidth>('max-w-full');
+  const [maxWidth, setMaxWidth] = useState<MaxWidth>("max-w-full");
 
-  const setFullWidth = useCallback(() => setMaxWidth('max-w-full'), []);
-  const setConstrainedWidth = useCallback(() => setMaxWidth('max-w-7xl'), []);
+  const setFullWidth = useCallback(() => setMaxWidth("max-w-full"), []);
+  const setConstrainedWidth = useCallback(() => setMaxWidth("max-w-7xl"), []);
 
   return (
     <LayoutContext.Provider value={{ maxWidth, setFullWidth, setConstrainedWidth }}>
@@ -29,7 +29,7 @@ export function useLayout(): LayoutContextValue {
   const context = useContext(LayoutContext);
   if (!context) {
     return {
-      maxWidth: 'max-w-full',
+      maxWidth: "max-w-full",
       setFullWidth: () => {},
       setConstrainedWidth: () => {},
     };

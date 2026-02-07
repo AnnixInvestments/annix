@@ -1,58 +1,58 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddSmallMetricBolts1772600000000 implements MigrationInterface {
-  name = 'AddSmallMetricBolts1772600000000';
+  name = "AddSmallMetricBolts1772600000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Adding small metric bolts M6 and M8...');
+    console.warn("Adding small metric bolts M6 and M8...");
 
     const smallBolts = [
       {
-        designation: 'M6',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        designation: "M6",
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 1.0,
       },
       {
-        designation: 'M8',
-        grade: '8.8',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        designation: "M8",
+        grade: "8.8",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 1.25,
       },
       {
-        designation: 'M6 10.9',
-        grade: '10.9',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        designation: "M6 10.9",
+        grade: "10.9",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 1.0,
       },
       {
-        designation: 'M8 10.9',
-        grade: '10.9',
-        material: 'Carbon Steel',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        designation: "M8 10.9",
+        grade: "10.9",
+        material: "Carbon Steel",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 1.25,
       },
       {
-        designation: 'M6 A4',
-        grade: 'A4-70',
-        material: 'Stainless Steel 316',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        designation: "M6 A4",
+        grade: "A4-70",
+        material: "Stainless Steel 316",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 1.0,
       },
       {
-        designation: 'M8 A4',
-        grade: 'A4-70',
-        material: 'Stainless Steel 316',
-        headStyle: 'hex',
-        threadType: 'coarse',
+        designation: "M8 A4",
+        grade: "A4-70",
+        material: "Stainless Steel 316",
+        headStyle: "hex",
+        threadType: "coarse",
         threadPitchMm: 1.25,
       },
     ];
@@ -110,14 +110,13 @@ export class AddSmallMetricBolts1772600000000 implements MigrationInterface {
       80: 0.037,
     };
 
-    const m6Bolts = ['M6', 'M6 10.9', 'M6 A4'];
-    const m8Bolts = ['M8', 'M8 10.9', 'M8 A4'];
+    const m6Bolts = ["M6", "M6 10.9", "M6 A4"];
+    const m8Bolts = ["M8", "M8 10.9", "M8 A4"];
 
     for (const designation of m6Bolts) {
-      const boltResult = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = $1`,
-        [designation],
-      );
+      const boltResult = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+        designation,
+      ]);
       if (boltResult.length === 0) continue;
       const boltId = boltResult[0].id;
 
@@ -134,10 +133,9 @@ export class AddSmallMetricBolts1772600000000 implements MigrationInterface {
     }
 
     for (const designation of m8Bolts) {
-      const boltResult = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = $1`,
-        [designation],
-      );
+      const boltResult = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+        designation,
+      ]);
       if (boltResult.length === 0) continue;
       const boltId = boltResult[0].id;
 
@@ -159,16 +157,15 @@ export class AddSmallMetricBolts1772600000000 implements MigrationInterface {
     };
 
     for (const designation of [...m6Bolts, ...m8Bolts]) {
-      const boltResult = await queryRunner.query(
-        `SELECT id FROM bolts WHERE designation = $1`,
-        [designation],
-      );
+      const boltResult = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+        designation,
+      ]);
       if (boltResult.length === 0) continue;
       const boltId = boltResult[0].id;
 
-      const baseSize = designation.startsWith('M6') ? 'M6' : 'M8';
+      const baseSize = designation.startsWith("M6") ? "M6" : "M8";
       const massKg = nutMassData[baseSize];
-      const grade = designation.includes('A4') ? 'A4-70' : 'Grade 8';
+      const grade = designation.includes("A4") ? "A4-70" : "Grade 8";
 
       await queryRunner.query(
         `
@@ -176,19 +173,17 @@ export class AddSmallMetricBolts1772600000000 implements MigrationInterface {
         VALUES ($1, $2, $3, $4)
         ON CONFLICT DO NOTHING
       `,
-        [boltId, massKg, grade, 'hex'],
+        [boltId, massKg, grade, "hex"],
       );
     }
 
-    console.warn('Small metric bolts M6 and M8 added successfully.');
+    console.warn("Small metric bolts M6 and M8 added successfully.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const designations = ['M6', 'M8', 'M6 10.9', 'M8 10.9', 'M6 A4', 'M8 A4'];
+    const designations = ["M6", "M8", "M6 10.9", "M8 10.9", "M6 A4", "M8 A4"];
     for (const designation of designations) {
-      await queryRunner.query(`DELETE FROM bolts WHERE designation = $1`, [
-        designation,
-      ]);
+      await queryRunner.query("DELETE FROM bolts WHERE designation = $1", [designation]);
     }
   }
 }

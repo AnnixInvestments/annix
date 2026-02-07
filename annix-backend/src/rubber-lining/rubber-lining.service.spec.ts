@@ -1,21 +1,21 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { RubberLiningService } from './rubber-lining.service';
-import { RubberType } from './entities/rubber-type.entity';
-import { RubberSpecification } from './entities/rubber-specification.entity';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
 import {
+  RubberAdhesionRequirement,
   RubberApplicationRating,
   RubberThicknessRecommendation,
-  RubberAdhesionRequirement,
-} from './entities/rubber-application.entity';
-import { RubberProductCoding } from './entities/rubber-product-coding.entity';
-import { RubberPricingTier } from './entities/rubber-pricing-tier.entity';
-import { RubberCompany } from './entities/rubber-company.entity';
-import { RubberProduct } from './entities/rubber-product.entity';
-import { RubberOrder, RubberOrderStatus } from './entities/rubber-order.entity';
-import { RubberOrderItem } from './entities/rubber-order-item.entity';
+} from "./entities/rubber-application.entity";
+import { RubberCompany } from "./entities/rubber-company.entity";
+import { RubberOrder, RubberOrderStatus } from "./entities/rubber-order.entity";
+import { RubberOrderItem } from "./entities/rubber-order-item.entity";
+import { RubberPricingTier } from "./entities/rubber-pricing-tier.entity";
+import { RubberProduct } from "./entities/rubber-product.entity";
+import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { RubberSpecification } from "./entities/rubber-specification.entity";
+import { RubberType } from "./entities/rubber-type.entity";
+import { RubberLiningService } from "./rubber-lining.service";
 
-describe('RubberLiningService', () => {
+describe("RubberLiningService", () => {
   let service: RubberLiningService;
 
   const mockRepo = () => ({
@@ -45,7 +45,10 @@ describe('RubberLiningService', () => {
         RubberLiningService,
         { provide: getRepositoryToken(RubberType), useValue: mockRubberTypeRepo },
         { provide: getRepositoryToken(RubberSpecification), useValue: mockRubberSpecRepo },
-        { provide: getRepositoryToken(RubberApplicationRating), useValue: mockApplicationRatingRepo },
+        {
+          provide: getRepositoryToken(RubberApplicationRating),
+          useValue: mockApplicationRatingRepo,
+        },
         { provide: getRepositoryToken(RubberThicknessRecommendation), useValue: mockThicknessRepo },
         { provide: getRepositoryToken(RubberAdhesionRequirement), useValue: mockAdhesionRepo },
         { provide: getRepositoryToken(RubberProductCoding), useValue: mockProductCodingRepo },
@@ -62,14 +65,14 @@ describe('RubberLiningService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('calculatePrice', () => {
-    it('should return null when product not found', async () => {
+  describe("calculatePrice", () => {
+    it("should return null when product not found", async () => {
       mockProductRepo.findOne.mockResolvedValue(null);
-      mockCompanyRepo.findOne.mockResolvedValue({ id: 1, name: 'Test Co' });
+      mockCompanyRepo.findOne.mockResolvedValue({ id: 1, name: "Test Co" });
 
       const result = await service.calculatePrice({
         productId: 999,
@@ -83,8 +86,8 @@ describe('RubberLiningService', () => {
       expect(result).toBeNull();
     });
 
-    it('should return null when company not found', async () => {
-      mockProductRepo.findOne.mockResolvedValue({ id: 1, title: 'Test Product' });
+    it("should return null when company not found", async () => {
+      mockProductRepo.findOne.mockResolvedValue({ id: 1, title: "Test Product" });
       mockCompanyRepo.findOne.mockResolvedValue(null);
 
       const result = await service.calculatePrice({
@@ -99,18 +102,18 @@ describe('RubberLiningService', () => {
       expect(result).toBeNull();
     });
 
-    it('should calculate correctly with concrete values', async () => {
+    it("should calculate correctly with concrete values", async () => {
       mockProductRepo.findOne.mockResolvedValue({
         id: 1,
-        title: 'NR Compound',
-        specificGravity: '1.15',
-        costPerKg: '45.00',
-        markup: '120',
+        title: "NR Compound",
+        specificGravity: "1.15",
+        costPerKg: "45.00",
+        markup: "120",
       });
       mockCompanyRepo.findOne.mockResolvedValue({
         id: 1,
-        name: 'Acme Mining',
-        pricingTier: { id: 1, name: 'Standard', pricingFactor: '95' },
+        name: "Acme Mining",
+        pricingTier: { id: 1, name: "Standard", pricingFactor: "95" },
       });
 
       const result = await service.calculatePrice({
@@ -132,22 +135,22 @@ describe('RubberLiningService', () => {
       expect(result!.kgPerRoll).toBeCloseTo(41.4);
       expect(result!.totalKg).toBeCloseTo(82.8);
       expect(result!.totalPrice).toBeCloseTo(4247.64);
-      expect(result!.productTitle).toBe('NR Compound');
-      expect(result!.companyName).toBe('Acme Mining');
+      expect(result!.productTitle).toBe("NR Compound");
+      expect(result!.companyName).toBe("Acme Mining");
     });
 
-    it('should default specificGravity to 1 when null', async () => {
+    it("should default specificGravity to 1 when null", async () => {
       mockProductRepo.findOne.mockResolvedValue({
         id: 1,
-        title: 'Test',
+        title: "Test",
         specificGravity: null,
-        costPerKg: '50.00',
-        markup: '100',
+        costPerKg: "50.00",
+        markup: "100",
       });
       mockCompanyRepo.findOne.mockResolvedValue({
         id: 1,
-        name: 'Co',
-        pricingTier: { id: 1, name: 'Tier', pricingFactor: '100' },
+        name: "Co",
+        pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
       });
 
       const result = await service.calculatePrice({
@@ -163,18 +166,18 @@ describe('RubberLiningService', () => {
       expect(result!.kgPerRoll).toBe(50);
     });
 
-    it('should default specificGravity to 1 when zero', async () => {
+    it("should default specificGravity to 1 when zero", async () => {
       mockProductRepo.findOne.mockResolvedValue({
         id: 1,
-        title: 'Test',
-        specificGravity: '0',
-        costPerKg: '50.00',
-        markup: '100',
+        title: "Test",
+        specificGravity: "0",
+        costPerKg: "50.00",
+        markup: "100",
       });
       mockCompanyRepo.findOne.mockResolvedValue({
         id: 1,
-        name: 'Co',
-        pricingTier: { id: 1, name: 'Tier', pricingFactor: '100' },
+        name: "Co",
+        pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
       });
 
       const result = await service.calculatePrice({
@@ -189,18 +192,18 @@ describe('RubberLiningService', () => {
       expect(result!.specificGravity).toBe(1);
     });
 
-    it('should default costPerKg to 0 when null', async () => {
+    it("should default costPerKg to 0 when null", async () => {
       mockProductRepo.findOne.mockResolvedValue({
         id: 1,
-        title: 'Test',
-        specificGravity: '1.2',
+        title: "Test",
+        specificGravity: "1.2",
         costPerKg: null,
-        markup: '100',
+        markup: "100",
       });
       mockCompanyRepo.findOne.mockResolvedValue({
         id: 1,
-        name: 'Co',
-        pricingTier: { id: 1, name: 'Tier', pricingFactor: '100' },
+        name: "Co",
+        pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
       });
 
       const result = await service.calculatePrice({
@@ -217,18 +220,18 @@ describe('RubberLiningService', () => {
       expect(result!.totalPrice).toBe(0);
     });
 
-    it('should default markup to 100 when null', async () => {
+    it("should default markup to 100 when null", async () => {
       mockProductRepo.findOne.mockResolvedValue({
         id: 1,
-        title: 'Test',
-        specificGravity: '1.0',
-        costPerKg: '50.00',
+        title: "Test",
+        specificGravity: "1.0",
+        costPerKg: "50.00",
         markup: null,
       });
       mockCompanyRepo.findOne.mockResolvedValue({
         id: 1,
-        name: 'Co',
-        pricingTier: { id: 1, name: 'Tier', pricingFactor: '100' },
+        name: "Co",
+        pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
       });
 
       const result = await service.calculatePrice({
@@ -244,17 +247,17 @@ describe('RubberLiningService', () => {
       expect(result!.pricePerKg).toBe(50);
     });
 
-    it('should default pricingFactor to 100 when company has no pricing tier', async () => {
+    it("should default pricingFactor to 100 when company has no pricing tier", async () => {
       mockProductRepo.findOne.mockResolvedValue({
         id: 1,
-        title: 'Test',
-        specificGravity: '1.0',
-        costPerKg: '40.00',
-        markup: '150',
+        title: "Test",
+        specificGravity: "1.0",
+        costPerKg: "40.00",
+        markup: "150",
       });
       mockCompanyRepo.findOne.mockResolvedValue({
         id: 1,
-        name: 'No Tier Co',
+        name: "No Tier Co",
         pricingTier: null,
       });
 
@@ -272,18 +275,18 @@ describe('RubberLiningService', () => {
       expect(result!.salePricePerKg).toBe(60);
     });
 
-    it('should return 0 totals when dimensions are zero', async () => {
+    it("should return 0 totals when dimensions are zero", async () => {
       mockProductRepo.findOne.mockResolvedValue({
         id: 1,
-        title: 'Test',
-        specificGravity: '1.5',
-        costPerKg: '30.00',
-        markup: '100',
+        title: "Test",
+        specificGravity: "1.5",
+        costPerKg: "30.00",
+        markup: "100",
       });
       mockCompanyRepo.findOne.mockResolvedValue({
         id: 1,
-        name: 'Co',
-        pricingTier: { id: 1, name: 'Tier', pricingFactor: '100' },
+        name: "Co",
+        pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
       });
 
       const result = await service.calculatePrice({
@@ -301,29 +304,29 @@ describe('RubberLiningService', () => {
     });
   });
 
-  describe('orderById (mapOrderItemToDto)', () => {
-    it('should calculate kgPerRoll and totalKg for order items with product loaded', async () => {
+  describe("orderById (mapOrderItemToDto)", () => {
+    it("should calculate kgPerRoll and totalKg for order items with product loaded", async () => {
       mockOrderRepo.findOne.mockResolvedValue({
         id: 1,
-        orderNumber: 'ORD-00001',
+        orderNumber: "ORD-00001",
         companyOrderNumber: null,
         status: RubberOrderStatus.DRAFT,
         companyId: 1,
-        company: { name: 'Test Co' },
+        company: { name: "Test Co" },
         items: [
           {
             id: 1,
             productId: 1,
-            product: { title: 'NR Sheet', specificGravity: '1.15' },
-            thickness: '3',
-            width: '1200',
-            length: '10',
+            product: { title: "NR Sheet", specificGravity: "1.15" },
+            thickness: "3",
+            width: "1200",
+            length: "10",
             quantity: 2,
             callOffs: [],
           },
         ],
-        createdAt: new Date('2025-01-01'),
-        updatedAt: new Date('2025-01-01'),
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
       } as unknown as RubberOrder);
 
       const result = await service.orderById(1);
@@ -334,10 +337,10 @@ describe('RubberLiningService', () => {
       expect(result!.items[0].totalKg).toBeCloseTo(82.8);
     });
 
-    it('should return null kgPerRoll when dimensions are missing', async () => {
+    it("should return null kgPerRoll when dimensions are missing", async () => {
       mockOrderRepo.findOne.mockResolvedValue({
         id: 1,
-        orderNumber: 'ORD-00001',
+        orderNumber: "ORD-00001",
         companyOrderNumber: null,
         status: RubberOrderStatus.DRAFT,
         companyId: null,
@@ -346,16 +349,16 @@ describe('RubberLiningService', () => {
           {
             id: 1,
             productId: 1,
-            product: { title: 'NR Sheet', specificGravity: '1.15' },
+            product: { title: "NR Sheet", specificGravity: "1.15" },
             thickness: null,
-            width: '1200',
-            length: '10',
+            width: "1200",
+            length: "10",
             quantity: 2,
             callOffs: [],
           },
         ],
-        createdAt: new Date('2025-01-01'),
-        updatedAt: new Date('2025-01-01'),
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
       } as unknown as RubberOrder);
 
       const result = await service.orderById(1);
@@ -364,10 +367,10 @@ describe('RubberLiningService', () => {
       expect(result!.items[0].totalKg).toBeNull();
     });
 
-    it('should default specificGravity to 1 when product has null specificGravity', async () => {
+    it("should default specificGravity to 1 when product has null specificGravity", async () => {
       mockOrderRepo.findOne.mockResolvedValue({
         id: 1,
-        orderNumber: 'ORD-00001',
+        orderNumber: "ORD-00001",
         companyOrderNumber: null,
         status: RubberOrderStatus.DRAFT,
         companyId: null,
@@ -376,16 +379,16 @@ describe('RubberLiningService', () => {
           {
             id: 1,
             productId: 1,
-            product: { title: 'Generic', specificGravity: null },
-            thickness: '5',
-            width: '1000',
-            length: '10',
+            product: { title: "Generic", specificGravity: null },
+            thickness: "5",
+            width: "1000",
+            length: "10",
             quantity: 1,
             callOffs: [],
           },
         ],
-        createdAt: new Date('2025-01-01'),
-        updatedAt: new Date('2025-01-01'),
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
       } as unknown as RubberOrder);
 
       const result = await service.orderById(1);

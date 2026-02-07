@@ -1,7 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { hdpeApi, NOMINAL_BORES, SDR_VALUES, calculatePressureRating, PipeCostResponse } from '@/app/lib/hdpe';
+import { useCallback, useEffect, useState } from "react";
+import {
+  calculatePressureRating,
+  hdpeApi,
+  NOMINAL_BORES,
+  PipeCostResponse,
+  SDR_VALUES,
+} from "@/app/lib/hdpe";
 
 interface PipeEntry {
   id: string;
@@ -14,7 +20,11 @@ interface PipeEntry {
 interface HdpePipeCalculatorProps {
   pricePerKg: number;
   buttweldPrice?: number;
-  onCalculationComplete?: (results: PipeCostResponse[], totalWeight: number, totalCost: number) => void;
+  onCalculationComplete?: (
+    results: PipeCostResponse[],
+    totalWeight: number,
+    totalCost: number,
+  ) => void;
 }
 
 export default function HdpePipeCalculator({
@@ -30,15 +40,18 @@ export default function HdpePipeCalculator({
   const [errors, setErrors] = useState<(string | null)[]>([]);
   const [availableSdrs, setAvailableSdrs] = useState<Record<number, number[]>>({});
 
-  const loadAvailableSdrs = useCallback(async (nominalBore: number) => {
-    if (availableSdrs[nominalBore]) return;
-    try {
-      const sdrs = await hdpeApi.metadata.getSdrsByNominalBore(nominalBore);
-      setAvailableSdrs((prev) => ({ ...prev, [nominalBore]: sdrs }));
-    } catch {
-      setAvailableSdrs((prev) => ({ ...prev, [nominalBore]: SDR_VALUES }));
-    }
-  }, [availableSdrs]);
+  const loadAvailableSdrs = useCallback(
+    async (nominalBore: number) => {
+      if (availableSdrs[nominalBore]) return;
+      try {
+        const sdrs = await hdpeApi.metadata.getSdrsByNominalBore(nominalBore);
+        setAvailableSdrs((prev) => ({ ...prev, [nominalBore]: sdrs }));
+      } catch {
+        setAvailableSdrs((prev) => ({ ...prev, [nominalBore]: SDR_VALUES }));
+      }
+    },
+    [availableSdrs],
+  );
 
   useEffect(() => {
     entries.forEach((entry) => {
@@ -76,7 +89,7 @@ export default function HdpePipeCalculator({
     } catch (err) {
       setErrors((prev) => {
         const next = [...prev];
-        next[index] = err instanceof Error ? err.message : 'Calculation failed';
+        next[index] = err instanceof Error ? err.message : "Calculation failed";
         return next;
       });
       setResults((prev) => {
@@ -181,7 +194,7 @@ export default function HdpePipeCalculator({
                   </label>
                   <select
                     value={entry.nominalBore}
-                    onChange={(e) => updateEntry(index, 'nominalBore', Number(e.target.value))}
+                    onChange={(e) => updateEntry(index, "nominalBore", Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   >
                     {NOMINAL_BORES.map((nb) => (
@@ -198,7 +211,7 @@ export default function HdpePipeCalculator({
                   </label>
                   <select
                     value={entry.sdr}
-                    onChange={(e) => updateEntry(index, 'sdr', Number(e.target.value))}
+                    onChange={(e) => updateEntry(index, "sdr", Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   >
                     {sdrsForNb.map((sdr) => (
@@ -221,7 +234,7 @@ export default function HdpePipeCalculator({
                     min="0.1"
                     step="0.1"
                     value={entry.length}
-                    onChange={(e) => updateEntry(index, 'length', Number(e.target.value))}
+                    onChange={(e) => updateEntry(index, "length", Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -235,7 +248,7 @@ export default function HdpePipeCalculator({
                     min="1"
                     step="1"
                     value={entry.quantity}
-                    onChange={(e) => updateEntry(index, 'quantity', Number(e.target.value))}
+                    onChange={(e) => updateEntry(index, "quantity", Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -245,25 +258,25 @@ export default function HdpePipeCalculator({
                 <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">OD:</span>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">OD:</span>{" "}
                       <span className="font-medium text-gray-900 dark:text-white">
                         {result.outerDiameter} mm
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Wall:</span>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">Wall:</span>{" "}
                       <span className="font-medium text-gray-900 dark:text-white">
                         {result.wallThickness.toFixed(2)} mm
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Weight:</span>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">Weight:</span>{" "}
                       <span className="font-medium text-gray-900 dark:text-white">
                         {result.totalWeight.toFixed(2)} kg
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Cost:</span>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">Cost:</span>{" "}
                       <span className="font-medium text-green-600 dark:text-green-400">
                         R {result.totalCost.toFixed(2)}
                       </span>
@@ -305,18 +318,16 @@ export default function HdpePipeCalculator({
 
       {results.some((r) => r !== null) && (
         <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Summary
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Summary</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Total Weight:</span>{' '}
+              <span className="text-gray-600 dark:text-gray-400">Total Weight:</span>{" "}
               <span className="font-bold text-gray-900 dark:text-white">
                 {totalWeight.toFixed(2)} kg
               </span>
             </div>
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>{' '}
+              <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>{" "}
               <span className="font-bold text-green-600 dark:text-green-400">
                 R {totalCost.toFixed(2)}
               </span>

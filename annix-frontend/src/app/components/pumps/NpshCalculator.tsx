@@ -1,12 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from "react";
 import {
   calculateNpshAvailable,
   checkNpshMargin,
-  waterVaporPressure,
   NpshCalculationParams,
-} from '@/app/lib/config/pumps/calculations';
+} from "@/app/lib/config/pumps/calculations";
 
 interface NpshCalculatorProps {
   npshRequired?: number;
@@ -21,16 +20,16 @@ interface FluidPreset {
 }
 
 const FLUID_PRESETS: FluidPreset[] = [
-  { name: 'Water @ 20°C', temperatureC: 20, specificGravity: 1.0, vaporPressureBar: 0.0234 },
-  { name: 'Water @ 40°C', temperatureC: 40, specificGravity: 0.992, vaporPressureBar: 0.0738 },
-  { name: 'Water @ 60°C', temperatureC: 60, specificGravity: 0.983, vaporPressureBar: 0.1994 },
-  { name: 'Water @ 80°C', temperatureC: 80, specificGravity: 0.972, vaporPressureBar: 0.4736 },
-  { name: 'Diesel @ 20°C', temperatureC: 20, specificGravity: 0.85, vaporPressureBar: 0.001 },
-  { name: 'Gasoline @ 20°C', temperatureC: 20, specificGravity: 0.75, vaporPressureBar: 0.05 },
+  { name: "Water @ 20°C", temperatureC: 20, specificGravity: 1.0, vaporPressureBar: 0.0234 },
+  { name: "Water @ 40°C", temperatureC: 40, specificGravity: 0.992, vaporPressureBar: 0.0738 },
+  { name: "Water @ 60°C", temperatureC: 60, specificGravity: 0.983, vaporPressureBar: 0.1994 },
+  { name: "Water @ 80°C", temperatureC: 80, specificGravity: 0.972, vaporPressureBar: 0.4736 },
+  { name: "Diesel @ 20°C", temperatureC: 20, specificGravity: 0.85, vaporPressureBar: 0.001 },
+  { name: "Gasoline @ 20°C", temperatureC: 20, specificGravity: 0.75, vaporPressureBar: 0.05 },
 ];
 
 export function NpshCalculator({ npshRequired = 3, onNpshCalculated }: NpshCalculatorProps) {
-  const [selectedPreset, setSelectedPreset] = useState<string>('Water @ 20°C');
+  const [selectedPreset, setSelectedPreset] = useState<string>("Water @ 20°C");
   const [customMode, setCustomMode] = useState(false);
 
   const [atmosphericPressureBar, setAtmosphericPressureBar] = useState(1.013);
@@ -92,7 +91,13 @@ export function NpshCalculator({ npshRequired = 3, onNpshCalculated }: NpshCalcu
       vaporHead: Math.round(vaporHead * 100) / 100,
       frictionLoss: frictionLossM,
     };
-  }, [atmosphericPressureBar, liquidVaporPressureBar, staticSuctionHeadM, frictionLossM, specificGravity]);
+  }, [
+    atmosphericPressureBar,
+    liquidVaporPressureBar,
+    staticSuctionHeadM,
+    frictionLossM,
+    specificGravity,
+  ]);
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -211,9 +216,9 @@ export function NpshCalculator({ npshRequired = 3, onNpshCalculated }: NpshCalcu
           onClick={() => setShowAdvanced(!showAdvanced)}
           className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
         >
-          {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
+          {showAdvanced ? "Hide" : "Show"} Advanced Settings
           <svg
-            className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -258,13 +263,19 @@ export function NpshCalculator({ npshRequired = 3, onNpshCalculated }: NpshCalcu
 
       <div className="border-t border-gray-200 p-4 space-y-4">
         <div className="grid grid-cols-3 gap-4">
-          <div className={`rounded-lg p-4 text-center ${
-            npshResult.isAdequate ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-          }`}>
-            <div className={`text-3xl font-bold ${npshResult.isAdequate ? 'text-green-700' : 'text-red-700'}`}>
+          <div
+            className={`rounded-lg p-4 text-center ${
+              npshResult.isAdequate
+                ? "bg-green-50 border border-green-200"
+                : "bg-red-50 border border-red-200"
+            }`}
+          >
+            <div
+              className={`text-3xl font-bold ${npshResult.isAdequate ? "text-green-700" : "text-red-700"}`}
+            >
               {npshResult.npsha.toFixed(2)}
             </div>
-            <div className={`text-sm ${npshResult.isAdequate ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`text-sm ${npshResult.isAdequate ? "text-green-600" : "text-red-600"}`}>
               NPSHa (m)
             </div>
           </div>
@@ -274,46 +285,86 @@ export function NpshCalculator({ npshRequired = 3, onNpshCalculated }: NpshCalcu
             <div className="text-sm text-blue-600">NPSHr (m)</div>
           </div>
 
-          <div className={`rounded-lg p-4 text-center ${
-            npshResult.margin >= 1 ? 'bg-green-50 border border-green-200' :
-            npshResult.margin >= 0 ? 'bg-yellow-50 border border-yellow-200' :
-            'bg-red-50 border border-red-200'
-          }`}>
-            <div className={`text-3xl font-bold ${
-              npshResult.margin >= 1 ? 'text-green-700' :
-              npshResult.margin >= 0 ? 'text-yellow-700' :
-              'text-red-700'
-            }`}>
+          <div
+            className={`rounded-lg p-4 text-center ${
+              npshResult.margin >= 1
+                ? "bg-green-50 border border-green-200"
+                : npshResult.margin >= 0
+                  ? "bg-yellow-50 border border-yellow-200"
+                  : "bg-red-50 border border-red-200"
+            }`}
+          >
+            <div
+              className={`text-3xl font-bold ${
+                npshResult.margin >= 1
+                  ? "text-green-700"
+                  : npshResult.margin >= 0
+                    ? "text-yellow-700"
+                    : "text-red-700"
+              }`}
+            >
               {npshResult.margin.toFixed(2)}
             </div>
-            <div className={`text-sm ${
-              npshResult.margin >= 1 ? 'text-green-600' :
-              npshResult.margin >= 0 ? 'text-yellow-600' :
-              'text-red-600'
-            }`}>
+            <div
+              className={`text-sm ${
+                npshResult.margin >= 1
+                  ? "text-green-600"
+                  : npshResult.margin >= 0
+                    ? "text-yellow-600"
+                    : "text-red-600"
+              }`}
+            >
               Margin (m)
             </div>
           </div>
         </div>
 
-        <div className={`rounded-lg p-4 ${
-          npshResult.isAdequate ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-        }`}>
+        <div
+          className={`rounded-lg p-4 ${
+            npshResult.isAdequate
+              ? "bg-green-50 border border-green-200"
+              : "bg-red-50 border border-red-200"
+          }`}
+        >
           <div className="flex items-center gap-3">
             {npshResult.isAdequate ? (
-              <svg className="w-6 h-6 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-6 h-6 text-green-500 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             ) : (
-              <svg className="w-6 h-6 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg
+                className="w-6 h-6 text-red-500 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
             )}
             <div>
-              <h4 className={`font-medium ${npshResult.isAdequate ? 'text-green-800' : 'text-red-800'}`}>
-                {npshResult.isAdequate ? 'NPSH Adequate' : 'NPSH Warning'}
+              <h4
+                className={`font-medium ${npshResult.isAdequate ? "text-green-800" : "text-red-800"}`}
+              >
+                {npshResult.isAdequate ? "NPSH Adequate" : "NPSH Warning"}
               </h4>
-              <p className={`text-sm mt-1 ${npshResult.isAdequate ? 'text-green-700' : 'text-red-700'}`}>
+              <p
+                className={`text-sm mt-1 ${npshResult.isAdequate ? "text-green-700" : "text-red-700"}`}
+              >
                 {npshResult.recommendation}
               </p>
             </div>
@@ -325,12 +376,16 @@ export function NpshCalculator({ npshRequired = 3, onNpshCalculated }: NpshCalcu
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Atmospheric Head:</span>
-              <span className="font-medium text-green-600">+ {npshBreakdown.atmosphericHead} m</span>
+              <span className="font-medium text-green-600">
+                + {npshBreakdown.atmosphericHead} m
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Static Suction Head:</span>
-              <span className={`font-medium ${staticSuctionHeadM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {staticSuctionHeadM >= 0 ? '+' : ''} {npshBreakdown.staticHead} m
+              <span
+                className={`font-medium ${staticSuctionHeadM >= 0 ? "text-green-600" : "text-red-600"}`}
+              >
+                {staticSuctionHeadM >= 0 ? "+" : ""} {npshBreakdown.staticHead} m
               </span>
             </div>
             <div className="flex justify-between">

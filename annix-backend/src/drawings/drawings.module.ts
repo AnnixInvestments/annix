@@ -1,13 +1,13 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { MulterModule } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
-import { Drawing } from './entities/drawing.entity';
-import { DrawingVersion } from './entities/drawing-version.entity';
-import { DrawingComment } from './entities/drawing-comment.entity';
-import { DrawingsController } from './drawings.controller';
-import { DrawingsService } from './drawings.service';
-import { DrawingAnalyzerService } from './drawing-analyzer.service';
+import { Module } from "@nestjs/common";
+import { MulterModule } from "@nestjs/platform-express";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { memoryStorage } from "multer";
+import { DrawingAnalyzerService } from "./drawing-analyzer.service";
+import { DrawingsController } from "./drawings.controller";
+import { DrawingsService } from "./drawings.service";
+import { Drawing } from "./entities/drawing.entity";
+import { DrawingComment } from "./entities/drawing-comment.entity";
+import { DrawingVersion } from "./entities/drawing-version.entity";
 
 @Module({
   imports: [

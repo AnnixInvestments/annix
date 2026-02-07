@@ -1,28 +1,27 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { Select } from '@/app/components/ui/Select';
-import SplitPaneLayout from '@/app/components/rfq/SplitPaneLayout';
-import { SmartNotesDropdown } from '@/app/components/rfq/SmartNotesDropdown';
+import { useEffect, useMemo, useState } from "react";
+import { SmartNotesDropdown } from "@/app/components/rfq/SmartNotesDropdown";
+import SplitPaneLayout from "@/app/components/rfq/SplitPaneLayout";
+import { Select } from "@/app/components/ui/Select";
 import {
-  ALL_INSTRUMENTS,
-  InstrumentCategory,
-  getInstrumentByValue,
-  getInstrumentsByCategory,
-} from '@/app/lib/config/valves-instruments/instrumentTypes';
-import {
+  ACCURACY_CLASS_OPTIONS,
+  CABLE_ENTRY_OPTIONS,
+  CALIBRATION_OPTIONS,
   COMMUNICATION_PROTOCOL_OPTIONS,
   DISPLAY_OPTIONS,
-  POWER_SUPPLY_OPTIONS,
-  WETTED_PARTS_MATERIAL_OPTIONS,
-  PROCESS_CONNECTION_OPTIONS,
-  CABLE_ENTRY_OPTIONS,
   EXPLOSION_PROOF_OPTIONS,
   IP_RATING_OPTIONS,
   OUTPUT_SIGNAL_OPTIONS,
-  ACCURACY_CLASS_OPTIONS,
-  CALIBRATION_OPTIONS,
-} from '@/app/lib/config/valves-instruments/instrumentSpecifications';
+  POWER_SUPPLY_OPTIONS,
+  PROCESS_CONNECTION_OPTIONS,
+  WETTED_PARTS_MATERIAL_OPTIONS,
+} from "@/app/lib/config/valves-instruments/instrumentSpecifications";
+import {
+  getInstrumentByValue,
+  getInstrumentsByCategory,
+  InstrumentCategory,
+} from "@/app/lib/config/valves-instruments/instrumentTypes";
 
 export interface InstrumentFormProps {
   entry: any;
@@ -36,47 +35,52 @@ export interface InstrumentFormProps {
   requiredProducts?: string[];
 }
 
-const INSTRUMENT_CATEGORIES: { value: InstrumentCategory; label: string; icon: string; color: string }[] = [
-  { value: 'flow', label: 'Flow', icon: '🌊', color: 'blue' },
-  { value: 'pressure', label: 'Pressure', icon: '⏱️', color: 'red' },
-  { value: 'level', label: 'Level', icon: '📊', color: 'green' },
-  { value: 'temperature', label: 'Temperature', icon: '🌡️', color: 'orange' },
-  { value: 'analytical', label: 'Analytical', icon: '🧪', color: 'purple' },
+const INSTRUMENT_CATEGORIES: {
+  value: InstrumentCategory;
+  label: string;
+  icon: string;
+  color: string;
+}[] = [
+  { value: "flow", label: "Flow", icon: "🌊", color: "blue" },
+  { value: "pressure", label: "Pressure", icon: "⏱️", color: "red" },
+  { value: "level", label: "Level", icon: "📊", color: "green" },
+  { value: "temperature", label: "Temperature", icon: "🌡️", color: "orange" },
+  { value: "analytical", label: "Analytical", icon: "🧪", color: "purple" },
 ];
 
 const INSTRUMENT_SIZE_OPTIONS = [
-  { value: '15', label: 'DN15 (½")' },
-  { value: '25', label: 'DN25 (1")' },
-  { value: '40', label: 'DN40 (1½")' },
-  { value: '50', label: 'DN50 (2")' },
-  { value: '80', label: 'DN80 (3")' },
-  { value: '100', label: 'DN100 (4")' },
-  { value: '150', label: 'DN150 (6")' },
-  { value: '200', label: 'DN200 (8")' },
-  { value: '250', label: 'DN250 (10")' },
-  { value: '300', label: 'DN300 (12")' },
-  { value: '400', label: 'DN400 (16")' },
-  { value: '500', label: 'DN500 (20")' },
-  { value: '600', label: 'DN600 (24")' },
+  { value: "15", label: 'DN15 (½")' },
+  { value: "25", label: 'DN25 (1")' },
+  { value: "40", label: 'DN40 (1½")' },
+  { value: "50", label: 'DN50 (2")' },
+  { value: "80", label: 'DN80 (3")' },
+  { value: "100", label: 'DN100 (4")' },
+  { value: "150", label: 'DN150 (6")' },
+  { value: "200", label: 'DN200 (8")' },
+  { value: "250", label: 'DN250 (10")' },
+  { value: "300", label: 'DN300 (12")' },
+  { value: "400", label: 'DN400 (16")' },
+  { value: "500", label: 'DN500 (20")' },
+  { value: "600", label: 'DN600 (24")' },
 ];
 
 const RANGE_UNIT_OPTIONS = [
-  { value: 'm3_h', label: 'm³/h' },
-  { value: 'l_min', label: 'L/min' },
-  { value: 'gpm', label: 'GPM' },
-  { value: 'bar', label: 'bar' },
-  { value: 'psi', label: 'psi' },
-  { value: 'kpa', label: 'kPa' },
-  { value: 'mbar', label: 'mbar' },
-  { value: 'mm', label: 'mm' },
-  { value: 'm', label: 'm' },
-  { value: 'celsius', label: '°C' },
-  { value: 'fahrenheit', label: '°F' },
-  { value: 'ph', label: 'pH' },
-  { value: 'us_cm', label: 'µS/cm' },
-  { value: 'mg_l', label: 'mg/L' },
-  { value: 'ntu', label: 'NTU' },
-  { value: 'mv', label: 'mV' },
+  { value: "m3_h", label: "m³/h" },
+  { value: "l_min", label: "L/min" },
+  { value: "gpm", label: "GPM" },
+  { value: "bar", label: "bar" },
+  { value: "psi", label: "psi" },
+  { value: "kpa", label: "kPa" },
+  { value: "mbar", label: "mbar" },
+  { value: "mm", label: "mm" },
+  { value: "m", label: "m" },
+  { value: "celsius", label: "°C" },
+  { value: "fahrenheit", label: "°F" },
+  { value: "ph", label: "pH" },
+  { value: "us_cm", label: "µS/cm" },
+  { value: "mg_l", label: "mg/L" },
+  { value: "ntu", label: "NTU" },
+  { value: "mv", label: "mV" },
 ];
 
 export default function InstrumentForm({
@@ -90,31 +94,31 @@ export default function InstrumentForm({
   generateItemDescription,
   requiredProducts: _requiredProducts = [],
 }: InstrumentFormProps) {
-  const [activeCategory, setActiveCategory] = useState<InstrumentCategory>('flow');
+  const [activeCategory, setActiveCategory] = useState<InstrumentCategory>("flow");
   const [calculationResults, setCalculationResults] = useState<any>(null);
 
-  const instrumentType = entry.specs?.instrumentType || '';
-  const size = entry.specs?.size || '';
-  const processConnection = entry.specs?.processConnection || '';
-  const wettedMaterial = entry.specs?.wettedMaterial || '';
+  const instrumentType = entry.specs?.instrumentType || "";
+  const size = entry.specs?.size || "";
+  const processConnection = entry.specs?.processConnection || "";
+  const wettedMaterial = entry.specs?.wettedMaterial || "";
   const rangeMin = entry.specs?.rangeMin || null;
   const rangeMax = entry.specs?.rangeMax || null;
-  const rangeUnit = entry.specs?.rangeUnit || '';
-  const outputSignal = entry.specs?.outputSignal || '4_20ma';
-  const communicationProtocol = entry.specs?.communicationProtocol || '';
-  const displayType = entry.specs?.displayType || 'local_lcd';
-  const powerSupply = entry.specs?.powerSupply || 'loop_powered';
-  const cableEntry = entry.specs?.cableEntry || 'm20';
-  const explosionProof = entry.specs?.explosionProof || 'none';
-  const ipRating = entry.specs?.ipRating || 'ip65';
-  const accuracyClass = entry.specs?.accuracyClass || '';
-  const calibration = entry.specs?.calibration || 'standard';
-  const processMedia = entry.specs?.processMedia || '';
+  const rangeUnit = entry.specs?.rangeUnit || "";
+  const outputSignal = entry.specs?.outputSignal || "4_20ma";
+  const communicationProtocol = entry.specs?.communicationProtocol || "";
+  const displayType = entry.specs?.displayType || "local_lcd";
+  const powerSupply = entry.specs?.powerSupply || "loop_powered";
+  const cableEntry = entry.specs?.cableEntry || "m20";
+  const explosionProof = entry.specs?.explosionProof || "none";
+  const ipRating = entry.specs?.ipRating || "ip65";
+  const accuracyClass = entry.specs?.accuracyClass || "";
+  const calibration = entry.specs?.calibration || "standard";
+  const processMedia = entry.specs?.processMedia || "";
   const operatingPressure = entry.specs?.operatingPressure || null;
   const operatingTemp = entry.specs?.operatingTemp || null;
   const quantity = entry.specs?.quantityValue || 1;
-  const supplierReference = entry.specs?.supplierReference || '';
-  const modelNumber = entry.specs?.modelNumber || '';
+  const supplierReference = entry.specs?.supplierReference || "";
+  const modelNumber = entry.specs?.modelNumber || "";
   const unitCostFromSupplier = entry.specs?.unitCostFromSupplier || null;
   const markupPercentage = entry.specs?.markupPercentage || 15;
 
@@ -139,12 +143,12 @@ export default function InstrumentForm({
     const results: any = {
       instrumentType: selectedInstrument?.label || instrumentType,
       category: selectedInstrument?.category || activeCategory,
-      measurementPrinciple: selectedInstrument?.measurementPrinciple || 'N/A',
-      accuracy: selectedInstrument?.accuracyRange || accuracyClass || 'N/A',
+      measurementPrinciple: selectedInstrument?.measurementPrinciple || "N/A",
+      accuracy: selectedInstrument?.accuracyRange || accuracyClass || "N/A",
     };
 
     if (rangeMin !== null && rangeMax !== null) {
-      results.range = `${rangeMin} - ${rangeMax} ${RANGE_UNIT_OPTIONS.find(u => u.value === rangeUnit)?.label || rangeUnit}`;
+      results.range = `${rangeMin} - ${rangeMax} ${RANGE_UNIT_OPTIONS.find((u) => u.value === rangeUnit)?.label || rangeUnit}`;
     }
 
     if (unitCostFromSupplier) {
@@ -176,7 +180,8 @@ export default function InstrumentForm({
     });
   };
 
-  const categoryColor = INSTRUMENT_CATEGORIES.find(c => c.value === activeCategory)?.color || 'blue';
+  const categoryColor =
+    INSTRUMENT_CATEGORIES.find((c) => c.value === activeCategory)?.color || "blue";
 
   return (
     <>
@@ -216,10 +221,11 @@ export default function InstrumentForm({
                         : `bg-${cat.color}-100 text-${cat.color}-800 hover:bg-${cat.color}-200 dark:bg-${cat.color}-900/30 dark:text-${cat.color}-200`
                     }`}
                     style={{
-                      backgroundColor: activeCategory === cat.value
-                        ? `var(--color-${cat.color}-600, #0891b2)`
-                        : undefined,
-                      color: activeCategory === cat.value ? 'white' : undefined,
+                      backgroundColor:
+                        activeCategory === cat.value
+                          ? `var(--color-${cat.color}-600, #0891b2)`
+                          : undefined,
+                      color: activeCategory === cat.value ? "white" : undefined,
                     }}
                   >
                     {cat.icon} {cat.label}
@@ -233,7 +239,7 @@ export default function InstrumentForm({
                 <Select
                   id={`instrument-type-${entry.id}`}
                   value={instrumentType}
-                  onChange={(value) => updateSpec('instrumentType', value)}
+                  onChange={(value) => updateSpec("instrumentType", value)}
                   options={filteredInstruments.map((inst) => ({
                     value: inst.value,
                     label: `${inst.icon} ${inst.label}`,
@@ -245,9 +251,12 @@ export default function InstrumentForm({
               </div>
               {selectedInstrument && (
                 <div className="mt-2 text-xs text-cyan-700 dark:text-cyan-300">
-                  <span className="font-semibold">Principle:</span> {selectedInstrument.measurementPrinciple} |{' '}
-                  <span className="font-semibold">Accuracy:</span> {selectedInstrument.accuracyRange || 'N/A'} |{' '}
-                  <span className="font-semibold">Applications:</span> {selectedInstrument.typicalApplications.join(', ')}
+                  <span className="font-semibold">Principle:</span>{" "}
+                  {selectedInstrument.measurementPrinciple} |{" "}
+                  <span className="font-semibold">Accuracy:</span>{" "}
+                  {selectedInstrument.accuracyRange || "N/A"} |{" "}
+                  <span className="font-semibold">Applications:</span>{" "}
+                  {selectedInstrument.typicalApplications.join(", ")}
                 </div>
               )}
             </div>
@@ -264,7 +273,7 @@ export default function InstrumentForm({
                   <Select
                     id={`size-${entry.id}`}
                     value={size}
-                    onChange={(value) => updateSpec('size', value)}
+                    onChange={(value) => updateSpec("size", value)}
                     options={INSTRUMENT_SIZE_OPTIONS}
                     placeholder="Select size"
                     className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
@@ -276,8 +285,8 @@ export default function InstrumentForm({
                   </label>
                   <input
                     type="number"
-                    value={rangeMin || ''}
-                    onChange={(e) => updateSpec('rangeMin', parseFloat(e.target.value) || null)}
+                    value={rangeMin || ""}
+                    onChange={(e) => updateSpec("rangeMin", parseFloat(e.target.value) || null)}
                     className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
                     placeholder="Minimum"
                     step="any"
@@ -289,8 +298,8 @@ export default function InstrumentForm({
                   </label>
                   <input
                     type="number"
-                    value={rangeMax || ''}
-                    onChange={(e) => updateSpec('rangeMax', parseFloat(e.target.value) || null)}
+                    value={rangeMax || ""}
+                    onChange={(e) => updateSpec("rangeMax", parseFloat(e.target.value) || null)}
                     className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-blue-50 text-gray-900 dark:bg-blue-900/30 dark:border-blue-600 dark:text-gray-100"
                     placeholder="Maximum"
                     step="any"
@@ -305,7 +314,7 @@ export default function InstrumentForm({
                   <Select
                     id={`range-unit-${entry.id}`}
                     value={rangeUnit}
-                    onChange={(value) => updateSpec('rangeUnit', value)}
+                    onChange={(value) => updateSpec("rangeUnit", value)}
                     options={RANGE_UNIT_OPTIONS}
                     placeholder="Select unit"
                     className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
@@ -318,7 +327,7 @@ export default function InstrumentForm({
                   <Select
                     id={`accuracy-${entry.id}`}
                     value={accuracyClass}
-                    onChange={(value) => updateSpec('accuracyClass', value)}
+                    onChange={(value) => updateSpec("accuracyClass", value)}
                     options={ACCURACY_CLASS_OPTIONS}
                     placeholder="Select accuracy"
                     className="bg-blue-50 border-blue-300 dark:bg-blue-900/30 dark:border-blue-600"
@@ -339,7 +348,7 @@ export default function InstrumentForm({
                   <Select
                     id={`connection-${entry.id}`}
                     value={processConnection}
-                    onChange={(value) => updateSpec('processConnection', value)}
+                    onChange={(value) => updateSpec("processConnection", value)}
                     options={PROCESS_CONNECTION_OPTIONS}
                     placeholder="Select connection"
                     className="bg-purple-50 border-purple-300 dark:bg-purple-900/30 dark:border-purple-600"
@@ -352,7 +361,7 @@ export default function InstrumentForm({
                   <Select
                     id={`wetted-material-${entry.id}`}
                     value={wettedMaterial}
-                    onChange={(value) => updateSpec('wettedMaterial', value)}
+                    onChange={(value) => updateSpec("wettedMaterial", value)}
                     options={WETTED_PARTS_MATERIAL_OPTIONS}
                     placeholder="Select material"
                     className="bg-purple-50 border-purple-300 dark:bg-purple-900/30 dark:border-purple-600"
@@ -373,7 +382,7 @@ export default function InstrumentForm({
                   <Select
                     id={`output-signal-${entry.id}`}
                     value={outputSignal}
-                    onChange={(value) => updateSpec('outputSignal', value)}
+                    onChange={(value) => updateSpec("outputSignal", value)}
                     options={OUTPUT_SIGNAL_OPTIONS}
                     placeholder="Select output"
                     className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
@@ -386,7 +395,7 @@ export default function InstrumentForm({
                   <Select
                     id={`protocol-${entry.id}`}
                     value={communicationProtocol}
-                    onChange={(value) => updateSpec('communicationProtocol', value)}
+                    onChange={(value) => updateSpec("communicationProtocol", value)}
                     options={COMMUNICATION_PROTOCOL_OPTIONS}
                     placeholder="Select protocol"
                     className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
@@ -399,7 +408,7 @@ export default function InstrumentForm({
                   <Select
                     id={`display-${entry.id}`}
                     value={displayType}
-                    onChange={(value) => updateSpec('displayType', value)}
+                    onChange={(value) => updateSpec("displayType", value)}
                     options={DISPLAY_OPTIONS}
                     placeholder="Select display"
                     className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
@@ -412,7 +421,7 @@ export default function InstrumentForm({
                   <Select
                     id={`power-${entry.id}`}
                     value={powerSupply}
-                    onChange={(value) => updateSpec('powerSupply', value)}
+                    onChange={(value) => updateSpec("powerSupply", value)}
                     options={POWER_SUPPLY_OPTIONS}
                     placeholder="Select power"
                     className="bg-green-50 border-green-300 dark:bg-green-900/30 dark:border-green-600"
@@ -433,7 +442,7 @@ export default function InstrumentForm({
                   <Select
                     id={`explosion-proof-${entry.id}`}
                     value={explosionProof}
-                    onChange={(value) => updateSpec('explosionProof', value)}
+                    onChange={(value) => updateSpec("explosionProof", value)}
                     options={EXPLOSION_PROOF_OPTIONS}
                     placeholder="Select classification"
                     className="bg-amber-50 border-amber-300 dark:bg-amber-900/30 dark:border-amber-600"
@@ -446,7 +455,7 @@ export default function InstrumentForm({
                   <Select
                     id={`ip-rating-${entry.id}`}
                     value={ipRating}
-                    onChange={(value) => updateSpec('ipRating', value)}
+                    onChange={(value) => updateSpec("ipRating", value)}
                     options={IP_RATING_OPTIONS}
                     placeholder="Select IP rating"
                     className="bg-amber-50 border-amber-300 dark:bg-amber-900/30 dark:border-amber-600"
@@ -459,7 +468,7 @@ export default function InstrumentForm({
                   <Select
                     id={`cable-entry-${entry.id}`}
                     value={cableEntry}
-                    onChange={(value) => updateSpec('cableEntry', value)}
+                    onChange={(value) => updateSpec("cableEntry", value)}
                     options={CABLE_ENTRY_OPTIONS}
                     placeholder="Select cable entry"
                     className="bg-amber-50 border-amber-300 dark:bg-amber-900/30 dark:border-amber-600"
@@ -472,7 +481,7 @@ export default function InstrumentForm({
                   <Select
                     id={`calibration-${entry.id}`}
                     value={calibration}
-                    onChange={(value) => updateSpec('calibration', value)}
+                    onChange={(value) => updateSpec("calibration", value)}
                     options={CALIBRATION_OPTIONS}
                     placeholder="Select calibration"
                     className="bg-amber-50 border-amber-300 dark:bg-amber-900/30 dark:border-amber-600"
@@ -493,7 +502,7 @@ export default function InstrumentForm({
                   <input
                     type="text"
                     value={processMedia}
-                    onChange={(e) => updateSpec('processMedia', e.target.value)}
+                    onChange={(e) => updateSpec("processMedia", e.target.value)}
                     className="w-full px-2 py-1.5 border border-red-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-red-500 bg-red-50 text-gray-900 dark:bg-red-900/30 dark:border-red-600 dark:text-gray-100"
                     placeholder="e.g., Water, Steam, Natural Gas"
                   />
@@ -504,8 +513,10 @@ export default function InstrumentForm({
                   </label>
                   <input
                     type="number"
-                    value={operatingPressure || ''}
-                    onChange={(e) => updateSpec('operatingPressure', parseFloat(e.target.value) || null)}
+                    value={operatingPressure || ""}
+                    onChange={(e) =>
+                      updateSpec("operatingPressure", parseFloat(e.target.value) || null)
+                    }
                     className="w-full px-2 py-1.5 border border-red-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-red-500 bg-red-50 text-gray-900 dark:bg-red-900/30 dark:border-red-600 dark:text-gray-100"
                     placeholder="Design pressure"
                     step="0.1"
@@ -517,8 +528,10 @@ export default function InstrumentForm({
                   </label>
                   <input
                     type="number"
-                    value={operatingTemp || ''}
-                    onChange={(e) => updateSpec('operatingTemp', parseFloat(e.target.value) || null)}
+                    value={operatingTemp || ""}
+                    onChange={(e) =>
+                      updateSpec("operatingTemp", parseFloat(e.target.value) || null)
+                    }
                     className="w-full px-2 py-1.5 border border-red-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-red-500 bg-red-50 text-gray-900 dark:bg-red-900/30 dark:border-red-600 dark:text-gray-100"
                     placeholder="Design temperature"
                     step="1"
@@ -539,7 +552,7 @@ export default function InstrumentForm({
                   <input
                     type="text"
                     value={supplierReference}
-                    onChange={(e) => updateSpec('supplierReference', e.target.value)}
+                    onChange={(e) => updateSpec("supplierReference", e.target.value)}
                     className="w-full px-2 py-1.5 border border-orange-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
                     placeholder="e.g., Endress+Hauser, Rosemount"
                   />
@@ -551,7 +564,7 @@ export default function InstrumentForm({
                   <input
                     type="text"
                     value={modelNumber}
-                    onChange={(e) => updateSpec('modelNumber', e.target.value)}
+                    onChange={(e) => updateSpec("modelNumber", e.target.value)}
                     className="w-full px-2 py-1.5 border border-orange-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
                     placeholder="e.g., Promag 10W, 3051S"
                   />
@@ -564,8 +577,10 @@ export default function InstrumentForm({
                   </label>
                   <input
                     type="number"
-                    value={unitCostFromSupplier || ''}
-                    onChange={(e) => updateSpec('unitCostFromSupplier', parseFloat(e.target.value) || null)}
+                    value={unitCostFromSupplier || ""}
+                    onChange={(e) =>
+                      updateSpec("unitCostFromSupplier", parseFloat(e.target.value) || null)
+                    }
                     className="w-full px-2 py-1.5 border border-orange-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
                     placeholder="Cost price"
                     step="0.01"
@@ -578,7 +593,9 @@ export default function InstrumentForm({
                   <input
                     type="number"
                     value={markupPercentage}
-                    onChange={(e) => updateSpec('markupPercentage', parseFloat(e.target.value) || 15)}
+                    onChange={(e) =>
+                      updateSpec("markupPercentage", parseFloat(e.target.value) || 15)
+                    }
                     className="w-full px-2 py-1.5 border border-orange-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 bg-orange-50 text-gray-900 dark:bg-orange-900/30 dark:border-orange-600 dark:text-gray-100"
                     placeholder="15"
                     min="0"
@@ -599,18 +616,18 @@ export default function InstrumentForm({
                   </label>
                   <input
                     type="number"
-                    value={quantity ?? ''}
+                    value={quantity ?? ""}
                     onChange={(e) => {
                       const rawValue = e.target.value;
-                      if (rawValue === '') {
-                        updateSpec('quantityValue', undefined);
+                      if (rawValue === "") {
+                        updateSpec("quantityValue", undefined);
                         return;
                       }
-                      updateSpec('quantityValue', parseInt(rawValue));
+                      updateSpec("quantityValue", parseInt(rawValue, 10));
                     }}
                     onBlur={(e) => {
-                      if (e.target.value === '' || parseInt(e.target.value) < 1) {
-                        updateSpec('quantityValue', 1);
+                      if (e.target.value === "" || parseInt(e.target.value, 10) < 1) {
+                        updateSpec("quantityValue", 1);
                       }
                     }}
                     className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
@@ -626,8 +643,12 @@ export default function InstrumentForm({
                 Notes
               </h4>
               <SmartNotesDropdown
-                selectedNotes={entry.notes ? (Array.isArray(entry.notes) ? entry.notes : [entry.notes]) : []}
-                onNotesChange={(newNotes) => onUpdateEntry(entry.id, { notes: newNotes.join('\n') })}
+                selectedNotes={
+                  entry.notes ? (Array.isArray(entry.notes) ? entry.notes : [entry.notes]) : []
+                }
+                onNotesChange={(newNotes) =>
+                  onUpdateEntry(entry.id, { notes: newNotes.join("\n") })
+                }
                 placeholder="Add notes for this instrument..."
               />
             </div>
@@ -676,33 +697,38 @@ export default function InstrumentForm({
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div className="text-green-800 dark:text-green-200">Output:</div>
                     <div className="font-semibold text-green-900 dark:text-green-100">
-                      {OUTPUT_SIGNAL_OPTIONS.find(o => o.value === outputSignal)?.label || outputSignal}
+                      {OUTPUT_SIGNAL_OPTIONS.find((o) => o.value === outputSignal)?.label ||
+                        outputSignal}
                     </div>
                     {communicationProtocol && (
                       <>
                         <div className="text-green-800 dark:text-green-200">Protocol:</div>
                         <div className="font-semibold text-green-900 dark:text-green-100">
-                          {COMMUNICATION_PROTOCOL_OPTIONS.find(p => p.value === communicationProtocol)?.label || communicationProtocol}
+                          {COMMUNICATION_PROTOCOL_OPTIONS.find(
+                            (p) => p.value === communicationProtocol,
+                          )?.label || communicationProtocol}
                         </div>
                       </>
                     )}
                     <div className="text-green-800 dark:text-green-200">Display:</div>
                     <div className="font-semibold text-green-900 dark:text-green-100">
-                      {DISPLAY_OPTIONS.find(d => d.value === displayType)?.label || displayType}
+                      {DISPLAY_OPTIONS.find((d) => d.value === displayType)?.label || displayType}
                     </div>
                     <div className="text-green-800 dark:text-green-200">Power:</div>
                     <div className="font-semibold text-green-900 dark:text-green-100">
-                      {POWER_SUPPLY_OPTIONS.find(p => p.value === powerSupply)?.label || powerSupply}
+                      {POWER_SUPPLY_OPTIONS.find((p) => p.value === powerSupply)?.label ||
+                        powerSupply}
                     </div>
                     <div className="text-green-800 dark:text-green-200">IP Rating:</div>
                     <div className="font-semibold text-green-900 dark:text-green-100">
                       {ipRating.toUpperCase()}
                     </div>
-                    {explosionProof !== 'none' && (
+                    {explosionProof !== "none" && (
                       <>
                         <div className="text-green-800 dark:text-green-200">Hazardous Area:</div>
                         <div className="font-semibold text-green-900 dark:text-green-100">
-                          {EXPLOSION_PROOF_OPTIONS.find(e => e.value === explosionProof)?.label || explosionProof}
+                          {EXPLOSION_PROOF_OPTIONS.find((e) => e.value === explosionProof)?.label ||
+                            explosionProof}
                         </div>
                       </>
                     )}
@@ -717,19 +743,23 @@ export default function InstrumentForm({
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="text-orange-800 dark:text-orange-200">Supplier Cost:</div>
                       <div className="font-semibold text-orange-900 dark:text-orange-100">
-                        R {unitCostFromSupplier?.toLocaleString() || '-'}
+                        R {unitCostFromSupplier?.toLocaleString() || "-"}
                       </div>
-                      <div className="text-orange-800 dark:text-orange-200">Markup ({markupPercentage}%):</div>
+                      <div className="text-orange-800 dark:text-orange-200">
+                        Markup ({markupPercentage}%):
+                      </div>
                       <div className="font-semibold text-orange-900 dark:text-orange-100">
-                        R {calculationResults.pricing.markupAmount?.toLocaleString() || '-'}
+                        R {calculationResults.pricing.markupAmount?.toLocaleString() || "-"}
                       </div>
                       <div className="text-orange-800 dark:text-orange-200">Unit Price:</div>
                       <div className="font-semibold text-orange-900 dark:text-orange-100">
-                        R {calculationResults.pricing.unitCost?.toLocaleString() || '-'}
+                        R {calculationResults.pricing.unitCost?.toLocaleString() || "-"}
                       </div>
-                      <div className="text-orange-800 dark:text-orange-200">Total ({quantity} units):</div>
+                      <div className="text-orange-800 dark:text-orange-200">
+                        Total ({quantity} units):
+                      </div>
                       <div className="font-bold text-orange-900 dark:text-orange-100">
-                        R {calculationResults.pricing.totalCost?.toLocaleString() || '-'}
+                        R {calculationResults.pricing.totalCost?.toLocaleString() || "-"}
                       </div>
                     </div>
                   </div>

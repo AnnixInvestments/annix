@@ -1,9 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateAnonymousDraftsTable1780000000000
-  implements MigrationInterface
-{
-  name = 'CreateAnonymousDraftsTable1780000000000';
+export class CreateAnonymousDraftsTable1780000000000 implements MigrationInterface {
+  name = "CreateAnonymousDraftsTable1780000000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

@@ -1,37 +1,33 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
-  IsString,
-  IsOptional,
-  IsNumber,
   IsEnum,
-  IsPositive,
   IsInt,
-  Min,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
   Max,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import {
-  LengthUnit,
-  QuantityType,
-  ScheduleType,
-} from '../entities/straight-pipe-rfq.entity';
+  Min,
+} from "class-validator";
+import { LengthUnit, QuantityType, ScheduleType } from "../entities/straight-pipe-rfq.entity";
 
 export class CreateStraightPipeRfqDto {
-  @ApiProperty({ description: 'Nominal bore in mm', example: 500 })
+  @ApiProperty({ description: "Nominal bore in mm", example: 500 })
   @IsNumber({ maxDecimalPlaces: 3 })
   @IsPositive()
   @Type(() => Number)
   nominalBoreMm: number;
 
   @ApiProperty({
-    description: 'Schedule type - using schedule number or wall thickness',
+    description: "Schedule type - using schedule number or wall thickness",
     enum: ScheduleType,
   })
   @IsEnum(ScheduleType)
   scheduleType: ScheduleType;
 
   @ApiProperty({
-    description: 'Schedule number (e.g., Sch20, Sch40)',
+    description: "Schedule number (e.g., Sch20, Sch40)",
     required: false,
   })
   @IsOptional()
@@ -39,7 +35,7 @@ export class CreateStraightPipeRfqDto {
   scheduleNumber?: string;
 
   @ApiProperty({
-    description: 'Wall thickness in mm (if not using schedule)',
+    description: "Wall thickness in mm (if not using schedule)",
     required: false,
   })
   @IsOptional()
@@ -49,33 +45,33 @@ export class CreateStraightPipeRfqDto {
   wallThicknessMm?: number;
 
   @ApiProperty({
-    description: 'Pipe end configuration',
-    example: 'FBE',
+    description: "Pipe end configuration",
+    example: "FBE",
     required: false,
   })
   @IsOptional()
   @IsString()
   pipeEndConfiguration?: string;
 
-  @ApiProperty({ description: 'Individual pipe length', example: 12.192 })
+  @ApiProperty({ description: "Individual pipe length", example: 12.192 })
   @IsNumber({ maxDecimalPlaces: 3 })
   @IsPositive()
   @Type(() => Number)
   individualPipeLength: number;
 
-  @ApiProperty({ description: 'Length unit', enum: LengthUnit })
+  @ApiProperty({ description: "Length unit", enum: LengthUnit })
   @IsEnum(LengthUnit)
   lengthUnit: LengthUnit;
 
   @ApiProperty({
-    description: 'Quantity type - total length or number of pipes',
+    description: "Quantity type - total length or number of pipes",
     enum: QuantityType,
   })
   @IsEnum(QuantityType)
   quantityType: QuantityType;
 
   @ApiProperty({
-    description: 'Quantity value - total meters or number of pipes',
+    description: "Quantity value - total meters or number of pipes",
     example: 8000,
   })
   @IsNumber({ maxDecimalPlaces: 3 })
@@ -83,7 +79,7 @@ export class CreateStraightPipeRfqDto {
   @Type(() => Number)
   quantityValue: number;
 
-  @ApiProperty({ description: 'Working pressure in bar', example: 10 })
+  @ApiProperty({ description: "Working pressure in bar", example: 10 })
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   @Max(1000)
@@ -91,7 +87,7 @@ export class CreateStraightPipeRfqDto {
   workingPressureBar: number;
 
   @ApiProperty({
-    description: 'Working temperature in celsius',
+    description: "Working temperature in celsius",
     required: false,
   })
   @IsOptional()
@@ -101,19 +97,19 @@ export class CreateStraightPipeRfqDto {
   @Type(() => Number)
   workingTemperatureC?: number;
 
-  @ApiProperty({ description: 'Steel specification ID', required: false })
+  @ApiProperty({ description: "Steel specification ID", required: false })
   @IsOptional()
   @IsInt()
   @Type(() => Number)
   steelSpecificationId?: number;
 
-  @ApiProperty({ description: 'Flange standard ID', required: false })
+  @ApiProperty({ description: "Flange standard ID", required: false })
   @IsOptional()
   @IsInt()
   @Type(() => Number)
   flangeStandardId?: number;
 
-  @ApiProperty({ description: 'Flange pressure class ID', required: false })
+  @ApiProperty({ description: "Flange pressure class ID", required: false })
   @IsOptional()
   @IsInt()
   @Type(() => Number)

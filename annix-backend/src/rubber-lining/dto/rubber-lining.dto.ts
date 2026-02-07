@@ -72,8 +72,8 @@ export class RubberRecommendationRequestDto {
   minTemperatureCelsius?: number;
   requiresOilResistance?: boolean;
   requiresOzoneResistance?: boolean;
-  abrasionLevel?: 'low' | 'medium' | 'high' | 'very_high';
-  corrosionLevel?: 'low' | 'medium' | 'high' | 'very_high';
+  abrasionLevel?: "low" | "medium" | "high" | "very_high";
+  corrosionLevel?: "low" | "medium" | "high" | "very_high";
   applicationEnvironment?: string;
 }
 

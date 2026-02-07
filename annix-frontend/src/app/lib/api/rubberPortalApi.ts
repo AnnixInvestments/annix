@@ -1,11 +1,11 @@
-import { API_BASE_URL } from '@/lib/api-config';
-import type { CalloffStatus } from '@/app/lib/config/rubber/calloffStatus';
-import type { StatusHistoryEvent } from '@/app/lib/config/rubber/orderStatus';
+import type { CalloffStatus } from "@/app/lib/config/rubber/calloffStatus";
+import type { StatusHistoryEvent } from "@/app/lib/config/rubber/orderStatus";
+import { API_BASE_URL } from "@/lib/api-config";
 
 export interface RubberProductCodingDto {
   id: number;
   firebaseUid: string;
-  codingType: 'COLOUR' | 'COMPOUND' | 'CURING_METHOD' | 'GRADE' | 'HARDNESS' | 'TYPE';
+  codingType: "COLOUR" | "COMPOUND" | "CURING_METHOD" | "GRADE" | "HARDNESS" | "TYPE";
   code: string;
   name: string;
 }
@@ -149,7 +149,7 @@ export interface ImportProductRowDto {
 
 export interface ImportProductRowResultDto {
   rowIndex: number;
-  status: 'created' | 'updated' | 'failed' | 'skipped';
+  status: "created" | "updated" | "failed" | "skipped";
   title: string | null;
   errors: string[];
   productId?: number;
@@ -165,8 +165,8 @@ export interface ImportProductsResultDto {
 }
 
 function adminHeaders(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('adminAccessToken');
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("adminAccessToken");
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -175,7 +175,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const config: RequestInit = {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...adminHeaders(),
       ...(options.headers as Record<string, string>),
     },
@@ -189,7 +189,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   const text = await response.text();
-  if (!text || text.trim() === '') {
+  if (!text || text.trim() === "") {
     return {} as T;
   }
 
@@ -198,7 +198,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const rubberPortalApi = {
   productCodings: async (codingType?: string): Promise<RubberProductCodingDto[]> => {
-    const query = codingType ? `?codingType=${codingType}` : '';
+    const query = codingType ? `?codingType=${codingType}` : "";
     return request(`/rubber-lining/portal/product-codings${query}`);
   },
 
@@ -206,56 +206,66 @@ export const rubberPortalApi = {
     return request(`/rubber-lining/portal/product-codings/${id}`);
   },
 
-  createProductCoding: async (data: Omit<RubberProductCodingDto, 'id' | 'firebaseUid'>): Promise<RubberProductCodingDto> => {
-    return request('/rubber-lining/portal/product-codings', {
-      method: 'POST',
+  createProductCoding: async (
+    data: Omit<RubberProductCodingDto, "id" | "firebaseUid">,
+  ): Promise<RubberProductCodingDto> => {
+    return request("/rubber-lining/portal/product-codings", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  updateProductCoding: async (id: number, data: Partial<RubberProductCodingDto>): Promise<RubberProductCodingDto> => {
+  updateProductCoding: async (
+    id: number,
+    data: Partial<RubberProductCodingDto>,
+  ): Promise<RubberProductCodingDto> => {
     return request(`/rubber-lining/portal/product-codings/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   },
 
   deleteProductCoding: async (id: number): Promise<void> => {
     return request(`/rubber-lining/portal/product-codings/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
   pricingTiers: async (): Promise<RubberPricingTierDto[]> => {
-    return request('/rubber-lining/portal/pricing-tiers');
+    return request("/rubber-lining/portal/pricing-tiers");
   },
 
   pricingTierById: async (id: number): Promise<RubberPricingTierDto> => {
     return request(`/rubber-lining/portal/pricing-tiers/${id}`);
   },
 
-  createPricingTier: async (data: Omit<RubberPricingTierDto, 'id'>): Promise<RubberPricingTierDto> => {
-    return request('/rubber-lining/portal/pricing-tiers', {
-      method: 'POST',
+  createPricingTier: async (
+    data: Omit<RubberPricingTierDto, "id">,
+  ): Promise<RubberPricingTierDto> => {
+    return request("/rubber-lining/portal/pricing-tiers", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  updatePricingTier: async (id: number, data: Partial<RubberPricingTierDto>): Promise<RubberPricingTierDto> => {
+  updatePricingTier: async (
+    id: number,
+    data: Partial<RubberPricingTierDto>,
+  ): Promise<RubberPricingTierDto> => {
     return request(`/rubber-lining/portal/pricing-tiers/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   },
 
   deletePricingTier: async (id: number): Promise<void> => {
     return request(`/rubber-lining/portal/pricing-tiers/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
   companies: async (): Promise<RubberCompanyDto[]> => {
-    return request('/rubber-lining/portal/companies');
+    return request("/rubber-lining/portal/companies");
   },
 
   companyById: async (id: number): Promise<RubberCompanyDto> => {
@@ -273,37 +283,40 @@ export const rubberPortalApi = {
     address?: Record<string, string>;
     notes?: string;
   }): Promise<RubberCompanyDto> => {
-    return request('/rubber-lining/portal/companies', {
-      method: 'POST',
+    return request("/rubber-lining/portal/companies", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  updateCompany: async (id: number, data: Partial<{
-    name: string;
-    code?: string;
-    pricingTierId?: number;
-    availableProducts?: string[];
-    isCompoundOwner?: boolean;
-    vatNumber?: string;
-    registrationNumber?: string;
-    address?: Record<string, string>;
-    notes?: string;
-  }>): Promise<RubberCompanyDto> => {
+  updateCompany: async (
+    id: number,
+    data: Partial<{
+      name: string;
+      code?: string;
+      pricingTierId?: number;
+      availableProducts?: string[];
+      isCompoundOwner?: boolean;
+      vatNumber?: string;
+      registrationNumber?: string;
+      address?: Record<string, string>;
+      notes?: string;
+    }>,
+  ): Promise<RubberCompanyDto> => {
     return request(`/rubber-lining/portal/companies/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   },
 
   deleteCompany: async (id: number): Promise<void> => {
     return request(`/rubber-lining/portal/companies/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
   products: async (): Promise<RubberProductDto[]> => {
-    return request('/rubber-lining/portal/products');
+    return request("/rubber-lining/portal/products");
   },
 
   productById: async (id: number): Promise<RubberProductDto> => {
@@ -311,27 +324,30 @@ export const rubberPortalApi = {
   },
 
   createProduct: async (data: CreateRubberProductDto): Promise<RubberProductDto> => {
-    return request('/rubber-lining/portal/products', {
-      method: 'POST',
+    return request("/rubber-lining/portal/products", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  updateProduct: async (id: number, data: Partial<CreateRubberProductDto>): Promise<RubberProductDto> => {
+  updateProduct: async (
+    id: number,
+    data: Partial<CreateRubberProductDto>,
+  ): Promise<RubberProductDto> => {
     return request(`/rubber-lining/portal/products/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   },
 
   deleteProduct: async (id: number): Promise<void> => {
     return request(`/rubber-lining/portal/products/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
   orders: async (status?: number): Promise<RubberOrderDto[]> => {
-    const query = status !== undefined ? `?status=${status}` : '';
+    const query = status !== undefined ? `?status=${status}` : "";
     return request(`/rubber-lining/portal/orders${query}`);
   },
 
@@ -352,43 +368,46 @@ export const rubberPortalApi = {
       callOffs?: CallOff[];
     }[];
   }): Promise<RubberOrderDto> => {
-    return request('/rubber-lining/portal/orders', {
-      method: 'POST',
+    return request("/rubber-lining/portal/orders", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  updateOrder: async (id: number, data: {
-    companyOrderNumber?: string;
-    status?: number;
-    companyId?: number;
-    items?: {
-      productId?: number;
-      thickness?: number;
-      width?: number;
-      length?: number;
-      quantity?: number;
-      callOffs?: CallOff[];
-    }[];
-  }): Promise<RubberOrderDto> => {
+  updateOrder: async (
+    id: number,
+    data: {
+      companyOrderNumber?: string;
+      status?: number;
+      companyId?: number;
+      items?: {
+        productId?: number;
+        thickness?: number;
+        width?: number;
+        length?: number;
+        quantity?: number;
+        callOffs?: CallOff[];
+      }[];
+    },
+  ): Promise<RubberOrderDto> => {
     return request(`/rubber-lining/portal/orders/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   },
 
   deleteOrder: async (id: number): Promise<void> => {
     return request(`/rubber-lining/portal/orders/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   },
 
   orderStatuses: async (): Promise<{ value: number; label: string }[]> => {
-    return request('/rubber-lining/portal/order-statuses');
+    return request("/rubber-lining/portal/order-statuses");
   },
 
   codingTypes: async (): Promise<{ value: string; label: string }[]> => {
-    return request('/rubber-lining/portal/coding-types');
+    return request("/rubber-lining/portal/coding-types");
   },
 
   calculatePrice: async (data: {
@@ -399,8 +418,8 @@ export const rubberPortalApi = {
     length: number;
     quantity: number;
   }): Promise<RubberPriceCalculationDto> => {
-    return request('/rubber-lining/portal/calculate-price', {
-      method: 'POST',
+    return request("/rubber-lining/portal/calculate-price", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   },
@@ -409,8 +428,8 @@ export const rubberPortalApi = {
     rows: ImportProductRowDto[];
     updateExisting?: boolean;
   }): Promise<ImportProductsResultDto> => {
-    return request('/rubber-lining/portal/products/import', {
-      method: 'POST',
+    return request("/rubber-lining/portal/products/import", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   },

@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from "react";
 import {
-  PUMP_MANUFACTURERS,
-  SA_PUMP_SUPPLIERS,
-  PUMP_STANDARDS,
   PARTS_SUPPLIERS,
-} from '@/app/lib/config/pumps';
-import { Breadcrumb } from '../components/Breadcrumb';
+  PUMP_MANUFACTURERS,
+  PUMP_STANDARDS,
+  SA_PUMP_SUPPLIERS,
+} from "@/app/lib/config/pumps";
+import { Breadcrumb } from "../components/Breadcrumb";
 
-type TabId = 'manufacturers' | 'sa_suppliers' | 'parts_suppliers' | 'standards';
+type TabId = "manufacturers" | "sa_suppliers" | "parts_suppliers" | "standards";
 
 interface Tab {
   id: TabId;
@@ -18,14 +18,14 @@ interface Tab {
 }
 
 export default function PumpSuppliersPage() {
-  const [activeTab, setActiveTab] = useState<TabId>('manufacturers');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<TabId>("manufacturers");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const tabs: Tab[] = [
-    { id: 'manufacturers', label: 'Global Manufacturers', count: PUMP_MANUFACTURERS.length },
-    { id: 'sa_suppliers', label: 'SA Suppliers', count: SA_PUMP_SUPPLIERS.length },
-    { id: 'parts_suppliers', label: 'Parts Suppliers', count: PARTS_SUPPLIERS.length },
-    { id: 'standards', label: 'Industry Standards', count: PUMP_STANDARDS.length },
+    { id: "manufacturers", label: "Global Manufacturers", count: PUMP_MANUFACTURERS.length },
+    { id: "sa_suppliers", label: "SA Suppliers", count: SA_PUMP_SUPPLIERS.length },
+    { id: "parts_suppliers", label: "Parts Suppliers", count: PARTS_SUPPLIERS.length },
+    { id: "standards", label: "Industry Standards", count: PUMP_STANDARDS.length },
   ];
 
   const filteredManufacturers = useMemo(() => {
@@ -35,7 +35,7 @@ export default function PumpSuppliersPage() {
       (m) =>
         m.name.toLowerCase().includes(query) ||
         m.description.toLowerCase().includes(query) ||
-        (m.productsOffered ?? []).some((p) => p.toLowerCase().includes(query))
+        (m.productsOffered ?? []).some((p) => p.toLowerCase().includes(query)),
     );
   }, [searchQuery]);
 
@@ -46,7 +46,7 @@ export default function PumpSuppliersPage() {
       (s) =>
         s.name.toLowerCase().includes(query) ||
         s.description.toLowerCase().includes(query) ||
-        (s.productsOffered ?? []).some((p) => p.toLowerCase().includes(query))
+        (s.productsOffered ?? []).some((p) => p.toLowerCase().includes(query)),
     );
   }, [searchQuery]);
 
@@ -57,7 +57,7 @@ export default function PumpSuppliersPage() {
       (s) =>
         s.name.toLowerCase().includes(query) ||
         s.description.toLowerCase().includes(query) ||
-        (s.productsOffered ?? []).some((p) => p.toLowerCase().includes(query))
+        (s.productsOffered ?? []).some((p) => p.toLowerCase().includes(query)),
     );
   }, [searchQuery]);
 
@@ -65,15 +65,13 @@ export default function PumpSuppliersPage() {
     if (!searchQuery) return PUMP_STANDARDS;
     const query = searchQuery.toLowerCase();
     return PUMP_STANDARDS.filter(
-      (s) =>
-        s.name.toLowerCase().includes(query) ||
-        s.description.toLowerCase().includes(query)
+      (s) => s.name.toLowerCase().includes(query) || s.description.toLowerCase().includes(query),
     );
   }, [searchQuery]);
 
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: 'Suppliers & Standards' }]} />
+      <Breadcrumb items={[{ label: "Suppliers & Standards" }]} />
 
       <div className="flex items-center justify-between">
         <div>
@@ -91,9 +89,17 @@ export default function PumpSuppliersPage() {
             className="block w-64 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+            <button
+              onClick={() => setSearchQuery("")}
+              className="text-gray-400 hover:text-gray-600"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           )}
@@ -108,14 +114,16 @@ export default function PumpSuppliersPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
               {tab.label}
-              <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
-                activeTab === tab.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
-              }`}>
+              <span
+                className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                  activeTab === tab.id ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-600"
+                }`}
+              >
                 {tab.count}
               </span>
             </button>
@@ -123,7 +131,7 @@ export default function PumpSuppliersPage() {
         </nav>
       </div>
 
-      {activeTab === 'manufacturers' && (
+      {activeTab === "manufacturers" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredManufacturers.length === 0 ? (
             <div className="col-span-full text-center py-12 text-gray-500">
@@ -131,7 +139,10 @@ export default function PumpSuppliersPage() {
             </div>
           ) : (
             filteredManufacturers.map((mfr) => (
-              <div key={mfr.name} className="bg-white shadow rounded-lg p-5 hover:shadow-md transition-shadow">
+              <div
+                key={mfr.name}
+                className="bg-white shadow rounded-lg p-5 hover:shadow-md transition-shadow"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900">{mfr.name}</h3>
@@ -144,8 +155,18 @@ export default function PumpSuppliersPage() {
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 flex-shrink-0 ml-2"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
                       </svg>
                     </a>
                   )}
@@ -171,7 +192,7 @@ export default function PumpSuppliersPage() {
         </div>
       )}
 
-      {activeTab === 'sa_suppliers' && (
+      {activeTab === "sa_suppliers" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredSaSuppliers.length === 0 ? (
             <div className="col-span-full text-center py-12 text-gray-500">
@@ -179,7 +200,10 @@ export default function PumpSuppliersPage() {
             </div>
           ) : (
             filteredSaSuppliers.map((supplier) => (
-              <div key={supplier.name} className="bg-white shadow rounded-lg p-5 hover:shadow-md transition-shadow">
+              <div
+                key={supplier.name}
+                className="bg-white shadow rounded-lg p-5 hover:shadow-md transition-shadow"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900">{supplier.name}</h3>
@@ -194,8 +218,18 @@ export default function PumpSuppliersPage() {
                         className="text-blue-600 hover:text-blue-800"
                         title="Website"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
                         </svg>
                       </a>
                     )}
@@ -203,7 +237,9 @@ export default function PumpSuppliersPage() {
                 </div>
                 {supplier.productsOffered && supplier.productsOffered.length > 0 && (
                   <div className="mt-3">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Products & Services</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                      Products & Services
+                    </p>
                     <div className="flex flex-wrap gap-1">
                       {supplier.productsOffered.map((product) => (
                         <span
@@ -222,7 +258,7 @@ export default function PumpSuppliersPage() {
         </div>
       )}
 
-      {activeTab === 'parts_suppliers' && (
+      {activeTab === "parts_suppliers" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredPartsSuppliers.length === 0 ? (
             <div className="col-span-full text-center py-12 text-gray-500">
@@ -230,7 +266,10 @@ export default function PumpSuppliersPage() {
             </div>
           ) : (
             filteredPartsSuppliers.map((supplier) => (
-              <div key={supplier.name} className="bg-white shadow rounded-lg p-5 hover:shadow-md transition-shadow">
+              <div
+                key={supplier.name}
+                className="bg-white shadow rounded-lg p-5 hover:shadow-md transition-shadow"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900">{supplier.name}</h3>
@@ -243,8 +282,18 @@ export default function PumpSuppliersPage() {
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 flex-shrink-0 ml-2"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
                       </svg>
                     </a>
                   )}
@@ -275,7 +324,7 @@ export default function PumpSuppliersPage() {
         </div>
       )}
 
-      {activeTab === 'standards' && (
+      {activeTab === "standards" && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           {filteredStandards.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
@@ -285,13 +334,22 @@ export default function PumpSuppliersPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Standard
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Description
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Link
                   </th>
                 </tr>
@@ -304,9 +362,7 @@ export default function PumpSuppliersPage() {
                         {standard.name}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {standard.description}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">{standard.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {standard.url && (
                         <a
@@ -329,16 +385,26 @@ export default function PumpSuppliersPage() {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex">
-          <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="h-5 w-5 text-blue-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-blue-800">Reference Data</h3>
             <div className="mt-2 text-sm text-blue-700">
               <p>
-                This directory contains reference information for pump manufacturers, local suppliers,
-                parts suppliers, and industry standards. Contact information is provided for convenience
-                and should be verified before use.
+                This directory contains reference information for pump manufacturers, local
+                suppliers, parts suppliers, and industry standards. Contact information is provided
+                for convenience and should be verified before use.
               </p>
             </div>
           </div>

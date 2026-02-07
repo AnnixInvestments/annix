@@ -1,19 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Commodity } from './entities/commodity.entity';
-import { SaMine, OperationalStatus } from './entities/sa-mine.entity';
-import { SlurryProfile, RiskLevel } from './entities/slurry-profile.entity';
-import { LiningCoatingRule } from './entities/lining-coating-rule.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import {
   CommodityDto,
-  SaMineDto,
-  SlurryProfileDto,
+  CreateSaMineDto,
   LiningCoatingRuleDto,
   MineWithEnvironmentalDataDto,
-  CreateSaMineDto,
-} from './dto/mine.dto';
-import { MineType } from './entities/sa-mine.entity';
+  SaMineDto,
+  SlurryProfileDto,
+} from "./dto/mine.dto";
+import { Commodity } from "./entities/commodity.entity";
+import { LiningCoatingRule } from "./entities/lining-coating-rule.entity";
+import { MineType, OperationalStatus, SaMine } from "./entities/sa-mine.entity";
+import { RiskLevel, SlurryProfile } from "./entities/slurry-profile.entity";
 
 @Injectable()
 export class MinesService {
@@ -30,7 +29,7 @@ export class MinesService {
 
   async getAllCommodities(): Promise<CommodityDto[]> {
     const commodities = await this.commodityRepository.find({
-      order: { commodityName: 'ASC' },
+      order: { commodityName: "ASC" },
     });
     return commodities.map(this.mapCommodityToDto);
   }
@@ -41,20 +40,20 @@ export class MinesService {
     status?: OperationalStatus,
   ): Promise<SaMineDto[]> {
     const query = this.saMineRepository
-      .createQueryBuilder('mine')
-      .leftJoinAndSelect('mine.commodity', 'commodity')
-      .orderBy('mine.mineName', 'ASC');
+      .createQueryBuilder("mine")
+      .leftJoinAndSelect("mine.commodity", "commodity")
+      .orderBy("mine.mineName", "ASC");
 
     if (commodityId) {
-      query.andWhere('mine.commodityId = :commodityId', { commodityId });
+      query.andWhere("mine.commodityId = :commodityId", { commodityId });
     }
 
     if (province) {
-      query.andWhere('mine.province = :province', { province });
+      query.andWhere("mine.province = :province", { province });
     }
 
     if (status) {
-      query.andWhere('mine.operationalStatus = :status', { status });
+      query.andWhere("mine.operationalStatus = :status", { status });
     }
 
     const mines = await query.getMany();
@@ -68,7 +67,7 @@ export class MinesService {
   async getMineById(id: number): Promise<SaMineDto> {
     const mine = await this.saMineRepository.findOne({
       where: { id },
-      relations: ['commodity'],
+      relations: ["commodity"],
     });
 
     if (!mine) {
@@ -78,12 +77,10 @@ export class MinesService {
     return this.mapMineToDto(mine);
   }
 
-  async getMineWithEnvironmentalData(
-    mineId: number,
-  ): Promise<MineWithEnvironmentalDataDto> {
+  async getMineWithEnvironmentalData(mineId: number): Promise<MineWithEnvironmentalDataDto> {
     const mine = await this.saMineRepository.findOne({
       where: { id: mineId },
-      relations: ['commodity'],
+      relations: ["commodity"],
     });
 
     if (!mine) {
@@ -93,7 +90,7 @@ export class MinesService {
     // Get slurry profile for this commodity
     const slurryProfile = await this.slurryProfileRepository.findOne({
       where: { commodityId: mine.commodityId },
-      relations: ['commodity'],
+      relations: ["commodity"],
     });
 
     // Get lining recommendation based on slurry profile risks
@@ -107,21 +104,17 @@ export class MinesService {
 
     return {
       mine: this.mapMineToDto(mine),
-      slurryProfile: slurryProfile
-        ? this.mapSlurryProfileToDto(slurryProfile)
-        : null,
+      slurryProfile: slurryProfile ? this.mapSlurryProfileToDto(slurryProfile) : null,
       liningRecommendation: liningRecommendation
         ? this.mapLiningRuleToDto(liningRecommendation)
         : null,
     };
   }
 
-  async getSlurryProfileByCommodity(
-    commodityId: number,
-  ): Promise<SlurryProfileDto | null> {
+  async getSlurryProfileByCommodity(commodityId: number): Promise<SlurryProfileDto | null> {
     const profile = await this.slurryProfileRepository.findOne({
       where: { commodityId },
-      relations: ['commodity'],
+      relations: ["commodity"],
     });
 
     return profile ? this.mapSlurryProfileToDto(profile) : null;
@@ -129,8 +122,8 @@ export class MinesService {
 
   async getAllSlurryProfiles(): Promise<SlurryProfileDto[]> {
     const profiles = await this.slurryProfileRepository.find({
-      relations: ['commodity'],
-      order: { commodityId: 'ASC' },
+      relations: ["commodity"],
+      order: { commodityId: "ASC" },
     });
     return profiles.map(this.mapSlurryProfileToDto);
   }
@@ -144,22 +137,22 @@ export class MinesService {
         abrasionLevel,
         corrosionLevel,
       },
-      order: { priority: 'DESC' },
+      order: { priority: "DESC" },
     });
   }
 
   async getAllLiningRules(): Promise<LiningCoatingRuleDto[]> {
     const rules = await this.liningCoatingRuleRepository.find({
-      order: { abrasionLevel: 'ASC', corrosionLevel: 'ASC' },
+      order: { abrasionLevel: "ASC", corrosionLevel: "ASC" },
     });
     return rules.map(this.mapLiningRuleToDto);
   }
 
   async getProvinces(): Promise<string[]> {
     const result = await this.saMineRepository
-      .createQueryBuilder('mine')
-      .select('DISTINCT mine.province', 'province')
-      .orderBy('mine.province', 'ASC')
+      .createQueryBuilder("mine")
+      .select("DISTINCT mine.province", "province")
+      .orderBy("mine.province", "ASC")
       .getRawMany();
     return result.map((r) => r.province);
   }
@@ -171,9 +164,7 @@ export class MinesService {
     });
 
     if (!commodity) {
-      throw new NotFoundException(
-        `Commodity with ID ${createMineDto.commodityId} not found`,
-      );
+      throw new NotFoundException(`Commodity with ID ${createMineDto.commodityId} not found`);
     }
 
     const mine = this.saMineRepository.create({
@@ -184,8 +175,7 @@ export class MinesService {
       district: createMineDto.district || null,
       physicalAddress: createMineDto.physicalAddress || null,
       mineType: createMineDto.mineType || MineType.UNDERGROUND,
-      operationalStatus:
-        createMineDto.operationalStatus || OperationalStatus.ACTIVE,
+      operationalStatus: createMineDto.operationalStatus || OperationalStatus.ACTIVE,
       latitude: createMineDto.latitude || null,
       longitude: createMineDto.longitude || null,
     });
@@ -195,7 +185,7 @@ export class MinesService {
     // Reload with commodity relation
     const mineWithRelations = await this.saMineRepository.findOne({
       where: { id: savedMine.id },
-      relations: ['commodity'],
+      relations: ["commodity"],
     });
 
     return this.mapMineToDto(mineWithRelations!);

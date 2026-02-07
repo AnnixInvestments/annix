@@ -1,16 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { Injectable } from "@nestjs/common";
+import { DataSource } from "typeorm";
 import {
-  ExpansionRequirementDto,
-  ExpansionRequirementResponseDto,
+  BellowsOptionDto,
   BellowsSelectionDto,
   BellowsSelectionResponseDto,
-  BellowsOptionDto,
+  ExpansionCoefficientDto,
+  ExpansionRequirementDto,
+  ExpansionRequirementResponseDto,
   LoopSizingDto,
   LoopSizingResponseDto,
-  ExpansionCoefficientDto,
   ThermalMaterial,
-} from './dto/thermal.dto';
+} from "./dto/thermal.dto";
 
 interface ExpansionCoefficient {
   material_code: string;
@@ -69,16 +69,16 @@ export class ThermalService {
   };
 
   private readonly materialNames: Record<ThermalMaterial, string> = {
-    [ThermalMaterial.CARBON_STEEL]: 'Carbon Steel',
-    [ThermalMaterial.STAINLESS_304]: 'Stainless Steel 304',
-    [ThermalMaterial.STAINLESS_316]: 'Stainless Steel 316',
-    [ThermalMaterial.DUPLEX_2205]: 'Duplex 2205',
-    [ThermalMaterial.INCONEL_625]: 'Inconel 625',
-    [ThermalMaterial.MONEL_400]: 'Monel 400',
-    [ThermalMaterial.HASTELLOY_C276]: 'Hastelloy C-276',
-    [ThermalMaterial.COPPER]: 'Copper',
-    [ThermalMaterial.ALUMINUM_6061]: 'Aluminum 6061',
-    [ThermalMaterial.CHROME_MOLY_P22]: 'Chrome-Moly P22',
+    [ThermalMaterial.CARBON_STEEL]: "Carbon Steel",
+    [ThermalMaterial.STAINLESS_304]: "Stainless Steel 304",
+    [ThermalMaterial.STAINLESS_316]: "Stainless Steel 316",
+    [ThermalMaterial.DUPLEX_2205]: "Duplex 2205",
+    [ThermalMaterial.INCONEL_625]: "Inconel 625",
+    [ThermalMaterial.MONEL_400]: "Monel 400",
+    [ThermalMaterial.HASTELLOY_C276]: "Hastelloy C-276",
+    [ThermalMaterial.COPPER]: "Copper",
+    [ThermalMaterial.ALUMINUM_6061]: "Aluminum 6061",
+    [ThermalMaterial.CHROME_MOLY_P22]: "Chrome-Moly P22",
   };
 
   constructor(private readonly dataSource: DataSource) {}
@@ -90,24 +90,15 @@ export class ThermalService {
     const temperatureChange = toTempC - fromTempC;
     const isExpansion = temperatureChange > 0;
 
-    const coefficient = await this.interpolatedCoefficient(
-      material,
-      fromTempC,
-      toTempC,
-    );
+    const coefficient = await this.interpolatedCoefficient(material, fromTempC, toTempC);
 
-    const expansionMm =
-      coefficient * lengthM * 1000 * Math.abs(temperatureChange);
-    const expansionPerMeterMm =
-      coefficient * 1000 * Math.abs(temperatureChange);
+    const expansionMm = coefficient * lengthM * 1000 * Math.abs(temperatureChange);
+    const expansionPerMeterMm = coefficient * 1000 * Math.abs(temperatureChange);
 
-    const recommendedJointCapacityMm =
-      Math.ceil((expansionMm * 1.25) / 25) * 25;
+    const recommendedJointCapacityMm = Math.ceil((expansionMm * 1.25) / 25) * 25;
     const maxSingleJointMovement = 50;
     const recommendedNumberOfJoints =
-      expansionMm > maxSingleJointMovement
-        ? Math.ceil(expansionMm / maxSingleJointMovement)
-        : 1;
+      expansionMm > maxSingleJointMovement ? Math.ceil(expansionMm / maxSingleJointMovement) : 1;
 
     let recommendedLoopHeightMm: number | undefined;
     let recommendedLoopType: string | undefined;
@@ -117,7 +108,7 @@ export class ThermalService {
         nominalSizeMm,
         expansionMm: Math.ceil(expansionMm),
         material,
-        schedule: dto.schedule || 'Std',
+        schedule: dto.schedule || "Std",
       });
       recommendedLoopHeightMm = loopSizing.loopHeightMm;
       recommendedLoopType = loopSizing.loopType;
@@ -142,13 +133,11 @@ export class ThermalService {
       recommendedLoopHeightMm,
       recommendedLoopType,
       notes,
-      referenceStandard: 'ASME B31.3',
+      referenceStandard: "ASME B31.3",
     };
   }
 
-  async bellowsSelection(
-    dto: BellowsSelectionDto,
-  ): Promise<BellowsSelectionResponseDto> {
+  async bellowsSelection(dto: BellowsSelectionDto): Promise<BellowsSelectionResponseDto> {
     const {
       nominalSizeMm,
       axialMovementMm,
@@ -191,7 +180,7 @@ export class ThermalService {
       query += ` AND bellows_material = $${params.length}`;
     }
 
-    query += ' ORDER BY list_price_zar ASC';
+    query += " ORDER BY list_price_zar ASC";
 
     const results: BellowsJoint[] = await this.dataSource.query(query, params);
 
@@ -205,20 +194,14 @@ export class ThermalService {
         nominalSizeMm: b.nominal_size_mm,
         axialCompressionMm: parseFloat(b.axial_compression_mm),
         axialExtensionMm: parseFloat(b.axial_extension_mm),
-        lateralOffsetMm: b.lateral_offset_mm
-          ? parseFloat(b.lateral_offset_mm)
-          : undefined,
-        angularRotationDeg: b.angular_rotation_deg
-          ? parseFloat(b.angular_rotation_deg)
-          : undefined,
+        lateralOffsetMm: b.lateral_offset_mm ? parseFloat(b.lateral_offset_mm) : undefined,
+        angularRotationDeg: b.angular_rotation_deg ? parseFloat(b.angular_rotation_deg) : undefined,
         maxPressureBar: parseFloat(b.max_pressure_bar),
         maxTemperatureC: b.max_temperature_c,
         minTemperatureC: b.min_temperature_c,
         faceToFaceLengthMm: parseFloat(b.face_to_face_length_mm),
         weightKg: parseFloat(b.weight_kg),
-        listPriceZar: b.list_price_zar
-          ? parseFloat(b.list_price_zar)
-          : undefined,
+        listPriceZar: b.list_price_zar ? parseFloat(b.list_price_zar) : undefined,
         suitabilityScore,
         notes: this.bellowsNotes(b, dto),
       };
@@ -232,13 +215,7 @@ export class ThermalService {
   }
 
   async loopSizing(dto: LoopSizingDto): Promise<LoopSizingResponseDto> {
-    const {
-      nominalSizeMm,
-      expansionMm,
-      material,
-      schedule,
-      preferredLoopType,
-    } = dto;
+    const { nominalSizeMm, expansionMm, material, schedule, preferredLoopType } = dto;
 
     let exactQuery = `
       SELECT *
@@ -253,7 +230,7 @@ export class ThermalService {
       nominalSizeMm,
       expansionMm,
       material,
-      schedule || 'Std',
+      schedule || "Std",
     ];
 
     if (preferredLoopType) {
@@ -261,12 +238,9 @@ export class ThermalService {
       exactQuery += ` AND loop_type = $${exactParams.length}`;
     }
 
-    exactQuery += ' LIMIT 1';
+    exactQuery += " LIMIT 1";
 
-    const exactResults: LoopSizing[] = await this.dataSource.query(
-      exactQuery,
-      exactParams,
-    );
+    const exactResults: LoopSizing[] = await this.dataSource.query(exactQuery, exactParams);
 
     if (exactResults.length > 0) {
       const exactMatch = exactResults[0];
@@ -302,19 +276,10 @@ export class ThermalService {
       LIMIT 1
     `;
 
-    const [lowerResults, higherResults]: [LoopSizing[], LoopSizing[]] =
-      await Promise.all([
-        this.dataSource.query(lowerQuery, [
-          nominalSizeMm,
-          material,
-          expansionMm,
-        ]),
-        this.dataSource.query(higherQuery, [
-          nominalSizeMm,
-          material,
-          expansionMm,
-        ]),
-      ]);
+    const [lowerResults, higherResults]: [LoopSizing[], LoopSizing[]] = await Promise.all([
+      this.dataSource.query(lowerQuery, [nominalSizeMm, material, expansionMm]),
+      this.dataSource.query(higherQuery, [nominalSizeMm, material, expansionMm]),
+    ]);
 
     const nearestLower = lowerResults[0];
     const nearestHigher = higherResults[0];
@@ -334,9 +299,7 @@ export class ThermalService {
       );
       const interpolatedPipeLen = Math.round(
         nearestLower.total_pipe_length_mm +
-          ratio *
-            (nearestHigher.total_pipe_length_mm -
-              nearestLower.total_pipe_length_mm),
+          ratio * (nearestHigher.total_pipe_length_mm - nearestLower.total_pipe_length_mm),
       );
 
       return {
@@ -351,27 +314,22 @@ export class ThermalService {
       };
     }
 
-    const calculatedHeight = this.calculateLoopHeight(
-      nominalSizeMm,
-      expansionMm,
-      material,
-    );
+    const calculatedHeight = this.calculateLoopHeight(nominalSizeMm, expansionMm, material);
 
     return {
-      loopType: 'full_loop',
+      loopType: "full_loop",
       loopHeightMm: calculatedHeight,
       loopWidthMm: Math.round(calculatedHeight / 2),
       totalPipeLengthMm: calculatedHeight * 3,
       numberOfElbows: 4,
       elbowRadiusFactor: 1.5,
       isCalculated: true,
-      notes: `Calculated using guided cantilever formula. H = 3√(Δ × OD × 0.03 / SA). Consider verifying with stress analysis for critical applications.`,
+      notes:
+        "Calculated using guided cantilever formula. H = 3√(Δ × OD × 0.03 / SA). Consider verifying with stress analysis for critical applications.",
     };
   }
 
-  async coefficientsForMaterial(
-    material: ThermalMaterial,
-  ): Promise<ExpansionCoefficientDto[]> {
+  async coefficientsForMaterial(material: ThermalMaterial): Promise<ExpansionCoefficientDto[]> {
     const query = `
       SELECT *
       FROM pipe_expansion_coefficients
@@ -379,9 +337,7 @@ export class ThermalService {
       ORDER BY temperature_c ASC
     `;
 
-    const results: ExpansionCoefficient[] = await this.dataSource.query(query, [
-      material,
-    ]);
+    const results: ExpansionCoefficient[] = await this.dataSource.query(query, [material]);
 
     return results.map((r) => ({
       materialCode: r.material_code,
@@ -441,13 +397,11 @@ export class ThermalService {
       LIMIT 1
     `;
 
-    const [lowerResults, higherResults]: [
-      ExpansionCoefficient[],
-      ExpansionCoefficient[],
-    ] = await Promise.all([
-      this.dataSource.query(lowerQuery, [material, avgTemp]),
-      this.dataSource.query(higherQuery, [material, avgTemp]),
-    ]);
+    const [lowerResults, higherResults]: [ExpansionCoefficient[], ExpansionCoefficient[]] =
+      await Promise.all([
+        this.dataSource.query(lowerQuery, [material, avgTemp]),
+        this.dataSource.query(higherQuery, [material, avgTemp]),
+      ]);
 
     const lower = lowerResults[0];
     const higher = higherResults[0];
@@ -468,9 +422,7 @@ export class ThermalService {
       return parseFloat(lower.mean_coefficient_per_c);
     }
 
-    const ratio =
-      (avgTemp - lower.temperature_c) /
-      (higher.temperature_c - lower.temperature_c);
+    const ratio = (avgTemp - lower.temperature_c) / (higher.temperature_c - lower.temperature_c);
     const lowerCoeff = parseFloat(lower.mean_coefficient_per_c);
     const higherCoeff = parseFloat(higher.mean_coefficient_per_c);
 
@@ -498,36 +450,28 @@ export class ThermalService {
     const allowableStressMpa =
       material === ThermalMaterial.CARBON_STEEL
         ? 207
-        : material === ThermalMaterial.STAINLESS_304 ||
-            material === ThermalMaterial.STAINLESS_316
+        : material === ThermalMaterial.STAINLESS_304 || material === ThermalMaterial.STAINLESS_316
           ? 172
           : 165;
 
-    const height =
-      3 * Math.sqrt((expansionMm * od * 0.03) / allowableStressMpa);
+    const height = 3 * Math.sqrt((expansionMm * od * 0.03) / allowableStressMpa);
     const heightMm = height * 1000;
 
     return Math.ceil(heightMm / 50) * 50;
   }
 
-  private calculateBellowsSuitability(
-    bellows: BellowsJoint,
-    dto: BellowsSelectionDto,
-  ): number {
+  private calculateBellowsSuitability(bellows: BellowsJoint, dto: BellowsSelectionDto): number {
     let score = 100;
 
     const totalAxial =
-      parseFloat(bellows.axial_compression_mm) +
-      parseFloat(bellows.axial_extension_mm);
-    const axialMargin =
-      (totalAxial - dto.axialMovementMm) / dto.axialMovementMm;
+      parseFloat(bellows.axial_compression_mm) + parseFloat(bellows.axial_extension_mm);
+    const axialMargin = (totalAxial - dto.axialMovementMm) / dto.axialMovementMm;
     if (axialMargin > 0.5) score -= 10;
     if (axialMargin > 1.0) score -= 10;
     if (axialMargin < 0.2) score -= 20;
 
     const pressureMargin =
-      (parseFloat(bellows.max_pressure_bar) - dto.designPressureBar) /
-      dto.designPressureBar;
+      (parseFloat(bellows.max_pressure_bar) - dto.designPressureBar) / dto.designPressureBar;
     if (pressureMargin > 1.0) score -= 5;
     if (pressureMargin < 0.2) score -= 15;
 
@@ -535,37 +479,31 @@ export class ThermalService {
       score += 10;
     }
 
-    if (bellows.bellows_material.includes('stainless')) {
+    if (bellows.bellows_material.includes("stainless")) {
       score += 5;
     }
 
     return Math.max(0, Math.min(100, score));
   }
 
-  private bellowsNotes(
-    bellows: BellowsJoint,
-    dto: BellowsSelectionDto,
-  ): string {
+  private bellowsNotes(bellows: BellowsJoint, dto: BellowsSelectionDto): string {
     const notes: string[] = [];
 
     const totalAxial =
-      parseFloat(bellows.axial_compression_mm) +
-      parseFloat(bellows.axial_extension_mm);
-    const axialMargin =
-      ((totalAxial - dto.axialMovementMm) / dto.axialMovementMm) * 100;
+      parseFloat(bellows.axial_compression_mm) + parseFloat(bellows.axial_extension_mm);
+    const axialMargin = ((totalAxial - dto.axialMovementMm) / dto.axialMovementMm) * 100;
     notes.push(`Axial capacity margin: ${axialMargin.toFixed(0)}%`);
 
     const pressureMargin =
-      ((parseFloat(bellows.max_pressure_bar) - dto.designPressureBar) /
-        dto.designPressureBar) *
+      ((parseFloat(bellows.max_pressure_bar) - dto.designPressureBar) / dto.designPressureBar) *
       100;
     notes.push(`Pressure rating margin: ${pressureMargin.toFixed(0)}%`);
 
-    if (bellows.joint_type === 'tied_universal') {
-      notes.push('Tie rods transfer pressure thrust - no anchor required');
+    if (bellows.joint_type === "tied_universal") {
+      notes.push("Tie rods transfer pressure thrust - no anchor required");
     }
 
-    return notes.join('. ');
+    return notes.join(". ");
   }
 
   private buildExpansionNotes(
@@ -574,38 +512,35 @@ export class ThermalService {
     joints: number,
     material: ThermalMaterial,
   ): string {
-    const direction = tempChange > 0 ? 'expansion' : 'contraction';
+    const direction = tempChange > 0 ? "expansion" : "contraction";
     const absExpansion = Math.abs(expansion);
     const notes: string[] = [];
 
     notes.push(`Thermal ${direction}: ΔL = α × L × ΔT`);
 
     if (absExpansion < 10) {
-      notes.push('Minor movement - fixed supports may be acceptable');
+      notes.push("Minor movement - fixed supports may be acceptable");
     } else if (absExpansion < 50) {
-      notes.push('Moderate movement - expansion loops or bellows recommended');
+      notes.push("Moderate movement - expansion loops or bellows recommended");
     } else {
-      notes.push('Significant movement - expansion joints required');
+      notes.push("Significant movement - expansion joints required");
     }
 
     if (joints > 1) {
       notes.push(`Recommend ${joints} expansion points to distribute movement`);
     }
 
-    if (
-      material === ThermalMaterial.STAINLESS_304 ||
-      material === ThermalMaterial.STAINLESS_316
-    ) {
-      notes.push('Stainless steel has ~45% higher expansion than carbon steel');
+    if (material === ThermalMaterial.STAINLESS_304 || material === ThermalMaterial.STAINLESS_316) {
+      notes.push("Stainless steel has ~45% higher expansion than carbon steel");
     }
 
     if (material === ThermalMaterial.ALUMINUM_6061) {
       notes.push(
-        'Aluminum has very high expansion (~2x carbon steel) - ensure adequate flexibility',
+        "Aluminum has very high expansion (~2x carbon steel) - ensure adequate flexibility",
       );
     }
 
-    return notes.join('. ') + '.';
+    return `${notes.join(". ")}.`;
   }
 
   private buildSelectionNotes(count: number, dto: BellowsSelectionDto): string {
@@ -614,7 +549,7 @@ export class ThermalService {
     }
 
     if (count === 1) {
-      return 'Single option available. Verify suitability with manufacturer.';
+      return "Single option available. Verify suitability with manufacturer.";
     }
 
     return `${count} options available. Options sorted by suitability score. Consider lead time and availability when selecting.`;

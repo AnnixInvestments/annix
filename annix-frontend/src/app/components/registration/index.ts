@@ -1,12 +1,12 @@
-export { PasswordInput, ConfirmPasswordInput } from './PasswordInput';
-export { DocumentUploadBox, DocumentRequirementsList } from './DocumentUploadBox';
-export { ProfileFormFields } from './ProfileFormFields';
+export { DocumentRequirementsList, DocumentUploadBox } from "./DocumentUploadBox";
+export { ConfirmPasswordInput, PasswordInput } from "./PasswordInput";
+export { ProfileFormFields } from "./ProfileFormFields";
 export {
-  DeviceInfoDisplay,
-  SecurityNotice,
-  DocumentStorageNotice,
-  TermsAndConditions,
   AcceptanceCheckbox,
+  DeviceInfoDisplay,
+  DocumentStorageNotice,
   ErrorDisplay,
   InfoBanner,
-} from './SecurityStepComponents';
+  SecurityNotice,
+  TermsAndConditions,
+} from "./SecurityStepComponents";

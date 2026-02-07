@@ -1,9 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddMissingForeignKeyIndexes1780000000000
-  implements MigrationInterface
-{
-  name = 'AddMissingForeignKeyIndexes1780000000000';
+export class AddMissingForeignKeyIndexes1780000000000 implements MigrationInterface {
+  name = "AddMissingForeignKeyIndexes1780000000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -16,9 +14,7 @@ export class AddMissingForeignKeyIndexes1780000000000
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_boqs_drawing_id" ON "boqs" ("drawing_id")`,
     );
-    await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS "IDX_boqs_rfq_id" ON "boqs" ("rfq_id")`,
-    );
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_boqs_rfq_id" ON "boqs" ("rfq_id")`);
 
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_drawings_rfq_id" ON "drawings" ("rfq_id")`,

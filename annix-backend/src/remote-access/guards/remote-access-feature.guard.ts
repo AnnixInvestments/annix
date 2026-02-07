@@ -1,12 +1,12 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 @Injectable()
 export class RemoteAccessFeatureGuard implements CanActivate {
   constructor(private readonly configService: ConfigService) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const isEnabled = this.configService.get('ENABLE_REMOTE_ACCESS') === 'true';
+    const isEnabled = this.configService.get("ENABLE_REMOTE_ACCESS") === "true";
 
     if (!isEnabled) {
       return true;
@@ -16,6 +16,6 @@ export class RemoteAccessFeatureGuard implements CanActivate {
   }
 
   isFeatureEnabled(): boolean {
-    return this.configService.get('ENABLE_REMOTE_ACCESS') === 'true';
+    return this.configService.get("ENABLE_REMOTE_ACCESS") === "true";
   }
 }

@@ -1,35 +1,33 @@
+import * as crypto from "node:crypto";
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
-  ConflictException,
   NotFoundException,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
-
-import { now } from '../lib/datetime';
-
-import { User } from '../user/entities/user.entity';
-import { UserRole } from '../user-roles/entities/user-role.entity';
-import { AdminSession } from './entities/admin-session.entity';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/entities/audit-log.entity';
-import { EmailService } from '../email/email.service';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import * as bcrypt from "bcrypt";
+import { Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
+import { EmailService } from "../email/email.service";
+import { now } from "../lib/datetime";
+import { User } from "../user/entities/user.entity";
+import { UserRole } from "../user-roles/entities/user-role.entity";
 import {
-  AdminUserQueryDto,
-  CreateAdminUserDto,
-  UpdateAdminRoleDto,
-  DeactivateAdminUserDto,
+  AdminAuditItemDto,
+  AdminLoginHistoryItemDto,
+  AdminUserDetailDto,
   AdminUserListItemDto,
   AdminUserListResponseDto,
-  AdminUserDetailDto,
-  AdminLoginHistoryItemDto,
-  AdminAuditItemDto,
-} from './dto/admin-user-management.dto';
+  AdminUserQueryDto,
+  CreateAdminUserDto,
+  DeactivateAdminUserDto,
+  UpdateAdminRoleDto,
+} from "./dto/admin-user-management.dto";
+import { AdminSession } from "./entities/admin-session.entity";
 
 @Injectable()
 export class AdminUserManagementService {
@@ -49,30 +47,27 @@ export class AdminUserManagementService {
   /**
    * List all admin/employee users with pagination
    */
-  async listAdminUsers(
-    queryDto: AdminUserQueryDto,
-  ): Promise<AdminUserListResponseDto> {
+  async listAdminUsers(queryDto: AdminUserQueryDto): Promise<AdminUserListResponseDto> {
     const { search, role, page = 1, limit = 20 } = queryDto;
 
     const queryBuilder = this.userRepo
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.roles', 'roles')
-      .where('(roles.name = :admin OR roles.name = :employee)', {
-        admin: 'admin',
-        employee: 'employee',
+      .createQueryBuilder("user")
+      .leftJoinAndSelect("user.roles", "roles")
+      .where("(roles.name = :admin OR roles.name = :employee)", {
+        admin: "admin",
+        employee: "employee",
       });
 
     // Apply search filter
     if (search) {
-      queryBuilder.andWhere(
-        '(user.email LIKE :search OR user.username LIKE :search)',
-        { search: `%${search}%` },
-      );
+      queryBuilder.andWhere("(user.email LIKE :search OR user.username LIKE :search)", {
+        search: `%${search}%`,
+      });
     }
 
     // Apply role filter
     if (role) {
-      queryBuilder.andWhere('roles.name = :role', { role });
+      queryBuilder.andWhere("roles.name = :role", { role });
     }
 
     // Get total count
@@ -80,7 +75,7 @@ export class AdminUserManagementService {
 
     // Apply pagination
     const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit).orderBy('user.id', 'DESC');
+    queryBuilder.skip(skip).take(limit).orderBy("user.id", "DESC");
 
     // Execute query
     const users = await queryBuilder.getMany();
@@ -90,7 +85,7 @@ export class AdminUserManagementService {
       users.map(async (user) => {
         const session = await this.adminSessionRepo.findOne({
           where: { userId: user.id },
-          order: { createdAt: 'DESC' },
+          order: { createdAt: "DESC" },
         });
         return { userId: user.id, lastLogin: session?.createdAt };
       }),
@@ -100,8 +95,8 @@ export class AdminUserManagementService {
     const items: AdminUserListItemDto[] = users.map((user) => ({
       id: user.id,
       email: user.email,
-      firstName: user.username || '', // Assuming firstName stored in username
-      lastName: '',
+      firstName: user.username || "", // Assuming firstName stored in username
+      lastName: "",
       roles: user.roles.map((r) => r.name),
       createdAt: now().toJSDate(),
       lastLogin: lastLogins.find((ll) => ll.userId === user.id)?.lastLogin,
@@ -120,22 +115,18 @@ export class AdminUserManagementService {
   /**
    * Create a new admin or employee user
    */
-  async createAdminUser(
-    dto: CreateAdminUserDto,
-    createdBy: number,
-  ): Promise<User> {
+  async createAdminUser(dto: CreateAdminUserDto, createdBy: number): Promise<User> {
     // Check if user already exists
     const existingUser = await this.userRepo.findOne({
       where: { email: dto.email },
     });
 
     if (existingUser) {
-      throw new ConflictException('A user with this email already exists');
+      throw new ConflictException("A user with this email already exists");
     }
 
     // Generate temporary password if not provided
-    const temporaryPassword =
-      dto.temporaryPassword || this.generateTemporaryPassword();
+    const temporaryPassword = dto.temporaryPassword || this.generateTemporaryPassword();
 
     // Hash password
     const salt = await bcrypt.genSalt();
@@ -166,7 +157,7 @@ export class AdminUserManagementService {
       where: { id: createdBy },
     });
     await this.auditService.log({
-      entityType: 'user',
+      entityType: "user",
       entityId: savedUser.id,
       action: AuditAction.USER_CREATED,
       newValues: {
@@ -184,15 +175,11 @@ export class AdminUserManagementService {
         temporaryPassword,
       );
     } catch (error) {
-      this.logger.error(
-        `Failed to send welcome email to ${dto.email}: ${error.message}`,
-      );
+      this.logger.error(`Failed to send welcome email to ${dto.email}: ${error.message}`);
       // Don't fail the user creation if email fails
     }
 
-    this.logger.log(
-      `Admin user ${savedUser.id} (${dto.email}) created by user ${createdBy}`,
-    );
+    this.logger.log(`Admin user ${savedUser.id} (${dto.email}) created by user ${createdBy}`);
 
     return savedUser;
   }
@@ -200,14 +187,10 @@ export class AdminUserManagementService {
   /**
    * Update admin user role
    */
-  async updateAdminRole(
-    userId: number,
-    dto: UpdateAdminRoleDto,
-    updatedBy: number,
-  ): Promise<User> {
+  async updateAdminRole(userId: number, dto: UpdateAdminRoleDto, updatedBy: number): Promise<User> {
     const user = await this.userRepo.findOne({
       where: { id: userId },
-      relations: ['roles'],
+      relations: ["roles"],
     });
 
     if (!user) {
@@ -216,8 +199,8 @@ export class AdminUserManagementService {
 
     // Check if user is an admin/employee
     const roleNames = user.roles.map((r) => r.name);
-    if (!roleNames.includes('admin') && !roleNames.includes('employee')) {
-      throw new BadRequestException('User is not an admin or employee');
+    if (!roleNames.includes("admin") && !roleNames.includes("employee")) {
+      throw new BadRequestException("User is not an admin or employee");
     }
 
     // Get the new role
@@ -246,7 +229,7 @@ export class AdminUserManagementService {
       where: { id: updatedBy },
     });
     await this.auditService.log({
-      entityType: 'user',
+      entityType: "user",
       entityId: userId,
       action: AuditAction.USER_UPDATED,
       oldValues: { roles: oldRoles },
@@ -254,7 +237,7 @@ export class AdminUserManagementService {
     });
 
     this.logger.log(
-      `User ${userId} role updated from ${oldRoles.join(',')} to ${dto.role} by user ${updatedBy}`,
+      `User ${userId} role updated from ${oldRoles.join(",")} to ${dto.role} by user ${updatedBy}`,
     );
 
     return updatedUser;
@@ -270,7 +253,7 @@ export class AdminUserManagementService {
   ): Promise<void> {
     const user = await this.userRepo.findOne({
       where: { id: userId },
-      relations: ['roles'],
+      relations: ["roles"],
     });
 
     if (!user) {
@@ -279,7 +262,7 @@ export class AdminUserManagementService {
 
     // Prevent self-deactivation
     if (userId === deactivatedBy) {
-      throw new ForbiddenException('You cannot deactivate your own account');
+      throw new ForbiddenException("You cannot deactivate your own account");
     }
 
     // Revoke all sessions
@@ -293,11 +276,11 @@ export class AdminUserManagementService {
       where: { id: deactivatedBy },
     });
     await this.auditService.log({
-      entityType: 'user',
+      entityType: "user",
       entityId: userId,
       action: AuditAction.USER_DEACTIVATED,
       newValues: {
-        event: 'admin_user_deactivated',
+        event: "admin_user_deactivated",
         reason: dto.reason,
         deactivatedByAdmin: deactivatedBy,
       },
@@ -311,13 +294,10 @@ export class AdminUserManagementService {
   /**
    * Reactivate admin user
    */
-  async reactivateAdminUser(
-    userId: number,
-    reactivatedBy: number,
-  ): Promise<User> {
+  async reactivateAdminUser(userId: number, reactivatedBy: number): Promise<User> {
     const user = await this.userRepo.findOne({
       where: { id: userId },
-      relations: ['roles'],
+      relations: ["roles"],
     });
 
     if (!user) {
@@ -329,18 +309,16 @@ export class AdminUserManagementService {
       where: { id: reactivatedBy },
     });
     await this.auditService.log({
-      entityType: 'user',
+      entityType: "user",
       entityId: userId,
       action: AuditAction.USER_REACTIVATED,
       newValues: {
-        event: 'admin_user_reactivated',
+        event: "admin_user_reactivated",
         reactivatedByAdmin: reactivatedBy,
       },
     });
 
-    this.logger.log(
-      `Admin user ${userId} reactivated by user ${reactivatedBy}`,
-    );
+    this.logger.log(`Admin user ${userId} reactivated by user ${reactivatedBy}`);
 
     return user;
   }
@@ -351,7 +329,7 @@ export class AdminUserManagementService {
   async getAdminUserDetail(userId: number): Promise<AdminUserDetailDto> {
     const user = await this.userRepo.findOne({
       where: { id: userId },
-      relations: ['roles'],
+      relations: ["roles"],
     });
 
     if (!user) {
@@ -361,42 +339,35 @@ export class AdminUserManagementService {
     // Get login history (last 20 sessions)
     const sessions = await this.adminSessionRepo.find({
       where: { userId },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
       take: 20,
     });
 
-    const loginHistory: AdminLoginHistoryItemDto[] = sessions.map(
-      (session) => ({
-        id: session.id,
-        timestamp: session.createdAt,
-        clientIp: session.clientIp,
-        userAgent: session.userAgent,
-        success: !session.isRevoked,
-      }),
-    );
+    const loginHistory: AdminLoginHistoryItemDto[] = sessions.map((session) => ({
+      id: session.id,
+      timestamp: session.createdAt,
+      clientIp: session.clientIp,
+      userAgent: session.userAgent,
+      success: !session.isRevoked,
+    }));
 
     // Get audit trail (last 50 actions)
-    const auditLogs = await this.auditService.getUserActivity(
-      userId,
-      undefined,
-      undefined,
-      50,
-    );
+    const auditLogs = await this.auditService.getUserActivity(userId, undefined, undefined, 50);
     const auditTrail: AdminAuditItemDto[] = auditLogs.map((log) => ({
       id: log.id,
       timestamp: log.timestamp,
       action: log.action,
       entityType: log.entityType,
       entityId: log.entityId || 0,
-      details: log.newValues ? JSON.stringify(log.newValues) : '',
-      clientIp: log.ipAddress || '',
+      details: log.newValues ? JSON.stringify(log.newValues) : "",
+      clientIp: log.ipAddress || "",
     }));
 
     return {
       id: user.id,
       email: user.email,
-      firstName: user.username || '',
-      lastName: '',
+      firstName: user.username || "",
+      lastName: "",
       roles: user.roles.map((r) => r.name),
       createdAt: now().toJSDate(),
       lastLogin: sessions[0]?.createdAt,
@@ -410,6 +381,6 @@ export class AdminUserManagementService {
    * Generate a secure temporary password
    */
   private generateTemporaryPassword(): string {
-    return crypto.randomBytes(12).toString('base64').slice(0, 16);
+    return crypto.randomBytes(12).toString("base64").slice(0, 16);
   }
 }

@@ -10,22 +10,22 @@
  * - OpenWeatherMap: Temperature & Humidity (Global, requires API key)
  */
 
-import { nowMillis, generateUniqueId } from '@/app/lib/datetime';
-import { log } from '@/app/lib/logger';
+import { generateUniqueId, nowMillis } from "@/app/lib/datetime";
+import { log } from "@/app/lib/logger";
 
 // API Base URLs
-const SOILGRIDS_BASE = 'https://rest.isric.org/soilgrids/v2.0';
-const ISDASOIL_BASE = 'https://api.isda-africa.com';
-const AGROMONITORING_BASE = 'https://api.agromonitoring.com/agro/1.0';
-const SSURGO_BASE = 'https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest';
-const OPEN_METEO_BASE = 'https://api.open-meteo.com/v1';
-const OPENWEATHER_BASE = 'https://api.openweathermap.org/data/2.5';
+const SOILGRIDS_BASE = "https://rest.isric.org/soilgrids/v2.0";
+const ISDASOIL_BASE = "https://api.isda-africa.com";
+const AGROMONITORING_BASE = "https://api.agromonitoring.com/agro/1.0";
+const SSURGO_BASE = "https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest";
+const OPEN_METEO_BASE = "https://api.open-meteo.com/v1";
+const OPENWEATHER_BASE = "https://api.openweathermap.org/data/2.5";
 
 // Get API keys from environment
-const AGROMONITORING_API_KEY = process.env.NEXT_PUBLIC_AGROMONITORING_API_KEY || '';
-const OPENWEATHER_API_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || '';
-const ISDASOIL_USERNAME = process.env.NEXT_PUBLIC_ISDASOIL_USERNAME || '';
-const ISDASOIL_PASSWORD = process.env.NEXT_PUBLIC_ISDASOIL_PASSWORD || '';
+const AGROMONITORING_API_KEY = process.env.NEXT_PUBLIC_AGROMONITORING_API_KEY || "";
+const OPENWEATHER_API_KEY = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY || "";
+const ISDASOIL_USERNAME = process.env.NEXT_PUBLIC_ISDASOIL_USERNAME || "";
+const ISDASOIL_PASSWORD = process.env.NEXT_PUBLIC_ISDASOIL_PASSWORD || "";
 
 // Cache for iSDAsoil token (expires after 60 minutes)
 let iSDAsoilToken: { token: string; expires: number } | null = null;
@@ -87,17 +87,20 @@ export interface SoilGridsClassResponse {
  * Uses 0-5cm depth layer as specified
  * Returns null if the API is unavailable (graceful degradation)
  */
-export async function fetchSoilGridsTexture(lat: number, lng: number): Promise<SoilGridsResponse | null> {
+export async function fetchSoilGridsTexture(
+  lat: number,
+  lng: number,
+): Promise<SoilGridsResponse | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const response = await fetch(
       `${SOILGRIDS_BASE}/properties/query?` +
-      `lon=${lng}&lat=${lat}` +
-      `&property=clay&property=sand&property=silt&property=bdod&property=ocd` +
-      `&depth=0-5cm&value=mean`,
-      { signal: controller.signal }
+        `lon=${lng}&lat=${lat}` +
+        "&property=clay&property=sand&property=silt&property=bdod&property=ocd" +
+        "&depth=0-5cm&value=mean",
+      { signal: controller.signal },
     );
 
     if (!response.ok) {
@@ -107,7 +110,7 @@ export async function fetchSoilGridsTexture(lat: number, lng: number): Promise<S
 
     return await response.json();
   } catch (error) {
-    log.warn('SoilGrids Texture API error:', error);
+    log.warn("SoilGrids Texture API error:", error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -118,25 +121,29 @@ export async function fetchSoilGridsTexture(lat: number, lng: number): Promise<S
  * Fetch WRB soil classification from SoilGrids
  * Returns null if the API is unavailable (graceful degradation)
  */
-export async function fetchSoilGridsClassification(lat: number, lng: number): Promise<SoilGridsClassResponse | null> {
+export async function fetchSoilGridsClassification(
+  lat: number,
+  lng: number,
+): Promise<SoilGridsClassResponse | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const response = await fetch(
-      `${SOILGRIDS_BASE}/classification/query?` +
-      `lon=${lng}&lat=${lat}&number_classes=1`,
-      { signal: controller.signal }
+      `${SOILGRIDS_BASE}/classification/query?` + `lon=${lng}&lat=${lat}&number_classes=1`,
+      { signal: controller.signal },
     );
 
     if (!response.ok) {
-      log.warn(`SoilGrids Classification API error: ${response.status} - Service may be temporarily unavailable`);
+      log.warn(
+        `SoilGrids Classification API error: ${response.status} - Service may be temporarily unavailable`,
+      );
       return null;
     }
 
     return await response.json();
   } catch (error) {
-    log.warn('SoilGrids Classification API error:', error);
+    log.warn("SoilGrids Classification API error:", error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -170,21 +177,21 @@ export function extractSoilTexture(data: SoilGridsResponse | null): {
     if (!depth?.values?.mean) continue;
 
     switch (layer.name) {
-      case 'clay':
+      case "clay":
         // SoilGrids returns g/kg, convert to percentage
         result.clay = depth.values.mean / 10;
         break;
-      case 'sand':
+      case "sand":
         result.sand = depth.values.mean / 10;
         break;
-      case 'silt':
+      case "silt":
         result.silt = depth.values.mean / 10;
         break;
-      case 'bdod':
+      case "bdod":
         // Bulk density in cg/cm³, convert to g/cm³
         result.bulkDensity = depth.values.mean / 100;
         break;
-      case 'ocd':
+      case "ocd":
         // Organic carbon density in dg/kg, convert to percentage
         result.organicCarbon = depth.values.mean / 100;
         break;
@@ -211,7 +218,7 @@ export function extractWrbClass(data: SoilGridsClassResponse | null): string | n
 export function classifyUsdaSoilTexture(clay: number, sand: number, silt: number): string {
   // Normalize percentages
   const total = clay + sand + silt;
-  if (total === 0) return 'Unknown';
+  if (total === 0) return "Unknown";
 
   const c = (clay / total) * 100;
   const s = (sand / total) * 100;
@@ -219,33 +226,33 @@ export function classifyUsdaSoilTexture(clay: number, sand: number, silt: number
 
   // USDA Soil Texture Classification
   if (c >= 40) {
-    if (si >= 40) return 'Silty Clay';
-    if (s >= 45) return 'Sandy Clay';
-    return 'Clay';
+    if (si >= 40) return "Silty Clay";
+    if (s >= 45) return "Sandy Clay";
+    return "Clay";
   }
 
   if (c >= 27 && c < 40) {
-    if (s >= 20 && s < 45) return 'Clay Loam';
-    if (s < 20 && si >= 28) return 'Silty Clay Loam';
-    if (s >= 45) return 'Sandy Clay Loam';
+    if (s >= 20 && s < 45) return "Clay Loam";
+    if (s < 20 && si >= 28) return "Silty Clay Loam";
+    if (s >= 45) return "Sandy Clay Loam";
   }
 
   if (c >= 7 && c < 27) {
-    if (si >= 50 && c >= 12) return 'Silt Loam';
-    if (si >= 50 && si < 80) return 'Silt Loam';
-    if (si >= 80) return 'Silt';
-    if (s >= 52) return 'Sandy Loam';
-    return 'Loam';
+    if (si >= 50 && c >= 12) return "Silt Loam";
+    if (si >= 50 && si < 80) return "Silt Loam";
+    if (si >= 80) return "Silt";
+    if (s >= 52) return "Sandy Loam";
+    return "Loam";
   }
 
   if (c < 7) {
-    if (si >= 50) return 'Silt';
-    if (s >= 85) return 'Sand';
-    if (s >= 70) return 'Loamy Sand';
-    return 'Sandy Loam';
+    if (si >= 50) return "Silt";
+    if (s >= 85) return "Sand";
+    if (s >= 70) return "Loamy Sand";
+    return "Sandy Loam";
   }
 
-  return 'Loam'; // Default
+  return "Loam"; // Default
 }
 
 // ============================================================================
@@ -277,7 +284,7 @@ export interface ISDAsoilTextureData {
  */
 async function getISDAsoilToken(): Promise<string | null> {
   if (!ISDASOIL_USERNAME || !ISDASOIL_PASSWORD) {
-    log.warn('iSDAsoil credentials not configured');
+    log.warn("iSDAsoil credentials not configured");
     return null;
   }
 
@@ -291,13 +298,13 @@ async function getISDAsoilToken(): Promise<string | null> {
 
   try {
     const formData = new URLSearchParams();
-    formData.append('username', ISDASOIL_USERNAME);
-    formData.append('password', ISDASOIL_PASSWORD);
+    formData.append("username", ISDASOIL_USERNAME);
+    formData.append("password", ISDASOIL_PASSWORD);
 
     const response = await fetch(`${ISDASOIL_BASE}/login`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: formData.toString(),
       signal: controller.signal,
@@ -319,7 +326,7 @@ async function getISDAsoilToken(): Promise<string | null> {
 
     return token;
   } catch (error) {
-    log.warn('iSDAsoil login error:', error);
+    log.warn("iSDAsoil login error:", error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -334,7 +341,7 @@ async function getISDAsoilToken(): Promise<string | null> {
 export async function fetchISDAsoilTexture(
   lat: number,
   lng: number,
-  depth: string = '0-20'
+  depth: string = "0-20",
 ): Promise<ISDAsoilTextureData | null> {
   const token = await getISDAsoilToken();
   if (!token) {
@@ -345,23 +352,20 @@ export async function fetchISDAsoilTexture(
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
-    const properties = ['clay', 'sand', 'silt', 'bulk_density'];
+    const properties = ["clay", "sand", "silt", "bulk_density"];
     const params = new URLSearchParams({
       lat: lat.toString(),
       lon: lng.toString(),
-      property: properties.join(','),
+      property: properties.join(","),
       depth: depth,
     });
 
-    const response = await fetch(
-      `${ISDASOIL_BASE}/isdasoil/v2/soilproperty?${params.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        signal: controller.signal,
-      }
-    );
+    const response = await fetch(`${ISDASOIL_BASE}/isdasoil/v2/soilproperty?${params.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    });
 
     if (!response.ok) {
       // Handle 401 by clearing cached token
@@ -375,7 +379,7 @@ export async function fetchISDAsoilTexture(
     const data: ISDAsoilPropertyResponse = await response.json();
     return extractISDAsoilTexture(data);
   } catch (error) {
-    log.warn('iSDAsoil API error:', error);
+    log.warn("iSDAsoil API error:", error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -420,29 +424,30 @@ function extractISDAsoilTexture(data: ISDAsoilPropertyResponse | null): ISDAsoil
  * Derive drainage class from iSDAsoil texture data
  * Uses clay content and bulk density as primary indicators
  */
-export function deriveDrainageFromISDAsoil(
-  data: ISDAsoilTextureData
-): { class: 'Poor' | 'Moderate' | 'Well'; source: 'iSDAsoil-derived' } {
-  let drainageClass: 'Poor' | 'Moderate' | 'Well' = 'Moderate';
+export function deriveDrainageFromISDAsoil(data: ISDAsoilTextureData): {
+  class: "Poor" | "Moderate" | "Well";
+  source: "iSDAsoil-derived";
+} {
+  let drainageClass: "Poor" | "Moderate" | "Well" = "Moderate";
 
   // High clay content = poor drainage
   if (data.clay !== null) {
     if (data.clay > 45) {
-      drainageClass = 'Poor';
+      drainageClass = "Poor";
     } else if (data.clay < 20) {
-      drainageClass = 'Well';
+      drainageClass = "Well";
     }
   }
 
   // Adjust based on bulk density (higher = more compacted = poorer drainage)
   if (data.bulkDensity !== null && data.bulkDensity > 1.6) {
-    if (drainageClass === 'Well') drainageClass = 'Moderate';
-    if (drainageClass === 'Moderate') drainageClass = 'Poor';
+    if (drainageClass === "Well") drainageClass = "Moderate";
+    if (drainageClass === "Moderate") drainageClass = "Poor";
   }
 
   return {
     class: drainageClass,
-    source: 'iSDAsoil-derived',
+    source: "iSDAsoil-derived",
   };
 }
 
@@ -463,9 +468,9 @@ export function isInAfrica(lat: number, lng: number): boolean {
 
 export interface AgromonitoringSoilResponse {
   dt: number;
-  t10: number;  // Soil temperature at 10cm depth
-  moisture: number;  // Soil moisture (volumetric water content)
-  t0: number;  // Surface temperature
+  t10: number; // Soil temperature at 10cm depth
+  moisture: number; // Soil moisture (volumetric water content)
+  t0: number; // Surface temperature
 }
 
 /**
@@ -474,10 +479,10 @@ export interface AgromonitoringSoilResponse {
  */
 export async function fetchAgromonitoringSoilMoisture(
   lat: number,
-  lng: number
+  lng: number,
 ): Promise<AgromonitoringSoilResponse | null> {
   if (!AGROMONITORING_API_KEY) {
-    log.warn('Agromonitoring API key not configured');
+    log.warn("Agromonitoring API key not configured");
     return null;
   }
 
@@ -499,28 +504,28 @@ export async function fetchAgromonitoringSoilMoisture(
     const createResponse = await fetch(
       `${AGROMONITORING_BASE}/polygons?appid=${AGROMONITORING_API_KEY}`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: `temp_${generateUniqueId()}`,
           geo_json: {
-            type: 'Feature',
+            type: "Feature",
             properties: {},
             geometry: {
-              type: 'Polygon',
+              type: "Polygon",
               coordinates: [polygon],
             },
           },
         }),
         signal: controller.signal,
-      }
+      },
     );
 
     if (!createResponse.ok) {
       // Try alternative: direct soil endpoint with lat/lon
       const directResponse = await fetch(
         `${AGROMONITORING_BASE}/soil?lat=${lat}&lon=${lng}&appid=${AGROMONITORING_API_KEY}`,
-        { signal: controller.signal }
+        { signal: controller.signal },
       );
 
       if (directResponse.ok) {
@@ -536,12 +541,12 @@ export async function fetchAgromonitoringSoilMoisture(
     // Get soil data for the polygon
     const soilResponse = await fetch(
       `${AGROMONITORING_BASE}/soil?polyid=${polyId}&appid=${AGROMONITORING_API_KEY}`,
-      { signal: controller.signal }
+      { signal: controller.signal },
     );
 
     // Clean up: delete the temporary polygon
     fetch(`${AGROMONITORING_BASE}/polygons/${polyId}?appid=${AGROMONITORING_API_KEY}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }).catch(() => {}); // Ignore cleanup errors
 
     if (!soilResponse.ok) {
@@ -550,7 +555,7 @@ export async function fetchAgromonitoringSoilMoisture(
 
     return await soilResponse.json();
   } catch (error) {
-    log.error('Agromonitoring API error:', error);
+    log.error("Agromonitoring API error:", error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -563,17 +568,17 @@ export async function fetchAgromonitoringSoilMoisture(
  */
 export function classifySoilMoisture(moisture: number): {
   percentage: string;
-  classification: 'Low' | 'Moderate' | 'High';
+  classification: "Low" | "Moderate" | "High";
 } {
   const percentage = Math.round(moisture * 100);
 
-  let classification: 'Low' | 'Moderate' | 'High';
+  let classification: "Low" | "Moderate" | "High";
   if (percentage < 20) {
-    classification = 'Low';
+    classification = "Low";
   } else if (percentage < 40) {
-    classification = 'Moderate';
+    classification = "Moderate";
   } else {
-    classification = 'High';
+    classification = "High";
   }
 
   return {
@@ -617,8 +622,8 @@ export async function fetchSsurgoDrainage(lat: number, lng: number): Promise<str
     `.trim();
 
     const response = await fetch(SSURGO_BASE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: `query=${encodeURIComponent(query)}&format=JSON`,
       signal: controller.signal,
     });
@@ -635,7 +640,7 @@ export async function fetchSsurgoDrainage(lat: number, lng: number): Promise<str
 
     return null;
   } catch (error) {
-    log.error('SSURGO API error:', error);
+    log.error("SSURGO API error:", error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -649,34 +654,34 @@ export async function fetchSsurgoDrainage(lat: number, lng: number): Promise<str
 export function deriveDrainageFromSoilGrids(
   clay: number | null,
   bulkDensity: number | null,
-  organicCarbon: number | null
-): { class: 'Poor' | 'Moderate' | 'Well'; source: 'model-derived' } {
+  organicCarbon: number | null,
+): { class: "Poor" | "Moderate" | "Well"; source: "model-derived" } {
   // Default to moderate
-  let drainageClass: 'Poor' | 'Moderate' | 'Well' = 'Moderate';
+  let drainageClass: "Poor" | "Moderate" | "Well" = "Moderate";
 
   if (clay !== null) {
     // High clay content = poor drainage
     if (clay > 45) {
-      drainageClass = 'Poor';
+      drainageClass = "Poor";
     } else if (clay < 20) {
-      drainageClass = 'Well';
+      drainageClass = "Well";
     }
   }
 
   // Adjust based on bulk density (higher = more compacted = poorer drainage)
   if (bulkDensity !== null && bulkDensity > 1.6) {
-    if (drainageClass === 'Well') drainageClass = 'Moderate';
-    if (drainageClass === 'Moderate') drainageClass = 'Poor';
+    if (drainageClass === "Well") drainageClass = "Moderate";
+    if (drainageClass === "Moderate") drainageClass = "Poor";
   }
 
   // High organic carbon can indicate wetland conditions (poor drainage)
   if (organicCarbon !== null && organicCarbon > 3) {
-    if (drainageClass === 'Well') drainageClass = 'Moderate';
+    if (drainageClass === "Well") drainageClass = "Moderate";
   }
 
   return {
     class: drainageClass,
-    source: 'model-derived',
+    source: "model-derived",
   };
 }
 
@@ -721,12 +726,12 @@ export async function fetchOpenMeteoData(lat: number, lng: number): Promise<Open
   try {
     const response = await fetch(
       `${OPEN_METEO_BASE}/forecast?` +
-      `latitude=${lat}&longitude=${lng}` +
-      `&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,soil_moisture_0_to_1cm,cloud_cover` +
-      `&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max,snowfall_sum` +
-      `&timezone=auto` +
-      `&forecast_days=7`,
-      { signal: controller.signal }
+        `latitude=${lat}&longitude=${lng}` +
+        "&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,soil_moisture_0_to_1cm,cloud_cover" +
+        "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant,uv_index_max,snowfall_sum" +
+        "&timezone=auto" +
+        "&forecast_days=7",
+      { signal: controller.signal },
     );
 
     if (!response.ok) {
@@ -747,7 +752,9 @@ export function extractOpenMeteoWeatherData(data: OpenMeteoResponse): WeatherDat
   if (!data.hourly && !data.daily) return null;
 
   // Calculate temperature stats from hourly data or daily data
-  let tempMin = 0, tempMax = 0, tempMean = 0;
+  let tempMin = 0,
+    tempMax = 0,
+    tempMean = 0;
 
   if (data.daily?.temperature_2m_min?.length && data.daily?.temperature_2m_max?.length) {
     // Use daily min/max - average over the forecast period
@@ -762,7 +769,9 @@ export function extractOpenMeteoWeatherData(data: OpenMeteoResponse): WeatherDat
   }
 
   // Calculate humidity stats from hourly data
-  let humidityMin = 0, humidityMax = 0, humidityMean = 0;
+  let humidityMin = 0,
+    humidityMax = 0,
+    humidityMean = 0;
   if (data.hourly?.relative_humidity_2m?.length) {
     const humidity = data.hourly.relative_humidity_2m;
     humidityMin = Math.min(...humidity);
@@ -774,7 +783,9 @@ export function extractOpenMeteoWeatherData(data: OpenMeteoResponse): WeatherDat
   let windSpeed = 0;
   let windDeg = 0;
   if (data.daily?.wind_speed_10m_max?.length) {
-    windSpeed = data.daily.wind_speed_10m_max.reduce((a, b) => a + b, 0) / data.daily.wind_speed_10m_max.length;
+    windSpeed =
+      data.daily.wind_speed_10m_max.reduce((a, b) => a + b, 0) /
+      data.daily.wind_speed_10m_max.length;
     windSpeed = windSpeed / 3.6; // Convert km/h to m/s
   } else if (data.hourly?.wind_speed_10m?.length) {
     const winds = data.hourly.wind_speed_10m;
@@ -782,7 +793,9 @@ export function extractOpenMeteoWeatherData(data: OpenMeteoResponse): WeatherDat
     windSpeed = windSpeed / 3.6; // Convert km/h to m/s
   }
   if (data.daily?.wind_direction_10m_dominant?.length) {
-    windDeg = data.daily.wind_direction_10m_dominant.reduce((a, b) => a + b, 0) / data.daily.wind_direction_10m_dominant.length;
+    windDeg =
+      data.daily.wind_direction_10m_dominant.reduce((a, b) => a + b, 0) /
+      data.daily.wind_direction_10m_dominant.length;
   } else if (data.hourly?.wind_direction_10m?.length) {
     const dirs = data.hourly.wind_direction_10m;
     windDeg = dirs.reduce((a, b) => a + b, 0) / dirs.length;
@@ -836,7 +849,7 @@ export function extractOpenMeteoWeatherData(data: OpenMeteoResponse): WeatherDat
     snowExposure: classifySnowExposureFromOpenMeteo(tempMin, snowSum),
     fogFrequency: classifyFogFrequency(humidityMean, avgClouds, windSpeed),
     cloudCover: Math.round(avgClouds),
-    source: 'Open-Meteo',
+    source: "Open-Meteo",
   };
 }
 
@@ -845,21 +858,24 @@ export function extractOpenMeteoWeatherData(data: OpenMeteoResponse): WeatherDat
  */
 function estimateAnnualRainfallFromOpenMeteo(avgDailyMm: number): string {
   const estimatedAnnual = avgDailyMm * 365;
-  if (estimatedAnnual < 250) return '<250';
-  if (estimatedAnnual < 500) return '250-500';
-  if (estimatedAnnual < 1000) return '500-1000';
-  if (estimatedAnnual < 2000) return '1000-2000';
-  return '>2000';
+  if (estimatedAnnual < 250) return "<250";
+  if (estimatedAnnual < 500) return "250-500";
+  if (estimatedAnnual < 1000) return "500-1000";
+  if (estimatedAnnual < 2000) return "1000-2000";
+  return ">2000";
 }
 
 /**
  * Classify snow exposure based on temperature and snowfall data for Open-Meteo
  */
-function classifySnowExposureFromOpenMeteo(tempMin: number, snowfallMm: number): 'None' | 'Low' | 'Moderate' | 'High' {
-  if (snowfallMm > 0) return 'High';
-  if (tempMin <= 0) return 'Moderate';
-  if (tempMin <= 5) return 'Low';
-  return 'None';
+function classifySnowExposureFromOpenMeteo(
+  tempMin: number,
+  snowfallMm: number,
+): "None" | "Low" | "Moderate" | "High" {
+  if (snowfallMm > 0) return "High";
+  if (tempMin <= 0) return "Moderate";
+  if (tempMin <= 5) return "Low";
+  return "None";
 }
 
 /**
@@ -896,46 +912,46 @@ export function extractSoilMoistureFromOpenMeteo(data: OpenMeteoResponse): numbe
  * Map WRB soil classification codes to human-readable names
  */
 export const WRB_SOIL_CLASSES: Record<string, string> = {
-  'Acrisols': 'Acrisol',
-  'Albeluvisols': 'Albeluvisol',
-  'Alisols': 'Alisol',
-  'Andosols': 'Andosol',
-  'Anthrosols': 'Anthrosol',
-  'Arenosols': 'Arenosol',
-  'Calcisols': 'Calcisol',
-  'Cambisols': 'Cambisol',
-  'Chernozems': 'Chernozem',
-  'Cryosols': 'Cryosol',
-  'Durisols': 'Durisol',
-  'Ferralsols': 'Ferralsol',
-  'Fluvisols': 'Fluvisol',
-  'Gleysols': 'Gleysol',
-  'Gypsisols': 'Gypsisol',
-  'Histosols': 'Histosol',
-  'Kastanozems': 'Kastanozem',
-  'Leptosols': 'Leptosol',
-  'Lixisols': 'Lixisol',
-  'Luvisols': 'Luvisol',
-  'Nitisols': 'Nitisol',
-  'Phaeozems': 'Phaeozem',
-  'Planosols': 'Planosol',
-  'Plinthosols': 'Plinthosol',
-  'Podzols': 'Podzol',
-  'Regosols': 'Regosol',
-  'Retisols': 'Retisol',
-  'Solonchaks': 'Solonchak',
-  'Solonetz': 'Solonetz',
-  'Stagnosols': 'Stagnosol',
-  'Technosols': 'Technosol',
-  'Umbrisols': 'Umbrisol',
-  'Vertisols': 'Vertisol',
+  Acrisols: "Acrisol",
+  Albeluvisols: "Albeluvisol",
+  Alisols: "Alisol",
+  Andosols: "Andosol",
+  Anthrosols: "Anthrosol",
+  Arenosols: "Arenosol",
+  Calcisols: "Calcisol",
+  Cambisols: "Cambisol",
+  Chernozems: "Chernozem",
+  Cryosols: "Cryosol",
+  Durisols: "Durisol",
+  Ferralsols: "Ferralsol",
+  Fluvisols: "Fluvisol",
+  Gleysols: "Gleysol",
+  Gypsisols: "Gypsisol",
+  Histosols: "Histosol",
+  Kastanozems: "Kastanozem",
+  Leptosols: "Leptosol",
+  Lixisols: "Lixisol",
+  Luvisols: "Luvisol",
+  Nitisols: "Nitisol",
+  Phaeozems: "Phaeozem",
+  Planosols: "Planosol",
+  Plinthosols: "Plinthosol",
+  Podzols: "Podzol",
+  Regosols: "Regosol",
+  Retisols: "Retisol",
+  Solonchaks: "Solonchak",
+  Solonetz: "Solonetz",
+  Stagnosols: "Stagnosol",
+  Technosols: "Technosol",
+  Umbrisols: "Umbrisol",
+  Vertisols: "Vertisol",
 };
 
 /**
  * Convert WRB code to human-readable soil type
  */
 export function wrbToHumanReadable(wrbClass: string | null): string {
-  if (!wrbClass) return 'Unknown';
+  if (!wrbClass) return "Unknown";
 
   // Try exact match first
   if (WRB_SOIL_CLASSES[wrbClass]) {
@@ -950,7 +966,7 @@ export function wrbToHumanReadable(wrbClass: string | null): string {
   }
 
   // Return cleaned up version of the original
-  return wrbClass.replace(/s$/, '').replace(/_/g, ' ');
+  return wrbClass.replace(/s$/, "").replace(/_/g, " ");
 }
 
 /**
@@ -964,7 +980,7 @@ export function deriveTextureFromWrb(wrbClass: string): {
   sand: number;
   silt: number;
   bulkDensity: number;
-  drainage: 'Poor' | 'Moderate' | 'Well';
+  drainage: "Poor" | "Moderate" | "Well";
 } | null {
   if (!wrbClass) return null;
 
@@ -972,48 +988,79 @@ export function deriveTextureFromWrb(wrbClass: string): {
 
   // Map WRB classes to typical texture characteristics
   // Values are approximate typical ranges for each soil type
-  const wrbTextureMap: Record<string, { texture: string; clay: number; sand: number; silt: number; bd: number; drainage: 'Poor' | 'Moderate' | 'Well' }> = {
+  const wrbTextureMap: Record<
+    string,
+    {
+      texture: string;
+      clay: number;
+      sand: number;
+      silt: number;
+      bd: number;
+      drainage: "Poor" | "Moderate" | "Well";
+    }
+  > = {
     // Clay-rich soils
-    'vertisol': { texture: 'Clay', clay: 50, sand: 15, silt: 35, bd: 1.3, drainage: 'Poor' },
-    'nitisol': { texture: 'Clay', clay: 45, sand: 20, silt: 35, bd: 1.2, drainage: 'Moderate' },
-    'acrisol': { texture: 'Clay Loam', clay: 35, sand: 30, silt: 35, bd: 1.4, drainage: 'Moderate' },
-    'alisol': { texture: 'Clay Loam', clay: 35, sand: 25, silt: 40, bd: 1.3, drainage: 'Poor' },
-    'lixisol': { texture: 'Sandy Clay Loam', clay: 28, sand: 50, silt: 22, bd: 1.5, drainage: 'Moderate' },
-    'luvisol': { texture: 'Clay Loam', clay: 30, sand: 35, silt: 35, bd: 1.4, drainage: 'Moderate' },
-    'plinthosol': { texture: 'Clay Loam', clay: 35, sand: 35, silt: 30, bd: 1.5, drainage: 'Poor' },
-    'planosol': { texture: 'Silty Clay Loam', clay: 35, sand: 15, silt: 50, bd: 1.4, drainage: 'Poor' },
-    'stagnosol': { texture: 'Silty Clay', clay: 42, sand: 10, silt: 48, bd: 1.3, drainage: 'Poor' },
+    vertisol: { texture: "Clay", clay: 50, sand: 15, silt: 35, bd: 1.3, drainage: "Poor" },
+    nitisol: { texture: "Clay", clay: 45, sand: 20, silt: 35, bd: 1.2, drainage: "Moderate" },
+    acrisol: { texture: "Clay Loam", clay: 35, sand: 30, silt: 35, bd: 1.4, drainage: "Moderate" },
+    alisol: { texture: "Clay Loam", clay: 35, sand: 25, silt: 40, bd: 1.3, drainage: "Poor" },
+    lixisol: {
+      texture: "Sandy Clay Loam",
+      clay: 28,
+      sand: 50,
+      silt: 22,
+      bd: 1.5,
+      drainage: "Moderate",
+    },
+    luvisol: { texture: "Clay Loam", clay: 30, sand: 35, silt: 35, bd: 1.4, drainage: "Moderate" },
+    plinthosol: { texture: "Clay Loam", clay: 35, sand: 35, silt: 30, bd: 1.5, drainage: "Poor" },
+    planosol: {
+      texture: "Silty Clay Loam",
+      clay: 35,
+      sand: 15,
+      silt: 50,
+      bd: 1.4,
+      drainage: "Poor",
+    },
+    stagnosol: { texture: "Silty Clay", clay: 42, sand: 10, silt: 48, bd: 1.3, drainage: "Poor" },
 
     // Loamy soils
-    'cambisol': { texture: 'Loam', clay: 20, sand: 40, silt: 40, bd: 1.4, drainage: 'Moderate' },
-    'phaeozem': { texture: 'Loam', clay: 22, sand: 38, silt: 40, bd: 1.3, drainage: 'Well' },
-    'chernozem': { texture: 'Loam', clay: 25, sand: 35, silt: 40, bd: 1.2, drainage: 'Well' },
-    'kastanozem': { texture: 'Loam', clay: 22, sand: 40, silt: 38, bd: 1.3, drainage: 'Well' },
-    'umbrisol': { texture: 'Loam', clay: 18, sand: 42, silt: 40, bd: 1.1, drainage: 'Well' },
-    'regosol': { texture: 'Loam', clay: 15, sand: 50, silt: 35, bd: 1.4, drainage: 'Well' },
-    'fluvisol': { texture: 'Silt Loam', clay: 18, sand: 25, silt: 57, bd: 1.3, drainage: 'Moderate' },
+    cambisol: { texture: "Loam", clay: 20, sand: 40, silt: 40, bd: 1.4, drainage: "Moderate" },
+    phaeozem: { texture: "Loam", clay: 22, sand: 38, silt: 40, bd: 1.3, drainage: "Well" },
+    chernozem: { texture: "Loam", clay: 25, sand: 35, silt: 40, bd: 1.2, drainage: "Well" },
+    kastanozem: { texture: "Loam", clay: 22, sand: 40, silt: 38, bd: 1.3, drainage: "Well" },
+    umbrisol: { texture: "Loam", clay: 18, sand: 42, silt: 40, bd: 1.1, drainage: "Well" },
+    regosol: { texture: "Loam", clay: 15, sand: 50, silt: 35, bd: 1.4, drainage: "Well" },
+    fluvisol: { texture: "Silt Loam", clay: 18, sand: 25, silt: 57, bd: 1.3, drainage: "Moderate" },
 
     // Sandy soils
-    'arenosol': { texture: 'Sand', clay: 5, sand: 88, silt: 7, bd: 1.6, drainage: 'Well' },
-    'podzol': { texture: 'Sandy Loam', clay: 10, sand: 70, silt: 20, bd: 1.4, drainage: 'Well' },
+    arenosol: { texture: "Sand", clay: 5, sand: 88, silt: 7, bd: 1.6, drainage: "Well" },
+    podzol: { texture: "Sandy Loam", clay: 10, sand: 70, silt: 20, bd: 1.4, drainage: "Well" },
 
     // Silty soils
-    'solonchak': { texture: 'Silt Loam', clay: 20, sand: 20, silt: 60, bd: 1.4, drainage: 'Poor' },
-    'solonetz': { texture: 'Silty Clay', clay: 40, sand: 15, silt: 45, bd: 1.5, drainage: 'Poor' },
+    solonchak: { texture: "Silt Loam", clay: 20, sand: 20, silt: 60, bd: 1.4, drainage: "Poor" },
+    solonetz: { texture: "Silty Clay", clay: 40, sand: 15, silt: 45, bd: 1.5, drainage: "Poor" },
 
     // Special soils
-    'ferralsol': { texture: 'Clay', clay: 45, sand: 30, silt: 25, bd: 1.2, drainage: 'Well' },
-    'andosol': { texture: 'Silt Loam', clay: 15, sand: 35, silt: 50, bd: 0.9, drainage: 'Well' },
-    'histosol': { texture: 'Loam', clay: 15, sand: 30, silt: 55, bd: 0.5, drainage: 'Poor' },
-    'gleysol': { texture: 'Silty Clay Loam', clay: 32, sand: 20, silt: 48, bd: 1.4, drainage: 'Poor' },
-    'leptosol': { texture: 'Loam', clay: 18, sand: 45, silt: 37, bd: 1.3, drainage: 'Well' },
-    'calcisol': { texture: 'Loam', clay: 20, sand: 40, silt: 40, bd: 1.5, drainage: 'Moderate' },
-    'gypsisol': { texture: 'Sandy Loam', clay: 12, sand: 60, silt: 28, bd: 1.5, drainage: 'Well' },
-    'durisol': { texture: 'Sandy Loam', clay: 15, sand: 55, silt: 30, bd: 1.6, drainage: 'Moderate' },
-    'cryosol': { texture: 'Silt Loam', clay: 18, sand: 30, silt: 52, bd: 1.2, drainage: 'Poor' },
-    'anthrosol': { texture: 'Loam', clay: 20, sand: 40, silt: 40, bd: 1.3, drainage: 'Moderate' },
-    'technosol': { texture: 'Loam', clay: 20, sand: 45, silt: 35, bd: 1.5, drainage: 'Moderate' },
-    'retisol': { texture: 'Loam', clay: 22, sand: 38, silt: 40, bd: 1.4, drainage: 'Moderate' },
+    ferralsol: { texture: "Clay", clay: 45, sand: 30, silt: 25, bd: 1.2, drainage: "Well" },
+    andosol: { texture: "Silt Loam", clay: 15, sand: 35, silt: 50, bd: 0.9, drainage: "Well" },
+    histosol: { texture: "Loam", clay: 15, sand: 30, silt: 55, bd: 0.5, drainage: "Poor" },
+    gleysol: {
+      texture: "Silty Clay Loam",
+      clay: 32,
+      sand: 20,
+      silt: 48,
+      bd: 1.4,
+      drainage: "Poor",
+    },
+    leptosol: { texture: "Loam", clay: 18, sand: 45, silt: 37, bd: 1.3, drainage: "Well" },
+    calcisol: { texture: "Loam", clay: 20, sand: 40, silt: 40, bd: 1.5, drainage: "Moderate" },
+    gypsisol: { texture: "Sandy Loam", clay: 12, sand: 60, silt: 28, bd: 1.5, drainage: "Well" },
+    durisol: { texture: "Sandy Loam", clay: 15, sand: 55, silt: 30, bd: 1.6, drainage: "Moderate" },
+    cryosol: { texture: "Silt Loam", clay: 18, sand: 30, silt: 52, bd: 1.2, drainage: "Poor" },
+    anthrosol: { texture: "Loam", clay: 20, sand: 40, silt: 40, bd: 1.3, drainage: "Moderate" },
+    technosol: { texture: "Loam", clay: 20, sand: 45, silt: 35, bd: 1.5, drainage: "Moderate" },
+    retisol: { texture: "Loam", clay: 22, sand: 38, silt: 40, bd: 1.4, drainage: "Moderate" },
   };
 
   // Find matching WRB class
@@ -1032,12 +1079,12 @@ export function deriveTextureFromWrb(wrbClass: string): {
 
   // Default to Loam if no match found
   return {
-    texture: 'Loam',
+    texture: "Loam",
     clay: 20,
     sand: 40,
     silt: 40,
     bulkDensity: 1.4,
-    drainage: 'Moderate',
+    drainage: "Moderate",
   };
 }
 
@@ -1058,8 +1105,8 @@ export interface OpenWeatherOneCallResponse {
     wind_deg?: number;
     uvi?: number;
     clouds?: number;
-    rain?: { '1h'?: number };
-    snow?: { '1h'?: number };
+    rain?: { "1h"?: number };
+    snow?: { "1h"?: number };
   };
   hourly?: Array<{
     dt: number;
@@ -1070,8 +1117,8 @@ export interface OpenWeatherOneCallResponse {
     wind_deg?: number;
     uvi?: number;
     clouds?: number;
-    rain?: { '1h'?: number };
-    snow?: { '1h'?: number };
+    rain?: { "1h"?: number };
+    snow?: { "1h"?: number };
   }>;
   daily?: Array<{
     dt: number;
@@ -1111,28 +1158,28 @@ export interface WeatherData {
     mean: number;
   };
   // Wind data
-  windSpeed?: number;              // Mean wind speed in m/s
-  windDirection?: string;          // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
-  windDirectionDegrees?: number;   // Raw degrees for reference
+  windSpeed?: number; // Mean wind speed in m/s
+  windDirection?: string; // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
+  windDirectionDegrees?: number; // Raw degrees for reference
   // Precipitation data
-  annualRainfall?: string;         // Estimated annual rainfall category
-  dailyRainfall?: number;          // Daily rainfall in mm (for estimation)
+  annualRainfall?: string; // Estimated annual rainfall category
+  dailyRainfall?: number; // Daily rainfall in mm (for estimation)
   // UV and solar
-  uvIndex?: number;                // UV index
-  uvExposure?: 'Low' | 'Moderate' | 'High' | 'Very High';
+  uvIndex?: number; // UV index
+  uvExposure?: "Low" | "Moderate" | "High" | "Very High";
   // Snow/Ice exposure
-  snowExposure?: 'None' | 'Low' | 'Moderate' | 'High';
+  snowExposure?: "None" | "Low" | "Moderate" | "High";
   // Fog/Condensation
-  fogFrequency?: 'Low' | 'Moderate' | 'High';
-  cloudCover?: number;             // Cloud cover percentage
-  source: 'OpenWeatherMap' | 'Open-Meteo';
+  fogFrequency?: "Low" | "Moderate" | "High";
+  cloudCover?: number; // Cloud cover percentage
+  source: "OpenWeatherMap" | "Open-Meteo";
 }
 
 /**
  * Convert wind degrees to compass direction
  */
 function degreesToDirection(degrees: number): string {
-  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
   const index = Math.round(degrees / 45) % 8;
   return directions[index];
 }
@@ -1140,21 +1187,24 @@ function degreesToDirection(degrees: number): string {
 /**
  * Classify UV exposure level based on UV index
  */
-function classifyUvExposure(uvIndex: number): 'Low' | 'Moderate' | 'High' | 'Very High' {
-  if (uvIndex < 3) return 'Low';
-  if (uvIndex < 6) return 'Moderate';
-  if (uvIndex < 8) return 'High';
-  return 'Very High';
+function classifyUvExposure(uvIndex: number): "Low" | "Moderate" | "High" | "Very High" {
+  if (uvIndex < 3) return "Low";
+  if (uvIndex < 6) return "Moderate";
+  if (uvIndex < 8) return "High";
+  return "Very High";
 }
 
 /**
  * Classify snow exposure based on temperature and snow data
  */
-function classifySnowExposure(tempMin: number, snowAmount?: number): 'None' | 'Low' | 'Moderate' | 'High' {
-  if (snowAmount && snowAmount > 0) return 'High';
-  if (tempMin <= 0) return 'Moderate';
-  if (tempMin <= 5) return 'Low';
-  return 'None';
+function classifySnowExposure(
+  tempMin: number,
+  snowAmount?: number,
+): "None" | "Low" | "Moderate" | "High" {
+  if (snowAmount && snowAmount > 0) return "High";
+  if (tempMin <= 0) return "Moderate";
+  if (tempMin <= 5) return "Low";
+  return "None";
 }
 
 /**
@@ -1163,13 +1213,14 @@ function classifySnowExposure(tempMin: number, snowAmount?: number): 'None' | 'L
 function classifyFogFrequency(
   humidity: number,
   cloudCover: number,
-  windSpeed: number
-): 'Low' | 'Moderate' | 'High' {
+  windSpeed: number,
+): "Low" | "Moderate" | "High" {
   // High humidity + high clouds + low wind = more fog
-  const fogScore = (humidity / 100) * 0.5 + (cloudCover / 100) * 0.3 + (1 - Math.min(windSpeed / 10, 1)) * 0.2;
-  if (fogScore > 0.7 && humidity > 80) return 'High';
-  if (fogScore > 0.5 && humidity > 70) return 'Moderate';
-  return 'Low';
+  const fogScore =
+    (humidity / 100) * 0.5 + (cloudCover / 100) * 0.3 + (1 - Math.min(windSpeed / 10, 1)) * 0.2;
+  if (fogScore > 0.7 && humidity > 80) return "High";
+  if (fogScore > 0.5 && humidity > 70) return "Moderate";
+  return "Low";
 }
 
 /**
@@ -1178,11 +1229,11 @@ function classifyFogFrequency(
 function estimateAnnualRainfall(dailyRainfall: number): string {
   // Rough estimation: multiply daily by 365 and categorize
   const estimatedAnnual = dailyRainfall * 365;
-  if (estimatedAnnual < 250) return '<250';
-  if (estimatedAnnual < 500) return '250-500';
-  if (estimatedAnnual < 1000) return '500-1000';
-  if (estimatedAnnual < 2000) return '1000-2000';
-  return '>2000';
+  if (estimatedAnnual < 250) return "<250";
+  if (estimatedAnnual < 500) return "250-500";
+  if (estimatedAnnual < 1000) return "500-1000";
+  if (estimatedAnnual < 2000) return "1000-2000";
+  return ">2000";
 }
 
 /**
@@ -1191,10 +1242,10 @@ function estimateAnnualRainfall(dailyRainfall: number): string {
  */
 export async function fetchOpenWeatherMapData(
   lat: number,
-  lng: number
+  lng: number,
 ): Promise<OpenWeatherOneCallResponse | null> {
   if (!OPENWEATHER_API_KEY) {
-    log.warn('OpenWeatherMap API key not configured');
+    log.warn("OpenWeatherMap API key not configured");
     return null;
   }
 
@@ -1205,22 +1256,22 @@ export async function fetchOpenWeatherMapData(
     // Use One Call API 3.0 for comprehensive weather data
     const response = await fetch(
       `${OPENWEATHER_BASE}/onecall?` +
-      `lat=${lat}&lon=${lng}` +
-      `&exclude=alerts,minutely` +
-      `&units=metric` +
-      `&appid=${OPENWEATHER_API_KEY}`,
-      { signal: controller.signal }
+        `lat=${lat}&lon=${lng}` +
+        "&exclude=alerts,minutely" +
+        "&units=metric" +
+        `&appid=${OPENWEATHER_API_KEY}`,
+      { signal: controller.signal },
     );
 
     if (!response.ok) {
       // Fall back to free tier API if One Call fails
-      log.warn('OpenWeatherMap One Call API failed, trying standard API');
+      log.warn("OpenWeatherMap One Call API failed, trying standard API");
       return await fetchOpenWeatherMapFallback(lat, lng);
     }
 
     return await response.json();
   } catch (error) {
-    log.error('OpenWeatherMap API error:', error);
+    log.error("OpenWeatherMap API error:", error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -1232,7 +1283,7 @@ export async function fetchOpenWeatherMapData(
  */
 async function fetchOpenWeatherMapFallback(
   lat: number,
-  lng: number
+  lng: number,
 ): Promise<OpenWeatherOneCallResponse | null> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -1240,10 +1291,10 @@ async function fetchOpenWeatherMapFallback(
   try {
     const response = await fetch(
       `${OPENWEATHER_BASE}/weather?` +
-      `lat=${lat}&lon=${lng}` +
-      `&units=metric` +
-      `&appid=${OPENWEATHER_API_KEY}`,
-      { signal: controller.signal }
+        `lat=${lat}&lon=${lng}` +
+        "&units=metric" +
+        `&appid=${OPENWEATHER_API_KEY}`,
+      { signal: controller.signal },
     );
 
     if (!response.ok) {
@@ -1257,7 +1308,7 @@ async function fetchOpenWeatherMapFallback(
     return {
       lat: data.coord.lat,
       lon: data.coord.lon,
-      timezone: 'UTC',
+      timezone: "UTC",
       current: {
         dt: data.dt,
         temp: data.main.temp,
@@ -1266,35 +1317,37 @@ async function fetchOpenWeatherMapFallback(
         wind_speed: data.wind?.speed,
         wind_deg: data.wind?.deg,
         clouds: data.clouds?.all,
-        rain: data.rain ? { '1h': data.rain['1h'] || data.rain['3h'] / 3 } : undefined,
-        snow: data.snow ? { '1h': data.snow['1h'] || data.snow['3h'] / 3 } : undefined,
+        rain: data.rain ? { "1h": data.rain["1h"] || data.rain["3h"] / 3 } : undefined,
+        snow: data.snow ? { "1h": data.snow["1h"] || data.snow["3h"] / 3 } : undefined,
       },
-      daily: [{
-        dt: data.dt,
-        temp: {
-          day: data.main.temp,
-          min: data.main.temp_min,
-          max: data.main.temp_max,
-          night: data.main.temp,
-          eve: data.main.temp,
-          morn: data.main.temp,
+      daily: [
+        {
+          dt: data.dt,
+          temp: {
+            day: data.main.temp,
+            min: data.main.temp_min,
+            max: data.main.temp_max,
+            night: data.main.temp,
+            eve: data.main.temp,
+            morn: data.main.temp,
+          },
+          humidity: data.main.humidity,
+          feels_like: {
+            day: data.main.feels_like,
+            night: data.main.feels_like,
+            eve: data.main.feels_like,
+            morn: data.main.feels_like,
+          },
+          wind_speed: data.wind?.speed,
+          wind_deg: data.wind?.deg,
+          clouds: data.clouds?.all,
+          rain: data.rain?.["1h"] || (data.rain?.["3h"] ? data.rain["3h"] / 3 : undefined),
+          snow: data.snow?.["1h"] || (data.snow?.["3h"] ? data.snow["3h"] / 3 : undefined),
         },
-        humidity: data.main.humidity,
-        feels_like: {
-          day: data.main.feels_like,
-          night: data.main.feels_like,
-          eve: data.main.feels_like,
-          morn: data.main.feels_like,
-        },
-        wind_speed: data.wind?.speed,
-        wind_deg: data.wind?.deg,
-        clouds: data.clouds?.all,
-        rain: data.rain?.['1h'] || (data.rain?.['3h'] ? data.rain['3h'] / 3 : undefined),
-        snow: data.snow?.['1h'] || (data.snow?.['3h'] ? data.snow['3h'] / 3 : undefined),
-      }],
+      ],
     };
   } catch (error) {
-    log.error('OpenWeatherMap fallback API error:', error);
+    log.error("OpenWeatherMap fallback API error:", error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -1324,15 +1377,15 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
     if (data.hourly && data.hourly.length > 0) {
       // Get first 24 hours of data
       const todayHourly = data.hourly.slice(0, 24);
-      const humidityValues = todayHourly.map(h => h.humidity);
+      const humidityValues = todayHourly.map((h) => h.humidity);
       humidityMin = Math.min(...humidityValues);
       humidityMax = Math.max(...humidityValues);
 
       // Calculate averages from hourly data
-      const windSpeeds = todayHourly.map(h => h.wind_speed ?? 0);
-      const windDegs = todayHourly.map(h => h.wind_deg ?? 0);
-      const uvis = todayHourly.map(h => h.uvi ?? 0);
-      const clouds = todayHourly.map(h => h.clouds ?? 0);
+      const windSpeeds = todayHourly.map((h) => h.wind_speed ?? 0);
+      const windDegs = todayHourly.map((h) => h.wind_deg ?? 0);
+      const uvis = todayHourly.map((h) => h.uvi ?? 0);
+      const clouds = todayHourly.map((h) => h.clouds ?? 0);
 
       avgWindSpeed = windSpeeds.reduce((a, b) => a + b, 0) / windSpeeds.length;
       avgWindDeg = windDegs.reduce((a, b) => a + b, 0) / windDegs.length;
@@ -1340,8 +1393,8 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
       avgClouds = clouds.reduce((a, b) => a + b, 0) / clouds.length;
 
       // Sum up rainfall from hourly
-      totalRain = todayHourly.reduce((sum, h) => sum + (h.rain?.['1h'] ?? 0), 0);
-      totalSnow = todayHourly.reduce((sum, h) => sum + (h.snow?.['1h'] ?? 0), 0);
+      totalRain = todayHourly.reduce((sum, h) => sum + (h.rain?.["1h"] ?? 0), 0);
+      totalSnow = todayHourly.reduce((sum, h) => sum + (h.snow?.["1h"] ?? 0), 0);
     }
 
     const tempMin = Math.round(today.temp.min * 10) / 10;
@@ -1373,7 +1426,7 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
       // Fog/Condensation
       fogFrequency: classifyFogFrequency(today.humidity, avgClouds, avgWindSpeed),
       cloudCover: Math.round(avgClouds),
-      source: 'OpenWeatherMap',
+      source: "OpenWeatherMap",
     };
   }
 
@@ -1385,8 +1438,8 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
     const windDeg = data.current.wind_deg ?? 0;
     const uvi = data.current.uvi ?? 0;
     const clouds = data.current.clouds ?? 0;
-    const rain = data.current.rain?.['1h'] ?? 0;
-    const snow = data.current.snow?.['1h'] ?? 0;
+    const rain = data.current.rain?.["1h"] ?? 0;
+    const snow = data.current.snow?.["1h"] ?? 0;
 
     return {
       temperature: {
@@ -1414,7 +1467,7 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
       // Fog/Condensation
       fogFrequency: classifyFogFrequency(humidity, clouds, windSpeed),
       cloudCover: Math.round(clouds),
-      source: 'OpenWeatherMap',
+      source: "OpenWeatherMap",
     };
   }
 
@@ -1436,20 +1489,20 @@ export interface AirPollutionResponse {
       aqi: number; // Air Quality Index: 1=Good, 2=Fair, 3=Moderate, 4=Poor, 5=Very Poor
     };
     components: {
-      co: number;      // Carbon monoxide (μg/m³)
-      no: number;      // Nitrogen monoxide (μg/m³)
-      no2: number;     // Nitrogen dioxide (μg/m³)
-      o3: number;      // Ozone (μg/m³)
-      so2: number;     // Sulphur dioxide (μg/m³)
-      pm2_5: number;   // Fine particles (μg/m³)
-      pm10: number;    // Coarse particles (μg/m³)
-      nh3: number;     // Ammonia (μg/m³)
+      co: number; // Carbon monoxide (μg/m³)
+      no: number; // Nitrogen monoxide (μg/m³)
+      no2: number; // Nitrogen dioxide (μg/m³)
+      o3: number; // Ozone (μg/m³)
+      so2: number; // Sulphur dioxide (μg/m³)
+      pm2_5: number; // Fine particles (μg/m³)
+      pm10: number; // Coarse particles (μg/m³)
+      nh3: number; // Ammonia (μg/m³)
     };
   }>;
 }
 
 export interface IndustrialPollutionData {
-  level: 'None' | 'Low' | 'Moderate' | 'High' | 'Very High';
+  level: "None" | "Low" | "Moderate" | "High" | "Very High";
   aqi: number;
   components: {
     pm2_5: number;
@@ -1458,7 +1511,7 @@ export interface IndustrialPollutionData {
     so2: number;
     co: number;
   };
-  source: 'OpenWeather Air Pollution API';
+  source: "OpenWeather Air Pollution API";
 }
 
 /**
@@ -1467,10 +1520,10 @@ export interface IndustrialPollutionData {
  */
 export async function fetchAirPollutionData(
   lat: number,
-  lng: number
+  lng: number,
 ): Promise<AirPollutionResponse | null> {
   if (!OPENWEATHER_API_KEY) {
-    log.warn('OpenWeatherMap API key not configured');
+    log.warn("OpenWeatherMap API key not configured");
     return null;
   }
 
@@ -1480,9 +1533,9 @@ export async function fetchAirPollutionData(
   try {
     const response = await fetch(
       `${OPENWEATHER_BASE}/air_pollution?` +
-      `lat=${lat}&lon=${lng}` +
-      `&appid=${OPENWEATHER_API_KEY}`,
-      { signal: controller.signal }
+        `lat=${lat}&lon=${lng}` +
+        `&appid=${OPENWEATHER_API_KEY}`,
+      { signal: controller.signal },
     );
 
     if (!response.ok) {
@@ -1491,7 +1544,7 @@ export async function fetchAirPollutionData(
 
     return await response.json();
   } catch (error) {
-    log.error('Air Pollution API error:', error);
+    log.error("Air Pollution API error:", error);
     return null;
   } finally {
     clearTimeout(timeoutId);
@@ -1503,7 +1556,7 @@ export async function fetchAirPollutionData(
  * AQI 1-2 = Low, AQI 3 = Moderate, AQI 4 = High, AQI 5 = Very High
  */
 export function classifyIndustrialPollution(
-  data: AirPollutionResponse | null
+  data: AirPollutionResponse | null,
 ): IndustrialPollutionData | null {
   if (!data || !data.list || data.list.length === 0) {
     return null;
@@ -1513,25 +1566,25 @@ export function classifyIndustrialPollution(
   const aqi = current.main.aqi;
 
   // Classify based on AQI
-  let level: 'None' | 'Low' | 'Moderate' | 'High' | 'Very High';
+  let level: "None" | "Low" | "Moderate" | "High" | "Very High";
   switch (aqi) {
     case 1:
-      level = 'None';
+      level = "None";
       break;
     case 2:
-      level = 'Low';
+      level = "Low";
       break;
     case 3:
-      level = 'Moderate';
+      level = "Moderate";
       break;
     case 4:
-      level = 'High';
+      level = "High";
       break;
     case 5:
-      level = 'Very High';
+      level = "Very High";
       break;
     default:
-      level = 'Moderate';
+      level = "Moderate";
   }
 
   return {
@@ -1544,6 +1597,6 @@ export function classifyIndustrialPollution(
       so2: current.components.so2,
       co: current.components.co,
     },
-    source: 'OpenWeather Air Pollution API',
+    source: "OpenWeather Air Pollution API",
   };
 }

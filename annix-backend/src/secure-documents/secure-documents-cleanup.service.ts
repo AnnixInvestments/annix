@@ -1,11 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
-import { SecureEntityFolder } from './secure-entity-folder.entity';
-import { SecureDocument } from './secure-document.entity';
-import { SecureDocumentsService } from './secure-documents.service';
-import { now } from '../lib/datetime';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { LessThan, Repository } from "typeorm";
+import { now } from "../lib/datetime";
+import { SecureDocument } from "./secure-document.entity";
+import { SecureDocumentsService } from "./secure-documents.service";
+import { SecureEntityFolder } from "./secure-entity-folder.entity";
 
 @Injectable()
 export class SecureDocumentsCleanupService {
@@ -22,7 +22,7 @@ export class SecureDocumentsCleanupService {
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async cleanupDeletedFolders(): Promise<void> {
-    this.logger.log('Starting scheduled cleanup of deleted entity folders');
+    this.logger.log("Starting scheduled cleanup of deleted entity folders");
 
     const cutoffDate = now().minus({ days: this.retentionDays }).toJSDate();
 
@@ -34,7 +34,7 @@ export class SecureDocumentsCleanupService {
     });
 
     if (expiredFolders.length === 0) {
-      this.logger.log('No expired folders to clean up');
+      this.logger.log("No expired folders to clean up");
       return;
     }
 
@@ -47,13 +47,11 @@ export class SecureDocumentsCleanupService {
           `Permanently deleted folder: ${folder.secureFolderPath} (${folder.entityType} ${folder.entityId})`,
         );
       } catch (error: any) {
-        this.logger.error(
-          `Failed to delete folder ${folder.id}: ${error.message}`,
-        );
+        this.logger.error(`Failed to delete folder ${folder.id}: ${error.message}`);
       }
     }
 
-    this.logger.log('Scheduled cleanup completed');
+    this.logger.log("Scheduled cleanup completed");
   }
 
   private async permanentlyDeleteFolder(folder: SecureEntityFolder): Promise<void> {
@@ -65,9 +63,7 @@ export class SecureDocumentsCleanupService {
       try {
         await this.secureDocumentsService.remove(document.id);
       } catch (error: any) {
-        this.logger.warn(
-          `Failed to delete document ${document.id}: ${error.message}`,
-        );
+        this.logger.warn(`Failed to delete document ${document.id}: ${error.message}`);
       }
     }
 
@@ -75,7 +71,7 @@ export class SecureDocumentsCleanupService {
   }
 
   async runManualCleanup(): Promise<{ deletedFolders: number; deletedDocuments: number }> {
-    this.logger.log('Running manual cleanup of deleted entity folders');
+    this.logger.log("Running manual cleanup of deleted entity folders");
 
     const cutoffDate = now().minus({ days: this.retentionDays }).toJSDate();
 
@@ -99,9 +95,7 @@ export class SecureDocumentsCleanupService {
           await this.secureDocumentsService.remove(document.id);
           deletedDocuments++;
         } catch (error: any) {
-          this.logger.warn(
-            `Failed to delete document ${document.id}: ${error.message}`,
-          );
+          this.logger.warn(`Failed to delete document ${document.id}: ${error.message}`);
         }
       }
 
@@ -109,9 +103,7 @@ export class SecureDocumentsCleanupService {
         await this.folderRepo.remove(folder);
         deletedFolders++;
       } catch (error: any) {
-        this.logger.error(
-          `Failed to delete folder ${folder.id}: ${error.message}`,
-        );
+        this.logger.error(`Failed to delete folder ${folder.id}: ${error.message}`);
       }
     }
 
@@ -142,7 +134,7 @@ export class SecureDocumentsCleanupService {
 
     const oldestFolder = await this.folderRepo.findOne({
       where: { isActive: false },
-      order: { deletedAt: 'ASC' },
+      order: { deletedAt: "ASC" },
     });
 
     return {

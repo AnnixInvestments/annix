@@ -1,18 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsString,
-  IsOptional,
-  IsNumber,
-  IsEnum,
-  IsInt,
-  IsArray,
-  Min,
-  Max,
-} from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsArray, IsInt, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class CreateBendRfqDto {
   @ApiProperty({
-    description: 'Nominal bore in mm',
+    description: "Nominal bore in mm",
     example: 350,
     minimum: 15,
     maximum: 600,
@@ -23,14 +14,14 @@ export class CreateBendRfqDto {
   nominalBoreMm: number;
 
   @ApiProperty({
-    description: 'Schedule number or wall thickness specification',
-    example: 'Sch30',
+    description: "Schedule number or wall thickness specification",
+    example: "Sch30",
   })
   @IsString()
   scheduleNumber: string;
 
   @ApiProperty({
-    description: 'Wall thickness in mm',
+    description: "Wall thickness in mm",
     example: 6.35,
     required: false,
   })
@@ -39,9 +30,9 @@ export class CreateBendRfqDto {
   wallThicknessMm?: number;
 
   @ApiProperty({
-    description: 'Type of bend (1D, 1.5D, 2D, 3D, 5D) - for pulled bends',
-    example: '3D',
-    enum: ['1D', '1.5D', '2D', '3D', '5D'],
+    description: "Type of bend (1D, 1.5D, 2D, 3D, 5D) - for pulled bends",
+    example: "3D",
+    enum: ["1D", "1.5D", "2D", "3D", "5D"],
     required: false,
   })
   @IsOptional()
@@ -49,10 +40,9 @@ export class CreateBendRfqDto {
   bendType?: string;
 
   @ApiProperty({
-    description:
-      'Bend radius type (elbow, medium, long) - for SABS 719 segmented bends',
-    example: 'long',
-    enum: ['elbow', 'medium', 'long'],
+    description: "Bend radius type (elbow, medium, long) - for SABS 719 segmented bends",
+    example: "long",
+    enum: ["elbow", "medium", "long"],
     required: false,
   })
   @IsOptional()
@@ -60,8 +50,8 @@ export class CreateBendRfqDto {
   bendRadiusType?: string;
 
   @ApiProperty({
-    description: 'Bend end configuration',
-    example: '2xLF',
+    description: "Bend end configuration",
+    example: "2xLF",
     required: false,
   })
   @IsOptional()
@@ -69,7 +59,7 @@ export class CreateBendRfqDto {
   bendEndConfiguration?: string;
 
   @ApiProperty({
-    description: 'Bend angle in degrees',
+    description: "Bend angle in degrees",
     example: 45,
     minimum: 15,
     maximum: 180,
@@ -80,7 +70,7 @@ export class CreateBendRfqDto {
   bendDegrees: number;
 
   @ApiProperty({
-    description: 'Number of tangents',
+    description: "Number of tangents",
     example: 1,
     minimum: 0,
     maximum: 10,
@@ -91,7 +81,7 @@ export class CreateBendRfqDto {
   numberOfTangents: number;
 
   @ApiProperty({
-    description: 'Length of each tangent in mm',
+    description: "Length of each tangent in mm",
     example: [400],
     type: [Number],
   })
@@ -100,7 +90,7 @@ export class CreateBendRfqDto {
   tangentLengths: number[];
 
   @ApiProperty({
-    description: 'Quantity of this bend item',
+    description: "Quantity of this bend item",
     example: 1,
     minimum: 1,
   })
@@ -109,15 +99,15 @@ export class CreateBendRfqDto {
   quantityValue: number;
 
   @ApiProperty({
-    description: 'Quantity type',
-    example: 'number_of_items',
-    enum: ['number_of_items'],
+    description: "Quantity type",
+    example: "number_of_items",
+    enum: ["number_of_items"],
   })
   @IsString()
-  quantityType: 'number_of_items';
+  quantityType: "number_of_items";
 
   @ApiProperty({
-    description: 'Working pressure in bar',
+    description: "Working pressure in bar",
     example: 16,
     minimum: 1,
     maximum: 420,
@@ -128,7 +118,7 @@ export class CreateBendRfqDto {
   workingPressureBar: number;
 
   @ApiProperty({
-    description: 'Working temperature in Celsius',
+    description: "Working temperature in Celsius",
     example: 20,
     minimum: -50,
     maximum: 800,
@@ -139,14 +129,14 @@ export class CreateBendRfqDto {
   workingTemperatureC: number;
 
   @ApiProperty({
-    description: 'Steel specification ID',
+    description: "Steel specification ID",
     example: 2,
   })
   @IsNumber()
   steelSpecificationId: number;
 
   @ApiProperty({
-    description: 'Use global flange specifications',
+    description: "Use global flange specifications",
     example: true,
     required: false,
   })
@@ -154,7 +144,7 @@ export class CreateBendRfqDto {
   useGlobalFlangeSpecs?: boolean;
 
   @ApiProperty({
-    description: 'Flange standard ID (if not using global specs)',
+    description: "Flange standard ID (if not using global specs)",
     example: 1,
     required: false,
   })
@@ -163,7 +153,7 @@ export class CreateBendRfqDto {
   flangeStandardId?: number;
 
   @ApiProperty({
-    description: 'Flange pressure class ID (if not using global specs)',
+    description: "Flange pressure class ID (if not using global specs)",
     example: 1,
     required: false,
   })

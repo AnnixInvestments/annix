@@ -1,32 +1,32 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddCalculatedColumnsToStraightPipeRfqs1761663709879 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.warn(
-      '➕ Adding calculated_od_mm and calculated_wt_mm columns to straight_pipe_rfqs...',
+      "➕ Adding calculated_od_mm and calculated_wt_mm columns to straight_pipe_rfqs...",
     );
 
     // Check if columns already exist
-    const table = await queryRunner.getTable('straight_pipe_rfqs');
+    const table = await queryRunner.getTable("straight_pipe_rfqs");
 
-    if (table && !table.findColumnByName('calculated_od_mm')) {
+    if (table && !table.findColumnByName("calculated_od_mm")) {
       await queryRunner.query(`
                 ALTER TABLE "straight_pipe_rfqs" 
                 ADD COLUMN "calculated_od_mm" numeric(8,3)
             `);
-      console.warn('✅ Added calculated_od_mm column');
+      console.warn("✅ Added calculated_od_mm column");
     } else {
-      console.warn('⏭️  calculated_od_mm column already exists');
+      console.warn("⏭️  calculated_od_mm column already exists");
     }
 
-    if (table && !table.findColumnByName('calculated_wt_mm')) {
+    if (table && !table.findColumnByName("calculated_wt_mm")) {
       await queryRunner.query(`
                 ALTER TABLE "straight_pipe_rfqs" 
                 ADD COLUMN "calculated_wt_mm" numeric(8,3)
             `);
-      console.warn('✅ Added calculated_wt_mm column');
+      console.warn("✅ Added calculated_wt_mm column");
     } else {
-      console.warn('⏭️  calculated_wt_mm column already exists');
+      console.warn("⏭️  calculated_wt_mm column already exists");
     }
   }
 

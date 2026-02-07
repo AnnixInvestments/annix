@@ -1,7 +1,7 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
 
 export interface JwtPayload {
   sub: string; // User ID
@@ -18,15 +18,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false, // Explicitly set to false for security
-      secretOrKey: configService.get<string>('JWT_SECRET'),
-      algorithms: ['HS256'], // Specify allowed algorithms
+      secretOrKey: configService.get<string>("JWT_SECRET"),
+      algorithms: ["HS256"], // Specify allowed algorithms
     });
   }
 
   async validate(payload: JwtPayload): Promise<any> {
     // Validate payload structure
     if (!payload.sub || !payload.username) {
-      throw new UnauthorizedException('Invalid token payload');
+      throw new UnauthorizedException("Invalid token payload");
     }
 
     // Return user object that will be attached to request

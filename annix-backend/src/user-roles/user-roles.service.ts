@@ -1,13 +1,9 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { CreateUserRoleDto } from './dto/create-user-role.dto';
-import { UpdateUserRoleDto } from './dto/update-user-role.dto';
-import { UserRole } from './entities/user-role.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CreateUserRoleDto } from "./dto/create-user-role.dto";
+import { UpdateUserRoleDto } from "./dto/update-user-role.dto";
+import { UserRole } from "./entities/user-role.entity";
 
 @Injectable()
 export class UserRolesService {
@@ -22,7 +18,7 @@ export class UserRolesService {
     });
 
     if (existing) {
-      throw new ConflictException('Role already exists');
+      throw new ConflictException("Role already exists");
     }
 
     const role = this.userRoleRepo.create(createUserRoleDto);
@@ -41,10 +37,7 @@ export class UserRolesService {
     return role;
   }
 
-  async update(
-    id: number,
-    updateUserRoleDto: UpdateUserRoleDto,
-  ): Promise<UserRole> {
+  async update(id: number, updateUserRoleDto: UpdateUserRoleDto): Promise<UserRole> {
     const role = await this.findOne(id);
 
     if (updateUserRoleDto.name) {
@@ -52,7 +45,7 @@ export class UserRolesService {
         where: { name: updateUserRoleDto.name },
       });
       if (existing && existing.id !== id) {
-        throw new ConflictException('Role name already in use');
+        throw new ConflictException("Role name already in use");
       }
     }
 

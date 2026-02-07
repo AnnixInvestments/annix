@@ -17,7 +17,7 @@ const ASME_CLASS_TO_AMBIENT_BAR: Record<number, number> = {
 export const validatePressureClass = (
   standardCode: string | undefined,
   pressureClassDesignation: string | undefined,
-  workingPressureBar: number
+  workingPressureBar: number,
 ): PressureClassValidationResult => {
   if (!standardCode || !pressureClassDesignation || workingPressureBar <= 0) {
     return { isUnsuitable: false, maxPressureBar: null, message: null };
@@ -36,7 +36,7 @@ export const validatePressureClass = (
     return { isUnsuitable: false, maxPressureBar: null, message: null };
   }
 
-  if ((code.includes('SABS') || code.includes('SANS')) && code.includes('1123')) {
+  if ((code.includes("SABS") || code.includes("SANS")) && code.includes("1123")) {
     const maxPressureBar = classValue / 100;
     const isUnsuitable = maxPressureBar < workingPressureBar;
     return {
@@ -49,8 +49,8 @@ export const validatePressureClass = (
   }
 
   if (
-    (code.includes('BS') && code.includes('4504')) ||
-    (code.includes('EN') && (code.includes('1092') || code.includes('10921')))
+    (code.includes("BS") && code.includes("4504")) ||
+    (code.includes("EN") && (code.includes("1092") || code.includes("10921")))
   ) {
     const maxPressureBar = classValue;
     const isUnsuitable = maxPressureBar < workingPressureBar;
@@ -63,7 +63,7 @@ export const validatePressureClass = (
     };
   }
 
-  if (code.includes('ASME') || code.includes('B16')) {
+  if (code.includes("ASME") || code.includes("B16")) {
     const maxPressureBar = ASME_CLASS_TO_AMBIENT_BAR[classValue];
     if (maxPressureBar) {
       const isUnsuitable = maxPressureBar < workingPressureBar;
@@ -77,7 +77,7 @@ export const validatePressureClass = (
     }
   }
 
-  if (code.includes('BS') && code.includes('10')) {
+  if (code.includes("BS") && code.includes("10")) {
     const tableEPressures: Record<string, number> = {
       E: 14,
       D: 7,
@@ -106,8 +106,8 @@ export const validatePressureClass = (
 
 export const extractPressureClassRating = (
   standardCode: string | undefined,
-  pressureClassDesignation: string | undefined
-): { ratingBar: number; ratingType: 'kPa' | 'PN' | 'Class' | 'Table' | null } => {
+  pressureClassDesignation: string | undefined,
+): { ratingBar: number; ratingType: "kPa" | "PN" | "Class" | "Table" | null } => {
   if (!standardCode || !pressureClassDesignation) {
     return { ratingBar: 0, ratingType: null };
   }
@@ -122,20 +122,20 @@ export const extractPressureClassRating = (
 
   const classValue = extractNumeric(designation);
 
-  if ((code.includes('SABS') || code.includes('SANS')) && code.includes('1123')) {
-    return { ratingBar: classValue / 100, ratingType: 'kPa' };
+  if ((code.includes("SABS") || code.includes("SANS")) && code.includes("1123")) {
+    return { ratingBar: classValue / 100, ratingType: "kPa" };
   }
 
   if (
-    (code.includes('BS') && code.includes('4504')) ||
-    (code.includes('EN') && (code.includes('1092') || code.includes('10921')))
+    (code.includes("BS") && code.includes("4504")) ||
+    (code.includes("EN") && (code.includes("1092") || code.includes("10921")))
   ) {
-    return { ratingBar: classValue, ratingType: 'PN' };
+    return { ratingBar: classValue, ratingType: "PN" };
   }
 
-  if (code.includes('ASME') || code.includes('B16')) {
+  if (code.includes("ASME") || code.includes("B16")) {
     const ratingBar = ASME_CLASS_TO_AMBIENT_BAR[classValue] || 0;
-    return { ratingBar, ratingType: 'Class' };
+    return { ratingBar, ratingType: "Class" };
   }
 
   return { ratingBar: 0, ratingType: null };

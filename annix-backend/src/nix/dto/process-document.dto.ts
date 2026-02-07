@@ -1,27 +1,27 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsArray, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class ProcessDocumentDto {
-  @ApiProperty({ description: 'Path or URL to the document' })
+  @ApiProperty({ description: "Path or URL to the document" })
   @IsString()
   documentPath: string;
 
-  @ApiPropertyOptional({ description: 'Original filename' })
+  @ApiPropertyOptional({ description: "Original filename" })
   @IsString()
   @IsOptional()
   documentName?: string;
 
-  @ApiPropertyOptional({ description: 'User ID processing the document' })
+  @ApiPropertyOptional({ description: "User ID processing the document" })
   @IsNumber()
   @IsOptional()
   userId?: number;
 
-  @ApiPropertyOptional({ description: 'RFQ ID to associate extraction with' })
+  @ApiPropertyOptional({ description: "RFQ ID to associate extraction with" })
   @IsNumber()
   @IsOptional()
   rfqId?: number;
 
-  @ApiPropertyOptional({ description: 'Product/service types to filter for' })
+  @ApiPropertyOptional({ description: "Product/service types to filter for" })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
@@ -29,13 +29,13 @@ export class ProcessDocumentDto {
 }
 
 export class ProcessDocumentResponseDto {
-  @ApiProperty({ description: 'Extraction ID' })
+  @ApiProperty({ description: "Extraction ID" })
   extractionId: number;
 
-  @ApiProperty({ description: 'Processing status' })
+  @ApiProperty({ description: "Processing status" })
   status: string;
 
-  @ApiProperty({ description: 'Extracted items', type: 'array' })
+  @ApiProperty({ description: "Extracted items", type: "array" })
   items?: Array<{
     description: string;
     quantity?: number;
@@ -45,13 +45,13 @@ export class ProcessDocumentResponseDto {
     confidence: number;
   }>;
 
-  @ApiPropertyOptional({ description: 'Pending clarifications' })
+  @ApiPropertyOptional({ description: "Pending clarifications" })
   pendingClarifications?: Array<{
     id: number;
     question: string;
     context: Record<string, any>;
   }>;
 
-  @ApiPropertyOptional({ description: 'Error message if failed' })
+  @ApiPropertyOptional({ description: "Error message if failed" })
   error?: string;
 }

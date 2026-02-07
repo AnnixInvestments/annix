@@ -1,24 +1,16 @@
-'use client';
-
-import React from 'react';
+"use client";
 
 interface BoltNutIconProps {
   className?: string;
   size?: number;
 }
 
-export function BoltNutIcon({ className = '', size = 24 }: BoltNutIconProps) {
+export function BoltNutIcon({ className = "", size = 24 }: BoltNutIconProps) {
   const width = size * 2.2;
   const height = size * 1.1;
 
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 55 28"
-      fill="none"
-      className={className}
-    >
+    <svg width={width} height={height} viewBox="0 0 55 28" fill="none" className={className}>
       <defs>
         {/* Zinc plated metal - main body */}
         <linearGradient id="zincBody" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -81,25 +73,13 @@ export function BoltNutIcon({ className = '', size = 24 }: BoltNutIconProps) {
 
       {/* Bolt head - 3D hex with washer face */}
       {/* Head top face */}
-      <polygon
-        points="5,7 9,4 17,4 21,7 17,10 9,10"
-        fill="url(#headTop)"
-      />
+      <polygon points="5,7 9,4 17,4 21,7 17,10 9,10" fill="url(#headTop)" />
       {/* Head left face */}
-      <polygon
-        points="5,7 9,10 9,13 5,10"
-        fill="#8898A8"
-      />
+      <polygon points="5,7 9,10 9,13 5,10" fill="#8898A8" />
       {/* Head front face */}
-      <polygon
-        points="9,10 17,10 17,13 9,13"
-        fill="url(#headSide)"
-      />
+      <polygon points="9,10 17,10 17,13 9,13" fill="url(#headSide)" />
       {/* Head right face */}
-      <polygon
-        points="17,10 21,7 21,10 17,13"
-        fill="#A0B0C0"
-      />
+      <polygon points="17,10 21,7 21,10 17,13" fill="#A0B0C0" />
       {/* Chamfer on head edges */}
       <line x1="9" y1="4.5" x2="17" y2="4.5" stroke="#F0F4F8" strokeWidth="0.6" opacity="0.7" />
       <line x1="5.5" y1="7" x2="9" y2="10" stroke="#F0F4F8" strokeWidth="0.4" opacity="0.5" />
@@ -179,12 +159,7 @@ export function BoltNutIcon({ className = '', size = 24 }: BoltNutIconProps) {
       <line x1="43" y1="14" x2="43" y2="22" stroke="#E8F0F8" strokeWidth="0.8" opacity="0.4" />
 
       {/* Right face */}
-      <polygon
-        points="48,14 54,10 54,18 48,22"
-        fill="#A8B8C4"
-        stroke="#8898A8"
-        strokeWidth="0.3"
-      />
+      <polygon points="48,14 54,10 54,18 48,22" fill="#A8B8C4" stroke="#8898A8" strokeWidth="0.3" />
 
       {/* Bottom chamfer */}
       <line x1="32" y1="17.5" x2="38" y2="21.5" stroke="#586068" strokeWidth="0.5" />

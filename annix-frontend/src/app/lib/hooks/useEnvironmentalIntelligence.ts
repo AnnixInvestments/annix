@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from "react";
 import {
-  fetchEnvironmentalData,
   type EnvironmentalData,
   type EnvironmentalFetchResult,
-} from '../services/environmentalIntelligence';
+  fetchEnvironmentalData,
+} from "../services/environmentalIntelligence";
 
 export interface UseEnvironmentalIntelligenceResult {
   /** Whether environmental data is currently being fetched */
@@ -15,7 +15,7 @@ export interface UseEnvironmentalIntelligenceResult {
   /** Set of field names that were auto-filled */
   autoFilledFields: Set<string>;
   /** Metadata from the fetch (distance to coast, humidity, etc.) */
-  metadata: EnvironmentalFetchResult['metadata'] | null;
+  metadata: EnvironmentalFetchResult["metadata"] | null;
   /**
    * Fetch environmental data for a location and update form specs
    * @param lat Latitude
@@ -28,7 +28,7 @@ export interface UseEnvironmentalIntelligenceResult {
     lat: number,
     lng: number,
     region?: string,
-    country?: string
+    country?: string,
   ) => Promise<EnvironmentalData>;
   /** Clear the auto-filled fields tracking */
   clearAutoFilled: () => void;
@@ -48,23 +48,20 @@ export function useEnvironmentalIntelligence(): UseEnvironmentalIntelligenceResu
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
-  const [metadata, setMetadata] = useState<EnvironmentalFetchResult['metadata'] | null>(null);
+  const [metadata, setMetadata] = useState<EnvironmentalFetchResult["metadata"] | null>(null);
 
   const fetchAndApply = useCallback(
     async (
       lat: number,
       lng: number,
       region?: string,
-      country?: string
+      country?: string,
     ): Promise<EnvironmentalData> => {
       setIsLoading(true);
       setErrors([]);
 
       try {
-        const result = await fetchEnvironmentalData(
-          { lat, lng },
-          { region, country }
-        );
+        const result = await fetchEnvironmentalData({ lat, lng }, { region, country });
 
         // Track which fields were populated
         const fieldsApplied = new Set<string>();
@@ -83,16 +80,15 @@ export function useEnvironmentalIntelligence(): UseEnvironmentalIntelligenceResu
 
         return result.data;
       } catch (error) {
-        const errorMessage = error instanceof Error
-          ? error.message
-          : 'Failed to fetch environmental data';
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to fetch environmental data";
         setErrors([errorMessage]);
         throw error;
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [],
   );
 
   const clearAutoFilled = useCallback(() => {
@@ -103,30 +99,24 @@ export function useEnvironmentalIntelligence(): UseEnvironmentalIntelligenceResu
 
   const wasAutoFilled = useCallback(
     (fieldName: string) => autoFilledFields.has(fieldName),
-    [autoFilledFields]
+    [autoFilledFields],
   );
 
-  const markAsOverridden = useCallback(
-    (fieldName: string) => {
-      setAutoFilledFields((prev) => {
-        const next = new Set(prev);
-        next.delete(fieldName);
-        return next;
-      });
-    },
-    []
-  );
+  const markAsOverridden = useCallback((fieldName: string) => {
+    setAutoFilledFields((prev) => {
+      const next = new Set(prev);
+      next.delete(fieldName);
+      return next;
+    });
+  }, []);
 
-  const markFieldsAsAutoFilled = useCallback(
-    (fieldNames: string[]) => {
-      setAutoFilledFields((prev) => {
-        const next = new Set(prev);
-        fieldNames.forEach((field) => next.add(field));
-        return next;
-      });
-    },
-    []
-  );
+  const markFieldsAsAutoFilled = useCallback((fieldNames: string[]) => {
+    setAutoFilledFields((prev) => {
+      const next = new Set(prev);
+      fieldNames.forEach((field) => next.add(field));
+      return next;
+    });
+  }, []);
 
   return {
     isLoading,

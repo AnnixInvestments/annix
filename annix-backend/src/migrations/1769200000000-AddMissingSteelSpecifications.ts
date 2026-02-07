@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddMissingSteelSpecifications1769200000000 implements MigrationInterface {
-  name = 'AddMissingSteelSpecifications1769200000000';
+  name = "AddMissingSteelSpecifications1769200000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -29,9 +29,7 @@ export class AddMissingSteelSpecifications1769200000000 implements MigrationInte
       ON CONFLICT (steel_spec_name) DO NOTHING
     `);
 
-    console.warn(
-      'Added missing stainless steel and alloy steel specifications',
-    );
+    console.warn("Added missing stainless steel and alloy steel specifications");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

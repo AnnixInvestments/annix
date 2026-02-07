@@ -1,40 +1,40 @@
-import { Controller, Get, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { PublicService } from './public.service';
-import { PublicStatsDto } from './dto/public-stats.dto';
+import { Controller, Get, HttpStatus } from "@nestjs/common";
+import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { PublicStatsDto } from "./dto/public-stats.dto";
+import { PublicService } from "./public.service";
 
-@ApiTags('Public')
-@Controller('public')
+@ApiTags("Public")
+@Controller("public")
 export class PublicController {
   constructor(private readonly publicService: PublicService) {}
 
-  @Get('stats')
+  @Get("stats")
   @ApiOperation({
-    summary: 'Get public dashboard statistics',
+    summary: "Get public dashboard statistics",
     description:
-      'Returns public statistics for the home page dashboard including RFQ count, supplier count, and upcoming RFQ closing dates. No authentication required.',
+      "Returns public statistics for the home page dashboard including RFQ count, supplier count, and upcoming RFQ closing dates. No authentication required.",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Statistics retrieved successfully',
+    description: "Statistics retrieved successfully",
     type: PublicStatsDto,
   })
   async getPublicStats(): Promise<PublicStatsDto> {
     return this.publicService.getPublicStats();
   }
 
-  @Get('stats/rfq-count')
+  @Get("stats/rfq-count")
   @ApiOperation({
-    summary: 'Get total RFQ count',
-    description: 'Returns the total number of RFQs in the system',
+    summary: "Get total RFQ count",
+    description: "Returns the total number of RFQs in the system",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'RFQ count retrieved successfully',
+    description: "RFQ count retrieved successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        count: { type: 'number', example: 150 },
+        count: { type: "number", example: 150 },
       },
     },
   })
@@ -43,18 +43,18 @@ export class PublicController {
     return { count };
   }
 
-  @Get('stats/customer-count')
+  @Get("stats/customer-count")
   @ApiOperation({
-    summary: 'Get total customer count',
-    description: 'Returns the total number of registered customers',
+    summary: "Get total customer count",
+    description: "Returns the total number of registered customers",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Customer count retrieved successfully',
+    description: "Customer count retrieved successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        count: { type: 'number', example: 50 },
+        count: { type: "number", example: 50 },
       },
     },
   })
@@ -63,18 +63,18 @@ export class PublicController {
     return { count };
   }
 
-  @Get('stats/supplier-count')
+  @Get("stats/supplier-count")
   @ApiOperation({
-    summary: 'Get total supplier count',
-    description: 'Returns the total number of registered suppliers',
+    summary: "Get total supplier count",
+    description: "Returns the total number of registered suppliers",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Supplier count retrieved successfully',
+    description: "Supplier count retrieved successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        count: { type: 'number', example: 25 },
+        count: { type: "number", example: 25 },
       },
     },
   })

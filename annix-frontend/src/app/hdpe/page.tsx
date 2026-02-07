@@ -1,35 +1,38 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { HdpePipeCalculator, HdpeFittingCalculator, HdpeSpecsTable } from './components';
-import { hdpeApi, HdpeStandard } from '@/app/lib/hdpe';
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { HdpeStandard, hdpeApi } from "@/app/lib/hdpe";
+import { HdpeFittingCalculator, HdpePipeCalculator, HdpeSpecsTable } from "./components";
 
-type TabType = 'specifications' | 'pipe-calculator' | 'fitting-calculator';
+type TabType = "specifications" | "pipe-calculator" | "fitting-calculator";
 
 const DEFAULT_PRICE_PER_KG = 45;
 const DEFAULT_BUTTWELD_PRICE = 150;
 const DEFAULT_STUB_PRICE = 75;
 
 export default function HdpePage() {
-  const [activeTab, setActiveTab] = useState<TabType>('specifications');
+  const [activeTab, setActiveTab] = useState<TabType>("specifications");
   const [pricePerKg, setPricePerKg] = useState(DEFAULT_PRICE_PER_KG);
   const [buttweldPrice, setButtweldPrice] = useState(DEFAULT_BUTTWELD_PRICE);
   const [stubPrice, setStubPrice] = useState(DEFAULT_STUB_PRICE);
   const [standards, setStandards] = useState<HdpeStandard[]>([]);
 
   useEffect(() => {
-    document.title = 'HDPE Pipes | Annix';
+    document.title = "HDPE Pipes | Annix";
   }, []);
 
   useEffect(() => {
-    hdpeApi.standards.getAll().then(setStandards).catch(() => setStandards([]));
+    hdpeApi.standards
+      .getAll()
+      .then(setStandards)
+      .catch(() => setStandards([]));
   }, []);
 
   const tabs = [
-    { id: 'specifications' as const, label: 'Specifications', icon: '📋' },
-    { id: 'pipe-calculator' as const, label: 'Pipe Calculator', icon: '📏' },
-    { id: 'fitting-calculator' as const, label: 'Fitting Calculator', icon: '🔧' },
+    { id: "specifications" as const, label: "Specifications", icon: "📋" },
+    { id: "pipe-calculator" as const, label: "Pipe Calculator", icon: "📏" },
+    { id: "fitting-calculator" as const, label: "Fitting Calculator", icon: "🔧" },
   ];
 
   return (
@@ -41,7 +44,12 @@ export default function HdpePage() {
             className="inline-flex items-center text-blue-300 hover:text-blue-200 transition-colors"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
             Back to Home
           </Link>
@@ -112,8 +120,8 @@ export default function HdpePage() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300'
+                      ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                      : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300"
                   }`}
                 >
                   <span>{tab.icon}</span>
@@ -124,16 +132,13 @@ export default function HdpePage() {
           </div>
 
           <div className="p-6">
-            {activeTab === 'specifications' && <HdpeSpecsTable />}
+            {activeTab === "specifications" && <HdpeSpecsTable />}
 
-            {activeTab === 'pipe-calculator' && (
-              <HdpePipeCalculator
-                pricePerKg={pricePerKg}
-                buttweldPrice={buttweldPrice}
-              />
+            {activeTab === "pipe-calculator" && (
+              <HdpePipeCalculator pricePerKg={pricePerKg} buttweldPrice={buttweldPrice} />
             )}
 
-            {activeTab === 'fitting-calculator' && (
+            {activeTab === "fitting-calculator" && (
               <HdpeFittingCalculator
                 pricePerKg={pricePerKg}
                 buttweldPrice={buttweldPrice}
@@ -171,18 +176,14 @@ export default function HdpePage() {
               PE100 is the highest grade of HDPE with MRS (Minimum Required Strength) of 10 MPa.
               Ideal for pressure pipe applications.
             </p>
-            <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
-              Density: 955 kg/m³
-            </div>
+            <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">Density: 955 kg/m³</div>
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              SDR Values
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">SDR Values</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Standard Dimension Ratio (SDR) determines wall thickness and pressure rating.
-              Lower SDR = thicker wall = higher pressure.
+              Standard Dimension Ratio (SDR) determines wall thickness and pressure rating. Lower
+              SDR = thicker wall = higher pressure.
             </p>
             <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
               PN = 20 / (SDR - 1) bar
@@ -194,8 +195,8 @@ export default function HdpePage() {
               Buttweld Joints
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              HDPE pipes are joined by butt fusion welding, creating monolithic joints
-              as strong as the pipe itself.
+              HDPE pipes are joined by butt fusion welding, creating monolithic joints as strong as
+              the pipe itself.
             </p>
             <div className="mt-3 text-sm text-gray-500 dark:text-gray-400">
               Weld costs added per joint

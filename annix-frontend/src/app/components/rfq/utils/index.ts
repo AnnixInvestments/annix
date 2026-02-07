@@ -1,1 +1,1 @@
-export { getFlangeMaterialGroup } from './flangeMaterialGroup';
+export { getFlangeMaterialGroup } from "./flangeMaterialGroup";

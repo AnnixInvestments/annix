@@ -1,21 +1,20 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsEnum,
-  IsDateString,
-  IsNumber,
-  IsBoolean,
-  IsObject,
   IsArray,
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
   ValidateNested,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type, Transform } from 'class-transformer';
+} from "class-validator";
 import {
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
-} from '../entities/supplier-document.entity';
+} from "../entities/supplier-document.entity";
 
 export class VerificationExtractedDataDto {
   @IsOptional()
@@ -112,7 +111,7 @@ export class VerificationResultDto {
 
 export class UploadSupplierDocumentDto {
   @ApiProperty({
-    description: 'Document type',
+    description: "Document type",
     enum: SupplierDocumentType,
     example: SupplierDocumentType.REGISTRATION_CERT,
   })
@@ -121,15 +120,15 @@ export class UploadSupplierDocumentDto {
   documentType: SupplierDocumentType;
 
   @ApiPropertyOptional({
-    description: 'Document expiry date',
-    example: '2025-12-31',
+    description: "Document expiry date",
+    example: "2025-12-31",
   })
   @IsDateString()
   @IsOptional()
   expiryDate?: string;
 
   @ApiPropertyOptional({
-    description: 'Pre-verified document verification result from frontend Nix verification',
+    description: "Pre-verified document verification result from frontend Nix verification",
   })
   @IsOptional()
   verificationResult?: VerificationResultDto;
@@ -137,7 +136,7 @@ export class UploadSupplierDocumentDto {
 
 export class ReviewDocumentDto {
   @ApiProperty({
-    description: 'Validation status',
+    description: "Validation status",
     enum: SupplierDocumentValidationStatus,
     example: SupplierDocumentValidationStatus.VALID,
   })
@@ -146,8 +145,8 @@ export class ReviewDocumentDto {
   validationStatus: SupplierDocumentValidationStatus;
 
   @ApiPropertyOptional({
-    description: 'Validation notes',
-    example: 'Document verified successfully',
+    description: "Validation notes",
+    example: "Document verified successfully",
   })
   @IsString()
   @IsOptional()

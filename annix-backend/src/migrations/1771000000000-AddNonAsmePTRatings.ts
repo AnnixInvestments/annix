@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddNonAsmePTRatings1771000000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -35,7 +35,7 @@ export class AddNonAsmePTRatings1771000000000 implements MigrationInterface {
     };
 
     if (bs4504Id) {
-      const pnClasses = ['PN6', 'PN10', 'PN16', 'PN25', 'PN40', 'PN64'];
+      const pnClasses = ["PN6", "PN10", "PN16", "PN25", "PN40", "PN64"];
       const pnValues: Record<string, number> = {
         PN6: 6,
         PN10: 10,
@@ -67,24 +67,19 @@ export class AddNonAsmePTRatings1771000000000 implements MigrationInterface {
           ];
 
           for (const [temp, pressure] of pnPtData) {
-            await insertPtRating(
-              classId,
-              'Carbon Steel',
-              temp,
-              Math.round(pressure * 10) / 10,
-            );
+            await insertPtRating(classId, "Carbon Steel", temp, Math.round(pressure * 10) / 10);
           }
         }
       }
     }
 
     if (sabs1123Id) {
-      const sabsClasses = ['1000', '1600', '2500', '4000'];
+      const sabsClasses = ["1000", "1600", "2500", "4000"];
       const sabsValues: Record<string, number> = {
-        '1000': 10,
-        '1600': 16,
-        '2500': 25,
-        '4000': 40,
+        "1000": 10,
+        "1600": 16,
+        "2500": 25,
+        "4000": 40,
       };
 
       for (const sabsClass of sabsClasses) {
@@ -104,12 +99,7 @@ export class AddNonAsmePTRatings1771000000000 implements MigrationInterface {
           ];
 
           for (const [temp, pressure] of sabsPtData) {
-            await insertPtRating(
-              classId,
-              'Carbon Steel',
-              temp,
-              Math.round(pressure * 10) / 10,
-            );
+            await insertPtRating(classId, "Carbon Steel", temp, Math.round(pressure * 10) / 10);
           }
         }
       }
@@ -117,19 +107,19 @@ export class AddNonAsmePTRatings1771000000000 implements MigrationInterface {
 
     if (bs10Id) {
       const bs10TablePressures: Record<string, [number, number][]> = {
-        'T/D': [
+        "T/D": [
           [-10, 10],
           [100, 10],
           [200, 10],
           [230, 9],
         ],
-        'T/E': [
+        "T/E": [
           [-10, 19],
           [100, 19],
           [200, 19],
           [230, 17],
         ],
-        'T/F': [
+        "T/F": [
           [-10, 20.7],
           [100, 20.7],
           [200, 20.7],
@@ -138,7 +128,7 @@ export class AddNonAsmePTRatings1771000000000 implements MigrationInterface {
           [350, 13.4],
           [400, 10.3],
         ],
-        'T/H': [
+        "T/H": [
           [-10, 34.5],
           [100, 34.5],
           [200, 34.5],
@@ -149,7 +139,7 @@ export class AddNonAsmePTRatings1771000000000 implements MigrationInterface {
           [425, 12.4],
           [450, 7.9],
         ],
-        'T/J': [
+        "T/J": [
           [-10, 48.3],
           [100, 48.3],
           [200, 48.3],
@@ -160,7 +150,7 @@ export class AddNonAsmePTRatings1771000000000 implements MigrationInterface {
           [425, 17.6],
           [450, 11],
         ],
-        'T/K': [
+        "T/K": [
           [-10, 62],
           [100, 62],
           [200, 62],
@@ -180,7 +170,7 @@ export class AddNonAsmePTRatings1771000000000 implements MigrationInterface {
         if (classResult.length > 0) {
           const classId = classResult[0].id;
           for (const [temp, pressure] of ptData) {
-            await insertPtRating(classId, 'Carbon Steel', temp, pressure);
+            await insertPtRating(classId, "Carbon Steel", temp, pressure);
           }
         }
       }

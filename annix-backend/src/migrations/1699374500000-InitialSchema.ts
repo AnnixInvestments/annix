@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class InitialSchema1699374500000 implements MigrationInterface {
-  name = 'InitialSchema1699374500000';
+  name = "InitialSchema1699374500000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -31,9 +31,7 @@ export class InitialSchema1699374500000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "steel_specifications" ADD "density_kg_m3" numeric(8,2) NOT NULL DEFAULT '7850'`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "steel_specifications" ADD "description" text`,
-    );
+    await queryRunner.query(`ALTER TABLE "steel_specifications" ADD "description" text`);
     await queryRunner.query(
       `ALTER TABLE "steel_specifications" ADD "grade_standard" character varying(100)`,
     );
@@ -79,28 +77,14 @@ export class InitialSchema1699374500000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "rfq_items" DROP CONSTRAINT "FK_ef8f022c5f4d9e27e47e03a1202"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfqs" DROP CONSTRAINT "FK_aba921c26dfeef3d7662eb97b21"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "steel_specifications" DROP COLUMN "grade_standard"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "steel_specifications" DROP COLUMN "description"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "steel_specifications" DROP COLUMN "density_kg_m3"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfqs" DROP CONSTRAINT "FK_aba921c26dfeef3d7662eb97b21"`);
+    await queryRunner.query(`ALTER TABLE "steel_specifications" DROP COLUMN "grade_standard"`);
+    await queryRunner.query(`ALTER TABLE "steel_specifications" DROP COLUMN "description"`);
+    await queryRunner.query(`ALTER TABLE "steel_specifications" DROP COLUMN "density_kg_m3"`);
     await queryRunner.query(`DROP TABLE "straight_pipe_rfqs"`);
-    await queryRunner.query(
-      `DROP TYPE "public"."straight_pipe_rfqs_quantity_type_enum"`,
-    );
-    await queryRunner.query(
-      `DROP TYPE "public"."straight_pipe_rfqs_length_unit_enum"`,
-    );
-    await queryRunner.query(
-      `DROP TYPE "public"."straight_pipe_rfqs_schedule_type_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE "public"."straight_pipe_rfqs_quantity_type_enum"`);
+    await queryRunner.query(`DROP TYPE "public"."straight_pipe_rfqs_length_unit_enum"`);
+    await queryRunner.query(`DROP TYPE "public"."straight_pipe_rfqs_schedule_type_enum"`);
     await queryRunner.query(`DROP TABLE "rfq_items"`);
     await queryRunner.query(`DROP TYPE "public"."rfq_items_item_type_enum"`);
     await queryRunner.query(`DROP TABLE "rfqs"`);

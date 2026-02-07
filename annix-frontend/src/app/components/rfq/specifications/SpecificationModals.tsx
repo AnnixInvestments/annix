@@ -1,8 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import type { MaterialLimits } from '@/app/lib/config/rfq';
+import Link from "next/link";
+import type { MaterialLimits } from "@/app/lib/config/rfq";
 
 export interface MaterialWarning {
   show: boolean;
@@ -23,32 +22,32 @@ export interface RestrictionPopupPosition {
   y: number;
 }
 
-export type FeatureType = 'coating-assistant' | 'lining-assistant';
+export type FeatureType = "coating-assistant" | "lining-assistant";
 
 const FEATURE_DESCRIPTIONS: Record<
   FeatureType,
   { title: string; description: string; benefits: string[] }
 > = {
-  'coating-assistant': {
-    title: 'External Coating Assistant',
+  "coating-assistant": {
+    title: "External Coating Assistant",
     description:
-      'An intelligent coating recommendation system based on ISO 12944 and ISO 21809 standards.',
+      "An intelligent coating recommendation system based on ISO 12944 and ISO 21809 standards.",
     benefits: [
-      'Analyzes atmospheric conditions including marine influence, industrial pollution, and UV exposure',
-      'Profiles installation environments (above ground, buried, submerged, splash zone)',
-      'Recommends optimal coating systems based on corrosivity category',
-      'Provides durability classifications and system specifications',
+      "Analyzes atmospheric conditions including marine influence, industrial pollution, and UV exposure",
+      "Profiles installation environments (above ground, buried, submerged, splash zone)",
+      "Recommends optimal coating systems based on corrosivity category",
+      "Provides durability classifications and system specifications",
     ],
   },
-  'lining-assistant': {
-    title: 'Internal Lining Assistant',
+  "lining-assistant": {
+    title: "Internal Lining Assistant",
     description:
-      'A comprehensive lining recommendation system for material transfer applications based on ASTM and ISO standards.',
+      "A comprehensive lining recommendation system for material transfer applications based on ASTM and ISO standards.",
     benefits: [
-      'Analyzes material properties including particle size, hardness, and silica content',
-      'Evaluates chemical environment (pH levels, chloride exposure, operating temperatures)',
-      'Considers flow characteristics (velocity, solids percentage, impact angles)',
-      'Recommends appropriate lining systems (rubber, ceramic, polyurethane, HDPE) with thickness specifications',
+      "Analyzes material properties including particle size, hardness, and silica content",
+      "Evaluates chemical environment (pH levels, chloride exposure, operating temperatures)",
+      "Considers flow characteristics (velocity, solids percentage, impact angles)",
+      "Recommends appropriate lining systems (rubber, ceramic, polyurethane, HDPE) with thickness specifications",
     ],
   },
 };
@@ -59,11 +58,7 @@ export interface MaterialWarningModalProps {
   onProceed: () => void;
 }
 
-export function MaterialWarningModal({
-  warning,
-  onClose,
-  onProceed,
-}: MaterialWarningModalProps) {
+export function MaterialWarningModal({ warning, onClose, onProceed }: MaterialWarningModalProps) {
   if (!warning.show) return null;
 
   return (
@@ -84,16 +79,14 @@ export function MaterialWarningModal({
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            <h3 className="text-lg font-bold text-white">
-              Material Not Recommended
-            </h3>
+            <h3 className="text-lg font-bold text-white">Material Not Recommended</h3>
           </div>
         </div>
 
         <div className="px-6 py-4">
           <p className="text-gray-800 font-medium mb-3">
-            <span className="font-bold">{warning.specName}</span> is not
-            recommended for the selected operating conditions:
+            <span className="font-bold">{warning.specName}</span> is not recommended for the
+            selected operating conditions:
           </p>
 
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
@@ -111,8 +104,7 @@ export function MaterialWarningModal({
               </p>
               <ul className="text-sm text-gray-600 mt-1">
                 <li>
-                  Temperature: {warning.limits.minTempC}°C to{' '}
-                  {warning.limits.maxTempC}°C
+                  Temperature: {warning.limits.minTempC}°C to {warning.limits.maxTempC}°C
                 </li>
                 <li>Max Pressure: {warning.limits.maxPressureBar} bar</li>
                 <li>Type: {warning.limits.type}</li>
@@ -123,15 +115,12 @@ export function MaterialWarningModal({
           {warning.recommendation && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-blue-800">
-                <span className="font-semibold">Recommendation:</span>{' '}
-                {warning.recommendation}
+                <span className="font-semibold">Recommendation:</span> {warning.recommendation}
               </p>
             </div>
           )}
 
-          <p className="text-gray-600 text-sm">
-            Do you want to proceed with this material anyway?
-          </p>
+          <p className="text-gray-600 text-sm">Do you want to proceed with this material anyway?</p>
         </div>
 
         <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
@@ -184,16 +173,13 @@ export function ConfirmationWarningModal({
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
               />
             </svg>
-            <h3 className="text-lg font-bold text-white">
-              Nix has some concerns
-            </h3>
+            <h3 className="text-lg font-bold text-white">Nix has some concerns</h3>
           </div>
         </div>
 
         <div className="px-6 py-4">
           <p className="text-gray-800 font-medium mb-3">
-            The following specifications are not recommended for your operating
-            conditions:
+            The following specifications are not recommended for your operating conditions:
           </p>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
@@ -205,8 +191,8 @@ export function ConfirmationWarningModal({
           </div>
 
           <p className="text-gray-600 text-sm">
-            Do you want to proceed with these specifications anyway, or go back
-            and make corrections?
+            Do you want to proceed with these specifications anyway, or go back and make
+            corrections?
           </p>
         </div>
 
@@ -261,7 +247,7 @@ export function RestrictionPopup({ position, onClose }: RestrictionPopupProps) {
         <div>
           <p className="text-sm font-medium">This option is restricted</p>
           <p className="text-xs text-gray-300 mt-1">
-            Available on other pricing tiers.{' '}
+            Available on other pricing tiers.{" "}
             <Link
               href="/pricing"
               className="text-blue-400 hover:text-blue-300 underline"
@@ -316,10 +302,7 @@ export function FeatureRestrictionPopup({
           <p className="text-xs text-gray-300 mt-1">{info.description}</p>
           <ul className="mt-2 space-y-1">
             {info.benefits.map((benefit, idx) => (
-              <li
-                key={idx}
-                className="text-xs text-gray-400 flex items-start gap-1.5"
-              >
+              <li key={idx} className="text-xs text-gray-400 flex items-start gap-1.5">
                 <span className="text-emerald-400 mt-0.5">&bull;</span>
                 <span>{benefit}</span>
               </li>
@@ -327,14 +310,14 @@ export function FeatureRestrictionPopup({
           </ul>
           <div className="mt-3 pt-2 border-t border-slate-600">
             <p className="text-xs text-gray-300">
-              This feature is available to registered users.{' '}
+              This feature is available to registered users.{" "}
               <Link
                 href="/register"
                 className="text-blue-400 hover:text-blue-300 underline"
                 onClick={onClose}
               >
                 Create an account
-              </Link>{' '}
+              </Link>{" "}
               to access this assistant.
             </p>
           </div>

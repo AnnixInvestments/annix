@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 interface DeviceFingerprintData {
   fingerprint: string;
@@ -49,48 +49,48 @@ export async function generateFingerprint(): Promise<DeviceFingerprintData> {
 
   // Canvas fingerprint
   try {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.textBaseline = 'top';
-      ctx.font = '14px Arial';
-      ctx.fillStyle = '#f60';
+      ctx.textBaseline = "top";
+      ctx.font = "14px Arial";
+      ctx.fillStyle = "#f60";
       ctx.fillRect(125, 1, 62, 20);
-      ctx.fillStyle = '#069';
-      ctx.fillText('Annix Fingerprint', 2, 15);
-      ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
-      ctx.fillText('Annix Fingerprint', 4, 17);
+      ctx.fillStyle = "#069";
+      ctx.fillText("Annix Fingerprint", 2, 15);
+      ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+      ctx.fillText("Annix Fingerprint", 4, 17);
       components.push(canvas.toDataURL());
     }
   } catch (e) {
-    components.push('canvas-not-available');
+    components.push("canvas-not-available");
   }
 
   // WebGL fingerprint
   try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    const canvas = document.createElement("canvas");
+    const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
     if (gl) {
       const glContext = gl as WebGLRenderingContext;
-      const debugInfo = glContext.getExtension('WEBGL_debug_renderer_info');
+      const debugInfo = glContext.getExtension("WEBGL_debug_renderer_info");
       if (debugInfo) {
         components.push(glContext.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL));
         components.push(glContext.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
       }
     }
   } catch (e) {
-    components.push('webgl-not-available');
+    components.push("webgl-not-available");
   }
 
   // Installed plugins
   const plugins = Array.from(navigator.plugins || [])
     .map((p) => p.name)
     .sort()
-    .join(',');
+    .join(",");
   components.push(plugins);
 
   // Generate hash from components
-  const fingerprintString = components.join('|||');
+  const fingerprintString = components.join("|||");
   const fingerprint = await hashString(fingerprintString);
 
   return {
@@ -114,9 +114,9 @@ export async function generateFingerprint(): Promise<DeviceFingerprintData> {
 async function hashString(str: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(str);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -124,7 +124,7 @@ async function hashString(str: string): Promise<string> {
  */
 export function useDeviceFingerprint() {
   const [fingerprint, setFingerprint] = useState<string | null>(null);
-  const [browserInfo, setBrowserInfo] = useState<DeviceFingerprintData['browserInfo'] | null>(null);
+  const [browserInfo, setBrowserInfo] = useState<DeviceFingerprintData["browserInfo"] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -138,12 +138,12 @@ export function useDeviceFingerprint() {
       setBrowserInfo(data.browserInfo);
 
       // Store in session storage for use across the app
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('deviceFingerprint', data.fingerprint);
-        sessionStorage.setItem('browserInfo', JSON.stringify(data.browserInfo));
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("deviceFingerprint", data.fingerprint);
+        sessionStorage.setItem("browserInfo", JSON.stringify(data.browserInfo));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to generate device fingerprint');
+      setError(e instanceof Error ? e.message : "Failed to generate device fingerprint");
     } finally {
       setIsLoading(false);
     }
@@ -151,9 +151,9 @@ export function useDeviceFingerprint() {
 
   useEffect(() => {
     // Check if we already have a fingerprint in session
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('deviceFingerprint');
-      const storedInfo = sessionStorage.getItem('browserInfo');
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem("deviceFingerprint");
+      const storedInfo = sessionStorage.getItem("browserInfo");
       if (stored && storedInfo) {
         setFingerprint(stored);
         setBrowserInfo(JSON.parse(storedInfo));
@@ -179,6 +179,6 @@ export function useDeviceFingerprint() {
  * Returns null if not available
  */
 export function getStoredFingerprint(): string | null {
-  if (typeof window === 'undefined') return null;
-  return sessionStorage.getItem('deviceFingerprint');
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem("deviceFingerprint");
 }

@@ -1,18 +1,18 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationInterface {
-  name = 'AddDnvOsC101StructuralSteelData1777800000008';
+  name = "AddDnvOsC101StructuralSteelData1777800000008";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const tableExists = async (tableName: string): Promise<boolean> => {
       const result = await queryRunner.query(
-        `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)`,
+        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
         [tableName],
       );
       return result[0].exists;
     };
 
-    if (!(await tableExists('dnv_load_factors'))) {
+    if (!(await tableExists("dnv_load_factors"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_load_factors (
           id SERIAL PRIMARY KEY,
@@ -45,7 +45,7 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
       `);
     }
 
-    if (!(await tableExists('dnv_material_factors'))) {
+    if (!(await tableExists("dnv_material_factors"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_material_factors (
           id SERIAL PRIMARY KEY,
@@ -78,7 +78,7 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
       `);
     }
 
-    if (!(await tableExists('dnv_structural_categories'))) {
+    if (!(await tableExists("dnv_structural_categories"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_structural_categories (
           id SERIAL PRIMARY KEY,
@@ -99,7 +99,7 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
       `);
     }
 
-    if (!(await tableExists('dnv_steel_grades'))) {
+    if (!(await tableExists("dnv_steel_grades"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_steel_grades (
           id SERIAL PRIMARY KEY,
@@ -172,7 +172,7 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
       `);
     }
 
-    if (!(await tableExists('dnv_thickness_limits'))) {
+    if (!(await tableExists("dnv_thickness_limits"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_thickness_limits (
           id SERIAL PRIMARY KEY,
@@ -217,7 +217,7 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
       `);
     }
 
-    if (!(await tableExists('dnv_deck_area_loads'))) {
+    if (!(await tableExists("dnv_deck_area_loads"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_deck_area_loads (
           id SERIAL PRIMARY KEY,
@@ -244,7 +244,7 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
       `);
     }
 
-    if (!(await tableExists('dnv_friction_coefficients'))) {
+    if (!(await tableExists("dnv_friction_coefficients"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_friction_coefficients (
           id SERIAL PRIMARY KEY,
@@ -265,7 +265,7 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
       `);
     }
 
-    if (!(await tableExists('dnv_bolt_clearances'))) {
+    if (!(await tableExists("dnv_bolt_clearances"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_bolt_clearances (
           id SERIAL PRIMARY KEY,
@@ -291,7 +291,7 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
       `);
     }
 
-    if (!(await tableExists('dnv_bending_moment_factors'))) {
+    if (!(await tableExists("dnv_bending_moment_factors"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_bending_moment_factors (
           id SERIAL PRIMARY KEY,
@@ -319,7 +319,7 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
       `);
     }
 
-    if (!(await tableExists('dnv_fatigue_design_factors'))) {
+    if (!(await tableExists("dnv_fatigue_design_factors"))) {
       await queryRunner.query(`
         CREATE TABLE dnv_fatigue_design_factors (
           id SERIAL PRIMARY KEY,
@@ -343,15 +343,15 @@ export class AddDnvOsC101StructuralSteelData1777800000008 implements MigrationIn
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_fatigue_design_factors`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_bending_moment_factors`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_bolt_clearances`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_friction_coefficients`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_deck_area_loads`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_thickness_limits`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_steel_grades`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_structural_categories`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_material_factors`);
-    await queryRunner.query(`DROP TABLE IF EXISTS dnv_load_factors`);
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_fatigue_design_factors");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_bending_moment_factors");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_bolt_clearances");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_friction_coefficients");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_deck_area_loads");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_thickness_limits");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_steel_grades");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_structural_categories");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_material_factors");
+    await queryRunner.query("DROP TABLE IF EXISTS dnv_load_factors");
   }
 }

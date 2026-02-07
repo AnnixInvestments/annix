@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateMaterialLimitsTable1768800000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -92,6 +92,6 @@ export class CreateMaterialLimitsTable1768800000000 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS material_limits`);
+    await queryRunner.query("DROP TABLE IF EXISTS material_limits");
   }
 }

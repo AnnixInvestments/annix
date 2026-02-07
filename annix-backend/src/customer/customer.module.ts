@@ -1,60 +1,55 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-
+import { forwardRef, Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { JwtModule } from "@nestjs/jwt";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { AdminModule } from "../admin/admin.module";
+import { AuditModule } from "../audit/audit.module";
+import { EmailModule } from "../email/email.module";
+import { MessagingModule } from "../messaging/messaging.module";
+import { NixModule } from "../nix/nix.module";
+import { Rfq } from "../rfq/entities/rfq.entity";
+import { RfqDraft } from "../rfq/entities/rfq-draft.entity";
+import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
+import { StorageModule } from "../storage/storage.module";
+import { SupplierCapability } from "../supplier/entities/supplier-capability.entity";
+import { SupplierCompany } from "../supplier/entities/supplier-company.entity";
+import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
+import { User } from "../user/entities/user.entity";
+// External modules
+import { UserModule } from "../user/user.module";
+import { UserRole } from "../user-roles/entities/user-role.entity";
+import { CustomerController } from "./customer.controller";
+import { CustomerService } from "./customer.service";
+import { CustomerAdminController } from "./customer-admin.controller";
+import { CustomerAdminService } from "./customer-admin.service";
+// Controllers
+import { CustomerAuthController } from "./customer-auth.controller";
+// Services
+import { CustomerAuthService } from "./customer-auth.service";
+import { CustomerDocumentController } from "./customer-document.controller";
+import { CustomerDocumentService } from "./customer-document.service";
+import { CustomerMessagingController } from "./customer-messaging.controller";
+import { CustomerOnboardingController } from "./customer-onboarding.controller";
+import { CustomerOnboardingService } from "./customer-onboarding.service";
+import { CustomerSupplierController } from "./customer-supplier.controller";
+import { CustomerSupplierService } from "./customer-supplier.service";
+import { DocumentOcrService } from "./document-ocr.service";
 // Entities
 import {
-  CustomerCompany,
-  CustomerProfile,
-  CustomerDeviceBinding,
-  CustomerLoginAttempt,
-  CustomerSession,
-  CustomerOnboarding,
-  CustomerDocument,
-  CustomerPreferredSupplier,
   CustomerBlockedSupplier,
+  CustomerCompany,
+  CustomerDeviceBinding,
+  CustomerDocument,
+  CustomerLoginAttempt,
+  CustomerOnboarding,
+  CustomerPreferredSupplier,
+  CustomerProfile,
+  CustomerSession,
   SupplierInvitation,
-} from './entities';
-import { User } from '../user/entities/user.entity';
-import { UserRole } from '../user-roles/entities/user-role.entity';
-import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
-import { SupplierCompany } from '../supplier/entities/supplier-company.entity';
-import { SupplierCapability } from '../supplier/entities/supplier-capability.entity';
-import { Rfq } from '../rfq/entities/rfq.entity';
-import { RfqDraft } from '../rfq/entities/rfq-draft.entity';
-
-// Services
-import { CustomerAuthService } from './customer-auth.service';
-import { CustomerService } from './customer.service';
-import { CustomerAdminService } from './customer-admin.service';
-import { CustomerOnboardingService } from './customer-onboarding.service';
-import { CustomerDocumentService } from './customer-document.service';
-import { CustomerSupplierService } from './customer-supplier.service';
-import { DocumentOcrService } from './document-ocr.service';
-import { CertificateExpiryService } from './services/certificate-expiry.service';
-
-// Controllers
-import { CustomerAuthController } from './customer-auth.controller';
-import { CustomerController } from './customer.controller';
-import { CustomerAdminController } from './customer-admin.controller';
-import { CustomerOnboardingController } from './customer-onboarding.controller';
-import { CustomerDocumentController } from './customer-document.controller';
-import { CustomerSupplierController } from './customer-supplier.controller';
-import { CustomerMessagingController } from './customer-messaging.controller';
-
+} from "./entities";
 // Guards
-import { CustomerAuthGuard } from './guards/customer-auth.guard';
-
-// External modules
-import { UserModule } from '../user/user.module';
-import { AuditModule } from '../audit/audit.module';
-import { EmailModule } from '../email/email.module';
-import { StorageModule } from '../storage/storage.module';
-import { AdminModule } from '../admin/admin.module';
-import { NixModule } from '../nix/nix.module';
-import { MessagingModule } from '../messaging/messaging.module';
-import { SecureDocumentsModule } from '../secure-documents/secure-documents.module';
+import { CustomerAuthGuard } from "./guards/customer-auth.guard";
+import { CertificateExpiryService } from "./services/certificate-expiry.service";
 
 @Module({
   imports: [
@@ -80,9 +75,9 @@ import { SecureDocumentsModule } from '../secure-documents/secure-documents.modu
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.getOrThrow<string>('JWT_SECRET'),
+        secret: configService.getOrThrow<string>("JWT_SECRET"),
         signOptions: {
-          expiresIn: '1h',
+          expiresIn: "1h",
         },
       }),
       inject: [ConfigService],
@@ -91,10 +86,10 @@ import { SecureDocumentsModule } from '../secure-documents/secure-documents.modu
     AuditModule,
     EmailModule,
     StorageModule,
-    AdminModule,
-    NixModule,
+    forwardRef(() => AdminModule),
+    forwardRef(() => NixModule),
     MessagingModule,
-    SecureDocumentsModule,
+    forwardRef(() => SecureDocumentsModule),
   ],
   controllers: [
     CustomerAuthController,

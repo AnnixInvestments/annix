@@ -1,49 +1,49 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useRfqs, type Rfq } from '@/app/lib/query/hooks';
-import { formatDateZA } from '@/app/lib/datetime';
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
+import { type Rfq, useRfqs } from "@/app/lib/query/hooks";
 
 export default function RfqListPage() {
   const router = useRouter();
   const { data: rfqs = [], isLoading, error, refetch } = useRfqs();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
-    document.title = 'Annix RFQs';
+    document.title = "Annix RFQs";
   }, []);
 
   const filteredRfqs = rfqs.filter((rfq: Rfq) => {
     const matchesSearch =
       rfq.rfqNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rfq.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (rfq.customerName ?? '').toLowerCase().includes(searchTerm.toLowerCase());
+      (rfq.customerName ?? "").toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || rfq.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || rfq.status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
   const statusColorClass = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-blue-100 text-blue-800';
+        return "bg-blue-100 text-blue-800";
     }
   };
 
   const formatNumber = (num?: number) => {
-    if (num === undefined || num === null) return 'N/A';
-    return new Intl.NumberFormat('en-ZA', {
+    if (num === undefined || num === null) return "N/A";
+    return new Intl.NumberFormat("en-ZA", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(num);
@@ -93,7 +93,7 @@ export default function RfqListPage() {
               <p className="text-gray-600 mt-2">View and manage all your Request for Quotations</p>
             </div>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push("/")}
               className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-lg hover:shadow-xl transition-all"
             >
               + Create New RFQ
@@ -130,7 +130,8 @@ export default function RfqListPage() {
         {/* RFQ Count */}
         <div className="mb-4">
           <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{filteredRfqs.length}</span> of <span className="font-semibold">{rfqs.length}</span> RFQs
+            Showing <span className="font-semibold">{filteredRfqs.length}</span> of{" "}
+            <span className="font-semibold">{rfqs.length}</span> RFQs
           </p>
         </div>
 
@@ -142,13 +143,13 @@ export default function RfqListPage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No RFQs Found</h3>
             <p className="text-gray-600 mb-6">
-              {searchTerm || statusFilter !== 'all'
-                ? 'Try adjusting your filters'
-                : 'Get started by creating your first RFQ'}
+              {searchTerm || statusFilter !== "all"
+                ? "Try adjusting your filters"
+                : "Get started by creating your first RFQ"}
             </p>
-            {!searchTerm && statusFilter === 'all' && (
+            {!searchTerm && statusFilter === "all" && (
               <button
-                onClick={() => router.push('/')}
+                onClick={() => router.push("/")}
                 className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold transition-all"
               >
                 Create Your First RFQ
@@ -168,7 +169,9 @@ export default function RfqListPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-2xl font-bold text-gray-900">{rfq.rfqNumber}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColorClass(rfq.status)}`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColorClass(rfq.status)}`}
+                        >
                           {rfq.status.toUpperCase()}
                         </span>
                       </div>
@@ -188,12 +191,14 @@ export default function RfqListPage() {
                     </div>
                     <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4">
                       <p className="text-xs text-gray-600 mb-1">Total Weight (kg)</p>
-                      <p className="text-2xl font-bold text-purple-600">{formatNumber(rfq.totalWeightKg)}</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {formatNumber(rfq.totalWeightKg)}
+                      </p>
                     </div>
                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4">
                       <p className="text-xs text-gray-600 mb-1">Total Cost (ZAR)</p>
                       <p className="text-2xl font-bold text-green-600">
-                        {rfq.totalCost ? `R ${formatNumber(rfq.totalCost)}` : 'TBD'}
+                        {rfq.totalCost ? `R ${formatNumber(rfq.totalCost)}` : "TBD"}
                       </p>
                     </div>
                   </div>

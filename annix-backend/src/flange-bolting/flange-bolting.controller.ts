@@ -1,16 +1,16 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
-import { FlangeBoltingService } from './flange-bolting.service';
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 import {
+  BulkCreateFlangeBoltingDto,
   CreateFlangeBoltingDto,
   CreateFlangeBoltingMaterialDto,
-  BulkCreateFlangeBoltingDto,
-} from './dto/create-flange-bolting.dto';
+} from "./dto/create-flange-bolting.dto";
+import { FlangeBoltingService } from "./flange-bolting.service";
 
-@Controller('flange-bolting')
+@Controller("flange-bolting")
 export class FlangeBoltingController {
   constructor(private readonly boltingService: FlangeBoltingService) {}
 
-  @Post('materials')
+  @Post("materials")
   createMaterial(@Body() dto: CreateFlangeBoltingMaterialDto) {
     return this.boltingService.createMaterial(dto);
   }
@@ -20,18 +20,18 @@ export class FlangeBoltingController {
     return this.boltingService.createBolting(dto);
   }
 
-  @Post('bulk')
+  @Post("bulk")
   bulkCreateBolting(@Body() dto: BulkCreateFlangeBoltingDto) {
     return this.boltingService.bulkCreateBolting(dto);
   }
 
-  @Get('materials')
+  @Get("materials")
   findAllMaterials() {
     return this.boltingService.findAllMaterials();
   }
 
-  @Get('materials/by-group')
-  findMaterialByGroup(@Query('materialGroup') materialGroup: string) {
+  @Get("materials/by-group")
+  findMaterialByGroup(@Query("materialGroup") materialGroup: string) {
     return this.boltingService.findMaterialByGroup(materialGroup);
   }
 
@@ -40,47 +40,40 @@ export class FlangeBoltingController {
     return this.boltingService.findAllBolting();
   }
 
-  @Get('by-standard')
-  findByStandard(@Query('standardId') standardId: string) {
+  @Get("by-standard")
+  findByStandard(@Query("standardId") standardId: string) {
     return this.boltingService.findBoltingByStandard(Number(standardId));
   }
 
-  @Get('by-standard-and-class')
+  @Get("by-standard-and-class")
   findByStandardAndClass(
-    @Query('standardId') standardId: string,
-    @Query('pressureClass') pressureClass: string,
+    @Query("standardId") standardId: string,
+    @Query("pressureClass") pressureClass: string,
   ) {
-    return this.boltingService.findBoltingByStandardAndClass(
-      Number(standardId),
-      pressureClass,
-    );
+    return this.boltingService.findBoltingByStandardAndClass(Number(standardId), pressureClass);
   }
 
-  @Get('for-flange')
+  @Get("for-flange")
   getBoltingForFlange(
-    @Query('standardId') standardId: string,
-    @Query('pressureClass') pressureClass: string,
-    @Query('nps') nps: string,
+    @Query("standardId") standardId: string,
+    @Query("pressureClass") pressureClass: string,
+    @Query("nps") nps: string,
   ) {
-    return this.boltingService.getBoltingForFlange(
-      Number(standardId),
-      pressureClass,
-      nps,
-    );
+    return this.boltingService.getBoltingForFlange(Number(standardId), pressureClass, nps);
   }
 
-  @Get('complete')
+  @Get("complete")
   getCompleteBoltingInfo(
-    @Query('standardId') standardId: string,
-    @Query('pressureClass') pressureClass: string,
-    @Query('nps') nps: string,
-    @Query('materialGroup') materialGroup?: string,
+    @Query("standardId") standardId: string,
+    @Query("pressureClass") pressureClass: string,
+    @Query("nps") nps: string,
+    @Query("materialGroup") materialGroup?: string,
   ) {
     return this.boltingService.getCompleteBoltingInfo(
       Number(standardId),
       pressureClass,
       nps,
-      materialGroup || 'Carbon Steel A105 (Group 1.1)',
+      materialGroup || "Carbon Steel A105 (Group 1.1)",
     );
   }
 }

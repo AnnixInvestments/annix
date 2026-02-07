@@ -1,25 +1,20 @@
 import {
-  Injectable,
-  NotFoundException,
-  Logger,
-  OnModuleInit,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { nowISO } from '../lib/datetime';
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-  HeadObjectCommand,
-  HeadBucketCommand,
-  CreateBucketCommand,
-  PutBucketCorsCommand,
   BucketLocationConstraint,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { v4 as uuidv4 } from 'uuid';
-import { IStorageService, StorageResult } from './storage.interface';
+  CreateBucketCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadBucketCommand,
+  HeadObjectCommand,
+  PutBucketCorsCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Injectable, Logger, NotFoundException, OnModuleInit } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { v4 as uuidv4 } from "uuid";
+import { nowISO } from "../lib/datetime";
+import { IStorageService, StorageResult } from "./storage.interface";
 
 @Injectable()
 export class S3StorageService implements IStorageService, OnModuleInit {
@@ -31,18 +26,15 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   private initialized = false;
 
   constructor(private configService: ConfigService) {
-    this.region = this.configService.get<string>('AWS_REGION') || 'af-south-1';
-    this.bucket =
-      this.configService.get<string>('AWS_S3_BUCKET') || 'annix-sync-files';
-    this.presignedUrlExpiration =
-      this.configService.get<number>('AWS_S3_URL_EXPIRATION') || 3600; // 1 hour default
+    this.region = this.configService.get<string>("AWS_REGION") || "af-south-1";
+    this.bucket = this.configService.get<string>("AWS_S3_BUCKET") || "annix-sync-files";
+    this.presignedUrlExpiration = this.configService.get<number>("AWS_S3_URL_EXPIRATION") || 3600; // 1 hour default
 
     this.s3Client = new S3Client({
       region: this.region,
       credentials: {
-        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID') || '',
-        secretAccessKey:
-          this.configService.get<string>('AWS_SECRET_ACCESS_KEY') || '',
+        accessKeyId: this.configService.get<string>("AWS_ACCESS_KEY_ID") || "",
+        secretAccessKey: this.configService.get<string>("AWS_SECRET_ACCESS_KEY") || "",
       },
     });
 
@@ -52,8 +44,8 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
-    const storageType = this.configService.get<string>('STORAGE_TYPE') || 'local';
-    if (storageType.toLowerCase() !== 's3') {
+    const storageType = this.configService.get<string>("STORAGE_TYPE") || "local";
+    if (storageType.toLowerCase() !== "s3") {
       return;
     }
     await this.ensureBucketExists();
@@ -69,9 +61,9 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     } catch (error: unknown) {
       const s3Error = this.parseS3Error(error);
       if (
-        s3Error.name === 'NotFound' ||
+        s3Error.name === "NotFound" ||
         s3Error.httpStatusCode === 404 ||
-        s3Error.name === 'NoSuchBucket'
+        s3Error.name === "NoSuchBucket"
       ) {
         this.logger.log(`S3 bucket '${this.bucket}' not found, creating...`);
         await this.createBucket();
@@ -89,7 +81,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       await this.s3Client.send(
         new CreateBucketCommand({
           Bucket: this.bucket,
-          ...(this.region !== 'us-east-1' && {
+          ...(this.region !== "us-east-1" && {
             CreateBucketConfiguration: {
               LocationConstraint: this.region as BucketLocationConstraint,
             },
@@ -102,13 +94,11 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       this.initialized = true;
     } catch (error: unknown) {
       const s3Error = this.parseS3Error(error);
-      if (s3Error.name === 'BucketAlreadyOwnedByYou') {
-        this.logger.log(
-          `S3 bucket '${this.bucket}' already exists (owned by you)`,
-        );
+      if (s3Error.name === "BucketAlreadyOwnedByYou") {
+        this.logger.log(`S3 bucket '${this.bucket}' already exists (owned by you)`);
         await this.configureCors();
         this.initialized = true;
-      } else if (s3Error.name === 'BucketAlreadyExists') {
+      } else if (s3Error.name === "BucketAlreadyExists") {
         this.logger.error(
           `S3 bucket name '${this.bucket}' is already taken globally. Choose a different name.`,
         );
@@ -128,14 +118,14 @@ export class S3StorageService implements IStorageService, OnModuleInit {
           CORSConfiguration: {
             CORSRules: [
               {
-                AllowedHeaders: ['*'],
-                AllowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
+                AllowedHeaders: ["*"],
+                AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"],
                 AllowedOrigins: [
-                  'http://localhost:3000',
-                  'http://localhost:3001',
-                  'https://*.annix.co.za',
+                  "http://localhost:3000",
+                  "http://localhost:3001",
+                  "https://*.annix.co.za",
                 ],
-                ExposeHeaders: ['ETag', 'x-amz-meta-custom-header'],
+                ExposeHeaders: ["ETag", "x-amz-meta-custom-header"],
                 MaxAgeSeconds: 3600,
               },
             ],
@@ -164,18 +154,13 @@ export class S3StorageService implements IStorageService, OnModuleInit {
         httpStatusCode: s3Error.$metadata?.httpStatusCode,
       };
     }
-    return { name: 'Unknown', message: String(error) };
+    return { name: "Unknown", message: String(error) };
   }
 
-  async upload(
-    file: Express.Multer.File,
-    subPath: string,
-  ): Promise<StorageResult> {
-    const ext = file.originalname.substring(file.originalname.lastIndexOf('.'));
+  async upload(file: Express.Multer.File, subPath: string): Promise<StorageResult> {
+    const ext = file.originalname.substring(file.originalname.lastIndexOf("."));
     const uniqueFilename = `${uuidv4()}${ext}`;
-    const key = `${subPath}/${uniqueFilename}`
-      .replace(/\\/g, '/')
-      .replace(/^\//, '');
+    const key = `${subPath}/${uniqueFilename}`.replace(/\\/g, "/").replace(/^\//, "");
 
     try {
       const command = new PutObjectCommand({
@@ -208,7 +193,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   }
 
   async download(path: string): Promise<Buffer> {
-    const key = path.replace(/\\/g, '/').replace(/^\//, '');
+    const key = path.replace(/\\/g, "/").replace(/^\//, "");
 
     try {
       const command = new GetObjectCommand({
@@ -234,7 +219,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
         throw error;
       }
       const s3Error = this.parseS3Error(error);
-      if (s3Error.name === 'NoSuchKey' || s3Error.httpStatusCode === 404) {
+      if (s3Error.name === "NoSuchKey" || s3Error.httpStatusCode === 404) {
         throw new NotFoundException(`File not found: ${path}`);
       }
       this.logger.error(`Failed to download file from S3: ${s3Error.message}`);
@@ -243,7 +228,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   }
 
   async delete(path: string): Promise<void> {
-    const key = path.replace(/\\/g, '/').replace(/^\//, '');
+    const key = path.replace(/\\/g, "/").replace(/^\//, "");
 
     try {
       const command = new DeleteObjectCommand({
@@ -261,7 +246,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   }
 
   async exists(path: string): Promise<boolean> {
-    const key = path.replace(/\\/g, '/').replace(/^\//, '');
+    const key = path.replace(/\\/g, "/").replace(/^\//, "");
 
     try {
       const command = new HeadObjectCommand({
@@ -273,12 +258,10 @@ export class S3StorageService implements IStorageService, OnModuleInit {
       return true;
     } catch (error: unknown) {
       const s3Error = this.parseS3Error(error);
-      if (s3Error.name === 'NotFound' || s3Error.httpStatusCode === 404) {
+      if (s3Error.name === "NotFound" || s3Error.httpStatusCode === 404) {
         return false;
       }
-      this.logger.error(
-        `Failed to check file existence in S3: ${s3Error.message}`,
-      );
+      this.logger.error(`Failed to check file existence in S3: ${s3Error.message}`);
       throw error;
     }
   }
@@ -286,7 +269,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   getPublicUrl(path: string): string {
     // For S3, we return a presigned URL that expires
     // This is synchronous but returns a placeholder - use getPresignedUrl for actual URLs
-    const key = path.replace(/\\/g, '/').replace(/^\//, '');
+    const key = path.replace(/\\/g, "/").replace(/^\//, "");
     return `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`;
   }
 
@@ -296,7 +279,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
    * @param expiresIn - Expiration time in seconds (default: 1 hour)
    */
   async getPresignedUrl(path: string, expiresIn?: number): Promise<string> {
-    const key = path.replace(/\\/g, '/').replace(/^\//, '');
+    const key = path.replace(/\\/g, "/").replace(/^\//, "");
 
     try {
       const command = new GetObjectCommand({

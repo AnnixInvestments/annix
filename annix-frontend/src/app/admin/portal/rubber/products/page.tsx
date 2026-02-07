@@ -1,46 +1,67 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { rubberPortalApi, RubberProductDto } from '@/app/lib/api/rubberPortalApi';
-import { now } from '@/app/lib/datetime';
-import { useToast } from '@/app/components/Toast';
-import { useRubberProducts, useDeleteRubberProduct } from '@/app/lib/query/hooks';
-import { ConfirmModal } from '../components/ConfirmModal';
-import { ProductFormModal } from '../components/ProductFormModal';
-import { ProductImportModal } from '../components/ProductImportModal';
-import { Breadcrumb } from '../components/Breadcrumb';
-import { SortIcon, SortDirection, TableLoadingState, TableEmptyState, Pagination, TableIcons, ITEMS_PER_PAGE } from '../components/TableComponents';
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import { RubberProductDto, rubberPortalApi } from "@/app/lib/api/rubberPortalApi";
+import { now } from "@/app/lib/datetime";
+import { useDeleteRubberProduct, useRubberProducts } from "@/app/lib/query/hooks";
+import { Breadcrumb } from "../components/Breadcrumb";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { ProductFormModal } from "../components/ProductFormModal";
+import { ProductImportModal } from "../components/ProductImportModal";
+import {
+  ITEMS_PER_PAGE,
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "../components/TableComponents";
 
-type SortColumn = 'title' | 'type' | 'costPerKg' | 'markup' | 'pricePerKg' | 'specificGravity';
+type SortColumn = "title" | "type" | "costPerKg" | "markup" | "pricePerKg" | "specificGravity";
 
 const exportProductsToCSV = (products: RubberProductDto[]) => {
-  const headers = ['Title', 'Description', 'Type', 'Compound', 'Colour', 'Hardness', 'Grade', 'Curing Method', 'Cost/kg', 'Markup %', 'Price/kg', 'Specific Gravity'];
+  const headers = [
+    "Title",
+    "Description",
+    "Type",
+    "Compound",
+    "Colour",
+    "Hardness",
+    "Grade",
+    "Curing Method",
+    "Cost/kg",
+    "Markup %",
+    "Price/kg",
+    "Specific Gravity",
+  ];
   const rows = products.map((product) => [
-    product.title || '',
-    product.description || '',
-    product.typeName || '',
-    product.compoundName || '',
-    product.colourName || '',
-    product.hardnessName || '',
-    product.gradeName || '',
-    product.curingMethodName || '',
-    product.costPerKg?.toString() || '',
-    product.markup?.toString() || '',
-    product.pricePerKg?.toString() || '',
-    product.specificGravity?.toString() || '',
+    product.title || "",
+    product.description || "",
+    product.typeName || "",
+    product.compoundName || "",
+    product.colourName || "",
+    product.hardnessName || "",
+    product.gradeName || "",
+    product.curingMethodName || "",
+    product.costPerKg?.toString() || "",
+    product.markup?.toString() || "",
+    product.pricePerKg?.toString() || "",
+    product.specificGravity?.toString() || "",
   ]);
 
   const csvContent = [headers, ...rows]
-    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    .join('\n');
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `rubber-products-${now().toISODate()}.csv`);
-  link.style.visibility = 'hidden';
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `rubber-products-${now().toISODate()}.csv`);
+  link.style.visibility = "hidden";
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -53,36 +74,36 @@ export default function RubberProductsPage() {
   const deleteMutation = useDeleteRubberProduct();
   const products = productsQuery.data ?? [];
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [compoundFilter, setCompoundFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [compoundFilter, setCompoundFilter] = useState("");
   const [deleteProductId, setDeleteProductId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [sortColumn, setSortColumn] = useState<SortColumn>('title');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortColumn, setSortColumn] = useState<SortColumn>("title");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
 
   const sortProducts = (productsToSort: RubberProductDto[]): RubberProductDto[] => {
     return [...productsToSort].sort((a, b) => {
-      const direction = sortDirection === 'asc' ? 1 : -1;
-      if (sortColumn === 'title') {
-        const aVal = a.title || '';
-        const bVal = b.title || '';
+      const direction = sortDirection === "asc" ? 1 : -1;
+      if (sortColumn === "title") {
+        const aVal = a.title || "";
+        const bVal = b.title || "";
         return direction * aVal.localeCompare(bVal);
-      } else if (sortColumn === 'type') {
-        const aVal = a.typeName || '';
-        const bVal = b.typeName || '';
+      } else if (sortColumn === "type") {
+        const aVal = a.typeName || "";
+        const bVal = b.typeName || "";
         return direction * aVal.localeCompare(bVal);
-      } else if (sortColumn === 'costPerKg') {
+      } else if (sortColumn === "costPerKg") {
         return direction * ((a.costPerKg || 0) - (b.costPerKg || 0));
-      } else if (sortColumn === 'markup') {
+      } else if (sortColumn === "markup") {
         return direction * ((a.markup || 0) - (b.markup || 0));
-      } else if (sortColumn === 'pricePerKg') {
+      } else if (sortColumn === "pricePerKg") {
         return direction * ((a.pricePerKg || 0) - (b.pricePerKg || 0));
-      } else if (sortColumn === 'specificGravity') {
+      } else if (sortColumn === "specificGravity") {
         return direction * ((a.specificGravity || 0) - (b.specificGravity || 0));
       }
       return 0;
@@ -91,10 +112,10 @@ export default function RubberProductsPage() {
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortColumn(column);
-      setSortDirection('asc');
+      setSortDirection("asc");
     }
   };
 
@@ -132,30 +153,39 @@ export default function RubberProductsPage() {
     }
 
     if (successCount > 0) {
-      showToast(`Deleted ${successCount} product${successCount > 1 ? 's' : ''}${failCount > 0 ? `, ${failCount} failed` : ''}`, failCount > 0 ? 'warning' : 'success');
+      showToast(
+        `Deleted ${successCount} product${successCount > 1 ? "s" : ""}${failCount > 0 ? `, ${failCount} failed` : ""}`,
+        failCount > 0 ? "warning" : "success",
+      );
       setSelectedProducts(new Set());
       productsQuery.refetch();
     } else if (failCount > 0) {
-      showToast(`Failed to delete ${failCount} product${failCount > 1 ? 's' : ''}`, 'error');
+      showToast(`Failed to delete ${failCount} product${failCount > 1 ? "s" : ""}`, "error");
     }
   };
 
-  const uniqueTypes = [...new Set(products.map((p) => p.typeName).filter((t): t is string => Boolean(t)))].sort();
-  const uniqueCompounds = [...new Set(products.map((p) => p.compoundName).filter((c): c is string => Boolean(c)))].sort();
+  const uniqueTypes = [
+    ...new Set(products.map((p) => p.typeName).filter((t): t is string => Boolean(t))),
+  ].sort();
+  const uniqueCompounds = [
+    ...new Set(products.map((p) => p.compoundName).filter((c): c is string => Boolean(c))),
+  ].sort();
 
-  const filteredProducts = sortProducts(products.filter((product) => {
-    const matchesSearch =
-      searchQuery === '' ||
-      (product.title && product.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesType = typeFilter === '' || product.typeName === typeFilter;
-    const matchesCompound = compoundFilter === '' || product.compoundName === compoundFilter;
-    return matchesSearch && matchesType && matchesCompound;
-  }));
+  const filteredProducts = sortProducts(
+    products.filter((product) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        product.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = typeFilter === "" || product.typeName === typeFilter;
+      const matchesCompound = compoundFilter === "" || product.compoundName === compoundFilter;
+      return matchesSearch && matchesType && matchesCompound;
+    }),
+  );
 
   const paginatedProducts = filteredProducts.slice(
     currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE
+    (currentPage + 1) * ITEMS_PER_PAGE,
   );
 
   useEffect(() => {
@@ -166,18 +196,18 @@ export default function RubberProductsPage() {
   const handleDelete = (id: number) => {
     deleteMutation.mutate(id, {
       onSuccess: () => {
-        showToast('Product deleted', 'success');
+        showToast("Product deleted", "success");
         setDeleteProductId(null);
       },
       onError: (err: unknown) => {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to delete product';
-        showToast(errorMessage, 'error');
+        const errorMessage = err instanceof Error ? err.message : "Failed to delete product";
+        showToast(errorMessage, "error");
       },
     });
   };
 
   const formatCurrency = (value: number | null): string => {
-    if (value === null) return '-';
+    if (value === null) return "-";
     return `R ${value.toFixed(2)}`;
   };
 
@@ -187,7 +217,10 @@ export default function RubberProductsPage() {
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Products</div>
           <p className="text-gray-600">{productsQuery.error.message}</p>
-          <button onClick={() => productsQuery.refetch()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <button
+            onClick={() => productsQuery.refetch()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
             Retry
           </button>
         </div>
@@ -197,7 +230,7 @@ export default function RubberProductsPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: 'Products' }]} />
+      <Breadcrumb items={[{ label: "Products" }]} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Rubber Products</h1>
@@ -210,7 +243,12 @@ export default function RubberProductsPage() {
               className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
               </svg>
               Delete ({selectedProducts.size})
             </button>
@@ -221,7 +259,12 @@ export default function RubberProductsPage() {
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
             </svg>
             Export CSV
           </button>
@@ -230,7 +273,12 @@ export default function RubberProductsPage() {
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m4-8l-4-4m0 0L12 8m4-4v12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m4-8l-4-4m0 0L12 8m4-4v12"
+              />
             </svg>
             Import CSV
           </button>
@@ -239,7 +287,12 @@ export default function RubberProductsPage() {
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
             Create Product
           </button>
@@ -258,9 +311,17 @@ export default function RubberProductsPage() {
               className="block w-56 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setSearchQuery("")}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             )}
@@ -298,9 +359,9 @@ export default function RubberProductsPage() {
           {(searchQuery || typeFilter || compoundFilter) && (
             <button
               onClick={() => {
-                setSearchQuery('');
-                setTypeFilter('');
-                setCompoundFilter('');
+                setSearchQuery("");
+                setTypeFilter("");
+                setCompoundFilter("");
               }}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
@@ -317,8 +378,16 @@ export default function RubberProductsPage() {
           <TableEmptyState
             icon={TableIcons.cube}
             title="No products found"
-            subtitle={(searchQuery || typeFilter || compoundFilter) ? 'Try adjusting your filters' : 'Get started by creating your first product.'}
-            action={!searchQuery && !typeFilter && !compoundFilter ? { label: 'Create Product', onClick: () => setShowCreateModal(true) } : undefined}
+            subtitle={
+              searchQuery || typeFilter || compoundFilter
+                ? "Try adjusting your filters"
+                : "Get started by creating your first product."
+            }
+            action={
+              !searchQuery && !typeFilter && !compoundFilter
+                ? { label: "Create Product", onClick: () => setShowCreateModal(true) }
+                : undefined
+            }
           />
         ) : (
           <div className="overflow-x-auto">
@@ -328,7 +397,10 @@ export default function RubberProductsPage() {
                   <th scope="col" className="w-12 px-6 py-3">
                     <input
                       type="checkbox"
-                      checked={paginatedProducts.length > 0 && selectedProducts.size === paginatedProducts.length}
+                      checked={
+                        paginatedProducts.length > 0 &&
+                        selectedProducts.size === paginatedProducts.length
+                      }
                       onChange={toggleSelectAll}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
@@ -336,53 +408,56 @@ export default function RubberProductsPage() {
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('title')}
+                    onClick={() => handleSort("title")}
                   >
                     Title
-                    <SortIcon active={sortColumn === 'title'} direction={sortDirection} />
+                    <SortIcon active={sortColumn === "title"} direction={sortDirection} />
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('type')}
+                    onClick={() => handleSort("type")}
                   >
                     Type / Compound
-                    <SortIcon active={sortColumn === 'type'} direction={sortDirection} />
+                    <SortIcon active={sortColumn === "type"} direction={sortDirection} />
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Properties
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('costPerKg')}
+                    onClick={() => handleSort("costPerKg")}
                   >
                     Cost/kg
-                    <SortIcon active={sortColumn === 'costPerKg'} direction={sortDirection} />
+                    <SortIcon active={sortColumn === "costPerKg"} direction={sortDirection} />
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('markup')}
+                    onClick={() => handleSort("markup")}
                   >
                     Markup
-                    <SortIcon active={sortColumn === 'markup'} direction={sortDirection} />
+                    <SortIcon active={sortColumn === "markup"} direction={sortDirection} />
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('pricePerKg')}
+                    onClick={() => handleSort("pricePerKg")}
                   >
                     Price/kg
-                    <SortIcon active={sortColumn === 'pricePerKg'} direction={sortDirection} />
+                    <SortIcon active={sortColumn === "pricePerKg"} direction={sortDirection} />
                   </th>
                   <th
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                    onClick={() => handleSort('specificGravity')}
+                    onClick={() => handleSort("specificGravity")}
                   >
                     Sp. Gravity
-                    <SortIcon active={sortColumn === 'specificGravity'} direction={sortDirection} />
+                    <SortIcon active={sortColumn === "specificGravity"} direction={sortDirection} />
                   </th>
                   <th scope="col" className="relative px-6 py-3">
                     <span className="sr-only">Actions</span>
@@ -391,7 +466,10 @@ export default function RubberProductsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedProducts.map((product) => (
-                  <tr key={product.id} className={`hover:bg-gray-50 ${selectedProducts.has(product.id) ? 'bg-blue-50' : ''}`}>
+                  <tr
+                    key={product.id}
+                    className={`hover:bg-gray-50 ${selectedProducts.has(product.id) ? "bg-blue-50" : ""}`}
+                  >
                     <td className="px-6 py-4">
                       <input
                         type="checkbox"
@@ -401,16 +479,21 @@ export default function RubberProductsPage() {
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <Link href={`/admin/portal/rubber/products/${product.id}/edit`} className="text-sm font-medium text-blue-600 hover:text-blue-900">
-                        {product.title || 'Untitled'}
+                      <Link
+                        href={`/admin/portal/rubber/products/${product.id}/edit`}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-900"
+                      >
+                        {product.title || "Untitled"}
                       </Link>
                       {product.description && (
-                        <div className="text-sm text-gray-500 truncate max-w-xs">{product.description}</div>
+                        <div className="text-sm text-gray-500 truncate max-w-xs">
+                          {product.description}
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{product.typeName || '-'}</div>
-                      <div className="text-sm text-gray-500">{product.compoundName || '-'}</div>
+                      <div className="text-sm text-gray-900">{product.typeName || "-"}</div>
+                      <div className="text-sm text-gray-500">{product.compoundName || "-"}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
@@ -440,13 +523,13 @@ export default function RubberProductsPage() {
                       {formatCurrency(product.costPerKg)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.markup ? `${product.markup}%` : '-'}
+                      {product.markup ? `${product.markup}%` : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatCurrency(product.pricePerKg)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.specificGravity?.toFixed(2) || '-'}
+                      {product.specificGravity?.toFixed(2) || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                       <Link
@@ -455,7 +538,10 @@ export default function RubberProductsPage() {
                       >
                         Edit
                       </Link>
-                      <button onClick={() => setDeleteProductId(product.id)} className="text-red-600 hover:text-red-900">
+                      <button
+                        onClick={() => setDeleteProductId(product.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
                         Delete
                       </button>
                     </td>
@@ -479,8 +565,18 @@ export default function RubberProductsPage() {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex">
-          <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="h-5 w-5 text-blue-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-blue-800">Pricing Information</h3>
@@ -492,7 +588,8 @@ export default function RubberProductsPage() {
                 <strong>Sale price per kg</strong> = Price per kg × (Company Pricing Factor / 100)
               </p>
               <p className="mt-1">
-                <strong>Kg per roll</strong> = Thickness × (Width / 1000) × Length × Specific Gravity
+                <strong>Kg per roll</strong> = Thickness × (Width / 1000) × Length × Specific
+                Gravity
               </p>
             </div>
           </div>
@@ -515,7 +612,7 @@ export default function RubberProductsPage() {
         product={null}
         onSave={() => {
           setShowCreateModal(false);
-          showToast('Product created', 'success');
+          showToast("Product created", "success");
           productsQuery.refetch();
         }}
         onCancel={() => {
@@ -526,7 +623,7 @@ export default function RubberProductsPage() {
       <ConfirmModal
         isOpen={showBulkDeleteModal}
         title="Delete Selected Products"
-        message={`Are you sure you want to delete ${selectedProducts.size} product${selectedProducts.size > 1 ? 's' : ''}? This action cannot be undone.`}
+        message={`Are you sure you want to delete ${selectedProducts.size} product${selectedProducts.size > 1 ? "s" : ""}? This action cannot be undone.`}
         confirmLabel={`Delete ${selectedProducts.size}`}
         cancelLabel="Cancel"
         variant="danger"

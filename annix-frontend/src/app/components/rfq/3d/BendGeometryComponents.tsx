@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import React, { useMemo } from 'react';
-import * as THREE from 'three';
-import { Tube } from '@react-three/drei';
-import { ArcCurve, SaddleCurve } from '@/app/lib/3d/curves';
-import { FLANGE_DATA, type FlangeDataEntry } from '@/app/lib/3d/flangeData';
+import { Tube } from "@react-three/drei";
+import { useMemo } from "react";
+import * as THREE from "three";
+import { ArcCurve, SaddleCurve } from "@/app/lib/3d/curves";
+import { FLANGE_DATA } from "@/app/lib/3d/flangeData";
 import {
-  PIPE_MATERIALS,
-  WELD_MATERIALS,
   FLANGE_MATERIALS,
   GEOMETRY_CONSTANTS,
-} from '@/app/lib/config/rfq/rendering3DStandards';
+  PIPE_MATERIALS,
+  WELD_MATERIALS,
+} from "@/app/lib/config/rfq/rendering3DStandards";
 
 const SCALE = GEOMETRY_CONSTANTS.SCALE;
 const pipeOuterMat = PIPE_MATERIALS.outer;
@@ -55,16 +55,10 @@ export const HollowStraightPipe = ({
     return q;
   }, [dir.x, dir.y, dir.z]);
 
-  const euler = useMemo(
-    () => new THREE.Euler().setFromQuaternion(quaternion),
-    [quaternion]
-  );
+  const euler = useMemo(() => new THREE.Euler().setFromQuaternion(quaternion), [quaternion]);
 
   return (
-    <group
-      position={[center.x, center.y, center.z]}
-      rotation={[euler.x, euler.y, euler.z]}
-    >
+    <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
       <mesh>
         <cylinderGeometry args={[outerR, outerR, length, 32, 1, true]} />
         <meshStandardMaterial {...pipeOuterMat} side={THREE.DoubleSide} />
@@ -168,12 +162,12 @@ export const SegmentedBendPipe = ({
       const startPos = new THREE.Vector3(
         bendCenter.x + bendRadius * Math.cos(segStart),
         bendCenter.y,
-        bendCenter.z + bendRadius * Math.sin(segStart)
+        bendCenter.z + bendRadius * Math.sin(segStart),
       );
       const endPos = new THREE.Vector3(
         bendCenter.x + bendRadius * Math.cos(segEnd),
         bendCenter.y,
-        bendCenter.z + bendRadius * Math.sin(segEnd)
+        bendCenter.z + bendRadius * Math.sin(segEnd),
       );
 
       const segment: {
@@ -190,7 +184,7 @@ export const SegmentedBendPipe = ({
         segment.weldNormal = new THREE.Vector3(
           -Math.sin(weldAngle),
           0,
-          Math.cos(weldAngle)
+          Math.cos(weldAngle),
         ).normalize();
       }
 
@@ -205,15 +199,10 @@ export const SegmentedBendPipe = ({
       {segmentsData.map((seg, i) => {
         const direction = seg.endPos.clone().sub(seg.startPos);
         const length = direction.length();
-        const midPoint = seg.startPos
-          .clone()
-          .add(direction.clone().multiplyScalar(0.5));
+        const midPoint = seg.startPos.clone().add(direction.clone().multiplyScalar(0.5));
 
         const quaternion = new THREE.Quaternion();
-        quaternion.setFromUnitVectors(
-          new THREE.Vector3(0, 1, 0),
-          direction.clone().normalize()
-        );
+        quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
 
         const weldQuaternion = seg.weldNormal
           ? (() => {
@@ -225,17 +214,11 @@ export const SegmentedBendPipe = ({
 
         return (
           <group key={i}>
-            <mesh
-              position={[midPoint.x, midPoint.y, midPoint.z]}
-              quaternion={quaternion}
-            >
+            <mesh position={[midPoint.x, midPoint.y, midPoint.z]} quaternion={quaternion}>
               <cylinderGeometry args={[outerR, outerR, length, 32, 1, true]} />
               <meshStandardMaterial {...pipeOuterMat} side={THREE.DoubleSide} />
             </mesh>
-            <mesh
-              position={[midPoint.x, midPoint.y, midPoint.z]}
-              quaternion={quaternion}
-            >
+            <mesh position={[midPoint.x, midPoint.y, midPoint.z]} quaternion={quaternion}>
               <cylinderGeometry args={[innerR, innerR, length, 32, 1, true]} />
               <meshStandardMaterial {...pipeInnerMat} side={THREE.DoubleSide} />
             </mesh>
@@ -284,12 +267,7 @@ export interface SaddleWeldProps {
   tube: number;
 }
 
-export const SaddleWeld = ({
-  stubRadius,
-  mainPipeRadius,
-  useXAxis,
-  tube,
-}: SaddleWeldProps) => {
+export const SaddleWeld = ({ stubRadius, mainPipeRadius, useXAxis, tube }: SaddleWeldProps) => {
   const curve = useMemo(() => {
     return new SaddleCurve(stubRadius * 1.05, mainPipeRadius, useXAxis);
   }, [stubRadius, mainPipeRadius, useXAxis]);
@@ -348,10 +326,7 @@ export const Flange = ({ center, normal, pipeR, innerR, nb }: FlangeProps) => {
   const euler = new THREE.Euler().setFromQuaternion(quaternion);
 
   return (
-    <group
-      position={[center.x, center.y, center.z]}
-      rotation={[euler.x, euler.y, euler.z]}
-    >
+    <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
       <mesh>
         <cylinderGeometry args={[flangeR, flangeR, thick, 32, 1, true]} />
         <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
@@ -385,17 +360,11 @@ export const Flange = ({ center, normal, pipeR, innerR, nb }: FlangeProps) => {
       >
         <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
       </mesh>
-      <mesh
-        position={[0, -thick / 2, 0]}
-        rotation={[Math.PI / 2, 0, 0]}
-      >
+      <mesh position={[0, -thick / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[pipeR * 1.02, weldTube, 12, 32]} />
         <meshStandardMaterial {...weldColor} />
       </mesh>
-      <mesh
-        position={[0, -thick / 2, 0]}
-        rotation={[Math.PI / 2, 0, 0]}
-      >
+      <mesh position={[0, -thick / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[innerR * 0.98, weldTube, 12, 32]} />
         <meshStandardMaterial {...weldColor} />
       </mesh>
@@ -429,8 +398,7 @@ export const SaddleCutStubPipe = ({
 }: SaddleCutStubPipeProps) => {
   const dir = direction.clone().normalize();
   const weldTube = outerR * 0.06;
-  const stubFlangeSpecs =
-    FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
+  const stubFlangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
   const stubFlangeThick = (stubFlangeSpecs.flangeOD / 2 / SCALE) * 0.18;
   const flangeOffset = stubFlangeThick / 2;
 
@@ -443,9 +411,9 @@ export const SaddleCutStubPipe = ({
     const isNear90or270 =
       (normalizedAngle > 67.5 && normalizedAngle < 112.5) ||
       (normalizedAngle > 247.5 && normalizedAngle < 292.5);
-    if (isNear0or180) return 'x';
-    if (isNear90or270) return 'x';
-    return 'x';
+    if (isNear0or180) return "x";
+    if (isNear90or270) return "x";
+    return "x";
   }, [stubAngleDegrees]);
 
   const outerTubeGeom = useMemo(() => {
@@ -464,9 +432,9 @@ export const SaddleCutStubPipe = ({
         const x = outerR * Math.cos(theta);
         const y = outerR * Math.sin(theta);
 
-        const saddleCoord = saddleAxis === 'x' ? y : x;
+        const saddleCoord = saddleAxis === "x" ? y : x;
         const baseSaddleZ = Math.sqrt(
-          Math.max(0, mainPipeOuterR * mainPipeOuterR - saddleCoord * saddleCoord)
+          Math.max(0, mainPipeOuterR * mainPipeOuterR - saddleCoord * saddleCoord),
         );
         const z = baseSaddleZ + v * (endZ - baseSaddleZ);
 
@@ -487,10 +455,7 @@ export const SaddleCutStubPipe = ({
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(positions, 3)
-    );
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
     return geometry;
@@ -512,9 +477,9 @@ export const SaddleCutStubPipe = ({
         const x = innerR * Math.cos(theta);
         const y = innerR * Math.sin(theta);
 
-        const saddleCoord = saddleAxis === 'x' ? y : x;
+        const saddleCoord = saddleAxis === "x" ? y : x;
         const baseSaddleZ = Math.sqrt(
-          Math.max(0, mainPipeOuterR * mainPipeOuterR - saddleCoord * saddleCoord)
+          Math.max(0, mainPipeOuterR * mainPipeOuterR - saddleCoord * saddleCoord),
         );
         const z = baseSaddleZ + v * (endZ - baseSaddleZ);
 
@@ -535,10 +500,7 @@ export const SaddleCutStubPipe = ({
     }
 
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute(
-      'position',
-      new THREE.Float32BufferAttribute(positions, 3)
-    );
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
     return geometry;
@@ -551,10 +513,7 @@ export const SaddleCutStubPipe = ({
   }, [dir.x, dir.y, dir.z]);
 
   return (
-    <group
-      position={[baseCenter.x, baseCenter.y, baseCenter.z]}
-      quaternion={quaternion}
-    >
+    <group position={[baseCenter.x, baseCenter.y, baseCenter.z]} quaternion={quaternion}>
       <mesh geometry={outerTubeGeom}>
         <meshStandardMaterial {...pipeOuterMat} side={THREE.DoubleSide} />
       </mesh>
@@ -564,14 +523,12 @@ export const SaddleCutStubPipe = ({
       <SaddleWeld
         stubRadius={outerR}
         mainPipeRadius={mainPipeOuterR}
-        useXAxis={saddleAxis === 'x'}
+        useXAxis={saddleAxis === "x"}
         tube={weldTube}
       />
       {hasFlange && (
         <Flange
-          center={
-            new THREE.Vector3(0, 0, mainPipeOuterR + length + flangeOffset)
-          }
+          center={new THREE.Vector3(0, 0, mainPipeOuterR + length + flangeOffset)}
           normal={new THREE.Vector3(0, 0, 1)}
           pipeR={outerR}
           innerR={innerR}
@@ -633,8 +590,7 @@ export const StubPipe = ({
   const dir = direction.clone().normalize();
   const endCenter = baseCenter.clone().add(dir.clone().multiplyScalar(length));
   const weldTube = outerR * 0.06;
-  const stubFlangeSpecs =
-    FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
+  const stubFlangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
   const stubFlangeThick = (stubFlangeSpecs.flangeOD / 2 / SCALE) * 0.18;
   const flangeOffset = stubFlangeThick / 2;
 
@@ -648,12 +604,7 @@ export const StubPipe = ({
         capStart={false}
         capEnd={!hasFlange}
       />
-      <WeldRing
-        center={baseCenter}
-        normal={dir}
-        radius={outerR * 1.05}
-        tube={weldTube}
-      />
+      <WeldRing center={baseCenter} normal={dir} radius={outerR * 1.05} tube={weldTube} />
       {hasFlange && (
         <Flange
           center={endCenter.clone().add(dir.clone().multiplyScalar(flangeOffset))}
@@ -707,10 +658,7 @@ export const BlankFlange = ({ center, normal, pipeR, nb }: BlankFlangeProps) => 
   const euler = new THREE.Euler().setFromQuaternion(quaternion);
 
   return (
-    <group
-      position={[center.x, center.y, center.z]}
-      rotation={[euler.x, euler.y, euler.z]}
-    >
+    <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
       <mesh>
         <cylinderGeometry args={[flangeR, flangeR, thick, 32, 1, true]} />
         <meshStandardMaterial {...blankFlangeColor} side={THREE.DoubleSide} />
@@ -752,12 +700,7 @@ export interface RetainingRingProps {
   wallThickness: number;
 }
 
-export const RetainingRing = ({
-  center,
-  normal,
-  pipeR,
-  wallThickness,
-}: RetainingRingProps) => {
+export const RetainingRing = ({ center, normal, pipeR, wallThickness }: RetainingRingProps) => {
   const ringOuterR = pipeR * 1.15;
   const ringInnerR = pipeR;
   const tubeRadius = (ringOuterR - ringInnerR) / 2;
@@ -772,10 +715,7 @@ export const RetainingRing = ({
   const euler = new THREE.Euler().setFromQuaternion(quaternion);
 
   return (
-    <group
-      position={[center.x, center.y, center.z]}
-      rotation={[euler.x, euler.y, euler.z]}
-    >
+    <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
       <mesh>
         <torusGeometry args={[torusRadius, tubeRadius, 16, 32]} />
         <meshStandardMaterial
@@ -797,13 +737,7 @@ export interface RotatingFlangeProps {
   nb: number;
 }
 
-export const RotatingFlange = ({
-  center,
-  normal,
-  pipeR,
-  innerR,
-  nb,
-}: RotatingFlangeProps) => {
+export const RotatingFlange = ({ center, normal, pipeR, innerR, nb }: RotatingFlangeProps) => {
   const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
   const flangeR = flangeSpecs.flangeOD / 2 / SCALE;
   const thick = flangeR * 0.18;
@@ -841,10 +775,7 @@ export const RotatingFlange = ({
   const euler = new THREE.Euler().setFromQuaternion(quaternion);
 
   return (
-    <group
-      position={[center.x, center.y, center.z]}
-      rotation={[euler.x, euler.y, euler.z]}
-    >
+    <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
       <mesh>
         <cylinderGeometry args={[flangeR, flangeR, thick, 32, 1, true]} />
         <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />

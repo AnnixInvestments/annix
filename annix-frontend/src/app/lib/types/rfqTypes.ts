@@ -1,42 +1,42 @@
-export type QuantityType = 'total_length' | 'number_of_pipes';
+export type QuantityType = "total_length" | "number_of_pipes";
 
 export type PipeEndConfiguration =
-  | 'PE'
-  | 'FOE'
-  | 'FBE'
-  | 'L/F'
-  | '2X_L/F'
-  | 'R/F'
-  | '2X_RF'
-  | '3F'
-  | 'FOE_RF'
-  | 'FOE_LF';
+  | "PE"
+  | "FOE"
+  | "FBE"
+  | "L/F"
+  | "2X_L/F"
+  | "R/F"
+  | "2X_RF"
+  | "3F"
+  | "FOE_RF"
+  | "FOE_LF";
 
 export type BendEndConfiguration = PipeEndConfiguration;
 
 export type FittingEndConfiguration =
-  | 'PE'
-  | 'FOE'
-  | 'FBE'
-  | '3F'
-  | 'L/F'
-  | '2X_L/F'
-  | '3X_L/F'
-  | 'R/F'
-  | '2X_RF'
-  | '3X_RF';
+  | "PE"
+  | "FOE"
+  | "FBE"
+  | "3F"
+  | "L/F"
+  | "2X_L/F"
+  | "3X_L/F"
+  | "R/F"
+  | "2X_RF"
+  | "3X_RF";
 
 export type FittingType =
-  | 'SHORT_TEE'
-  | 'SHORT_REDUCING_TEE'
-  | 'GUSSET_TEE'
-  | 'GUSSET_REDUCING_TEE'
-  | 'LATERAL'
-  | 'REDUCING_LATERAL'
-  | 'CONCENTRIC_REDUCER'
-  | 'ECCENTRIC_REDUCER';
+  | "SHORT_TEE"
+  | "SHORT_REDUCING_TEE"
+  | "GUSSET_TEE"
+  | "GUSSET_REDUCING_TEE"
+  | "LATERAL"
+  | "REDUCING_LATERAL"
+  | "CONCENTRIC_REDUCER"
+  | "ECCENTRIC_REDUCER";
 
-export type FittingStandard = 'SABS62' | 'SABS719';
+export type FittingStandard = "SABS62" | "SABS719";
 
 export interface BasePipeSpecs {
   steelSpecificationId?: number;
@@ -136,7 +136,7 @@ export interface FittingCalculation extends BaseCalculation {
 
 export interface RfqEntry<TSpecs, TCalculation> {
   id: string;
-  itemType: 'STRAIGHT_PIPE' | 'BEND' | 'FITTING';
+  itemType: "STRAIGHT_PIPE" | "BEND" | "FITTING";
   description?: string;
   specs: TSpecs;
   calculation?: TCalculation;
@@ -162,6 +162,11 @@ export interface GlobalSpecs {
 export interface MasterData {
   steelSpecs?: Array<{ id: number; steelSpecName: string }>;
   flangeStandards?: Array<{ id: number; code: string; name: string }>;
-  pressureClasses?: Array<{ id: number; designation: string; flangeStandardId?: number; standardId?: number }>;
+  pressureClasses?: Array<{
+    id: number;
+    designation: string;
+    flangeStandardId?: number;
+    standardId?: number;
+  }>;
   flangeTypes?: Array<{ id: number; code: string; name: string }>;
 }

@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CustomerPortalCompliance1766001100000 implements MigrationInterface {
-  name = 'CustomerPortalCompliance1766001100000';
+  name = "CustomerPortalCompliance1766001100000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create new enums for customer portal
@@ -333,37 +333,17 @@ export class CustomerPortalCompliance1766001100000 implements MigrationInterface
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invitations_company"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_invitations_email_status"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invitations_email_status"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_invitations_token"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_preferred_suppliers_active"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_preferred_suppliers_company"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_documents_status"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_documents_type"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_documents_customer"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_onboarding_customer"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_onboarding_status"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_profiles_email_verified"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_profiles_role"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_preferred_suppliers_active"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_preferred_suppliers_company"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_documents_status"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_documents_type"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_documents_customer"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_onboarding_customer"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_onboarding_status"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_profiles_email_verified"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_profiles_role"`);
 
     // Drop foreign keys and tables
     await queryRunner.query(
@@ -386,9 +366,7 @@ export class CustomerPortalCompliance1766001100000 implements MigrationInterface
     await queryRunner.query(
       `ALTER TABLE "customer_preferred_suppliers" DROP CONSTRAINT IF EXISTS "FK_preferred_suppliers_company"`,
     );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "customer_preferred_suppliers"`,
-    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "customer_preferred_suppliers"`);
 
     await queryRunner.query(
       `ALTER TABLE "customer_documents" DROP CONSTRAINT IF EXISTS "FK_customer_documents_reviewed_by"`,
@@ -419,21 +397,11 @@ export class CustomerPortalCompliance1766001100000 implements MigrationInterface
     await queryRunner.query(`DROP TABLE IF EXISTS "customer_companies"`);
 
     // Drop enums
-    await queryRunner.query(
-      `DROP TYPE IF EXISTS "supplier_invitation_status_enum"`,
-    );
-    await queryRunner.query(
-      `DROP TYPE IF EXISTS "customer_document_validation_status_enum"`,
-    );
-    await queryRunner.query(
-      `DROP TYPE IF EXISTS "customer_document_type_enum"`,
-    );
-    await queryRunner.query(
-      `DROP TYPE IF EXISTS "customer_onboarding_status_enum"`,
-    );
-    await queryRunner.query(
-      `DROP TYPE IF EXISTS "customer_account_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE IF EXISTS "supplier_invitation_status_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "customer_document_validation_status_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "customer_document_type_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "customer_onboarding_status_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "customer_account_status_enum"`);
     await queryRunner.query(`DROP TYPE IF EXISTS "customer_role_enum"`);
   }
 }

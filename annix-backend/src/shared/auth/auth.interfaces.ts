@@ -37,7 +37,7 @@ export interface DeviceBindingEntity {
 export interface JwtTokenPayload {
   sub: number;
   email: string;
-  type: 'customer' | 'supplier' | 'admin';
+  type: "customer" | "supplier" | "admin";
   sessionToken: string;
   customerId?: number;
   supplierId?: number;
@@ -63,7 +63,7 @@ export interface CreateSessionData<TProfileId extends string> {
 export interface DeviceVerificationResult {
   isValid: boolean;
   binding: DeviceBindingEntity | null;
-  failureReason?: 'no_binding' | 'fingerprint_mismatch';
+  failureReason?: "no_binding" | "fingerprint_mismatch";
 }
 
 export interface LogLoginAttemptData<TProfileId extends string> {

@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateMessagingTables1778002000000 implements MigrationInterface {
-  name = 'CreateMessagingTables1778002000000';
+  name = "CreateMessagingTables1778002000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -335,12 +335,8 @@ export class CreateMessagingTables1778002000000 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_message_conversation" ON "message" ("conversation_id")`,
     );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_message_sender" ON "message" ("sender_id")`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_message_sent_at" ON "message" ("sent_at" DESC)`,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_message_sender" ON "message" ("sender_id")`);
+    await queryRunner.query(`CREATE INDEX "IDX_message_sent_at" ON "message" ("sent_at" DESC)`);
 
     await queryRunner.query(
       `CREATE INDEX "IDX_attachment_message" ON "message_attachment" ("message_id")`,
@@ -363,9 +359,7 @@ export class CreateMessagingTables1778002000000 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX "IDX_broadcast_target" ON "broadcast" ("target_audience")`,
     );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_broadcast_expires" ON "broadcast" ("expires_at")`,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_broadcast_expires" ON "broadcast" ("expires_at")`);
 
     await queryRunner.query(
       `CREATE INDEX "IDX_broadcast_recipient_broadcast" ON "broadcast_recipient" ("broadcast_id")`,
@@ -411,9 +405,7 @@ export class CreateMessagingTables1778002000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "broadcast_recipient" DROP CONSTRAINT "FK_recipient_broadcast"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "broadcast" DROP CONSTRAINT "FK_broadcast_sent_by"`,
-    );
+    await queryRunner.query(`ALTER TABLE "broadcast" DROP CONSTRAINT "FK_broadcast_sent_by"`);
     await queryRunner.query(
       `ALTER TABLE "conversation_response_metric" DROP CONSTRAINT "FK_metric_responder"`,
     );
@@ -426,24 +418,16 @@ export class CreateMessagingTables1778002000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "conversation_response_metric" DROP CONSTRAINT "FK_metric_conversation"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "message_read_receipt" DROP CONSTRAINT "FK_receipt_user"`,
-    );
+    await queryRunner.query(`ALTER TABLE "message_read_receipt" DROP CONSTRAINT "FK_receipt_user"`);
     await queryRunner.query(
       `ALTER TABLE "message_read_receipt" DROP CONSTRAINT "FK_receipt_message"`,
     );
     await queryRunner.query(
       `ALTER TABLE "message_attachment" DROP CONSTRAINT "FK_attachment_message"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "message" DROP CONSTRAINT "FK_message_parent"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "message" DROP CONSTRAINT "FK_message_sender"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "message" DROP CONSTRAINT "FK_message_conversation"`,
-    );
+    await queryRunner.query(`ALTER TABLE "message" DROP CONSTRAINT "FK_message_parent"`);
+    await queryRunner.query(`ALTER TABLE "message" DROP CONSTRAINT "FK_message_sender"`);
+    await queryRunner.query(`ALTER TABLE "message" DROP CONSTRAINT "FK_message_conversation"`);
     await queryRunner.query(
       `ALTER TABLE "conversation_participant" DROP CONSTRAINT "FK_participant_user"`,
     );

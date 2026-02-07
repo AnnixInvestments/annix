@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { PipeDimensionService } from './pipe-dimension.service';
-import { NotFoundException } from '@nestjs/common';
-import { PipeDimension } from './entities/pipe-dimension.entity';
-import { NominalOutsideDiameterMm } from '../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity';
-import { SteelSpecification } from '../steel-specification/entities/steel-specification.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
+import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
+import { PipeDimension } from "./entities/pipe-dimension.entity";
+import { PipeDimensionService } from "./pipe-dimension.service";
 
-describe('PipeDimensionService', () => {
+describe("PipeDimensionService", () => {
   let service: PipeDimensionService;
 
   const mockPipeRepo = {
@@ -47,51 +47,43 @@ describe('PipeDimensionService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('findAll', () => {
-    it('should return array of pipe dimensions', async () => {
+  describe("findAll", () => {
+    it("should return array of pipe dimensions", async () => {
       const result = [{ id: 1 }] as PipeDimension[];
       mockPipeRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
       expect(mockPipeRepo.find).toHaveBeenCalledWith({
-        relations: [
-          'nominalOutsideDiameter',
-          'steelSpecification',
-          'pressures',
-        ],
+        relations: ["nominalOutsideDiameter", "steelSpecification", "pressures"],
       });
     });
   });
 
-  describe('findOne', () => {
-    it('should return a pipe dimension by id', async () => {
+  describe("findOne", () => {
+    it("should return a pipe dimension by id", async () => {
       const result = { id: 1 } as PipeDimension;
       mockPipeRepo.findOne.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
       expect(mockPipeRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: [
-          'nominalOutsideDiameter',
-          'steelSpecification',
-          'pressures',
-        ],
+        relations: ["nominalOutsideDiameter", "steelSpecification", "pressures"],
       });
     });
 
-    it('should throw NotFoundException if pipe dimension not found', async () => {
+    it("should throw NotFoundException if pipe dimension not found", async () => {
       mockPipeRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('remove', () => {
-    it('should delete a pipe dimension', async () => {
+  describe("remove", () => {
+    it("should delete a pipe dimension", async () => {
       const entity = { id: 1 } as PipeDimension;
       mockPipeRepo.findOne.mockResolvedValue(entity);
       mockPipeRepo.remove.mockResolvedValue(undefined);
@@ -101,8 +93,8 @@ describe('PipeDimensionService', () => {
     });
   });
 
-  describe('findAllBySpecAndNominal', () => {
-    it('should return pipe dimensions by spec and nominal', async () => {
+  describe("findAllBySpecAndNominal", () => {
+    it("should return pipe dimensions by spec and nominal", async () => {
       const result = [{ id: 1 }] as PipeDimension[];
       mockPipeRepo.find.mockResolvedValue(result);
 
@@ -112,13 +104,9 @@ describe('PipeDimensionService', () => {
           steelSpecification: { id: 1 },
           nominalOutsideDiameter: { id: 1 },
         },
-        relations: [
-          'nominalOutsideDiameter',
-          'steelSpecification',
-          'pressures',
-        ],
+        relations: ["nominalOutsideDiameter", "steelSpecification", "pressures"],
         order: {
-          wall_thickness_mm: 'ASC',
+          wall_thickness_mm: "ASC",
         },
       });
     });

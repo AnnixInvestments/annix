@@ -73,164 +73,164 @@
 // =====================================================================
 
 export type CalcResultSection =
-  | 'dimensions'
-  | 'flanges'
-  | 'weightBreakdown'
-  | 'weldSummary'
-  | 'surfaceArea'
+  | "dimensions"
+  | "flanges"
+  | "weightBreakdown"
+  | "weldSummary"
+  | "surfaceArea";
 
 export interface DataDrivenCondition {
-  section: CalcResultSection
-  showWhen: string
-  description: string
+  section: CalcResultSection;
+  showWhen: string;
+  description: string;
 }
 
 export const CALC_RESULT_DISPLAY_CONDITIONS: DataDrivenCondition[] = [
   // Dimensions Section
   {
-    section: 'dimensions',
-    showWhen: 'Always show if calculation exists',
-    description: 'Shows center-to-face, radius, main length. Sub-items conditional:'
+    section: "dimensions",
+    showWhen: "Always show if calculation exists",
+    description: "Shows center-to-face, radius, main length. Sub-items conditional:",
   },
   {
-    section: 'dimensions',
-    showWhen: 'sweepTeePipeALengthMm > 0',
-    description: 'Show Pipe A length'
+    section: "dimensions",
+    showWhen: "sweepTeePipeALengthMm > 0",
+    description: "Show Pipe A length",
   },
   {
-    section: 'dimensions',
+    section: "dimensions",
     showWhen: 'stubLengthDisplay !== ""',
-    description: 'Show stub lengths (calculated from stubs array data)'
+    description: "Show stub lengths (calculated from stubs array data)",
   },
   {
-    section: 'dimensions',
-    showWhen: 'closureLengthMm > 0',
-    description: 'Show closure length'
+    section: "dimensions",
+    showWhen: "closureLengthMm > 0",
+    description: "Show closure length",
   },
 
   // Flanges Section
   {
-    section: 'flanges',
-    showWhen: 'totalFlanges > 0',
-    description: 'Show total flanges count and breakdown'
+    section: "flanges",
+    showWhen: "totalFlanges > 0",
+    description: "Show total flanges count and breakdown",
   },
   {
-    section: 'flanges',
-    showWhen: 'bendFlangeCount > 0',
-    description: 'Show main bend flange count'
+    section: "flanges",
+    showWhen: "bendFlangeCount > 0",
+    description: "Show main bend flange count",
   },
   {
-    section: 'flanges',
-    showWhen: 'stub1FlangeCount > 0',
-    description: 'Show stub 1 flange count'
+    section: "flanges",
+    showWhen: "stub1FlangeCount > 0",
+    description: "Show stub 1 flange count",
   },
   {
-    section: 'flanges',
-    showWhen: 'stub2FlangeCount > 0',
-    description: 'Show stub 2 flange count'
+    section: "flanges",
+    showWhen: "stub2FlangeCount > 0",
+    description: "Show stub 2 flange count",
   },
 
   // Weight Breakdown Section
   {
-    section: 'weightBreakdown',
-    showWhen: 'Always show if calculation exists',
-    description: 'Shows total weight. Sub-items conditional:'
+    section: "weightBreakdown",
+    showWhen: "Always show if calculation exists",
+    description: "Shows total weight. Sub-items conditional:",
   },
   {
-    section: 'weightBreakdown',
-    showWhen: 'bendWeightOnly > 0',
-    description: 'Show bend weight'
+    section: "weightBreakdown",
+    showWhen: "bendWeightOnly > 0",
+    description: "Show bend weight",
   },
   {
-    section: 'weightBreakdown',
-    showWhen: 'tangentWeight > 0',
-    description: 'Show tangent weight'
+    section: "weightBreakdown",
+    showWhen: "tangentWeight > 0",
+    description: "Show tangent weight",
   },
   {
-    section: 'weightBreakdown',
-    showWhen: 'pipeAWeight > 0',
-    description: 'Show Pipe A weight'
+    section: "weightBreakdown",
+    showWhen: "pipeAWeight > 0",
+    description: "Show Pipe A weight",
   },
   {
-    section: 'weightBreakdown',
-    showWhen: 'stub1PipeWeight > 0 && stubs?.[0]?.nominalBoreMm',
-    description: 'Show stub 1 weight with NB'
+    section: "weightBreakdown",
+    showWhen: "stub1PipeWeight > 0 && stubs?.[0]?.nominalBoreMm",
+    description: "Show stub 1 weight with NB",
   },
   {
-    section: 'weightBreakdown',
-    showWhen: 'stub2PipeWeight > 0 && stubs?.[1]?.nominalBoreMm',
-    description: 'Show stub 2 weight with NB'
+    section: "weightBreakdown",
+    showWhen: "stub2PipeWeight > 0 && stubs?.[1]?.nominalBoreMm",
+    description: "Show stub 2 weight with NB",
   },
   {
-    section: 'weightBreakdown',
-    showWhen: 'dynamicTotalFlangeWeight > 0',
-    description: 'Show flange weight'
+    section: "weightBreakdown",
+    showWhen: "dynamicTotalFlangeWeight > 0",
+    description: "Show flange weight",
   },
   {
-    section: 'weightBreakdown',
-    showWhen: 'totalBlankFlangeWeight > 0',
-    description: 'Show blank flange weight'
+    section: "weightBreakdown",
+    showWhen: "totalBlankFlangeWeight > 0",
+    description: "Show blank flange weight",
   },
   {
-    section: 'weightBreakdown',
-    showWhen: 'closureTotalWeight > 0',
-    description: 'Show closure weight'
+    section: "weightBreakdown",
+    showWhen: "closureTotalWeight > 0",
+    description: "Show closure weight",
   },
 
   // Weld Summary Section
   {
-    section: 'weldSummary',
-    showWhen: 'calculatedTotalWeld > 0',
-    description: 'Show total weld length. Sub-items conditional:'
+    section: "weldSummary",
+    showWhen: "calculatedTotalWeld > 0",
+    description: "Show total weld length. Sub-items conditional:",
   },
   {
-    section: 'weldSummary',
-    showWhen: 'mitreWeldCount > 0',
-    description: 'Show mitre weld breakdown'
+    section: "weldSummary",
+    showWhen: "mitreWeldCount > 0",
+    description: "Show mitre weld breakdown",
   },
   {
-    section: 'weldSummary',
-    showWhen: 'buttWeldCount > 0',
-    description: 'Show butt weld breakdown'
+    section: "weldSummary",
+    showWhen: "buttWeldCount > 0",
+    description: "Show butt weld breakdown",
   },
   {
-    section: 'weldSummary',
-    showWhen: 'bendFlangeWeldCount > 0',
-    description: 'Show flange weld breakdown'
+    section: "weldSummary",
+    showWhen: "bendFlangeWeldCount > 0",
+    description: "Show flange weld breakdown",
   },
   {
-    section: 'weldSummary',
-    showWhen: 'saddleWeldLinear > 0',
-    description: 'Show saddle weld (for sweep tees with branch geometry)'
+    section: "weldSummary",
+    showWhen: "saddleWeldLinear > 0",
+    description: "Show saddle weld (for sweep tees with branch geometry)",
   },
   {
-    section: 'weldSummary',
-    showWhen: 'totalDuckfootWeld > 0',
-    description: 'Show duckfoot weld breakdown (when duckfoot geometry exists)'
+    section: "weldSummary",
+    showWhen: "totalDuckfootWeld > 0",
+    description: "Show duckfoot weld breakdown (when duckfoot geometry exists)",
   },
   {
-    section: 'weldSummary',
-    showWhen: 'tackWeldLinear > 0',
-    description: 'Show tack weld (for loose flange configs)'
+    section: "weldSummary",
+    showWhen: "tackWeldLinear > 0",
+    description: "Show tack weld (for loose flange configs)",
   },
   {
-    section: 'weldSummary',
-    showWhen: 'teeStub1Circ > 0 && stubs?.[0]?.nominalBoreMm',
-    description: 'Show tee stub 1 weld'
+    section: "weldSummary",
+    showWhen: "teeStub1Circ > 0 && stubs?.[0]?.nominalBoreMm",
+    description: "Show tee stub 1 weld",
   },
   {
-    section: 'weldSummary',
-    showWhen: 'teeStub2Circ > 0 && stubs?.[1]?.nominalBoreMm',
-    description: 'Show tee stub 2 weld'
+    section: "weldSummary",
+    showWhen: "teeStub2Circ > 0 && stubs?.[1]?.nominalBoreMm",
+    description: "Show tee stub 2 weld",
   },
 
   // Surface Area Section
   {
-    section: 'surfaceArea',
+    section: "surfaceArea",
     showWhen: 'requiredProducts.includes("surface_protection") && mainOdMm > 0',
-    description: 'Show surface area calculations for lining/coating'
+    description: "Show surface area calculations for lining/coating",
   },
-]
+];
 
 // =====================================================================
 // HELPER: Check if value should be displayed
@@ -238,23 +238,22 @@ export const CALC_RESULT_DISPLAY_CONDITIONS: DataDrivenCondition[] = [
 
 export const shouldDisplay = {
   number: (value: number | undefined | null): boolean =>
-    value !== undefined && value !== null && !isNaN(value) && value > 0,
+    value !== undefined && value !== null && !Number.isNaN(value) && value > 0,
 
   string: (value: string | undefined | null): boolean =>
-    value !== undefined && value !== null && value.trim() !== '',
+    value !== undefined && value !== null && value.trim() !== "",
 
-  array: <T>(value: T[] | undefined | null): boolean =>
-    Array.isArray(value) && value.length > 0,
+  array: <T>(value: T[] | undefined | null): boolean => Array.isArray(value) && value.length > 0,
 
   object: <T extends object>(value: T | undefined | null, requiredKey?: keyof T): boolean => {
-    if (value === undefined || value === null) return false
-    if (!requiredKey) return Object.keys(value).length > 0
-    const keyValue = value[requiredKey]
-    if (typeof keyValue === 'number') return keyValue > 0
-    if (typeof keyValue === 'string') return keyValue.trim() !== ''
-    return keyValue !== undefined && keyValue !== null
+    if (value === undefined || value === null) return false;
+    if (!requiredKey) return Object.keys(value).length > 0;
+    const keyValue = value[requiredKey];
+    if (typeof keyValue === "number") return keyValue > 0;
+    if (typeof keyValue === "string") return keyValue.trim() !== "";
+    return keyValue !== undefined && keyValue !== null;
   },
-}
+};
 
 // =====================================================================
 // REFERENCE: Type-based conditions that MUST be removed

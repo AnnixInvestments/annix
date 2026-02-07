@@ -1,70 +1,74 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supplierPortalApi, type SupplierCompanyDto } from '@/app/lib/api/supplierApi';
-import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
-import { PRODUCTS_AND_SERVICES } from '@/app/lib/config/productsServices';
-import { CurrencySelect, DEFAULT_CURRENCY } from '@/app/components/ui/CurrencySelect';
-import { currencyCodeForCountry } from '@/app/lib/currencies';
-import { useSupplierOnboardingStatus, useSupplierProfile, useSupplierCapabilities } from '@/app/lib/query/hooks';
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { CurrencySelect, DEFAULT_CURRENCY } from "@/app/components/ui/CurrencySelect";
+import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
+import { type SupplierCompanyDto, supplierPortalApi } from "@/app/lib/api/supplierApi";
+import { PRODUCTS_AND_SERVICES } from "@/app/lib/config/productsServices";
+import { currencyCodeForCountry } from "@/app/lib/currencies";
+import {
+  useSupplierCapabilities,
+  useSupplierOnboardingStatus,
+  useSupplierProfile,
+} from "@/app/lib/query/hooks";
 
 const initialCompanyData: SupplierCompanyDto = {
-  legalName: '',
-  tradingName: '',
-  registrationNumber: '',
-  taxNumber: '',
-  vatNumber: '',
-  streetAddress: '',
-  addressLine2: '',
-  city: '',
-  provinceState: '',
-  postalCode: '',
-  country: 'South Africa',
+  legalName: "",
+  tradingName: "",
+  registrationNumber: "",
+  taxNumber: "",
+  vatNumber: "",
+  streetAddress: "",
+  addressLine2: "",
+  city: "",
+  provinceState: "",
+  postalCode: "",
+  country: "South Africa",
   currencyCode: DEFAULT_CURRENCY,
-  primaryContactName: '',
-  primaryContactEmail: '',
-  primaryContactPhone: '',
-  primaryPhone: '',
-  faxNumber: '',
-  generalEmail: '',
-  website: '',
+  primaryContactName: "",
+  primaryContactEmail: "",
+  primaryContactPhone: "",
+  primaryPhone: "",
+  faxNumber: "",
+  generalEmail: "",
+  website: "",
   operationalRegions: [],
-  industryType: '',
+  industryType: "",
   companySize: undefined,
 };
 
 const regions = [
-  'Gauteng',
-  'Western Cape',
-  'KwaZulu-Natal',
-  'Eastern Cape',
-  'Free State',
-  'Limpopo',
-  'Mpumalanga',
-  'North West',
-  'Northern Cape',
+  "Gauteng",
+  "Western Cape",
+  "KwaZulu-Natal",
+  "Eastern Cape",
+  "Free State",
+  "Limpopo",
+  "Mpumalanga",
+  "North West",
+  "Northern Cape",
 ];
 
 const industries = [
-  'Manufacturing',
-  'Wholesale',
-  'Retail',
-  'Services',
-  'Technology',
-  'Construction',
-  'Agriculture',
-  'Mining',
-  'Transport & Logistics',
-  'Other',
+  "Manufacturing",
+  "Wholesale",
+  "Retail",
+  "Services",
+  "Technology",
+  "Construction",
+  "Agriculture",
+  "Mining",
+  "Transport & Logistics",
+  "Other",
 ];
 
 const companySizes = [
-  { value: 'micro', label: 'Micro (1-10 employees)' },
-  { value: 'small', label: 'Small (11-50 employees)' },
-  { value: 'medium', label: 'Medium (51-250 employees)' },
-  { value: 'large', label: 'Large (251-1000 employees)' },
-  { value: 'enterprise', label: 'Enterprise (1000+ employees)' },
+  { value: "micro", label: "Micro (1-10 employees)" },
+  { value: "small", label: "Small (11-50 employees)" },
+  { value: "medium", label: "Medium (51-250 employees)" },
+  { value: "large", label: "Large (251-1000 employees)" },
+  { value: "enterprise", label: "Enterprise (1000+ employees)" },
 ];
 
 export default function SupplierOnboardingPage() {
@@ -100,12 +104,12 @@ export default function SupplierOnboardingPage() {
   }, [capabilitiesQuery.data]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setCompanyData((prev) => {
       const updates: Partial<SupplierCompanyDto> = { [name]: value };
-      if (name === 'country') {
+      if (name === "country") {
         const suggestedCurrency = currencyCodeForCountry(value);
         if (suggestedCurrency) {
           updates.currencyCode = suggestedCurrency;
@@ -126,9 +130,7 @@ export default function SupplierOnboardingPage() {
 
   const handleCapabilityToggle = (capability: string) => {
     setSelectedCapabilities((prev) =>
-      prev.includes(capability)
-        ? prev.filter((c) => c !== capability)
-        : [...prev, capability]
+      prev.includes(capability) ? prev.filter((c) => c !== capability) : [...prev, capability],
     );
   };
 
@@ -149,15 +151,15 @@ export default function SupplierOnboardingPage() {
         await supplierPortalApi.saveCapabilities(selectedCapabilities);
       }
 
-      setSuccess('Details saved successfully');
+      setSuccess("Details saved successfully");
       await refreshDashboard();
 
       // Navigate to Documents page if requested (after completing onboarding form)
       if (navigateToDocuments) {
-        setTimeout(() => router.push('/supplier/portal/documents'), 1000);
+        setTimeout(() => router.push("/supplier/portal/documents"), 1000);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save details');
+      setError(err instanceof Error ? err.message : "Failed to save details");
     } finally {
       setIsSaving(false);
     }
@@ -169,25 +171,24 @@ export default function SupplierOnboardingPage() {
 
     try {
       await supplierPortalApi.submitOnboarding();
-      setSuccess('Application submitted successfully!');
+      setSuccess("Application submitted successfully!");
       await refreshDashboard();
       // Redirect to dashboard after a short delay
-      setTimeout(() => router.push('/supplier/portal/dashboard'), 2000);
+      setTimeout(() => router.push("/supplier/portal/dashboard"), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit application');
+      setError(err instanceof Error ? err.message : "Failed to submit application");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const isReadOnly =
-    onboardingStatus?.status === 'submitted' ||
-    onboardingStatus?.status === 'under_review' ||
-    onboardingStatus?.status === 'approved';
+    onboardingStatus?.status === "submitted" ||
+    onboardingStatus?.status === "under_review" ||
+    onboardingStatus?.status === "approved";
 
   // Capabilities can always be updated by approved suppliers
-  const canEditCapabilities =
-    !isReadOnly || onboardingStatus?.status === 'approved';
+  const canEditCapabilities = !isReadOnly || onboardingStatus?.status === "approved";
 
   const [isSavingCapabilities, setIsSavingCapabilities] = useState(false);
 
@@ -198,11 +199,11 @@ export default function SupplierOnboardingPage() {
 
     try {
       await supplierPortalApi.saveCapabilities(selectedCapabilities);
-      setSuccess('Products & Services updated successfully');
+      setSuccess("Products & Services updated successfully");
       await refreshDashboard();
-      setTimeout(() => router.push('/supplier/portal/dashboard'), 1000);
+      setTimeout(() => router.push("/supplier/portal/dashboard"), 1000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update capabilities');
+      setError(err instanceof Error ? err.message : "Failed to update capabilities");
     } finally {
       setIsSavingCapabilities(false);
     }
@@ -223,8 +224,8 @@ export default function SupplierOnboardingPage() {
         <h1 className="text-2xl font-bold text-gray-900">Onboarding</h1>
         <p className="mt-1 text-gray-600">
           {isReadOnly
-            ? 'Your application is being processed. Information is read-only.'
-            : 'Complete your company details to become an approved supplier.'}
+            ? "Your application is being processed. Information is read-only."
+            : "Complete your company details to become an approved supplier."}
         </p>
       </div>
 
@@ -232,46 +233,52 @@ export default function SupplierOnboardingPage() {
       <div className="bg-white rounded-lg shadow-sm p-4">
         <nav className="flex items-center justify-center" aria-label="Progress">
           <ol className="flex items-center space-x-4 md:space-x-6">
-            {['Company Info', 'Address', 'Contact', 'Additional', 'Capabilities'].map((label, idx) => {
-              const stepNum = idx + 1;
-              const isCurrent = step === stepNum;
-              const isComplete = step > stepNum;
-              return (
-                <li key={label} className="flex items-center">
-                  <button
-                    onClick={() => setStep(stepNum)}
-                    className={`flex items-center ${isCurrent ? 'font-medium' : ''}`}
-                    disabled={isReadOnly}
-                  >
-                    <span
-                      className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
-                        isComplete
-                          ? 'bg-blue-600 text-white'
-                          : isCurrent
-                          ? 'border-2 border-blue-600 text-blue-600'
-                          : 'border-2 border-gray-300 text-gray-500'
-                      }`}
+            {["Company Info", "Address", "Contact", "Additional", "Capabilities"].map(
+              (label, idx) => {
+                const stepNum = idx + 1;
+                const isCurrent = step === stepNum;
+                const isComplete = step > stepNum;
+                return (
+                  <li key={label} className="flex items-center">
+                    <button
+                      onClick={() => setStep(stepNum)}
+                      className={`flex items-center ${isCurrent ? "font-medium" : ""}`}
+                      disabled={isReadOnly}
                     >
-                      {isComplete ? (
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        stepNum
-                      )}
-                    </span>
-                    <span className="ml-2 text-sm text-gray-700 hidden sm:inline">{label}</span>
-                  </button>
-                  {idx < 4 && (
-                    <div className="ml-4 md:ml-6 w-8 md:w-12 h-0.5 bg-gray-200">
-                      <div
-                        className={`h-full ${step > stepNum ? 'bg-blue-600' : 'bg-gray-200'}`}
-                      />
-                    </div>
-                  )}
-                </li>
-              );
-            })}
+                      <span
+                        className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
+                          isComplete
+                            ? "bg-blue-600 text-white"
+                            : isCurrent
+                              ? "border-2 border-blue-600 text-blue-600"
+                              : "border-2 border-gray-300 text-gray-500"
+                        }`}
+                      >
+                        {isComplete ? (
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        ) : (
+                          stepNum
+                        )}
+                      </span>
+                      <span className="ml-2 text-sm text-gray-700 hidden sm:inline">{label}</span>
+                    </button>
+                    {idx < 4 && (
+                      <div className="ml-4 md:ml-6 w-8 md:w-12 h-0.5 bg-gray-200">
+                        <div
+                          className={`h-full ${step > stepNum ? "bg-blue-600" : "bg-gray-200"}`}
+                        />
+                      </div>
+                    )}
+                  </li>
+                );
+              },
+            )}
           </ol>
         </nav>
       </div>
@@ -313,7 +320,7 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="tradingName"
-                  value={companyData.tradingName || ''}
+                  value={companyData.tradingName || ""}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -338,7 +345,7 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="taxNumber"
-                  value={companyData.taxNumber || ''}
+                  value={companyData.taxNumber || ""}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -349,7 +356,7 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="vatNumber"
-                  value={companyData.vatNumber || ''}
+                  value={companyData.vatNumber || ""}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -382,7 +389,7 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="addressLine2"
-                  value={companyData.addressLine2 || ''}
+                  value={companyData.addressLine2 || ""}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -441,7 +448,7 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="country"
-                  value={companyData.country || 'South Africa'}
+                  value={companyData.country || "South Africa"}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -449,7 +456,9 @@ export default function SupplierOnboardingPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Preferred Currency</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Preferred Currency
+                </label>
                 <CurrencySelect
                   value={companyData.currencyCode || DEFAULT_CURRENCY}
                   onChange={(value) => setCompanyData((prev) => ({ ...prev, currencyCode: value }))}
@@ -511,7 +520,7 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="tel"
                   name="primaryPhone"
-                  value={companyData.primaryPhone || ''}
+                  value={companyData.primaryPhone || ""}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -522,7 +531,7 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="email"
                   name="generalEmail"
-                  value={companyData.generalEmail || ''}
+                  value={companyData.generalEmail || ""}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -533,7 +542,7 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="url"
                   name="website"
-                  value={companyData.website || ''}
+                  value={companyData.website || ""}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   placeholder="https://"
@@ -552,7 +561,7 @@ export default function SupplierOnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700">Industry Type</label>
                 <select
                   name="industryType"
-                  value={companyData.industryType || ''}
+                  value={companyData.industryType || ""}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -569,7 +578,7 @@ export default function SupplierOnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700">Company Size</label>
                 <select
                   name="companySize"
-                  value={companyData.companySize || ''}
+                  value={companyData.companySize || ""}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -592,9 +601,9 @@ export default function SupplierOnboardingPage() {
                       key={region}
                       className={`flex items-center p-2 border rounded cursor-pointer ${
                         companyData.operationalRegions?.includes(region)
-                          ? 'bg-blue-50 border-blue-500'
-                          : 'bg-white border-gray-300'
-                      } ${isReadOnly ? 'cursor-not-allowed opacity-75' : ''}`}
+                          ? "bg-blue-50 border-blue-500"
+                          : "bg-white border-gray-300"
+                      } ${isReadOnly ? "cursor-not-allowed opacity-75" : ""}`}
                     >
                       <input
                         type="checkbox"
@@ -614,20 +623,34 @@ export default function SupplierOnboardingPage() {
 
         {step === 5 && (
           <div className="space-y-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Products & Services You Can Supply</h2>
+            <h2 className="text-lg font-medium text-gray-900 mb-4">
+              Products & Services You Can Supply
+            </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Select all the products and services your company can provide. This helps us match you with relevant RFQs.
+              Select all the products and services your company can provide. This helps us match you
+              with relevant RFQs.
             </p>
-            {onboardingStatus?.status === 'approved' && (
+            {onboardingStatus?.status === "approved" && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-5 h-5 text-blue-600 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   <div>
                     <p className="text-sm text-blue-800 font-medium">Update Your Capabilities</p>
                     <p className="text-sm text-blue-700 mt-1">
-                      You can update the products and services you offer at any time. Changes will affect which BOQ requests you receive.
+                      You can update the products and services you offer at any time. Changes will
+                      affect which BOQ requests you receive.
                     </p>
                   </div>
                 </div>
@@ -641,9 +664,9 @@ export default function SupplierOnboardingPage() {
                     key={item.value}
                     className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
                       isSelected
-                        ? 'border-blue-600 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-300'
-                    } ${!canEditCapabilities ? 'cursor-not-allowed opacity-75' : ''}`}
+                        ? "border-blue-600 bg-blue-50"
+                        : "border-gray-200 hover:border-blue-300"
+                    } ${!canEditCapabilities ? "cursor-not-allowed opacity-75" : ""}`}
                   >
                     <input
                       type="checkbox"
@@ -654,15 +677,11 @@ export default function SupplierOnboardingPage() {
                     />
                     <div
                       className={`w-5 h-5 mt-0.5 border-2 rounded flex items-center justify-center flex-shrink-0 ${
-                        isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300'
+                        isSelected ? "border-blue-600 bg-blue-600" : "border-gray-300"
                       }`}
                     >
                       {isSelected && (
-                        <svg
-                          className="w-3 h-3 text-white"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                           <path
                             fillRule="evenodd"
                             d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -679,12 +698,12 @@ export default function SupplierOnboardingPage() {
                       <p className="text-xs text-gray-500 mt-1">{item.description}</p>
                       <span
                         className={`inline-block mt-2 px-2 py-0.5 text-xs rounded ${
-                          item.category === 'product'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-purple-100 text-purple-700'
+                          item.category === "product"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-purple-100 text-purple-700"
                         }`}
                       >
-                        {item.category === 'product' ? 'Product' : 'Service'}
+                        {item.category === "product" ? "Product" : "Service"}
                       </span>
                     </div>
                   </label>
@@ -699,11 +718,12 @@ export default function SupplierOnboardingPage() {
             {selectedCapabilities.length > 0 && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                 <p className="text-sm text-green-700">
-                  <strong>{selectedCapabilities.length}</strong> capability{selectedCapabilities.length > 1 ? 'ies' : 'y'} selected
+                  <strong>{selectedCapabilities.length}</strong> capability
+                  {selectedCapabilities.length > 1 ? "ies" : "y"} selected
                 </p>
               </div>
             )}
-            {onboardingStatus?.status === 'approved' && (
+            {onboardingStatus?.status === "approved" && (
               <div className="flex justify-end pt-4">
                 <button
                   type="button"
@@ -714,15 +734,36 @@ export default function SupplierOnboardingPage() {
                   {isSavingCapabilities ? (
                     <>
                       <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Updating...
                     </>
                   ) : (
                     <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                        />
                       </svg>
                       Update Capabilities
                     </>
@@ -751,7 +792,7 @@ export default function SupplierOnboardingPage() {
                 disabled={isSaving}
                 className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 disabled:opacity-50"
               >
-                {isSaving ? 'Saving...' : 'Save Draft'}
+                {isSaving ? "Saving..." : "Save Draft"}
               </button>
             )}
             {step < 5 ? (
@@ -770,7 +811,7 @@ export default function SupplierOnboardingPage() {
                   disabled={isSaving || selectedCapabilities.length === 0}
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 disabled:opacity-50"
                 >
-                  {isSaving ? 'Saving...' : 'Complete & Continue to Documents'}
+                  {isSaving ? "Saving..." : "Complete & Continue to Documents"}
                 </button>
               )
             )}

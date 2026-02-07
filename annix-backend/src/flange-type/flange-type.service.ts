@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { FlangeType } from './entities/flange-type.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { FlangeType } from "./entities/flange-type.entity";
 
 @Injectable()
 export class FlangeTypeService {
@@ -12,7 +12,7 @@ export class FlangeTypeService {
 
   findAll(): Promise<FlangeType[]> {
     return this.flangeTypeRepo.find({
-      order: { code: 'ASC' },
+      order: { code: "ASC" },
     });
   }
 

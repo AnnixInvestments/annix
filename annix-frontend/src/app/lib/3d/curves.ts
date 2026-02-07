@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 export class ArcCurve extends THREE.Curve<THREE.Vector3> {
   center: THREE.Vector3;
@@ -6,12 +6,7 @@ export class ArcCurve extends THREE.Curve<THREE.Vector3> {
   startAngle: number;
   endAngle: number;
 
-  constructor(
-    center: THREE.Vector3,
-    radius: number,
-    startAngle: number,
-    endAngle: number
-  ) {
+  constructor(center: THREE.Vector3, radius: number, startAngle: number, endAngle: number) {
     super();
     this.center = center;
     this.radius = radius;
@@ -24,7 +19,7 @@ export class ArcCurve extends THREE.Curve<THREE.Vector3> {
     return new THREE.Vector3(
       this.center.x + this.radius * Math.cos(angle),
       this.center.y,
-      this.center.z + this.radius * Math.sin(angle)
+      this.center.z + this.radius * Math.sin(angle),
     );
   }
 }
@@ -34,11 +29,7 @@ export class SaddleCurve extends THREE.Curve<THREE.Vector3> {
   mainPipeRadius: number;
   useXAxis: boolean;
 
-  constructor(
-    stubRadius: number,
-    mainPipeRadius: number,
-    useXAxis: boolean = false
-  ) {
+  constructor(stubRadius: number, mainPipeRadius: number, useXAxis: boolean = false) {
     super();
     this.stubRadius = stubRadius;
     this.mainPipeRadius = mainPipeRadius;

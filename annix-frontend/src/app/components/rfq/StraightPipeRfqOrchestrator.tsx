@@ -1,106 +1,71 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { StraightPipeEntry, BendEntry, FittingEntry, PipeItem, useRfqForm, RfqFormData, GlobalSpecs } from '@/app/lib/hooks/useRfqForm';
-import { formatLastSaved } from '@/app/lib/hooks/useRfqDraftStorage';
-import { useOptionalCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { masterDataApi, rfqApi, rfqDocumentApi, minesApi, pipeScheduleApi, draftsApi, boqApi, anonymousDraftsApi, RfqDraftResponse, SessionExpiredError } from '@/app/lib/api/client';
-import { useNixAssistant } from '@/app/hooks/rfq/useNixAssistant';
-import { useDraftManagement } from '@/app/hooks/rfq/useDraftManagement';
-import { adminApiClient } from '@/app/lib/api/adminApi';
-import { nixApi, NixAiPopup, NixFloatingAvatar, NixClarificationPopup, NixProcessingPopup, type NixExtractedItem, type NixClarificationDto } from '@/app/lib/nix';
-import NixFormHelper, { NixMinimizedButton } from './NixFormHelper';
-import { consolidateBoqData } from '@/app/lib/utils/boqConsolidation';
-import { useToast } from '@/app/components/Toast';
-import { log } from '@/app/lib/logger';
+import { useSearchParams } from "next/navigation";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
+import { useToast } from "@/app/components/Toast";
+import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
+import { useDraftManagement } from "@/app/hooks/rfq/useDraftManagement";
+import { useNixAssistant } from "@/app/hooks/rfq/useNixAssistant";
+import { adminApiClient } from "@/app/lib/api/adminApi";
+import {
+  anonymousDraftsApi,
+  boqApi,
+  draftsApi,
+  masterDataApi,
+  rfqApi,
+  rfqDocumentApi,
+  SessionExpiredError,
+} from "@/app/lib/api/client";
+import {
+  DEFAULT_PIPE_LENGTH_M,
+  flangesPerPipe as getFlangesPerPipe,
+  flangeWeldCountPerPipe as getFlangeWeldCountPerPipe,
+  physicalFlangeCount as getPhysicalFlangeCount,
+  getScheduleListForSpec,
+  STEEL_DENSITY_KG_M3,
+} from "@/app/lib/config/rfq";
+import { generateUniqueId, nowISO } from "@/app/lib/datetime";
+import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
+import {
+  flangeWeightSync as getFlangeWeight,
+  NB_TO_OD_LOOKUP,
+} from "@/app/lib/hooks/useFlangeWeights";
+import { formatLastSaved } from "@/app/lib/hooks/useRfqDraftStorage";
+import {
+  BendEntry,
+  FittingEntry,
+  PipeItem,
+  StraightPipeEntry,
+  useRfqForm,
+} from "@/app/lib/hooks/useRfqForm";
+import { log } from "@/app/lib/logger";
+import {
+  NixAiPopup,
+  NixClarificationPopup,
+  NixFloatingAvatar,
+  NixProcessingPopup,
+  nixApi,
+} from "@/app/lib/nix";
+import { consolidateBoqData } from "@/app/lib/utils/boqConsolidation";
+import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
 import {
   validatePage1RequiredFields,
   validatePage2Specifications,
-  validatePage3Items
-} from '@/app/lib/utils/validation';
-import {
-  generateClientItemNumber,
-  generateSystemReferenceNumber,
-  getPipeEndConfigurationDetails
-} from '@/app/lib/utils/systemUtils';
-import {
-  calculateMaxAllowablePressure,
-  calculateMinWallThickness,
-  validateScheduleForPressure,
-  findRecommendedSchedule,
-  calculateTotalSurfaceArea,
-  calculateInsideDiameter
-} from '@/app/lib/utils/pipeCalculations';
-import {
-  recommendWallThicknessCarbonPipe
-} from '@/app/lib/utils/weldThicknessLookup';
-import { getFlangeMaterialGroup } from '@/app/components/rfq/utils';
-import {
-  SABS62_NB_OPTIONS,
-  SABS62_BEND_RADIUS,
-  sabs62CFInterpolated,
-  sabs62AvailableAngles,
-  sabs62BendTypes,
-  SABS62BendType
-} from '@/app/lib/utils/sabs62CfData';
-import {
-  SABS719_ELBOWS,
-  SABS719_MEDIUM_RADIUS,
-  SABS719_LONG_RADIUS,
-  SABS719_BEND_TYPES,
-  sabs719ValidSegments as getSABS719ValidSegments,
-  sabs719ColumnBySegments as getSABS719ColumnBySegments,
-  sabs719CenterToFaceBySegments as getSABS719CenterToFaceBySegments,
-  PIPE_END_OPTIONS,
-  BEND_END_OPTIONS,
-  FITTING_END_OPTIONS,
-  type FlangeType,
-  weldCountPerBend as getWeldCountPerBend,
-  weldCountPerFitting as getWeldCountPerFitting,
-  fittingFlangeConfig as getFittingFlangeConfig,
-  hasLooseFlange,
-  fixedFlangeCount as getFixedFlangeCount,
-  weldCountPerPipe as getWeldCountPerPipe,
-  flangeWeldCountPerPipe as getFlangeWeldCountPerPipe,
-  flangesPerPipe as getFlangesPerPipe,
-  physicalFlangeCount as getPhysicalFlangeCount,
-  normalizePressureClass,
-  MATERIAL_LIMITS,
-  type MaterialLimits,
-  materialLimits as getMaterialLimits,
-  getScheduleListForSpec,
-  STEEL_DENSITY_KG_M3,
-  DEFAULT_PIPE_LENGTH_M,
-} from '@/app/lib/config/rfq';
-import {
-  NB_TO_OD_LOOKUP,
-  BLANK_FLANGE_WEIGHT,
-  FLANGE_WEIGHT_BY_PRESSURE_CLASS,
-  NB_TO_FLANGE_WEIGHT_LOOKUP,
-  BOLT_HOLES_BY_NB_AND_PRESSURE,
-  BNW_SET_WEIGHT_PER_HOLE,
-  GASKET_WEIGHTS,
-  blankFlangeWeightSync as getBlankFlangeWeight,
-  blankFlangeSurfaceAreaSync as getBlankFlangeSurfaceArea,
-  boltHolesPerFlangeSync as getBoltHolesPerFlange,
-  bnwSetInfoSync as getBnwSetInfo,
-  gasketWeightSync as getGasketWeight,
-  flangeWeightSync as getFlangeWeight,
-} from '@/app/lib/hooks/useFlangeWeights';
-import { generateUniqueId, nowISO, nowMillis } from '@/app/lib/datetime';
-import { fetchFlangeSpecsStatic, FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
-import ProjectDetailsStep, { PendingDocument } from './steps/ProjectDetailsStep';
-import SpecificationsStep from './steps/SpecificationsStep';
-import ItemUploadStep from './steps/ItemUploadStep';
-import ReviewSubmitStep from './steps/ReviewSubmitStep';
-import BOQStep from './steps/BOQStep';
+  validatePage3Items,
+} from "@/app/lib/utils/validation";
+import NixFormHelper, { NixMinimizedButton } from "./NixFormHelper";
+import BOQStep from "./steps/BOQStep";
+import ItemUploadStep from "./steps/ItemUploadStep";
+import ProjectDetailsStep, { PendingDocument } from "./steps/ProjectDetailsStep";
+import ReviewSubmitStep from "./steps/ReviewSubmitStep";
+import SpecificationsStep from "./steps/SpecificationsStep";
 
 const normalizeFittingTypeForApi = (type?: string | null) => {
   if (!type) return type;
   const map: Record<string, string> = {
-    SHORT_REDUCING_TEE: 'UNEQUAL_SHORT_TEE',
-    GUSSET_REDUCING_TEE: 'UNEQUAL_GUSSET_TEE',
+    SHORT_REDUCING_TEE: "UNEQUAL_SHORT_TEE",
+    GUSSET_REDUCING_TEE: "UNEQUAL_GUSSET_TEE",
   };
   return map[type] || type;
 };
@@ -114,10 +79,11 @@ const normalizeFittingTypeForApi = (type?: string | null) => {
 const getPressureClassWithFlangeType = (
   pressureClassDesignation: string,
   flangeTypeCode?: string,
-  flangeStandard?: string
+  flangeStandard?: string,
 ): string => {
   // Only modify for SABS 1123 and BS 4504 standards
-  const isSabsOrBs4504 = flangeStandard?.includes('SABS 1123') || flangeStandard?.includes('BS 4504');
+  const isSabsOrBs4504 =
+    flangeStandard?.includes("SABS 1123") || flangeStandard?.includes("BS 4504");
   if (!isSabsOrBs4504) return pressureClassDesignation;
 
   // If no flange type code is selected, return the designation as-is
@@ -152,7 +118,13 @@ interface MasterData {
   steelSpecs: Array<{ id: number; steelSpecName: string }>;
   flangeStandards: Array<{ id: number; code: string }>;
   pressureClasses: Array<{ id: number; designation: string }>;
-  nominalBores?: Array<{ id: number; nominal_diameter_mm?: number; outside_diameter_mm?: number; nominalDiameterMm?: number; outsideDiameterMm?: number }>;
+  nominalBores?: Array<{
+    id: number;
+    nominal_diameter_mm?: number;
+    outside_diameter_mm?: number;
+    nominalDiameterMm?: number;
+    outsideDiameterMm?: number;
+  }>;
   flangeTypes?: Array<{ id: number; code: string; name: string }>;
 }
 
@@ -179,18 +151,18 @@ const calculateLocalPipeResult = (
   pipeEndConfiguration: string,
   pressureClassDesignation?: string,
   flangeStandard?: string,
-  flangeTypeCode?: string
+  flangeTypeCode?: string,
 ): any => {
-  const outsideDiameterMm = NB_TO_OD_LOOKUP[nominalBoreMm] || (nominalBoreMm * 1.05);
+  const outsideDiameterMm = NB_TO_OD_LOOKUP[nominalBoreMm] || nominalBoreMm * 1.05;
 
   // Weight per meter formula: ((OD - WT) * WT) * 0.02466
-  const pipeWeightPerMeter = ((outsideDiameterMm - wallThicknessMm) * wallThicknessMm) * 0.02466;
+  const pipeWeightPerMeter = (outsideDiameterMm - wallThicknessMm) * wallThicknessMm * 0.02466;
 
   // Calculate pipe count and total length
   let calculatedPipeCount: number;
   let calculatedTotalLength: number;
 
-  if (quantityType === 'total_length') {
+  if (quantityType === "total_length") {
     calculatedTotalLength = quantityValue;
     calculatedPipeCount = Math.ceil(quantityValue / individualPipeLength);
   } else {
@@ -215,11 +187,16 @@ const calculateLocalPipeResult = (
 
   // Weld length calculations (circumference-based)
   // Each flange requires 2 full welds: 1 inside and 1 outside
-  const circumference = Math.PI * outsideDiameterMm / 1000; // in meters
+  const circumference = (Math.PI * outsideDiameterMm) / 1000; // in meters
   const totalFlangeWeldLength = numberOfFlangeWelds * circumference * 2; // x2 for inside + outside welds per flange
 
   // Get flange weight based on pressure class (includes flange + bolts + gasket)
-  const flangeWeightPerUnit = getFlangeWeight(nominalBoreMm, pressureClassDesignation, flangeStandard, flangeTypeCode);
+  const flangeWeightPerUnit = getFlangeWeight(
+    nominalBoreMm,
+    pressureClassDesignation,
+    flangeStandard,
+    flangeTypeCode,
+  );
   const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
 
   // Total system weight
@@ -238,11 +215,11 @@ const calculateLocalPipeResult = (
     wallThicknessMm,
     totalFlangeWeight,
     flangeWeightPerUnit, // Include per-unit weight for transparency
-    pressureClassUsed: pressureClassDesignation || 'PN16', // Track which pressure class was used
+    pressureClassUsed: pressureClassDesignation || "PN16", // Track which pressure class was used
     totalBoltWeight: 0,
     totalNutWeight: 0,
     totalSystemWeight,
-    isLocalCalculation: true // Flag to indicate this was calculated locally
+    isLocalCalculation: true, // Flag to indicate this was calculated locally
   };
 };
 
@@ -288,15 +265,19 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     steelSpecs: [],
     flangeStandards: [],
     pressureClasses: [],
-    nominalBores: []
+    nominalBores: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isLoadingMasterData, setIsLoadingMasterData] = useState(true);
   const [availableSchedulesMap, setAvailableSchedulesMap] = useState<Record<string, any[]>>({});
   const [availablePressureClasses, setAvailablePressureClasses] = useState<any[]>([]);
-  const [pressureClassesByStandard, setPressureClassesByStandard] = useState<Record<number, any[]>>({});
-  const [bendOptionsCache, setBendOptionsCache] = useState<Record<string, { nominalBores: number[]; degrees: number[] }>>({});
+  const [pressureClassesByStandard, setPressureClassesByStandard] = useState<Record<number, any[]>>(
+    {},
+  );
+  const [bendOptionsCache, setBendOptionsCache] = useState<
+    Record<string, { nominalBores: number[]; degrees: number[] }>
+  >({});
   const [pendingDocuments, setPendingDocuments] = useState<PendingDocument[]>([]);
   const [pendingTenderDocuments, setPendingTenderDocuments] = useState<PendingDocument[]>([]);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -380,11 +361,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       file,
       id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
     };
-    setPendingDocuments(prev => [...prev, newDoc]);
+    setPendingDocuments((prev) => [...prev, newDoc]);
   };
 
   const handleRemoveDocument = (id: string) => {
-    setPendingDocuments(prev => prev.filter(doc => doc.id !== id));
+    setPendingDocuments((prev) => prev.filter((doc) => doc.id !== id));
   };
 
   // Tender specification document handlers
@@ -393,15 +374,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       file,
       id: `tender-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
     };
-    setPendingTenderDocuments(prev => [...prev, newDoc]);
+    setPendingTenderDocuments((prev) => [...prev, newDoc]);
   };
 
   const handleRemoveTenderDocument = (id: string) => {
-    setPendingTenderDocuments(prev => prev.filter(doc => doc.id !== id));
+    setPendingTenderDocuments((prev) => prev.filter((doc) => doc.id !== id));
   };
 
   const handleSetValidationError = (field: string, message: string | null) => {
-    setValidationErrors(prev => {
+    setValidationErrors((prev) => {
       if (message === null) {
         const { [field]: _, ...rest } = prev;
         return rest;
@@ -412,123 +393,127 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   };
 
   // Get filtered pressure classes for a specific standard (with caching)
-  const getFilteredPressureClasses = useCallback(async (standardId: number): Promise<any[]> => {
-    if (!standardId) return [];
+  const getFilteredPressureClasses = useCallback(
+    async (standardId: number): Promise<any[]> => {
+      if (!standardId) return [];
 
-    // Return cached if available
-    if (pressureClassesByStandard[standardId]) {
-      return pressureClassesByStandard[standardId];
-    }
+      // Return cached if available
+      if (pressureClassesByStandard[standardId]) {
+        return pressureClassesByStandard[standardId];
+      }
 
-    try {
-      const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
-      setPressureClassesByStandard(prev => ({ ...prev, [standardId]: classes }));
-      return classes;
-    } catch (error) {
-      log.error('Error fetching pressure classes for standard', standardId, error);
-      return [];
-    }
-  }, [pressureClassesByStandard]);
+      try {
+        const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
+        setPressureClassesByStandard((prev) => ({ ...prev, [standardId]: classes }));
+        return classes;
+      } catch (error) {
+        log.error("Error fetching pressure classes for standard", standardId, error);
+        return [];
+      }
+    },
+    [pressureClassesByStandard],
+  );
 
   // Load master data from API
   useEffect(() => {
     const loadMasterData = async () => {
       try {
         setIsLoadingMasterData(true);
-        const { masterDataApi } = await import('@/app/lib/api/client');
-        
-        const [steelSpecs, flangeStandards, pressureClasses, nominalBores, flangeTypes] = await Promise.all([
-          masterDataApi.getSteelSpecifications(),
-          masterDataApi.getFlangeStandards(),
-          masterDataApi.getFlangePressureClasses(),
-          masterDataApi.getNominalBores(),
-          masterDataApi.getFlangeTypes()
-        ]);
+        const { masterDataApi } = await import("@/app/lib/api/client");
+
+        const [steelSpecs, flangeStandards, pressureClasses, nominalBores, flangeTypes] =
+          await Promise.all([
+            masterDataApi.getSteelSpecifications(),
+            masterDataApi.getFlangeStandards(),
+            masterDataApi.getFlangePressureClasses(),
+            masterDataApi.getNominalBores(),
+            masterDataApi.getFlangeTypes(),
+          ]);
 
         setMasterData({
           steelSpecs,
           flangeStandards,
           pressureClasses,
           nominalBores,
-          flangeTypes
+          flangeTypes,
         });
       } catch (error) {
         // Silently handle backend unavailable - use fallback data
-        if (error instanceof Error && error.message !== 'Backend unavailable') {
-          log.error('Error loading master data:', error);
+        if (error instanceof Error && error.message !== "Backend unavailable") {
+          log.error("Error loading master data:", error);
         }
         // Fallback steel specifications
         const fallbackSteelSpecs = [
           // South African Standards
-          { id: 1, steelSpecName: 'SABS 62 ERW Medium' },
-          { id: 2, steelSpecName: 'SABS 62 ERW Heavy' },
-          { id: 3, steelSpecName: 'SABS 719 ERW' },
+          { id: 1, steelSpecName: "SABS 62 ERW Medium" },
+          { id: 2, steelSpecName: "SABS 62 ERW Heavy" },
+          { id: 3, steelSpecName: "SABS 719 ERW" },
           // Carbon Steel - ASTM A106 (High-Temp Seamless)
-          { id: 4, steelSpecName: 'ASTM A106 Grade A' },
-          { id: 5, steelSpecName: 'ASTM A106 Grade B' },
-          { id: 6, steelSpecName: 'ASTM A106 Grade C' },
+          { id: 4, steelSpecName: "ASTM A106 Grade A" },
+          { id: 5, steelSpecName: "ASTM A106 Grade B" },
+          { id: 6, steelSpecName: "ASTM A106 Grade C" },
           // Carbon Steel - ASTM A53 (General Purpose)
-          { id: 7, steelSpecName: 'ASTM A53 Grade A' },
-          { id: 8, steelSpecName: 'ASTM A53 Grade B' },
+          { id: 7, steelSpecName: "ASTM A53 Grade A" },
+          { id: 8, steelSpecName: "ASTM A53 Grade B" },
           // Line Pipe - API 5L (Oil/Gas Pipelines)
-          { id: 9, steelSpecName: 'API 5L Grade A' },
-          { id: 10, steelSpecName: 'API 5L Grade B' },
-          { id: 11, steelSpecName: 'API 5L X42' },
-          { id: 12, steelSpecName: 'API 5L X46' },
-          { id: 13, steelSpecName: 'API 5L X52' },
-          { id: 14, steelSpecName: 'API 5L X56' },
-          { id: 15, steelSpecName: 'API 5L X60' },
-          { id: 16, steelSpecName: 'API 5L X65' },
-          { id: 17, steelSpecName: 'API 5L X70' },
-          { id: 18, steelSpecName: 'API 5L X80' },
+          { id: 9, steelSpecName: "API 5L Grade A" },
+          { id: 10, steelSpecName: "API 5L Grade B" },
+          { id: 11, steelSpecName: "API 5L X42" },
+          { id: 12, steelSpecName: "API 5L X46" },
+          { id: 13, steelSpecName: "API 5L X52" },
+          { id: 14, steelSpecName: "API 5L X56" },
+          { id: 15, steelSpecName: "API 5L X60" },
+          { id: 16, steelSpecName: "API 5L X65" },
+          { id: 17, steelSpecName: "API 5L X70" },
+          { id: 18, steelSpecName: "API 5L X80" },
           // Low Temperature - ASTM A333
-          { id: 19, steelSpecName: 'ASTM A333 Grade 1' },
-          { id: 20, steelSpecName: 'ASTM A333 Grade 3' },
-          { id: 21, steelSpecName: 'ASTM A333 Grade 6' },
+          { id: 19, steelSpecName: "ASTM A333 Grade 1" },
+          { id: 20, steelSpecName: "ASTM A333 Grade 3" },
+          { id: 21, steelSpecName: "ASTM A333 Grade 6" },
           // Heat Exchangers/Boilers
-          { id: 22, steelSpecName: 'ASTM A179' },
-          { id: 23, steelSpecName: 'ASTM A192' },
+          { id: 22, steelSpecName: "ASTM A179" },
+          { id: 23, steelSpecName: "ASTM A192" },
           // Structural Tubing - ASTM A500
-          { id: 24, steelSpecName: 'ASTM A500 Grade A' },
-          { id: 25, steelSpecName: 'ASTM A500 Grade B' },
-          { id: 26, steelSpecName: 'ASTM A500 Grade C' },
+          { id: 24, steelSpecName: "ASTM A500 Grade A" },
+          { id: 25, steelSpecName: "ASTM A500 Grade B" },
+          { id: 26, steelSpecName: "ASTM A500 Grade C" },
           // Alloy Steel - ASTM A335 (Chrome-Moly)
-          { id: 27, steelSpecName: 'ASTM A335 P5' },
-          { id: 28, steelSpecName: 'ASTM A335 P9' },
-          { id: 29, steelSpecName: 'ASTM A335 P11' },
-          { id: 30, steelSpecName: 'ASTM A335 P22' },
-          { id: 31, steelSpecName: 'ASTM A335 P91' },
+          { id: 27, steelSpecName: "ASTM A335 P5" },
+          { id: 28, steelSpecName: "ASTM A335 P9" },
+          { id: 29, steelSpecName: "ASTM A335 P11" },
+          { id: 30, steelSpecName: "ASTM A335 P22" },
+          { id: 31, steelSpecName: "ASTM A335 P91" },
           // Stainless Steel - ASTM A312
-          { id: 32, steelSpecName: 'ASTM A312 TP304' },
-          { id: 33, steelSpecName: 'ASTM A312 TP304L' },
-          { id: 34, steelSpecName: 'ASTM A312 TP316' },
-          { id: 35, steelSpecName: 'ASTM A312 TP316L' },
-          { id: 36, steelSpecName: 'ASTM A312 TP321' },
-          { id: 37, steelSpecName: 'ASTM A312 TP347' },
+          { id: 32, steelSpecName: "ASTM A312 TP304" },
+          { id: 33, steelSpecName: "ASTM A312 TP304L" },
+          { id: 34, steelSpecName: "ASTM A312 TP316" },
+          { id: 35, steelSpecName: "ASTM A312 TP316L" },
+          { id: 36, steelSpecName: "ASTM A312 TP321" },
+          { id: 37, steelSpecName: "ASTM A312 TP347" },
         ];
         // Fallback flange standards - IDs must match database
         const fallbackFlangeStandards = [
           // British Standards
-          { id: 1, code: 'BS 4504' },
+          { id: 1, code: "BS 4504" },
           // South African Standards
-          { id: 2, code: 'SABS 1123' },
-          { id: 3, code: 'BS 10' },
+          { id: 2, code: "SABS 1123" },
+          { id: 3, code: "BS 10" },
           // American Standards (ASME/ANSI)
-          { id: 4, code: 'ASME B16.5' },
-          { id: 5, code: 'ASME B16.47' },
+          { id: 4, code: "ASME B16.5" },
+          { id: 5, code: "ASME B16.47" },
           // European Standards
-          { id: 6, code: 'EN 1092-1' },
-          { id: 7, code: 'DIN' },
+          { id: 6, code: "EN 1092-1" },
+          { id: 7, code: "DIN" },
           // Japanese Standards
-          { id: 8, code: 'JIS B2220' },
+          { id: 8, code: "JIS B2220" },
           // API Standards
-          { id: 9, code: 'API 6A' },
-          { id: 10, code: 'AWWA C207' },
+          { id: 9, code: "API 6A" },
+          { id: 10, code: "AWWA C207" },
           // Australian Standards
-          { id: 11, code: 'AS 2129' },
-          { id: 12, code: 'AS 4087' },
+          { id: 11, code: "AS 2129" },
+          { id: 12, code: "AS 4087" },
           // Russian Standards
-          { id: 13, code: 'GOST' },
+          { id: 13, code: "GOST" },
         ];
         // Fallback nominal bores
         const fallbackNominalBores = [
@@ -560,7 +545,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           steelSpecs: fallbackSteelSpecs,
           flangeStandards: fallbackFlangeStandards,
           pressureClasses: [],
-          nominalBores: fallbackNominalBores
+          nominalBores: fallbackNominalBores,
         });
       } finally {
         setIsLoadingMasterData(false);
@@ -574,16 +559,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   useEffect(() => {
     if (!editRfqId) return;
 
-    log.debug('📝 Edit mode detected, loading RFQ via admin API:', editRfqId);
+    log.debug("📝 Edit mode detected, loading RFQ via admin API:", editRfqId);
 
     const loadRfqForEdit = async () => {
       setIsLoadingDraft(true);
       try {
         const draft = await adminApiClient.getRfqFullDraft(editRfqId);
-        log.debug('📦 Loading RFQ for edit:', draft);
-        log.debug('📦 RFQ formData:', draft.formData);
-        log.debug('📦 RFQ requiredProducts:', draft.requiredProducts);
-        log.debug('📦 RFQ globalSpecs:', draft.globalSpecs);
+        log.debug("📦 Loading RFQ for edit:", draft);
+        log.debug("📦 RFQ formData:", draft.formData);
+        log.debug("📦 RFQ requiredProducts:", draft.requiredProducts);
+        log.debug("📦 RFQ globalSpecs:", draft.globalSpecs);
 
         restoreFromDraft({
           formData: draft.formData,
@@ -598,8 +583,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
         log.debug(`✅ Loaded RFQ ${draft.draftNumber} for editing`);
       } catch (error) {
-        log.error('Failed to load RFQ for editing:', error);
-        showToast('Failed to load the RFQ. Please try again.', 'error');
+        log.error("Failed to load RFQ for editing:", error);
+        showToast("Failed to load the RFQ. Please try again.", "error");
       } finally {
         setIsLoadingDraft(false);
       }
@@ -622,7 +607,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           notes: rfqData.notes,
           requiredProducts: rfqData.requiredProducts || [],
         });
-        log.info('📸 Captured initial draft state for dirty checking');
+        log.info("📸 Captured initial draft state for dirty checking");
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -631,7 +616,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   // Load anonymous draft from recovery token URL parameter
   // Also compare with localStorage draft and use the newer one
   useEffect(() => {
-    const recoveryToken = searchParams?.get('recover');
+    const recoveryToken = searchParams?.get("recover");
     if (!recoveryToken) return;
     if (hasProcessedRecoveryTokenRef.current) return;
 
@@ -640,31 +625,34 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     const loadRecoveryDraft = async () => {
       setIsLoadingDraft(true);
       try {
-        const { anonymousDraftsApi } = await import('@/app/lib/api/client');
+        const { anonymousDraftsApi } = await import("@/app/lib/api/client");
         const serverDraft = await anonymousDraftsApi.getByToken(recoveryToken);
-        log.debug('📥 Loaded anonymous draft from recovery token:', JSON.stringify(serverDraft, null, 2));
-        log.debug('📥 serverDraft.formData:', JSON.stringify(serverDraft.formData, null, 2));
-        log.debug('📥 serverDraft.entries:', serverDraft.entries?.length, 'entries');
-        log.debug('📥 serverDraft.globalSpecs:', JSON.stringify(serverDraft.globalSpecs, null, 2));
+        log.debug(
+          "📥 Loaded anonymous draft from recovery token:",
+          JSON.stringify(serverDraft, null, 2),
+        );
+        log.debug("📥 serverDraft.formData:", JSON.stringify(serverDraft.formData, null, 2));
+        log.debug("📥 serverDraft.entries:", serverDraft.entries?.length, "entries");
+        log.debug("📥 serverDraft.globalSpecs:", JSON.stringify(serverDraft.globalSpecs, null, 2));
 
         const localDraft = loadLocalDraft();
         let useServerDraft = true;
-        let draftSource = 'recovery link';
+        let draftSource = "recovery link";
 
-        if (localDraft && localDraft.lastSaved && serverDraft.updatedAt) {
+        if (localDraft?.lastSaved && serverDraft.updatedAt) {
           const localDate = new Date(localDraft.lastSaved);
           const serverDate = new Date(serverDraft.updatedAt);
 
-          log.debug('Comparing draft timestamps:', {
+          log.debug("Comparing draft timestamps:", {
             local: localDraft.lastSaved,
             server: serverDraft.updatedAt,
-            localNewer: localDate > serverDate
+            localNewer: localDate > serverDate,
           });
 
           if (localDate > serverDate) {
             useServerDraft = false;
-            draftSource = 'local browser storage (more recent)';
-            log.debug('Using localStorage draft (newer than server)');
+            draftSource = "local browser storage (more recent)";
+            log.debug("Using localStorage draft (newer than server)");
           }
         }
 
@@ -688,12 +676,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         }
 
         hasCheckedLocalDraftRef.current = true;
-        showToast(`Draft restored from ${draftSource}`, 'success');
+        showToast(`Draft restored from ${draftSource}`, "success");
       } catch (error) {
-        log.error('Failed to load draft from recovery token:', error);
+        log.error("Failed to load draft from recovery token:", error);
         const localDraft = loadLocalDraft();
-        if (localDraft && localDraft.rfqData) {
-          log.debug('Server draft failed, falling back to localStorage');
+        if (localDraft?.rfqData) {
+          log.debug("Server draft failed, falling back to localStorage");
           restoreFromDraft({
             formData: localDraft.rfqData,
             globalSpecs: localDraft.globalSpecs,
@@ -702,9 +690,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             currentStep: localDraft.currentStep,
           });
           hasCheckedLocalDraftRef.current = true;
-          showToast('Draft restored from local storage (recovery link expired)', 'warning');
+          showToast("Draft restored from local storage (recovery link expired)", "warning");
         } else {
-          showToast('Failed to load draft. The link may have expired.', 'error');
+          showToast("Failed to load draft. The link may have expired.", "error");
         }
       } finally {
         setIsLoadingDraft(false);
@@ -721,17 +709,17 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     if (isLoadingDraft) return;
     if (editRfqId) return;
 
-    const draftIdFromUrl = searchParams?.get('draft') || searchParams?.get('draftId');
+    const draftIdFromUrl = searchParams?.get("draft") || searchParams?.get("draftId");
     if (draftIdFromUrl) return;
 
-    const recoveryToken = searchParams?.get('recover');
+    const recoveryToken = searchParams?.get("recover");
     if (recoveryToken) return;
 
     hasCheckedLocalDraftRef.current = true;
 
     const draft = loadLocalDraft();
-    if (draft && draft.rfqData) {
-      log.debug('Found localStorage draft:', draft);
+    if (draft?.rfqData) {
+      log.debug("Found localStorage draft:", draft);
       setPendingLocalDraft(draft);
       setShowDraftRestorePrompt(true);
     }
@@ -743,7 +731,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     if (isLoadingDraft) return;
     if (!hasCheckedLocalDraftRef.current) return;
 
-    const hasContent = rfqData.customerEmail ||
+    const hasContent =
+      rfqData.customerEmail ||
       rfqData.projectName ||
       rfqData.items.length > 0 ||
       Object.keys(rfqData.globalSpecs).length > 0;
@@ -802,7 +791,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     rfqData.globalSpecs,
     rfqData.items,
     currentStep,
-    saveLocalDraft
+    saveLocalDraft,
   ]);
 
   // Temperature derating factors for flange pressure classes
@@ -819,11 +808,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
     // Derating curve for temperatures above 200°C (based on EN 1092-1 for P235GH)
     const deratingCurve = [
-      { temp: 200, factor: 1.00 },  // Full rating up to 200°C
+      { temp: 200, factor: 1.0 }, // Full rating up to 200°C
       { temp: 250, factor: 0.94 },
       { temp: 300, factor: 0.87 },
-      { temp: 350, factor: 0.80 },
-      { temp: 400, factor: 0.70 },
+      { temp: 350, factor: 0.8 },
+      { temp: 400, factor: 0.7 },
       { temp: 450, factor: 0.57 },
     ];
 
@@ -834,13 +823,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
     // Find surrounding points and interpolate
     for (let i = 0; i < deratingCurve.length - 1; i++) {
-      if (temperatureCelsius >= deratingCurve[i].temp && temperatureCelsius <= deratingCurve[i + 1].temp) {
+      if (
+        temperatureCelsius >= deratingCurve[i].temp &&
+        temperatureCelsius <= deratingCurve[i + 1].temp
+      ) {
         const lower = deratingCurve[i];
         const upper = deratingCurve[i + 1];
         const tempRange = upper.temp - lower.temp;
         const factorRange = upper.factor - lower.factor;
         const tempOffset = temperatureCelsius - lower.temp;
-        return lower.factor + (factorRange * tempOffset / tempRange);
+        return lower.factor + (factorRange * tempOffset) / tempRange;
       }
     }
 
@@ -848,101 +840,108 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   };
 
   // Helper function to recommend pressure class based on working pressure (in bar) and temperature
-  const getRecommendedPressureClass = (workingPressureBar: number, pressureClasses: any[], temperatureCelsius?: number) => {
+  const getRecommendedPressureClass = (
+    workingPressureBar: number,
+    pressureClasses: any[],
+    temperatureCelsius?: number,
+  ) => {
     if (!workingPressureBar || !pressureClasses.length) return null;
 
     // Get temperature derating factor (defaults to 1.0 for ambient/unknown)
-    const deratingFactor = temperatureCelsius !== undefined ? temperatureDerating(temperatureCelsius) : 1.0;
+    const deratingFactor =
+      temperatureCelsius !== undefined ? temperatureDerating(temperatureCelsius) : 1.0;
 
     // Pressure class mappings for letter/special designations (bar ratings at ambient)
     const specialMappings: { [key: string]: number } = {
       // BS 10 & AS 2129 Table designations
-      'T/D': 7,    // Table D: ~7 bar
-      'T/E': 14,   // Table E: ~14 bar
-      'T/F': 21,   // Table F: ~21 bar
-      'T/H': 35,   // Table H: ~35 bar (AS 2129)
+      "T/D": 7, // Table D: ~7 bar
+      "T/E": 14, // Table E: ~14 bar
+      "T/F": 21, // Table F: ~21 bar
+      "T/H": 35, // Table H: ~35 bar (AS 2129)
       // AWWA C207 Classes (approximate bar ratings)
-      'Class B': 6,   // ~86 psi = 6 bar
-      'Class D': 10,  // ~150 psi = 10 bar
-      'Class E': 17,  // ~250 psi = 17 bar
-      'Class F': 21,  // ~300 psi = 21 bar
+      "Class B": 6, // ~86 psi = 6 bar
+      "Class D": 10, // ~150 psi = 10 bar
+      "Class E": 17, // ~250 psi = 17 bar
+      "Class F": 21, // ~300 psi = 21 bar
     };
 
     // ASME Class to bar conversion (at ambient temperature ~38°C)
     const asmeClassToBar: { [key: string]: number } = {
-      '75': 10,    // Class 75 ≈ 10 bar (B16.47)
-      '150': 20,   // Class 150 ≈ 20 bar
-      '300': 51,   // Class 300 ≈ 51 bar
-      '400': 68,   // Class 400 ≈ 68 bar
-      '600': 102,  // Class 600 ≈ 102 bar
-      '900': 153,  // Class 900 ≈ 153 bar
-      '1500': 255, // Class 1500 ≈ 255 bar
-      '2500': 425, // Class 2500 ≈ 425 bar
+      "75": 10, // Class 75 ≈ 10 bar (B16.47)
+      "150": 20, // Class 150 ≈ 20 bar
+      "300": 51, // Class 300 ≈ 51 bar
+      "400": 68, // Class 400 ≈ 68 bar
+      "600": 102, // Class 600 ≈ 102 bar
+      "900": 153, // Class 900 ≈ 153 bar
+      "1500": 255, // Class 1500 ≈ 255 bar
+      "2500": 425, // Class 2500 ≈ 425 bar
     };
 
     // Extract rating from designation and apply temperature derating
-    const classesWithRating = pressureClasses.map(pc => {
-      const designation = pc.designation?.trim();
-      let ambientRating = 0;
+    const classesWithRating = pressureClasses
+      .map((pc) => {
+        const designation = pc.designation?.trim();
+        let ambientRating = 0;
 
-      // Check if it's a special letter-based designation (BS 10, AS 2129, AWWA)
-      if (specialMappings[designation]) {
-        ambientRating = specialMappings[designation];
-      }
-      // Check if it's ASME Class designation (75, 150, 300, etc.)
-      else if (asmeClassToBar[designation]) {
-        ambientRating = asmeClassToBar[designation];
-      }
-      // Check for API 6A psi format (2000 psi, 5000 psi, etc.)
-      else {
-        const psiMatch = designation?.match(/^(\d+)\s*psi$/i);
-        if (psiMatch) {
-          ambientRating = Math.round(parseInt(psiMatch[1]) * 0.0689);
+        // Check if it's a special letter-based designation (BS 10, AS 2129, AWWA)
+        if (specialMappings[designation]) {
+          ambientRating = specialMappings[designation];
         }
-        // Check for PN (Pressure Nominal) format - EN, DIN, GOST, AS 4087
+        // Check if it's ASME Class designation (75, 150, 300, etc.)
+        else if (asmeClassToBar[designation]) {
+          ambientRating = asmeClassToBar[designation];
+        }
+        // Check for API 6A psi format (2000 psi, 5000 psi, etc.)
         else {
-          const pnMatch = designation?.match(/^PN\s*(\d+)/i);
-          if (pnMatch) {
-            ambientRating = parseInt(pnMatch[1]);
+          const psiMatch = designation?.match(/^(\d+)\s*psi$/i);
+          if (psiMatch) {
+            ambientRating = Math.round(parseInt(psiMatch[1], 10) * 0.0689);
           }
-          // Check for JIS K format (5K, 10K, etc.)
+          // Check for PN (Pressure Nominal) format - EN, DIN, GOST, AS 4087
           else {
-            const jisMatch = designation?.match(/^(\d+)K$/i);
-            if (jisMatch) {
-              ambientRating = parseInt(jisMatch[1]);
+            const pnMatch = designation?.match(/^PN\s*(\d+)/i);
+            if (pnMatch) {
+              ambientRating = parseInt(pnMatch[1], 10);
             }
-            // Handle "/X" format designations (both SABS 1123 and BS 4504)
-            // SABS 1123: 600/3=6bar, 1000/3=10bar, 1600/3=16bar (divide by 100)
-            // BS 4504: 6/3=6bar, 10/3=10bar, 16/3=16bar (use directly)
+            // Check for JIS K format (5K, 10K, etc.)
             else {
-              const slashMatch = designation?.match(/^(\d+)\s*\/\s*\d+$/);
-              if (slashMatch) {
-                const numericValue = parseInt(slashMatch[1]);
-                // SABS 1123 uses large numbers (600, 1000, 1600, etc.) - divide by 100
-                // BS 4504 uses small numbers (6, 10, 16, 25, 40, etc.) - use directly
-                if (numericValue >= 500) {
-                  ambientRating = numericValue / 100; // SABS: 1000 → 10 bar
-                } else {
-                  ambientRating = numericValue; // BS 4504: 10 → 10 bar
-                }
+              const jisMatch = designation?.match(/^(\d+)K$/i);
+              if (jisMatch) {
+                ambientRating = parseInt(jisMatch[1], 10);
               }
-              // Fallback: try to extract any leading number
+              // Handle "/X" format designations (both SABS 1123 and BS 4504)
+              // SABS 1123: 600/3=6bar, 1000/3=10bar, 1600/3=16bar (divide by 100)
+              // BS 4504: 6/3=6bar, 10/3=10bar, 16/3=16bar (use directly)
               else {
-                const numMatch = designation?.match(/^(\d+)/);
-                if (numMatch) {
-                  const num = parseInt(numMatch[1]);
-                  ambientRating = num >= 500 ? num / 100 : num;
+                const slashMatch = designation?.match(/^(\d+)\s*\/\s*\d+$/);
+                if (slashMatch) {
+                  const numericValue = parseInt(slashMatch[1], 10);
+                  // SABS 1123 uses large numbers (600, 1000, 1600, etc.) - divide by 100
+                  // BS 4504 uses small numbers (6, 10, 16, 25, 40, etc.) - use directly
+                  if (numericValue >= 500) {
+                    ambientRating = numericValue / 100; // SABS: 1000 → 10 bar
+                  } else {
+                    ambientRating = numericValue; // BS 4504: 10 → 10 bar
+                  }
+                }
+                // Fallback: try to extract any leading number
+                else {
+                  const numMatch = designation?.match(/^(\d+)/);
+                  if (numMatch) {
+                    const num = parseInt(numMatch[1], 10);
+                    ambientRating = num >= 500 ? num / 100 : num;
+                  }
                 }
               }
             }
           }
         }
-      }
 
-      // Apply temperature derating to get actual rating at operating temperature
-      const actualRating = ambientRating * deratingFactor;
-      return { ...pc, barRating: actualRating, ambientRating };
-    }).filter(pc => pc.barRating > 0);
+        // Apply temperature derating to get actual rating at operating temperature
+        const actualRating = ambientRating * deratingFactor;
+        return { ...pc, barRating: actualRating, ambientRating };
+      })
+      .filter((pc) => pc.barRating > 0);
 
     if (classesWithRating.length === 0) return null;
 
@@ -952,19 +951,23 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       const ratingDiff = a.barRating - b.barRating;
       if (Math.abs(ratingDiff) > 0.01) return ratingDiff;
       // Secondary sort by designation for consistency
-      return (a.designation || '').localeCompare(b.designation || '');
+      return (a.designation || "").localeCompare(b.designation || "");
     });
 
     // Log all available classes for debugging
-    log.debug(`Available pressure classes for ${workingPressureBar} bar at ${temperatureCelsius ?? 'ambient'}°C (derating: ${deratingFactor.toFixed(2)}):`,
-      classesWithRating.map(pc => `${pc.designation}=${pc.barRating.toFixed(1)}bar`).join(', '));
+    log.debug(
+      `Available pressure classes for ${workingPressureBar} bar at ${temperatureCelsius ?? "ambient"}°C (derating: ${deratingFactor.toFixed(2)}):`,
+      classesWithRating.map((pc) => `${pc.designation}=${pc.barRating.toFixed(1)}bar`).join(", "),
+    );
 
     // Find the lowest rating that meets or exceeds the working pressure at operating temperature
     // Using small tolerance for floating point comparison
-    const recommended = classesWithRating.find(pc => pc.barRating >= workingPressureBar - 0.01);
+    const recommended = classesWithRating.find((pc) => pc.barRating >= workingPressureBar - 0.01);
 
     if (recommended) {
-      log.debug(`Selected: ${recommended.designation} (${recommended.barRating.toFixed(1)} bar capacity) for ${workingPressureBar} bar working pressure`);
+      log.debug(
+        `Selected: ${recommended.designation} (${recommended.barRating.toFixed(1)} bar capacity) for ${workingPressureBar} bar working pressure`,
+      );
     } else {
       log.debug(`No suitable class found for ${workingPressureBar} bar, using highest available`);
     }
@@ -975,156 +978,156 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   // Fallback pressure classes by flange standard - IDs must match database
   const getFallbackPressureClasses = (standardId: number) => {
     const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
-    const code = standard?.code || '';
+    const code = standard?.code || "";
 
     // BS 4504 pressure classes (database IDs 1-8)
-    if (code.includes('BS 4504')) {
+    if (code.includes("BS 4504")) {
       return [
-        { id: 1, designation: '6/3', standardId },
-        { id: 2, designation: '10/3', standardId },
-        { id: 3, designation: '16/3', standardId },
-        { id: 4, designation: '25/3', standardId },
-        { id: 5, designation: '40/3', standardId },
-        { id: 6, designation: '64/3', standardId },
-        { id: 7, designation: '100/3', standardId },
-        { id: 8, designation: '160/3', standardId },
+        { id: 1, designation: "6/3", standardId },
+        { id: 2, designation: "10/3", standardId },
+        { id: 3, designation: "16/3", standardId },
+        { id: 4, designation: "25/3", standardId },
+        { id: 5, designation: "40/3", standardId },
+        { id: 6, designation: "64/3", standardId },
+        { id: 7, designation: "100/3", standardId },
+        { id: 8, designation: "160/3", standardId },
       ];
     }
     // SABS 1123 pressure classes (database IDs 9-13)
-    if (code.includes('SABS 1123')) {
+    if (code.includes("SABS 1123")) {
       return [
-        { id: 9, designation: '600/3', standardId },
-        { id: 10, designation: '1000/3', standardId },
-        { id: 11, designation: '1600/3', standardId },
-        { id: 12, designation: '2500/3', standardId },
-        { id: 13, designation: '4000/3', standardId },
+        { id: 9, designation: "600/3", standardId },
+        { id: 10, designation: "1000/3", standardId },
+        { id: 11, designation: "1600/3", standardId },
+        { id: 12, designation: "2500/3", standardId },
+        { id: 13, designation: "4000/3", standardId },
       ];
     }
     // BS 10 pressure classes (database IDs 14-16)
-    if (code.includes('BS 10')) {
+    if (code.includes("BS 10")) {
       return [
-        { id: 14, designation: 'T/D', standardId },
-        { id: 15, designation: 'T/E', standardId },
-        { id: 16, designation: 'T/F', standardId },
+        { id: 14, designation: "T/D", standardId },
+        { id: 15, designation: "T/E", standardId },
+        { id: 16, designation: "T/F", standardId },
       ];
     }
     // ASME B16.5 / ANSI B16.5 pressure classes (database IDs 17-23)
-    if (code.includes('ASME B16.5') || code.includes('ANSI B16.5')) {
+    if (code.includes("ASME B16.5") || code.includes("ANSI B16.5")) {
       return [
-        { id: 17, designation: '150', standardId },
-        { id: 18, designation: '300', standardId },
-        { id: 19, designation: '400', standardId },
-        { id: 20, designation: '600', standardId },
-        { id: 21, designation: '900', standardId },
-        { id: 22, designation: '1500', standardId },
-        { id: 23, designation: '2500', standardId },
+        { id: 17, designation: "150", standardId },
+        { id: 18, designation: "300", standardId },
+        { id: 19, designation: "400", standardId },
+        { id: 20, designation: "600", standardId },
+        { id: 21, designation: "900", standardId },
+        { id: 22, designation: "1500", standardId },
+        { id: 23, designation: "2500", standardId },
       ];
     }
     // EN 1092-1 pressure classes (database IDs 24-31)
-    if (code.includes('EN 1092')) {
+    if (code.includes("EN 1092")) {
       return [
-        { id: 24, designation: 'PN 6', standardId },
-        { id: 25, designation: 'PN 10', standardId },
-        { id: 26, designation: 'PN 16', standardId },
-        { id: 27, designation: 'PN 25', standardId },
-        { id: 28, designation: 'PN 40', standardId },
-        { id: 29, designation: 'PN 63', standardId },
-        { id: 30, designation: 'PN 100', standardId },
-        { id: 31, designation: 'PN 160', standardId },
+        { id: 24, designation: "PN 6", standardId },
+        { id: 25, designation: "PN 10", standardId },
+        { id: 26, designation: "PN 16", standardId },
+        { id: 27, designation: "PN 25", standardId },
+        { id: 28, designation: "PN 40", standardId },
+        { id: 29, designation: "PN 63", standardId },
+        { id: 30, designation: "PN 100", standardId },
+        { id: 31, designation: "PN 160", standardId },
       ];
     }
     // DIN pressure classes (database IDs 32-36)
-    if (code.includes('DIN')) {
+    if (code.includes("DIN")) {
       return [
-        { id: 32, designation: 'PN 6', standardId },
-        { id: 33, designation: 'PN 10', standardId },
-        { id: 34, designation: 'PN 16', standardId },
-        { id: 35, designation: 'PN 25', standardId },
-        { id: 36, designation: 'PN 40', standardId },
+        { id: 32, designation: "PN 6", standardId },
+        { id: 33, designation: "PN 10", standardId },
+        { id: 34, designation: "PN 16", standardId },
+        { id: 35, designation: "PN 25", standardId },
+        { id: 36, designation: "PN 40", standardId },
       ];
     }
     // JIS B2220 pressure classes (database IDs 37-43)
-    if (code.includes('JIS')) {
+    if (code.includes("JIS")) {
       return [
-        { id: 37, designation: '5K', standardId },
-        { id: 38, designation: '10K', standardId },
-        { id: 39, designation: '16K', standardId },
-        { id: 40, designation: '20K', standardId },
-        { id: 41, designation: '30K', standardId },
-        { id: 42, designation: '40K', standardId },
-        { id: 43, designation: '63K', standardId },
+        { id: 37, designation: "5K", standardId },
+        { id: 38, designation: "10K", standardId },
+        { id: 39, designation: "16K", standardId },
+        { id: 40, designation: "20K", standardId },
+        { id: 41, designation: "30K", standardId },
+        { id: 42, designation: "40K", standardId },
+        { id: 43, designation: "63K", standardId },
       ];
     }
     // AS 2129 pressure classes (database IDs 44-47)
-    if (code.includes('AS 2129')) {
+    if (code.includes("AS 2129")) {
       return [
-        { id: 44, designation: 'T/D', standardId },
-        { id: 45, designation: 'T/E', standardId },
-        { id: 46, designation: 'T/F', standardId },
-        { id: 47, designation: 'T/H', standardId },
+        { id: 44, designation: "T/D", standardId },
+        { id: 45, designation: "T/E", standardId },
+        { id: 46, designation: "T/F", standardId },
+        { id: 47, designation: "T/H", standardId },
       ];
     }
     // AS 4087 pressure classes (database IDs 48-52)
-    if (code.includes('AS 4087')) {
+    if (code.includes("AS 4087")) {
       return [
-        { id: 48, designation: 'PN 14', standardId },
-        { id: 49, designation: 'PN 16', standardId },
-        { id: 50, designation: 'PN 21', standardId },
-        { id: 51, designation: 'PN 25', standardId },
-        { id: 52, designation: 'PN 35', standardId },
+        { id: 48, designation: "PN 14", standardId },
+        { id: 49, designation: "PN 16", standardId },
+        { id: 50, designation: "PN 21", standardId },
+        { id: 51, designation: "PN 25", standardId },
+        { id: 52, designation: "PN 35", standardId },
       ];
     }
     // GOST pressure classes (database IDs 53-58)
-    if (code.includes('GOST')) {
+    if (code.includes("GOST")) {
       return [
-        { id: 53, designation: 'PN 6', standardId },
-        { id: 54, designation: 'PN 10', standardId },
-        { id: 55, designation: 'PN 16', standardId },
-        { id: 56, designation: 'PN 25', standardId },
-        { id: 57, designation: 'PN 40', standardId },
-        { id: 58, designation: 'PN 63', standardId },
+        { id: 53, designation: "PN 6", standardId },
+        { id: 54, designation: "PN 10", standardId },
+        { id: 55, designation: "PN 16", standardId },
+        { id: 56, designation: "PN 25", standardId },
+        { id: 57, designation: "PN 40", standardId },
+        { id: 58, designation: "PN 63", standardId },
       ];
     }
     // ASME B16.47 pressure classes (database IDs 59-64)
-    if (code.includes('ASME B16.47')) {
+    if (code.includes("ASME B16.47")) {
       return [
-        { id: 59, designation: '75', standardId },
-        { id: 60, designation: '150', standardId },
-        { id: 61, designation: '300', standardId },
-        { id: 62, designation: '400', standardId },
-        { id: 63, designation: '600', standardId },
-        { id: 64, designation: '900', standardId },
+        { id: 59, designation: "75", standardId },
+        { id: 60, designation: "150", standardId },
+        { id: 61, designation: "300", standardId },
+        { id: 62, designation: "400", standardId },
+        { id: 63, designation: "600", standardId },
+        { id: 64, designation: "900", standardId },
       ];
     }
     // API 6A pressure classes (database IDs 65-70)
-    if (code.includes('API 6A')) {
+    if (code.includes("API 6A")) {
       return [
-        { id: 65, designation: '2000 psi', standardId },
-        { id: 66, designation: '3000 psi', standardId },
-        { id: 67, designation: '5000 psi', standardId },
-        { id: 68, designation: '10000 psi', standardId },
-        { id: 69, designation: '15000 psi', standardId },
-        { id: 70, designation: '20000 psi', standardId },
+        { id: 65, designation: "2000 psi", standardId },
+        { id: 66, designation: "3000 psi", standardId },
+        { id: 67, designation: "5000 psi", standardId },
+        { id: 68, designation: "10000 psi", standardId },
+        { id: 69, designation: "15000 psi", standardId },
+        { id: 70, designation: "20000 psi", standardId },
       ];
     }
     // AWWA C207 pressure classes (database IDs 71-74)
-    if (code.includes('AWWA')) {
+    if (code.includes("AWWA")) {
       return [
-        { id: 71, designation: 'Class B', standardId },
-        { id: 72, designation: 'Class D', standardId },
-        { id: 73, designation: 'Class E', standardId },
-        { id: 74, designation: 'Class F', standardId },
+        { id: 71, designation: "Class B", standardId },
+        { id: 72, designation: "Class D", standardId },
+        { id: 73, designation: "Class E", standardId },
+        { id: 74, designation: "Class F", standardId },
       ];
     }
     // BS 1560 pressure classes (same as ASME)
-    if (code.includes('BS 1560')) {
+    if (code.includes("BS 1560")) {
       return [
-        { id: 901, designation: '150', standardId },
-        { id: 902, designation: '300', standardId },
-        { id: 903, designation: '600', standardId },
-        { id: 904, designation: '900', standardId },
-        { id: 905, designation: '1500', standardId },
-        { id: 906, designation: '2500', standardId },
+        { id: 901, designation: "150", standardId },
+        { id: 902, designation: "300", standardId },
+        { id: 903, designation: "600", standardId },
+        { id: 904, designation: "900", standardId },
+        { id: 905, designation: "1500", standardId },
+        { id: 906, designation: "2500", standardId },
       ];
     }
     // Default empty
@@ -1132,17 +1135,26 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   };
 
   // Fetch available pressure classes for a standard and auto-select recommended
-  const fetchAndSelectPressureClass = async (standardId: number, workingPressureBar?: number, temperatureCelsius?: number, materialGroup?: string) => {
+  const fetchAndSelectPressureClass = async (
+    standardId: number,
+    workingPressureBar?: number,
+    temperatureCelsius?: number,
+    materialGroup?: string,
+  ) => {
     try {
-      const { masterDataApi } = await import('@/app/lib/api/client');
+      const { masterDataApi } = await import("@/app/lib/api/client");
       const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
 
       // Log what we got from the API
-      const standardName = masterData.flangeStandards?.find((s: any) => s.id === standardId)?.code || standardId;
-      log.debug(`Fetched ${classes.length} pressure classes for ${standardName}:`, classes.map((c: any) => `${c.designation}(id=${c.id})`).join(', '));
+      const standardName =
+        masterData.flangeStandards?.find((s: any) => s.id === standardId)?.code || standardId;
+      log.debug(
+        `Fetched ${classes.length} pressure classes for ${standardName}:`,
+        classes.map((c: any) => `${c.designation}(id=${c.id})`).join(", "),
+      );
 
       setAvailablePressureClasses(classes);
-      setPressureClassesByStandard(prev => ({ ...prev, [standardId]: classes }));
+      setPressureClassesByStandard((prev) => ({ ...prev, [standardId]: classes }));
 
       // Auto-select recommended pressure class if working pressure is available
       if (workingPressureBar && classes.length > 0) {
@@ -1153,22 +1165,26 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         // The API will return null if no P-T data exists for this standard, triggering fallback
         if (temperatureCelsius !== undefined) {
           try {
-            const ptMaterialGroup = materialGroup || 'Carbon Steel A105 (Group 1.1)';
+            const ptMaterialGroup = materialGroup || "Carbon Steel A105 (Group 1.1)";
             const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`
+              `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001"}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`,
             );
             if (response.ok) {
               const text = await response.text();
-              if (text && text.trim()) {
+              if (text?.trim()) {
                 try {
                   const recommendedClassId = JSON.parse(text);
                   // Validate the returned class ID is in our fetched classes for this standard
                   const matchingClass = classes.find((c: any) => c.id === recommendedClassId);
                   if (recommendedClassId && matchingClass) {
-                    log.debug(`P/T rating: Selected ${matchingClass.designation} (ID ${recommendedClassId}) for ${standardCode} at ${workingPressureBar} bar, ${temperatureCelsius}°C`);
+                    log.debug(
+                      `P/T rating: Selected ${matchingClass.designation} (ID ${recommendedClassId}) for ${standardCode} at ${workingPressureBar} bar, ${temperatureCelsius}°C`,
+                    );
                     return recommendedClassId;
                   } else if (recommendedClassId) {
-                    log.debug(`P/T rating returned ID ${recommendedClassId} but it's not in the classes for ${standardCode}, falling back to calculation`);
+                    log.debug(
+                      `P/T rating returned ID ${recommendedClassId} but it's not in the classes for ${standardCode}, falling back to calculation`,
+                    );
                   }
                 } catch {
                   // Invalid JSON, fall through to fallback
@@ -1177,14 +1193,22 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             }
           } catch (ptError) {
             // Silently fall back to pressure-based calculation if P/T API fails
-            log.debug(`P/T rating API failed for ${standardCode}, using pressure-based calculation`);
+            log.debug(
+              `P/T rating API failed for ${standardCode}, using pressure-based calculation`,
+            );
           }
         }
 
         // Use pressure-based calculation for all standards (with temperature derating if applicable)
-        const recommended = getRecommendedPressureClass(workingPressureBar, classes, temperatureCelsius);
+        const recommended = getRecommendedPressureClass(
+          workingPressureBar,
+          classes,
+          temperatureCelsius,
+        );
         if (recommended) {
-          log.debug(`Pressure calculation: Selected ${recommended.designation} (ID ${recommended.id}) for ${standardCode} at ${workingPressureBar} bar - capacity: ${recommended.barRating?.toFixed(1) || recommended.ambientRating} bar`);
+          log.debug(
+            `Pressure calculation: Selected ${recommended.designation} (ID ${recommended.id}) for ${standardCode} at ${workingPressureBar} bar - capacity: ${recommended.barRating?.toFixed(1) || recommended.ambientRating} bar`,
+          );
           return recommended.id;
         }
       }
@@ -1194,19 +1218,25 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       // Use fallback pressure classes when backend is unavailable
       const fallbackClasses = getFallbackPressureClasses(standardId);
       setAvailablePressureClasses(fallbackClasses);
-      setPressureClassesByStandard(prev => ({ ...prev, [standardId]: fallbackClasses }));
+      setPressureClassesByStandard((prev) => ({ ...prev, [standardId]: fallbackClasses }));
 
-      if (error instanceof Error && error.message !== 'Backend unavailable') {
-        log.error('Error fetching pressure classes:', error);
+      if (error instanceof Error && error.message !== "Backend unavailable") {
+        log.error("Error fetching pressure classes:", error);
       }
 
       // Auto-select recommended from fallback classes with temperature derating
       if (workingPressureBar && fallbackClasses.length > 0) {
         const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
         const standardCode = standard?.code || String(standardId);
-        const recommended = getRecommendedPressureClass(workingPressureBar, fallbackClasses, temperatureCelsius);
+        const recommended = getRecommendedPressureClass(
+          workingPressureBar,
+          fallbackClasses,
+          temperatureCelsius,
+        );
         if (recommended) {
-          log.debug(`Fallback calculation: Selected ${recommended.designation} (ID ${recommended.id}) for ${standardCode} at ${workingPressureBar} bar - capacity: ${recommended.barRating?.toFixed(1) || recommended.ambientRating} bar`);
+          log.debug(
+            `Fallback calculation: Selected ${recommended.designation} (ID ${recommended.id}) for ${standardCode} at ${workingPressureBar} bar - capacity: ${recommended.barRating?.toFixed(1) || recommended.ambientRating} bar`,
+          );
           return recommended.id;
         }
       }
@@ -1218,197 +1248,234 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   // Fetch available schedules for a specific entry
   // IMPORTANT: This function should NOT replace working fallback data with API data
   // because API schedule names may differ from fallback names, breaking the selected value
-  const fetchAvailableSchedules = useCallback(async (entryId: string, steelSpecId: number, nominalBoreMm: number) => {
-    // Check for fallback data first to provide immediate response - use correct schedule list based on steel spec
-    const fallbackSchedules = getScheduleListForSpec(nominalBoreMm, steelSpecId);
+  const fetchAvailableSchedules = useCallback(
+    async (entryId: string, steelSpecId: number, nominalBoreMm: number) => {
+      // Check for fallback data first to provide immediate response - use correct schedule list based on steel spec
+      const fallbackSchedules = getScheduleListForSpec(nominalBoreMm, steelSpecId);
 
-    // If we already have schedules for this entry, don't fetch from API
-    // This prevents API data with different schedule names from breaking the selection
-    const existingSchedules = availableSchedulesMap[entryId];
-    if (existingSchedules && existingSchedules.length > 0) {
-      log.debug(`[fetchAvailableSchedules] Entry ${entryId} already has ${existingSchedules.length} schedules, skipping API fetch`);
-      return existingSchedules;
-    }
+      // If we already have schedules for this entry, don't fetch from API
+      // This prevents API data with different schedule names from breaking the selection
+      const existingSchedules = availableSchedulesMap[entryId];
+      if (existingSchedules && existingSchedules.length > 0) {
+        log.debug(
+          `[fetchAvailableSchedules] Entry ${entryId} already has ${existingSchedules.length} schedules, skipping API fetch`,
+        );
+        return existingSchedules;
+      }
 
-    // Use fallback data - it's reliable and consistent
-    if (fallbackSchedules.length > 0) {
-      log.debug(`[fetchAvailableSchedules] Using ${fallbackSchedules.length} fallback schedules for ${nominalBoreMm}mm`);
-      setAvailableSchedulesMap(prev => ({
-        ...prev,
-        [entryId]: fallbackSchedules
-      }));
-      return fallbackSchedules;
-    }
+      // Use fallback data - it's reliable and consistent
+      if (fallbackSchedules.length > 0) {
+        log.debug(
+          `[fetchAvailableSchedules] Using ${fallbackSchedules.length} fallback schedules for ${nominalBoreMm}mm`,
+        );
+        setAvailableSchedulesMap((prev) => ({
+          ...prev,
+          [entryId]: fallbackSchedules,
+        }));
+        return fallbackSchedules;
+      }
 
-    // Only try API if we have no fallback data
-    try {
-      const { masterDataApi } = await import('@/app/lib/api/client');
+      // Only try API if we have no fallback data
+      try {
+        const { masterDataApi } = await import("@/app/lib/api/client");
 
-      log.debug(`[fetchAvailableSchedules] Entry: ${entryId}, Steel: ${steelSpecId}, NB: ${nominalBoreMm}mm`);
+        log.debug(
+          `[fetchAvailableSchedules] Entry: ${entryId}, Steel: ${steelSpecId}, NB: ${nominalBoreMm}mm`,
+        );
 
-      // Find the nominal outside diameter ID from nominalBoreMm
-      const nominalBore = masterData.nominalBores?.find((nb: any) => {
-        const nbValue = nb.nominal_diameter_mm ?? nb.nominalDiameterMm;
-        return nbValue === nominalBoreMm || nbValue === Number(nominalBoreMm);
-      });
+        // Find the nominal outside diameter ID from nominalBoreMm
+        const nominalBore = masterData.nominalBores?.find((nb: any) => {
+          const nbValue = nb.nominal_diameter_mm ?? nb.nominalDiameterMm;
+          return nbValue === nominalBoreMm || nbValue === Number(nominalBoreMm);
+        });
 
-      if (!nominalBore) {
-        log.warn(`[fetchAvailableSchedules] No nominal bore found for ${nominalBoreMm}mm in masterData`);
+        if (!nominalBore) {
+          log.warn(
+            `[fetchAvailableSchedules] No nominal bore found for ${nominalBoreMm}mm in masterData`,
+          );
+          return [];
+        }
+
+        log.debug(`[fetchAvailableSchedules] Found nominalBore ID: ${nominalBore.id}`);
+
+        const dimensions = await masterDataApi.getPipeDimensionsAll(steelSpecId, nominalBore.id);
+
+        log.debug(`[fetchAvailableSchedules] Got ${dimensions?.length || 0} dimensions from API`);
+
+        if (dimensions && dimensions.length > 0) {
+          setAvailableSchedulesMap((prev) => ({
+            ...prev,
+            [entryId]: dimensions,
+          }));
+          return dimensions;
+        }
+
+        return [];
+      } catch (error) {
+        if (error instanceof Error && error.message !== "Backend unavailable") {
+          log.error("[fetchAvailableSchedules] Error:", error);
+        }
         return [];
       }
-
-      log.debug(`[fetchAvailableSchedules] Found nominalBore ID: ${nominalBore.id}`);
-
-      const dimensions = await masterDataApi.getPipeDimensionsAll(steelSpecId, nominalBore.id);
-
-      log.debug(`[fetchAvailableSchedules] Got ${dimensions?.length || 0} dimensions from API`);
-
-      if (dimensions && dimensions.length > 0) {
-        setAvailableSchedulesMap(prev => ({
-          ...prev,
-          [entryId]: dimensions
-        }));
-        return dimensions;
-      }
-
-      return [];
-    } catch (error) {
-      if (error instanceof Error && error.message !== 'Backend unavailable') {
-        log.error('[fetchAvailableSchedules] Error:', error);
-      }
-      return [];
-    }
-  }, [availableSchedulesMap, masterData.nominalBores]);
+    },
+    [availableSchedulesMap, masterData.nominalBores],
+  );
 
   // Fetch bend options (nominal bores and degrees) for a bend type
-  const fetchBendOptions = useCallback(async (bendType: string) => {
-    // Return cached data if available
-    if (bendOptionsCache[bendType]) {
-      return bendOptionsCache[bendType];
-    }
-
-    try {
-      const { masterDataApi } = await import('@/app/lib/api/client');
-      const options = await masterDataApi.getBendOptions(bendType);
-
-      // Cache the result
-      setBendOptionsCache(prev => ({
-        ...prev,
-        [bendType]: options
-      }));
-
-      return options;
-    } catch (error) {
-      if (error instanceof Error && error.message !== 'Backend unavailable') {
-        log.error(`Error fetching bend options for ${bendType}:`, error);
+  const fetchBendOptions = useCallback(
+    async (bendType: string) => {
+      // Return cached data if available
+      if (bendOptionsCache[bendType]) {
+        return bendOptionsCache[bendType];
       }
-      return { nominalBores: [], degrees: [] };
-    }
-  }, [bendOptionsCache]);
+
+      try {
+        const { masterDataApi } = await import("@/app/lib/api/client");
+        const options = await masterDataApi.getBendOptions(bendType);
+
+        // Cache the result
+        setBendOptionsCache((prev) => ({
+          ...prev,
+          [bendType]: options,
+        }));
+
+        return options;
+      } catch (error) {
+        if (error instanceof Error && error.message !== "Backend unavailable") {
+          log.error(`Error fetching bend options for ${bendType}:`, error);
+        }
+        return { nominalBores: [], degrees: [] };
+      }
+    },
+    [bendOptionsCache],
+  );
 
   // Fetch center-to-face dimension from API based on bend type, NB, and angle
-  const fetchCenterToFace = useCallback(async (entryId: string, bendType: string, nominalBoreMm: number, degrees: number) => {
-    if (!bendType || !nominalBoreMm || !degrees) {
-      log.debug('[CenterToFace] Missing required parameters:', { bendType, nominalBoreMm, degrees });
-      return null;
-    }
+  const fetchCenterToFace = useCallback(
+    async (entryId: string, bendType: string, nominalBoreMm: number, degrees: number) => {
+      if (!bendType || !nominalBoreMm || !degrees) {
+        log.debug("[CenterToFace] Missing required parameters:", {
+          bendType,
+          nominalBoreMm,
+          degrees,
+        });
+        return null;
+      }
 
-    try {
-      const { masterDataApi } = await import('@/app/lib/api/client');
-      const result = await masterDataApi.getBendCenterToFace(bendType, nominalBoreMm, degrees);
+      try {
+        const { masterDataApi } = await import("@/app/lib/api/client");
+        const result = await masterDataApi.getBendCenterToFace(bendType, nominalBoreMm, degrees);
 
-      if (result && result.centerToFaceMm) {
-        log.debug(`[CenterToFace] Found: ${result.centerToFaceMm}mm for ${bendType} ${nominalBoreMm}NB @ ${degrees}°`);
+        if (result?.centerToFaceMm) {
+          log.debug(
+            `[CenterToFace] Found: ${result.centerToFaceMm}mm for ${bendType} ${nominalBoreMm}NB @ ${degrees}°`,
+          );
 
-        // Find the current entry to merge specs using ref for stable reference
-        const currentEntry = rfqDataRef.current.items.find((item: any) => item.id === entryId);
-        if (currentEntry && currentEntry.specs) {
-          // Update the entry with the center-to-face value, merging with existing specs
-          updateItem(entryId, {
-            specs: {
-              ...currentEntry.specs,
-              centerToFaceMm: Number(result.centerToFaceMm),
-              bendRadiusMm: Number(result.radiusMm)
-            } as any
-          });
+          // Find the current entry to merge specs using ref for stable reference
+          const currentEntry = rfqDataRef.current.items.find((item: any) => item.id === entryId);
+          if (currentEntry?.specs) {
+            // Update the entry with the center-to-face value, merging with existing specs
+            updateItem(entryId, {
+              specs: {
+                ...currentEntry.specs,
+                centerToFaceMm: Number(result.centerToFaceMm),
+                bendRadiusMm: Number(result.radiusMm),
+              } as any,
+            });
+          }
+
+          return result;
         }
-
-        return result;
+        return null;
+      } catch (error) {
+        if (error instanceof Error && error.message !== "Backend unavailable") {
+          log.error(
+            `[CenterToFace] Error fetching for ${bendType} ${nominalBoreMm}NB @ ${degrees}°:`,
+            error,
+          );
+        }
+        return null;
       }
-      return null;
-    } catch (error) {
-      if (error instanceof Error && error.message !== 'Backend unavailable') {
-        log.error(`[CenterToFace] Error fetching for ${bendType} ${nominalBoreMm}NB @ ${degrees}°:`, error);
-      }
-      return null;
-    }
-  }, [updateItem]);
+    },
+    [updateItem],
+  );
 
   // Auto-select flange specifications based on item-level operating conditions
-  const autoSelectFlangeSpecs = useCallback(async (
-    entryId: string,
-    entryType: 'straight-pipe' | 'bend',
-    workingPressureBar: number,
-    flangeStandardId?: number,
-    updateCallback?: (updates: any) => void,
-    temperatureCelsius?: number,
-    materialGroup?: string
-  ) => {
-    if (!workingPressureBar || !flangeStandardId) return;
+  const autoSelectFlangeSpecs = useCallback(
+    async (
+      entryId: string,
+      entryType: "straight-pipe" | "bend",
+      workingPressureBar: number,
+      flangeStandardId?: number,
+      updateCallback?: (updates: any) => void,
+      temperatureCelsius?: number,
+      materialGroup?: string,
+    ) => {
+      if (!workingPressureBar || !flangeStandardId) return;
 
-    try {
-      // Fetch pressure classes for the standard and get recommendation
-      const { masterDataApi } = await import('@/app/lib/api/client');
-      const classes = await masterDataApi.getFlangePressureClassesByStandard(flangeStandardId);
+      try {
+        // Fetch pressure classes for the standard and get recommendation
+        const { masterDataApi } = await import("@/app/lib/api/client");
+        const classes = await masterDataApi.getFlangePressureClassesByStandard(flangeStandardId);
 
-      if (classes.length > 0) {
-        let recommendedId: number | null = null;
+        if (classes.length > 0) {
+          let recommendedId: number | null = null;
 
-        // Try P/T rating API for temperature-based selection with material group
-        if (temperatureCelsius !== undefined) {
-          try {
-            const ptMaterialGroup = materialGroup || 'Carbon Steel A105 (Group 1.1)';
-            const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001'}/flange-pt-ratings/recommended-class?standardId=${flangeStandardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`
-            );
-            if (response.ok) {
-              const text = await response.text();
-              if (text && text.trim()) {
-                try {
-                  recommendedId = JSON.parse(text);
-                  if (recommendedId && updateCallback) {
-                    const recommendedClass = classes.find((c: any) => c.id === recommendedId);
-                    updateCallback({
-                      flangePressureClassId: recommendedId,
-                      autoSelectedPressureClass: true
-                    });
-                    log.debug(`Auto-selected pressure class ${recommendedClass?.designation || recommendedId} for ${workingPressureBar} bar at ${temperatureCelsius}°C (${ptMaterialGroup})`);
-                    return;
+          // Try P/T rating API for temperature-based selection with material group
+          if (temperatureCelsius !== undefined) {
+            try {
+              const ptMaterialGroup = materialGroup || "Carbon Steel A105 (Group 1.1)";
+              const response = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001"}/flange-pt-ratings/recommended-class?standardId=${flangeStandardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`,
+              );
+              if (response.ok) {
+                const text = await response.text();
+                if (text?.trim()) {
+                  try {
+                    recommendedId = JSON.parse(text);
+                    if (recommendedId && updateCallback) {
+                      const recommendedClass = classes.find((c: any) => c.id === recommendedId);
+                      updateCallback({
+                        flangePressureClassId: recommendedId,
+                        autoSelectedPressureClass: true,
+                      });
+                      log.debug(
+                        `Auto-selected pressure class ${recommendedClass?.designation || recommendedId} for ${workingPressureBar} bar at ${temperatureCelsius}°C (${ptMaterialGroup})`,
+                      );
+                      return;
+                    }
+                  } catch {
+                    // Invalid JSON, fall through to fallback
                   }
-                } catch {
-                  // Invalid JSON, fall through to fallback
                 }
               }
+            } catch {
+              // Fall back to local calculation
             }
-          } catch {
-            // Fall back to local calculation
+          }
+
+          // Fallback to local temperature-derated calculation
+          const recommended = getRecommendedPressureClass(
+            workingPressureBar,
+            classes,
+            temperatureCelsius,
+          );
+          if (recommended && updateCallback) {
+            updateCallback({
+              flangePressureClassId: recommended.id,
+              autoSelectedPressureClass: true,
+            });
+            log.debug(
+              `Auto-selected pressure class ${recommended.designation} for ${workingPressureBar} bar at ${temperatureCelsius ?? "ambient"}°C`,
+            );
           }
         }
-
-        // Fallback to local temperature-derated calculation
-        const recommended = getRecommendedPressureClass(workingPressureBar, classes, temperatureCelsius);
-        if (recommended && updateCallback) {
-          updateCallback({
-            flangePressureClassId: recommended.id,
-            autoSelectedPressureClass: true
-          });
-          log.debug(`Auto-selected pressure class ${recommended.designation} for ${workingPressureBar} bar at ${temperatureCelsius ?? 'ambient'}°C`);
-        }
+      } catch (error) {
+        log.error("Error auto-selecting flange specs:", error);
       }
-    } catch (error) {
-      log.error('Error auto-selecting flange specs:', error);
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Refetch available schedules when global steel specification changes
   // NOTE: Removed rfqData.straightPipeEntries from dependencies to prevent re-fetching on every entry change
@@ -1424,18 +1491,23 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         fetchAvailableSchedules(entry.id, steelSpecId, entry.specs.nominalBoreMm);
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rfqData.globalSpecs?.steelSpecificationId, masterData.nominalBores?.length]);
 
   // Auto-calculate when entry specifications change (with debounce)
   useEffect(() => {
     const calculateEntry = async (entry: StraightPipeEntry) => {
       // Get working pressure from entry specs or global specs
-      const workingPressureBar = entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar;
-      const workingTemperatureC = entry.specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC;
-      const steelSpecificationId = entry.specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId;
-      const flangeStandardId = entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId;
-      const flangePressureClassId = entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
+      const workingPressureBar =
+        entry.specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar;
+      const workingTemperatureC =
+        entry.specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC;
+      const steelSpecificationId =
+        entry.specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId;
+      const flangeStandardId =
+        entry.specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId;
+      const flangePressureClassId =
+        entry.specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId;
 
       // Only auto-calculate if all required fields are present
       const hasRequiredFields =
@@ -1446,7 +1518,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         workingPressureBar;
 
       // Debug logging
-      log.debug('📊 Auto-calculate check:', {
+      log.debug("📊 Auto-calculate check:", {
         entryId: entry.id,
         nominalBoreMm: entry.specs.nominalBoreMm,
         scheduleNumber: entry.specs.scheduleNumber,
@@ -1454,16 +1526,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         individualPipeLength: entry.specs.individualPipeLength,
         quantityValue: entry.specs.quantityValue,
         workingPressureBar,
-        hasRequiredFields
+        hasRequiredFields,
       });
 
       if (!hasRequiredFields) {
-        log.debug('❌ Missing required fields, skipping calculation');
+        log.debug("❌ Missing required fields, skipping calculation");
         return;
       }
 
       try {
-        const { rfqApi } = await import('@/app/lib/api/client');
+        const { rfqApi } = await import("@/app/lib/api/client");
         // Merge entry specs with global specs
         const calculationData = {
           ...entry.specs,
@@ -1473,28 +1545,46 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           flangeStandardId,
           flangePressureClassId,
         };
-        log.debug('🔄 Calling API with:', calculationData);
+        log.debug("🔄 Calling API with:", calculationData);
         const result = await rfqApi.calculate(calculationData);
-        log.debug('✅ Calculation result:', result);
+        log.debug("✅ Calculation result:", result);
 
         // Recalculate flange weight based on actual pressure class used (may be overridden)
         // Default to PN16 if no pressure class is set
-        const basePressureClassDesignation = masterData.pressureClasses?.find(
-          (pc: { id: number; designation: string }) => pc.id === flangePressureClassId
-        )?.designation || 'PN16';
-        const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code;
+        const basePressureClassDesignation =
+          masterData.pressureClasses?.find(
+            (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
+          )?.designation || "PN16";
+        const flangeStandardCode = masterData.flangeStandards?.find(
+          (s: any) => s.id === flangeStandardId,
+        )?.code;
         const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
-        const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
+        const pressureClassDesignation = getPressureClassWithFlangeType(
+          basePressureClassDesignation,
+          flangeTypeCode,
+          flangeStandardCode,
+        );
 
         // Calculate number of flanges from pipe configuration if not in result
-        const pipeEndConfig = entry.specs.pipeEndConfiguration || 'PE';
+        const pipeEndConfig = entry.specs.pipeEndConfiguration || "PE";
         const physicalFlangesPerPipe = getPhysicalFlangeCount(pipeEndConfig);
-        const calculatedPipeCount = result?.calculatedPipeCount || Math.ceil((entry.specs.quantityValue || 1) / (entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M));
-        const numberOfFlanges = result?.numberOfFlanges || (physicalFlangesPerPipe * calculatedPipeCount);
+        const calculatedPipeCount =
+          result?.calculatedPipeCount ||
+          Math.ceil(
+            (entry.specs.quantityValue || 1) /
+              (entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M),
+          );
+        const numberOfFlanges =
+          result?.numberOfFlanges || physicalFlangesPerPipe * calculatedPipeCount;
 
         if (result && numberOfFlanges > 0) {
           // Try to fetch dynamic flange specs from database
-          let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation, flangeStandardCode, flangeTypeCode);
+          let flangeWeightPerUnit = getFlangeWeight(
+            entry.specs.nominalBoreMm!,
+            pressureClassDesignation,
+            flangeStandardCode,
+            flangeTypeCode,
+          );
           let flangeSpecData: FlangeSpecData | null = null;
 
           if (flangeStandardId && flangePressureClassId && entry.specs.nominalBoreMm) {
@@ -1505,7 +1595,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               entry.specs.nominalBoreMm,
               flangeStandardId,
               flangePressureClassId,
-              flangeTypeId
+              flangeTypeId,
             );
             if (flangeSpecData) {
               flangeWeightPerUnit = flangeSpecData.flangeMassKg;
@@ -1516,7 +1606,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
           const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
 
-          log.debug(`🔧 Recalculating flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${numberOfFlanges} = ${totalFlangeWeight}kg`);
+          log.debug(
+            `🔧 Recalculating flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${numberOfFlanges} = ${totalFlangeWeight}kg`,
+          );
 
           updateEntryCalculation(entry.id, {
             ...result,
@@ -1525,7 +1617,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             totalFlangeWeight,
             totalSystemWeight,
             pressureClassUsed: pressureClassDesignation,
-            flangeSpecs: flangeSpecData
+            flangeSpecs: flangeSpecData,
           } as any);
         } else {
           // No flanges - totalSystemWeight is just pipe weight
@@ -1541,58 +1633,79 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         const errorMessage = error instanceof Error ? error.message : String(error);
 
         // If API returns 404 (NB/schedule combination not in database), use local calculation silently
-        if (errorMessage.includes('API Error (404)') || errorMessage.includes('not available in the database')) {
-          log.debug('⚠️ API 404 - Using local calculation fallback for', entry.specs.nominalBoreMm, 'NB');
+        if (
+          errorMessage.includes("API Error (404)") ||
+          errorMessage.includes("not available in the database")
+        ) {
+          log.debug(
+            "⚠️ API 404 - Using local calculation fallback for",
+            entry.specs.nominalBoreMm,
+            "NB",
+          );
           const wallThickness = entry.specs.wallThicknessMm || 6.35; // Default wall thickness
 
           // Get pressure class designation for accurate flange weights, default to PN16
           // Combine with flange type code for SABS 1123 / BS 4504 standards
-          const basePressureClassDesignation = masterData.pressureClasses?.find(
-            (pc: { id: number; designation: string }) => pc.id === flangePressureClassId
-          )?.designation || 'PN16';
-          const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code;
+          const basePressureClassDesignation =
+            masterData.pressureClasses?.find(
+              (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
+            )?.designation || "PN16";
+          const flangeStandardCode = masterData.flangeStandards?.find(
+            (s: any) => s.id === flangeStandardId,
+          )?.code;
           const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
-          const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
+          const pressureClassDesignation = getPressureClassWithFlangeType(
+            basePressureClassDesignation,
+            flangeTypeCode,
+            flangeStandardCode,
+          );
 
           const localResult = calculateLocalPipeResult(
             entry.specs.nominalBoreMm!,
             wallThickness,
             entry.specs.individualPipeLength!,
             entry.specs.quantityValue!,
-            entry.specs.quantityType || 'number_of_pipes',
-            entry.specs.pipeEndConfiguration || 'PE',
+            entry.specs.quantityType || "number_of_pipes",
+            entry.specs.pipeEndConfiguration || "PE",
             pressureClassDesignation,
             flangeStandardCode,
-            flangeTypeCode
+            flangeTypeCode,
           );
-          log.debug('✅ Local calculation result:', localResult);
+          log.debug("✅ Local calculation result:", localResult);
           updateEntryCalculation(entry.id, localResult);
           return;
         }
 
         // For any other error, also use local calculation fallback
-        log.debug('⚠️ API error - Using local calculation fallback:', errorMessage);
+        log.debug("⚠️ API error - Using local calculation fallback:", errorMessage);
         const wallThickness = entry.specs.wallThicknessMm || 6.35;
 
-        const basePressureClassDesignation = masterData.pressureClasses?.find(
-          (pc: { id: number; designation: string }) => pc.id === flangePressureClassId
-        )?.designation || 'PN16';
-        const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code;
+        const basePressureClassDesignation =
+          masterData.pressureClasses?.find(
+            (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
+          )?.designation || "PN16";
+        const flangeStandardCode = masterData.flangeStandards?.find(
+          (s: any) => s.id === flangeStandardId,
+        )?.code;
         const flangeTypeCode = entry.specs.flangeTypeCode || rfqData.globalSpecs?.flangeTypeCode;
-        const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
+        const pressureClassDesignation = getPressureClassWithFlangeType(
+          basePressureClassDesignation,
+          flangeTypeCode,
+          flangeStandardCode,
+        );
 
         const localResult = calculateLocalPipeResult(
           entry.specs.nominalBoreMm!,
           wallThickness,
           entry.specs.individualPipeLength!,
           entry.specs.quantityValue!,
-          entry.specs.quantityType || 'number_of_pipes',
-          entry.specs.pipeEndConfiguration || 'PE',
+          entry.specs.quantityType || "number_of_pipes",
+          entry.specs.pipeEndConfiguration || "PE",
           pressureClassDesignation,
           flangeStandardCode,
-          flangeTypeCode
+          flangeTypeCode,
         );
-        log.debug('✅ Local calculation fallback result:', localResult);
+        log.debug("✅ Local calculation fallback result:", localResult);
         updateEntryCalculation(entry.id, localResult);
       }
     };
@@ -1608,28 +1721,30 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     return () => clearTimeout(timeoutId);
   }, [
     // Watch for changes in any entry's specs (including flange overrides)
-    JSON.stringify(rfqData.straightPipeEntries.map((e: StraightPipeEntry) => ({
-      id: e.id,
-      nominalBoreMm: e.specs.nominalBoreMm,
-      scheduleNumber: e.specs.scheduleNumber,
-      wallThicknessMm: e.specs.wallThicknessMm,
-      individualPipeLength: e.specs.individualPipeLength,
-      quantityValue: e.specs.quantityValue,
-      quantityType: e.specs.quantityType,
-      pipeEndConfiguration: e.specs.pipeEndConfiguration,
-      flangeStandardId: e.specs.flangeStandardId,
-      flangePressureClassId: e.specs.flangePressureClassId,
-      flangeTypeCode: e.specs.flangeTypeCode,
-      hasFlangeOverride: e.hasFlangeOverride,
-      flangeOverrideConfirmed: e.flangeOverrideConfirmed
-    }))),
+    JSON.stringify(
+      rfqData.straightPipeEntries.map((e: StraightPipeEntry) => ({
+        id: e.id,
+        nominalBoreMm: e.specs.nominalBoreMm,
+        scheduleNumber: e.specs.scheduleNumber,
+        wallThicknessMm: e.specs.wallThicknessMm,
+        individualPipeLength: e.specs.individualPipeLength,
+        quantityValue: e.specs.quantityValue,
+        quantityType: e.specs.quantityType,
+        pipeEndConfiguration: e.specs.pipeEndConfiguration,
+        flangeStandardId: e.specs.flangeStandardId,
+        flangePressureClassId: e.specs.flangePressureClassId,
+        flangeTypeCode: e.specs.flangeTypeCode,
+        hasFlangeOverride: e.hasFlangeOverride,
+        flangeOverrideConfirmed: e.flangeOverrideConfirmed,
+      })),
+    ),
     // Also watch global specs for calculation
     rfqData.globalSpecs?.workingPressureBar,
     rfqData.globalSpecs?.workingTemperatureC,
     rfqData.globalSpecs?.steelSpecificationId,
     rfqData.globalSpecs?.flangeStandardId,
     rfqData.globalSpecs?.flangePressureClassId,
-    rfqData.globalSpecs?.flangeTypeCode
+    rfqData.globalSpecs?.flangeTypeCode,
   ]);
 
   // Initialize pressure classes when flange standard is set (e.g., from saved state or initial load)
@@ -1638,19 +1753,21 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       const standardId = rfqData.globalSpecs?.flangeStandardId;
       if (standardId && availablePressureClasses.length === 0) {
         log.debug(`Initializing pressure classes for standard ${standardId}`);
-        const steelSpec = masterData.steelSpecs?.find((s: any) => s.id === rfqData.globalSpecs?.steelSpecificationId);
+        const steelSpec = masterData.steelSpecs?.find(
+          (s: any) => s.id === rfqData.globalSpecs?.steelSpecificationId,
+        );
         const materialGroup = getFlangeMaterialGroup(steelSpec?.steelSpecName);
         const recommendedId = await fetchAndSelectPressureClass(
           standardId,
           rfqData.globalSpecs?.workingPressureBar,
           rfqData.globalSpecs?.workingTemperatureC,
-          materialGroup
+          materialGroup,
         );
         // Auto-select if not already set
         if (recommendedId && !rfqData.globalSpecs?.flangePressureClassId) {
           updateGlobalSpecs({
             ...rfqData.globalSpecs,
-            flangePressureClassId: recommendedId
+            flangePressureClassId: recommendedId,
           });
         }
       }
@@ -1664,10 +1781,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     setTimeout(() => {
       // Scroll the container if available
       if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
       }
       // Also scroll the window/document to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
       // Scroll the document element as fallback
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
@@ -1705,7 +1822,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
     // Check if it's a pipe-specific error (pipe_0_nb, pipe_1_length, etc.)
     let selector = errorKeyToSelector[errorKey];
-    if (!selector && errorKey.startsWith('pipe_')) {
+    if (!selector && errorKey.startsWith("pipe_")) {
       // Extract index and field type from error key like "pipe_0_nb"
       const match = errorKey.match(/pipe_(\d+)_(\w+)/);
       if (match) {
@@ -1717,14 +1834,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     if (selector) {
       const element = document.querySelector(selector);
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
         // Add visual highlight effect
-        element.classList.add('ring-2', 'ring-red-500', 'ring-offset-2');
+        element.classList.add("ring-2", "ring-red-500", "ring-offset-2");
         setTimeout(() => {
-          element.classList.remove('ring-2', 'ring-red-500', 'ring-offset-2');
+          element.classList.remove("ring-2", "ring-red-500", "ring-offset-2");
         }, 3000);
         // Try to focus the input element if it exists
-        const input = element.querySelector('input, select, textarea') as HTMLElement;
+        const input = element.querySelector("input, select, textarea") as HTMLElement;
         if (input) {
           setTimeout(() => input.focus(), 300);
         }
@@ -1733,10 +1850,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     }
 
     // Fallback: try to find by name attribute or scroll to top
-    const fallbackElement = document.querySelector(`[name="${errorKey}"]`) ||
-                           document.querySelector(`#${errorKey}`);
+    const fallbackElement =
+      document.querySelector(`[name="${errorKey}"]`) || document.querySelector(`#${errorKey}`);
     if (fallbackElement) {
-      fallbackElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      fallbackElement.scrollIntoView({ behavior: "smooth", block: "center" });
     } else {
       scrollToTop();
     }
@@ -1754,21 +1871,32 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       case 2:
         errors = validatePage2Specifications(rfqData.globalSpecs, masterData);
         // Check if steel pipes is selected but not confirmed
-        if (rfqData.requiredProducts?.includes('fabricated_steel') && !rfqData.globalSpecs?.steelPipesSpecsConfirmed) {
-          errors.steelPipesConfirmation = 'Please confirm the Steel Pipe Specifications before proceeding';
+        if (
+          rfqData.requiredProducts?.includes("fabricated_steel") &&
+          !rfqData.globalSpecs?.steelPipesSpecsConfirmed
+        ) {
+          errors.steelPipesConfirmation =
+            "Please confirm the Steel Pipe Specifications before proceeding";
         }
         // Check if fasteners/gaskets is selected but not confirmed
-        if (rfqData.requiredProducts?.includes('fasteners_gaskets') && !rfqData.globalSpecs?.fastenersConfirmed) {
-          errors.fastenersConfirmation = 'Please confirm the Fasteners & Gaskets selection before proceeding';
+        if (
+          rfqData.requiredProducts?.includes("fasteners_gaskets") &&
+          !rfqData.globalSpecs?.fastenersConfirmed
+        ) {
+          errors.fastenersConfirmation =
+            "Please confirm the Fasteners & Gaskets selection before proceeding";
         }
         // Check if surface protection is selected but coating/lining types are not selected
-        if (rfqData.requiredProducts?.includes('surface_protection')) {
+        if (rfqData.requiredProducts?.includes("surface_protection")) {
           if (!rfqData.globalSpecs?.externalCoatingType) {
-            errors.externalCoatingType = 'Please select an External Coating Type';
+            errors.externalCoatingType = "Please select an External Coating Type";
           }
           // Internal lining is required unless external is Galvanized (which covers both)
-          if (rfqData.globalSpecs?.externalCoatingType !== 'Galvanized' && !rfqData.globalSpecs?.internalLiningType) {
-            errors.internalLiningType = 'Please select an Internal Lining Type';
+          if (
+            rfqData.globalSpecs?.externalCoatingType !== "Galvanized" &&
+            !rfqData.globalSpecs?.internalLiningType
+          ) {
+            errors.internalLiningType = "Please select an Internal Lining Type";
           }
         }
         break;
@@ -1817,9 +1945,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const autoNumberedItemsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (rfqData.customerName && rfqData.items) {
-      const itemsNeedingNumbers = rfqData.items.filter((entry: any) =>
-        (!entry.clientItemNumber || entry.clientItemNumber.trim() === '') &&
-        !autoNumberedItemsRef.current.has(entry.id)
+      const itemsNeedingNumbers = rfqData.items.filter(
+        (entry: any) =>
+          (!entry.clientItemNumber || entry.clientItemNumber.trim() === "") &&
+          !autoNumberedItemsRef.current.has(entry.id),
       );
       if (itemsNeedingNumbers.length > 0) {
         itemsNeedingNumbers.forEach((entry: any) => {
@@ -1838,11 +1967,20 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       for (const entry of currentRfqData.straightPipeEntries) {
         try {
           // Merge entry specs with global specs (same as auto-calculate)
-          const workingPressureBar = entry.specs.workingPressureBar || currentRfqData.globalSpecs?.workingPressureBar || 10;
-          const workingTemperatureC = entry.specs.workingTemperatureC || currentRfqData.globalSpecs?.workingTemperatureC || 20;
-          const steelSpecificationId = entry.specs.steelSpecificationId || currentRfqData.globalSpecs?.steelSpecificationId || 2;
-          const flangeStandardId = entry.specs.flangeStandardId || currentRfqData.globalSpecs?.flangeStandardId || 1;
-          const flangePressureClassId = entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
+          const workingPressureBar =
+            entry.specs.workingPressureBar || currentRfqData.globalSpecs?.workingPressureBar || 10;
+          const workingTemperatureC =
+            entry.specs.workingTemperatureC ||
+            currentRfqData.globalSpecs?.workingTemperatureC ||
+            20;
+          const steelSpecificationId =
+            entry.specs.steelSpecificationId ||
+            currentRfqData.globalSpecs?.steelSpecificationId ||
+            2;
+          const flangeStandardId =
+            entry.specs.flangeStandardId || currentRfqData.globalSpecs?.flangeStandardId || 1;
+          const flangePressureClassId =
+            entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
 
           const calculationData = {
             ...entry.specs,
@@ -1853,29 +1991,49 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             flangePressureClassId,
           };
 
-          log.debug('🔄 Manual calculate for entry:', entry.id, calculationData);
+          log.debug("🔄 Manual calculate for entry:", entry.id, calculationData);
           const result = await rfqApi.calculate(calculationData);
-          log.debug('✅ Manual calculation result:', result);
+          log.debug("✅ Manual calculation result:", result);
 
           // Recalculate flange weight for accurate values, default to PN16
           // Combine with flange type code for SABS 1123 / BS 4504 standards
-          const entryPressureClassId = entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
-          const basePressureClassDesignation = masterData.pressureClasses?.find(
-            (pc: { id: number; designation: string }) => pc.id === entryPressureClassId
-          )?.designation || 'PN16';
-          const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === flangeStandardId)?.code;
-          const flangeTypeCode = entry.specs.flangeTypeCode || currentRfqData.globalSpecs?.flangeTypeCode;
-          const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
+          const entryPressureClassId =
+            entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
+          const basePressureClassDesignation =
+            masterData.pressureClasses?.find(
+              (pc: { id: number; designation: string }) => pc.id === entryPressureClassId,
+            )?.designation || "PN16";
+          const flangeStandardCode = masterData.flangeStandards?.find(
+            (s: any) => s.id === flangeStandardId,
+          )?.code;
+          const flangeTypeCode =
+            entry.specs.flangeTypeCode || currentRfqData.globalSpecs?.flangeTypeCode;
+          const pressureClassDesignation = getPressureClassWithFlangeType(
+            basePressureClassDesignation,
+            flangeTypeCode,
+            flangeStandardCode,
+          );
 
           // Calculate number of flanges from pipe configuration if not in result
-          const pipeEndConfig = entry.specs.pipeEndConfiguration || 'PE';
+          const pipeEndConfig = entry.specs.pipeEndConfiguration || "PE";
           const physicalFlangesPerPipe = getPhysicalFlangeCount(pipeEndConfig);
-          const calculatedPipeCount = result?.calculatedPipeCount || Math.ceil((entry.specs.quantityValue || 1) / (entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M));
-          const numberOfFlanges = result?.numberOfFlanges || (physicalFlangesPerPipe * calculatedPipeCount);
+          const calculatedPipeCount =
+            result?.calculatedPipeCount ||
+            Math.ceil(
+              (entry.specs.quantityValue || 1) /
+                (entry.specs.individualPipeLength || DEFAULT_PIPE_LENGTH_M),
+            );
+          const numberOfFlanges =
+            result?.numberOfFlanges || physicalFlangesPerPipe * calculatedPipeCount;
 
           if (result && numberOfFlanges > 0) {
             // Try to fetch dynamic flange specs from database
-            let flangeWeightPerUnit = getFlangeWeight(entry.specs.nominalBoreMm!, pressureClassDesignation, flangeStandardCode, flangeTypeCode);
+            let flangeWeightPerUnit = getFlangeWeight(
+              entry.specs.nominalBoreMm!,
+              pressureClassDesignation,
+              flangeStandardCode,
+              flangeTypeCode,
+            );
             let flangeSpecData: FlangeSpecData | null = null;
 
             if (flangeStandardId && flangePressureClassId && entry.specs.nominalBoreMm) {
@@ -1886,18 +2044,22 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 entry.specs.nominalBoreMm,
                 flangeStandardId,
                 flangePressureClassId,
-                flangeTypeId
+                flangeTypeId,
               );
               if (flangeSpecData) {
                 flangeWeightPerUnit = flangeSpecData.flangeMassKg;
-                log.debug(`🔧 Manual calc using dynamic flange specs: ${flangeWeightPerUnit}kg/flange`);
+                log.debug(
+                  `🔧 Manual calc using dynamic flange specs: ${flangeWeightPerUnit}kg/flange`,
+                );
               }
             }
 
             const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
             const totalSystemWeight = (result.totalPipeWeight || 0) + totalFlangeWeight;
 
-            log.debug(`🔧 Manual calc flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${numberOfFlanges} = ${totalFlangeWeight}kg`);
+            log.debug(
+              `🔧 Manual calc flange weight for ${pressureClassDesignation}: ${flangeWeightPerUnit}kg/flange × ${numberOfFlanges} = ${totalFlangeWeight}kg`,
+            );
 
             updateEntryCalculation(entry.id, {
               ...result,
@@ -1906,7 +2068,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               totalFlangeWeight,
               totalSystemWeight,
               pressureClassUsed: pressureClassDesignation,
-              flangeSpecs: flangeSpecData
+              flangeSpecs: flangeSpecData,
             } as any);
           } else {
             // No flanges - totalSystemWeight is just pipe weight
@@ -1923,319 +2085,447 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           const errorMessage = error.message || String(error);
 
           // If API returns 404, use local calculation fallback
-          if (errorMessage.includes('404') || errorMessage.includes('not found') || errorMessage.includes('not available')) {
-            log.debug('⚠️ API 404 - Using local calculation fallback for entry:', entry.id);
+          if (
+            errorMessage.includes("404") ||
+            errorMessage.includes("not found") ||
+            errorMessage.includes("not available")
+          ) {
+            log.debug("⚠️ API 404 - Using local calculation fallback for entry:", entry.id);
             const wallThickness = entry.specs.wallThicknessMm || 6.35;
 
             // Get pressure class designation for accurate flange weights, default to PN16
             // Combine with flange type code for SABS 1123 / BS 4504 standards
-            const entryPressureClassId = entry.specs.flangePressureClassId || currentRfqData.globalSpecs?.flangePressureClassId;
-            const entryFlangeStandardId = entry.specs.flangeStandardId || currentRfqData.globalSpecs?.flangeStandardId;
-            const basePressureClassDesignation = masterData.pressureClasses?.find(
-              (pc: { id: number; designation: string }) => pc.id === entryPressureClassId
-            )?.designation || 'PN16';
-            const flangeStandardCode = masterData.flangeStandards?.find((s: any) => s.id === entryFlangeStandardId)?.code;
-            const flangeTypeCode = entry.specs.flangeTypeCode || currentRfqData.globalSpecs?.flangeTypeCode;
-            const pressureClassDesignation = getPressureClassWithFlangeType(basePressureClassDesignation, flangeTypeCode, flangeStandardCode);
+            const entryPressureClassId =
+              entry.specs.flangePressureClassId ||
+              currentRfqData.globalSpecs?.flangePressureClassId;
+            const entryFlangeStandardId =
+              entry.specs.flangeStandardId || currentRfqData.globalSpecs?.flangeStandardId;
+            const basePressureClassDesignation =
+              masterData.pressureClasses?.find(
+                (pc: { id: number; designation: string }) => pc.id === entryPressureClassId,
+              )?.designation || "PN16";
+            const flangeStandardCode = masterData.flangeStandards?.find(
+              (s: any) => s.id === entryFlangeStandardId,
+            )?.code;
+            const flangeTypeCode =
+              entry.specs.flangeTypeCode || currentRfqData.globalSpecs?.flangeTypeCode;
+            const pressureClassDesignation = getPressureClassWithFlangeType(
+              basePressureClassDesignation,
+              flangeTypeCode,
+              flangeStandardCode,
+            );
 
             const localResult = calculateLocalPipeResult(
               entry.specs.nominalBoreMm!,
               wallThickness,
               entry.specs.individualPipeLength!,
               entry.specs.quantityValue!,
-              entry.specs.quantityType || 'number_of_pipes',
-              entry.specs.pipeEndConfiguration || 'PE',
+              entry.specs.quantityType || "number_of_pipes",
+              entry.specs.pipeEndConfiguration || "PE",
               pressureClassDesignation,
               flangeStandardCode,
-              flangeTypeCode
+              flangeTypeCode,
             );
-            log.debug('✅ Local calculation result:', localResult);
+            log.debug("✅ Local calculation result:", localResult);
             updateEntryCalculation(entry.id, localResult);
           } else {
             const nb = entry.specs.nominalBoreMm;
             const schedule = entry.specs.scheduleNumber;
-            const details = [nb ? `${nb}mm bore` : null, schedule ? `${schedule} schedule` : null].filter(Boolean).join(' with ');
-            const capitalizedDetails = details ? details.charAt(0).toUpperCase() + details.slice(1) : null;
+            const details = [nb ? `${nb}mm bore` : null, schedule ? `${schedule} schedule` : null]
+              .filter(Boolean)
+              .join(" with ");
+            const capitalizedDetails = details
+              ? details.charAt(0).toUpperCase() + details.slice(1)
+              : null;
             const friendlyError = capitalizedDetails
               ? `**Pipe:** ${capitalizedDetails} is not available. Please try a different size or schedule.`
-              : '**Pipe:** This combination is not available. Please try different specifications.';
+              : "**Pipe:** This combination is not available. Please try different specifications.";
             updateStraightPipeEntry(entry.id, { calculationError: friendlyError });
           }
         }
       }
     } catch (error: any) {
-      const isNotFoundError = error?.message?.includes('404') || error?.message?.toLowerCase().includes('not found');
+      const isNotFoundError =
+        error?.message?.includes("404") || error?.message?.toLowerCase().includes("not found");
       if (!isNotFoundError) {
-        log.error('Calculation error:', error);
+        log.error("Calculation error:", error);
       }
     }
-  }, [masterData.pressureClasses, masterData.flangeStandards, masterData.flangeTypes, updateEntryCalculation, updateStraightPipeEntry]);
+  }, [
+    masterData.pressureClasses,
+    masterData.flangeStandards,
+    masterData.flangeTypes,
+    updateEntryCalculation,
+    updateStraightPipeEntry,
+  ]);
 
-  const handleCalculateBend = useCallback(async (entryId: string) => {
-    try {
-      const entry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'bend');
-      if (!entry || entry.itemType !== 'bend') return;
+  const handleCalculateBend = useCallback(
+    async (entryId: string) => {
+      try {
+        const entry = rfqDataRef.current.items.find(
+          (e) => e.id === entryId && e.itemType === "bend",
+        );
+        if (!entry || entry.itemType !== "bend") return;
 
-      const bendEntry = entry;
-      const bendDegrees = bendEntry.specs?.bendDegrees || 90;
+        const bendEntry = entry;
+        const bendDegrees = bendEntry.specs?.bendDegrees || 90;
 
-      // API requires minimum 15° - for smaller angles, use local calculation
-      if (bendDegrees < 15) {
-        log.debug(`Bend angle ${bendDegrees}° is below API minimum (15°), using local calculation`);
+        // API requires minimum 15° - for smaller angles, use local calculation
+        if (bendDegrees < 15) {
+          log.debug(
+            `Bend angle ${bendDegrees}° is below API minimum (15°), using local calculation`,
+          );
 
-        // Local calculation for small angle bends
-        const nominalBoreMm = bendEntry.specs?.nominalBoreMm || 40;
-        const scheduleNumber = bendEntry.specs?.scheduleNumber || '40';
-        const quantity = bendEntry.specs?.quantityValue || 1;
-        const centerToFace = bendEntry.specs?.centerToFaceMm || 100;
+          // Local calculation for small angle bends
+          const nominalBoreMm = bendEntry.specs?.nominalBoreMm || 40;
+          const scheduleNumber = bendEntry.specs?.scheduleNumber || "40";
+          const quantity = bendEntry.specs?.quantityValue || 1;
+          const centerToFace = bendEntry.specs?.centerToFaceMm || 100;
 
-        // Get wall thickness from fallback schedules - use correct schedule list based on steel spec
-        const bendEffectiveSpecId = bendEntry.specs?.steelSpecificationId ?? rfqDataRef.current.globalSpecs?.steelSpecificationId;
-        const schedules = getScheduleListForSpec(nominalBoreMm, bendEffectiveSpecId);
-        const scheduleData = schedules.find((s: any) => s.scheduleDesignation === scheduleNumber);
-        const wallThickness = scheduleData?.wallThicknessMm || 6.35;
+          // Get wall thickness from fallback schedules - use correct schedule list based on steel spec
+          const bendEffectiveSpecId =
+            bendEntry.specs?.steelSpecificationId ??
+            rfqDataRef.current.globalSpecs?.steelSpecificationId;
+          const schedules = getScheduleListForSpec(nominalBoreMm, bendEffectiveSpecId);
+          const scheduleData = schedules.find((s: any) => s.scheduleDesignation === scheduleNumber);
+          const wallThickness = scheduleData?.wallThicknessMm || 6.35;
 
-        // Calculate OD from NB
-        const od = NB_TO_OD_LOOKUP[nominalBoreMm] || (nominalBoreMm * 1.05);
-        const id = od - (2 * wallThickness);
+          // Calculate OD from NB
+          const od = NB_TO_OD_LOOKUP[nominalBoreMm] || nominalBoreMm * 1.05;
+          const id = od - 2 * wallThickness;
 
-        // Estimate bend arc length based on angle and C/F
-        const arcLength = (bendDegrees / 90) * (centerToFace * 2);
+          // Estimate bend arc length based on angle and C/F
+          const arcLength = (bendDegrees / 90) * (centerToFace * 2);
 
-        // Weight calculation: π/4 × (OD² - ID²) × length × density (kg/m³ for steel)
-        const crossSectionArea = (Math.PI / 4) * ((od * od) - (id * id)); // mm²
-        const bendWeight = (crossSectionArea / 1000000) * (arcLength / 1000) * STEEL_DENSITY_KG_M3; // kg
+          // Weight calculation: π/4 × (OD² - ID²) × length × density (kg/m³ for steel)
+          const crossSectionArea = (Math.PI / 4) * (od * od - id * id); // mm²
+          const bendWeight =
+            (crossSectionArea / 1000000) * (arcLength / 1000) * STEEL_DENSITY_KG_M3; // kg
 
-        const totalWeight = bendWeight * quantity;
+          const totalWeight = bendWeight * quantity;
+
+          updateItem(entryId, {
+            calculation: {
+              bendWeight: bendWeight,
+              totalWeight: totalWeight,
+              centerToFaceDimension: centerToFace,
+              outsideDiameterMm: od,
+              wallThicknessMm: wallThickness,
+              calculatedLocally: true,
+              note: `Local calculation for ${bendDegrees}° bend (API minimum is 15°)`,
+            },
+          });
+          return;
+        }
+
+        const { bendRfqApi } = await import("@/app/lib/api/client");
+
+        // Use item-level flange specs if set, otherwise use global
+        const useGlobal = bendEntry.specs?.useGlobalFlangeSpecs !== false;
+        const flangeStandardId = useGlobal
+          ? bendEntry.specs?.flangeStandardId || rfqDataRef.current.globalSpecs?.flangeStandardId
+          : bendEntry.specs?.flangeStandardId;
+        const flangePressureClassId = useGlobal
+          ? bendEntry.specs?.flangePressureClassId ||
+            rfqDataRef.current.globalSpecs?.flangePressureClassId
+          : bendEntry.specs?.flangePressureClassId;
+
+        const calculationData = {
+          nominalBoreMm: bendEntry.specs?.nominalBoreMm || 40,
+          scheduleNumber: bendEntry.specs?.scheduleNumber || "40",
+          bendDegrees: bendDegrees,
+          bendType: bendEntry.specs?.bendType || "1.5D",
+          quantityValue: bendEntry.specs?.quantityValue || 1,
+          quantityType: "number_of_items" as const,
+          numberOfTangents: bendEntry.specs?.numberOfTangents || 0,
+          tangentLengths: bendEntry.specs?.tangentLengths || [],
+          workingPressureBar:
+            bendEntry.specs?.workingPressureBar ||
+            rfqDataRef.current.globalSpecs.workingPressureBar ||
+            10,
+          workingTemperatureC:
+            bendEntry.specs?.workingTemperatureC ||
+            rfqDataRef.current.globalSpecs.workingTemperatureC ||
+            20,
+          steelSpecificationId:
+            bendEntry.specs?.steelSpecificationId ||
+            rfqDataRef.current.globalSpecs.steelSpecificationId ||
+            2,
+          useGlobalFlangeSpecs: useGlobal,
+          flangeStandardId,
+          flangePressureClassId,
+        };
+
+        const result = await bendRfqApi.calculate(calculationData);
+
+        // Fetch dynamic flange specs if available
+        let flangeSpecData: FlangeSpecData | null = null;
+        const nominalBoreMm = bendEntry.specs?.nominalBoreMm;
+        if (flangeStandardId && flangePressureClassId && nominalBoreMm) {
+          const flangeTypeCode = useGlobal
+            ? bendEntry.specs?.flangeTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode
+            : bendEntry.specs?.flangeTypeCode;
+          const flangeTypeId = flangeTypeCode
+            ? masterData.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode)?.id
+            : undefined;
+          flangeSpecData = await fetchFlangeSpecsStatic(
+            nominalBoreMm,
+            flangeStandardId,
+            flangePressureClassId,
+            flangeTypeId,
+          );
+          if (flangeSpecData) {
+            log.debug(
+              `🔧 Bend using dynamic flange specs: ${flangeSpecData.flangeMassKg}kg/flange`,
+            );
+          }
+        }
 
         updateItem(entryId, {
           calculation: {
-            bendWeight: bendWeight,
-            totalWeight: totalWeight,
-            centerToFaceDimension: centerToFace,
-            outsideDiameterMm: od,
-            wallThicknessMm: wallThickness,
-            calculatedLocally: true,
-            note: `Local calculation for ${bendDegrees}° bend (API minimum is 15°)`
+            ...result,
+            flangeSpecs: flangeSpecData,
           },
+          calculationError: null,
         });
-        return;
-      }
-
-      const { bendRfqApi } = await import('@/app/lib/api/client');
-
-      // Use item-level flange specs if set, otherwise use global
-      const useGlobal = bendEntry.specs?.useGlobalFlangeSpecs !== false;
-      const flangeStandardId = useGlobal
-        ? (bendEntry.specs?.flangeStandardId || rfqDataRef.current.globalSpecs?.flangeStandardId)
-        : bendEntry.specs?.flangeStandardId;
-      const flangePressureClassId = useGlobal
-        ? (bendEntry.specs?.flangePressureClassId || rfqDataRef.current.globalSpecs?.flangePressureClassId)
-        : bendEntry.specs?.flangePressureClassId;
-
-      const calculationData = {
-        nominalBoreMm: bendEntry.specs?.nominalBoreMm || 40,
-        scheduleNumber: bendEntry.specs?.scheduleNumber || '40',
-        bendDegrees: bendDegrees,
-        bendType: bendEntry.specs?.bendType || '1.5D',
-        quantityValue: bendEntry.specs?.quantityValue || 1,
-        quantityType: 'number_of_items' as const,
-        numberOfTangents: bendEntry.specs?.numberOfTangents || 0,
-        tangentLengths: bendEntry.specs?.tangentLengths || [],
-        workingPressureBar: bendEntry.specs?.workingPressureBar || rfqDataRef.current.globalSpecs.workingPressureBar || 10,
-        workingTemperatureC: bendEntry.specs?.workingTemperatureC || rfqDataRef.current.globalSpecs.workingTemperatureC || 20,
-        steelSpecificationId: bendEntry.specs?.steelSpecificationId || rfqDataRef.current.globalSpecs.steelSpecificationId || 2,
-        useGlobalFlangeSpecs: useGlobal,
-        flangeStandardId,
-        flangePressureClassId,
-      };
-
-      const result = await bendRfqApi.calculate(calculationData);
-
-      // Fetch dynamic flange specs if available
-      let flangeSpecData: FlangeSpecData | null = null;
-      const nominalBoreMm = bendEntry.specs?.nominalBoreMm;
-      if (flangeStandardId && flangePressureClassId && nominalBoreMm) {
-        const flangeTypeCode = useGlobal
-          ? (bendEntry.specs?.flangeTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode)
-          : bendEntry.specs?.flangeTypeCode;
-        const flangeTypeId = flangeTypeCode
-          ? masterData.flangeTypes?.find((ft: any) => ft.code === flangeTypeCode)?.id
-          : undefined;
-        flangeSpecData = await fetchFlangeSpecsStatic(
-          nominalBoreMm,
-          flangeStandardId,
-          flangePressureClassId,
-          flangeTypeId
-        );
-        if (flangeSpecData) {
-          log.debug(`🔧 Bend using dynamic flange specs: ${flangeSpecData.flangeMassKg}kg/flange`);
+      } catch (error: any) {
+        const isNotFoundError =
+          error?.message?.includes("404") || error?.message?.toLowerCase().includes("not found");
+        if (isNotFoundError) {
+          log.debug("Bend not found (expected):", error?.message);
+        } else {
+          log.error("Bend calculation failed:", error);
         }
+        const bendEntry = rfqDataRef.current.items.find(
+          (e) => e.id === entryId && e.itemType === "bend",
+        ) as BendEntry | undefined;
+        const nb = bendEntry?.specs?.nominalBoreMm;
+        const schedule = bendEntry?.specs?.scheduleNumber;
+        const angle = bendEntry?.specs?.bendDegrees;
+        const parts = [
+          nb ? `${nb}mm bore` : null,
+          schedule ? `${schedule} schedule` : null,
+          angle ? `${angle}° angle` : null,
+        ].filter(Boolean);
+        const details = parts.length > 0 ? parts.join(", ") : null;
+        const capitalizedDetails = details
+          ? details.charAt(0).toUpperCase() + details.slice(1)
+          : null;
+        const friendlyError = capitalizedDetails
+          ? `**Bend:** ${capitalizedDetails} is not available. Please try a different combination.`
+          : "**Bend:** This combination is not available. Please try different specifications.";
+        updateItem(entryId, { calculationError: friendlyError });
       }
+    },
+    [updateItem, masterData.flangeTypes],
+  );
 
-      updateItem(entryId, {
-        calculation: {
-          ...result,
-          flangeSpecs: flangeSpecData,
-        },
-        calculationError: null,
-      });
+  const handleCalculateFitting = useCallback(
+    async (entryId: string) => {
+      log.debug("handleCalculateFitting called with entryId:", entryId);
+      try {
+        const { masterDataApi } = await import("@/app/lib/api/client");
 
-    } catch (error: any) {
-      const isNotFoundError = error?.message?.includes('404') || error?.message?.toLowerCase().includes('not found');
-      if (isNotFoundError) {
-        log.debug('Bend not found (expected):', error?.message);
-      } else {
-        log.error('Bend calculation failed:', error);
-      }
-      const bendEntry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'bend') as BendEntry | undefined;
-      const nb = bendEntry?.specs?.nominalBoreMm;
-      const schedule = bendEntry?.specs?.scheduleNumber;
-      const angle = bendEntry?.specs?.bendDegrees;
-      const parts = [nb ? `${nb}mm bore` : null, schedule ? `${schedule} schedule` : null, angle ? `${angle}° angle` : null].filter(Boolean);
-      const details = parts.length > 0 ? parts.join(', ') : null;
-      const capitalizedDetails = details ? details.charAt(0).toUpperCase() + details.slice(1) : null;
-      const friendlyError = capitalizedDetails
-        ? `**Bend:** ${capitalizedDetails} is not available. Please try a different combination.`
-        : '**Bend:** This combination is not available. Please try different specifications.';
-      updateItem(entryId, { calculationError: friendlyError });
-    }
-  }, [updateItem, masterData.flangeTypes]);
+        const entry = rfqDataRef.current.items.find(
+          (e) => e.id === entryId && e.itemType === "fitting",
+        );
+        if (!entry || entry.itemType !== "fitting") return;
 
-  const handleCalculateFitting = useCallback(async (entryId: string) => {
-    log.debug('handleCalculateFitting called with entryId:', entryId);
-    try {
-      const { masterDataApi } = await import('@/app/lib/api/client');
+        const fittingEntry = entry;
 
-      const entry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'fitting');
-      if (!entry || entry.itemType !== 'fitting') return;
+        // Get effective fitting standard (use item-level override first, then global spec)
+        // Item-level steelSpecificationId takes precedence over global
+        const effectiveSteelSpecId =
+          fittingEntry.specs?.steelSpecificationId ??
+          rfqDataRef.current.globalSpecs?.steelSpecificationId;
+        const isSABS719 = effectiveSteelSpecId === 8;
+        const effectiveFittingStandard =
+          fittingEntry.specs?.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
 
-      const fittingEntry = entry;
-      
-      // Get effective fitting standard (use item-level override first, then global spec)
-      // Item-level steelSpecificationId takes precedence over global
-      const effectiveSteelSpecId = fittingEntry.specs?.steelSpecificationId ?? rfqDataRef.current.globalSpecs?.steelSpecificationId;
-      const isSABS719 = effectiveSteelSpecId === 8;
-      const effectiveFittingStandard = fittingEntry.specs?.fittingStandard || (isSABS719 ? 'SABS719' : 'SABS62');
+        // Valid fitting types for each standard (must match dropdown options)
+        const SABS62_FITTING_TYPES = [
+          "EQUAL_TEE",
+          "UNEQUAL_TEE",
+          "LATERAL",
+          "SWEEP_TEE",
+          "Y_PIECE",
+          "GUSSETTED_TEE",
+          "EQUAL_CROSS",
+          "UNEQUAL_CROSS",
+          "CON_REDUCER",
+          "ECCENTRIC_REDUCER",
+        ];
+        const SABS719_FITTING_TYPES = [
+          "SHORT_TEE",
+          "UNEQUAL_SHORT_TEE",
+          "SHORT_REDUCING_TEE",
+          "GUSSET_TEE",
+          "UNEQUAL_GUSSET_TEE",
+          "GUSSET_REDUCING_TEE",
+          "LATERAL",
+          "DUCKFOOT_SHORT",
+          "DUCKFOOT_GUSSETTED",
+          "SWEEP_LONG_RADIUS",
+          "SWEEP_MEDIUM_RADIUS",
+          "SWEEP_ELBOW",
+          "CON_REDUCER",
+          "ECCENTRIC_REDUCER",
+        ];
 
-      // Valid fitting types for each standard (must match dropdown options)
-      const SABS62_FITTING_TYPES = ['EQUAL_TEE', 'UNEQUAL_TEE', 'LATERAL', 'SWEEP_TEE', 'Y_PIECE', 'GUSSETTED_TEE', 'EQUAL_CROSS', 'UNEQUAL_CROSS', 'CON_REDUCER', 'ECCENTRIC_REDUCER'];
-      const SABS719_FITTING_TYPES = ['SHORT_TEE', 'UNEQUAL_SHORT_TEE', 'SHORT_REDUCING_TEE', 'GUSSET_TEE', 'UNEQUAL_GUSSET_TEE', 'GUSSET_REDUCING_TEE', 'LATERAL', 'DUCKFOOT_SHORT', 'DUCKFOOT_GUSSETTED', 'SWEEP_LONG_RADIUS', 'SWEEP_MEDIUM_RADIUS', 'SWEEP_ELBOW', 'CON_REDUCER', 'ECCENTRIC_REDUCER'];
-
-      // Validation for required fields
-      if (!fittingEntry.specs?.fittingType) {
-        log.debug('Fitting calculation skipped: No fitting type selected');
-        return;
-      }
-
-      // Validate fitting type is compatible with the effective standard
-      const validTypes = effectiveFittingStandard === 'SABS719' ? SABS719_FITTING_TYPES : SABS62_FITTING_TYPES;
-      if (!validTypes.includes(fittingEntry.specs.fittingType)) {
-        log.debug(`Fitting type "${fittingEntry.specs.fittingType}" not valid for ${effectiveFittingStandard}, clearing`);
-        // Clear the invalid fitting type
-        updateItem(entryId, { specs: { ...fittingEntry.specs, fittingType: undefined } });
-        return;
-      }
-
-      if (!fittingEntry.specs?.nominalDiameterMm) {
-        log.debug('Fitting calculation skipped: No nominal diameter selected');
-        return;
-      }
-
-      // Additional validation for SABS719
-      if (effectiveFittingStandard === 'SABS719') {
-        if (!fittingEntry.specs.scheduleNumber) {
-          log.debug('Fitting calculation skipped: No schedule number for SABS719');
+        // Validation for required fields
+        if (!fittingEntry.specs?.fittingType) {
+          log.debug("Fitting calculation skipped: No fitting type selected");
           return;
         }
-        if (fittingEntry.specs.pipeLengthAMm === undefined || fittingEntry.specs.pipeLengthBMm === undefined) {
-          log.debug('Fitting calculation skipped: Missing pipe lengths for SABS719');
+
+        // Validate fitting type is compatible with the effective standard
+        const validTypes =
+          effectiveFittingStandard === "SABS719" ? SABS719_FITTING_TYPES : SABS62_FITTING_TYPES;
+        if (!validTypes.includes(fittingEntry.specs.fittingType)) {
+          log.debug(
+            `Fitting type "${fittingEntry.specs.fittingType}" not valid for ${effectiveFittingStandard}, clearing`,
+          );
+          // Clear the invalid fitting type
+          updateItem(entryId, { specs: { ...fittingEntry.specs, fittingType: undefined } });
           return;
         }
-      }
 
-      const apiFittingType = normalizeFittingTypeForApi(fittingEntry.specs.fittingType);
-      if (!apiFittingType) {
-        log.debug('Fitting calculation skipped: Unable to map fitting type for API');
-        return;
-      }
-
-      const calculationData = {
-        fittingStandard: effectiveFittingStandard,
-        fittingType: apiFittingType,
-        nominalDiameterMm: fittingEntry.specs.nominalDiameterMm,
-        angleRange: fittingEntry.specs.angleRange,
-        pipeLengthAMm: fittingEntry.specs.pipeLengthAMm,
-        pipeLengthBMm: fittingEntry.specs.pipeLengthBMm,
-        quantityValue: fittingEntry.specs.quantityValue || 1,
-        scheduleNumber: fittingEntry.specs.scheduleNumber,
-        workingPressureBar: fittingEntry.specs.workingPressureBar || rfqDataRef.current.globalSpecs.workingPressureBar,
-        workingTemperatureC: fittingEntry.specs.workingTemperatureC || rfqDataRef.current.globalSpecs.workingTemperatureC,
-        steelSpecificationId: fittingEntry.specs.steelSpecificationId || rfqDataRef.current.globalSpecs.steelSpecificationId,
-        flangeStandardId: fittingEntry.specs.flangeStandardId || rfqDataRef.current.globalSpecs.flangeStandardId,
-        flangePressureClassId: fittingEntry.specs.flangePressureClassId || rfqDataRef.current.globalSpecs.flangePressureClassId,
-      };
-
-      log.debug('Calling API with:', calculationData);
-      const result = await masterDataApi.calculateFitting(calculationData);
-      log.debug('API result:', result);
-
-      // Fetch dynamic flange specs if available
-      const effectiveFlangeStandardId = fittingEntry.specs?.flangeStandardId || rfqDataRef.current.globalSpecs?.flangeStandardId;
-      const effectiveFlangePressureClassId = fittingEntry.specs?.flangePressureClassId || rfqDataRef.current.globalSpecs?.flangePressureClassId;
-      const effectiveFlangeTypeCode = fittingEntry.specs?.flangeTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode;
-      let flangeSpecData: FlangeSpecData | null = null;
-
-      if (effectiveFlangeStandardId && effectiveFlangePressureClassId && fittingEntry.specs?.nominalDiameterMm) {
-        const flangeTypeId = effectiveFlangeTypeCode
-          ? masterData.flangeTypes?.find((ft: any) => ft.code === effectiveFlangeTypeCode)?.id
-          : undefined;
-        flangeSpecData = await fetchFlangeSpecsStatic(
-          fittingEntry.specs.nominalDiameterMm,
-          effectiveFlangeStandardId,
-          effectiveFlangePressureClassId,
-          flangeTypeId
-        );
-        if (flangeSpecData) {
-          log.debug(`🔧 Fitting using dynamic flange specs: ${flangeSpecData.flangeMassKg}kg/flange`);
+        if (!fittingEntry.specs?.nominalDiameterMm) {
+          log.debug("Fitting calculation skipped: No nominal diameter selected");
+          return;
         }
-      }
 
-      updateItem(entryId, {
-        calculation: {
-          ...result,
-          flangeSpecs: flangeSpecData,
-        },
-        calculationError: null,
-      });
-      log.debug('Updated entry with calculation');
+        // Additional validation for SABS719
+        if (effectiveFittingStandard === "SABS719") {
+          if (!fittingEntry.specs.scheduleNumber) {
+            log.debug("Fitting calculation skipped: No schedule number for SABS719");
+            return;
+          }
+          if (
+            fittingEntry.specs.pipeLengthAMm === undefined ||
+            fittingEntry.specs.pipeLengthBMm === undefined
+          ) {
+            log.debug("Fitting calculation skipped: Missing pipe lengths for SABS719");
+            return;
+          }
+        }
 
-    } catch (error: any) {
-      const isNotFoundError = error?.message?.includes('404') || error?.message?.toLowerCase().includes('not found');
-      if (isNotFoundError) {
-        log.debug('Fitting not found (expected):', error?.message);
-      } else {
-        log.error('Fitting calculation failed:', error);
+        const apiFittingType = normalizeFittingTypeForApi(fittingEntry.specs.fittingType);
+        if (!apiFittingType) {
+          log.debug("Fitting calculation skipped: Unable to map fitting type for API");
+          return;
+        }
+
+        const calculationData = {
+          fittingStandard: effectiveFittingStandard,
+          fittingType: apiFittingType,
+          nominalDiameterMm: fittingEntry.specs.nominalDiameterMm,
+          angleRange: fittingEntry.specs.angleRange,
+          pipeLengthAMm: fittingEntry.specs.pipeLengthAMm,
+          pipeLengthBMm: fittingEntry.specs.pipeLengthBMm,
+          quantityValue: fittingEntry.specs.quantityValue || 1,
+          scheduleNumber: fittingEntry.specs.scheduleNumber,
+          workingPressureBar:
+            fittingEntry.specs.workingPressureBar ||
+            rfqDataRef.current.globalSpecs.workingPressureBar,
+          workingTemperatureC:
+            fittingEntry.specs.workingTemperatureC ||
+            rfqDataRef.current.globalSpecs.workingTemperatureC,
+          steelSpecificationId:
+            fittingEntry.specs.steelSpecificationId ||
+            rfqDataRef.current.globalSpecs.steelSpecificationId,
+          flangeStandardId:
+            fittingEntry.specs.flangeStandardId || rfqDataRef.current.globalSpecs.flangeStandardId,
+          flangePressureClassId:
+            fittingEntry.specs.flangePressureClassId ||
+            rfqDataRef.current.globalSpecs.flangePressureClassId,
+        };
+
+        log.debug("Calling API with:", calculationData);
+        const result = await masterDataApi.calculateFitting(calculationData);
+        log.debug("API result:", result);
+
+        // Fetch dynamic flange specs if available
+        const effectiveFlangeStandardId =
+          fittingEntry.specs?.flangeStandardId || rfqDataRef.current.globalSpecs?.flangeStandardId;
+        const effectiveFlangePressureClassId =
+          fittingEntry.specs?.flangePressureClassId ||
+          rfqDataRef.current.globalSpecs?.flangePressureClassId;
+        const effectiveFlangeTypeCode =
+          fittingEntry.specs?.flangeTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode;
+        let flangeSpecData: FlangeSpecData | null = null;
+
+        if (
+          effectiveFlangeStandardId &&
+          effectiveFlangePressureClassId &&
+          fittingEntry.specs?.nominalDiameterMm
+        ) {
+          const flangeTypeId = effectiveFlangeTypeCode
+            ? masterData.flangeTypes?.find((ft: any) => ft.code === effectiveFlangeTypeCode)?.id
+            : undefined;
+          flangeSpecData = await fetchFlangeSpecsStatic(
+            fittingEntry.specs.nominalDiameterMm,
+            effectiveFlangeStandardId,
+            effectiveFlangePressureClassId,
+            flangeTypeId,
+          );
+          if (flangeSpecData) {
+            log.debug(
+              `🔧 Fitting using dynamic flange specs: ${flangeSpecData.flangeMassKg}kg/flange`,
+            );
+          }
+        }
+
+        updateItem(entryId, {
+          calculation: {
+            ...result,
+            flangeSpecs: flangeSpecData,
+          },
+          calculationError: null,
+        });
+        log.debug("Updated entry with calculation");
+      } catch (error: any) {
+        const isNotFoundError =
+          error?.message?.includes("404") || error?.message?.toLowerCase().includes("not found");
+        if (isNotFoundError) {
+          log.debug("Fitting not found (expected):", error?.message);
+        } else {
+          log.error("Fitting calculation failed:", error);
+        }
+        const fittingEntry = rfqDataRef.current.items.find(
+          (e) => e.id === entryId && e.itemType === "fitting",
+        ) as FittingEntry | undefined;
+        const nb = fittingEntry?.specs?.nominalDiameterMm;
+        const schedule = fittingEntry?.specs?.scheduleNumber;
+        const fittingType = fittingEntry?.specs?.fittingType?.replace(/_/g, " ").toLowerCase();
+        const parts = [
+          fittingType,
+          nb ? `${nb}mm` : null,
+          schedule ? `${schedule} schedule` : null,
+        ].filter(Boolean);
+        const details = parts.length > 0 ? parts.join(", ") : null;
+        const capitalizedDetails = details
+          ? details.charAt(0).toUpperCase() + details.slice(1)
+          : null;
+        const friendlyError = capitalizedDetails
+          ? `**Fitting:** ${capitalizedDetails} is not available. Please try a different combination.`
+          : "**Fitting:** This combination is not available. Please try different specifications.";
+        updateItem(entryId, { calculationError: friendlyError });
       }
-      const fittingEntry = rfqDataRef.current.items.find(e => e.id === entryId && e.itemType === 'fitting') as FittingEntry | undefined;
-      const nb = fittingEntry?.specs?.nominalDiameterMm;
-      const schedule = fittingEntry?.specs?.scheduleNumber;
-      const fittingType = fittingEntry?.specs?.fittingType?.replace(/_/g, ' ').toLowerCase();
-      const parts = [fittingType, nb ? `${nb}mm` : null, schedule ? `${schedule} schedule` : null].filter(Boolean);
-      const details = parts.length > 0 ? parts.join(', ') : null;
-      const capitalizedDetails = details ? details.charAt(0).toUpperCase() + details.slice(1) : null;
-      const friendlyError = capitalizedDetails
-        ? `**Fitting:** ${capitalizedDetails} is not available. Please try a different combination.`
-        : '**Fitting:** This combination is not available. Please try different specifications.';
-      updateItem(entryId, { calculationError: friendlyError });
-    }
-  }, [updateItem, masterData.flangeTypes]);
+    },
+    [updateItem, masterData.flangeTypes],
+  );
 
   const isNixExtractedItem = (item: PipeItem | undefined): boolean => {
-    return item?.notes?.includes('Extracted by Nix') || false;
+    return item?.notes?.includes("Extracted by Nix") || false;
   };
 
-  const trackNixCorrection = async (item: PipeItem, fieldName: string, originalValue: any, newValue: any) => {
+  const trackNixCorrection = async (
+    item: PipeItem,
+    fieldName: string,
+    originalValue: any,
+    newValue: any,
+  ) => {
     if (originalValue === newValue) return;
     if (!isNixExtractedItem(item)) return;
 
@@ -2249,44 +2539,61 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       });
       log.debug(`🤖 Nix learned: ${fieldName} changed from "${originalValue}" to "${newValue}"`);
     } catch (error) {
-      log.warn('🤖 Failed to record Nix correction:', error);
+      log.warn("🤖 Failed to record Nix correction:", error);
     }
   };
 
-  const handleUpdateEntry = useCallback((id: string, updates: any) => {
-    log.info(`📝 handleUpdateEntry CALLED - id: ${id}, updates keys: ${Object.keys(updates).join(', ')}`);
-    const entry = rfqDataRef.current.items.find(e => e.id === id);
+  const handleUpdateEntry = useCallback(
+    (id: string, updates: any) => {
+      log.info(
+        `📝 handleUpdateEntry CALLED - id: ${id}, updates keys: ${Object.keys(updates).join(", ")}`,
+      );
+      const entry = rfqDataRef.current.items.find((e) => e.id === id);
 
-    if (entry && isNixExtractedItem(entry) && updates.specs) {
-      const fieldsToTrack = ['nominalBoreMm', 'nominalDiameterMm', 'scheduleNumber', 'wallThicknessMm', 'pipeEndConfiguration', 'bendType', 'bendDegrees', 'fittingType'];
-      const currentSpecs = entry.specs || {};
+      if (entry && isNixExtractedItem(entry) && updates.specs) {
+        const fieldsToTrack = [
+          "nominalBoreMm",
+          "nominalDiameterMm",
+          "scheduleNumber",
+          "wallThicknessMm",
+          "pipeEndConfiguration",
+          "bendType",
+          "bendDegrees",
+          "fittingType",
+        ];
+        const currentSpecs = entry.specs || {};
 
-      fieldsToTrack.forEach(field => {
-        if (updates.specs[field] !== undefined && updates.specs[field] !== (currentSpecs as any)[field]) {
-          trackNixCorrection(entry, field, (currentSpecs as any)[field], updates.specs[field]);
-        }
-      });
-    }
+        fieldsToTrack.forEach((field) => {
+          if (
+            updates.specs[field] !== undefined &&
+            updates.specs[field] !== (currentSpecs as any)[field]
+          ) {
+            trackNixCorrection(entry, field, (currentSpecs as any)[field], updates.specs[field]);
+          }
+        });
+      }
 
-    if (entry?.itemType === 'bend' || entry?.itemType === 'fitting') {
-      updateItem(id, updates);
-    } else {
-      updateStraightPipeEntry(id, updates);
-    }
-  }, [updateItem, updateStraightPipeEntry]);
+      if (entry?.itemType === "bend" || entry?.itemType === "fitting") {
+        updateItem(id, updates);
+      } else {
+        updateStraightPipeEntry(id, updates);
+      }
+    },
+    [updateItem, updateStraightPipeEntry],
+  );
 
   // State for save progress feedback
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   // Save progress handler - saves current RFQ data to server
   const handleSaveProgress = async () => {
-    log.debug('💾 handleSaveProgress called');
-    log.debug('💾 rfqData.projectType:', rfqData.projectType);
-    log.debug('💾 rfqData.requiredProducts:', rfqData.requiredProducts);
-    log.debug('💾 rfqData.skipDocuments:', rfqData.skipDocuments);
-    log.debug('💾 rfqData.latitude:', rfqData.latitude);
-    log.debug('💾 rfqData.longitude:', rfqData.longitude);
-    log.debug('💾 rfqData.globalSpecs:', rfqData.globalSpecs);
+    log.debug("💾 handleSaveProgress called");
+    log.debug("💾 rfqData.projectType:", rfqData.projectType);
+    log.debug("💾 rfqData.requiredProducts:", rfqData.requiredProducts);
+    log.debug("💾 rfqData.skipDocuments:", rfqData.skipDocuments);
+    log.debug("💾 rfqData.latitude:", rfqData.latitude);
+    log.debug("💾 rfqData.longitude:", rfqData.longitude);
+    log.debug("💾 rfqData.globalSpecs:", rfqData.globalSpecs);
 
     const saveData = {
       draftId: currentDraftId || undefined,
@@ -2313,7 +2620,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         nixPopupShown: rfqData.nixPopupShown,
       },
       globalSpecs: rfqData.globalSpecs,
-      requiredProducts: rfqData.requiredProducts || ['fabricated_steel'],
+      requiredProducts: rfqData.requiredProducts || ["fabricated_steel"],
       straightPipeEntries: rfqData.items?.length > 0 ? rfqData.items : rfqData.straightPipeEntries,
       pendingDocuments: pendingDocuments.map((doc: any) => ({
         name: doc.name || doc.file?.name,
@@ -2324,15 +2631,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
     setIsSavingDraft(true);
     try {
-      log.debug('💾 Complete saveData being sent to API:', saveData);
-      log.debug('💾 saveData.formData:', saveData.formData);
-      log.debug('💾 saveData.requiredProducts:', saveData.requiredProducts);
-      log.debug('💾 isAuthenticated:', isAuthenticated);
+      log.debug("💾 Complete saveData being sent to API:", saveData);
+      log.debug("💾 saveData.formData:", saveData.formData);
+      log.debug("💾 saveData.requiredProducts:", saveData.requiredProducts);
+      log.debug("💾 isAuthenticated:", isAuthenticated);
 
       if (!isAuthenticated) {
         // Unregistered customer - use anonymous drafts API
         if (!rfqData.customerEmail) {
-          showToast('Please enter your email address to save progress', 'warning');
+          showToast("Please enter your email address to save progress", "warning");
           setIsSavingDraft(false);
           return;
         }
@@ -2347,24 +2654,30 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           currentStep: saveData.currentStep,
         };
 
-        log.debug('📤 Sending anonymous draft to server:', JSON.stringify(anonymousSaveData, null, 2));
+        log.debug(
+          "📤 Sending anonymous draft to server:",
+          JSON.stringify(anonymousSaveData, null, 2),
+        );
         const result = await anonymousDraftsApi.save(anonymousSaveData);
-        log.debug('✅ Anonymous draft saved:', result);
+        log.debug("✅ Anonymous draft saved:", result);
 
         // Save to localStorage as backup
-        localStorage.setItem('annix_rfq_draft', JSON.stringify({
-          ...saveData,
-          savedAt: nowISO(),
-        }));
+        localStorage.setItem(
+          "annix_rfq_draft",
+          JSON.stringify({
+            ...saveData,
+            savedAt: nowISO(),
+          }),
+        );
 
         // Send recovery email
         try {
           await anonymousDraftsApi.requestRecoveryEmail(rfqData.customerEmail);
-          log.debug('✅ Recovery email sent to:', rfqData.customerEmail);
-          showToast(`Progress saved! Recovery link sent to ${rfqData.customerEmail}`, 'success');
+          log.debug("✅ Recovery email sent to:", rfqData.customerEmail);
+          showToast(`Progress saved! Recovery link sent to ${rfqData.customerEmail}`, "success");
         } catch (emailError) {
-          log.warn('Failed to send recovery email:', emailError);
-          showToast('Progress saved locally', 'success');
+          log.warn("Failed to send recovery email:", emailError);
+          showToast("Progress saved locally", "success");
         }
 
         setShowSaveConfirmation(true);
@@ -2382,11 +2695,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       setDraftNumber(result.draftNumber);
 
       // Also save to localStorage as backup
-      localStorage.setItem('annix_rfq_draft', JSON.stringify({
-        ...saveData,
-        draftNumber: result.draftNumber,
-        savedAt: nowISO(),
-      }));
+      localStorage.setItem(
+        "annix_rfq_draft",
+        JSON.stringify({
+          ...saveData,
+          draftNumber: result.draftNumber,
+          savedAt: nowISO(),
+        }),
+      );
 
       // Show confirmation
       setShowSaveConfirmation(true);
@@ -2396,47 +2712,54 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      if (errorMessage.includes('converted to an RFQ')) {
-        log.info('Draft has been converted to RFQ - clearing draft state');
+      if (errorMessage.includes("converted to an RFQ")) {
+        log.info("Draft has been converted to RFQ - clearing draft state");
         setCurrentDraftId(null);
         setDraftNumber(null);
-        localStorage.removeItem('annix_rfq_draft');
+        localStorage.removeItem("annix_rfq_draft");
         return;
       }
 
-      const isAuthError = error instanceof SessionExpiredError ||
-        errorMessage.includes('Authentication required') ||
-        errorMessage.includes('Unauthorized') ||
-        errorMessage.includes('401');
+      const isAuthError =
+        error instanceof SessionExpiredError ||
+        errorMessage.includes("Authentication required") ||
+        errorMessage.includes("Unauthorized") ||
+        errorMessage.includes("401");
 
       if (isAuthError) {
         try {
-          localStorage.setItem('annix_rfq_draft', JSON.stringify({
-            ...saveData,
-            savedAt: nowISO(),
-          }));
+          localStorage.setItem(
+            "annix_rfq_draft",
+            JSON.stringify({
+              ...saveData,
+              savedAt: nowISO(),
+            }),
+          );
           setShowSaveConfirmation(true);
           setTimeout(() => setShowSaveConfirmation(false), 3000);
-          log.debug('✅ RFQ progress saved to localStorage (not authenticated)');
+          log.debug("✅ RFQ progress saved to localStorage (not authenticated)");
         } catch (e) {
-          log.error('Failed to save to localStorage:', e);
+          log.error("Failed to save to localStorage:", e);
         }
         return;
       }
 
-      log.error('Failed to save progress:', error);
+      log.error("Failed to save progress:", error);
 
       try {
-        localStorage.setItem('annix_rfq_draft', JSON.stringify({
-          ...saveData,
-          savedAt: nowISO(),
-        }));
+        localStorage.setItem(
+          "annix_rfq_draft",
+          JSON.stringify({
+            ...saveData,
+            savedAt: nowISO(),
+          }),
+        );
         setShowSaveConfirmation(true);
         setTimeout(() => setShowSaveConfirmation(false), 3000);
-        log.debug('✅ RFQ progress saved to localStorage (server unavailable)');
-        showToast('Progress saved locally. Will sync when connection restored.', 'info');
+        log.debug("✅ RFQ progress saved to localStorage (server unavailable)");
+        showToast("Progress saved locally. Will sync when connection restored.", "info");
       } catch (e) {
-        showToast('Failed to save progress. Please try again.', 'error');
+        showToast("Failed to save progress. Please try again.", "error");
       }
     } finally {
       setIsSavingDraft(false);
@@ -2451,40 +2774,47 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       const allItems = rfqData.items || rfqData.straightPipeEntries || [];
 
       if (allItems.length === 0) {
-        setValidationErrors({ submit: 'Please add at least one item before submitting.' });
+        setValidationErrors({ submit: "Please add at least one item before submitting." });
         setIsSubmitting(false);
         return;
       }
 
-      const straightPipeItems = allItems.filter((item: any) => item.itemType !== 'bend' && item.itemType !== 'fitting');
-      const bendItems = allItems.filter((item: any) => item.itemType === 'bend');
-      const fittingItems = allItems.filter((item: any) => item.itemType === 'fitting');
+      const straightPipeItems = allItems.filter(
+        (item: any) => item.itemType !== "bend" && item.itemType !== "fitting",
+      );
+      const bendItems = allItems.filter((item: any) => item.itemType === "bend");
+      const fittingItems = allItems.filter((item: any) => item.itemType === "fitting");
 
-      log.debug(`📊 Submitting unified RFQ: ${straightPipeItems.length} pipe(s), ${bendItems.length} bend(s), ${fittingItems.length} fitting(s)`);
+      log.debug(
+        `📊 Submitting unified RFQ: ${straightPipeItems.length} pipe(s), ${bendItems.length} bend(s), ${fittingItems.length} fitting(s)`,
+      );
 
       for (let i = 0; i < allItems.length; i++) {
         const entry = allItems[i];
         if (!entry.calculation) {
-          const itemType = entry.itemType === 'bend' ? 'Bend' : entry.itemType === 'fitting' ? 'Fitting' : 'Pipe';
+          const itemType =
+            entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
           setValidationErrors({
-            submit: `${itemType} #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before submitting.`
+            submit: `${itemType} #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before submitting.`,
           });
           setIsSubmitting(false);
           return;
         }
       }
 
-      const { unifiedRfqApi } = await import('@/app/lib/api/client');
+      const { unifiedRfqApi } = await import("@/app/lib/api/client");
 
       const unifiedItems = allItems.map((entry: any) => {
         const specs = entry.specs || {};
         const calculation = entry.calculation || {};
 
-        if (entry.itemType === 'bend') {
-          const stubLengths = (specs.stubs || []).map((stub: any) => stub?.length || 0).filter((l: number) => l > 0);
+        if (entry.itemType === "bend") {
+          const stubLengths = (specs.stubs || [])
+            .map((stub: any) => stub?.length || 0)
+            .filter((l: number) => l > 0);
           return {
-            itemType: 'bend' as const,
-            description: entry.description || 'Bend Item',
+            itemType: "bend" as const,
+            description: entry.description || "Bend Item",
             notes: entry.notes,
             totalWeightKg: calculation.totalWeight || calculation.bendWeight,
             bend: {
@@ -2507,20 +2837,24 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 numberOfSegments: specs.numberOfSegments,
                 tangentLengths: specs.tangentLengths || [],
               },
-              quantityType: specs.quantityType || 'number_of_items',
+              quantityType: specs.quantityType || "number_of_items",
               quantityValue: specs.quantityValue || 1,
-              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20,
-              steelSpecificationId: specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2,
+              workingPressureBar:
+                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+              workingTemperatureC:
+                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20,
+              steelSpecificationId:
+                specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2,
               useGlobalFlangeSpecs: specs.useGlobalFlangeSpecs ?? true,
               flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
-              flangePressureClassId: specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+              flangePressureClassId:
+                specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
             },
           };
-        } else if (entry.itemType === 'fitting') {
+        } else if (entry.itemType === "fitting") {
           return {
-            itemType: 'fitting' as const,
-            description: entry.description || 'Fitting Item',
+            itemType: "fitting" as const,
+            description: entry.description || "Fitting Item",
             notes: entry.notes,
             totalWeightKg: calculation.totalWeight || calculation.pipeWeight,
             fitting: {
@@ -2535,17 +2869,19 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               addBlankFlange: specs.addBlankFlange || false,
               blankFlangeCount: specs.blankFlangeCount,
               blankFlangePositions: specs.blankFlangePositions,
-              quantityType: specs.quantityType || 'number_of_items',
+              quantityType: specs.quantityType || "number_of_items",
               quantityValue: specs.quantityValue || 1,
-              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
-              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+              workingPressureBar:
+                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
+              workingTemperatureC:
+                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
               calculationData: calculation,
             },
           };
         } else {
           return {
-            itemType: 'straight_pipe' as const,
-            description: entry.description || 'Pipe Item',
+            itemType: "straight_pipe" as const,
+            description: entry.description || "Pipe Item",
             notes: entry.notes,
             totalWeightKg: calculation.totalSystemWeight || calculation.totalPipeWeight,
             straightPipe: {
@@ -2558,11 +2894,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               lengthUnit: specs.lengthUnit,
               quantityType: specs.quantityType,
               quantityValue: specs.quantityValue,
-              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
-              steelSpecificationId: specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
+              workingPressureBar:
+                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+              workingTemperatureC:
+                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+              steelSpecificationId:
+                specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
               flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
-              flangePressureClassId: specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+              flangePressureClassId:
+                specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
             },
           };
         }
@@ -2576,16 +2916,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           customerEmail: rfqData.customerEmail,
           customerPhone: rfqData.customerPhone,
           requiredDate: rfqData.requiredDate,
-          status: 'submitted' as const,
+          status: "submitted" as const,
           notes: rfqData.notes,
         },
         items: unifiedItems,
       };
 
-      log.debug('📦 Submitting unified RFQ payload:', unifiedPayload);
+      log.debug("📦 Submitting unified RFQ payload:", unifiedPayload);
 
       const result = await unifiedRfqApi.create(unifiedPayload);
-      log.debug(`✅ Unified RFQ created successfully:`, result);
+      log.debug("✅ Unified RFQ created successfully:", result);
 
       if ((pendingDocuments.length > 0 || pendingTenderDocuments.length > 0) && result.rfq?.id) {
         const rfqId = result.rfq.id;
@@ -2618,7 +2958,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         try {
           log.debug(`📦 Creating BOQ for RFQ ${result.rfq.id}...`);
           const boq = await boqApi.create({
-            title: `BOQ for ${rfqData.projectName || 'Untitled Project'}`,
+            title: `BOQ for ${rfqData.projectName || "Untitled Project"}`,
             description: rfqData.description,
             rfqId: result.rfq.id,
           });
@@ -2629,7 +2969,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             globalSpecs: {
               gasketType: rfqData.globalSpecs?.gasketType,
               pressureClassDesignation: masterData?.pressureClasses?.find(
-                (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId
+                (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId,
               )?.designation,
               flangeStandardId: rfqData.globalSpecs?.flangeStandardId,
               flangePressureClassId: rfqData.globalSpecs?.flangePressureClassId,
@@ -2641,25 +2981,27 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             },
           });
 
-          log.debug(`📊 Consolidated data:`, consolidatedData);
+          log.debug("📊 Consolidated data:", consolidatedData);
 
           const submitResult = await boqApi.submitForQuotation(boq.id, {
             boqData: consolidatedData,
             customerInfo: {
-              name: rfqData.customerName || 'Unknown',
-              email: rfqData.customerEmail || '',
+              name: rfqData.customerName || "Unknown",
+              email: rfqData.customerEmail || "",
               phone: rfqData.customerPhone,
             },
             projectInfo: {
-              name: rfqData.projectName || 'Untitled Project',
+              name: rfqData.projectName || "Untitled Project",
               description: rfqData.description,
               requiredDate: rfqData.requiredDate,
             },
           });
 
-          log.debug(`✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`);
+          log.debug(
+            `✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`,
+          );
         } catch (boqError) {
-          log.error('Failed to create/submit BOQ:', boqError);
+          log.error("Failed to create/submit BOQ:", boqError);
         }
       }
 
@@ -2668,25 +3010,30 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           await draftsApi.markAsConverted(currentDraftId, result.rfq.id);
           log.debug(`✅ Draft ${currentDraftId} marked as converted to RFQ ${result.rfq.id}`);
         } catch (convertError) {
-          log.error('Failed to mark draft as converted:', convertError);
+          log.error("Failed to mark draft as converted:", convertError);
         }
       }
 
-      showToast(`Success! RFQ ${result.rfq?.rfqNumber} created with ${result.itemsCreated} item(s).`, 'success');
-      onSuccess(result.rfq?.id || 'success');
-
+      showToast(
+        `Success! RFQ ${result.rfq?.rfqNumber} created with ${result.itemsCreated} item(s).`,
+        "success",
+      );
+      onSuccess(result.rfq?.id || "success");
     } catch (error: any) {
-      log.error('Submission error:', error);
+      log.error("Submission error:", error);
 
-      let errorMessage = 'Failed to submit RFQ. Please try again.';
+      let errorMessage = "Failed to submit RFQ. Please try again.";
       if (error.message) {
         errorMessage = error.message;
-      } else if (typeof error === 'string') {
+      } else if (typeof error === "string") {
         errorMessage = error;
       }
 
       setValidationErrors({ submit: errorMessage });
-      showToast(`Submission failed: ${errorMessage}. Please check the console for more details.`, 'error');
+      showToast(
+        `Submission failed: ${errorMessage}. Please check the console for more details.`,
+        "error",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -2694,7 +3041,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
   const handleResubmit = async () => {
     if (!editRfqId) {
-      showToast('Cannot re-submit: No RFQ ID found', 'error');
+      showToast("Cannot re-submit: No RFQ ID found", "error");
       return;
     }
 
@@ -2705,7 +3052,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       const allItems = rfqData.items || rfqData.straightPipeEntries || [];
 
       if (allItems.length === 0) {
-        setValidationErrors({ submit: 'Please add at least one item before re-submitting.' });
+        setValidationErrors({ submit: "Please add at least one item before re-submitting." });
         setIsSubmitting(false);
         return;
       }
@@ -2713,26 +3060,29 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       for (let i = 0; i < allItems.length; i++) {
         const entry = allItems[i];
         if (!entry.calculation) {
-          const itemType = entry.itemType === 'bend' ? 'Bend' : entry.itemType === 'fitting' ? 'Fitting' : 'Pipe';
+          const itemType =
+            entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
           setValidationErrors({
-            submit: `${itemType} #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before re-submitting.`
+            submit: `${itemType} #${i + 1} (${entry.description}) has not been calculated. Please calculate all items before re-submitting.`,
           });
           setIsSubmitting(false);
           return;
         }
       }
 
-      const { unifiedRfqApi } = await import('@/app/lib/api/client');
+      const { unifiedRfqApi } = await import("@/app/lib/api/client");
 
       const unifiedItems = allItems.map((entry: any) => {
         const specs = entry.specs || {};
         const calculation = entry.calculation || {};
 
-        if (entry.itemType === 'bend') {
-          const stubLengths = (specs.stubs || []).map((stub: any) => stub?.length || 0).filter((l: number) => l > 0);
+        if (entry.itemType === "bend") {
+          const stubLengths = (specs.stubs || [])
+            .map((stub: any) => stub?.length || 0)
+            .filter((l: number) => l > 0);
           return {
-            itemType: 'bend' as const,
-            description: entry.description || 'Bend Item',
+            itemType: "bend" as const,
+            description: entry.description || "Bend Item",
             notes: entry.notes,
             totalWeightKg: calculation.totalWeight || calculation.bendWeight,
             bend: {
@@ -2755,20 +3105,24 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 numberOfSegments: specs.numberOfSegments,
                 tangentLengths: specs.tangentLengths || [],
               },
-              quantityType: specs.quantityType || 'number_of_items',
+              quantityType: specs.quantityType || "number_of_items",
               quantityValue: specs.quantityValue || 1,
-              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20,
-              steelSpecificationId: specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2,
+              workingPressureBar:
+                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+              workingTemperatureC:
+                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC || 20,
+              steelSpecificationId:
+                specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId || 2,
               useGlobalFlangeSpecs: specs.useGlobalFlangeSpecs ?? true,
               flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
-              flangePressureClassId: specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+              flangePressureClassId:
+                specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
             },
           };
-        } else if (entry.itemType === 'fitting') {
+        } else if (entry.itemType === "fitting") {
           return {
-            itemType: 'fitting' as const,
-            description: entry.description || 'Fitting Item',
+            itemType: "fitting" as const,
+            description: entry.description || "Fitting Item",
             notes: entry.notes,
             totalWeightKg: calculation.totalWeight || calculation.pipeWeight,
             fitting: {
@@ -2783,17 +3137,19 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               addBlankFlange: specs.addBlankFlange || false,
               blankFlangeCount: specs.blankFlangeCount,
               blankFlangePositions: specs.blankFlangePositions,
-              quantityType: specs.quantityType || 'number_of_items',
+              quantityType: specs.quantityType || "number_of_items",
               quantityValue: specs.quantityValue || 1,
-              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
-              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+              workingPressureBar:
+                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar,
+              workingTemperatureC:
+                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
               calculationData: calculation,
             },
           };
         } else {
           return {
-            itemType: 'straight_pipe' as const,
-            description: entry.description || 'Pipe Item',
+            itemType: "straight_pipe" as const,
+            description: entry.description || "Pipe Item",
             notes: entry.notes,
             totalWeightKg: calculation.totalSystemWeight || calculation.totalPipeWeight,
             straightPipe: {
@@ -2806,11 +3162,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               lengthUnit: specs.lengthUnit,
               quantityType: specs.quantityType,
               quantityValue: specs.quantityValue,
-              workingPressureBar: specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
-              workingTemperatureC: specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
-              steelSpecificationId: specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
+              workingPressureBar:
+                specs.workingPressureBar || rfqData.globalSpecs?.workingPressureBar || 10,
+              workingTemperatureC:
+                specs.workingTemperatureC || rfqData.globalSpecs?.workingTemperatureC,
+              steelSpecificationId:
+                specs.steelSpecificationId || rfqData.globalSpecs?.steelSpecificationId,
               flangeStandardId: specs.flangeStandardId || rfqData.globalSpecs?.flangeStandardId,
-              flangePressureClassId: specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
+              flangePressureClassId:
+                specs.flangePressureClassId || rfqData.globalSpecs?.flangePressureClassId,
             },
           };
         }
@@ -2824,16 +3184,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           customerEmail: rfqData.customerEmail,
           customerPhone: rfqData.customerPhone,
           requiredDate: rfqData.requiredDate,
-          status: 'submitted' as const,
+          status: "submitted" as const,
           notes: rfqData.notes,
         },
         items: unifiedItems,
       };
 
-      log.debug('📦 Re-submitting unified RFQ payload via admin API:', unifiedPayload);
+      log.debug("📦 Re-submitting unified RFQ payload via admin API:", unifiedPayload);
 
       const result = await adminApiClient.updateRfq(editRfqId, unifiedPayload);
-      log.debug(`✅ Unified RFQ updated successfully via admin API:`, result);
+      log.debug("✅ Unified RFQ updated successfully via admin API:", result);
 
       const existingBoq = await boqApi.getByRfqId(editRfqId);
       if (existingBoq) {
@@ -2844,7 +3204,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           globalSpecs: {
             gasketType: rfqData.globalSpecs?.gasketType,
             pressureClassDesignation: masterData?.pressureClasses?.find(
-              (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId
+              (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId,
             )?.designation,
             flangeStandardId: rfqData.globalSpecs?.flangeStandardId,
             flangePressureClassId: rfqData.globalSpecs?.flangePressureClassId,
@@ -2856,27 +3216,29 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           },
         });
 
-        log.debug(`📊 Consolidated data for update:`, consolidatedData);
+        log.debug("📊 Consolidated data for update:", consolidatedData);
 
         const updateResult = await boqApi.updateSubmittedBoq(existingBoq.id, {
           boqData: consolidatedData,
           customerInfo: {
-            name: rfqData.customerName || 'Unknown',
-            email: rfqData.customerEmail || '',
+            name: rfqData.customerName || "Unknown",
+            email: rfqData.customerEmail || "",
             phone: rfqData.customerPhone,
           },
           projectInfo: {
-            name: rfqData.projectName || 'Untitled Project',
+            name: rfqData.projectName || "Untitled Project",
             description: rfqData.description,
             requiredDate: rfqData.requiredDate,
           },
         });
 
-        log.debug(`✅ BOQ updated and suppliers re-notified: ${updateResult.sectionsCreated} sections updated, ${updateResult.suppliersNotified} suppliers notified`);
+        log.debug(
+          `✅ BOQ updated and suppliers re-notified: ${updateResult.sectionsCreated} sections updated, ${updateResult.suppliersNotified} suppliers notified`,
+        );
       } else {
         log.debug(`📦 No existing BOQ found, creating new BOQ for RFQ ${editRfqId}...`);
         const boq = await boqApi.create({
-          title: `BOQ for ${rfqData.projectName || 'Untitled Project'}`,
+          title: `BOQ for ${rfqData.projectName || "Untitled Project"}`,
           description: rfqData.description,
           rfqId: editRfqId,
         });
@@ -2887,7 +3249,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           globalSpecs: {
             gasketType: rfqData.globalSpecs?.gasketType,
             pressureClassDesignation: masterData?.pressureClasses?.find(
-              (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId
+              (p: any) => p.id === rfqData.globalSpecs?.flangePressureClassId,
             )?.designation,
             flangeStandardId: rfqData.globalSpecs?.flangeStandardId,
             flangePressureClassId: rfqData.globalSpecs?.flangePressureClassId,
@@ -2902,35 +3264,42 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         const submitResult = await boqApi.submitForQuotation(boq.id, {
           boqData: consolidatedData,
           customerInfo: {
-            name: rfqData.customerName || 'Unknown',
-            email: rfqData.customerEmail || '',
+            name: rfqData.customerName || "Unknown",
+            email: rfqData.customerEmail || "",
             phone: rfqData.customerPhone,
           },
           projectInfo: {
-            name: rfqData.projectName || 'Untitled Project',
+            name: rfqData.projectName || "Untitled Project",
             description: rfqData.description,
             requiredDate: rfqData.requiredDate,
           },
         });
 
-        log.debug(`✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`);
+        log.debug(
+          `✅ BOQ submitted for quotation: ${submitResult.sectionsCreated} sections created, ${submitResult.suppliersNotified} suppliers notified`,
+        );
       }
 
-      showToast(`Success! RFQ ${result.rfq?.rfqNumber} updated with ${result.itemsUpdated} item(s). Suppliers have been notified.`, 'success');
-      onSuccess(result.rfq?.id?.toString() || 'success');
-
+      showToast(
+        `Success! RFQ ${result.rfq?.rfqNumber} updated with ${result.itemsUpdated} item(s). Suppliers have been notified.`,
+        "success",
+      );
+      onSuccess(result.rfq?.id?.toString() || "success");
     } catch (error: any) {
-      log.error('Re-submission error:', error);
+      log.error("Re-submission error:", error);
 
-      let errorMessage = 'Failed to re-submit RFQ. Please try again.';
+      let errorMessage = "Failed to re-submit RFQ. Please try again.";
       if (error.message) {
         errorMessage = error.message;
-      } else if (typeof error === 'string') {
+      } else if (typeof error === "string") {
         errorMessage = error;
       }
 
       setValidationErrors({ submit: errorMessage });
-      showToast(`Re-submission failed: ${errorMessage}. Please check the console for more details.`, 'error');
+      showToast(
+        `Re-submission failed: ${errorMessage}. Please check the console for more details.`,
+        "error",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -2938,17 +3307,29 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
   const steps = rfqData.useNix
     ? [
-        { number: 1, title: 'Project/RFQ Details', description: 'Basic project and customer information' },
-        { number: 2, title: 'Items', description: 'Add pipes, bends, and fittings' },
-        { number: 3, title: 'Review & Submit', description: 'Final review and submission' },
-        { number: 4, title: 'BOQ', description: 'Bill of Quantities summary' }
+        {
+          number: 1,
+          title: "Project/RFQ Details",
+          description: "Basic project and customer information",
+        },
+        { number: 2, title: "Items", description: "Add pipes, bends, and fittings" },
+        { number: 3, title: "Review & Submit", description: "Final review and submission" },
+        { number: 4, title: "BOQ", description: "Bill of Quantities summary" },
       ]
     : [
-        { number: 1, title: 'Project/RFQ Details', description: 'Basic project and customer information' },
-        { number: 2, title: 'Specifications', description: 'Working conditions and material specs' },
-        { number: 3, title: 'Items', description: 'Add pipes, bends, and fittings' },
-        { number: 4, title: 'Review & Submit', description: 'Final review and submission' },
-        { number: 5, title: 'BOQ', description: 'Bill of Quantities summary' }
+        {
+          number: 1,
+          title: "Project/RFQ Details",
+          description: "Basic project and customer information",
+        },
+        {
+          number: 2,
+          title: "Specifications",
+          description: "Working conditions and material specs",
+        },
+        { number: 3, title: "Items", description: "Add pipes, bends, and fittings" },
+        { number: 4, title: "Review & Submit", description: "Final review and submission" },
+        { number: 5, title: "BOQ", description: "Bill of Quantities summary" },
       ];
 
   const renderCurrentStep = () => {
@@ -3146,11 +3527,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col">
       {/* Nix AI Assistant Popup */}
-      <NixAiPopup
-        isVisible={showNixPopup}
-        onYes={handleNixYes}
-        onNo={handleNixNo}
-      />
+      <NixAiPopup isVisible={showNixPopup} onYes={handleNixYes} onNo={handleNixNo} />
 
       {/* Nix Processing Popup - shows while extracting data */}
       <NixProcessingPopup
@@ -3161,10 +3538,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       />
 
       {/* Nix Floating Avatar - shows when Nix is active */}
-      <NixFloatingAvatar
-        isVisible={rfqData.useNix === true}
-        onStopUsingNix={handleStopUsingNix}
-      />
+      <NixFloatingAvatar isVisible={rfqData.useNix === true} onStopUsingNix={handleStopUsingNix} />
 
       {/* Nix Clarification Popup - shows when Nix needs user input */}
       {showNixClarification && (
@@ -3185,8 +3559,18 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             <div className="p-6">
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <svg
+                    className="w-6 h-6 text-blue-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                 </div>
                 <div className="flex-1">
@@ -3234,13 +3618,23 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       {showSaveProgressDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full mx-4 overflow-hidden">
-            {saveProgressStep === 'confirm' ? (
+            {saveProgressStep === "confirm" ? (
               <>
                 <div className="p-6">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0 w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center">
-                      <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      <svg
+                        className="w-6 h-6 text-green-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                        />
                       </svg>
                     </div>
                     <div className="flex-1">
@@ -3248,15 +3642,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                       <p className="mt-2 text-sm text-gray-300">
                         {rfqData.customerEmail
                           ? `We'll save your progress and send a recovery link to ${rfqData.customerEmail}`
-                          : 'Please enter your email address on the form to save your progress.'}
+                          : "Please enter your email address on the form to save your progress."}
                       </p>
                       {rfqData.projectName && (
-                        <p className="mt-2 text-sm text-blue-300">
-                          Project: {rfqData.projectName}
-                        </p>
+                        <p className="mt-2 text-sm text-blue-300">Project: {rfqData.projectName}</p>
                       )}
                       <p className="mt-2 text-xs text-gray-400">
-                        Your draft will be saved for 7 days. You can use the recovery link to continue from any device.
+                        Your draft will be saved for 7 days. You can use the recovery link to
+                        continue from any device.
                       </p>
                     </div>
                   </div>
@@ -3277,13 +3670,24 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                     {isSavingProgress ? (
                       <span className="flex items-center justify-center gap-2">
                         <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
                         </svg>
                         Saving...
                       </span>
                     ) : (
-                      'Save & Send Link'
+                      "Save & Send Link"
                     )}
                   </button>
                 </div>
@@ -3293,20 +3697,28 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 <div className="p-6">
                   <div className="flex flex-col items-center text-center">
                     <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                      <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="w-8 h-8 text-green-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                     </div>
                     <h3 className="text-lg font-semibold text-white">Progress Saved!</h3>
-                    <p className="mt-2 text-sm text-gray-300">
-                      A recovery link has been sent to:
-                    </p>
+                    <p className="mt-2 text-sm text-gray-300">A recovery link has been sent to:</p>
                     <p className="mt-1 text-sm font-medium text-blue-300">
                       {rfqData.customerEmail}
                     </p>
                     <p className="mt-4 text-xs text-gray-400">
-                      Check your inbox (and spam folder) for an email from Annix.
-                      Use the link to continue your RFQ from any device within 7 days.
+                      Check your inbox (and spam folder) for an email from Annix. Use the link to
+                      continue your RFQ from any device within 7 days.
                     </p>
                   </div>
                 </div>
@@ -3329,8 +3741,18 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
           <div className="bg-green-600 text-white px-6 py-4 rounded-lg shadow-lg">
             <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-5 h-5 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
               <div>
                 <p className="font-medium">Progress Saved!</p>
@@ -3359,7 +3781,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               <h1 className="text-lg font-bold text-gray-900">Create RFQ</h1>
               <span className="text-sm text-gray-500">•</span>
               <span className="text-sm font-medium text-blue-600">
-                {steps.find(s => s.number === currentStep)?.title || 'RFQ'}
+                {steps.find((s) => s.number === currentStep)?.title || "RFQ"}
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -3371,7 +3793,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               {!isAuthenticated && hasLocalDraft && localDraftLastSaved && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-green-100 text-green-700 border border-green-200">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
                   </svg>
                   Auto-saved {formatLastSaved(localDraftLastSaved)}
                 </span>
@@ -3382,23 +3809,31 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors"
                   title="Save progress and get a recovery link via email"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                    />
                   </svg>
                   Save Progress
                 </button>
               )}
-              <div className="text-sm text-gray-500">
-                {rfqData?.projectName || 'New RFQ'}
-              </div>
+              <div className="text-sm text-gray-500">{rfqData?.projectName || "New RFQ"}</div>
               {nixFormHelperMinimized && !rfqData.useNix && currentStep === 3 && (
                 <NixMinimizedButton onClick={handleNixFormHelperReactivate} />
               )}
               <button
                 onClick={() => {
-                  const isDraft = searchParams?.get('draft') || searchParams?.get('draftId');
-                  log.debug('Close button clicked - isDraft:', isDraft);
-                  log.debug('searchParams:', searchParams);
+                  const isDraft = searchParams?.get("draft") || searchParams?.get("draftId");
+                  log.debug("Close button clicked - isDraft:", isDraft);
+                  log.debug("searchParams:", searchParams);
 
                   if (isDraft && initialDraftDataRef.current) {
                     // For drafts, check if data has changed since loading
@@ -3413,7 +3848,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                     });
                     const hasChanges = currentData !== initialDraftDataRef.current;
 
-                    log.info('🔍 Draft dirty check:', {
+                    log.info("🔍 Draft dirty check:", {
                       hasChanges,
                       itemsCount: rfqData.items?.length,
                       straightPipesCount: rfqData.straightPipeEntries?.length,
@@ -3433,22 +3868,23 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                       (rfqData.items?.length ?? 0) > 0 ||
                       (rfqData.straightPipeEntries?.length ?? 0) > 0 ||
                       // User-selected fields on step 1
-                      (rfqData.projectType && rfqData.projectType !== 'standard') ||
+                      (rfqData.projectType && rfqData.projectType !== "standard") ||
                       (rfqData.description?.trim().length ?? 0) > 0 ||
                       (rfqData.notes?.trim().length ?? 0) > 0 ||
                       (rfqData.siteAddress?.trim().length ?? 0) > 0 ||
                       (rfqData.mineId !== undefined && rfqData.mineId !== null) ||
-                      (rfqData.skipDocuments === true) ||
+                      rfqData.skipDocuments === true ||
                       // User progressed to step 2+ (selected products, location, specs)
-                      (currentStep > 1 && (
-                        (rfqData.requiredProducts && rfqData.requiredProducts.length > 0) ||
-                        (rfqData.latitude !== undefined && rfqData.latitude !== null) ||
-                        (rfqData.longitude !== undefined && rfqData.longitude !== null)
-                      )) ||
+                      (currentStep > 1 &&
+                        ((rfqData.requiredProducts && rfqData.requiredProducts.length > 0) ||
+                          (rfqData.latitude !== undefined && rfqData.latitude !== null) ||
+                          (rfqData.longitude !== undefined && rfqData.longitude !== null))) ||
                       // User progressed to step 3+ (entered specs)
-                      (currentStep > 2 && rfqData.globalSpecs && Object.keys(rfqData.globalSpecs).length > 0);
+                      (currentStep > 2 &&
+                        rfqData.globalSpecs &&
+                        Object.keys(rfqData.globalSpecs).length > 0);
 
-                    log.info('Dirty check - hasChanges:', hasChanges, 'rfqData:', {
+                    log.info("Dirty check - hasChanges:", hasChanges, "rfqData:", {
                       items: rfqData.items?.length,
                       straightPipes: rfqData.straightPipeEntries?.length,
                       projectType: rfqData.projectType,
@@ -3457,10 +3893,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                       currentStep,
                     });
                     if (hasChanges) {
-                      log.debug('Has changes, showing confirmation modal');
+                      log.debug("Has changes, showing confirmation modal");
                       setShowCloseConfirmation(true);
                     } else {
-                      log.debug('No changes, calling onCancel');
+                      log.debug("No changes, calling onCancel");
                       onCancel();
                     }
                   } else {
@@ -3508,7 +3944,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       {/* Fixed Bottom Navigation Toolbar - always visible at bottom */}
       <div
         className="fixed bottom-0 left-0 right-0 z-[9999] px-4 py-3 shadow-2xl border-t border-gray-700"
-        style={{ backgroundColor: '#323288' }}
+        style={{ backgroundColor: "#323288" }}
       >
         <div className="flex items-center justify-between max-w-full">
           {/* Left side - Previous button */}
@@ -3518,9 +3954,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               disabled={currentStep === 1}
               className="px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                backgroundColor: currentStep === 1 ? 'transparent' : '#4a4da3',
-                color: '#FFA500',
-                border: '1px solid #FFA500'
+                backgroundColor: currentStep === 1 ? "transparent" : "#4a4da3",
+                color: "#FFA500",
+                border: "1px solid #FFA500",
               }}
             >
               ← Previous
@@ -3535,39 +3971,43 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                   onClick={() => handleStepClick(step.number)}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all"
                   style={{
-                    backgroundColor: step.number === currentStep
-                      ? '#FFA500'
-                      : step.number < currentStep
-                      ? '#4a4da3'
-                      : 'transparent',
-                    border: step.number === currentStep
-                      ? '2px solid #FFA500'
-                      : step.number < currentStep
-                      ? '1px solid #4CAF50'
-                      : '1px solid rgba(255, 165, 0, 0.3)'
+                    backgroundColor:
+                      step.number === currentStep
+                        ? "#FFA500"
+                        : step.number < currentStep
+                          ? "#4a4da3"
+                          : "transparent",
+                    border:
+                      step.number === currentStep
+                        ? "2px solid #FFA500"
+                        : step.number < currentStep
+                          ? "1px solid #4CAF50"
+                          : "1px solid rgba(255, 165, 0, 0.3)",
                   }}
                 >
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold"
                     style={{
-                      backgroundColor: step.number === currentStep
-                        ? '#323288'
-                        : step.number < currentStep
-                        ? '#4CAF50'
-                        : 'rgba(255, 165, 0, 0.3)',
-                      color: '#FFFFFF'
+                      backgroundColor:
+                        step.number === currentStep
+                          ? "#323288"
+                          : step.number < currentStep
+                            ? "#4CAF50"
+                            : "rgba(255, 165, 0, 0.3)",
+                      color: "#FFFFFF",
                     }}
                   >
-                    {step.number < currentStep ? '✓' : step.number}
+                    {step.number < currentStep ? "✓" : step.number}
                   </div>
                   <span
                     className="text-sm font-medium hidden md:inline"
                     style={{
-                      color: step.number === currentStep
-                        ? '#323288'
-                        : step.number < currentStep
-                        ? '#4CAF50'
-                        : 'rgba(255, 165, 0, 0.6)'
+                      color:
+                        step.number === currentStep
+                          ? "#323288"
+                          : step.number < currentStep
+                            ? "#4CAF50"
+                            : "rgba(255, 165, 0, 0.6)",
                     }}
                   >
                     {step.title}
@@ -3576,7 +4016,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 {idx < steps.length - 1 && (
                   <div
                     className="w-8 h-0.5 mx-1"
-                    style={{ backgroundColor: step.number < currentStep ? '#4CAF50' : 'rgba(255, 165, 0, 0.3)' }}
+                    style={{
+                      backgroundColor:
+                        step.number < currentStep ? "#4CAF50" : "rgba(255, 165, 0, 0.3)",
+                    }}
                   />
                 )}
               </div>
@@ -3590,25 +4033,41 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               disabled={isSavingDraft}
               className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
-                backgroundColor: '#4a4da3',
-                color: '#FFA500',
-                border: '1px solid #FFA500'
+                backgroundColor: "#4a4da3",
+                color: "#FFA500",
+                border: "1px solid #FFA500",
               }}
             >
               {isSavingDraft ? (
                 <>
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Saving...
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                    />
                   </svg>
-                  {draftNumber ? 'Update Draft' : 'Save Progress'}
+                  {draftNumber ? "Update Draft" : "Save Progress"}
                 </>
               )}
             </button>
@@ -3616,7 +4075,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               <button
                 onClick={nextStep}
                 className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
-                style={{ backgroundColor: '#FFA500', color: '#323288' }}
+                style={{ backgroundColor: "#FFA500", color: "#323288" }}
               >
                 Next →
               </button>
@@ -3624,7 +4083,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               <button
                 onClick={handleNextStep}
                 className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
-                style={{ backgroundColor: '#4CAF50', color: '#FFFFFF' }}
+                style={{ backgroundColor: "#4CAF50", color: "#FFFFFF" }}
               >
                 Submit RFQ →
               </button>
@@ -3657,9 +4116,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 </svg>
               </div>
 
-              <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">
-                Unsaved Changes
-              </h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">Unsaved Changes</h2>
 
               <p className="text-gray-600 mb-6 text-center">
                 You have unsaved changes. Are you sure you want to close this RFQ?
@@ -3674,7 +4131,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 </button>
                 <button
                   onClick={() => {
-                    log.debug('Close Anyway clicked, calling onCancel()');
+                    log.debug("Close Anyway clicked, calling onCancel()");
                     setShowCloseConfirmation(false);
                     onCancel();
                   }}

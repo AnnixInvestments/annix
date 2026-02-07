@@ -1,5 +1,5 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from "bcrypt";
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateDefaultAdminUser1766731000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -10,7 +10,7 @@ export class CreateDefaultAdminUser1766731000000 implements MigrationInterface {
     const password = process.env.ADMIN_INITIAL_PASSWORD;
     if (!password) {
       throw new Error(
-        'ADMIN_INITIAL_PASSWORD environment variable must be set to run this migration',
+        "ADMIN_INITIAL_PASSWORD environment variable must be set to run this migration",
       );
     }
     const salt = await bcrypt.genSalt();
@@ -23,7 +23,7 @@ export class CreateDefaultAdminUser1766731000000 implements MigrationInterface {
       VALUES ($1, $2, $3, $4)
       RETURNING id
     `,
-      ['admin@annix.co.za', 'System Administrator', hashedPassword, salt],
+      ["admin@annix.co.za", "System Administrator", hashedPassword, salt],
     );
 
     // Get the user ID
@@ -31,7 +31,7 @@ export class CreateDefaultAdminUser1766731000000 implements MigrationInterface {
       `
       SELECT id FROM "user" WHERE email = $1
     `,
-      ['admin@annix.co.za'],
+      ["admin@annix.co.za"],
     );
 
     if (result && result.length > 0) {

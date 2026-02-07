@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class InsertAstmPipeDimensionsAndPressures1760428400000 implements MigrationInterface {
-  name = 'InsertAstmPipeDimensionsAndPressures1760428400000';
+  name = "InsertAstmPipeDimensionsAndPressures1760428400000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('🚀 Starting ASTM pipe data insertion...');
+    console.warn("🚀 Starting ASTM pipe data insertion...");
 
     // First, ensure we have the ASTM steel specifications
     await queryRunner.query(`
@@ -27,93 +27,93 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
     // ASTM pipe data: [nominalBore, outsideDiameter, schedule, wallThickness, massPerMeter]
     const astmPipeData = [
       // Schedule 40 (STD)
-      [6, 10.3, 'Sch40', 1.73, 0.36],
-      [8, 13.7, 'Sch40', 2.24, 0.63],
-      [10, 17.1, 'Sch40', 2.31, 0.85],
-      [15, 21.3, 'Sch40', 2.77, 1.27],
-      [20, 26.7, 'Sch40', 2.87, 1.68],
-      [25, 33.4, 'Sch40', 3.38, 2.5],
-      [32, 42.2, 'Sch40', 3.56, 3.38],
-      [40, 48.3, 'Sch40', 3.68, 4.05],
-      [50, 60.3, 'Sch40', 3.91, 5.43],
-      [65, 73.0, 'Sch40', 5.16, 8.62],
-      [80, 88.9, 'Sch40', 5.49, 11.29],
-      [90, 101.6, 'Sch40', 5.74, 13.57],
-      [100, 114.3, 'Sch40', 6.02, 16.07],
-      [125, 141.3, 'Sch40', 6.55, 21.78],
-      [150, 168.3, 'Sch40', 7.11, 28.26],
-      [200, 219.1, 'Sch40', 8.18, 42.53],
-      [250, 273.0, 'Sch40', 9.27, 60.29],
-      [300, 323.8, 'Sch40', 10.31, 79.72],
-      [350, 355.6, 'Sch40', 11.13, 94.4],
-      [400, 406.4, 'Sch40', 12.7, 123.29],
-      [450, 457.2, 'Sch40', 11.13, 122.36],
-      [500, 508.0, 'Sch40', 15.09, 183.15],
-      [600, 609.6, 'Sch40', 17.48, 254.93],
+      [6, 10.3, "Sch40", 1.73, 0.36],
+      [8, 13.7, "Sch40", 2.24, 0.63],
+      [10, 17.1, "Sch40", 2.31, 0.85],
+      [15, 21.3, "Sch40", 2.77, 1.27],
+      [20, 26.7, "Sch40", 2.87, 1.68],
+      [25, 33.4, "Sch40", 3.38, 2.5],
+      [32, 42.2, "Sch40", 3.56, 3.38],
+      [40, 48.3, "Sch40", 3.68, 4.05],
+      [50, 60.3, "Sch40", 3.91, 5.43],
+      [65, 73.0, "Sch40", 5.16, 8.62],
+      [80, 88.9, "Sch40", 5.49, 11.29],
+      [90, 101.6, "Sch40", 5.74, 13.57],
+      [100, 114.3, "Sch40", 6.02, 16.07],
+      [125, 141.3, "Sch40", 6.55, 21.78],
+      [150, 168.3, "Sch40", 7.11, 28.26],
+      [200, 219.1, "Sch40", 8.18, 42.53],
+      [250, 273.0, "Sch40", 9.27, 60.29],
+      [300, 323.8, "Sch40", 10.31, 79.72],
+      [350, 355.6, "Sch40", 11.13, 94.4],
+      [400, 406.4, "Sch40", 12.7, 123.29],
+      [450, 457.2, "Sch40", 11.13, 122.36],
+      [500, 508.0, "Sch40", 15.09, 183.15],
+      [600, 609.6, "Sch40", 17.48, 254.93],
 
       // Schedule 80 (XS)
-      [6, 10.3, 'Sch80', 2.41, 0.46],
-      [8, 13.7, 'Sch80', 3.02, 0.8],
-      [10, 17.1, 'Sch80', 3.2, 1.1],
-      [15, 21.3, 'Sch80', 3.73, 1.62],
-      [20, 26.7, 'Sch80', 3.91, 2.19],
-      [25, 33.4, 'Sch80', 4.55, 3.23],
-      [32, 42.2, 'Sch80', 4.85, 4.46],
-      [40, 48.3, 'Sch80', 5.08, 5.4],
-      [50, 60.3, 'Sch80', 5.54, 7.43],
-      [65, 73.0, 'Sch80', 7.01, 11.4],
-      [80, 88.9, 'Sch80', 7.62, 15.25],
-      [90, 101.6, 'Sch80', 8.08, 18.62],
-      [100, 114.3, 'Sch80', 8.56, 22.31],
-      [125, 141.3, 'Sch80', 9.53, 30.92],
-      [150, 168.3, 'Sch80', 10.97, 42.56],
-      [200, 219.1, 'Sch80', 12.7, 64.63],
-      [250, 273.0, 'Sch80', 15.09, 95.9],
-      [300, 323.8, 'Sch80', 12.7, 97.44],
-      [350, 355.6, 'Sch80', 12.7, 107.38],
-      [400, 406.4, 'Sch80', 12.7, 123.29],
-      [450, 457.2, 'Sch80', 12.7, 139.19],
-      [500, 508.0, 'Sch80', 12.7, 155.1],
-      [600, 609.6, 'Sch80', 12.7, 186.92],
+      [6, 10.3, "Sch80", 2.41, 0.46],
+      [8, 13.7, "Sch80", 3.02, 0.8],
+      [10, 17.1, "Sch80", 3.2, 1.1],
+      [15, 21.3, "Sch80", 3.73, 1.62],
+      [20, 26.7, "Sch80", 3.91, 2.19],
+      [25, 33.4, "Sch80", 4.55, 3.23],
+      [32, 42.2, "Sch80", 4.85, 4.46],
+      [40, 48.3, "Sch80", 5.08, 5.4],
+      [50, 60.3, "Sch80", 5.54, 7.43],
+      [65, 73.0, "Sch80", 7.01, 11.4],
+      [80, 88.9, "Sch80", 7.62, 15.25],
+      [90, 101.6, "Sch80", 8.08, 18.62],
+      [100, 114.3, "Sch80", 8.56, 22.31],
+      [125, 141.3, "Sch80", 9.53, 30.92],
+      [150, 168.3, "Sch80", 10.97, 42.56],
+      [200, 219.1, "Sch80", 12.7, 64.63],
+      [250, 273.0, "Sch80", 15.09, 95.9],
+      [300, 323.8, "Sch80", 12.7, 97.44],
+      [350, 355.6, "Sch80", 12.7, 107.38],
+      [400, 406.4, "Sch80", 12.7, 123.29],
+      [450, 457.2, "Sch80", 12.7, 139.19],
+      [500, 508.0, "Sch80", 12.7, 155.1],
+      [600, 609.6, "Sch80", 12.7, 186.92],
 
       // Schedule 160
-      [15, 21.3, 'Sch160', 4.78, 1.94],
-      [20, 26.7, 'Sch160', 5.56, 2.89],
-      [25, 33.4, 'Sch160', 6.35, 4.23],
-      [32, 42.2, 'Sch160', 6.35, 5.61],
-      [40, 48.3, 'Sch160', 7.14, 7.22],
-      [50, 60.3, 'Sch160', 8.74, 11.09],
-      [65, 73.0, 'Sch160', 9.53, 14.9],
-      [80, 88.9, 'Sch160', 11.13, 21.33],
-      [100, 114.3, 'Sch160', 13.49, 33.49],
-      [125, 141.3, 'Sch160', 15.88, 49.05],
-      [150, 168.3, 'Sch160', 18.26, 67.49],
-      [200, 219.1, 'Sch160', 23.01, 111.16],
-      [250, 273.0, 'Sch160', 28.58, 172.09],
-      [300, 323.8, 'Sch160', 33.32, 238.52],
-      [350, 355.6, 'Sch160', 35.71, 281.38],
-      [400, 406.4, 'Sch160', 40.49, 364.85],
-      [450, 457.2, 'Sch160', 45.24, 459.18],
-      [500, 508.0, 'Sch160', 50.01, 564.14],
-      [600, 609.6, 'Sch160', 59.34, 806.61],
+      [15, 21.3, "Sch160", 4.78, 1.94],
+      [20, 26.7, "Sch160", 5.56, 2.89],
+      [25, 33.4, "Sch160", 6.35, 4.23],
+      [32, 42.2, "Sch160", 6.35, 5.61],
+      [40, 48.3, "Sch160", 7.14, 7.22],
+      [50, 60.3, "Sch160", 8.74, 11.09],
+      [65, 73.0, "Sch160", 9.53, 14.9],
+      [80, 88.9, "Sch160", 11.13, 21.33],
+      [100, 114.3, "Sch160", 13.49, 33.49],
+      [125, 141.3, "Sch160", 15.88, 49.05],
+      [150, 168.3, "Sch160", 18.26, 67.49],
+      [200, 219.1, "Sch160", 23.01, 111.16],
+      [250, 273.0, "Sch160", 28.58, 172.09],
+      [300, 323.8, "Sch160", 33.32, 238.52],
+      [350, 355.6, "Sch160", 35.71, 281.38],
+      [400, 406.4, "Sch160", 40.49, 364.85],
+      [450, 457.2, "Sch160", 45.24, 459.18],
+      [500, 508.0, "Sch160", 50.01, 564.14],
+      [600, 609.6, "Sch160", 59.34, 806.61],
 
       // Additional schedules for large pipes
-      [200, 219.1, 'Sch20', 6.35, 33.31],
-      [250, 273.0, 'Sch20', 6.35, 41.77],
-      [300, 323.8, 'Sch20', 6.35, 49.72],
-      [350, 355.6, 'Sch10', 6.35, 54.68],
-      [400, 406.4, 'Sch10', 6.35, 62.63],
-      [450, 457.2, 'Sch10', 6.35, 70.59],
-      [500, 508.0, 'Sch10', 6.35, 78.54],
-      [600, 609.6, 'Sch10', 6.35, 94.45],
+      [200, 219.1, "Sch20", 6.35, 33.31],
+      [250, 273.0, "Sch20", 6.35, 41.77],
+      [300, 323.8, "Sch20", 6.35, 49.72],
+      [350, 355.6, "Sch10", 6.35, 54.68],
+      [400, 406.4, "Sch10", 6.35, 62.63],
+      [450, 457.2, "Sch10", 6.35, 70.59],
+      [500, 508.0, "Sch10", 6.35, 78.54],
+      [600, 609.6, "Sch10", 6.35, 94.45],
 
       // Schedule 120
-      [100, 114.3, 'Sch120', 11.13, 28.25],
-      [125, 141.3, 'Sch120', 12.7, 40.24],
-      [150, 168.3, 'Sch120', 14.27, 54.17],
-      [200, 219.1, 'Sch120', 18.26, 90.36],
-      [250, 273.0, 'Sch120', 21.44, 132.88],
-      [300, 323.8, 'Sch120', 25.4, 186.75],
+      [100, 114.3, "Sch120", 11.13, 28.25],
+      [125, 141.3, "Sch120", 12.7, 40.24],
+      [150, 168.3, "Sch120", 14.27, 54.17],
+      [200, 219.1, "Sch120", 18.26, 90.36],
+      [250, 273.0, "Sch120", 21.44, 132.88],
+      [300, 323.8, "Sch120", 25.4, 186.75],
     ];
 
     // Insert ASTM pipe dimensions - Schedule 80 (XS)
@@ -168,8 +168,7 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
 
     // Process each pipe size and create the required records
     for (const pipeData of astmPipeData) {
-      const [nominalBore, outsideDiameter, schedule, wallThickness, mass] =
-        pipeData;
+      const [nominalBore, outsideDiameter, schedule, wallThickness, mass] = pipeData;
 
       // Insert or get nominal outside diameter
       let nominalOdResult = await queryRunner.query(
@@ -198,8 +197,7 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
       }
 
       const nominalOdId = nominalOdResult[0].id;
-      const internalDiameter =
-        Number(outsideDiameter) - 2 * Number(wallThickness);
+      const internalDiameter = Number(outsideDiameter) - 2 * Number(wallThickness);
 
       // Insert pipe dimension
       await queryRunner.query(
@@ -209,14 +207,7 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
                     schedule_designation, nominal_outside_diameter_id, steel_specification_id
                 ) VALUES ($1, $2, $3, $4, $5, $6)
             `,
-        [
-          wallThickness,
-          internalDiameter,
-          mass,
-          schedule,
-          nominalOdId,
-          steelSpecId,
-        ],
+        [wallThickness, internalDiameter, mass, schedule, nominalOdId, steelSpecId],
       );
     }
 
@@ -249,8 +240,7 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
 
         // Basic pressure calculation: P = 2*S*t/(D-2*t*Y) where Y=0.4 for seamless pipe
         const maxPressure =
-          (2 * stress * wallThickness) /
-          (outsideDiameter - 2 * wallThickness * 0.4);
+          (2 * stress * wallThickness) / (outsideDiameter - 2 * wallThickness * 0.4);
         const maxPressureMPa = Math.round(maxPressure * 100) / 100; // Round to 2 decimals
 
         await queryRunner.query(
@@ -264,13 +254,11 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
       }
     }
 
-    console.warn(
-      '✅ ASTM pipe dimensions and pressure data inserted successfully',
-    );
+    console.warn("✅ ASTM pipe dimensions and pressure data inserted successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('🗑️ Removing ASTM pipe data...');
+    console.warn("🗑️ Removing ASTM pipe data...");
 
     // Remove ASTM pressure data (connected to ASTM pipe dimensions)
     await queryRunner.query(`
@@ -298,6 +286,6 @@ export class InsertAstmPipeDimensionsAndPressures1760428400000 implements Migrat
             )
         `);
 
-    console.warn('✅ ASTM pipe data removed successfully');
+    console.warn("✅ ASTM pipe data removed successfully");
   }
 }

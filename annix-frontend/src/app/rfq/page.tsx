@@ -1,42 +1,42 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import UnifiedMultiStepRfqForm from '@/app/components/rfq/UnifiedMultiStepRfqForm';
-import { CustomerAuthProvider } from '@/app/context/CustomerAuthContext';
-import { log } from '@/app/lib/logger';
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import UnifiedMultiStepRfqForm from "@/app/components/rfq/UnifiedMultiStepRfqForm";
+import { CustomerAuthProvider } from "@/app/context/CustomerAuthContext";
+import { log } from "@/app/lib/logger";
 
 export default function RfqPage() {
   const router = useRouter();
   const [showForm, setShowForm] = useState(true);
   const [submissionResult, setSubmissionResult] = useState<string | null>(null);
-  const [returnPath, setReturnPath] = useState<string>('/customer/portal/dashboard');
+  const [returnPath, setReturnPath] = useState<string>("/customer/portal/dashboard");
 
   useEffect(() => {
-    const storedPath = sessionStorage.getItem('rfq_return_path');
+    const storedPath = sessionStorage.getItem("rfq_return_path");
     if (storedPath) {
-      log.info('Return path from sessionStorage:', storedPath);
+      log.info("Return path from sessionStorage:", storedPath);
       setReturnPath(storedPath);
     } else {
-      log.info('No return path in sessionStorage, using default dashboard');
-      setReturnPath('/customer/portal/dashboard');
+      log.info("No return path in sessionStorage, using default dashboard");
+      setReturnPath("/customer/portal/dashboard");
     }
   }, []);
 
   const handleFormSuccess = (rfqId: string) => {
-    log.info('RFQ submitted successfully:', rfqId);
+    log.info("RFQ submitted successfully:", rfqId);
     setSubmissionResult(`RFQ submitted successfully! ID: ${rfqId}`);
     setShowForm(false);
   };
 
   const handleFormCancel = () => {
-    log.debug('Form cancelled, navigating to:', returnPath);
-    sessionStorage.removeItem('rfq_return_path');
+    log.debug("Form cancelled, navigating to:", returnPath);
+    sessionStorage.removeItem("rfq_return_path");
     router.push(returnPath);
   };
 
   const handleBackNavigation = () => {
-    sessionStorage.removeItem('rfq_return_path');
+    sessionStorage.removeItem("rfq_return_path");
     router.push(returnPath);
   };
 
@@ -102,10 +102,7 @@ export default function RfqPage() {
 
   return (
     <CustomerAuthProvider>
-      <UnifiedMultiStepRfqForm
-        onSuccess={handleFormSuccess}
-        onCancel={handleFormCancel}
-      />
+      <UnifiedMultiStepRfqForm onSuccess={handleFormSuccess} onCancel={handleFormCancel} />
     </CustomerAuthProvider>
   );
 }

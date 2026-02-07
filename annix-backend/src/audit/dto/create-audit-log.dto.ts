@@ -1,5 +1,5 @@
-import { AuditAction } from '../entities/audit-log.entity';
-import { User } from '../../user/entities/user.entity';
+import { User } from "../../user/entities/user.entity";
+import { AuditAction } from "../entities/audit-log.entity";
 
 export class CreateAuditLogDto {
   entityType: string;

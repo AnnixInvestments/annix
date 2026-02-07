@@ -1,38 +1,37 @@
 import {
-  Injectable,
-  NotFoundException,
   BadRequestException,
-  Logger,
-  Inject,
   forwardRef,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
-import { now, fromISO } from '../lib/datetime';
-
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { DataSource, Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
+import { BoqDistributionService } from "../boq/boq-distribution.service";
+import { fromISO, now } from "../lib/datetime";
+import { DocumentVerificationService } from "../nix/services/document-verification.service";
+import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
-  SupplierProfile,
+  SaveSupplierCapabilitiesDto,
+  SupplierCompanyDto,
+  SupplierDocumentResponseDto,
+  UpdateSupplierProfileDto,
+  UploadSupplierDocumentDto,
+} from "./dto";
+import {
+  SupplierCapability,
   SupplierCompany,
-  SupplierOnboarding,
-  SupplierOnboardingStatus,
   SupplierDocument,
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
-  SupplierCapability,
-} from './entities';
-import {
-  SupplierCompanyDto,
-  UpdateSupplierProfileDto,
-  UploadSupplierDocumentDto,
-  SupplierDocumentResponseDto,
-  SaveSupplierCapabilitiesDto,
-} from './dto';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/entities/audit-log.entity';
-import { STORAGE_SERVICE, IStorageService } from '../storage/storage.interface';
-import { BoqDistributionService } from '../boq/boq-distribution.service';
-import { DocumentVerificationService } from '../nix/services/document-verification.service';
-import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
+  SupplierOnboarding,
+  SupplierOnboardingStatus,
+  SupplierProfile,
+} from "./entities";
 
 // Required documents for onboarding
 const REQUIRED_DOCUMENT_TYPES = [
@@ -73,11 +72,11 @@ export class SupplierService {
   async getProfile(supplierId: number): Promise<SupplierProfile> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['company', 'onboarding', 'documents', 'user'],
+      relations: ["company", "onboarding", "documents", "user"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier profile not found');
+      throw new NotFoundException("Supplier profile not found");
     }
 
     return profile;
@@ -96,7 +95,7 @@ export class SupplierService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier profile not found');
+      throw new NotFoundException("Supplier profile not found");
     }
 
     const oldValues = { ...profile };
@@ -117,7 +116,7 @@ export class SupplierService {
     const savedProfile = await this.profileRepo.save(profile);
 
     await this.auditService.log({
-      entityType: 'supplier_profile',
+      entityType: "supplier_profile",
       entityId: supplierId,
       action: AuditAction.UPDATE,
       oldValues: {
@@ -146,21 +145,20 @@ export class SupplierService {
   }> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['onboarding', 'documents', 'company'],
+      relations: ["onboarding", "documents", "company"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier profile not found');
+      throw new NotFoundException("Supplier profile not found");
     }
 
     const onboarding = profile.onboarding;
     if (!onboarding) {
-      throw new NotFoundException('Onboarding record not found');
+      throw new NotFoundException("Onboarding record not found");
     }
 
     // Check company details
-    const companyDetailsComplete =
-      !!profile.company && this.isCompanyComplete(profile.company);
+    const companyDetailsComplete = !!profile.company && this.isCompanyComplete(profile.company);
 
     // Check documents
     const uploadedTypes = profile.documents?.map((d) => d.documentType) || [];
@@ -206,18 +204,16 @@ export class SupplierService {
   ): Promise<SupplierCompany> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['company', 'onboarding'],
+      relations: ["company", "onboarding"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier profile not found');
+      throw new NotFoundException("Supplier profile not found");
     }
 
     // Check onboarding status
     if (profile.onboarding?.status === SupplierOnboardingStatus.APPROVED) {
-      throw new BadRequestException(
-        'Cannot modify company details after approval',
-      );
+      throw new BadRequestException("Cannot modify company details after approval");
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -234,7 +230,7 @@ export class SupplierService {
         company = await queryRunner.manager.save(profile.company);
 
         await this.auditService.log({
-          entityType: 'supplier_company',
+          entityType: "supplier_company",
           entityId: company.id,
           action: AuditAction.UPDATE,
           oldValues: { legalName: oldValues.legalName },
@@ -245,7 +241,7 @@ export class SupplierService {
         // Create new company
         company = this.companyRepo.create({
           ...dto,
-          country: dto.country || 'South Africa',
+          country: dto.country || "South Africa",
         });
         company = await queryRunner.manager.save(company);
 
@@ -254,7 +250,7 @@ export class SupplierService {
         await queryRunner.manager.save(profile);
 
         await this.auditService.log({
-          entityType: 'supplier_company',
+          entityType: "supplier_company",
           entityId: company.id,
           action: AuditAction.CREATE,
           newValues: {
@@ -267,8 +263,7 @@ export class SupplierService {
 
       // Update onboarding company details status
       if (profile.onboarding) {
-        profile.onboarding.companyDetailsComplete =
-          this.isCompanyComplete(company);
+        profile.onboarding.companyDetailsComplete = this.isCompanyComplete(company);
         await queryRunner.manager.save(profile.onboarding);
       }
 
@@ -293,15 +288,15 @@ export class SupplierService {
   ): Promise<SupplierDocumentResponseDto> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['onboarding'],
+      relations: ["onboarding"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier profile not found');
+      throw new NotFoundException("Supplier profile not found");
     }
 
     if (profile.onboarding?.status === SupplierOnboardingStatus.APPROVED) {
-      throw new BadRequestException('Cannot upload documents after approval');
+      throw new BadRequestException("Cannot upload documents after approval");
     }
 
     // Check if document of this type already exists
@@ -314,9 +309,7 @@ export class SupplierService {
       try {
         await this.storageService.delete(existingDoc.filePath);
       } catch (error) {
-        this.logger.warn(
-          `Failed to delete old document: ${existingDoc.filePath}`,
-        );
+        this.logger.warn(`Failed to delete old document: ${existingDoc.filePath}`);
       }
       await this.documentRepo.remove(existingDoc);
     }
@@ -328,8 +321,8 @@ export class SupplierService {
     // Determine validation status and prepare document data
     const hasPreVerification = dto.verificationResult?.success === true;
     let validationStatus = SupplierDocumentValidationStatus.PENDING;
-    let ocrExtractedData: SupplierDocument['ocrExtractedData'] = null;
-    let fieldResults: SupplierDocument['fieldResults'] = null;
+    let ocrExtractedData: SupplierDocument["ocrExtractedData"] = null;
+    let fieldResults: SupplierDocument["fieldResults"] = null;
     let verificationConfidence: number | null = null;
     let allFieldsMatch: boolean | null = null;
     let validationNotes: string | null = null;
@@ -337,26 +330,31 @@ export class SupplierService {
 
     if (hasPreVerification && dto.verificationResult) {
       const vr = dto.verificationResult;
-      ocrExtractedData = vr.extractedData ? {
-        vatNumber: vr.extractedData.vatNumber,
-        registrationNumber: vr.extractedData.registrationNumber,
-        companyName: vr.extractedData.companyName,
-        streetAddress: vr.extractedData.streetAddress,
-        city: vr.extractedData.city,
-        provinceState: vr.extractedData.provinceState,
-        postalCode: vr.extractedData.postalCode,
-        beeLevel: vr.extractedData.beeLevel,
-        beeExpiryDate: vr.extractedData.beeExpiryDate,
-        confidence: vr.extractedData.confidence ? String(vr.extractedData.confidence) : undefined,
-      } : null;
+      ocrExtractedData = vr.extractedData
+        ? {
+            vatNumber: vr.extractedData.vatNumber,
+            registrationNumber: vr.extractedData.registrationNumber,
+            companyName: vr.extractedData.companyName,
+            streetAddress: vr.extractedData.streetAddress,
+            city: vr.extractedData.city,
+            provinceState: vr.extractedData.provinceState,
+            postalCode: vr.extractedData.postalCode,
+            beeLevel: vr.extractedData.beeLevel,
+            beeExpiryDate: vr.extractedData.beeExpiryDate,
+            confidence: vr.extractedData.confidence
+              ? String(vr.extractedData.confidence)
+              : undefined,
+          }
+        : null;
 
-      fieldResults = vr.fieldResults?.map((fr) => ({
-        fieldName: fr.field,
-        expected: String(fr.expected ?? ''),
-        extracted: String(fr.extracted ?? ''),
-        matches: fr.match,
-        similarity: fr.similarity ?? (fr.match ? 100 : 0),
-      })) ?? null;
+      fieldResults =
+        vr.fieldResults?.map((fr) => ({
+          fieldName: fr.field,
+          expected: String(fr.expected ?? ""),
+          extracted: String(fr.extracted ?? ""),
+          matches: fr.match,
+          similarity: fr.similarity ?? (fr.match ? 100 : 0),
+        })) ?? null;
 
       verificationConfidence = vr.overallConfidence ?? null;
       allFieldsMatch = vr.allFieldsMatch ?? null;
@@ -364,13 +362,15 @@ export class SupplierService {
 
       if (vr.allFieldsMatch && vr.overallConfidence >= 0.7) {
         validationStatus = SupplierDocumentValidationStatus.VALID;
-        validationNotes = 'Automatic validation passed';
+        validationNotes = "Automatic validation passed";
       } else {
         validationStatus = SupplierDocumentValidationStatus.MANUAL_REVIEW;
-        validationNotes = 'Document requires manual review';
+        validationNotes = "Document requires manual review";
       }
 
-      this.logger.log(`Using pre-verified data for document upload (confidence: ${vr.overallConfidence}, allMatch: ${vr.allFieldsMatch})`);
+      this.logger.log(
+        `Using pre-verified data for document upload (confidence: ${vr.overallConfidence}, allMatch: ${vr.allFieldsMatch})`,
+      );
     }
 
     // Create document record
@@ -398,7 +398,7 @@ export class SupplierService {
     await this.updateDocumentsStatus(supplierId);
 
     await this.auditService.log({
-      entityType: 'supplier_document',
+      entityType: "supplier_document",
       entityId: savedDocument.id,
       action: AuditAction.UPLOAD,
       newValues: {
@@ -435,13 +435,15 @@ export class SupplierService {
       try {
         this.logger.log(`Triggering verification for supplier document ${documentId}`);
         await this.documentVerificationService.verifyDocument({
-          entityType: 'supplier',
+          entityType: "supplier",
           entityId: supplierId,
           documentId,
         });
         this.logger.log(`Verification completed for supplier document ${documentId}`);
       } catch (error: any) {
-        this.logger.error(`Verification failed for supplier document ${documentId}: ${error.message}`);
+        this.logger.error(
+          `Verification failed for supplier document ${documentId}: ${error.message}`,
+        );
       }
     });
   }
@@ -455,7 +457,7 @@ export class SupplierService {
       try {
         const profile = await this.profileRepo.findOne({
           where: { id: supplierId },
-          relations: ['user'],
+          relations: ["user"],
         });
         if (!profile) {
           this.logger.warn(`Profile not found for supplier ${supplierId} - skipping secure copy`);
@@ -463,7 +465,7 @@ export class SupplierService {
         }
 
         await this.secureDocumentsService.createFromEntityDocument(
-          'supplier',
+          "supplier",
           supplierId,
           documentType,
           file.buffer,
@@ -483,12 +485,10 @@ export class SupplierService {
   /**
    * Get documents for supplier
    */
-  async getDocuments(
-    supplierId: number,
-  ): Promise<SupplierDocumentResponseDto[]> {
+  async getDocuments(supplierId: number): Promise<SupplierDocumentResponseDto[]> {
     const documents = await this.documentRepo.find({
       where: { supplierId },
-      order: { uploadedAt: 'DESC' },
+      order: { uploadedAt: "DESC" },
     });
 
     return documents.map((doc) => ({
@@ -508,26 +508,22 @@ export class SupplierService {
   /**
    * Delete document
    */
-  async deleteDocument(
-    supplierId: number,
-    documentId: number,
-    clientIp: string,
-  ): Promise<void> {
+  async deleteDocument(supplierId: number, documentId: number, clientIp: string): Promise<void> {
     const document = await this.documentRepo.findOne({
       where: { id: documentId, supplierId },
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['onboarding'],
+      relations: ["onboarding"],
     });
 
     if (profile?.onboarding?.status === SupplierOnboardingStatus.APPROVED) {
-      throw new BadRequestException('Cannot delete documents after approval');
+      throw new BadRequestException("Cannot delete documents after approval");
     }
 
     // Delete file from storage
@@ -543,7 +539,7 @@ export class SupplierService {
     await this.updateDocumentsStatus(supplierId);
 
     await this.auditService.log({
-      entityType: 'supplier_document',
+      entityType: "supplier_document",
       entityId: documentId,
       action: AuditAction.DELETE,
       oldValues: {
@@ -563,16 +559,16 @@ export class SupplierService {
   ): Promise<{ success: boolean; message: string }> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['onboarding', 'company', 'documents'],
+      relations: ["onboarding", "company", "documents"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier profile not found');
+      throw new NotFoundException("Supplier profile not found");
     }
 
     const onboarding = profile.onboarding;
     if (!onboarding) {
-      throw new NotFoundException('Onboarding record not found');
+      throw new NotFoundException("Onboarding record not found");
     }
 
     // Validate current status
@@ -580,14 +576,12 @@ export class SupplierService {
       onboarding.status !== SupplierOnboardingStatus.DRAFT &&
       onboarding.status !== SupplierOnboardingStatus.REJECTED
     ) {
-      throw new BadRequestException(
-        'Onboarding cannot be submitted in current status',
-      );
+      throw new BadRequestException("Onboarding cannot be submitted in current status");
     }
 
     // Validate company details
     if (!profile.company || !this.isCompanyComplete(profile.company)) {
-      throw new BadRequestException('Company details are incomplete');
+      throw new BadRequestException("Company details are incomplete");
     }
 
     // Validate documents
@@ -597,9 +591,7 @@ export class SupplierService {
     );
 
     if (missingDocuments.length > 0) {
-      throw new BadRequestException(
-        `Missing required documents: ${missingDocuments.join(', ')}`,
-      );
+      throw new BadRequestException(`Missing required documents: ${missingDocuments.join(", ")}`);
     }
 
     // Update onboarding status
@@ -617,7 +609,7 @@ export class SupplierService {
     await this.onboardingRepo.save(onboarding);
 
     await this.auditService.log({
-      entityType: 'supplier_onboarding',
+      entityType: "supplier_onboarding",
       entityId: onboarding.id,
       action: AuditAction.SUBMIT,
       newValues: {
@@ -629,8 +621,7 @@ export class SupplierService {
 
     return {
       success: true,
-      message:
-        'Onboarding submitted for review. You will be notified of the outcome.',
+      message: "Onboarding submitted for review. You will be notified of the outcome.",
     };
   }
 
@@ -659,11 +650,11 @@ export class SupplierService {
   }> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['user', 'company', 'onboarding', 'documents'],
+      relations: ["user", "company", "onboarding", "documents"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier profile not found');
+      throw new NotFoundException("Supplier profile not found");
     }
 
     const documents = profile.documents || [];
@@ -672,9 +663,8 @@ export class SupplierService {
       pending: documents.filter(
         (d) => d.validationStatus === SupplierDocumentValidationStatus.PENDING,
       ).length,
-      valid: documents.filter(
-        (d) => d.validationStatus === SupplierDocumentValidationStatus.VALID,
-      ).length,
+      valid: documents.filter((d) => d.validationStatus === SupplierDocumentValidationStatus.VALID)
+        .length,
       invalid: documents.filter(
         (d) =>
           d.validationStatus === SupplierDocumentValidationStatus.INVALID ||
@@ -691,8 +681,7 @@ export class SupplierService {
       },
       onboarding: {
         status: profile.onboarding?.status || SupplierOnboardingStatus.DRAFT,
-        companyDetailsComplete:
-          profile.onboarding?.companyDetailsComplete || false,
+        companyDetailsComplete: profile.onboarding?.companyDetailsComplete || false,
         documentsComplete: profile.onboarding?.documentsComplete || false,
         submittedAt: profile.onboarding?.submittedAt,
       },
@@ -730,19 +719,15 @@ export class SupplierService {
   /**
    * Get supplier capabilities (products/services they can offer)
    */
-  async getCapabilities(
-    supplierId: number,
-  ): Promise<{ capabilities: string[] }> {
+  async getCapabilities(supplierId: number): Promise<{ capabilities: string[] }> {
     // Use direct raw SQL query to completely bypass TypeORM entity handling
     const capabilities = await this.dataSource.query(
-      `SELECT product_category FROM supplier_capabilities WHERE supplier_profile_id = $1 AND is_active = true`,
+      "SELECT product_category FROM supplier_capabilities WHERE supplier_profile_id = $1 AND is_active = true",
       [supplierId],
     );
 
     return {
-      capabilities: capabilities.map(
-        (c: { product_category: string }) => c.product_category,
-      ),
+      capabilities: capabilities.map((c: { product_category: string }) => c.product_category),
     };
   }
 
@@ -756,16 +741,16 @@ export class SupplierService {
   ): Promise<{ capabilities: string[]; message: string }> {
     const profile = await this.profileRepo.findOne({
       where: { id: supplierId },
-      relations: ['onboarding'],
+      relations: ["onboarding"],
     });
 
     if (!profile) {
-      throw new NotFoundException('Supplier profile not found');
+      throw new NotFoundException("Supplier profile not found");
     }
 
     // Get existing capabilities using raw SQL to completely bypass TypeORM entity handling
     const existingCapabilities = await this.dataSource.query(
-      `SELECT id, product_category FROM supplier_capabilities WHERE supplier_profile_id = $1`,
+      "SELECT id, product_category FROM supplier_capabilities WHERE supplier_profile_id = $1",
       [supplierId],
     );
 
@@ -777,28 +762,24 @@ export class SupplierService {
     // Find categories to add and remove
     const toAdd = newCategories.filter((c) => !existingCategories.includes(c));
     const toRemove = existingCapabilities.filter(
-      (c: { id: number; product_category: string }) =>
-        !newCategories.includes(c.product_category),
+      (c: { id: number; product_category: string }) => !newCategories.includes(c.product_category),
     );
 
     // Remove capabilities no longer selected
     for (const cap of toRemove) {
-      await this.dataSource.query(
-        `DELETE FROM supplier_capabilities WHERE id = $1`,
-        [cap.id],
-      );
+      await this.dataSource.query("DELETE FROM supplier_capabilities WHERE id = $1", [cap.id]);
     }
 
     // Add new capabilities using raw SQL
     for (const category of toAdd) {
       await this.dataSource.query(
-        `INSERT INTO supplier_capabilities (supplier_profile_id, product_category, is_active, created_at, updated_at) VALUES ($1, $2, true, NOW(), NOW())`,
+        "INSERT INTO supplier_capabilities (supplier_profile_id, product_category, is_active, created_at, updated_at) VALUES ($1, $2, true, NOW(), NOW())",
         [supplierId, category],
       );
     }
 
     await this.auditService.log({
-      entityType: 'supplier_capabilities',
+      entityType: "supplier_capabilities",
       entityId: supplierId,
       action: AuditAction.UPDATE,
       oldValues: { capabilities: existingCategories },
@@ -806,14 +787,11 @@ export class SupplierService {
       ipAddress: clientIp,
     });
 
-    await this.boqDistributionService.updateSupplierAllowedSections(
-      supplierId,
-      newCategories,
-    );
+    await this.boqDistributionService.updateSupplierAllowedSections(supplierId, newCategories);
 
     return {
       capabilities: newCategories,
-      message: 'Capabilities saved successfully',
+      message: "Capabilities saved successfully",
     };
   }
 }

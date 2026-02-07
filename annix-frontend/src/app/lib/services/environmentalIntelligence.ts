@@ -31,84 +31,88 @@
  * - Soil Corrosivity
  */
 
+import { nowISO } from "@/app/lib/datetime";
+import { log } from "@/app/lib/logger";
 import {
-  fetchSoilGridsTexture,
-  fetchSoilGridsClassification,
-  fetchISDAsoilTexture,
-  isInAfrica,
+  classifyIndustrialPollution,
+  classifySoilMoisture,
+  classifyUsdaSoilTexture,
   deriveDrainageFromISDAsoil,
+  deriveDrainageFromSoilGrids,
+  deriveTextureFromWrb,
+  extractHumidity,
+  extractOpenMeteoWeatherData,
+  extractSoilMoistureFromOpenMeteo,
+  extractSoilTexture,
+  extractWeatherData,
+  extractWrbClass,
   fetchAgromonitoringSoilMoisture,
-  fetchSsurgoDrainage,
+  fetchAirPollutionData,
+  fetchISDAsoilTexture,
   fetchOpenMeteoData,
   fetchOpenWeatherMapData,
-  fetchAirPollutionData,
-  extractSoilTexture,
-  extractWrbClass,
-  extractHumidity,
-  extractSoilMoistureFromOpenMeteo,
-  extractWeatherData,
-  extractOpenMeteoWeatherData,
-  classifyUsdaSoilTexture,
-  classifySoilMoisture,
-  classifyIndustrialPollution,
-  deriveDrainageFromSoilGrids,
-  wrbToHumanReadable,
-  deriveTextureFromWrb,
+  fetchSoilGridsClassification,
+  fetchSoilGridsTexture,
+  fetchSsurgoDrainage,
   type ISDAsoilTextureData,
-} from '../api/externalApis';
-
-import { nowISO } from '@/app/lib/datetime';
-import { log } from '@/app/lib/logger';
+  isInAfrica,
+  wrbToHumanReadable,
+} from "../api/externalApis";
 
 import {
+  type AirSaltContentResult,
+  type FloodRiskLevel,
   getMarineEnvironmentalData,
   type MarineEnvironmentalData,
-  type AirSaltContentResult,
   type TimeOfWetnessResult,
-  type FloodRiskLevel,
-} from '../utils/coastlineCalculation';
+} from "../utils/coastlineCalculation";
 
 // Types matching the form's GlobalSpecs environmental fields
 export interface EnvironmentalData {
   // Location-based (always populated)
-  ecpMarineInfluence?: 'None' | 'Coastal' | 'Offshore';
-  ecpIso12944Category?: 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'CX';
-  ecpIndustrialPollution?: 'None' | 'Low' | 'Moderate' | 'High' | 'Very High';
+  ecpMarineInfluence?: "None" | "Coastal" | "Offshore";
+  ecpIso12944Category?: "C1" | "C2" | "C3" | "C4" | "C5" | "CX";
+  ecpIndustrialPollution?: "None" | "Low" | "Moderate" | "High" | "Very High";
 
   // Marine & Special Conditions (auto-populated from coastline calculation)
-  distanceToCoast?: number;           // Distance in km
-  distanceToCoastFormatted?: string;  // Formatted string (e.g., "500 m" or "2.50 km")
-  detailedMarineInfluence?: 'Extreme Marine' | 'Severe Marine' | 'High Marine' | 'Moderate Marine' | 'Low / Non-Marine';
-  airSaltContent?: AirSaltContentResult;  // Chloride deposition classification
-  timeOfWetness?: TimeOfWetnessResult;    // TOW classification (ISO 9223)
-  floodRisk?: FloodRiskLevel;             // Flooding / Water Table Risk
+  distanceToCoast?: number; // Distance in km
+  distanceToCoastFormatted?: string; // Formatted string (e.g., "500 m" or "2.50 km")
+  detailedMarineInfluence?:
+    | "Extreme Marine"
+    | "Severe Marine"
+    | "High Marine"
+    | "Moderate Marine"
+    | "Low / Non-Marine";
+  airSaltContent?: AirSaltContentResult; // Chloride deposition classification
+  timeOfWetness?: TimeOfWetnessResult; // TOW classification (ISO 9223)
+  floodRisk?: FloodRiskLevel; // Flooding / Water Table Risk
 
   // Soil data (auto-populated from APIs)
-  soilType?: string;           // WRB classification (human-readable)
-  soilTexture?: string;        // USDA soil texture classification
-  soilMoisture?: string;       // Percentage value
-  soilMoistureClass?: 'Low' | 'Moderate' | 'High';
-  soilDrainage?: string;       // Drainage class description
+  soilType?: string; // WRB classification (human-readable)
+  soilTexture?: string; // USDA soil texture classification
+  soilMoisture?: string; // Percentage value
+  soilMoistureClass?: "Low" | "Moderate" | "High";
+  soilDrainage?: string; // Drainage class description
   soilDrainageSource?: string; // 'USDA SSURGO' or 'model-derived'
 
   // Temperature data (auto-populated from OpenWeatherMap)
-  tempMin?: number;            // Minimum temperature (°C)
-  tempMax?: number;            // Maximum temperature (°C)
-  tempMean?: number;           // Mean/average temperature (°C)
+  tempMin?: number; // Minimum temperature (°C)
+  tempMax?: number; // Maximum temperature (°C)
+  tempMean?: number; // Mean/average temperature (°C)
 
   // Relative Humidity data (auto-populated from OpenWeatherMap)
-  humidityMin?: number;        // Minimum relative humidity (%)
-  humidityMax?: number;        // Maximum relative humidity (%)
-  humidityMean?: number;       // Mean/average relative humidity (%)
+  humidityMin?: number; // Minimum relative humidity (%)
+  humidityMax?: number; // Maximum relative humidity (%)
+  humidityMean?: number; // Mean/average relative humidity (%)
 
   // Additional Atmospheric Conditions (auto-populated from OpenWeatherMap)
-  annualRainfall?: string;     // Rainfall category (<250, 250-500, 500-1000, 1000-2000, >2000)
-  windSpeed?: number;          // Mean wind speed in m/s
-  windDirection?: string;      // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
-  uvIndex?: number;            // UV index value
-  uvExposure?: 'Low' | 'Moderate' | 'High' | 'Very High';
-  snowExposure?: 'None' | 'Low' | 'Moderate' | 'High';
-  fogFrequency?: 'Low' | 'Moderate' | 'High';
+  annualRainfall?: string; // Rainfall category (<250, 250-500, 500-1000, 1000-2000, >2000)
+  windSpeed?: number; // Mean wind speed in m/s
+  windDirection?: string; // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
+  uvIndex?: number; // UV index value
+  uvExposure?: "Low" | "Moderate" | "High" | "Very High";
+  snowExposure?: "None" | "Low" | "Moderate" | "High";
+  fogFrequency?: "Low" | "Moderate" | "High";
 }
 
 export interface EnvironmentalMetadata {
@@ -157,7 +161,7 @@ interface LocationCoordinates {
 }
 
 // Countries that use SSURGO
-const SSURGO_COUNTRIES = ['united states', 'usa', 'us', 'america'];
+const SSURGO_COUNTRIES = ["united states", "usa", "us", "america"];
 
 // Thresholds for environmental classification
 const THRESHOLDS = {
@@ -174,39 +178,39 @@ const THRESHOLDS = {
  */
 function isUnitedStates(country?: string): boolean {
   if (!country) return false;
-  return SSURGO_COUNTRIES.some(c => country.toLowerCase().includes(c));
+  return SSURGO_COUNTRIES.some((c) => country.toLowerCase().includes(c));
 }
 
 /**
  * Classify ISO 12944 corrosivity category based on environmental factors
  */
 function classifyIso12944(
-  marineInfluence: 'None' | 'Coastal' | 'Offshore',
+  marineInfluence: "None" | "Coastal" | "Offshore",
   humidity: number | null,
-  industrialPollution: 'None' | 'Moderate' | 'Heavy'
-): 'C1' | 'C2' | 'C3' | 'C4' | 'C5' | 'CX' {
-  if (marineInfluence === 'Offshore') return 'CX';
+  industrialPollution: "None" | "Moderate" | "Heavy",
+): "C1" | "C2" | "C3" | "C4" | "C5" | "CX" {
+  if (marineInfluence === "Offshore") return "CX";
 
-  if (marineInfluence === 'Coastal') {
-    if (humidity !== null && humidity > THRESHOLDS.humidity.veryHigh) return 'C5';
-    if (industrialPollution === 'Heavy') return 'C5';
-    return 'C4';
+  if (marineInfluence === "Coastal") {
+    if (humidity !== null && humidity > THRESHOLDS.humidity.veryHigh) return "C5";
+    if (industrialPollution === "Heavy") return "C5";
+    return "C4";
   }
 
-  if (industrialPollution === 'Heavy') return 'C4';
+  if (industrialPollution === "Heavy") return "C4";
 
-  if (industrialPollution === 'Moderate') {
-    if (humidity !== null && humidity > THRESHOLDS.humidity.high) return 'C4';
-    return 'C3';
+  if (industrialPollution === "Moderate") {
+    if (humidity !== null && humidity > THRESHOLDS.humidity.high) return "C4";
+    return "C3";
   }
 
   if (humidity !== null) {
-    if (humidity > THRESHOLDS.humidity.high) return 'C3';
-    if (humidity > THRESHOLDS.humidity.moderate) return 'C2';
-    return 'C1';
+    if (humidity > THRESHOLDS.humidity.high) return "C3";
+    if (humidity > THRESHOLDS.humidity.moderate) return "C2";
+    return "C1";
   }
 
-  return 'C2';
+  return "C2";
 }
 
 /**
@@ -214,42 +218,66 @@ function classifyIso12944(
  */
 function estimateIndustrialPollution(
   region?: string,
-  country?: string
-): 'None' | 'Low' | 'Moderate' | 'High' | 'Very High' {
-  if (!region && !country) return 'None';
+  country?: string,
+): "None" | "Low" | "Moderate" | "High" | "Very High" {
+  if (!region && !country) return "None";
 
-  const locationStr = `${region || ''} ${country || ''}`.toLowerCase();
+  const locationStr = `${region || ""} ${country || ""}`.toLowerCase();
 
   const heavyIndustrialAreas = [
-    'johannesburg', 'pretoria', 'gauteng', 'durban', 'ethekwini',
-    'richards bay', 'secunda', 'sasolburg', 'vanderbijlpark',
-    'houston', 'los angeles', 'chicago', 'detroit', 'pittsburgh'
+    "johannesburg",
+    "pretoria",
+    "gauteng",
+    "durban",
+    "ethekwini",
+    "richards bay",
+    "secunda",
+    "sasolburg",
+    "vanderbijlpark",
+    "houston",
+    "los angeles",
+    "chicago",
+    "detroit",
+    "pittsburgh",
   ];
 
   const lowIndustrialAreas = [
-    'cape town', 'western cape', 'port elizabeth', 'nelson mandela bay',
-    'east london', 'bloemfontein', 'polokwane', 'rustenburg',
-    'denver', 'phoenix', 'dallas', 'atlanta'
+    "cape town",
+    "western cape",
+    "port elizabeth",
+    "nelson mandela bay",
+    "east london",
+    "bloemfontein",
+    "polokwane",
+    "rustenburg",
+    "denver",
+    "phoenix",
+    "dallas",
+    "atlanta",
   ];
 
   const moderateIndustrialAreas = [
-    'durban', 'ethekwini', 'richards bay',
-    'houston', 'los angeles', 'chicago'
+    "durban",
+    "ethekwini",
+    "richards bay",
+    "houston",
+    "los angeles",
+    "chicago",
   ];
 
   for (const area of heavyIndustrialAreas) {
-    if (locationStr.includes(area)) return 'Very High';
+    if (locationStr.includes(area)) return "Very High";
   }
 
   for (const area of moderateIndustrialAreas) {
-    if (locationStr.includes(area)) return 'Moderate';
+    if (locationStr.includes(area)) return "Moderate";
   }
 
   for (const area of lowIndustrialAreas) {
-    if (locationStr.includes(area)) return 'Low';
+    if (locationStr.includes(area)) return "Low";
   }
 
-  return 'None';
+  return "None";
 }
 
 /**
@@ -265,7 +293,7 @@ function estimateIndustrialPollution(
  */
 export async function fetchEnvironmentalData(
   location: LocationCoordinates,
-  addressInfo?: { region?: string; country?: string }
+  addressInfo?: { region?: string; country?: string },
 ): Promise<EnvironmentalFetchResult> {
   const errors: string[] = [];
   const dataSources: string[] = [];
@@ -288,9 +316,9 @@ export async function fetchEnvironmentalData(
   data.floodRisk = initialMarineData.floodRisk;
   metadata.distanceToCoastKm = initialMarineData.distanceToCoastKm;
   metadata.marineEnvironmental = initialMarineData;
-  dataSources.push('Coastline calculation');
+  dataSources.push("Coastline calculation");
 
-  log.debug('[Environmental] Step 1 - Marine data calculated:', {
+  log.debug("[Environmental] Step 1 - Marine data calculated:", {
     distanceToCoast: data.distanceToCoastFormatted,
     marineInfluence: data.detailedMarineInfluence,
     airSaltContent: data.airSaltContent?.level,
@@ -300,7 +328,7 @@ export async function fetchEnvironmentalData(
   // Estimate industrial pollution from region/country
   const industrialPollution = estimateIndustrialPollution(
     addressInfo?.region,
-    addressInfo?.country
+    addressInfo?.country,
   );
   // Assign the industrial pollution directly (values already match EnvironmentalData type)
   data.ecpIndustrialPollution = industrialPollution;
@@ -312,7 +340,9 @@ export async function fetchEnvironmentalData(
 
   // Check if location is in Africa (prefer iSDAsoil for African locations)
   const inAfrica = isInAfrica(location.lat, location.lng);
-  log.debug(`[Environmental] Step 2 - Location in Africa: ${inAfrica}, coords: ${location.lat}, ${location.lng}`);
+  log.debug(
+    `[Environmental] Step 2 - Location in Africa: ${inAfrica}, coords: ${location.lat}, ${location.lng}`,
+  );
 
   // Fetch SoilGrids endpoints in parallel - these now return null on error instead of throwing
   const [textureResponse, classResponse] = await Promise.all([
@@ -320,50 +350,54 @@ export async function fetchEnvironmentalData(
     fetchSoilGridsClassification(location.lat, location.lng),
   ]);
 
-  log.debug('[Environmental] SoilGrids texture response:', textureResponse ? 'received' : 'null');
-  log.debug('[Environmental] SoilGrids class response:', classResponse ? 'received' : 'null');
+  log.debug("[Environmental] SoilGrids texture response:", textureResponse ? "received" : "null");
+  log.debug("[Environmental] SoilGrids class response:", classResponse ? "received" : "null");
 
   // Process SoilGrids texture response if available
   if (textureResponse) {
     soilTextureData = extractSoilTexture(textureResponse);
     metadata.soilTexture = soilTextureData;
-    log.debug('[Environmental] Extracted SoilGrids texture:', soilTextureData);
+    log.debug("[Environmental] Extracted SoilGrids texture:", soilTextureData);
 
     // Determine USDA Soil Texture from SoilGrids
-    if (soilTextureData.clay !== null &&
-        soilTextureData.sand !== null &&
-        soilTextureData.silt !== null) {
+    if (
+      soilTextureData.clay !== null &&
+      soilTextureData.sand !== null &&
+      soilTextureData.silt !== null
+    ) {
       data.soilTexture = classifyUsdaSoilTexture(
         soilTextureData.clay,
         soilTextureData.sand,
-        soilTextureData.silt
+        soilTextureData.silt,
       );
-      soilTextureSource = 'ISRIC SoilGrids';
-      dataSources.push('ISRIC SoilGrids');
+      soilTextureSource = "ISRIC SoilGrids";
+      dataSources.push("ISRIC SoilGrids");
       log.debug(`[Environmental] Soil texture from SoilGrids: ${data.soilTexture}`);
     } else {
-      log.debug('[Environmental] SoilGrids returned incomplete texture data');
+      log.debug("[Environmental] SoilGrids returned incomplete texture data");
     }
   }
 
   // If SoilGrids texture failed or returned incomplete data, try iSDAsoil as fallback
   // iSDAsoil is especially useful for African locations
   if (!data.soilTexture) {
-    log.debug('[Environmental] Trying iSDAsoil fallback...');
+    log.debug("[Environmental] Trying iSDAsoil fallback...");
     iSDAsoilData = await fetchISDAsoilTexture(location.lat, location.lng);
-    log.debug('[Environmental] iSDAsoil response:', iSDAsoilData);
+    log.debug("[Environmental] iSDAsoil response:", iSDAsoilData);
 
-    if (iSDAsoilData &&
-        iSDAsoilData.clay !== null &&
-        iSDAsoilData.sand !== null &&
-        iSDAsoilData.silt !== null) {
+    if (
+      iSDAsoilData &&
+      iSDAsoilData.clay !== null &&
+      iSDAsoilData.sand !== null &&
+      iSDAsoilData.silt !== null
+    ) {
       // Use iSDAsoil data for texture classification
       data.soilTexture = classifyUsdaSoilTexture(
         iSDAsoilData.clay,
         iSDAsoilData.sand,
-        iSDAsoilData.silt
+        iSDAsoilData.silt,
       );
-      soilTextureSource = 'iSDAsoil';
+      soilTextureSource = "iSDAsoil";
 
       // Store in metadata for drainage calculation
       soilTextureData = {
@@ -375,11 +409,13 @@ export async function fetchEnvironmentalData(
       };
       metadata.soilTexture = soilTextureData;
 
-      if (!dataSources.includes('iSDAsoil')) {
-        dataSources.push('iSDAsoil');
+      if (!dataSources.includes("iSDAsoil")) {
+        dataSources.push("iSDAsoil");
       }
 
-      log.debug(`[Environmental] Soil texture from iSDAsoil: ${data.soilTexture} (clay: ${iSDAsoilData.clay}%, sand: ${iSDAsoilData.sand}%, silt: ${iSDAsoilData.silt}%)`);
+      log.debug(
+        `[Environmental] Soil texture from iSDAsoil: ${data.soilTexture} (clay: ${iSDAsoilData.clay}%, sand: ${iSDAsoilData.sand}%, silt: ${iSDAsoilData.silt}%)`,
+      );
     }
   }
 
@@ -391,8 +427,8 @@ export async function fetchEnvironmentalData(
 
     if (wrbClass) {
       data.soilType = wrbToHumanReadable(wrbClass);
-      if (!dataSources.includes('ISRIC SoilGrids')) {
-        dataSources.push('ISRIC SoilGrids');
+      if (!dataSources.includes("ISRIC SoilGrids")) {
+        dataSources.push("ISRIC SoilGrids");
       }
 
       // If we have WRB class but no texture, derive texture from WRB
@@ -400,7 +436,7 @@ export async function fetchEnvironmentalData(
         const derivedTexture = deriveTextureFromWrb(wrbClass);
         if (derivedTexture) {
           data.soilTexture = derivedTexture.texture;
-          soilTextureSource = 'WRB-derived';
+          soilTextureSource = "WRB-derived";
           // Create synthetic texture data for drainage calculation
           soilTextureData = {
             clay: derivedTexture.clay,
@@ -409,7 +445,9 @@ export async function fetchEnvironmentalData(
             bulkDensity: derivedTexture.bulkDensity,
             organicCarbon: null,
           };
-          log.debug(`[Environmental] Soil texture derived from WRB class (${wrbClass}): ${data.soilTexture}`);
+          log.debug(
+            `[Environmental] Soil texture derived from WRB class (${wrbClass}): ${data.soilTexture}`,
+          );
         }
       }
     }
@@ -417,16 +455,16 @@ export async function fetchEnvironmentalData(
 
   // Add error message if no soil texture data available from any source
   if (!data.soilTexture) {
-    log.debug('[Environmental] No soil texture available from any source');
+    log.debug("[Environmental] No soil texture available from any source");
     if (inAfrica) {
-      errors.push('Soil texture data unavailable (SoilGrids and iSDAsoil failed)');
+      errors.push("Soil texture data unavailable (SoilGrids and iSDAsoil failed)");
     } else {
-      errors.push('Soil texture data unavailable');
+      errors.push("Soil texture data unavailable");
     }
   }
 
   if (!classResponse && !data.soilType) {
-    errors.push('Soil classification unavailable');
+    errors.push("Soil classification unavailable");
   }
 
   // Step 3: Query Agromonitoring for Soil Moisture
@@ -442,7 +480,7 @@ export async function fetchEnvironmentalData(
       const moistureResult = classifySoilMoisture(soilMoistureValue);
       data.soilMoisture = moistureResult.percentage;
       data.soilMoistureClass = moistureResult.classification;
-      dataSources.push('Agromonitoring');
+      dataSources.push("Agromonitoring");
     } else {
       // Fallback to Open-Meteo if Agromonitoring fails
       try {
@@ -457,19 +495,19 @@ export async function fetchEnvironmentalData(
           const moistureResult = classifySoilMoisture(soilMoistureValue);
           data.soilMoisture = moistureResult.percentage;
           data.soilMoistureClass = moistureResult.classification;
-          dataSources.push('Open-Meteo (fallback)');
+          dataSources.push("Open-Meteo (fallback)");
         }
 
         if (humidity !== null) {
           metadata.humidity = humidity;
         }
       } catch {
-        errors.push('Soil moisture data unavailable');
+        errors.push("Soil moisture data unavailable");
       }
     }
   } catch (error) {
-    log.error('Soil moisture fetch error:', error);
-    errors.push('Soil moisture data unavailable');
+    log.error("Soil moisture fetch error:", error);
+    errors.push("Soil moisture data unavailable");
   }
 
   // Ensure we have humidity data for ISO classification
@@ -479,8 +517,8 @@ export async function fetchEnvironmentalData(
       const humidity = extractHumidity(meteoData);
       if (humidity !== null) {
         metadata.humidity = humidity;
-        if (!dataSources.includes('Open-Meteo') && !dataSources.includes('Open-Meteo (fallback)')) {
-          dataSources.push('Open-Meteo');
+        if (!dataSources.includes("Open-Meteo") && !dataSources.includes("Open-Meteo (fallback)")) {
+          dataSources.push("Open-Meteo");
         }
       }
     } catch {
@@ -497,18 +535,18 @@ export async function fetchEnvironmentalData(
       const ssurgoDrainage = await fetchSsurgoDrainage(location.lat, location.lng);
       if (ssurgoDrainage) {
         data.soilDrainage = ssurgoDrainage;
-        data.soilDrainageSource = 'USDA SSURGO';
-        dataSources.push('USDA SSURGO');
+        data.soilDrainageSource = "USDA SSURGO";
+        dataSources.push("USDA SSURGO");
       } else {
         // Fallback to derived if SSURGO doesn't have data
         if (soilTextureData) {
           const derived = deriveDrainageFromSoilGrids(
             soilTextureData.clay,
             soilTextureData.bulkDensity,
-            soilTextureData.organicCarbon
+            soilTextureData.organicCarbon,
           );
           data.soilDrainage = derived.class;
-          data.soilDrainageSource = 'model-derived';
+          data.soilDrainageSource = "model-derived";
         }
       }
     } catch {
@@ -517,10 +555,10 @@ export async function fetchEnvironmentalData(
         const derived = deriveDrainageFromSoilGrids(
           soilTextureData.clay,
           soilTextureData.bulkDensity,
-          soilTextureData.organicCarbon
+          soilTextureData.organicCarbon,
         );
         data.soilDrainage = derived.class;
-        data.soilDrainageSource = 'model-derived';
+        data.soilDrainageSource = "model-derived";
       }
     }
   } else {
@@ -529,16 +567,20 @@ export async function fetchEnvironmentalData(
       const derived = deriveDrainageFromSoilGrids(
         soilTextureData.clay,
         soilTextureData.bulkDensity,
-        soilTextureData.organicCarbon
+        soilTextureData.organicCarbon,
       );
       data.soilDrainage = derived.class;
-      data.soilDrainageSource = soilTextureSource === 'iSDAsoil' ? 'iSDAsoil-derived' :
-                                soilTextureSource === 'WRB-derived' ? 'WRB-derived' : 'model-derived';
+      data.soilDrainageSource =
+        soilTextureSource === "iSDAsoil"
+          ? "iSDAsoil-derived"
+          : soilTextureSource === "WRB-derived"
+            ? "WRB-derived"
+            : "model-derived";
     } else if (iSDAsoilData) {
       // Use iSDAsoil data directly for drainage if SoilGrids failed
       const derived = deriveDrainageFromISDAsoil(iSDAsoilData);
       data.soilDrainage = derived.class;
-      data.soilDrainageSource = 'iSDAsoil-derived';
+      data.soilDrainageSource = "iSDAsoil-derived";
     }
   }
 
@@ -547,8 +589,10 @@ export async function fetchEnvironmentalData(
     const wrbDerived = deriveTextureFromWrb(wrbClass);
     if (wrbDerived) {
       data.soilDrainage = wrbDerived.drainage;
-      data.soilDrainageSource = 'WRB-derived';
-      log.debug(`[Environmental] Soil drainage derived from WRB class (${wrbClass}): ${data.soilDrainage}`);
+      data.soilDrainageSource = "WRB-derived";
+      log.debug(
+        `[Environmental] Soil drainage derived from WRB class (${wrbClass}): ${data.soilDrainage}`,
+      );
     }
   }
 
@@ -561,23 +605,23 @@ export async function fetchEnvironmentalData(
     const weatherResponse = await fetchOpenWeatherMapData(location.lat, location.lng);
     weatherData = extractWeatherData(weatherResponse);
     if (weatherData) {
-      log.debug('[Environmental] Step 5 - OpenWeatherMap data fetched successfully');
+      log.debug("[Environmental] Step 5 - OpenWeatherMap data fetched successfully");
     }
   } catch (error) {
-    log.warn('[Environmental] OpenWeatherMap API error, will try Open-Meteo fallback:', error);
+    log.warn("[Environmental] OpenWeatherMap API error, will try Open-Meteo fallback:", error);
   }
 
   // Fallback to Open-Meteo if OpenWeatherMap failed or returned no data
   if (!weatherData) {
     try {
-      log.debug('[Environmental] Step 5 - Using Open-Meteo (free) for weather data');
+      log.debug("[Environmental] Step 5 - Using Open-Meteo (free) for weather data");
       const openMeteoResponse = await fetchOpenMeteoData(location.lat, location.lng);
       weatherData = extractOpenMeteoWeatherData(openMeteoResponse);
       if (weatherData) {
-        log.debug('[Environmental] Step 5 - Open-Meteo data fetched successfully');
+        log.debug("[Environmental] Step 5 - Open-Meteo data fetched successfully");
       }
     } catch (error) {
-      log.error('[Environmental] Open-Meteo API error:', error);
+      log.error("[Environmental] Open-Meteo API error:", error);
     }
   }
 
@@ -625,7 +669,7 @@ export async function fetchEnvironmentalData(
 
     dataSources.push(weatherData.source);
 
-    log.debug('[Environmental] Step 5 - Weather data applied:', {
+    log.debug("[Environmental] Step 5 - Weather data applied:", {
       source: weatherData.source,
       temp: weatherData.temperature,
       humidity: weatherData.humidity,
@@ -642,7 +686,7 @@ export async function fetchEnvironmentalData(
       location.lat,
       location.lng,
       weatherData.humidity.mean,
-      weatherData.temperature.mean
+      weatherData.temperature.mean,
     );
     // Update with humidity-enhanced air salt content
     data.airSaltContent = enhancedMarineData.airSaltContent;
@@ -650,7 +694,7 @@ export async function fetchEnvironmentalData(
     data.timeOfWetness = enhancedMarineData.timeOfWetness;
     metadata.marineEnvironmental = enhancedMarineData;
   } else {
-    errors.push('Temperature and humidity data unavailable from all sources');
+    errors.push("Temperature and humidity data unavailable from all sources");
   }
 
   // Step 6: Query OpenWeatherMap Air Pollution API for Industrial Atmospheric Pollution
@@ -669,42 +713,46 @@ export async function fetchEnvironmentalData(
         source: pollutionData.source,
       };
 
-      if (!dataSources.includes('OpenWeatherMap')) {
-        dataSources.push('OpenWeatherMap');
+      if (!dataSources.includes("OpenWeatherMap")) {
+        dataSources.push("OpenWeatherMap");
       }
-      dataSources.push('OpenWeather Air Pollution API');
+      dataSources.push("OpenWeather Air Pollution API");
     }
   } catch (error) {
-    log.error('Air Pollution API error:', error);
+    log.error("Air Pollution API error:", error);
     // Keep the heuristic-based industrial pollution value if API fails
   }
 
   // Step 7: Calculate ISO 12944 category (composite of multiple factors)
   // Use actual pollution data if available, otherwise fall back to heuristic
-  const pollutionForIso = data.ecpIndustrialPollution === 'High' || data.ecpIndustrialPollution === 'Very High'
-    ? 'Heavy'
-    : data.ecpIndustrialPollution === 'Moderate'
-      ? 'Moderate'
-      : 'None';
+  const pollutionForIso =
+    data.ecpIndustrialPollution === "High" || data.ecpIndustrialPollution === "Very High"
+      ? "Heavy"
+      : data.ecpIndustrialPollution === "Moderate"
+        ? "Moderate"
+        : "None";
 
   data.ecpIso12944Category = classifyIso12944(
-    data.ecpMarineInfluence || 'None',
+    data.ecpMarineInfluence || "None",
     metadata.humidity ?? null,
-    pollutionForIso as 'None' | 'Moderate' | 'Heavy'
+    pollutionForIso as "None" | "Moderate" | "Heavy",
   );
 
   // Step 8: Finalize metadata
   metadata.dataSources = dataSources;
 
   // Determine if we got complete data (temperature/humidity are optional)
-  const isComplete = errors.length === 0 &&
+  const isComplete =
+    errors.length === 0 &&
     data.soilType !== undefined &&
     data.soilTexture !== undefined &&
     data.soilMoisture !== undefined &&
     data.soilDrainage !== undefined;
 
-  log.debug('[Environmental] Final data to apply:', {
-    fieldsPopulated: Object.keys(data).filter(k => data[k as keyof EnvironmentalData] !== undefined),
+  log.debug("[Environmental] Final data to apply:", {
+    fieldsPopulated: Object.keys(data).filter(
+      (k) => data[k as keyof EnvironmentalData] !== undefined,
+    ),
     dataSources,
     errors,
     sampleData: {
@@ -715,7 +763,7 @@ export async function fetchEnvironmentalData(
       windSpeed: data.windSpeed,
       windDirection: data.windDirection,
       annualRainfall: data.annualRainfall,
-    }
+    },
   });
 
   return {

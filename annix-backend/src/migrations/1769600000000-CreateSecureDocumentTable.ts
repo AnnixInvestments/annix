@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateSecureDocumentTable1769600000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -27,10 +27,8 @@ export class CreateSecureDocumentTable1769600000000 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_secure_document_title`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS idx_secure_document_created_by`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS secure_document`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_secure_document_title");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_secure_document_created_by");
+    await queryRunner.query("DROP TABLE IF EXISTS secure_document");
   }
 }

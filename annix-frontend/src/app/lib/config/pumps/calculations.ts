@@ -16,23 +16,23 @@ export const flowConversions = {
   m3sToM3h: (m3s: number): number => m3s * 3600,
 };
 
-export type FlowUnit = 'm3/h' | 'l/s' | 'GPM' | 'm3/s';
+export type FlowUnit = "m3/h" | "l/s" | "GPM" | "m3/s";
 
 export const convertFlow = (value: number, from: FlowUnit, to: FlowUnit): number => {
   if (from === to) return value;
 
   const toM3h: Record<FlowUnit, (v: number) => number> = {
-    'm3/h': (v) => v,
-    'l/s': flowConversions.lsToM3h,
-    'GPM': flowConversions.gpmToM3h,
-    'm3/s': flowConversions.m3sToM3h,
+    "m3/h": (v) => v,
+    "l/s": flowConversions.lsToM3h,
+    GPM: flowConversions.gpmToM3h,
+    "m3/s": flowConversions.m3sToM3h,
   };
 
   const fromM3h: Record<FlowUnit, (v: number) => number> = {
-    'm3/h': (v) => v,
-    'l/s': flowConversions.m3hToLs,
-    'GPM': flowConversions.m3hToGpm,
-    'm3/s': flowConversions.m3hToM3s,
+    "m3/h": (v) => v,
+    "l/s": flowConversions.m3hToLs,
+    GPM: flowConversions.m3hToGpm,
+    "m3/s": flowConversions.m3hToM3s,
   };
 
   const m3hValue = toM3h[from](value);
@@ -56,25 +56,25 @@ export const pressureConversions = {
   kpaToPsi: (kpa: number): number => kpa / 6.89476,
 };
 
-export type PressureUnit = 'bar' | 'psi' | 'kPa' | 'MPa' | 'mWC';
+export type PressureUnit = "bar" | "psi" | "kPa" | "MPa" | "mWC";
 
 export const convertPressure = (value: number, from: PressureUnit, to: PressureUnit): number => {
   if (from === to) return value;
 
   const toBar: Record<PressureUnit, (v: number) => number> = {
-    'bar': (v) => v,
-    'psi': pressureConversions.psiToBar,
-    'kPa': pressureConversions.kpaToBar,
-    'MPa': pressureConversions.mpaToBar,
-    'mWC': pressureConversions.mwcToBar,
+    bar: (v) => v,
+    psi: pressureConversions.psiToBar,
+    kPa: pressureConversions.kpaToBar,
+    MPa: pressureConversions.mpaToBar,
+    mWC: pressureConversions.mwcToBar,
   };
 
   const fromBar: Record<PressureUnit, (v: number) => number> = {
-    'bar': (v) => v,
-    'psi': pressureConversions.barToPsi,
-    'kPa': pressureConversions.barToKpa,
-    'MPa': pressureConversions.barToMpa,
-    'mWC': pressureConversions.barToMwc,
+    bar: (v) => v,
+    psi: pressureConversions.barToPsi,
+    kPa: pressureConversions.barToKpa,
+    MPa: pressureConversions.barToMpa,
+    mWC: pressureConversions.barToMwc,
   };
 
   const barValue = toBar[from](value);
@@ -94,28 +94,28 @@ export const viscosityConversions = {
   m2sToCst: (m2s: number): number => m2s * 1000000,
 };
 
-export type ViscosityUnit = 'cP' | 'cSt' | 'Pa·s' | 'm²/s';
+export type ViscosityUnit = "cP" | "cSt" | "Pa·s" | "m²/s";
 
 export const convertViscosity = (
   value: number,
   from: ViscosityUnit,
   to: ViscosityUnit,
-  specificGravity: number = 1.0
+  specificGravity: number = 1.0,
 ): number => {
   if (from === to) return value;
 
   const toCp: Record<ViscosityUnit, (v: number, sg: number) => number> = {
-    'cP': (v) => v,
-    'cSt': viscosityConversions.cstToCp,
-    'Pa·s': (v) => viscosityConversions.pasToCp(v),
-    'm²/s': (v, sg) => viscosityConversions.cstToCp(viscosityConversions.m2sToCst(v), sg),
+    cP: (v) => v,
+    cSt: viscosityConversions.cstToCp,
+    Pa·s: (v) => viscosityConversions.pasToCp(v),
+    "m²/s": (v, sg) => viscosityConversions.cstToCp(viscosityConversions.m2sToCst(v), sg),
   };
 
   const fromCp: Record<ViscosityUnit, (v: number, sg: number) => number> = {
-    'cP': (v) => v,
-    'cSt': viscosityConversions.cpToCst,
-    'Pa·s': (v) => viscosityConversions.cpToPas(v),
-    'm²/s': (v, sg) => viscosityConversions.cstToM2s(viscosityConversions.cpToCst(v, sg)),
+    cP: (v) => v,
+    cSt: viscosityConversions.cpToCst,
+    Pa·s: (v) => viscosityConversions.cpToPas(v),
+    "m²/s": (v, sg) => viscosityConversions.cstToM2s(viscosityConversions.cpToCst(v, sg)),
   };
 
   const cpValue = toCp[from](value, specificGravity);
@@ -151,7 +151,7 @@ export const calculateNpshAvailable = (params: NpshCalculationParams): number =>
 export const checkNpshMargin = (
   npshAvailable: number,
   npshRequired: number,
-  safetyMargin: number = 0.5
+  safetyMargin: number = 0.5,
 ): {
   isAdequate: boolean;
   margin: number;
@@ -164,11 +164,11 @@ export const checkNpshMargin = (
 
   const recommendation = isAdequate
     ? margin >= 1.0
-      ? 'Excellent NPSH margin - pump should operate without cavitation'
-      : 'Acceptable NPSH margin - monitor for signs of cavitation'
+      ? "Excellent NPSH margin - pump should operate without cavitation"
+      : "Acceptable NPSH margin - monitor for signs of cavitation"
     : margin >= 0
-      ? 'Marginal NPSH - consider increasing suction head or reducing losses'
-      : 'Insufficient NPSH - pump will cavitate. Redesign suction system required';
+      ? "Marginal NPSH - consider increasing suction head or reducing losses"
+      : "Insufficient NPSH - pump will cavitate. Redesign suction system required";
 
   return {
     isAdequate,
@@ -181,7 +181,7 @@ export const checkNpshMargin = (
 // Water vapor pressure at temperature (simplified approximation)
 export const waterVaporPressure = (tempC: number): number => {
   if (tempC < 0 || tempC > 100) {
-    throw new Error('Temperature must be between 0°C and 100°C for water');
+    throw new Error("Temperature must be between 0°C and 100°C for water");
   }
   return 0.0006112 * Math.exp((17.67 * tempC) / (tempC + 243.5));
 };
@@ -215,7 +215,7 @@ export interface PumpCurve {
 
 export const interpolatePumpCurve = (
   curve: PumpCurve,
-  targetFlowM3h: number
+  targetFlowM3h: number,
 ): { headM: number; efficiencyPercent?: number } | null => {
   if (targetFlowM3h < 0 || targetFlowM3h > curve.maxFlowM3h) {
     return null;
@@ -256,7 +256,7 @@ export const interpolatePumpCurve = (
 export const calculateHydraulicPower = (
   flowM3h: number,
   headM: number,
-  specificGravity: number = 1.0
+  specificGravity: number = 1.0,
 ): number => {
   const flowM3s = flowM3h / 3600;
   const densityKgM3 = specificGravity * 1000;
@@ -265,14 +265,14 @@ export const calculateHydraulicPower = (
 
 export const calculateShaftPower = (
   hydraulicPowerKw: number,
-  pumpEfficiencyPercent: number
+  pumpEfficiencyPercent: number,
 ): number => {
   return hydraulicPowerKw / (pumpEfficiencyPercent / 100);
 };
 
 export const calculateMotorPower = (
   shaftPowerKw: number,
-  serviceFactorPercent: number = 115
+  serviceFactorPercent: number = 115,
 ): number => {
   return shaftPowerKw * (serviceFactorPercent / 100);
 };
@@ -304,7 +304,7 @@ export const estimatePumpRequirements = (
   headM: number,
   specificGravity: number = 1.0,
   estimatedEfficiencyPercent: number = 70,
-  estimatedNpshRequiredM: number = 3
+  estimatedNpshRequiredM: number = 3,
 ): PumpSelectionResult => {
   const hydraulicPowerKw = calculateHydraulicPower(flowM3h, headM, specificGravity);
   const shaftPowerKw = calculateShaftPower(hydraulicPowerKw, estimatedEfficiencyPercent);
@@ -356,7 +356,7 @@ export const calculateCvLiquid = (params: CvCalculationParams): CvLiquidResult =
 export const calculateFlowFromCv = (
   cv: number,
   pressureDropPsi: number,
-  specificGravity: number = 1.0
+  specificGravity: number = 1.0,
 ): number => {
   return cv * Math.sqrt(pressureDropPsi / specificGravity);
 };
@@ -364,9 +364,9 @@ export const calculateFlowFromCv = (
 export const calculatePressureDropFromCv = (
   cv: number,
   flowRateGpm: number,
-  specificGravity: number = 1.0
+  specificGravity: number = 1.0,
 ): number => {
-  return specificGravity * Math.pow(flowRateGpm / cv, 2);
+  return specificGravity * (flowRateGpm / cv) ** 2;
 };
 
 export interface CvGasParams {
@@ -391,7 +391,7 @@ export const calculateCvGas = (params: CvGasParams): number => {
     return (Q / 963) * Math.sqrt((sg * T) / (deltaP * Pm));
   }
 
-  const Y = 1 - (deltaP / (3 * P1));
+  const Y = 1 - deltaP / (3 * P1);
   return (Q / (963 * Y)) * Math.sqrt((sg * T) / (deltaP * P1));
 };
 
@@ -450,16 +450,16 @@ export const calculateValveSizing = (params: ValveSizingParams): ValveSizingResu
   const safetyFactor = 1.25;
   const requiredCv = cvResult.cv * safetyFactor;
 
-  const recommendedValve = STANDARD_VALVE_CVS.find((v) => v.cv >= requiredCv) ||
+  const recommendedValve =
+    STANDARD_VALVE_CVS.find((v) => v.cv >= requiredCv) ||
     STANDARD_VALVE_CVS[STANDARD_VALVE_CVS.length - 1];
 
   const Pv = 0.023;
   const Fl = params.allowedPressureRecovery ?? 0.9;
   const cavitationIndex =
-    (params.inletPressureBar - params.outletPressureBar) /
-    (params.inletPressureBar - Pv);
+    (params.inletPressureBar - params.outletPressureBar) / (params.inletPressureBar - Pv);
 
-  const cavitationThreshold = Math.pow(Fl, 2);
+  const cavitationThreshold = Fl ** 2;
   const cavitationWarning =
     cavitationIndex > cavitationThreshold
       ? `Warning: Cavitation likely (sigma=${cavitationIndex.toFixed(2)} > ${cavitationThreshold.toFixed(2)}). Consider trim selection or multiple valves.`
@@ -492,14 +492,14 @@ export const calculateAffinityLawsSpeed = (
   originalHeadM: number,
   originalPowerKw: number,
   originalSpeedRpm: number,
-  newSpeedRpm: number
+  newSpeedRpm: number,
 ): AffinityLawsResult => {
   const speedRatio = newSpeedRpm / originalSpeedRpm;
 
   return {
     newFlowM3h: Math.round(originalFlowM3h * speedRatio * 100) / 100,
-    newHeadM: Math.round(originalHeadM * Math.pow(speedRatio, 2) * 100) / 100,
-    newPowerKw: Math.round(originalPowerKw * Math.pow(speedRatio, 3) * 100) / 100,
+    newHeadM: Math.round(originalHeadM * speedRatio ** 2 * 100) / 100,
+    newPowerKw: Math.round(originalPowerKw * speedRatio ** 3 * 100) / 100,
     speedRatio: Math.round(speedRatio * 1000) / 1000,
     diameterRatio: 1,
   };
@@ -510,14 +510,14 @@ export const calculateAffinityLawsDiameter = (
   originalHeadM: number,
   originalPowerKw: number,
   originalDiameterMm: number,
-  newDiameterMm: number
+  newDiameterMm: number,
 ): AffinityLawsResult => {
   const diameterRatio = newDiameterMm / originalDiameterMm;
 
   return {
     newFlowM3h: Math.round(originalFlowM3h * diameterRatio * 100) / 100,
-    newHeadM: Math.round(originalHeadM * Math.pow(diameterRatio, 2) * 100) / 100,
-    newPowerKw: Math.round(originalPowerKw * Math.pow(diameterRatio, 3) * 100) / 100,
+    newHeadM: Math.round(originalHeadM * diameterRatio ** 2 * 100) / 100,
+    newPowerKw: Math.round(originalPowerKw * diameterRatio ** 3 * 100) / 100,
     speedRatio: 1,
     diameterRatio: Math.round(diameterRatio * 1000) / 1000,
   };
@@ -540,16 +540,16 @@ export interface SystemCurvePoint {
 
 export const calculateSystemCurve = (
   params: SystemCurveParams,
-  flowPointsCount: number = 10
+  flowPointsCount: number = 10,
 ): SystemCurvePoint[] => {
   const maxFlow = params.designFlowM3h * 1.5;
   const flowStep = maxFlow / flowPointsCount;
 
-  const K = params.frictionLossAtDesignFlowM / Math.pow(params.designFlowM3h, 2);
+  const K = params.frictionLossAtDesignFlowM / params.designFlowM3h ** 2;
 
   return Array.from({ length: flowPointsCount + 1 }, (_, i) => {
     const flow = i * flowStep;
-    const frictionHead = K * Math.pow(flow, 2);
+    const frictionHead = K * flow ** 2;
     return {
       flowM3h: Math.round(flow * 100) / 100,
       headM: Math.round((params.staticHeadM + frictionHead) * 100) / 100,
@@ -559,7 +559,7 @@ export const calculateSystemCurve = (
 
 export const findOperatingPoint = (
   pumpCurve: PumpCurvePoint[],
-  systemCurve: SystemCurvePoint[]
+  systemCurve: SystemCurvePoint[],
 ): { flowM3h: number; headM: number; efficiencyPercent?: number } | null => {
   const sortedPumpCurve = [...pumpCurve].sort((a, b) => a.flowM3h - b.flowM3h);
 
@@ -570,7 +570,7 @@ export const findOperatingPoint = (
 
   const operatingPoints = pumpSegments.flatMap(({ p1, p2 }) => {
     const matchingSystemPoints = systemCurve.filter(
-      (s) => s.flowM3h >= p1.flowM3h && s.flowM3h <= p2.flowM3h
+      (s) => s.flowM3h >= p1.flowM3h && s.flowM3h <= p2.flowM3h,
     );
 
     return matchingSystemPoints
@@ -605,56 +605,54 @@ export const findOperatingPoint = (
 export const calculateSpecificSpeedMetric = (
   flowM3h: number,
   headM: number,
-  speedRpm: number
+  speedRpm: number,
 ): number => {
   const flowM3s = flowM3h / 3600;
-  return speedRpm * Math.sqrt(flowM3s) / Math.pow(headM, 0.75);
+  return (speedRpm * Math.sqrt(flowM3s)) / headM ** 0.75;
 };
 
 export const calculateSpecificSpeedUS = (
   flowGpm: number,
   headFt: number,
-  speedRpm: number
+  speedRpm: number,
 ): number => {
-  return speedRpm * Math.sqrt(flowGpm) / Math.pow(headFt, 0.75);
+  return (speedRpm * Math.sqrt(flowGpm)) / headFt ** 0.75;
 };
 
-export type PumpTypeByNs =
-  | 'radial_low_ns'
-  | 'radial_medium_ns'
-  | 'mixed_flow'
-  | 'axial_flow';
+export type PumpTypeByNs = "radial_low_ns" | "radial_medium_ns" | "mixed_flow" | "axial_flow";
 
-export const getPumpTypeBySpecificSpeed = (nsMetric: number): {
+export const getPumpTypeBySpecificSpeed = (
+  nsMetric: number,
+): {
   type: PumpTypeByNs;
   description: string;
   typicalEfficiency: string;
 } => {
   if (nsMetric < 25) {
     return {
-      type: 'radial_low_ns',
-      description: 'Radial flow - Low specific speed',
-      typicalEfficiency: '60-75%',
+      type: "radial_low_ns",
+      description: "Radial flow - Low specific speed",
+      typicalEfficiency: "60-75%",
     };
   }
   if (nsMetric < 70) {
     return {
-      type: 'radial_medium_ns',
-      description: 'Radial flow - Medium specific speed (most common)',
-      typicalEfficiency: '75-85%',
+      type: "radial_medium_ns",
+      description: "Radial flow - Medium specific speed (most common)",
+      typicalEfficiency: "75-85%",
     };
   }
   if (nsMetric < 160) {
     return {
-      type: 'mixed_flow',
-      description: 'Mixed flow pump',
-      typicalEfficiency: '80-88%',
+      type: "mixed_flow",
+      description: "Mixed flow pump",
+      typicalEfficiency: "80-88%",
     };
   }
   return {
-    type: 'axial_flow',
-    description: 'Axial flow pump',
-    typicalEfficiency: '85-92%',
+    type: "axial_flow",
+    description: "Axial flow pump",
+    typicalEfficiency: "85-92%",
   };
 };
 
@@ -693,7 +691,7 @@ export const calculatePumpSizingSummary = (input: PumpSizingInput): PumpSizingSu
   const nsMetric = calculateSpecificSpeedMetric(input.flowRateM3h, input.totalHeadM, speedRpm);
   const pumpTypeInfo = getPumpTypeBySpecificSpeed(nsMetric);
 
-  const effRange = pumpTypeInfo.typicalEfficiency.split('-').map((s) => parseFloat(s));
+  const effRange = pumpTypeInfo.typicalEfficiency.split("-").map((s) => parseFloat(s));
   const estimatedEfficiency = (effRange[0] + effRange[1]) / 2;
 
   const shaftPowerKw = calculateShaftPower(hydraulicPowerKw, estimatedEfficiency);
@@ -702,7 +700,7 @@ export const calculatePumpSizingSummary = (input: PumpSizingInput): PumpSizingSu
 
   let npshMarginStatus: string | null = null;
   if (input.npshAvailableM !== undefined) {
-    const estimatedNpshR = 2 + (input.flowRateM3h / 100);
+    const estimatedNpshR = 2 + input.flowRateM3h / 100;
     const margin = input.npshAvailableM - estimatedNpshR;
     npshMarginStatus =
       margin >= 1.0

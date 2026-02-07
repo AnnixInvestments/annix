@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { GasketWeight } from './entities/gasket-weight.entity';
-import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
+import { GasketWeight } from "./entities/gasket-weight.entity";
 
 export interface FlangeWeightResult {
   found: boolean;
@@ -38,10 +38,7 @@ export class GasketWeightService {
     return this.gasketWeightRepository.find();
   }
 
-  async gasketWeight(
-    gasketType: string,
-    nominalBoreMm: number,
-  ): Promise<GasketWeightResult> {
+  async gasketWeight(gasketType: string, nominalBoreMm: number): Promise<GasketWeightResult> {
     const gasket = await this.gasketWeightRepository.findOne({
       where: {
         gasket_type: gasketType.toUpperCase(),
@@ -75,15 +72,15 @@ export class GasketWeightService {
   ): Promise<FlangeWeightResult> {
     // Build query
     const query = this.flangeDimensionRepository
-      .createQueryBuilder('fd')
-      .leftJoinAndSelect('fd.nominalOutsideDiameter', 'nb')
-      .leftJoinAndSelect('fd.pressureClass', 'pc')
-      .leftJoinAndSelect('fd.standard', 'std')
-      .where('nb.nominal_bore_mm = :nominalBoreMm', { nominalBoreMm })
-      .andWhere('pc.designation = :pressureClass', { pressureClass });
+      .createQueryBuilder("fd")
+      .leftJoinAndSelect("fd.nominalOutsideDiameter", "nb")
+      .leftJoinAndSelect("fd.pressureClass", "pc")
+      .leftJoinAndSelect("fd.standard", "std")
+      .where("nb.nominal_bore_mm = :nominalBoreMm", { nominalBoreMm })
+      .andWhere("pc.designation = :pressureClass", { pressureClass });
 
     if (flangeStandardCode) {
-      query.andWhere('std.code = :flangeStandardCode', { flangeStandardCode });
+      query.andWhere("std.code = :flangeStandardCode", { flangeStandardCode });
     }
 
     const flangeDimension = await query.getOne();
@@ -114,16 +111,16 @@ export class GasketWeightService {
     flangeStandardCode?: string,
   ): Promise<BoltSetInfo | null> {
     const query = this.flangeDimensionRepository
-      .createQueryBuilder('fd')
-      .leftJoinAndSelect('fd.nominalOutsideDiameter', 'nb')
-      .leftJoinAndSelect('fd.pressureClass', 'pc')
-      .leftJoinAndSelect('fd.standard', 'std')
-      .leftJoinAndSelect('fd.bolt', 'bolt')
-      .where('nb.nominal_bore_mm = :nominalBoreMm', { nominalBoreMm })
-      .andWhere('pc.designation = :pressureClass', { pressureClass });
+      .createQueryBuilder("fd")
+      .leftJoinAndSelect("fd.nominalOutsideDiameter", "nb")
+      .leftJoinAndSelect("fd.pressureClass", "pc")
+      .leftJoinAndSelect("fd.standard", "std")
+      .leftJoinAndSelect("fd.bolt", "bolt")
+      .where("nb.nominal_bore_mm = :nominalBoreMm", { nominalBoreMm })
+      .andWhere("pc.designation = :pressureClass", { pressureClass });
 
     if (flangeStandardCode) {
-      query.andWhere('std.code = :flangeStandardCode', { flangeStandardCode });
+      query.andWhere("std.code = :flangeStandardCode", { flangeStandardCode });
     }
 
     const flangeDimension = await query.getOne();
@@ -151,16 +148,16 @@ export class GasketWeightService {
       ...slipOnResult,
       weightKg: slipOnResult.weightKg ? slipOnResult.weightKg * 1.8 : null,
       notes: slipOnResult.notes
-        ? slipOnResult.notes + ' (Blank flange estimated at 1.8x slip-on)'
-        : 'Blank flange estimated at 1.8x slip-on weight',
+        ? `${slipOnResult.notes} (Blank flange estimated at 1.8x slip-on)`
+        : "Blank flange estimated at 1.8x slip-on weight",
     };
   }
 
   async availableGasketTypes(): Promise<string[]> {
     const result = await this.gasketWeightRepository
-      .createQueryBuilder('gasket')
-      .select('DISTINCT gasket.gasket_type', 'type')
-      .orderBy('gasket.gasket_type', 'ASC')
+      .createQueryBuilder("gasket")
+      .select("DISTINCT gasket.gasket_type", "type")
+      .orderBy("gasket.gasket_type", "ASC")
       .getRawMany();
 
     return result.map((r) => r.type);

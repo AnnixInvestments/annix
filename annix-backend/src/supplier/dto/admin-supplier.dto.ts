@@ -1,20 +1,19 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { SupplierAccountStatus } from '../entities/supplier-profile.entity';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { SupplierAccountStatus } from "../entities/supplier-profile.entity";
 
 export class RejectSupplierDto {
   @ApiProperty({
-    description: 'Rejection reason',
-    example: 'Documents expired or invalid',
+    description: "Rejection reason",
+    example: "Documents expired or invalid",
   })
   @IsString()
   @IsNotEmpty()
   rejectionReason: string;
 
   @ApiProperty({
-    description: 'Steps the supplier needs to take to resolve the issue',
-    example:
-      '1. Upload valid Tax Clearance Certificate\n2. Ensure BEE Certificate is not expired',
+    description: "Steps the supplier needs to take to resolve the issue",
+    example: "1. Upload valid Tax Clearance Certificate\n2. Ensure BEE Certificate is not expired",
   })
   @IsString()
   @IsNotEmpty()
@@ -23,8 +22,8 @@ export class RejectSupplierDto {
 
 export class SuspendSupplierDto {
   @ApiProperty({
-    description: 'Suspension reason',
-    example: 'Compliance violation',
+    description: "Suspension reason",
+    example: "Compliance violation",
   })
   @IsString()
   @IsNotEmpty()
@@ -33,7 +32,7 @@ export class SuspendSupplierDto {
 
 export class UpdateSupplierStatusDto {
   @ApiProperty({
-    description: 'New account status',
+    description: "New account status",
     enum: SupplierAccountStatus,
     example: SupplierAccountStatus.ACTIVE,
   })
@@ -41,7 +40,7 @@ export class UpdateSupplierStatusDto {
   @IsNotEmpty()
   status: SupplierAccountStatus;
 
-  @ApiPropertyOptional({ description: 'Reason for status change' })
+  @ApiPropertyOptional({ description: "Reason for status change" })
   @IsString()
   @IsOptional()
   reason?: string;

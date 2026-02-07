@@ -1,20 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState, useCallback } from 'react';
-import { generateUniqueId } from '@/app/lib/datetime';
-import { BracketEntry, CompensationPlateEntry, defaultBracketDimensions, defaultPlateDimensions } from '@/app/lib/config/rfq/bracketsAndPlates';
-import { STEEL_MATERIALS } from '@/app/lib/config/rfq/steelMaterials';
+import { useCallback, useState } from "react";
+import { BracketEntry, CompensationPlateEntry } from "@/app/lib/config/rfq/bracketsAndPlates";
+import { generateUniqueId } from "@/app/lib/datetime";
 import {
-  summarizeBracketsAndPlates,
   formatCurrency,
   formatWeight,
-  calculateBracket,
-  calculateCompensationPlate,
   recalculateBracketEntry,
   recalculatePlateEntry,
-} from '@/app/lib/utils/bracketCalculations';
-import BracketForm from './forms/BracketForm';
-import CompensationPlateForm from './forms/CompensationPlateForm';
+  summarizeBracketsAndPlates,
+} from "@/app/lib/utils/bracketCalculations";
+import BracketForm from "./forms/BracketForm";
+import CompensationPlateForm from "./forms/CompensationPlateForm";
 
 interface BracketsAndPlatesSectionProps {
   initialBrackets?: BracketEntry[];
@@ -29,7 +26,7 @@ export default function BracketsAndPlatesSection({
 }: BracketsAndPlatesSectionProps) {
   const [brackets, setBrackets] = useState<BracketEntry[]>(initialBrackets);
   const [plates, setPlates] = useState<CompensationPlateEntry[]>(initialPlates);
-  const [activeTab, setActiveTab] = useState<'brackets' | 'plates'>('brackets');
+  const [activeTab, setActiveTab] = useState<"brackets" | "plates">("brackets");
 
   const notifyChange = useCallback(
     (newBrackets: BracketEntry[], newPlates: CompensationPlateEntry[]) => {
@@ -37,7 +34,7 @@ export default function BracketsAndPlatesSection({
         onDataChange(newBrackets, newPlates);
       }
     },
-    [onDataChange]
+    [onDataChange],
   );
 
   const handleAddBracket = useCallback(
@@ -46,7 +43,7 @@ export default function BracketsAndPlatesSection({
       setBrackets(newBrackets);
       notifyChange(newBrackets, plates);
     },
-    [brackets, plates, notifyChange]
+    [brackets, plates, notifyChange],
   );
 
   const handleUpdateBracket = useCallback(
@@ -61,7 +58,7 @@ export default function BracketsAndPlatesSection({
       setBrackets(newBrackets);
       notifyChange(newBrackets, plates);
     },
-    [brackets, plates, notifyChange]
+    [brackets, plates, notifyChange],
   );
 
   const handleRemoveBracket = useCallback(
@@ -70,7 +67,7 @@ export default function BracketsAndPlatesSection({
       setBrackets(newBrackets);
       notifyChange(newBrackets, plates);
     },
-    [brackets, plates, notifyChange]
+    [brackets, plates, notifyChange],
   );
 
   const handleDuplicateBracket = useCallback(
@@ -83,7 +80,7 @@ export default function BracketsAndPlatesSection({
       setBrackets(newBrackets);
       notifyChange(newBrackets, plates);
     },
-    [brackets, plates, notifyChange]
+    [brackets, plates, notifyChange],
   );
 
   const handleAddPlate = useCallback(
@@ -92,7 +89,7 @@ export default function BracketsAndPlatesSection({
       setPlates(newPlates);
       notifyChange(brackets, newPlates);
     },
-    [brackets, plates, notifyChange]
+    [brackets, plates, notifyChange],
   );
 
   const handleUpdatePlate = useCallback(
@@ -107,7 +104,7 @@ export default function BracketsAndPlatesSection({
       setPlates(newPlates);
       notifyChange(brackets, newPlates);
     },
-    [brackets, plates, notifyChange]
+    [brackets, plates, notifyChange],
   );
 
   const handleRemovePlate = useCallback(
@@ -116,7 +113,7 @@ export default function BracketsAndPlatesSection({
       setPlates(newPlates);
       notifyChange(brackets, newPlates);
     },
-    [brackets, plates, notifyChange]
+    [brackets, plates, notifyChange],
   );
 
   const handleDuplicatePlate = useCallback(
@@ -129,7 +126,7 @@ export default function BracketsAndPlatesSection({
       setPlates(newPlates);
       notifyChange(brackets, newPlates);
     },
-    [brackets, plates, notifyChange]
+    [brackets, plates, notifyChange],
   );
 
   const summary = summarizeBracketsAndPlates(brackets, plates);
@@ -155,7 +152,9 @@ export default function BracketsAndPlatesSection({
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-400">Total Cost</p>
-              <p className="text-lg font-bold text-green-400">{formatCurrency(summary.grandTotalCost)}</p>
+              <p className="text-lg font-bold text-green-400">
+                {formatCurrency(summary.grandTotalCost)}
+              </p>
             </div>
           </div>
         </div>
@@ -165,16 +164,27 @@ export default function BracketsAndPlatesSection({
         <nav className="flex">
           <button
             type="button"
-            onClick={() => setActiveTab('brackets')}
+            onClick={() => setActiveTab("brackets")}
             className={`flex-1 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'brackets'
-                ? 'border-blue-600 text-blue-600 bg-blue-50'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              activeTab === "brackets"
+                ? "border-blue-600 text-blue-600 bg-blue-50"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center justify-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
               </svg>
               Brackets
               {brackets.length > 0 && (
@@ -186,16 +196,27 @@ export default function BracketsAndPlatesSection({
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('plates')}
+            onClick={() => setActiveTab("plates")}
             className={`flex-1 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'plates'
-                ? 'border-purple-600 text-purple-600 bg-purple-50'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+              activeTab === "plates"
+                ? "border-purple-600 text-purple-600 bg-purple-50"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
             }`}
           >
             <div className="flex items-center justify-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z"
+                />
               </svg>
               Compensation Plates
               {plates.length > 0 && (
@@ -209,7 +230,7 @@ export default function BracketsAndPlatesSection({
       </div>
 
       <div className="p-6">
-        {activeTab === 'brackets' ? (
+        {activeTab === "brackets" ? (
           <BracketForm
             entries={brackets}
             onAddEntry={handleAddBracket}
@@ -237,7 +258,8 @@ export default function BracketsAndPlatesSection({
                 <div className="text-right">
                   <p className="text-xs text-gray-500">Brackets ({summary.totalBrackets} pcs)</p>
                   <p className="text-sm font-medium text-gray-900">
-                    {formatWeight(summary.totalBracketWeight)} | {formatCurrency(summary.totalBracketCost)}
+                    {formatWeight(summary.totalBracketWeight)} |{" "}
+                    {formatCurrency(summary.totalBracketCost)}
                   </p>
                 </div>
               )}
@@ -245,13 +267,16 @@ export default function BracketsAndPlatesSection({
                 <div className="text-right">
                   <p className="text-xs text-gray-500">Plates ({summary.totalPlates} pcs)</p>
                   <p className="text-sm font-medium text-gray-900">
-                    {formatWeight(summary.totalPlateWeight)} | {formatCurrency(summary.totalPlateCost)}
+                    {formatWeight(summary.totalPlateWeight)} |{" "}
+                    {formatCurrency(summary.totalPlateCost)}
                   </p>
                 </div>
               )}
               <div className="text-right border-l border-gray-300 pl-8">
                 <p className="text-xs text-gray-500">Grand Total</p>
-                <p className="text-lg font-bold text-green-600">{formatCurrency(summary.grandTotalCost)}</p>
+                <p className="text-lg font-bold text-green-600">
+                  {formatCurrency(summary.grandTotalCost)}
+                </p>
               </div>
             </div>
           </div>

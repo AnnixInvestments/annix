@@ -1,5 +1,5 @@
-import { API_BASE_URL } from '@/lib/api-config';
-import { getStoredFingerprint } from '@/app/hooks/useDeviceFingerprint';
+import { getStoredFingerprint } from "@/app/hooks/useDeviceFingerprint";
+import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for supplier portal - must match backend DTOs
 
@@ -52,7 +52,7 @@ export interface SupplierCompanyDto {
   website?: string;
   operationalRegions?: string[];
   industryType?: string;
-  companySize?: 'micro' | 'small' | 'medium' | 'large' | 'enterprise';
+  companySize?: "micro" | "small" | "medium" | "large" | "enterprise";
   // BEE fields
   beeLevel?: number; // 1-8
   beeCertificateExpiry?: string;
@@ -93,7 +93,7 @@ export interface SupplierDocumentDto {
 }
 
 export interface OnboardingStatusResponse {
-  status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected';
+  status: "draft" | "submitted" | "under_review" | "approved" | "rejected";
   companyDetailsComplete: boolean;
   documentsComplete: boolean;
   missingDocuments: string[];
@@ -124,7 +124,7 @@ export interface SupplierDashboardResponse {
 }
 
 // BOQ Types
-export type SupplierBoqStatus = 'pending' | 'viewed' | 'quoted' | 'declined' | 'expired';
+export type SupplierBoqStatus = "pending" | "viewed" | "quoted" | "declined" | "expired";
 
 export interface SupplierBoqListItem {
   id: number;
@@ -281,17 +281,17 @@ class SupplierApiClient {
     this.baseURL = baseURL;
 
     // Load tokens from storage - check localStorage first (remember me), then sessionStorage
-    if (typeof window !== 'undefined') {
-      const localAccessToken = localStorage.getItem('supplierAccessToken');
-      const sessionAccessToken = sessionStorage.getItem('supplierAccessToken');
+    if (typeof window !== "undefined") {
+      const localAccessToken = localStorage.getItem("supplierAccessToken");
+      const sessionAccessToken = sessionStorage.getItem("supplierAccessToken");
 
       if (localAccessToken) {
         this.accessToken = localAccessToken;
-        this.refreshToken = localStorage.getItem('supplierRefreshToken');
+        this.refreshToken = localStorage.getItem("supplierRefreshToken");
         this.rememberMe = true;
       } else if (sessionAccessToken) {
         this.accessToken = sessionAccessToken;
-        this.refreshToken = sessionStorage.getItem('supplierRefreshToken');
+        this.refreshToken = sessionStorage.getItem("supplierRefreshToken");
         this.rememberMe = false;
       }
     }
@@ -299,16 +299,16 @@ class SupplierApiClient {
 
   private getHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
 
     if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
     }
 
     const fingerprint = getStoredFingerprint();
     if (fingerprint) {
-      headers['x-device-fingerprint'] = fingerprint;
+      headers["x-device-fingerprint"] = fingerprint;
     }
 
     return headers;
@@ -318,13 +318,13 @@ class SupplierApiClient {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
     this.rememberMe = rememberMe;
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const storage = rememberMe ? localStorage : sessionStorage;
       const otherStorage = rememberMe ? sessionStorage : localStorage;
-      otherStorage.removeItem('supplierAccessToken');
-      otherStorage.removeItem('supplierRefreshToken');
-      storage.setItem('supplierAccessToken', accessToken);
-      storage.setItem('supplierRefreshToken', refreshToken);
+      otherStorage.removeItem("supplierAccessToken");
+      otherStorage.removeItem("supplierRefreshToken");
+      storage.setItem("supplierAccessToken", accessToken);
+      storage.setItem("supplierRefreshToken", refreshToken);
     }
   }
 
@@ -332,11 +332,11 @@ class SupplierApiClient {
     this.accessToken = null;
     this.refreshToken = null;
     this.rememberMe = false;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('supplierAccessToken');
-      localStorage.removeItem('supplierRefreshToken');
-      sessionStorage.removeItem('supplierAccessToken');
-      sessionStorage.removeItem('supplierRefreshToken');
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("supplierAccessToken");
+      localStorage.removeItem("supplierRefreshToken");
+      sessionStorage.removeItem("supplierAccessToken");
+      sessionStorage.removeItem("supplierRefreshToken");
     }
   }
 
@@ -344,10 +344,7 @@ class SupplierApiClient {
     return !!this.accessToken;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
     const config: RequestInit = {
@@ -397,15 +394,15 @@ class SupplierApiClient {
 
   // Authentication endpoints
   async register(data: SupplierRegistrationDto): Promise<{ success: boolean; message: string }> {
-    return this.request('/supplier/auth/register', {
-      method: 'POST',
+    return this.request("/supplier/auth/register", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async registerFull(formData: FormData): Promise<SupplierAuthResponse> {
     const response = await fetch(`${this.baseURL}/supplier/auth/register-full`, {
-      method: 'POST',
+      method: "POST",
       body: formData,
     });
 
@@ -433,15 +430,15 @@ class SupplierApiClient {
   }
 
   async resendVerification(email: string): Promise<{ success: boolean; message: string }> {
-    return this.request('/supplier/auth/resend-verification', {
-      method: 'POST',
+    return this.request("/supplier/auth/resend-verification", {
+      method: "POST",
       body: JSON.stringify({ email }),
     });
   }
 
   async login(data: SupplierLoginDto, rememberMe: boolean = false): Promise<SupplierAuthResponse> {
-    const result = await this.request<SupplierAuthResponse>('/supplier/auth/login', {
-      method: 'POST',
+    const result = await this.request<SupplierAuthResponse>("/supplier/auth/login", {
+      method: "POST",
       body: JSON.stringify(data),
     });
 
@@ -451,8 +448,8 @@ class SupplierApiClient {
 
   async logout(): Promise<void> {
     try {
-      await this.request('/supplier/auth/logout', {
-        method: 'POST',
+      await this.request("/supplier/auth/logout", {
+        method: "POST",
       });
     } finally {
       this.clearTokens();
@@ -465,8 +462,8 @@ class SupplierApiClient {
     try {
       const fingerprint = getStoredFingerprint();
       const result = await fetch(`${this.baseURL}/supplier/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken: this.refreshToken, deviceFingerprint: fingerprint }),
       });
 
@@ -486,35 +483,35 @@ class SupplierApiClient {
 
   // Profile endpoints
   async getProfile(): Promise<any> {
-    return this.request('/supplier/profile');
+    return this.request("/supplier/profile");
   }
 
   async updateProfile(data: SupplierProfileDto): Promise<any> {
-    return this.request('/supplier/profile', {
-      method: 'PATCH',
+    return this.request("/supplier/profile", {
+      method: "PATCH",
       body: JSON.stringify(data),
     });
   }
 
   // Dashboard
   async getDashboard(): Promise<SupplierDashboardResponse> {
-    return this.request<SupplierDashboardResponse>('/supplier/dashboard');
+    return this.request<SupplierDashboardResponse>("/supplier/dashboard");
   }
 
   // Onboarding
   async getOnboardingStatus(): Promise<OnboardingStatusResponse> {
-    return this.request<OnboardingStatusResponse>('/supplier/onboarding/status');
+    return this.request<OnboardingStatusResponse>("/supplier/onboarding/status");
   }
 
   async saveCompanyDetails(data: SupplierCompanyDto): Promise<any> {
-    return this.request('/supplier/onboarding/company', {
-      method: 'POST',
+    return this.request("/supplier/onboarding/company", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async getDocuments(): Promise<SupplierDocumentDto[]> {
-    return this.request<SupplierDocumentDto[]>('/supplier/onboarding/documents');
+    return this.request<SupplierDocumentDto[]>("/supplier/onboarding/documents");
   }
 
   async uploadDocument(
@@ -536,22 +533,22 @@ class SupplierApiClient {
     },
   ): Promise<SupplierDocumentDto> {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('documentType', documentType);
+    formData.append("file", file);
+    formData.append("documentType", documentType);
     if (expiryDate) {
-      formData.append('expiryDate', expiryDate);
+      formData.append("expiryDate", expiryDate);
     }
     if (verificationResult) {
-      formData.append('verificationResult', JSON.stringify(verificationResult));
+      formData.append("verificationResult", JSON.stringify(verificationResult));
     }
 
     const headers: Record<string, string> = {};
     if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
     }
 
     const response = await fetch(`${this.baseURL}/supplier/onboarding/documents`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: formData,
     });
@@ -566,7 +563,7 @@ class SupplierApiClient {
 
   async deleteDocument(documentId: number): Promise<void> {
     await this.request(`/supplier/onboarding/documents/${documentId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -574,7 +571,7 @@ class SupplierApiClient {
     const { blob, filename } = await this.fetchDocumentBlob(documentId);
 
     const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = objectUrl;
     link.download = filename;
     document.body.appendChild(link);
@@ -583,7 +580,9 @@ class SupplierApiClient {
     URL.revokeObjectURL(objectUrl);
   }
 
-  async previewDocument(documentId: number): Promise<{ url: string; mimeType: string; filename: string }> {
+  async previewDocument(
+    documentId: number,
+  ): Promise<{ url: string; mimeType: string; filename: string }> {
     const { blob, filename } = await this.fetchDocumentBlob(documentId);
     const url = URL.createObjectURL(blob);
     return { url, mimeType: blob.type, filename };
@@ -594,22 +593,22 @@ class SupplierApiClient {
 
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
+        Authorization: `Bearer ${this.accessToken}`,
       },
     });
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error('Please log in to view this document');
+        throw new Error("Please log in to view this document");
       }
       if (response.status === 404) {
-        throw new Error('Document not found');
+        throw new Error("Document not found");
       }
-      throw new Error('Failed to load document. Please try again.');
+      throw new Error("Failed to load document. Please try again.");
     }
 
-    const contentDisposition = response.headers.get('Content-Disposition');
-    let filename = 'document';
+    const contentDisposition = response.headers.get("Content-Disposition");
+    let filename = "document";
     if (contentDisposition) {
       const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
       if (match) {
@@ -622,25 +621,27 @@ class SupplierApiClient {
   }
 
   async submitOnboarding(): Promise<{ success: boolean; message: string }> {
-    return this.request('/supplier/onboarding/submit', {
-      method: 'POST',
+    return this.request("/supplier/onboarding/submit", {
+      method: "POST",
     });
   }
 
   async getCapabilities(): Promise<{ capabilities: string[] }> {
-    return this.request('/supplier/onboarding/capabilities');
+    return this.request("/supplier/onboarding/capabilities");
   }
 
-  async saveCapabilities(capabilities: string[]): Promise<{ capabilities: string[]; message: string }> {
-    return this.request('/supplier/onboarding/capabilities', {
-      method: 'POST',
+  async saveCapabilities(
+    capabilities: string[],
+  ): Promise<{ capabilities: string[]; message: string }> {
+    return this.request("/supplier/onboarding/capabilities", {
+      method: "POST",
       body: JSON.stringify({ capabilities }),
     });
   }
 
   // BOQ endpoints
   async getMyBoqs(status?: SupplierBoqStatus): Promise<SupplierBoqListItem[]> {
-    const queryString = status ? `?status=${status}` : '';
+    const queryString = status ? `?status=${status}` : "";
     return this.request<SupplierBoqListItem[]>(`/supplier/boqs${queryString}`);
   }
 
@@ -648,23 +649,33 @@ class SupplierApiClient {
     return this.request<SupplierBoqDetailResponse>(`/supplier/boqs/${boqId}`);
   }
 
-  async markBoqViewed(boqId: number): Promise<{ success: boolean; viewedAt: string; status: string }> {
+  async markBoqViewed(
+    boqId: number,
+  ): Promise<{ success: boolean; viewedAt: string; status: string }> {
     return this.request(`/supplier/boqs/${boqId}/view`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
-  async declineBoq(boqId: number, reason: string): Promise<{ success: boolean; status: string; respondedAt: string }> {
+  async declineBoq(
+    boqId: number,
+    reason: string,
+  ): Promise<{ success: boolean; status: string; respondedAt: string }> {
     return this.request(`/supplier/boqs/${boqId}/decline`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ reason }),
     });
   }
 
-  async setBoqReminder(boqId: number, reminderDays: string): Promise<{ success: boolean; reminderDays: string | null }> {
+  async setBoqReminder(
+    boqId: number,
+    reminderDays: string,
+  ): Promise<{ success: boolean; reminderDays: string | null }> {
     return this.request(`/supplier/boqs/${boqId}/reminder`, {
-      method: 'POST',
-      body: JSON.stringify({ reminderDays: reminderDays === 'none' ? null : parseInt(reminderDays, 10) }),
+      method: "POST",
+      body: JSON.stringify({
+        reminderDays: reminderDays === "none" ? null : parseInt(reminderDays, 10),
+      }),
     });
   }
 
@@ -672,25 +683,31 @@ class SupplierApiClient {
     return this.request<RfqItemDetail[]>(`/supplier/boqs/${boqId}/rfq-items`);
   }
 
-  async saveQuoteProgress(boqId: number, data: {
-    pricingInputs: Record<string, any>;
-    unitPrices: Record<string, Record<number, number>>;
-    weldUnitPrices: Record<string, number>;
-  }): Promise<{ success: boolean; savedAt: string }> {
+  async saveQuoteProgress(
+    boqId: number,
+    data: {
+      pricingInputs: Record<string, any>;
+      unitPrices: Record<string, Record<number, number>>;
+      weldUnitPrices: Record<string, number>;
+    },
+  ): Promise<{ success: boolean; savedAt: string }> {
     return this.request(`/supplier/boqs/${boqId}/quote/save`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
-  async submitQuote(boqId: number, data: {
-    pricingInputs: Record<string, any>;
-    unitPrices: Record<string, Record<number, number>>;
-    weldUnitPrices: Record<string, number>;
-    notes?: string;
-  }): Promise<{ success: boolean; status: string; submittedAt: string }> {
+  async submitQuote(
+    boqId: number,
+    data: {
+      pricingInputs: Record<string, any>;
+      unitPrices: Record<string, Record<number, number>>;
+      weldUnitPrices: Record<string, number>;
+      notes?: string;
+    },
+  ): Promise<{ success: boolean; status: string; submittedAt: string }> {
     return this.request(`/supplier/boqs/${boqId}/quote/submit`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
@@ -703,7 +720,8 @@ export const supplierAuthApi = {
   registerFull: (formData: FormData) => supplierApiClient.registerFull(formData),
   verifyEmail: (token: string) => supplierApiClient.verifyEmail(token),
   resendVerification: (email: string) => supplierApiClient.resendVerification(email),
-  login: (data: SupplierLoginDto, rememberMe: boolean = false) => supplierApiClient.login(data, rememberMe),
+  login: (data: SupplierLoginDto, rememberMe: boolean = false) =>
+    supplierApiClient.login(data, rememberMe),
   logout: () => supplierApiClient.logout(),
   refresh: () => supplierApiClient.refreshAccessToken(),
   isAuthenticated: () => supplierApiClient.isAuthenticated(),
@@ -745,10 +763,24 @@ export const supplierPortalApi = {
   getBoqDetails: (boqId: number) => supplierApiClient.getBoqDetails(boqId),
   markBoqViewed: (boqId: number) => supplierApiClient.markBoqViewed(boqId),
   declineBoq: (boqId: number, reason: string) => supplierApiClient.declineBoq(boqId, reason),
-  setBoqReminder: (boqId: number, reminderDays: string) => supplierApiClient.setBoqReminder(boqId, reminderDays),
+  setBoqReminder: (boqId: number, reminderDays: string) =>
+    supplierApiClient.setBoqReminder(boqId, reminderDays),
   getRfqItems: (boqId: number) => supplierApiClient.getRfqItems(boqId),
-  saveQuoteProgress: (boqId: number, data: { pricingInputs: Record<string, any>; unitPrices: Record<string, Record<number, number>>; weldUnitPrices: Record<string, number> }) =>
-    supplierApiClient.saveQuoteProgress(boqId, data),
-  submitQuote: (boqId: number, data: { pricingInputs: Record<string, any>; unitPrices: Record<string, Record<number, number>>; weldUnitPrices: Record<string, number>; notes?: string }) =>
-    supplierApiClient.submitQuote(boqId, data),
+  saveQuoteProgress: (
+    boqId: number,
+    data: {
+      pricingInputs: Record<string, any>;
+      unitPrices: Record<string, Record<number, number>>;
+      weldUnitPrices: Record<string, number>;
+    },
+  ) => supplierApiClient.saveQuoteProgress(boqId, data),
+  submitQuote: (
+    boqId: number,
+    data: {
+      pricingInputs: Record<string, any>;
+      unitPrices: Record<string, Record<number, number>>;
+      weldUnitPrices: Record<string, number>;
+      notes?: string;
+    },
+  ) => supplierApiClient.submitQuote(boqId, data),
 };

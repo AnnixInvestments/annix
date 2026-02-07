@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from "react";
 import {
-  remoteAccessApi,
   type AccessStatusResponse,
   type RemoteAccessDocumentType,
-} from '@/app/lib/api/remoteAccessApi';
-import { log } from '@/app/lib/logger';
+  remoteAccessApi,
+} from "@/app/lib/api/remoteAccessApi";
+import { log } from "@/app/lib/logger";
 
 interface RemoteAccessPendingStatusProps {
   documentType: RemoteAccessDocumentType;
@@ -32,14 +32,14 @@ export default function RemoteAccessPendingStatus({
       if (result.hasAccess) {
         setIsPolling(false);
         onAccessGranted();
-      } else if (result.status === 'DENIED') {
+      } else if (result.status === "DENIED") {
         setIsPolling(false);
         onAccessDenied?.();
-      } else if (result.status === 'EXPIRED') {
+      } else if (result.status === "EXPIRED") {
         setIsPolling(false);
       }
     } catch (err) {
-      log.error('Failed to check access status:', err);
+      log.error("Failed to check access status:", err);
     }
   }, [documentType, documentId, onAccessGranted, onAccessDenied]);
 
@@ -70,12 +70,7 @@ export default function RemoteAccessPendingStatus({
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 13l4 4L19 7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           <span className="text-green-700 font-medium">Access granted</span>
         </div>
@@ -83,7 +78,7 @@ export default function RemoteAccessPendingStatus({
     );
   }
 
-  if (status.status === 'PENDING') {
+  if (status.status === "PENDING") {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex items-center gap-3">
@@ -113,7 +108,7 @@ export default function RemoteAccessPendingStatus({
     );
   }
 
-  if (status.status === 'DENIED') {
+  if (status.status === "DENIED") {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <div className="flex items-center gap-3">
@@ -136,7 +131,7 @@ export default function RemoteAccessPendingStatus({
     );
   }
 
-  if (status.status === 'EXPIRED') {
+  if (status.status === "EXPIRED") {
     return (
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <div className="flex items-center gap-3">
@@ -155,9 +150,7 @@ export default function RemoteAccessPendingStatus({
           </svg>
           <div>
             <span className="text-gray-700 font-medium">Request expired</span>
-            <p className="text-sm text-gray-500 mt-1">
-              Please submit a new access request.
-            </p>
+            <p className="text-sm text-gray-500 mt-1">Please submit a new access request.</p>
           </div>
         </div>
       </div>

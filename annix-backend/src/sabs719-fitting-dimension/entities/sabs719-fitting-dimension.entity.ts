@@ -1,41 +1,41 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from 'typeorm';
+} from "typeorm";
 
-@Entity('sabs719_fitting_dimension')
+@Entity("sabs719_fitting_dimension")
 export class Sabs719FittingDimension {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'fitting_type', type: 'varchar', length: 50 })
+  @Column({ name: "fitting_type", type: "varchar", length: 50 })
   fittingType: string;
 
   @Column({
-    name: 'nominal_diameter_mm',
-    type: 'decimal',
+    name: "nominal_diameter_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
   })
   nominalDiameterMm: number;
 
   @Column({
-    name: 'outside_diameter_mm',
-    type: 'decimal',
+    name: "outside_diameter_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
   })
   outsideDiameterMm: number;
 
-  @Column({ name: 'angle_range', type: 'varchar', length: 20, nullable: true })
+  @Column({ name: "angle_range", type: "varchar", length: 20, nullable: true })
   angleRange: string;
 
   @Column({
-    name: 'dimension_a_mm',
-    type: 'decimal',
+    name: "dimension_a_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -43,8 +43,8 @@ export class Sabs719FittingDimension {
   dimensionAMm: number;
 
   @Column({
-    name: 'dimension_b_mm',
-    type: 'decimal',
+    name: "dimension_b_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -52,8 +52,8 @@ export class Sabs719FittingDimension {
   dimensionBMm: number;
 
   @Column({
-    name: 'dimension_c_mm',
-    type: 'decimal',
+    name: "dimension_c_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -61,8 +61,8 @@ export class Sabs719FittingDimension {
   dimensionCMm: number;
 
   @Column({
-    name: 'dimension_d_mm',
-    type: 'decimal',
+    name: "dimension_d_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -70,8 +70,8 @@ export class Sabs719FittingDimension {
   dimensionDMm: number;
 
   @Column({
-    name: 'dimension_e_mm',
-    type: 'decimal',
+    name: "dimension_e_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -79,8 +79,8 @@ export class Sabs719FittingDimension {
   dimensionEMm: number;
 
   @Column({
-    name: 'dimension_f_mm',
-    type: 'decimal',
+    name: "dimension_f_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -88,8 +88,8 @@ export class Sabs719FittingDimension {
   dimensionFMm: number;
 
   @Column({
-    name: 'dimension_x_mm',
-    type: 'decimal',
+    name: "dimension_x_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -97,8 +97,8 @@ export class Sabs719FittingDimension {
   dimensionXMm: number;
 
   @Column({
-    name: 'dimension_y_mm',
-    type: 'decimal',
+    name: "dimension_y_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -106,8 +106,8 @@ export class Sabs719FittingDimension {
   dimensionYMm: number;
 
   @Column({
-    name: 'thickness_t1_mm',
-    type: 'decimal',
+    name: "thickness_t1_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -115,8 +115,8 @@ export class Sabs719FittingDimension {
   thicknessT1Mm: number;
 
   @Column({
-    name: 'thickness_t2_mm',
-    type: 'decimal',
+    name: "thickness_t2_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -124,8 +124,8 @@ export class Sabs719FittingDimension {
   thicknessT2Mm: number;
 
   @Column({
-    name: 'dimension_h_mm',
-    type: 'decimal',
+    name: "dimension_h_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -133,17 +133,17 @@ export class Sabs719FittingDimension {
   dimensionHMm: number;
 
   @Column({
-    name: 'radius_r_mm',
-    type: 'decimal',
+    name: "radius_r_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
   })
   radiusRMm: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

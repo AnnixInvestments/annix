@@ -1,40 +1,39 @@
-'use client';
+"use client";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
 
 export enum ConversationType {
-  DIRECT = 'DIRECT',
-  GROUP = 'GROUP',
-  SUPPORT = 'SUPPORT',
+  DIRECT = "DIRECT",
+  GROUP = "GROUP",
+  SUPPORT = "SUPPORT",
 }
 
 export enum RelatedEntityType {
-  RFQ = 'RFQ',
-  BOQ = 'BOQ',
-  GENERAL = 'GENERAL',
+  RFQ = "RFQ",
+  BOQ = "BOQ",
+  GENERAL = "GENERAL",
 }
 
 export enum BroadcastTarget {
-  ALL = 'ALL',
-  CUSTOMERS = 'CUSTOMERS',
-  SUPPLIERS = 'SUPPLIERS',
-  SPECIFIC = 'SPECIFIC',
+  ALL = "ALL",
+  CUSTOMERS = "CUSTOMERS",
+  SUPPLIERS = "SUPPLIERS",
+  SPECIFIC = "SPECIFIC",
 }
 
 export enum BroadcastPriority {
-  LOW = 'LOW',
-  NORMAL = 'NORMAL',
-  HIGH = 'HIGH',
-  URGENT = 'URGENT',
+  LOW = "LOW",
+  NORMAL = "NORMAL",
+  HIGH = "HIGH",
+  URGENT = "URGENT",
 }
 
 export enum ResponseRating {
-  EXCELLENT = 'EXCELLENT',
-  GOOD = 'GOOD',
-  ACCEPTABLE = 'ACCEPTABLE',
-  POOR = 'POOR',
-  CRITICAL = 'CRITICAL',
+  EXCELLENT = "EXCELLENT",
+  GOOD = "GOOD",
+  ACCEPTABLE = "ACCEPTABLE",
+  POOR = "POOR",
+  CRITICAL = "CRITICAL",
 }
 
 export interface ConversationSummary {
@@ -191,29 +190,29 @@ export interface MetricsFilters {
   userId?: number;
 }
 
-type PortalType = 'customer' | 'supplier' | 'admin';
+type PortalType = "customer" | "supplier" | "admin";
 
 function getAuthHeaders(portalType: PortalType): Record<string, string> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
 
   const tokenKey =
-    portalType === 'admin'
-      ? 'adminAccessToken'
-      : portalType === 'supplier'
-        ? 'supplierAccessToken'
-        : 'customerAccessToken';
+    portalType === "admin"
+      ? "adminAccessToken"
+      : portalType === "supplier"
+        ? "supplierAccessToken"
+        : "customerAccessToken";
 
   const token = localStorage.getItem(tokenKey);
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
-  if (portalType === 'customer') {
-    const fingerprint = localStorage.getItem('deviceFingerprint');
+  if (portalType === "customer") {
+    const fingerprint = localStorage.getItem("deviceFingerprint");
     if (fingerprint) {
-      headers['x-device-fingerprint'] = fingerprint;
+      headers["x-device-fingerprint"] = fingerprint;
     }
   }
 
@@ -251,7 +250,7 @@ function buildQueryString(filters: Record<string, any>): string {
     }
   });
   const query = params.toString();
-  return query ? `?${query}` : '';
+  return query ? `?${query}` : "";
 }
 
 function createMessagingApi(portalType: PortalType) {
@@ -259,17 +258,12 @@ function createMessagingApi(portalType: PortalType) {
     async conversations(
       filters: ConversationFilters = {},
     ): Promise<{ conversations: ConversationSummary[]; total: number }> {
-      return request(
-        portalType,
-        `/conversations${buildQueryString(filters)}`,
-      );
+      return request(portalType, `/conversations${buildQueryString(filters)}`);
     },
 
-    async createConversation(
-      dto: CreateConversationDto,
-    ): Promise<ConversationDetail> {
-      return request(portalType, '/conversations', {
-        method: 'POST',
+    async createConversation(dto: CreateConversationDto): Promise<ConversationDetail> {
+      return request(portalType, "/conversations", {
+        method: "POST",
         body: JSON.stringify(dto),
       });
     },
@@ -288,27 +282,22 @@ function createMessagingApi(portalType: PortalType) {
       );
     },
 
-    async sendMessage(
-      conversationId: number,
-      dto: SendMessageDto,
-    ): Promise<Message> {
+    async sendMessage(conversationId: number, dto: SendMessageDto): Promise<Message> {
       return request(portalType, `/conversations/${conversationId}/messages`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(dto),
       });
     },
 
     async markAsRead(conversationId: number): Promise<{ success: boolean }> {
       return request(portalType, `/conversations/${conversationId}/read`, {
-        method: 'POST',
+        method: "POST",
       });
     },
 
-    async archiveConversation(
-      conversationId: number,
-    ): Promise<{ success: boolean }> {
+    async archiveConversation(conversationId: number): Promise<{ success: boolean }> {
       return request(portalType, `/conversations/${conversationId}/archive`, {
-        method: 'POST',
+        method: "POST",
       });
     },
 
@@ -318,27 +307,25 @@ function createMessagingApi(portalType: PortalType) {
       return request(portalType, `/broadcasts${buildQueryString(filters)}`);
     },
 
-    async markBroadcastRead(
-      broadcastId: number,
-    ): Promise<{ success: boolean }> {
+    async markBroadcastRead(broadcastId: number): Promise<{ success: boolean }> {
       return request(portalType, `/broadcasts/${broadcastId}/read`, {
-        method: 'POST',
+        method: "POST",
       });
     },
 
     async unreadCount(): Promise<{ messages: number; broadcasts: number }> {
-      return request(portalType, '/unread-count');
+      return request(portalType, "/unread-count");
     },
 
     async responseStats(): Promise<UserResponseStats> {
-      return request(portalType, '/response-stats');
+      return request(portalType, "/response-stats");
     },
   };
 }
 
 function createAdminMessagingApi() {
-  const baseApi = createMessagingApi('admin');
-  const portalType: PortalType = 'admin';
+  const baseApi = createMessagingApi("admin");
+  const portalType: PortalType = "admin";
 
   return {
     ...baseApi,
@@ -350,8 +337,8 @@ function createAdminMessagingApi() {
     },
 
     async createBroadcast(dto: CreateBroadcastDto): Promise<BroadcastDetail> {
-      return request(portalType, '/broadcasts', {
-        method: 'POST',
+      return request(portalType, "/broadcasts", {
+        method: "POST",
         body: JSON.stringify(dto),
       });
     },
@@ -360,40 +347,30 @@ function createAdminMessagingApi() {
       return request(portalType, `/broadcasts/${broadcastId}`);
     },
 
-    async responseMetrics(
-      filters: MetricsFilters = {},
-    ): Promise<ResponseMetricsSummary> {
-      return request(
-        portalType,
-        `/response-metrics${buildQueryString(filters)}`,
-      );
+    async responseMetrics(filters: MetricsFilters = {}): Promise<ResponseMetricsSummary> {
+      return request(portalType, `/response-metrics${buildQueryString(filters)}`);
     },
 
     async userResponseMetrics(
       userId: number,
       filters: MetricsFilters = {},
     ): Promise<UserResponseStats> {
-      return request(
-        portalType,
-        `/response-metrics/user/${userId}${buildQueryString(filters)}`,
-      );
+      return request(portalType, `/response-metrics/user/${userId}${buildQueryString(filters)}`);
     },
 
     async slaConfig(): Promise<SlaConfig> {
-      return request(portalType, '/sla-config');
+      return request(portalType, "/sla-config");
     },
 
-    async updateSlaConfig(
-      dto: Partial<Omit<SlaConfig, 'id' | 'updatedAt'>>,
-    ): Promise<SlaConfig> {
-      return request(portalType, '/sla-config', {
-        method: 'PUT',
+    async updateSlaConfig(dto: Partial<Omit<SlaConfig, "id" | "updatedAt">>): Promise<SlaConfig> {
+      return request(portalType, "/sla-config", {
+        method: "PUT",
         body: JSON.stringify(dto),
       });
     },
   };
 }
 
-export const customerMessagingApi = createMessagingApi('customer');
-export const supplierMessagingApi = createMessagingApi('supplier');
+export const customerMessagingApi = createMessagingApi("customer");
+export const supplierMessagingApi = createMessagingApi("supplier");
 export const adminMessagingApi = createAdminMessagingApi();

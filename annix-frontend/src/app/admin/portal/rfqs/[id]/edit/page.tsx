@@ -1,12 +1,11 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
+import { useParams, useRouter } from "next/navigation";
 
 const StraightPipeRfqOrchestrator = dynamic(
-  () => import('@/app/components/rfq/StraightPipeRfqOrchestrator'),
-  { ssr: false, loading: () => <div className="animate-pulse h-96 bg-gray-100 rounded-lg"></div> }
+  () => import("@/app/components/rfq/StraightPipeRfqOrchestrator"),
+  { ssr: false, loading: () => <div className="animate-pulse h-96 bg-gray-100 rounded-lg"></div> },
 );
 
 export default function AdminEditRfqPage() {
@@ -21,7 +20,7 @@ export default function AdminEditRfqPage() {
 
   const handleCancel = () => {
     // Navigate back to admin RFQ list
-    router.push('/admin/portal/rfqs');
+    router.push("/admin/portal/rfqs");
   };
 
   if (!id) {

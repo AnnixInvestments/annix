@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FittingDimensionController } from './fitting-dimension.controller';
-import { FittingDimensionService } from './fitting-dimension.service';
-import { FittingDimension } from './entities/fitting-dimension.entity';
-import { FittingVariant } from '../fitting-variant/entities/fitting-variant.entity';
-import { AngleRange } from '../angle-range/entities/angle-range.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { AngleRange } from "../angle-range/entities/angle-range.entity";
+import { FittingVariant } from "../fitting-variant/entities/fitting-variant.entity";
+import { FittingDimension } from "./entities/fitting-dimension.entity";
+import { FittingDimensionController } from "./fitting-dimension.controller";
+import { FittingDimensionService } from "./fitting-dimension.service";
 
-describe('FittingDimensionController', () => {
+describe("FittingDimensionController", () => {
   let controller: FittingDimensionController;
   let service: FittingDimensionService;
 
@@ -57,15 +57,13 @@ describe('FittingDimensionController', () => {
       ],
     }).compile();
 
-    controller = module.get<FittingDimensionController>(
-      FittingDimensionController,
-    );
+    controller = module.get<FittingDimensionController>(FittingDimensionController);
     service = module.get<FittingDimensionService>(FittingDimensionService);
 
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

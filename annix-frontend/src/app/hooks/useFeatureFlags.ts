@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { featureFlagsApi, FeatureFlagsResponse } from '@/app/lib/api/featureFlagsApi';
+import { useCallback, useEffect, useState } from "react";
+import { FeatureFlagsResponse, featureFlagsApi } from "@/app/lib/api/featureFlagsApi";
 
 export function useFeatureFlags() {
   const [flags, setFlags] = useState<FeatureFlagsResponse | null>(null);
@@ -16,7 +16,7 @@ export function useFeatureFlags() {
       const result = await featureFlagsApi.allFlags();
       setFlags(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch feature flags');
+      setError(err instanceof Error ? err.message : "Failed to fetch feature flags");
       setFlags(null);
     } finally {
       setIsLoading(false);

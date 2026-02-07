@@ -1,57 +1,85 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
-import Link from 'next/link';
-import { usePublicStats, type PublicStats } from '@/app/lib/query/hooks';
-import { formatDateZA } from '@/app/lib/datetime';
+import Link from "next/link";
+import { useEffect } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
+import { usePublicStats } from "@/app/lib/query/hooks";
 
 // Icon components for the dashboard cards
 const CustomerIcon = () => (
   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+    />
   </svg>
 );
 
 const SupplierIcon = () => (
   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+    />
   </svg>
 );
 
 const PricingIcon = () => (
   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
   </svg>
 );
 
 const RfqIcon = () => (
   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+    />
   </svg>
 );
 
 const UsersIcon = () => (
   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+    />
   </svg>
 );
 
 const CalendarIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+    />
   </svg>
 );
 
 const AdminIcon = () => (
   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+    />
   </svg>
 );
 
@@ -59,15 +87,15 @@ export default function HomePage() {
   const { data: stats, isLoading: loading } = usePublicStats();
 
   useEffect(() => {
-    document.title = 'Annix Dashboard';
+    document.title = "Annix Dashboard";
   }, []);
 
   const formatDate = (dateString: string) => formatDateZA(dateString);
 
   const daysRemainingColor = (days: number) => {
-    if (days <= 3) return 'text-red-600 bg-red-50';
-    if (days <= 7) return 'text-orange-600 bg-orange-50';
-    return 'text-green-600 bg-green-50';
+    if (days <= 3) return "text-red-600 bg-red-50";
+    if (days <= 7) return "text-orange-600 bg-orange-50";
+    return "text-green-600 bg-green-50";
   };
 
   return (
@@ -76,12 +104,10 @@ export default function HomePage() {
       <div className="text-white">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Annix RFQ Platform
-            </h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Annix RFQ Platform</h1>
             <p className="text-xl text-blue-200 max-w-2xl mx-auto">
-              Your trusted partner for pipeline quotation management.
-              Connect with suppliers, manage RFQs, and streamline your procurement process.
+              Your trusted partner for pipeline quotation management. Connect with suppliers, manage
+              RFQs, and streamline your procurement process.
             </p>
           </div>
         </div>
@@ -101,7 +127,7 @@ export default function HomePage() {
                   {loading ? (
                     <span className="inline-block w-16 h-8 bg-gray-200 animate-pulse rounded"></span>
                   ) : (
-                    stats?.totalRfqs.toLocaleString() || '0'
+                    stats?.totalRfqs.toLocaleString() || "0"
                   )}
                 </p>
               </div>
@@ -122,7 +148,7 @@ export default function HomePage() {
                   {loading ? (
                     <span className="inline-block w-16 h-8 bg-gray-200 animate-pulse rounded"></span>
                   ) : (
-                    stats?.totalSuppliers.toLocaleString() || '0'
+                    stats?.totalSuppliers.toLocaleString() || "0"
                   )}
                 </p>
               </div>
@@ -143,7 +169,7 @@ export default function HomePage() {
                   {loading ? (
                     <span className="inline-block w-16 h-8 bg-gray-200 animate-pulse rounded"></span>
                   ) : (
-                    stats?.totalCustomers.toLocaleString() || '0'
+                    stats?.totalCustomers.toLocaleString() || "0"
                   )}
                 </p>
               </div>
@@ -163,16 +189,24 @@ export default function HomePage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                   <CustomerIcon />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  Customer Portal
-                </h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Customer Portal</h3>
                 <p className="text-gray-600 mb-6">
                   Login or register to manage your RFQs, view quotations, and track your orders.
                 </p>
                 <span className="inline-flex items-center text-blue-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Login / Register
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </span>
               </div>
@@ -186,16 +220,25 @@ export default function HomePage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-2xl text-indigo-600 mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                   <SupplierIcon />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  Supplier Portal
-                </h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Supplier Portal</h3>
                 <p className="text-gray-600 mb-6">
-                  Join our supplier network to receive RFQs, submit quotations, and grow your business.
+                  Join our supplier network to receive RFQs, submit quotations, and grow your
+                  business.
                 </p>
                 <span className="inline-flex items-center text-indigo-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Login / Register
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </span>
               </div>
@@ -209,16 +252,24 @@ export default function HomePage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-purple-100 rounded-2xl text-purple-600 mb-6 group-hover:bg-purple-600 group-hover:text-white transition-colors">
                   <AdminIcon />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  Admin Portal
-                </h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Admin Portal</h3>
                 <p className="text-gray-600 mb-6">
                   Administrative access to manage customers, suppliers, RFQs, and platform settings.
                 </p>
                 <span className="inline-flex items-center text-purple-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Admin Login
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </span>
               </div>
@@ -232,16 +283,24 @@ export default function HomePage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-2xl text-green-600 mb-6 group-hover:bg-green-600 group-hover:text-white transition-colors">
                   <PricingIcon />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  Tier Pricing
-                </h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Tier Pricing</h3>
                 <p className="text-gray-600 mb-6">
                   View our subscription tiers and pricing plans for customers and suppliers.
                 </p>
                 <span className="inline-flex items-center text-green-600 font-semibold group-hover:translate-x-1 transition-transform">
                   View Pricing
-                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </span>
               </div>
@@ -257,11 +316,12 @@ export default function HomePage() {
                 <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
                   <CalendarIcon />
                 </div>
-                <h2 className="text-lg font-bold text-gray-900">
-                  Upcoming RFQ Closing Dates
-                </h2>
+                <h2 className="text-lg font-bold text-gray-900">Upcoming RFQ Closing Dates</h2>
               </div>
-              <Link href="/rfq/list" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <Link
+                href="/rfq/list"
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
                 View All RFQs
               </Link>
             </div>
@@ -271,7 +331,10 @@ export default function HomePage() {
             {loading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="animate-pulse flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div
+                    key={i}
+                    className="animate-pulse flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  >
                     <div className="flex-1">
                       <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
                       <div className="h-3 bg-gray-200 rounded w-48"></div>
@@ -289,15 +352,18 @@ export default function HomePage() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-mono text-gray-500">
-                          {rfq.rfqNumber}
-                        </span>
-                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                          rfq.status === 'draft' ? 'bg-gray-100 text-gray-600' :
-                          rfq.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                          rfq.status === 'quoted' ? 'bg-blue-100 text-blue-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
+                        <span className="text-sm font-mono text-gray-500">{rfq.rfqNumber}</span>
+                        <span
+                          className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            rfq.status === "draft"
+                              ? "bg-gray-100 text-gray-600"
+                              : rfq.status === "pending"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : rfq.status === "quoted"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-green-100 text-green-700"
+                          }`}
+                        >
                           {rfq.status.charAt(0).toUpperCase() + rfq.status.slice(1)}
                         </span>
                       </div>
@@ -307,14 +373,16 @@ export default function HomePage() {
                     </div>
                     <div className="flex items-center gap-4 ml-4">
                       <div className="text-right">
-                        <p className="text-sm text-gray-500">
-                          {formatDate(rfq.requiredDate)}
-                        </p>
+                        <p className="text-sm text-gray-500">{formatDate(rfq.requiredDate)}</p>
                       </div>
-                      <span className={`px-3 py-1 text-sm font-medium rounded-full ${daysRemainingColor(rfq.daysRemaining)}`}>
-                        {rfq.daysRemaining === 0 ? 'Today' :
-                         rfq.daysRemaining === 1 ? '1 day' :
-                         `${rfq.daysRemaining} days`}
+                      <span
+                        className={`px-3 py-1 text-sm font-medium rounded-full ${daysRemainingColor(rfq.daysRemaining)}`}
+                      >
+                        {rfq.daysRemaining === 0
+                          ? "Today"
+                          : rfq.daysRemaining === 1
+                            ? "1 day"
+                            : `${rfq.daysRemaining} days`}
                       </span>
                     </div>
                   </div>
@@ -326,10 +394,23 @@ export default function HomePage() {
                   <CalendarIcon />
                 </div>
                 <p className="text-gray-500">No upcoming RFQ closing dates</p>
-                <Link href="/rfq" className="inline-flex items-center mt-4 text-blue-600 hover:text-blue-700 font-medium">
+                <Link
+                  href="/rfq"
+                  className="inline-flex items-center mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                >
                   Create your first RFQ
-                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  <svg
+                    className="w-4 h-4 ml-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </Link>
               </div>
@@ -346,7 +427,12 @@ export default function HomePage() {
               className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Create New RFQ
             </Link>
@@ -355,7 +441,12 @@ export default function HomePage() {
               className="inline-flex items-center px-6 py-3 bg-white bg-opacity-95 text-gray-700 font-semibold rounded-lg hover:bg-opacity-100 transition-colors border border-gray-300 shadow-lg hover:shadow-xl"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                />
               </svg>
               View All RFQs
             </Link>

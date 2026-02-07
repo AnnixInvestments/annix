@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateCustomerSessionsTable1766003000000 implements MigrationInterface {
-  name = 'CreateCustomerSessionsTable1766003000000';
+  name = "CreateCustomerSessionsTable1766003000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create session_invalidation_reason enum
@@ -57,12 +57,8 @@ export class CreateCustomerSessionsTable1766003000000 implements MigrationInterf
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_sessions_profile_active"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_customer_sessions_token"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_sessions_profile_active"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_customer_sessions_token"`);
 
     // Drop foreign key
     await queryRunner.query(
@@ -73,8 +69,6 @@ export class CreateCustomerSessionsTable1766003000000 implements MigrationInterf
     await queryRunner.query(`DROP TABLE IF EXISTS "customer_sessions"`);
 
     // Drop enum
-    await queryRunner.query(
-      `DROP TYPE IF EXISTS "session_invalidation_reason_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE IF EXISTS "session_invalidation_reason_enum"`);
   }
 }

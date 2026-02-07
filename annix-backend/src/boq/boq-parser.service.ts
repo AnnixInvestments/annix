@@ -1,94 +1,62 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import * as XLSX from 'xlsx';
-import { ParsedBoqData, ParsedBoqLineItem } from './dto/upload-boq.dto';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import * as XLSX from "xlsx";
+import { ParsedBoqData, ParsedBoqLineItem } from "./dto/upload-boq.dto";
 
 @Injectable()
 export class BoqParserService {
   private readonly validItemTypes = [
-    'straight_pipe',
-    'bend',
-    'fitting',
-    'flange',
-    'valve',
-    'support',
-    'coating',
-    'lining',
-    'custom',
+    "straight_pipe",
+    "bend",
+    "fitting",
+    "flange",
+    "valve",
+    "support",
+    "coating",
+    "lining",
+    "custom",
   ];
 
   private readonly columnMappings: Record<string, string[]> = {
-    itemCode: [
-      'item code',
-      'itemcode',
-      'code',
-      'item no',
-      'item number',
-      'item_code',
-      'no',
-      'ref',
-    ],
-    description: [
-      'description',
-      'desc',
-      'item description',
-      'item',
-      'name',
-      'material',
-      'product',
-    ],
-    itemType: ['item type', 'itemtype', 'type', 'item_type', 'category'],
-    unitOfMeasure: [
-      'unit',
-      'uom',
-      'unit of measure',
-      'units',
-      'measure',
-      'unit_of_measure',
-    ],
-    quantity: ['quantity', 'qty', 'amount', 'count', 'no of items', 'no.'],
+    itemCode: ["item code", "itemcode", "code", "item no", "item number", "item_code", "no", "ref"],
+    description: ["description", "desc", "item description", "item", "name", "material", "product"],
+    itemType: ["item type", "itemtype", "type", "item_type", "category"],
+    unitOfMeasure: ["unit", "uom", "unit of measure", "units", "measure", "unit_of_measure"],
+    quantity: ["quantity", "qty", "amount", "count", "no of items", "no."],
     unitWeightKg: [
-      'unit weight',
-      'unit weight kg',
-      'weight',
-      'unit_weight_kg',
-      'kg',
-      'weight (kg)',
+      "unit weight",
+      "unit weight kg",
+      "weight",
+      "unit_weight_kg",
+      "kg",
+      "weight (kg)",
     ],
-    unitPrice: [
-      'unit price',
-      'price',
-      'unit cost',
-      'cost',
-      'rate',
-      'unit_price',
-      'price (zar)',
-    ],
-    notes: ['notes', 'remarks', 'comments', 'note', 'remark'],
+    unitPrice: ["unit price", "price", "unit cost", "cost", "rate", "unit_price", "price (zar)"],
+    notes: ["notes", "remarks", "comments", "note", "remark"],
     drawingReference: [
-      'drawing ref',
-      'drawing reference',
-      'drawing',
-      'drawing_reference',
-      'dwg ref',
-      'dwg',
+      "drawing ref",
+      "drawing reference",
+      "drawing",
+      "drawing_reference",
+      "dwg ref",
+      "dwg",
     ],
   };
 
   parseExcel(buffer: Buffer): ParsedBoqData {
     try {
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const workbook = XLSX.read(buffer, { type: "buffer" });
 
       // Get the first sheet
       const sheetName = workbook.SheetNames[0];
       if (!sheetName) {
-        throw new BadRequestException('Excel file has no sheets');
+        throw new BadRequestException("Excel file has no sheets");
       }
 
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
       if (jsonData.length === 0) {
-        throw new BadRequestException('Excel file has no data rows');
+        throw new BadRequestException("Excel file has no data rows");
       }
 
       return this.parseJsonData(jsonData as Record<string, any>[]);
@@ -96,9 +64,7 @@ export class BoqParserService {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      throw new BadRequestException(
-        `Failed to parse Excel file: ${error.message}`,
-      );
+      throw new BadRequestException(`Failed to parse Excel file: ${error.message}`);
     }
   }
 
@@ -110,7 +76,7 @@ export class BoqParserService {
     };
 
     if (data.length === 0) {
-      result.errors.push('No data rows found in the file');
+      result.errors.push("No data rows found in the file");
       return result;
     }
 
@@ -148,7 +114,7 @@ export class BoqParserService {
     });
 
     if (result.lineItems.length === 0 && result.errors.length === 0) {
-      result.errors.push('No valid line items could be parsed from the file');
+      result.errors.push("No valid line items could be parsed from the file");
     }
 
     return result;
@@ -178,7 +144,7 @@ export class BoqParserService {
   ): ParsedBoqLineItem | null {
     // Get description (required)
     const description = this.getStringValue(row, headerMap.description);
-    if (!description || description.trim() === '') {
+    if (!description || description.trim() === "") {
       warnings.push(`Row ${rowNum}: Skipped - empty description`);
       return null;
     }
@@ -194,10 +160,8 @@ export class BoqParserService {
     let itemType = this.getStringValue(row, headerMap.itemType)?.toLowerCase();
     if (!itemType || !this.validItemTypes.includes(itemType)) {
       itemType = this.detectItemType(description);
-      if (itemType !== 'custom') {
-        warnings.push(
-          `Row ${rowNum}: Auto-detected item type as "${itemType}"`,
-        );
+      if (itemType !== "custom") {
+        warnings.push(`Row ${rowNum}: Auto-detected item type as "${itemType}"`);
       }
     }
 
@@ -205,9 +169,7 @@ export class BoqParserService {
     let unitOfMeasure = this.getStringValue(row, headerMap.unitOfMeasure);
     if (!unitOfMeasure) {
       unitOfMeasure = this.detectUnitOfMeasure(description, itemType);
-      warnings.push(
-        `Row ${rowNum}: Using default unit of measure "${unitOfMeasure}"`,
-      );
+      warnings.push(`Row ${rowNum}: Using default unit of measure "${unitOfMeasure}"`);
     }
 
     const lineItem: ParsedBoqLineItem = {
@@ -225,123 +187,99 @@ export class BoqParserService {
     return lineItem;
   }
 
-  private getStringValue(
-    row: Record<string, any>,
-    header?: string,
-  ): string | undefined {
+  private getStringValue(row: Record<string, any>, header?: string): string | undefined {
     if (!header) return undefined;
     const value = row[header];
-    if (value === null || value === undefined || value === '') return undefined;
+    if (value === null || value === undefined || value === "") return undefined;
     return String(value).trim();
   }
 
-  private getNumericValue(
-    row: Record<string, any>,
-    header?: string,
-  ): number | undefined {
+  private getNumericValue(row: Record<string, any>, header?: string): number | undefined {
     if (!header) return undefined;
     const value = row[header];
-    if (value === null || value === undefined || value === '') return undefined;
+    if (value === null || value === undefined || value === "") return undefined;
 
     const num =
-      typeof value === 'number'
-        ? value
-        : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
-    return isNaN(num) ? undefined : num;
+      typeof value === "number" ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ""));
+    return Number.isNaN(num) ? undefined : num;
   }
 
   private detectItemType(description: string): string {
     const desc = description.toLowerCase();
 
-    if (
-      desc.includes('pipe') &&
-      !desc.includes('fitting') &&
-      !desc.includes('bend')
-    ) {
-      return 'straight_pipe';
+    if (desc.includes("pipe") && !desc.includes("fitting") && !desc.includes("bend")) {
+      return "straight_pipe";
     }
-    if (desc.includes('bend') || desc.includes('elbow')) {
-      return 'bend';
+    if (desc.includes("bend") || desc.includes("elbow")) {
+      return "bend";
     }
     if (
-      desc.includes('tee') ||
-      desc.includes('reducer') ||
-      desc.includes('cap') ||
-      desc.includes('nipple') ||
-      desc.includes('coupling') ||
-      desc.includes('fitting')
+      desc.includes("tee") ||
+      desc.includes("reducer") ||
+      desc.includes("cap") ||
+      desc.includes("nipple") ||
+      desc.includes("coupling") ||
+      desc.includes("fitting")
     ) {
-      return 'fitting';
+      return "fitting";
     }
-    if (desc.includes('flange')) {
-      return 'flange';
-    }
-    if (
-      desc.includes('valve') ||
-      desc.includes('gate') ||
-      desc.includes('ball') ||
-      desc.includes('check') ||
-      desc.includes('butterfly')
-    ) {
-      return 'valve';
+    if (desc.includes("flange")) {
+      return "flange";
     }
     if (
-      desc.includes('support') ||
-      desc.includes('hanger') ||
-      desc.includes('bracket') ||
-      desc.includes('clamp') ||
-      desc.includes('anchor')
+      desc.includes("valve") ||
+      desc.includes("gate") ||
+      desc.includes("ball") ||
+      desc.includes("check") ||
+      desc.includes("butterfly")
     ) {
-      return 'support';
+      return "valve";
     }
     if (
-      desc.includes('coating') ||
-      desc.includes('paint') ||
-      desc.includes('external')
+      desc.includes("support") ||
+      desc.includes("hanger") ||
+      desc.includes("bracket") ||
+      desc.includes("clamp") ||
+      desc.includes("anchor")
     ) {
-      return 'coating';
+      return "support";
     }
-    if (
-      desc.includes('lining') ||
-      desc.includes('internal') ||
-      desc.includes('epoxy')
-    ) {
-      return 'lining';
+    if (desc.includes("coating") || desc.includes("paint") || desc.includes("external")) {
+      return "coating";
+    }
+    if (desc.includes("lining") || desc.includes("internal") || desc.includes("epoxy")) {
+      return "lining";
     }
 
-    return 'custom';
+    return "custom";
   }
 
   private detectUnitOfMeasure(description: string, itemType: string): string {
     const desc = description.toLowerCase();
 
     // Check for explicit units in description
-    if (
-      desc.includes('meter') ||
-      desc.includes('metre') ||
-      desc.includes(' m ')
-    ) {
-      return 'm';
+    if (desc.includes("meter") || desc.includes("metre") || desc.includes(" m ")) {
+      return "m";
     }
-    if (desc.includes('kg') || desc.includes('kilogram')) {
-      return 'kg';
+    if (desc.includes("kg") || desc.includes("kilogram")) {
+      return "kg";
     }
-    if (desc.includes('set')) {
-      return 'set';
+    if (desc.includes("set")) {
+      return "set";
     }
-    if (desc.includes('pair')) {
-      return 'pair';
+    if (desc.includes("pair")) {
+      return "pair";
     }
 
     // Default based on item type
     switch (itemType) {
-      case 'straight_pipe':
-        return 'm';
-      case 'coating':
-      case 'lining':
-        return 'm²';
+      case "straight_pipe":
+        return "m";
+      case "coating":
+      case "lining":
+        return "m²";
       default:
-        return 'ea';
+        return "ea";
     }
   }
 
@@ -352,10 +290,10 @@ export class BoqParserService {
     return {
       lineItems: [],
       errors: [
-        'PDF parsing is not fully supported. For best results, please convert your PDF to Excel format first, or ensure the PDF contains structured tabular data.',
+        "PDF parsing is not fully supported. For best results, please convert your PDF to Excel format first, or ensure the PDF contains structured tabular data.",
       ],
       warnings: [
-        'Tip: You can copy data from PDF to Excel and upload the Excel file for accurate parsing.',
+        "Tip: You can copy data from PDF to Excel and upload the Excel file for accurate parsing.",
       ],
     };
   }

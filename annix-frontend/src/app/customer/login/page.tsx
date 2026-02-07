@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useDeviceFingerprint } from '@/app/hooks/useDeviceFingerprint';
-import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { customerEmailApi } from '@/app/lib/api/customerApi';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
+import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
+import { customerEmailApi } from "@/app/lib/api/customerApi";
 
 export default function CustomerLoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading: authLoading } = useCustomerAuth();
   const { fingerprint, browserInfo, isLoading: fingerprintLoading } = useDeviceFingerprint();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,13 +25,13 @@ export default function CustomerLoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push('/customer/portal/dashboard');
+      router.push("/customer/portal/dashboard");
     }
   }, [isAuthenticated, authLoading, router]);
 
   const handleResendVerification = async () => {
     if (!email) {
-      setError('Please enter your email address');
+      setError("Please enter your email address");
       return;
     }
 
@@ -45,7 +45,7 @@ export default function CustomerLoginPage() {
       setIsEmailNotVerified(false);
       setError(null);
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Failed to resend verification email';
+      const errorMessage = e instanceof Error ? e.message : "Failed to resend verification email";
       setError(errorMessage);
     } finally {
       setIsResendingEmail(false);
@@ -56,7 +56,7 @@ export default function CustomerLoginPage() {
     e.preventDefault();
 
     if (!fingerprint) {
-      setError('Device fingerprint not available. Please refresh the page.');
+      setError("Device fingerprint not available. Please refresh the page.");
       return;
     }
 
@@ -67,25 +67,28 @@ export default function CustomerLoginPage() {
 
     try {
       await login(email, password, fingerprint, browserInfo || undefined);
-      router.push('/customer/portal/dashboard');
+      router.push("/customer/portal/dashboard");
     } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Login failed. Please try again.';
+      const errorMessage = e instanceof Error ? e.message : "Login failed. Please try again.";
 
       // Check if error is about email not verified or account pending activation
-      if (errorMessage.includes('Email not verified') || errorMessage.includes('not verified') || errorMessage.includes('pending activation') || errorMessage.includes('Account is pending')) {
+      if (
+        errorMessage.includes("Email not verified") ||
+        errorMessage.includes("not verified") ||
+        errorMessage.includes("pending activation") ||
+        errorMessage.includes("Account is pending")
+      ) {
         setIsEmailNotVerified(true);
         setError(errorMessage); // Use the actual error message from backend
-      } else if (errorMessage.includes('Device fingerprint mismatch')) {
+      } else if (errorMessage.includes("Device fingerprint mismatch")) {
         setError(
-          'This device is not registered for this account. ' +
-          'Please contact support if you need to register a new device.'
+          "This device is not registered for this account. " +
+            "Please contact support if you need to register a new device.",
         );
-      } else if (errorMessage.includes('suspended')) {
-        setError(
-          'Your account has been suspended. Please contact support for assistance.'
-        );
-      } else if (errorMessage.includes('Invalid credentials')) {
-        setError('Invalid email or password. Please try again.');
+      } else if (errorMessage.includes("suspended")) {
+        setError("Your account has been suspended. Please contact support for assistance.");
+      } else if (errorMessage.includes("Invalid credentials")) {
+        setError("Invalid email or password. Please try again.");
       } else {
         setError(errorMessage);
       }
@@ -110,8 +113,18 @@ export default function CustomerLoginPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            <svg
+              className="w-10 h-10 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-white">Customer Portal</h1>
@@ -161,12 +174,27 @@ export default function CustomerLoginPage() {
                 >
                   {showPassword ? (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
                     </svg>
                   ) : (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                      />
                     </svg>
                   )}
                 </button>
@@ -195,15 +223,35 @@ export default function CustomerLoginPage() {
                   </>
                 ) : fingerprint ? (
                   <>
-                    <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-4 h-4 text-green-600 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     <span className="text-sm text-gray-600">Device verified</span>
                   </>
                 ) : (
                   <>
-                    <svg className="w-4 h-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <svg
+                      className="w-4 h-4 text-red-600 mr-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                     <span className="text-sm text-red-600">Device verification failed</span>
                   </>
@@ -214,8 +262,18 @@ export default function CustomerLoginPage() {
             {resendSuccess && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex">
-                  <svg className="w-5 h-5 text-green-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-5 h-5 text-green-600 mr-2 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   <p className="text-sm text-green-700">
                     Verification email sent! Please check your inbox and verify your email address.
@@ -227,8 +285,18 @@ export default function CustomerLoginPage() {
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <div className="flex">
-                  <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-5 h-5 text-red-600 mr-2 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   <div className="flex-1">
                     <p className="text-sm text-red-700">{error}</p>
@@ -246,8 +314,18 @@ export default function CustomerLoginPage() {
                           </>
                         ) : (
                           <>
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            <svg
+                              className="w-4 h-4 mr-1"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                              />
                             </svg>
                             Resend Verification Email
                           </>
@@ -264,7 +342,7 @@ export default function CustomerLoginPage() {
               disabled={isSubmitting || fingerprintLoading || !fingerprint}
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Signing in...' : 'Sign in'}
+              {isSubmitting ? "Signing in..." : "Sign in"}
             </button>
           </form>
 
@@ -280,13 +358,16 @@ export default function CustomerLoginPage() {
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Don&apos;t have an account?{' '}
-                <Link href="/customer/register" className="text-blue-600 hover:underline font-medium">
+                Don&apos;t have an account?{" "}
+                <Link
+                  href="/customer/register"
+                  className="text-blue-600 hover:underline font-medium"
+                >
                   Register here
                 </Link>
               </p>
               <p className="mt-2 text-sm text-gray-500">
-                Need to change your registered device?{' '}
+                Need to change your registered device?{" "}
                 <a href="mailto:info@annix.co.za" className="text-blue-600 hover:underline">
                   Contact support
                 </a>
@@ -298,14 +379,25 @@ export default function CustomerLoginPage() {
         <div className="mt-6 text-center">
           <div className="bg-blue-800 bg-opacity-50 border border-blue-400 rounded-lg p-4 max-w-md mx-auto backdrop-blur-sm">
             <div className="flex items-start">
-              <svg className="w-5 h-5 text-blue-200 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <svg
+                className="w-5 h-5 text-blue-200 mr-2 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
               </svg>
               <div className="text-left">
                 <h4 className="text-sm font-medium text-white">Secure Login</h4>
                 <p className="mt-1 text-xs text-blue-100">
                   Your account is secured with device binding. Only the device you registered with
-                  can access your account. This protects your business information from unauthorized access.
+                  can access your account. This protects your business information from unauthorized
+                  access.
                 </p>
               </div>
             </div>

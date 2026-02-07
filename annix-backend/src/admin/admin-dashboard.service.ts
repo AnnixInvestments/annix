@@ -1,31 +1,34 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
-
-import { now } from '../lib/datetime';
-
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { MoreThan, Repository } from "typeorm";
+import { AuditAction, AuditLog } from "../audit/entities/audit-log.entity";
 import {
-  CustomerProfile,
+  CustomerOnboarding,
+  CustomerOnboardingStatus,
+} from "../customer/entities/customer-onboarding.entity";
+import {
   CustomerAccountStatus,
-} from '../customer/entities/customer-profile.entity';
-import { CustomerOnboarding } from '../customer/entities/customer-onboarding.entity';
-import { CustomerOnboardingStatus } from '../customer/entities/customer-onboarding.entity';
-import { CustomerSession } from '../customer/entities/customer-session.entity';
-import { SupplierProfile } from '../supplier/entities/supplier-profile.entity';
-import { SupplierOnboarding } from '../supplier/entities/supplier-onboarding.entity';
-import { SupplierOnboardingStatus } from '../supplier/entities/supplier-onboarding.entity';
-import { SupplierAccountStatus } from '../supplier/entities/supplier-profile.entity';
-import { SupplierSession } from '../supplier/entities/supplier-session.entity';
-import { Rfq } from '../rfq/entities/rfq.entity';
-import { AdminSession } from './entities/admin-session.entity';
-import { AuditLog, AuditAction } from '../audit/entities/audit-log.entity';
-
+  CustomerProfile,
+} from "../customer/entities/customer-profile.entity";
+import { CustomerSession } from "../customer/entities/customer-session.entity";
+import { now } from "../lib/datetime";
+import { Rfq } from "../rfq/entities/rfq.entity";
 import {
+  SupplierOnboarding,
+  SupplierOnboardingStatus,
+} from "../supplier/entities/supplier-onboarding.entity";
+import {
+  SupplierAccountStatus,
+  SupplierProfile,
+} from "../supplier/entities/supplier-profile.entity";
+import { SupplierSession } from "../supplier/entities/supplier-session.entity";
+import {
+  CustomerStatsDto,
   DashboardStatsDto,
   RecentActivityItemDto,
-  CustomerStatsDto,
   SupplierStatsDto,
-} from './dto/admin-dashboard.dto';
+} from "./dto/admin-dashboard.dto";
+import { AdminSession } from "./entities/admin-session.entity";
 
 @Injectable()
 export class AdminDashboardService {
@@ -56,7 +59,7 @@ export class AdminDashboardService {
    * Get dashboard statistics
    */
   async getDashboardStats(): Promise<DashboardStatsDto> {
-    this.logger.log('Fetching dashboard statistics');
+    this.logger.log("Fetching dashboard statistics");
 
     // Count customers (excluding deactivated)
     const totalCustomers = await this.customerProfileRepo.count({
@@ -133,26 +136,24 @@ export class AdminDashboardService {
   /**
    * Get recent activity from audit logs
    */
-  async getRecentActivity(
-    limit: number = 20,
-  ): Promise<RecentActivityItemDto[]> {
+  async getRecentActivity(limit: number = 20): Promise<RecentActivityItemDto[]> {
     const auditLogs = await this.auditLogRepo.find({
-      order: { timestamp: 'DESC' },
+      order: { timestamp: "DESC" },
       take: limit,
-      relations: ['performedBy'],
+      relations: ["performedBy"],
     });
 
     return auditLogs.map((log) => ({
       id: log.id,
       timestamp: log.timestamp,
       userId: log.performedBy?.id ?? 0,
-      userEmail: log.performedBy?.email || 'Unknown',
-      userName: log.performedBy?.username || 'Unknown',
+      userEmail: log.performedBy?.email || "Unknown",
+      userName: log.performedBy?.username || "Unknown",
       action: log.action,
       entityType: log.entityType,
       entityId: log.entityId || 0,
       details: this.formatAuditDetails(log),
-      clientIp: log.ipAddress || '',
+      clientIp: log.ipAddress || "",
     }));
   }
 
@@ -160,22 +161,21 @@ export class AdminDashboardService {
    * Get customer statistics
    */
   async getCustomerStats(): Promise<CustomerStatsDto> {
-    const [total, active, suspended, pendingReview, deactivated] =
-      await Promise.all([
-        this.customerProfileRepo.count(),
-        this.customerProfileRepo.count({
-          where: { accountStatus: CustomerAccountStatus.ACTIVE },
-        }),
-        this.customerProfileRepo.count({
-          where: { accountStatus: CustomerAccountStatus.SUSPENDED },
-        }),
-        this.customerOnboardingRepo.count({
-          where: { status: CustomerOnboardingStatus.UNDER_REVIEW },
-        }),
-        this.customerProfileRepo.count({
-          where: { accountStatus: CustomerAccountStatus.DEACTIVATED },
-        }),
-      ]);
+    const [total, active, suspended, pendingReview, deactivated] = await Promise.all([
+      this.customerProfileRepo.count(),
+      this.customerProfileRepo.count({
+        where: { accountStatus: CustomerAccountStatus.ACTIVE },
+      }),
+      this.customerProfileRepo.count({
+        where: { accountStatus: CustomerAccountStatus.SUSPENDED },
+      }),
+      this.customerOnboardingRepo.count({
+        where: { status: CustomerOnboardingStatus.UNDER_REVIEW },
+      }),
+      this.customerProfileRepo.count({
+        where: { accountStatus: CustomerAccountStatus.DEACTIVATED },
+      }),
+    ]);
 
     return {
       total,
@@ -190,22 +190,21 @@ export class AdminDashboardService {
    * Get supplier statistics
    */
   async getSupplierStats(): Promise<SupplierStatsDto> {
-    const [total, active, suspended, pendingReview, deactivated] =
-      await Promise.all([
-        this.supplierProfileRepo.count(),
-        this.supplierProfileRepo.count({
-          where: { accountStatus: SupplierAccountStatus.ACTIVE },
-        }),
-        this.supplierProfileRepo.count({
-          where: { accountStatus: SupplierAccountStatus.SUSPENDED },
-        }),
-        this.supplierOnboardingRepo.count({
-          where: { status: SupplierOnboardingStatus.UNDER_REVIEW },
-        }),
-        this.supplierProfileRepo.count({
-          where: { accountStatus: SupplierAccountStatus.DEACTIVATED },
-        }),
-      ]);
+    const [total, active, suspended, pendingReview, deactivated] = await Promise.all([
+      this.supplierProfileRepo.count(),
+      this.supplierProfileRepo.count({
+        where: { accountStatus: SupplierAccountStatus.ACTIVE },
+      }),
+      this.supplierProfileRepo.count({
+        where: { accountStatus: SupplierAccountStatus.SUSPENDED },
+      }),
+      this.supplierOnboardingRepo.count({
+        where: { status: SupplierOnboardingStatus.UNDER_REVIEW },
+      }),
+      this.supplierProfileRepo.count({
+        where: { accountStatus: SupplierAccountStatus.DEACTIVATED },
+      }),
+    ]);
 
     return {
       total,

@@ -1,1 +1,1 @@
-export * from './sabs719-test-pressure.entity';
+export * from "./sabs719-test-pressure.entity";

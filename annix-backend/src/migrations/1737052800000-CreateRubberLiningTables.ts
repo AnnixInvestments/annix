@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateRubberLiningTables1737052800000 implements MigrationInterface {
-  name = 'CreateRubberLiningTables1737052800000';
+  name = "CreateRubberLiningTables1737052800000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -249,23 +249,13 @@ export class CreateRubberLiningTables1737052800000 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_rubber_app_ratings_category"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_rubber_app_ratings_type"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_app_ratings_category"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_app_ratings_type"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_specs_grade"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_specs_type"`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "rubber_adhesion_requirements"`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "rubber_thickness_recommendations"`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "rubber_application_ratings"`,
-    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "rubber_adhesion_requirements"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "rubber_thickness_recommendations"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "rubber_application_ratings"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "rubber_specifications"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "rubber_types"`);
   }

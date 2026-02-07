@@ -1,9 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateFeatureFlagsTable1771500000000
-  implements MigrationInterface
-{
-  name = 'CreateFeatureFlagsTable1771500000000';
+export class CreateFeatureFlagsTable1771500000000 implements MigrationInterface {
+  name = "CreateFeatureFlagsTable1771500000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

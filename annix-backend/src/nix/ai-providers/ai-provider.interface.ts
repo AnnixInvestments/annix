@@ -10,24 +10,17 @@ export interface AiExtractionRequest {
 export interface AiExtractedItem {
   itemNumber?: string;
   description: string;
-  itemType:
-    | 'pipe'
-    | 'bend'
-    | 'reducer'
-    | 'tee'
-    | 'flange'
-    | 'expansion_joint'
-    | 'unknown';
+  itemType: "pipe" | "bend" | "reducer" | "tee" | "flange" | "expansion_joint" | "unknown";
   material?: string;
   materialGrade?: string;
   diameter?: number;
-  diameterUnit?: 'mm' | 'inch';
+  diameterUnit?: "mm" | "inch";
   secondaryDiameter?: number;
   length?: number;
   wallThickness?: number;
   schedule?: string;
   angle?: number;
-  flangeConfig?: 'none' | 'one_end' | 'both_ends' | 'puddle' | 'blind';
+  flangeConfig?: "none" | "one_end" | "both_ends" | "puddle" | "blind";
   quantity: number;
   unit: string;
   confidence: number;

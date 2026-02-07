@@ -1,22 +1,22 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsArray, IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsArray, IsEnum, IsOptional, IsString } from "class-validator";
 
 export enum ValidationSeverity {
-  ERROR = 'error',
-  WARNING = 'warning',
-  INFO = 'info',
+  ERROR = "error",
+  WARNING = "warning",
+  INFO = "info",
 }
 
 export enum ValidationCategory {
-  DIMENSIONAL = 'dimensional',
-  PRESSURE_RATING = 'pressure_rating',
-  BOLTING = 'bolting',
-  PHYSICAL = 'physical',
-  DOCUMENTATION = 'documentation',
+  DIMENSIONAL = "dimensional",
+  PRESSURE_RATING = "pressure_rating",
+  BOLTING = "bolting",
+  PHYSICAL = "physical",
+  DOCUMENTATION = "documentation",
 }
 
 export class RunValidationDto {
-  @ApiPropertyOptional({ description: 'Specific rule codes to run' })
+  @ApiPropertyOptional({ description: "Specific rule codes to run" })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -24,7 +24,7 @@ export class RunValidationDto {
 
   @ApiPropertyOptional({
     enum: ValidationCategory,
-    description: 'Filter by category',
+    description: "Filter by category",
   })
   @IsOptional()
   @IsEnum(ValidationCategory)
@@ -32,7 +32,7 @@ export class RunValidationDto {
 
   @ApiPropertyOptional({
     enum: ValidationSeverity,
-    description: 'Minimum severity',
+    description: "Minimum severity",
   })
   @IsOptional()
   @IsEnum(ValidationSeverity)

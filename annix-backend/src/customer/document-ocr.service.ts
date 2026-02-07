@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { createWorker } from 'tesseract.js';
+import { Injectable, Logger } from "@nestjs/common";
+import { createWorker } from "tesseract.js";
 
 // pdf-parse doesn't have proper TypeScript support, use require
-const pdfParse = require('pdf-parse');
+const pdfParse = require("pdf-parse");
 
 export interface ExtractedDocumentData {
   success: boolean;
@@ -14,20 +14,20 @@ export interface ExtractedDocumentData {
   provinceState?: string;
   postalCode?: string;
   rawText?: string;
-  confidence: 'high' | 'medium' | 'low';
-  ocrMethod: 'pdf-parse' | 'tesseract' | 'none';
+  confidence: "high" | "medium" | "low";
+  ocrMethod: "pdf-parse" | "tesseract" | "none";
   errors: string[];
 }
 
 export interface ValidationMismatch {
   field:
-    | 'vatNumber'
-    | 'registrationNumber'
-    | 'companyName'
-    | 'streetAddress'
-    | 'city'
-    | 'provinceState'
-    | 'postalCode';
+    | "vatNumber"
+    | "registrationNumber"
+    | "companyName"
+    | "streetAddress"
+    | "city"
+    | "provinceState"
+    | "postalCode";
   expected: string;
   extracted: string;
   similarity?: number;
@@ -56,15 +56,15 @@ export class DocumentOcrService {
 
   // South African Provinces
   private readonly SA_PROVINCES = [
-    'EASTERN CAPE',
-    'FREE STATE',
-    'GAUTENG',
-    'KWAZULU-NATAL',
-    'LIMPOPO',
-    'MPUMALANGA',
-    'NORTHERN CAPE',
-    'NORTH WEST',
-    'WESTERN CAPE',
+    "EASTERN CAPE",
+    "FREE STATE",
+    "GAUTENG",
+    "KWAZULU-NATAL",
+    "LIMPOPO",
+    "MPUMALANGA",
+    "NORTHERN CAPE",
+    "NORTH WEST",
+    "WESTERN CAPE",
   ];
 
   /**
@@ -72,7 +72,7 @@ export class DocumentOcrService {
    */
   async extractFromPdf(
     buffer: Buffer,
-    documentType: 'vat' | 'registration',
+    documentType: "vat" | "registration",
   ): Promise<ExtractedDocumentData> {
     try {
       this.logger.log(`Extracting text from PDF (${documentType})`);
@@ -83,15 +83,15 @@ export class DocumentOcrService {
       if (!rawText || rawText.trim().length < 10) {
         return {
           success: false,
-          rawText: rawText || '',
-          confidence: 'low',
-          ocrMethod: 'pdf-parse',
-          errors: ['PDF text extraction produced no usable text'],
+          rawText: rawText || "",
+          confidence: "low",
+          ocrMethod: "pdf-parse",
+          errors: ["PDF text extraction produced no usable text"],
         };
       }
 
       // Parse based on document type
-      if (documentType === 'vat') {
+      if (documentType === "vat") {
         return this.parseVatDocument(rawText);
       } else {
         return this.parseRegistrationDocument(rawText);
@@ -100,8 +100,8 @@ export class DocumentOcrService {
       this.logger.error(`PDF extraction failed: ${error.message}`);
       return {
         success: false,
-        confidence: 'low',
-        ocrMethod: 'pdf-parse',
+        confidence: "low",
+        ocrMethod: "pdf-parse",
         errors: [error.message],
       };
     }
@@ -112,13 +112,13 @@ export class DocumentOcrService {
    */
   async extractFromImage(
     buffer: Buffer,
-    documentType: 'vat' | 'registration',
+    documentType: "vat" | "registration",
   ): Promise<ExtractedDocumentData> {
     let worker;
     try {
       this.logger.log(`Extracting text from image (${documentType})`);
 
-      worker = await createWorker('eng');
+      worker = await createWorker("eng");
       const { data } = await worker.recognize(buffer);
       const rawText = data.text;
 
@@ -127,27 +127,26 @@ export class DocumentOcrService {
       if (!rawText || rawText.trim().length < 10) {
         return {
           success: false,
-          rawText: rawText || '',
-          confidence: 'low',
-          ocrMethod: 'tesseract',
-          errors: ['Image OCR produced no usable text'],
+          rawText: rawText || "",
+          confidence: "low",
+          ocrMethod: "tesseract",
+          errors: ["Image OCR produced no usable text"],
         };
       }
 
       // Determine confidence based on Tesseract's confidence score
-      const confidence =
-        data.confidence > 80 ? 'high' : data.confidence > 60 ? 'medium' : 'low';
+      const confidence = data.confidence > 80 ? "high" : data.confidence > 60 ? "medium" : "low";
 
       // Parse based on document type
       const parsed =
-        documentType === 'vat'
+        documentType === "vat"
           ? this.parseVatDocument(rawText)
           : this.parseRegistrationDocument(rawText);
 
       return {
         ...parsed,
         confidence,
-        ocrMethod: 'tesseract',
+        ocrMethod: "tesseract",
       };
     } catch (error) {
       if (worker) {
@@ -156,8 +155,8 @@ export class DocumentOcrService {
       this.logger.error(`Image OCR failed: ${error.message}`);
       return {
         success: false,
-        confidence: 'low',
-        ocrMethod: 'tesseract',
+        confidence: "low",
+        ocrMethod: "tesseract",
         errors: [error.message],
       };
     }
@@ -168,19 +167,19 @@ export class DocumentOcrService {
    */
   async extractDocumentData(
     file: Express.Multer.File,
-    documentType: 'vat' | 'registration',
+    documentType: "vat" | "registration",
   ): Promise<ExtractedDocumentData> {
     const mimeType = file.mimetype;
 
-    if (mimeType === 'application/pdf') {
+    if (mimeType === "application/pdf") {
       return this.extractFromPdf(file.buffer, documentType);
-    } else if (mimeType.startsWith('image/')) {
+    } else if (mimeType.startsWith("image/")) {
       return this.extractFromImage(file.buffer, documentType);
     } else {
       return {
         success: false,
-        confidence: 'low',
-        ocrMethod: 'none',
+        confidence: "low",
+        ocrMethod: "none",
         errors: [`Unsupported file type: ${mimeType}`],
       };
     }
@@ -194,8 +193,8 @@ export class DocumentOcrService {
     const result: Partial<ExtractedDocumentData> = {
       success: false,
       rawText,
-      confidence: 'medium',
-      ocrMethod: 'pdf-parse',
+      confidence: "medium",
+      ocrMethod: "pdf-parse",
       errors,
     };
 
@@ -205,18 +204,16 @@ export class DocumentOcrService {
       result.vatNumber = vatMatches[0];
       this.logger.log(`Extracted VAT Number: ${result.vatNumber}`);
     } else {
-      errors.push('Could not find VAT number in document');
+      errors.push("Could not find VAT number in document");
     }
 
     // Extract Registration Number
     const regMatches = rawText.match(this.REGISTRATION_NUMBER_PATTERN);
     if (regMatches && regMatches.length > 0) {
       result.registrationNumber = regMatches[0];
-      this.logger.log(
-        `Extracted Registration Number: ${result.registrationNumber}`,
-      );
+      this.logger.log(`Extracted Registration Number: ${result.registrationNumber}`);
     } else {
-      errors.push('Could not find registration number in document');
+      errors.push("Could not find registration number in document");
     }
 
     // Extract Company Name (look for common patterns in SARS VAT documents)
@@ -225,15 +222,11 @@ export class DocumentOcrService {
       result.companyName = companyName;
       this.logger.log(`Extracted Company Name: ${result.companyName}`);
     } else {
-      errors.push('Could not find company name in document');
+      errors.push("Could not find company name in document");
     }
 
     // Success if at least one field was extracted
-    result.success = !!(
-      result.vatNumber ||
-      result.registrationNumber ||
-      result.companyName
-    );
+    result.success = !!(result.vatNumber || result.registrationNumber || result.companyName);
 
     // Adjust confidence based on how many fields we extracted
     const fieldsExtracted = [
@@ -242,11 +235,11 @@ export class DocumentOcrService {
       result.companyName,
     ].filter(Boolean).length;
     if (fieldsExtracted === 3) {
-      result.confidence = 'high';
+      result.confidence = "high";
     } else if (fieldsExtracted === 2) {
-      result.confidence = 'medium';
+      result.confidence = "medium";
     } else {
-      result.confidence = 'low';
+      result.confidence = "low";
     }
 
     return result as ExtractedDocumentData;
@@ -260,8 +253,8 @@ export class DocumentOcrService {
     const result: Partial<ExtractedDocumentData> = {
       success: false,
       rawText,
-      confidence: 'medium',
-      ocrMethod: 'pdf-parse',
+      confidence: "medium",
+      ocrMethod: "pdf-parse",
       errors,
     };
 
@@ -269,11 +262,9 @@ export class DocumentOcrService {
     const regMatches = rawText.match(this.REGISTRATION_NUMBER_PATTERN);
     if (regMatches && regMatches.length > 0) {
       result.registrationNumber = regMatches[0];
-      this.logger.log(
-        `Extracted Registration Number: ${result.registrationNumber}`,
-      );
+      this.logger.log(`Extracted Registration Number: ${result.registrationNumber}`);
     } else {
-      errors.push('Could not find registration number in document');
+      errors.push("Could not find registration number in document");
     }
 
     // Extract Company Name
@@ -282,7 +273,7 @@ export class DocumentOcrService {
       result.companyName = companyName;
       this.logger.log(`Extracted Company Name: ${result.companyName}`);
     } else {
-      errors.push('Could not find company name in document');
+      errors.push("Could not find company name in document");
     }
 
     // Extract Address Information
@@ -317,11 +308,11 @@ export class DocumentOcrService {
       result.postalCode,
     ].filter(Boolean).length;
     if (fieldsExtracted >= 5) {
-      result.confidence = 'high';
+      result.confidence = "high";
     } else if (fieldsExtracted >= 3) {
-      result.confidence = 'medium';
+      result.confidence = "medium";
     } else {
-      result.confidence = 'low';
+      result.confidence = "low";
     }
 
     return result as ExtractedDocumentData;
@@ -333,7 +324,7 @@ export class DocumentOcrService {
    */
   private extractCompanyNameFromText(text: string): string | null {
     // Remove extra whitespace and normalize
-    const normalizedText = text.replace(/\s+/g, ' ').trim();
+    const normalizedText = text.replace(/\s+/g, " ").trim();
 
     // Pattern 1: Look for lines with (PTY) LTD, LIMITED, (RF) NPC, etc.
     const companyPatterns = [
@@ -347,15 +338,12 @@ export class DocumentOcrService {
 
     for (const pattern of companyPatterns) {
       const match = normalizedText.match(pattern);
-      if (match && match[1] && match.index !== undefined) {
+      if (match?.[1] && match.index !== undefined) {
         const companyName =
           match[1].trim() +
-          ' ' +
+          " " +
           normalizedText
-            .substring(
-              match.index + match[1].length,
-              match.index + match[0].length,
-            )
+            .substring(match.index + match[1].length, match.index + match[0].length)
             .trim();
         return this.cleanCompanyName(companyName);
       }
@@ -368,7 +356,7 @@ export class DocumentOcrService {
 
     for (const pattern of labeledPatterns) {
       const match = normalizedText.match(pattern);
-      if (match && match[1]) {
+      if (match?.[1]) {
         const extracted = match[1].trim().split(/\n/)[0];
         return this.cleanCompanyName(extracted);
       }
@@ -381,7 +369,7 @@ export class DocumentOcrService {
    * Clean and normalize company name
    */
   private cleanCompanyName(name: string): string {
-    return name.replace(/\s+/g, ' ').trim().toUpperCase();
+    return name.replace(/\s+/g, " ").trim().toUpperCase();
   }
 
   /**
@@ -400,7 +388,7 @@ export class DocumentOcrService {
       postalCode?: string;
     } = {};
 
-    const normalizedText = text.toUpperCase().replace(/\s+/g, ' ');
+    const normalizedText = text.toUpperCase().replace(/\s+/g, " ");
 
     // Extract Province
     for (const province of this.SA_PROVINCES) {
@@ -417,7 +405,7 @@ export class DocumentOcrService {
       // Take the last 4-digit match as it's usually the postal code
       const filtered = postalMatches.filter((code) => {
         // Filter out years (1900-2099)
-        const num = parseInt(code);
+        const num = parseInt(code, 10);
         return num < 1900 || num > 2099;
       });
       if (filtered.length > 0) {
@@ -432,10 +420,10 @@ export class DocumentOcrService {
 
     for (const pattern of addressPatterns) {
       const match = text.match(pattern);
-      if (match && match[1]) {
+      if (match?.[1]) {
         const addressBlock = match[1].trim();
         const lines = addressBlock
-          .split('\n')
+          .split("\n")
           .map((l) => l.trim())
           .filter((l) => l);
 
@@ -450,16 +438,12 @@ export class DocumentOcrService {
             // Remove postal code and province from city line
             let cityCandidate = cityLine.toUpperCase();
             if (result.postalCode) {
-              cityCandidate = cityCandidate
-                .replace(result.postalCode, '')
-                .trim();
+              cityCandidate = cityCandidate.replace(result.postalCode, "").trim();
             }
             if (result.provinceState) {
-              cityCandidate = cityCandidate
-                .replace(result.provinceState, '')
-                .trim();
+              cityCandidate = cityCandidate.replace(result.provinceState, "").trim();
             }
-            cityCandidate = cityCandidate.replace(/,/g, '').trim();
+            cityCandidate = cityCandidate.replace(/,/g, "").trim();
             if (cityCandidate) {
               result.city = cityCandidate;
             }
@@ -489,12 +473,12 @@ export class DocumentOcrService {
   ): ValidationResult {
     const mismatches: ValidationMismatch[] = [];
 
-    this.logger.log('=== VALIDATION START ===');
+    this.logger.log("=== VALIDATION START ===");
     this.logger.log(`Expected Data: ${JSON.stringify(expectedData)}`);
     this.logger.log(`Extracted Data: ${JSON.stringify(extractedData)}`);
 
     if (!extractedData.success) {
-      this.logger.warn('OCR extraction failed');
+      this.logger.warn("OCR extraction failed");
       return {
         isValid: false,
         mismatches: [],
@@ -514,7 +498,7 @@ export class DocumentOcrService {
       if (expectedVat !== extractedVat) {
         this.logger.warn(`VAT MISMATCH: ${expectedVat} !== ${extractedVat}`);
         mismatches.push({
-          field: 'vatNumber',
+          field: "vatNumber",
           expected: expectedData.vatNumber,
           extracted: extractedData.vatNumber,
         });
@@ -524,20 +508,14 @@ export class DocumentOcrService {
     // Validate Registration Number (exact match, case-insensitive)
     if (expectedData.registrationNumber && extractedData.registrationNumber) {
       const expectedReg = this.normalizeNumber(expectedData.registrationNumber);
-      const extractedReg = this.normalizeNumber(
-        extractedData.registrationNumber,
-      );
+      const extractedReg = this.normalizeNumber(extractedData.registrationNumber);
 
-      this.logger.log(
-        `Registration comparison: "${expectedReg}" vs "${extractedReg}"`,
-      );
+      this.logger.log(`Registration comparison: "${expectedReg}" vs "${extractedReg}"`);
 
       if (expectedReg !== extractedReg) {
-        this.logger.warn(
-          `REGISTRATION MISMATCH: ${expectedReg} !== ${extractedReg}`,
-        );
+        this.logger.warn(`REGISTRATION MISMATCH: ${expectedReg} !== ${extractedReg}`);
         mismatches.push({
-          field: 'registrationNumber',
+          field: "registrationNumber",
           expected: expectedData.registrationNumber,
           extracted: extractedData.registrationNumber,
         });
@@ -559,7 +537,7 @@ export class DocumentOcrService {
       if (similarity < 85) {
         this.logger.warn(`COMPANY NAME MISMATCH: ${similarity}% similarity`);
         mismatches.push({
-          field: 'companyName',
+          field: "companyName",
           expected: expectedData.companyName,
           extracted: extractedData.companyName,
           similarity,
@@ -582,7 +560,7 @@ export class DocumentOcrService {
       if (similarity < 70) {
         this.logger.warn(`STREET ADDRESS MISMATCH: ${similarity}% similarity`);
         mismatches.push({
-          field: 'streetAddress',
+          field: "streetAddress",
           expected: expectedData.streetAddress,
           extracted: extractedData.streetAddress,
           similarity,
@@ -592,10 +570,7 @@ export class DocumentOcrService {
 
     // Validate City (fuzzy match)
     if (expectedData.city && extractedData.city) {
-      const similarity = this.calculateNameSimilarity(
-        expectedData.city,
-        extractedData.city,
-      );
+      const similarity = this.calculateNameSimilarity(expectedData.city, extractedData.city);
 
       this.logger.log(
         `City similarity: ${similarity}% (${expectedData.city} vs ${extractedData.city})`,
@@ -604,7 +579,7 @@ export class DocumentOcrService {
       if (similarity < 80) {
         this.logger.warn(`CITY MISMATCH: ${similarity}% similarity`);
         mismatches.push({
-          field: 'city',
+          field: "city",
           expected: expectedData.city,
           extracted: extractedData.city,
           similarity,
@@ -617,16 +592,12 @@ export class DocumentOcrService {
       const expectedProv = expectedData.provinceState.toUpperCase().trim();
       const extractedProv = extractedData.provinceState.toUpperCase().trim();
 
-      this.logger.log(
-        `Province comparison: "${expectedProv}" vs "${extractedProv}"`,
-      );
+      this.logger.log(`Province comparison: "${expectedProv}" vs "${extractedProv}"`);
 
       if (expectedProv !== extractedProv) {
-        this.logger.warn(
-          `PROVINCE MISMATCH: ${expectedProv} !== ${extractedProv}`,
-        );
+        this.logger.warn(`PROVINCE MISMATCH: ${expectedProv} !== ${extractedProv}`);
         mismatches.push({
-          field: 'provinceState',
+          field: "provinceState",
           expected: expectedData.provinceState,
           extracted: extractedData.provinceState,
         });
@@ -638,16 +609,12 @@ export class DocumentOcrService {
       const expectedPostal = this.normalizeNumber(expectedData.postalCode);
       const extractedPostal = this.normalizeNumber(extractedData.postalCode);
 
-      this.logger.log(
-        `Postal code comparison: "${expectedPostal}" vs "${extractedPostal}"`,
-      );
+      this.logger.log(`Postal code comparison: "${expectedPostal}" vs "${extractedPostal}"`);
 
       if (expectedPostal !== extractedPostal) {
-        this.logger.warn(
-          `POSTAL CODE MISMATCH: ${expectedPostal} !== ${extractedPostal}`,
-        );
+        this.logger.warn(`POSTAL CODE MISMATCH: ${expectedPostal} !== ${extractedPostal}`);
         mismatches.push({
-          field: 'postalCode',
+          field: "postalCode",
           expected: expectedData.postalCode,
           extracted: extractedData.postalCode,
         });
@@ -656,14 +623,13 @@ export class DocumentOcrService {
 
     this.logger.log(`Total mismatches found: ${mismatches.length}`);
     this.logger.log(`Mismatches: ${JSON.stringify(mismatches)}`);
-    this.logger.log('=== VALIDATION END ===');
+    this.logger.log("=== VALIDATION END ===");
 
     return {
       isValid: mismatches.length === 0,
       mismatches,
       extractedData,
-      requiresManualReview:
-        extractedData.confidence === 'low' && mismatches.length > 0,
+      requiresManualReview: extractedData.confidence === "low" && mismatches.length > 0,
       ocrFailed: false,
     };
   }
@@ -672,7 +638,7 @@ export class DocumentOcrService {
    * Normalize number string (remove spaces, hyphens, etc.)
    */
   private normalizeNumber(num: string): string {
-    return num.replace(/[\s\-]/g, '').toUpperCase();
+    return num.replace(/[\s-]/g, "").toUpperCase();
   }
 
   /**
@@ -713,28 +679,28 @@ export class DocumentOcrService {
 
     // Remove common suffixes
     const suffixes = [
-      '\\(PTY\\)\\s*LTD',
-      '\\(PTY\\)\\s*LIMITED',
-      'LIMITED',
-      '\\(RF\\)\\s*NPC',
-      'NPC',
-      'CC',
-      'INC',
-      'INCORPORATED',
-      'CORP',
-      'CORPORATION',
-      'LTD',
+      "\\(PTY\\)\\s*LTD",
+      "\\(PTY\\)\\s*LIMITED",
+      "LIMITED",
+      "\\(RF\\)\\s*NPC",
+      "NPC",
+      "CC",
+      "INC",
+      "INCORPORATED",
+      "CORP",
+      "CORPORATION",
+      "LTD",
     ];
 
     for (const suffix of suffixes) {
-      const regex = new RegExp(`\\s*${suffix}\\s*$`, 'i');
-      normalized = normalized.replace(regex, '');
+      const regex = new RegExp(`\\s*${suffix}\\s*$`, "i");
+      normalized = normalized.replace(regex, "");
     }
 
     // Remove punctuation and extra spaces
     normalized = normalized
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
-      .replace(/\s+/g, ' ')
+      .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "")
+      .replace(/\s+/g, " ")
       .trim();
 
     return normalized;

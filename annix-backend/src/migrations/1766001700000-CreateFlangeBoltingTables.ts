@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateFlangeBoltingTables1766001700000 implements MigrationInterface {
-  name = 'CreateFlangeBoltingTables1766001700000';
+  name = "CreateFlangeBoltingTables1766001700000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create flange_bolting_materials table
@@ -49,14 +49,14 @@ export class CreateFlangeBoltingTables1766001700000 implements MigrationInterfac
 
     const standardMap: { [key: string]: number } = {};
     for (const std of standards) {
-      if (std.code === 'ASME B16.5') standardMap['B16.5'] = std.id;
-      if (std.code === 'ASME B16.47 Series A') standardMap['B16.47A'] = std.id;
-      if (std.code === 'ASME B16.47 Series B') standardMap['B16.47B'] = std.id;
+      if (std.code === "ASME B16.5") standardMap["B16.5"] = std.id;
+      if (std.code === "ASME B16.47 Series A") standardMap["B16.47A"] = std.id;
+      if (std.code === "ASME B16.47 Series B") standardMap["B16.47B"] = std.id;
     }
 
     // B16.5 Bolting Data
-    if (standardMap['B16.5']) {
-      const b165Id = standardMap['B16.5'];
+    if (standardMap["B16.5"]) {
+      const b165Id = standardMap["B16.5"];
 
       // Class 150
       await queryRunner.query(`
@@ -227,8 +227,8 @@ export class CreateFlangeBoltingTables1766001700000 implements MigrationInterfac
     }
 
     // B16.47 Series A Bolting Data
-    if (standardMap['B16.47A']) {
-      const b1647aId = standardMap['B16.47A'];
+    if (standardMap["B16.47A"]) {
+      const b1647aId = standardMap["B16.47A"];
 
       // Class 150
       await queryRunner.query(`
@@ -346,8 +346,8 @@ export class CreateFlangeBoltingTables1766001700000 implements MigrationInterfac
     }
 
     // B16.47 Series B Bolting Data
-    if (standardMap['B16.47B']) {
-      const b1647bId = standardMap['B16.47B'];
+    if (standardMap["B16.47B"]) {
+      const b1647bId = standardMap["B16.47B"];
 
       // Class 75
       await queryRunner.query(`
@@ -488,7 +488,7 @@ export class CreateFlangeBoltingTables1766001700000 implements MigrationInterfac
       `);
     }
 
-    console.warn('Flange bolting tables created and populated successfully');
+    console.warn("Flange bolting tables created and populated successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

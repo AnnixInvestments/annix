@@ -1,36 +1,36 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useRfqDetail } from '@/app/lib/query/hooks';
-import { formatDateZA } from '@/app/lib/datetime';
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { formatDateZA } from "@/app/lib/datetime";
+import { useRfqDetail } from "@/app/lib/query/hooks";
 
 const statusColor = (status: string) => {
   switch (status.toLowerCase()) {
-    case 'draft':
-      return 'bg-gray-100 text-gray-800';
-    case 'pending':
-    case 'submitted':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'under_review':
-      return 'bg-blue-100 text-blue-800';
-    case 'quoted':
-    case 'approved':
-      return 'bg-green-100 text-green-800';
-    case 'rejected':
-      return 'bg-red-100 text-red-800';
-    case 'changes_requested':
-      return 'bg-orange-100 text-orange-800';
-    case 'cancelled':
-      return 'bg-gray-100 text-gray-600';
+    case "draft":
+      return "bg-gray-100 text-gray-800";
+    case "pending":
+    case "submitted":
+      return "bg-yellow-100 text-yellow-800";
+    case "under_review":
+      return "bg-blue-100 text-blue-800";
+    case "quoted":
+    case "approved":
+      return "bg-green-100 text-green-800";
+    case "rejected":
+      return "bg-red-100 text-red-800";
+    case "changes_requested":
+      return "bg-orange-100 text-orange-800";
+    case "cancelled":
+      return "bg-gray-100 text-gray-600";
     default:
-      return 'bg-gray-100 text-gray-800';
+      return "bg-gray-100 text-gray-800";
   }
 };
 
 const formatNumber = (num?: number) => {
-  if (num === undefined || num === null) return 'N/A';
-  return new Intl.NumberFormat('en-ZA', {
+  if (num === undefined || num === null) return "N/A";
+  return new Intl.NumberFormat("en-ZA", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(num);
@@ -44,7 +44,7 @@ export default function RfqDetailPage() {
   const rfqId = parseInt(params.id as string, 10);
 
   const { data: rfq, isLoading: loading, error: queryError } = useRfqDetail(rfqId);
-  const [activeTab, setActiveTab] = useState<'items' | 'drawings' | 'boqs'>('items');
+  const [activeTab, setActiveTab] = useState<"items" | "drawings" | "boqs">("items");
 
   if (loading) {
     return (
@@ -66,10 +66,10 @@ export default function RfqDetailPage() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
           <p className="text-gray-600 mb-6">
-            {queryError instanceof Error ? queryError.message : 'RFQ not found'}
+            {queryError instanceof Error ? queryError.message : "RFQ not found"}
           </p>
           <button
-            onClick={() => router.push('/rfq/list')}
+            onClick={() => router.push("/rfq/list")}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
           >
             Back to RFQs
@@ -84,7 +84,7 @@ export default function RfqDetailPage() {
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <button
-            onClick={() => router.push('/rfq/list')}
+            onClick={() => router.push("/rfq/list")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <span>←</span>
@@ -99,7 +99,7 @@ export default function RfqDetailPage() {
                 </h1>
                 <span
                   className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor(
-                    rfq.status
+                    rfq.status,
                   )}`}
                 >
                   {rfq.status.toUpperCase()}
@@ -130,7 +130,7 @@ export default function RfqDetailPage() {
           <div className="bg-white rounded-xl shadow-md p-6">
             <p className="text-sm text-gray-500 mb-1">Customer</p>
             <p className="text-lg font-semibold text-gray-900">
-              {rfq.customerName || 'Not specified'}
+              {rfq.customerName || "Not specified"}
             </p>
             {rfq.customerEmail && <p className="text-sm text-gray-500">{rfq.customerEmail}</p>}
           </div>
@@ -141,13 +141,13 @@ export default function RfqDetailPage() {
           <div className="bg-white rounded-xl shadow-md p-6">
             <p className="text-sm text-gray-500 mb-1">Estimated Cost</p>
             <p className="text-2xl font-bold text-green-600">
-              {rfq.totalCost ? `R ${formatNumber(rfq.totalCost)}` : 'TBD'}
+              {rfq.totalCost ? `R ${formatNumber(rfq.totalCost)}` : "TBD"}
             </p>
           </div>
           <div className="bg-white rounded-xl shadow-md p-6">
             <p className="text-sm text-gray-500 mb-1">Required Date</p>
             <p className="text-lg font-semibold text-gray-900">
-              {rfq.requiredDate ? formatDate(rfq.requiredDate) : 'Not specified'}
+              {rfq.requiredDate ? formatDate(rfq.requiredDate) : "Not specified"}
             </p>
           </div>
         </div>
@@ -156,31 +156,31 @@ export default function RfqDetailPage() {
           <div className="border-b border-gray-200">
             <div className="flex gap-4 p-4">
               <button
-                onClick={() => setActiveTab('items')}
+                onClick={() => setActiveTab("items")}
                 className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                  activeTab === 'items'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                  activeTab === "items"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 Line Items ({rfq.items?.length || 0})
               </button>
               <button
-                onClick={() => setActiveTab('drawings')}
+                onClick={() => setActiveTab("drawings")}
                 className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                  activeTab === 'drawings'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                  activeTab === "drawings"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 Drawings ({rfq.drawings?.length || 0})
               </button>
               <button
-                onClick={() => setActiveTab('boqs')}
+                onClick={() => setActiveTab("boqs")}
                 className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                  activeTab === 'boqs'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                  activeTab === "boqs"
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 BOQs ({rfq.boqs?.length || 0})
@@ -189,7 +189,7 @@ export default function RfqDetailPage() {
           </div>
 
           <div className="p-6">
-            {activeTab === 'items' && (
+            {activeTab === "items" && (
               <div>
                 {rfq.items?.length === 0 ? (
                   <div className="text-center py-12">
@@ -225,7 +225,7 @@ export default function RfqDetailPage() {
                             <td className="py-3 px-4 text-gray-900">{item.description}</td>
                             <td className="py-3 px-4">
                               <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm">
-                                {item.itemType.replace('_', ' ')}
+                                {item.itemType.replace("_", " ")}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right text-gray-900">{item.quantity}</td>
@@ -241,7 +241,7 @@ export default function RfqDetailPage() {
               </div>
             )}
 
-            {activeTab === 'drawings' && (
+            {activeTab === "drawings" && (
               <div>
                 {rfq.drawings?.length === 0 ? (
                   <div className="text-center py-12">
@@ -265,13 +265,15 @@ export default function RfqDetailPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-gray-900">{drawing.drawingNumber}</span>
+                              <span className="font-bold text-gray-900">
+                                {drawing.drawingNumber}
+                              </span>
                               <span
                                 className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor(
-                                  drawing.status
+                                  drawing.status,
                                 )}`}
                               >
-                                {drawing.status.replace('_', ' ').toUpperCase()}
+                                {drawing.status.replace("_", " ").toUpperCase()}
                               </span>
                               <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
                                 {drawing.fileType.toUpperCase()}
@@ -279,7 +281,8 @@ export default function RfqDetailPage() {
                             </div>
                             <p className="text-gray-700">{drawing.title}</p>
                             <p className="text-sm text-gray-500 mt-1">
-                              Version {drawing.currentVersion} • Created {formatDate(drawing.createdAt)}
+                              Version {drawing.currentVersion} • Created{" "}
+                              {formatDate(drawing.createdAt)}
                             </p>
                           </div>
                           <span className="text-xl text-gray-400">→</span>
@@ -291,7 +294,7 @@ export default function RfqDetailPage() {
               </div>
             )}
 
-            {activeTab === 'boqs' && (
+            {activeTab === "boqs" && (
               <div>
                 {rfq.boqs?.length === 0 ? (
                   <div className="text-center py-12">
@@ -318,10 +321,10 @@ export default function RfqDetailPage() {
                               <span className="font-bold text-gray-900">{boq.boqNumber}</span>
                               <span
                                 className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor(
-                                  boq.status
+                                  boq.status,
                                 )}`}
                               >
-                                {boq.status.replace('_', ' ').toUpperCase()}
+                                {boq.status.replace("_", " ").toUpperCase()}
                               </span>
                             </div>
                             <p className="text-gray-700">{boq.title}</p>

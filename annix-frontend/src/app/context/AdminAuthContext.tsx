@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { adminApiClient, AdminUser, AdminUserProfile } from '@/app/lib/api/adminApi';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { AdminUser, AdminUserProfile, adminApiClient } from "@/app/lib/api/adminApi";
 
 interface AdminAuthState {
   isAuthenticated: boolean;
@@ -140,7 +140,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 export function useAdminAuth() {
   const context = useContext(AdminAuthContext);
   if (context === undefined) {
-    throw new Error('useAdminAuth must be used within an AdminAuthProvider');
+    throw new Error("useAdminAuth must be used within an AdminAuthProvider");
   }
   return context;
 }
@@ -153,9 +153,15 @@ export function useOptionalAdminAuth(): AdminAuthContextType {
       isLoading: false,
       admin: null,
       profile: null,
-      login: async () => { throw new Error('Admin login not available in this context'); },
-      logout: async () => { /* no-op */ },
-      refreshProfile: async () => { /* no-op */ },
+      login: async () => {
+        throw new Error("Admin login not available in this context");
+      },
+      logout: async () => {
+        /* no-op */
+      },
+      refreshProfile: async () => {
+        /* no-op */
+      },
     };
   }
   return context;

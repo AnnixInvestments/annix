@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { LoginUserDto } from './dto/login-user.dto';
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
+import { LoginUserDto } from "./dto/login-user.dto";
 
-describe('AuthController', () => {
+describe("AuthController", () => {
   let controller: AuthController;
   let service: jest.Mocked<AuthService>;
 
@@ -26,19 +26,19 @@ describe('AuthController', () => {
     service = module.get(AuthService);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 
-  describe('login', () => {
-    const dto: LoginUserDto = { email: 'test@example.com', password: '123456' };
+  describe("login", () => {
+    const dto: LoginUserDto = { email: "test@example.com", password: "123456" };
 
-    it('should return access token if credentials are valid', async () => {
-      const user = { id: 1, username: 'test', roles: ['user'] };
+    it("should return access token if credentials are valid", async () => {
+      const user = { id: 1, username: "test", roles: ["user"] };
       const token = {
-        access_token: 'jwt-token',
-        refresh_token: 'refresh-token',
-        token_type: 'Bearer',
+        access_token: "jwt-token",
+        refresh_token: "refresh-token",
+        token_type: "Bearer",
         expires_in: 3600,
       };
 
@@ -46,24 +46,16 @@ describe('AuthController', () => {
       service.login.mockResolvedValue(token);
 
       const result = await controller.login(dto);
-      expect(service.validateUser).toHaveBeenCalledWith(
-        dto.email,
-        dto.password,
-      );
+      expect(service.validateUser).toHaveBeenCalledWith(dto.email, dto.password);
       expect(service.login).toHaveBeenCalledWith(user);
       expect(result).toEqual(token);
     });
 
-    it('should throw UnauthorizedException if validateUser returns null', async () => {
+    it("should throw UnauthorizedException if validateUser returns null", async () => {
       service.validateUser.mockResolvedValue(null);
 
-      await expect(controller.login(dto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      expect(service.validateUser).toHaveBeenCalledWith(
-        dto.email,
-        dto.password,
-      );
+      await expect(controller.login(dto)).rejects.toThrow(UnauthorizedException);
+      expect(service.validateUser).toHaveBeenCalledWith(dto.email, dto.password);
       expect(service.login).not.toHaveBeenCalled();
     });
   });

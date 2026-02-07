@@ -1,9 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { usePublicRfqDetail } from '@/app/lib/query/hooks';
-import { formatDateLongZA } from '@/app/lib/datetime';
+import { useParams, useRouter } from "next/navigation";
+import { formatDateLongZA } from "@/app/lib/datetime";
+import { usePublicRfqDetail } from "@/app/lib/query/hooks";
 
 export default function RfqDetailsPage() {
   const router = useRouter();
@@ -14,27 +13,27 @@ export default function RfqDetailsPage() {
 
   const statusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'draft':
-        return 'bg-gray-100 text-gray-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
+      case "draft":
+        return "bg-gray-100 text-gray-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "approved":
+        return "bg-green-100 text-green-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
       default:
-        return 'bg-blue-100 text-blue-800';
+        return "bg-blue-100 text-blue-800";
     }
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     return formatDateLongZA(dateString);
   };
 
   const formatNumber = (num?: number) => {
-    if (num === undefined || num === null) return 'N/A';
-    return new Intl.NumberFormat('en-ZA', {
+    if (num === undefined || num === null) return "N/A";
+    return new Intl.NumberFormat("en-ZA", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(num);
@@ -59,9 +58,11 @@ export default function RfqDetailsPage() {
             <span className="text-red-600 text-2xl">✕</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{queryError instanceof Error ? queryError.message : 'RFQ not found'}</p>
+          <p className="text-gray-600 mb-6">
+            {queryError instanceof Error ? queryError.message : "RFQ not found"}
+          </p>
           <button
-            onClick={() => router.push('/rfqs')}
+            onClick={() => router.push("/rfqs")}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
           >
             Back to RFQ List
@@ -77,20 +78,22 @@ export default function RfqDetailsPage() {
         {/* Header */}
         <div className="mb-6">
           <button
-            onClick={() => router.push('/rfqs')}
+            onClick={() => router.push("/rfqs")}
             className="flex items-center text-blue-600 hover:text-blue-700 font-semibold mb-4 transition-colors"
           >
             <span className="mr-2">←</span>
             Back to RFQ List
           </button>
-          
+
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   {rfq.rfqNumber}
                 </h1>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(rfq.status)}`}>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(rfq.status)}`}
+                >
                   {rfq.status.toUpperCase()}
                 </span>
               </div>
@@ -130,7 +133,9 @@ export default function RfqDetailsPage() {
               {rfq.requiredDate && (
                 <div>
                   <p className="text-sm text-gray-500">Required By</p>
-                  <p className="text-lg font-semibold text-gray-900">{formatDate(rfq.requiredDate)}</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {formatDate(rfq.requiredDate)}
+                  </p>
                 </div>
               )}
             </div>
@@ -150,13 +155,15 @@ export default function RfqDetailsPage() {
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-md p-6">
               <p className="text-sm text-gray-600 mb-2">Total Weight</p>
-              <p className="text-4xl font-bold text-purple-600">{formatNumber(rfq.totalWeightKg)}</p>
+              <p className="text-4xl font-bold text-purple-600">
+                {formatNumber(rfq.totalWeightKg)}
+              </p>
               <p className="text-sm text-gray-500 mt-1">kg</p>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-md p-6">
               <p className="text-sm text-gray-600 mb-2">Total Cost</p>
               <p className="text-4xl font-bold text-green-600">
-                {rfq.totalCost ? `R ${formatNumber(rfq.totalCost)}` : 'TBD'}
+                {rfq.totalCost ? `R ${formatNumber(rfq.totalCost)}` : "TBD"}
               </p>
             </div>
           </div>
@@ -170,7 +177,7 @@ export default function RfqDetailsPage() {
                 </span>
                 <h3 className="text-xl font-bold text-gray-900 flex-1">{item.description}</h3>
                 <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold">
-                  {item.itemType.replace('_', ' ').toUpperCase()}
+                  {item.itemType.replace("_", " ").toUpperCase()}
                 </span>
               </div>
 
@@ -181,16 +188,20 @@ export default function RfqDetailsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Weight per Unit</p>
-                  <p className="text-lg font-semibold text-gray-900">{formatNumber(item.weightPerUnitKg)} kg</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {formatNumber(item.weightPerUnitKg)} kg
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total Weight</p>
-                  <p className="text-lg font-semibold text-gray-900">{formatNumber(item.totalWeightKg)} kg</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {formatNumber(item.totalWeightKg)} kg
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Total Price</p>
                   <p className="text-lg font-semibold text-gray-900">
-                    {item.totalPrice ? `R ${formatNumber(item.totalPrice)}` : 'TBD'}
+                    {item.totalPrice ? `R ${formatNumber(item.totalPrice)}` : "TBD"}
                   </p>
                 </div>
               </div>
@@ -206,22 +217,27 @@ export default function RfqDetailsPage() {
               {item.straightPipeDetails && (
                 <div className="border-t border-gray-200 pt-6">
                   <h4 className="text-lg font-bold text-gray-900 mb-4">Pipe Specifications</h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4">
                       <p className="text-xs text-gray-600 mb-1">Nominal Bore</p>
-                      <p className="text-xl font-bold text-blue-600">{item.straightPipeDetails.nominalBoreMm} mm</p>
+                      <p className="text-xl font-bold text-blue-600">
+                        {item.straightPipeDetails.nominalBoreMm} mm
+                      </p>
                     </div>
                     <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4">
                       <p className="text-xs text-gray-600 mb-1">Schedule</p>
                       <p className="text-xl font-bold text-purple-600">
-                        {item.straightPipeDetails.scheduleNumber || `${formatNumber(item.straightPipeDetails.wallThicknessMm)} mm`}
+                        {item.straightPipeDetails.scheduleNumber ||
+                          `${formatNumber(item.straightPipeDetails.wallThicknessMm)} mm`}
                       </p>
                     </div>
                     {item.straightPipeDetails.steelSpecification && (
                       <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4">
                         <p className="text-xs text-gray-600 mb-1">Steel Specification</p>
-                        <p className="text-xl font-bold text-green-600">{item.straightPipeDetails.steelSpecification.steel_spec_name}</p>
+                        <p className="text-xl font-bold text-green-600">
+                          {item.straightPipeDetails.steelSpecification.steel_spec_name}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -230,33 +246,42 @@ export default function RfqDetailsPage() {
                     <div>
                       <p className="text-sm text-gray-500">Individual Length</p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {formatNumber(item.straightPipeDetails.individualPipeLength)} {item.straightPipeDetails.lengthUnit}
+                        {formatNumber(item.straightPipeDetails.individualPipeLength)}{" "}
+                        {item.straightPipeDetails.lengthUnit}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Quantity Type</p>
                       <p className="text-lg font-semibold text-gray-900">
-                        {item.straightPipeDetails.quantityType.replace('_', ' ')}
+                        {item.straightPipeDetails.quantityType.replace("_", " ")}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Quantity Value</p>
-                      <p className="text-lg font-semibold text-gray-900">{formatNumber(item.straightPipeDetails.quantityValue)}</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {formatNumber(item.straightPipeDetails.quantityValue)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Working Pressure</p>
-                      <p className="text-lg font-semibold text-gray-900">{item.straightPipeDetails.workingPressureBar} bar</p>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {item.straightPipeDetails.workingPressureBar} bar
+                      </p>
                     </div>
                     {item.straightPipeDetails.workingTemperatureC && (
                       <div>
                         <p className="text-sm text-gray-500">Working Temperature</p>
-                        <p className="text-lg font-semibold text-gray-900">{item.straightPipeDetails.workingTemperatureC}°C</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {item.straightPipeDetails.workingTemperatureC}°C
+                        </p>
                       </div>
                     )}
                     {item.straightPipeDetails.pipeEndConfiguration && (
                       <div>
                         <p className="text-sm text-gray-500">Pipe End Configuration</p>
-                        <p className="text-lg font-semibold text-gray-900">{item.straightPipeDetails.pipeEndConfiguration}</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {item.straightPipeDetails.pipeEndConfiguration}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -268,61 +293,81 @@ export default function RfqDetailsPage() {
                       {item.straightPipeDetails.calculatedOdMm && (
                         <div>
                           <p className="text-sm text-gray-500">Outside Diameter</p>
-                          <p className="text-lg font-semibold text-gray-900">{formatNumber(item.straightPipeDetails.calculatedOdMm)} mm</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {formatNumber(item.straightPipeDetails.calculatedOdMm)} mm
+                          </p>
                         </div>
                       )}
                       {item.straightPipeDetails.calculatedWtMm && (
                         <div>
                           <p className="text-sm text-gray-500">Wall Thickness</p>
-                          <p className="text-lg font-semibold text-gray-900">{formatNumber(item.straightPipeDetails.calculatedWtMm)} mm</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {formatNumber(item.straightPipeDetails.calculatedWtMm)} mm
+                          </p>
                         </div>
                       )}
                       {item.straightPipeDetails.pipeWeightPerMeterKg && (
                         <div>
                           <p className="text-sm text-gray-500">Weight per Meter</p>
-                          <p className="text-lg font-semibold text-gray-900">{formatNumber(item.straightPipeDetails.pipeWeightPerMeterKg)} kg/m</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {formatNumber(item.straightPipeDetails.pipeWeightPerMeterKg)} kg/m
+                          </p>
                         </div>
                       )}
                       {item.straightPipeDetails.calculatedPipeCount && (
                         <div>
                           <p className="text-sm text-gray-500">Pipe Count</p>
-                          <p className="text-lg font-semibold text-gray-900">{item.straightPipeDetails.calculatedPipeCount}</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {item.straightPipeDetails.calculatedPipeCount}
+                          </p>
                         </div>
                       )}
                       {item.straightPipeDetails.calculatedTotalLengthM && (
                         <div>
                           <p className="text-sm text-gray-500">Total Length</p>
-                          <p className="text-lg font-semibold text-gray-900">{formatNumber(item.straightPipeDetails.calculatedTotalLengthM)} m</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {formatNumber(item.straightPipeDetails.calculatedTotalLengthM)} m
+                          </p>
                         </div>
                       )}
                       {item.straightPipeDetails.numberOfButtWelds !== undefined && (
                         <div>
                           <p className="text-sm text-gray-500">Butt Welds</p>
-                          <p className="text-lg font-semibold text-gray-900">{item.straightPipeDetails.numberOfButtWelds}</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {item.straightPipeDetails.numberOfButtWelds}
+                          </p>
                         </div>
                       )}
                       {item.straightPipeDetails.totalButtWeldLengthM && (
                         <div>
                           <p className="text-sm text-gray-500">Butt Weld Length</p>
-                          <p className="text-lg font-semibold text-gray-900">{formatNumber(item.straightPipeDetails.totalButtWeldLengthM)} m</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {formatNumber(item.straightPipeDetails.totalButtWeldLengthM)} m
+                          </p>
                         </div>
                       )}
                       {item.straightPipeDetails.numberOfFlanges !== undefined && (
                         <div>
                           <p className="text-sm text-gray-500">Flanges</p>
-                          <p className="text-lg font-semibold text-gray-900">{item.straightPipeDetails.numberOfFlanges}</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {item.straightPipeDetails.numberOfFlanges}
+                          </p>
                         </div>
                       )}
                       {item.straightPipeDetails.numberOfFlangeWelds !== undefined && (
                         <div>
                           <p className="text-sm text-gray-500">Flange Welds</p>
-                          <p className="text-lg font-semibold text-gray-900">{item.straightPipeDetails.numberOfFlangeWelds}</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {item.straightPipeDetails.numberOfFlangeWelds}
+                          </p>
                         </div>
                       )}
                       {item.straightPipeDetails.totalFlangeWeldLengthM && (
                         <div>
                           <p className="text-sm text-gray-500">Flange Weld Length</p>
-                          <p className="text-lg font-semibold text-gray-900">{formatNumber(item.straightPipeDetails.totalFlangeWeldLengthM)} m</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {formatNumber(item.straightPipeDetails.totalFlangeWeldLengthM)} m
+                          </p>
                         </div>
                       )}
                     </div>

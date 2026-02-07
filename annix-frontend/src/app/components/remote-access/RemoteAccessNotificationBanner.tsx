@@ -1,19 +1,16 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useRemoteAccessPolling } from '@/app/hooks/useRemoteAccessPolling';
-import { useRemoteAccessEnabled } from '@/app/hooks/useRemoteAccessEnabled';
-import RemoteAccessApprovalModal from './RemoteAccessApprovalModal';
-import type { RemoteAccessRequestResponse } from '@/app/lib/api/remoteAccessApi';
+import { useState } from "react";
+import { useRemoteAccessEnabled } from "@/app/hooks/useRemoteAccessEnabled";
+import { useRemoteAccessPolling } from "@/app/hooks/useRemoteAccessPolling";
+import type { RemoteAccessRequestResponse } from "@/app/lib/api/remoteAccessApi";
+import RemoteAccessApprovalModal from "./RemoteAccessApprovalModal";
 
 export default function RemoteAccessNotificationBanner() {
   const { isEnabled } = useRemoteAccessEnabled();
-  const {
-    pendingRequests,
-    hasPendingRequests,
-    refresh,
-    dismissAll,
-  } = useRemoteAccessPolling({ enabled: isEnabled ?? false });
+  const { pendingRequests, hasPendingRequests, refresh, dismissAll } = useRemoteAccessPolling({
+    enabled: isEnabled ?? false,
+  });
 
   const [selectedRequest, setSelectedRequest] = useState<RemoteAccessRequestResponse | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,7 +57,7 @@ export default function RemoteAccessNotificationBanner() {
               <div className="flex-1">
                 <p className="text-sm font-medium text-blue-800">
                   {pendingRequests.length === 1
-                    ? 'An administrator is requesting access to one of your documents'
+                    ? "An administrator is requesting access to one of your documents"
                     : `${pendingRequests.length} administrators are requesting access to your documents`}
                 </p>
               </div>

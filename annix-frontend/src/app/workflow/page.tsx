@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { formatDateZA, nowISO } from '@/app/lib/datetime';
+import { useEffect, useState } from "react";
+import { formatDateZA, nowISO } from "@/app/lib/datetime";
 
 interface Workflow {
   id: number;
-  entityType: 'DRAWING' | 'BOQ' | 'RFQ';
+  entityType: "DRAWING" | "BOQ" | "RFQ";
   entityId: number;
-  status: 'PENDING_REVIEW' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED' | 'CHANGES_REQUESTED';
+  status: "PENDING_REVIEW" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "CHANGES_REQUESTED";
   submittedBy: string;
   reviewer?: string;
   submittedAt: string;
@@ -21,7 +21,7 @@ export default function WorkflowPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = 'Annix Workflow';
+    document.title = "Annix Workflow";
   }, []);
 
   useEffect(() => {
@@ -34,26 +34,26 @@ export default function WorkflowPage() {
       const mockWorkflows: Workflow[] = [
         {
           id: 1,
-          entityType: 'DRAWING',
+          entityType: "DRAWING",
           entityId: 1,
-          status: 'PENDING_REVIEW',
-          submittedBy: 'John Doe',
+          status: "PENDING_REVIEW",
+          submittedBy: "John Doe",
           submittedAt: nowISO(),
         },
         {
           id: 2,
-          entityType: 'BOQ',
+          entityType: "BOQ",
           entityId: 1,
-          status: 'UNDER_REVIEW',
-          submittedBy: 'Jane Smith',
-          reviewer: 'Bob Wilson',
+          status: "UNDER_REVIEW",
+          submittedBy: "Jane Smith",
+          reviewer: "Bob Wilson",
           submittedAt: nowISO(),
           reviewedAt: nowISO(),
         },
       ];
       setWorkflows(mockWorkflows);
     } catch (err) {
-      setError('Failed to fetch workflows');
+      setError("Failed to fetch workflows");
     } finally {
       setLoading(false);
     }
@@ -61,18 +61,18 @@ export default function WorkflowPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PENDING_REVIEW':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'UNDER_REVIEW':
-        return 'bg-blue-100 text-blue-800';
-      case 'APPROVED':
-        return 'bg-green-100 text-green-800';
-      case 'REJECTED':
-        return 'bg-red-100 text-red-800';
-      case 'CHANGES_REQUESTED':
-        return 'bg-orange-100 text-orange-800';
+      case "PENDING_REVIEW":
+        return "bg-yellow-100 text-yellow-800";
+      case "UNDER_REVIEW":
+        return "bg-blue-100 text-blue-800";
+      case "APPROVED":
+        return "bg-green-100 text-green-800";
+      case "REJECTED":
+        return "bg-red-100 text-red-800";
+      case "CHANGES_REQUESTED":
+        return "bg-orange-100 text-orange-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -111,7 +111,7 @@ export default function WorkflowPage() {
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">Active Workflows</h2>
           </div>
-          
+
           {workflows.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <div className="text-gray-400 text-5xl mb-4">📋</div>
@@ -128,8 +128,10 @@ export default function WorkflowPage() {
                         <h3 className="text-sm font-medium text-gray-900">
                           {workflow.entityType} #{workflow.entityId}
                         </h3>
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(workflow.status)}`}>
-                          {workflow.status.replace(/_/g, ' ')}
+                        <span
+                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(workflow.status)}`}
+                        >
+                          {workflow.status.replace(/_/g, " ")}
                         </span>
                       </div>
                       <div className="mt-1 text-sm text-gray-500">

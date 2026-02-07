@@ -1,10 +1,10 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class CreateFittingBoreDto {
   @ApiProperty({
-    example: 'A',
-    description: 'Bore position (e.g. A, B, D, inlet, outlet)',
+    example: "A",
+    description: "Bore position (e.g. A, B, D, inlet, outlet)",
   })
   @IsString()
   @IsOptional()
@@ -12,7 +12,7 @@ export class CreateFittingBoreDto {
 
   @ApiProperty({
     example: 5,
-    description: 'Nominal + OD ID from nominal_outside_diameters table',
+    description: "Nominal + OD ID from nominal_outside_diameters table",
   })
   @IsNumber()
   @IsNotEmpty()
@@ -20,7 +20,7 @@ export class CreateFittingBoreDto {
 
   @ApiProperty({
     example: 2,
-    description: 'FittingVariant ID from fitting_variant table',
+    description: "FittingVariant ID from fitting_variant table",
   })
   @IsNumber()
   @IsNotEmpty()

@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddExpansionAndThermalData1775800000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -7,9 +7,7 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
     await this.createExpansionLoopSizingTable(queryRunner);
   }
 
-  private async createBellowsExpansionJointsTable(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
+  private async createBellowsExpansionJointsTable(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS bellows_expansion_joints (
         id SERIAL PRIMARY KEY,
@@ -80,8 +78,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
     const bellowsData = [
       // Axial bellows - Stainless Steel 304
       {
-        type: 'axial',
-        material: 'stainless_steel_304',
+        type: "axial",
+        material: "stainless_steel_304",
         size: 25,
         convolutions: 3,
         axialComp: 10,
@@ -100,8 +98,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 2500,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_304',
+        type: "axial",
+        material: "stainless_steel_304",
         size: 50,
         convolutions: 4,
         axialComp: 16,
@@ -120,8 +118,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 3200,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_304',
+        type: "axial",
+        material: "stainless_steel_304",
         size: 80,
         convolutions: 5,
         axialComp: 22,
@@ -140,8 +138,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 4500,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_304',
+        type: "axial",
+        material: "stainless_steel_304",
         size: 100,
         convolutions: 5,
         axialComp: 26,
@@ -160,8 +158,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 5800,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_304',
+        type: "axial",
+        material: "stainless_steel_304",
         size: 150,
         convolutions: 6,
         axialComp: 32,
@@ -180,8 +178,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 8500,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_304',
+        type: "axial",
+        material: "stainless_steel_304",
         size: 200,
         convolutions: 6,
         axialComp: 38,
@@ -200,8 +198,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 12500,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_304',
+        type: "axial",
+        material: "stainless_steel_304",
         size: 250,
         convolutions: 7,
         axialComp: 44,
@@ -220,8 +218,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 18500,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_304',
+        type: "axial",
+        material: "stainless_steel_304",
         size: 300,
         convolutions: 8,
         axialComp: 50,
@@ -242,8 +240,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
       // Axial bellows - Stainless Steel 316
       {
-        type: 'axial',
-        material: 'stainless_steel_316',
+        type: "axial",
+        material: "stainless_steel_316",
         size: 50,
         convolutions: 4,
         axialComp: 16,
@@ -262,8 +260,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 4200,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_316',
+        type: "axial",
+        material: "stainless_steel_316",
         size: 100,
         convolutions: 5,
         axialComp: 26,
@@ -282,8 +280,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 7500,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_316',
+        type: "axial",
+        material: "stainless_steel_316",
         size: 150,
         convolutions: 6,
         axialComp: 32,
@@ -302,8 +300,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 11000,
       },
       {
-        type: 'axial',
-        material: 'stainless_steel_316',
+        type: "axial",
+        material: "stainless_steel_316",
         size: 200,
         convolutions: 6,
         axialComp: 38,
@@ -324,8 +322,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
       // Universal bellows - Multi-directional movement
       {
-        type: 'universal',
-        material: 'stainless_steel_304',
+        type: "universal",
+        material: "stainless_steel_304",
         size: 50,
         convolutions: 6,
         axialComp: 25,
@@ -344,8 +342,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 8500,
       },
       {
-        type: 'universal',
-        material: 'stainless_steel_304',
+        type: "universal",
+        material: "stainless_steel_304",
         size: 80,
         convolutions: 6,
         axialComp: 30,
@@ -364,8 +362,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 12500,
       },
       {
-        type: 'universal',
-        material: 'stainless_steel_304',
+        type: "universal",
+        material: "stainless_steel_304",
         size: 100,
         convolutions: 7,
         axialComp: 35,
@@ -384,8 +382,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 16500,
       },
       {
-        type: 'universal',
-        material: 'stainless_steel_304',
+        type: "universal",
+        material: "stainless_steel_304",
         size: 150,
         convolutions: 8,
         axialComp: 45,
@@ -404,8 +402,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 25000,
       },
       {
-        type: 'universal',
-        material: 'stainless_steel_304',
+        type: "universal",
+        material: "stainless_steel_304",
         size: 200,
         convolutions: 8,
         axialComp: 55,
@@ -426,8 +424,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
       // Hinged bellows - Angular movement only
       {
-        type: 'hinged',
-        material: 'stainless_steel_304',
+        type: "hinged",
+        material: "stainless_steel_304",
         size: 80,
         convolutions: 4,
         axialComp: 0,
@@ -446,8 +444,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 15000,
       },
       {
-        type: 'hinged',
-        material: 'stainless_steel_304',
+        type: "hinged",
+        material: "stainless_steel_304",
         size: 100,
         convolutions: 4,
         axialComp: 0,
@@ -466,8 +464,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 18500,
       },
       {
-        type: 'hinged',
-        material: 'stainless_steel_304',
+        type: "hinged",
+        material: "stainless_steel_304",
         size: 150,
         convolutions: 5,
         axialComp: 0,
@@ -486,8 +484,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 28000,
       },
       {
-        type: 'hinged',
-        material: 'stainless_steel_304',
+        type: "hinged",
+        material: "stainless_steel_304",
         size: 200,
         convolutions: 5,
         axialComp: 0,
@@ -508,8 +506,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
       // Gimbal bellows - Multi-plane angular
       {
-        type: 'gimbal',
-        material: 'stainless_steel_304',
+        type: "gimbal",
+        material: "stainless_steel_304",
         size: 100,
         convolutions: 4,
         axialComp: 0,
@@ -528,8 +526,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 32000,
       },
       {
-        type: 'gimbal',
-        material: 'stainless_steel_304',
+        type: "gimbal",
+        material: "stainless_steel_304",
         size: 150,
         convolutions: 5,
         axialComp: 0,
@@ -548,8 +546,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 48000,
       },
       {
-        type: 'gimbal',
-        material: 'stainless_steel_304',
+        type: "gimbal",
+        material: "stainless_steel_304",
         size: 200,
         convolutions: 5,
         axialComp: 0,
@@ -570,8 +568,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
       // Tied universal - Lateral only
       {
-        type: 'tied_universal',
-        material: 'stainless_steel_304',
+        type: "tied_universal",
+        material: "stainless_steel_304",
         size: 80,
         convolutions: 6,
         axialComp: 0,
@@ -590,8 +588,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 22000,
       },
       {
-        type: 'tied_universal',
-        material: 'stainless_steel_304',
+        type: "tied_universal",
+        material: "stainless_steel_304",
         size: 100,
         convolutions: 7,
         axialComp: 0,
@@ -610,8 +608,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 28000,
       },
       {
-        type: 'tied_universal',
-        material: 'stainless_steel_304',
+        type: "tied_universal",
+        material: "stainless_steel_304",
         size: 150,
         convolutions: 8,
         axialComp: 0,
@@ -632,8 +630,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
       // Rubber bellows - EPDM
       {
-        type: 'axial',
-        material: 'rubber_epdm',
+        type: "axial",
+        material: "rubber_epdm",
         size: 50,
         convolutions: 1,
         axialComp: 15,
@@ -652,8 +650,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 1800,
       },
       {
-        type: 'axial',
-        material: 'rubber_epdm',
+        type: "axial",
+        material: "rubber_epdm",
         size: 80,
         convolutions: 1,
         axialComp: 18,
@@ -672,8 +670,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 2400,
       },
       {
-        type: 'axial',
-        material: 'rubber_epdm',
+        type: "axial",
+        material: "rubber_epdm",
         size: 100,
         convolutions: 1,
         axialComp: 22,
@@ -692,8 +690,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 3200,
       },
       {
-        type: 'axial',
-        material: 'rubber_epdm',
+        type: "axial",
+        material: "rubber_epdm",
         size: 150,
         convolutions: 1,
         axialComp: 26,
@@ -712,8 +710,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 4800,
       },
       {
-        type: 'axial',
-        material: 'rubber_epdm',
+        type: "axial",
+        material: "rubber_epdm",
         size: 200,
         convolutions: 1,
         axialComp: 30,
@@ -734,8 +732,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
       // PTFE bellows - Chemical resistance
       {
-        type: 'axial',
-        material: 'ptfe',
+        type: "axial",
+        material: "ptfe",
         size: 25,
         convolutions: 10,
         axialComp: 20,
@@ -754,8 +752,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 4500,
       },
       {
-        type: 'axial',
-        material: 'ptfe',
+        type: "axial",
+        material: "ptfe",
         size: 50,
         convolutions: 12,
         axialComp: 30,
@@ -774,8 +772,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 6500,
       },
       {
-        type: 'axial',
-        material: 'ptfe',
+        type: "axial",
+        material: "ptfe",
         size: 80,
         convolutions: 14,
         axialComp: 40,
@@ -794,8 +792,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         priceZar: 9500,
       },
       {
-        type: 'axial',
-        material: 'ptfe',
+        type: "axial",
+        material: "ptfe",
         size: 100,
         convolutions: 16,
         axialComp: 50,
@@ -849,19 +847,17 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
           b.weight,
           b.priceZar,
           Math.round(b.priceZar / 18),
-          'flanged',
-          b.pressure >= 16 ? 'PN16' : b.pressure >= 10 ? 'PN10' : 'PN6',
-          b.type === 'tied_universal',
-          b.material.includes('stainless') && b.maxTemp >= 400,
+          "flanged",
+          b.pressure >= 16 ? "PN16" : b.pressure >= 10 ? "PN10" : "PN6",
+          b.type === "tied_universal",
+          b.material.includes("stainless") && b.maxTemp >= 400,
           b.minTemp <= -100,
         ],
       );
     }
   }
 
-  private async createPipeExpansionCoefficientsTable(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
+  private async createPipeExpansionCoefficientsTable(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS pipe_expansion_coefficients (
         id SERIAL PRIMARY KEY,
@@ -1551,84 +1547,84 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
     const materials = [
       {
-        code: 'carbon_steel',
-        name: 'Carbon Steel (ASTM A106/A53)',
+        code: "carbon_steel",
+        name: "Carbon Steel (ASTM A106/A53)",
         data: carbonSteelData,
         density: 7850,
         specificHeat: 486,
-        reference: 'ASME B31.3 Table C-1',
+        reference: "ASME B31.3 Table C-1",
       },
       {
-        code: 'stainless_304',
-        name: 'Stainless Steel 304/304L',
+        code: "stainless_304",
+        name: "Stainless Steel 304/304L",
         data: stainless304Data,
         density: 8000,
         specificHeat: 500,
-        reference: 'ASME B31.3 Table C-3',
+        reference: "ASME B31.3 Table C-3",
       },
       {
-        code: 'stainless_316',
-        name: 'Stainless Steel 316/316L',
+        code: "stainless_316",
+        name: "Stainless Steel 316/316L",
         data: stainless316Data,
         density: 8000,
         specificHeat: 500,
-        reference: 'ASME B31.3 Table C-3',
+        reference: "ASME B31.3 Table C-3",
       },
       {
-        code: 'duplex_2205',
-        name: 'Duplex Stainless Steel 2205',
+        code: "duplex_2205",
+        name: "Duplex Stainless Steel 2205",
         data: duplexData,
         density: 7800,
         specificHeat: 480,
-        reference: 'ASME B31.3',
+        reference: "ASME B31.3",
       },
       {
-        code: 'inconel_625',
-        name: 'Inconel 625 (UNS N06625)',
+        code: "inconel_625",
+        name: "Inconel 625 (UNS N06625)",
         data: inconel625Data,
         density: 8440,
         specificHeat: 410,
-        reference: 'ASME B31.3 Table C-5',
+        reference: "ASME B31.3 Table C-5",
       },
       {
-        code: 'monel_400',
-        name: 'Monel 400 (UNS N04400)',
+        code: "monel_400",
+        name: "Monel 400 (UNS N04400)",
         data: monel400Data,
         density: 8800,
         specificHeat: 427,
-        reference: 'ASME B31.3 Table C-5',
+        reference: "ASME B31.3 Table C-5",
       },
       {
-        code: 'hastelloy_c276',
-        name: 'Hastelloy C-276 (UNS N10276)',
+        code: "hastelloy_c276",
+        name: "Hastelloy C-276 (UNS N10276)",
         data: hastelloyC276Data,
         density: 8890,
         specificHeat: 427,
-        reference: 'ASME B31.3 Table C-5',
+        reference: "ASME B31.3 Table C-5",
       },
       {
-        code: 'copper',
-        name: 'Copper (C12200)',
+        code: "copper",
+        name: "Copper (C12200)",
         data: copperData,
         density: 8940,
         specificHeat: 385,
-        reference: 'ASME B31.3 Table C-4',
+        reference: "ASME B31.3 Table C-4",
       },
       {
-        code: 'aluminum_6061',
-        name: 'Aluminum 6061-T6',
+        code: "aluminum_6061",
+        name: "Aluminum 6061-T6",
         data: aluminumData,
         density: 2700,
         specificHeat: 896,
-        reference: 'ASME B31.3 Table C-4',
+        reference: "ASME B31.3 Table C-4",
       },
       {
-        code: 'chrome_moly_p22',
-        name: 'Chrome-Moly P22 (2.25Cr-1Mo)',
+        code: "chrome_moly_p22",
+        name: "Chrome-Moly P22 (2.25Cr-1Mo)",
         data: chromeMolyP22Data,
         density: 7850,
         specificHeat: 473,
-        reference: 'ASME B31.3 Table C-2',
+        reference: "ASME B31.3 Table C-2",
       },
     ];
 
@@ -1665,9 +1661,7 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
     }
   }
 
-  private async createExpansionLoopSizingTable(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
+  private async createExpansionLoopSizingTable(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS expansion_loop_sizing (
         id SERIAL PRIMARY KEY,
@@ -1697,10 +1691,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
     const loopSizingData = [
       // Full loop (180° return) - Carbon steel, Std schedule
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 50,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 25,
         height: 800,
         width: 400,
@@ -1708,10 +1702,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 50,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 1100,
         width: 550,
@@ -1719,10 +1713,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 50,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 75,
         height: 1400,
         width: 700,
@@ -1730,10 +1724,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 80,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 25,
         height: 900,
         width: 450,
@@ -1741,10 +1735,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 80,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 1300,
         width: 650,
@@ -1752,10 +1746,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 80,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 75,
         height: 1600,
         width: 800,
@@ -1763,10 +1757,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 100,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 25,
         height: 1000,
         width: 500,
@@ -1774,10 +1768,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 100,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 1400,
         width: 700,
@@ -1785,10 +1779,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 100,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 75,
         height: 1750,
         width: 875,
@@ -1796,10 +1790,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 150,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 1700,
         width: 850,
@@ -1807,10 +1801,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 150,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 75,
         height: 2100,
         width: 1050,
@@ -1818,10 +1812,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 150,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 100,
         height: 2400,
         width: 1200,
@@ -1829,10 +1823,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 200,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 1950,
         width: 975,
@@ -1840,10 +1834,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 200,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 75,
         height: 2400,
         width: 1200,
@@ -1851,10 +1845,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 200,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 100,
         height: 2750,
         width: 1375,
@@ -1864,10 +1858,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
       // Horseshoe/Lyre - Carbon steel
       {
-        type: 'horseshoe_lyre',
+        type: "horseshoe_lyre",
         size: 50,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 25,
         height: 600,
         width: 0,
@@ -1875,10 +1869,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 2,
       },
       {
-        type: 'horseshoe_lyre',
+        type: "horseshoe_lyre",
         size: 50,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 850,
         width: 0,
@@ -1886,10 +1880,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 2,
       },
       {
-        type: 'horseshoe_lyre',
+        type: "horseshoe_lyre",
         size: 80,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 25,
         height: 700,
         width: 0,
@@ -1897,10 +1891,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 2,
       },
       {
-        type: 'horseshoe_lyre',
+        type: "horseshoe_lyre",
         size: 80,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 1000,
         width: 0,
@@ -1908,10 +1902,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 2,
       },
       {
-        type: 'horseshoe_lyre',
+        type: "horseshoe_lyre",
         size: 100,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 25,
         height: 800,
         width: 0,
@@ -1919,10 +1913,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 2,
       },
       {
-        type: 'horseshoe_lyre',
+        type: "horseshoe_lyre",
         size: 100,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 1100,
         width: 0,
@@ -1930,10 +1924,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 2,
       },
       {
-        type: 'horseshoe_lyre',
+        type: "horseshoe_lyre",
         size: 150,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 1350,
         width: 0,
@@ -1941,10 +1935,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 2,
       },
       {
-        type: 'horseshoe_lyre',
+        type: "horseshoe_lyre",
         size: 200,
-        schedule: 'Std',
-        material: 'carbon_steel',
+        schedule: "Std",
+        material: "carbon_steel",
         expansion: 50,
         height: 1550,
         width: 0,
@@ -1954,10 +1948,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
 
       // Stainless steel has higher expansion coefficient, needs larger loops
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 50,
-        schedule: 'Std',
-        material: 'stainless_304',
+        schedule: "Std",
+        material: "stainless_304",
         expansion: 25,
         height: 700,
         width: 350,
@@ -1965,10 +1959,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 50,
-        schedule: 'Std',
-        material: 'stainless_304',
+        schedule: "Std",
+        material: "stainless_304",
         expansion: 50,
         height: 1000,
         width: 500,
@@ -1976,10 +1970,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 80,
-        schedule: 'Std',
-        material: 'stainless_304',
+        schedule: "Std",
+        material: "stainless_304",
         expansion: 25,
         height: 800,
         width: 400,
@@ -1987,10 +1981,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 80,
-        schedule: 'Std',
-        material: 'stainless_304',
+        schedule: "Std",
+        material: "stainless_304",
         expansion: 50,
         height: 1150,
         width: 575,
@@ -1998,10 +1992,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 100,
-        schedule: 'Std',
-        material: 'stainless_304',
+        schedule: "Std",
+        material: "stainless_304",
         expansion: 50,
         height: 1250,
         width: 625,
@@ -2009,10 +2003,10 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
         elbows: 4,
       },
       {
-        type: 'full_loop',
+        type: "full_loop",
         size: 150,
-        schedule: 'Std',
-        material: 'stainless_304',
+        schedule: "Std",
+        material: "stainless_304",
         expansion: 50,
         height: 1500,
         width: 750,
@@ -2050,8 +2044,8 @@ export class AddExpansionAndThermalData1775800000000 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS expansion_loop_sizing`);
-    await queryRunner.query(`DROP TABLE IF EXISTS pipe_expansion_coefficients`);
-    await queryRunner.query(`DROP TABLE IF EXISTS bellows_expansion_joints`);
+    await queryRunner.query("DROP TABLE IF EXISTS expansion_loop_sizing");
+    await queryRunner.query("DROP TABLE IF EXISTS pipe_expansion_coefficients");
+    await queryRunner.query("DROP TABLE IF EXISTS bellows_expansion_joints");
   }
 }

@@ -1,6 +1,4 @@
-'use client';
-
-import React from 'react';
+"use client";
 
 interface ValidationMismatch {
   field: string;
@@ -12,21 +10,21 @@ interface ValidationMismatch {
 interface DocumentIssueModalProps {
   isOpen: boolean;
   onClose: () => void;
-  documentType: 'vat' | 'registration';
-  issueType: 'mismatch' | 'ocr_failed';
+  documentType: "vat" | "registration";
+  issueType: "mismatch" | "ocr_failed";
   mismatches?: ValidationMismatch[];
   onGoBackToReview: () => void;
   onProceedWithManualReview: () => void;
 }
 
 const FIELD_LABELS: Record<string, string> = {
-  vatNumber: 'VAT Number',
-  registrationNumber: 'Registration Number',
-  companyName: 'Company Name',
-  streetAddress: 'Street Address',
-  city: 'City',
-  provinceState: 'Province',
-  postalCode: 'Postal Code',
+  vatNumber: "VAT Number",
+  registrationNumber: "Registration Number",
+  companyName: "Company Name",
+  streetAddress: "Street Address",
+  city: "City",
+  provinceState: "Province",
+  postalCode: "Postal Code",
 };
 
 export default function DocumentIssueModal({
@@ -40,9 +38,9 @@ export default function DocumentIssueModal({
 }: DocumentIssueModalProps) {
   if (!isOpen) return null;
 
-  const documentLabel = documentType === 'vat' ? 'VAT Registration' : 'Company Registration';
-  const isMismatch = issueType === 'mismatch';
-  const isOcrFailed = issueType === 'ocr_failed';
+  const documentLabel = documentType === "vat" ? "VAT Registration" : "Company Registration";
+  const isMismatch = issueType === "mismatch";
+  const isOcrFailed = issueType === "ocr_failed";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -50,9 +48,9 @@ export default function DocumentIssueModal({
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isOcrFailed ? 'bg-red-100' : 'bg-yellow-100'}`}>
+            <div className={`p-2 rounded-lg ${isOcrFailed ? "bg-red-100" : "bg-yellow-100"}`}>
               <svg
-                className={`w-6 h-6 ${isOcrFailed ? 'text-red-600' : 'text-yellow-600'}`}
+                className={`w-6 h-6 ${isOcrFailed ? "text-red-600" : "text-yellow-600"}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -67,7 +65,7 @@ export default function DocumentIssueModal({
             </div>
             <div className="flex-1">
               <h2 className="text-xl font-bold text-gray-900">
-                {isOcrFailed ? 'Document Verification Failed' : 'Document Information Mismatch'}
+                {isOcrFailed ? "Document Verification Failed" : "Document Information Mismatch"}
               </h2>
               <p className="text-sm text-gray-600">
                 {isOcrFailed
@@ -80,7 +78,12 @@ export default function DocumentIssueModal({
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -108,7 +111,8 @@ export default function DocumentIssueModal({
                 <div className="text-sm text-red-800">
                   <p className="font-medium mb-2">Unable to Read Document</p>
                   <p className="mb-2">
-                    Our system couldn't automatically extract information from your document. This could be because:
+                    Our system couldn't automatically extract information from your document. This
+                    could be because:
                   </p>
                   <ul className="list-disc list-inside space-y-1 ml-2">
                     <li>The document is unclear or low quality</li>
@@ -152,7 +156,9 @@ export default function DocumentIssueModal({
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                           <div className="font-mono bg-red-50 border border-red-200 rounded px-2 py-1 inline-block">
-                            {mismatch.expected || <span className="text-gray-400 italic">Not provided</span>}
+                            {mismatch.expected || (
+                              <span className="text-gray-400 italic">Not provided</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
@@ -192,7 +198,8 @@ export default function DocumentIssueModal({
                     <div>
                       <p className="font-medium">Review and correct your information</p>
                       <p className="text-xs mt-1">
-                        Go back to Step 1 and ensure the information you entered matches your documents exactly.
+                        Go back to Step 1 and ensure the information you entered matches your
+                        documents exactly.
                       </p>
                     </div>
                   </div>
@@ -201,7 +208,9 @@ export default function DocumentIssueModal({
                     <div>
                       <p className="font-medium">Proceed with manual verification</p>
                       <p className="text-xs mt-1">
-                        Continue registration, but your account will have limited functionality until our team manually verifies your documents (typically within 24-48 hours).
+                        Continue registration, but your account will have limited functionality
+                        until our team manually verifies your documents (typically within 24-48
+                        hours).
                       </p>
                     </div>
                   </div>
@@ -229,8 +238,9 @@ export default function DocumentIssueModal({
               <div className="text-sm text-yellow-800">
                 <p className="font-medium mb-1">Why do we verify documents?</p>
                 <p>
-                  We verify your documents to ensure the {documentLabel.toLowerCase()} certificate belongs to
-                  your company and to prevent fraudulent registrations. This protects both you and our platform.
+                  We verify your documents to ensure the {documentLabel.toLowerCase()} certificate
+                  belongs to your company and to prevent fraudulent registrations. This protects
+                  both you and our platform.
                 </p>
               </div>
             </div>
@@ -271,8 +281,11 @@ export default function DocumentIssueModal({
           {/* Additional Help Text */}
           <div className="mt-4 text-center text-sm text-gray-600">
             <p>
-              Need help?{' '}
-              <a href="mailto:info@annix.co.za" className="text-blue-600 hover:text-blue-700 font-medium">
+              Need help?{" "}
+              <a
+                href="mailto:info@annix.co.za"
+                className="text-blue-600 hover:text-blue-700 font-medium"
+              >
                 Contact Support
               </a>
             </p>

@@ -1,35 +1,31 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { now } from '../lib/datetime';
-import { Boq, BoqStatus } from './entities/boq.entity';
-import { BoqSection } from './entities/boq-section.entity';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, Repository } from "typeorm";
+import { EmailService } from "../email/email.service";
+import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pressure-class.entity";
+import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
+import { now } from "../lib/datetime";
+import { RfqItem } from "../rfq/entities/rfq-item.entity";
 import {
-  BoqSupplierAccess,
-  SupplierBoqStatus,
-} from './entities/boq-supplier-access.entity';
-import {
-  SupplierProfile,
-  SupplierAccountStatus,
-} from '../supplier/entities/supplier-profile.entity';
-import {
-  SupplierCapability,
   ProductCategory,
-} from '../supplier/entities/supplier-capability.entity';
+  SupplierCapability,
+} from "../supplier/entities/supplier-capability.entity";
 import {
   SupplierOnboarding,
   SupplierOnboardingStatus,
-} from '../supplier/entities/supplier-onboarding.entity';
-import { EmailService } from '../email/email.service';
-import { RfqItem } from '../rfq/entities/rfq-item.entity';
-import { FlangeStandard } from '../flange-standard/entities/flange-standard.entity';
-import { FlangePressureClass } from '../flange-pressure-class/entities/flange-pressure-class.entity';
+} from "../supplier/entities/supplier-onboarding.entity";
+import {
+  SupplierAccountStatus,
+  SupplierProfile,
+} from "../supplier/entities/supplier-profile.entity";
 import {
   BOQ_SECTION_TO_CAPABILITY,
-  CAPABILITY_TO_SECTIONS,
-  getSectionTitle,
   getSectionsForCapabilities,
-} from './config/capability-mapping';
+  getSectionTitle,
+} from "./config/capability-mapping";
+import { Boq, BoqStatus } from "./entities/boq.entity";
+import { BoqSection } from "./entities/boq-section.entity";
+import { BoqSupplierAccess, SupplierBoqStatus } from "./entities/boq-supplier-access.entity";
 
 // Types for consolidated BOQ data from frontend
 export interface ConsolidatedItem {
@@ -91,54 +87,54 @@ export interface SubmitBoqResult {
 
 // Mapping from frontend data keys to section types
 const DATA_KEY_TO_SECTION: Record<string, string> = {
-  straightPipes: 'straight_pipes',
-  bends: 'bends',
-  tees: 'tees',
-  reducers: 'reducers',
-  flanges: 'flanges',
-  blankFlanges: 'blank_flanges',
-  bnwSets: 'bnw_sets',
-  gaskets: 'gaskets',
-  surfaceProtection: 'surface_protection',
-  hdpePipes: 'hdpe_pipes',
-  pvcPipes: 'pvc_pipes',
-  structuralSteel: 'structural_steel',
-  valves: 'valves',
-  instruments: 'instruments',
-  actuators: 'actuators',
-  flowMeters: 'flow_meters',
-  pressureInstruments: 'pressure_instruments',
-  levelInstruments: 'level_instruments',
-  temperatureInstruments: 'temperature_instruments',
-  pumps: 'pumps',
-  pumpParts: 'pump_parts',
-  pumpSpares: 'pump_spares',
-  pumpRepairs: 'pump_repairs',
-  pumpRental: 'pump_rental',
+  straightPipes: "straight_pipes",
+  bends: "bends",
+  tees: "tees",
+  reducers: "reducers",
+  flanges: "flanges",
+  blankFlanges: "blank_flanges",
+  bnwSets: "bnw_sets",
+  gaskets: "gaskets",
+  surfaceProtection: "surface_protection",
+  hdpePipes: "hdpe_pipes",
+  pvcPipes: "pvc_pipes",
+  structuralSteel: "structural_steel",
+  valves: "valves",
+  instruments: "instruments",
+  actuators: "actuators",
+  flowMeters: "flow_meters",
+  pressureInstruments: "pressure_instruments",
+  levelInstruments: "level_instruments",
+  temperatureInstruments: "temperature_instruments",
+  pumps: "pumps",
+  pumpParts: "pump_parts",
+  pumpSpares: "pump_spares",
+  pumpRepairs: "pump_repairs",
+  pumpRental: "pump_rental",
 };
 
 // Mapping from ProductCategory enum to capability keys
 const PRODUCT_CATEGORY_TO_CAPABILITY: Record<ProductCategory, string> = {
   // Legacy values
-  [ProductCategory.STRAIGHT_PIPE]: 'fabricated_steel',
-  [ProductCategory.BENDS]: 'fabricated_steel',
-  [ProductCategory.FLANGES]: 'fabricated_steel',
-  [ProductCategory.FITTINGS]: 'fabricated_steel',
-  [ProductCategory.VALVES]: 'fabricated_steel',
-  [ProductCategory.FABRICATION]: 'fabricated_steel',
-  [ProductCategory.COATING]: 'surface_protection',
-  [ProductCategory.INSPECTION]: 'surface_protection',
-  [ProductCategory.OTHER]: 'fabricated_steel',
+  [ProductCategory.STRAIGHT_PIPE]: "fabricated_steel",
+  [ProductCategory.BENDS]: "fabricated_steel",
+  [ProductCategory.FLANGES]: "fabricated_steel",
+  [ProductCategory.FITTINGS]: "fabricated_steel",
+  [ProductCategory.VALVES]: "fabricated_steel",
+  [ProductCategory.FABRICATION]: "fabricated_steel",
+  [ProductCategory.COATING]: "surface_protection",
+  [ProductCategory.INSPECTION]: "surface_protection",
+  [ProductCategory.OTHER]: "fabricated_steel",
   // New unified values (self-referencing since they are the capability keys)
-  [ProductCategory.FABRICATED_STEEL]: 'fabricated_steel',
-  [ProductCategory.FASTENERS_GASKETS]: 'fasteners_gaskets',
-  [ProductCategory.SURFACE_PROTECTION]: 'surface_protection',
-  [ProductCategory.HDPE]: 'hdpe',
-  [ProductCategory.PVC]: 'pvc',
-  [ProductCategory.STRUCTURAL_STEEL]: 'structural_steel',
-  [ProductCategory.TRANSPORT_INSTALL]: 'transport_install',
-  [ProductCategory.VALVES_INSTRUMENTS]: 'valves_instruments',
-  [ProductCategory.PUMPS]: 'pumps',
+  [ProductCategory.FABRICATED_STEEL]: "fabricated_steel",
+  [ProductCategory.FASTENERS_GASKETS]: "fasteners_gaskets",
+  [ProductCategory.SURFACE_PROTECTION]: "surface_protection",
+  [ProductCategory.HDPE]: "hdpe",
+  [ProductCategory.PVC]: "pvc",
+  [ProductCategory.STRUCTURAL_STEEL]: "structural_steel",
+  [ProductCategory.TRANSPORT_INSTALL]: "transport_install",
+  [ProductCategory.VALVES_INSTRUMENTS]: "valves_instruments",
+  [ProductCategory.PUMPS]: "pumps",
 };
 
 @Injectable()
@@ -187,7 +183,7 @@ export class BoqDistributionService {
   ): Promise<SubmitBoqResult> {
     const boq = await this.boqRepository.findOne({
       where: { id: boqId },
-      relations: ['rfq'],
+      relations: ["rfq"],
     });
 
     if (!boq) {
@@ -198,9 +194,7 @@ export class BoqDistributionService {
 
     // 1. Generate BOQ sections from consolidated data
     const sections = await this.generateSections(boqId, boqData);
-    this.logger.log(
-      `Generated ${sections.length} sections for BOQ ${boq.boqNumber}`,
-    );
+    this.logger.log(`Generated ${sections.length} sections for BOQ ${boq.boqNumber}`);
 
     // 2. Find matching suppliers for each section
     const supplierAccessRecords = await this.findAndCreateSupplierAccess(
@@ -209,15 +203,10 @@ export class BoqDistributionService {
       customerInfo,
       projectInfo,
     );
-    this.logger.log(
-      `Created ${supplierAccessRecords.length} supplier access records`,
-    );
+    this.logger.log(`Created ${supplierAccessRecords.length} supplier access records`);
 
     // 3. Send notifications to suppliers
-    const notifiedCount = await this.notifySuppliers(
-      boq,
-      supplierAccessRecords,
-    );
+    const notifiedCount = await this.notifySuppliers(boq, supplierAccessRecords);
     this.logger.log(`Notified ${notifiedCount} suppliers`);
 
     // 4. Update BOQ status to SUBMITTED
@@ -240,10 +229,7 @@ export class BoqDistributionService {
   /**
    * Generate BoqSection records from consolidated BOQ data
    */
-  async generateSections(
-    boqId: number,
-    boqData: ConsolidatedBoqData,
-  ): Promise<BoqSection[]> {
+  async generateSections(boqId: number, boqData: ConsolidatedBoqData): Promise<BoqSection[]> {
     // Delete existing sections for this BOQ (in case of re-submission)
     await this.sectionRepository.delete({ boqId });
 
@@ -256,17 +242,12 @@ export class BoqDistributionService {
         const capabilityKey = BOQ_SECTION_TO_CAPABILITY[sectionType];
 
         if (!capabilityKey) {
-          this.logger.warn(
-            `No capability mapping for section type: ${sectionType}`,
-          );
+          this.logger.warn(`No capability mapping for section type: ${sectionType}`);
           continue;
         }
 
         // Calculate total weight for section
-        const totalWeightKg = items.reduce(
-          (sum, item) => sum + (item.weightKg || 0),
-          0,
-        );
+        const totalWeightKg = items.reduce((sum, item) => sum + (item.weightKg || 0), 0);
 
         const section = this.sectionRepository.create({
           boqId,
@@ -311,17 +292,13 @@ export class BoqDistributionService {
     await this.accessRepository.delete({ boqId });
 
     // Get unique capability keys needed
-    const requiredCapabilities = [
-      ...new Set(sections.map((s) => s.capabilityKey)),
-    ];
-    this.logger.log(
-      `Required capabilities: ${requiredCapabilities.join(', ')}`,
-    );
+    const requiredCapabilities = [...new Set(sections.map((s) => s.capabilityKey))];
+    this.logger.log(`Required capabilities: ${requiredCapabilities.join(", ")}`);
 
     // Find approved suppliers
     const approvedOnboardings = await this.onboardingRepository.find({
       where: { status: SupplierOnboardingStatus.APPROVED },
-      relations: ['supplier'],
+      relations: ["supplier"],
     });
 
     const approvedSupplierIds = approvedOnboardings
@@ -329,7 +306,7 @@ export class BoqDistributionService {
       .map((o) => o.supplierId);
 
     if (approvedSupplierIds.length === 0) {
-      this.logger.warn('No approved suppliers found');
+      this.logger.warn("No approved suppliers found");
       return [];
     }
 
@@ -339,11 +316,7 @@ export class BoqDistributionService {
         supplierProfileId: In(approvedSupplierIds),
         isActive: true,
       },
-      relations: [
-        'supplierProfile',
-        'supplierProfile.user',
-        'supplierProfile.company',
-      ],
+      relations: ["supplierProfile", "supplierProfile.user", "supplierProfile.company"],
     });
 
     // Map suppliers to their capability keys
@@ -392,10 +365,7 @@ export class BoqDistributionService {
   /**
    * Send email notifications to suppliers
    */
-  async notifySuppliers(
-    boq: Boq,
-    accessRecords: BoqSupplierAccess[],
-  ): Promise<number> {
+  async notifySuppliers(boq: Boq, accessRecords: BoqSupplierAccess[]): Promise<number> {
     if (accessRecords.length === 0) {
       return 0;
     }
@@ -406,39 +376,31 @@ export class BoqDistributionService {
 
     const supplierProfiles = await this.supplierProfileRepository.find({
       where: { id: In(supplierProfileIds) },
-      relations: ['user', 'company'],
+      relations: ["user", "company"],
     });
 
-    const supplierProfileMap = new Map(
-      supplierProfiles.map((profile) => [profile.id, profile]),
-    );
+    const supplierProfileMap = new Map(supplierProfiles.map((profile) => [profile.id, profile]));
 
     let notifiedCount = 0;
     const accessesToUpdate: BoqSupplierAccess[] = [];
 
     for (const access of accessRecords) {
       try {
-        const supplierProfile = supplierProfileMap.get(
-          access.supplierProfileId,
-        );
+        const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
 
         if (!supplierProfile?.user?.email) {
-          this.logger.warn(
-            `Supplier profile ${access.supplierProfileId} has no email`,
-          );
+          this.logger.warn(`Supplier profile ${access.supplierProfileId} has no email`);
           continue;
         }
 
-        const sectionTitles = access.allowedSections.map((s) =>
-          getSectionTitle(s),
-        );
+        const sectionTitles = access.allowedSections.map((s) => getSectionTitle(s));
 
         const success = await this.emailService.sendSupplierBoqNotification(
           supplierProfile.user.email,
           supplierProfile.company?.tradingName ||
             supplierProfile.company?.legalName ||
             `${supplierProfile.firstName} ${supplierProfile.lastName}`,
-          access.projectInfo?.name || boq.title || 'New Project',
+          access.projectInfo?.name || boq.title || "New Project",
           boq.boqNumber,
           sectionTitles,
           access.customerInfo,
@@ -450,10 +412,7 @@ export class BoqDistributionService {
           notifiedCount++;
         }
       } catch (error) {
-        this.logger.error(
-          `Failed to notify supplier ${access.supplierProfileId}:`,
-          error,
-        );
+        this.logger.error(`Failed to notify supplier ${access.supplierProfileId}:`, error);
       }
     }
 
@@ -487,7 +446,7 @@ export class BoqDistributionService {
 
     const boq = await this.boqRepository.findOne({
       where: { id: boqId },
-      relations: ['rfq'],
+      relations: ["rfq"],
     });
 
     if (!boq) {
@@ -500,7 +459,7 @@ export class BoqDistributionService {
         boqId,
         sectionType: In(access.allowedSections),
       },
-      order: { id: 'ASC' },
+      order: { id: "ASC" },
     });
 
     return { boq, sections, access };
@@ -531,7 +490,7 @@ export class BoqDistributionService {
 
     const boq = await this.boqRepository.findOne({
       where: { id: boqId },
-      relations: ['rfq'],
+      relations: ["rfq"],
     });
 
     if (!boq || !boq.rfq) {
@@ -540,8 +499,8 @@ export class BoqDistributionService {
 
     const rfqItems = await this.rfqItemRepository.find({
       where: { rfq: { id: boq.rfq.id } },
-      relations: ['straightPipeDetails', 'bendDetails', 'fittingDetails'],
-      order: { lineNumber: 'ASC' },
+      relations: ["straightPipeDetails", "bendDetails", "fittingDetails"],
+      order: { lineNumber: "ASC" },
     });
 
     const flangeStandardIds = new Set<number>();
@@ -570,9 +529,7 @@ export class BoqDistributionService {
       const pressureClasses = await this.flangePressureClassRepository.find({
         where: { id: In([...flangePressureClassIds]) },
       });
-      pressureClasses.forEach((pc) =>
-        flangePressureClassesMap.set(pc.id, pc.designation),
-      );
+      pressureClasses.forEach((pc) => flangePressureClassesMap.set(pc.id, pc.designation));
     }
 
     return rfqItems.map((item) => ({
@@ -589,10 +546,7 @@ export class BoqDistributionService {
   /**
    * Mark BOQ as viewed by supplier
    */
-  async markAsViewed(
-    boqId: number,
-    supplierProfileId: number,
-  ): Promise<BoqSupplierAccess> {
+  async markAsViewed(boqId: number, supplierProfileId: number): Promise<BoqSupplierAccess> {
     const access = await this.accessRepository.findOne({
       where: { boqId, supplierProfileId },
     });
@@ -744,8 +698,8 @@ export class BoqDistributionService {
 
     const accessRecords = await this.accessRepository.find({
       where: whereCondition,
-      relations: ['boq'],
-      order: { createdAt: 'DESC' },
+      relations: ["boq"],
+      order: { createdAt: "DESC" },
     });
 
     const results: {
@@ -756,9 +710,7 @@ export class BoqDistributionService {
 
     for (const access of accessRecords) {
       if (!access.boq) {
-        this.logger.warn(
-          `BOQ not found for access record ${access.id}, boqId: ${access.boqId}`,
-        );
+        this.logger.warn(`BOQ not found for access record ${access.id}, boqId: ${access.boqId}`);
         continue;
       }
 
@@ -806,7 +758,7 @@ export class BoqDistributionService {
   ): Promise<SubmitBoqResult> {
     const boq = await this.boqRepository.findOne({
       where: { id: boqId },
-      relations: ['rfq'],
+      relations: ["rfq"],
     });
 
     if (!boq) {
@@ -832,10 +784,7 @@ export class BoqDistributionService {
     );
 
     // Send update notifications
-    const notifiedCount = await this.sendUpdateNotifications(
-      boq,
-      newAccessRecords,
-    );
+    const notifiedCount = await this.sendUpdateNotifications(boq, newAccessRecords);
 
     return {
       boq,
@@ -864,33 +813,27 @@ export class BoqDistributionService {
 
     const supplierProfiles = await this.supplierProfileRepository.find({
       where: { id: In(supplierProfileIds) },
-      relations: ['user', 'company'],
+      relations: ["user", "company"],
     });
 
-    const supplierProfileMap = new Map(
-      supplierProfiles.map((profile) => [profile.id, profile]),
-    );
+    const supplierProfileMap = new Map(supplierProfiles.map((profile) => [profile.id, profile]));
 
     let notifiedCount = 0;
 
     for (const access of accessRecords) {
       try {
-        const supplierProfile = supplierProfileMap.get(
-          access.supplierProfileId,
-        );
+        const supplierProfile = supplierProfileMap.get(access.supplierProfileId);
 
         if (!supplierProfile?.user?.email) continue;
 
-        const sectionTitles = access.allowedSections.map((s) =>
-          getSectionTitle(s),
-        );
+        const sectionTitles = access.allowedSections.map((s) => getSectionTitle(s));
 
         const success = await this.emailService.sendBoqUpdateNotification(
           supplierProfile.user.email,
           supplierProfile.company?.tradingName ||
             supplierProfile.company?.legalName ||
             `${supplierProfile.firstName} ${supplierProfile.lastName}`,
-          access.projectInfo?.name || boq.title || 'Project',
+          access.projectInfo?.name || boq.title || "Project",
           boq.boqNumber,
           sectionTitles,
         );
@@ -937,7 +880,7 @@ export class BoqDistributionService {
 
     const allBoqSections = await this.sectionRepository.find({
       where: { boqId: In(boqIds) },
-      select: ['boqId', 'sectionType'],
+      select: ["boqId", "sectionType"],
     });
 
     const sectionsByBoqId = allBoqSections.reduce((acc, section) => {
@@ -959,8 +902,7 @@ export class BoqDistributionService {
       if (newAllowedSections.length === 0) {
         accessesToRemove.push(access);
       } else if (
-        JSON.stringify(newAllowedSections.sort()) !==
-        JSON.stringify(access.allowedSections.sort())
+        JSON.stringify(newAllowedSections.sort()) !== JSON.stringify(access.allowedSections.sort())
       ) {
         access.allowedSections = newAllowedSections;
         accessesToUpdate.push(access);

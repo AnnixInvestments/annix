@@ -1,39 +1,32 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsOptional,
-  IsString,
-  IsEmail,
-  IsArray,
-  ValidateNested,
-  IsNumber,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { IsZAPhone } from '../../shared/validators';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsArray, IsEmail, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
+import { IsZAPhone } from "../../shared/validators";
 
 // Consolidated item from frontend
 export class ConsolidatedItemDto {
-  @ApiProperty({ description: 'Item description' })
+  @ApiProperty({ description: "Item description" })
   @IsString()
   description: string;
 
-  @ApiProperty({ description: 'Quantity' })
+  @ApiProperty({ description: "Quantity" })
   @IsNumber()
   qty: number;
 
-  @ApiProperty({ description: 'Unit of measure', example: 'Each' })
+  @ApiProperty({ description: "Unit of measure", example: "Each" })
   @IsString()
   unit: string;
 
-  @ApiProperty({ description: 'Weight in kg' })
+  @ApiProperty({ description: "Weight in kg" })
   @IsNumber()
   weightKg: number;
 
-  @ApiProperty({ description: 'Entry line numbers this item came from' })
+  @ApiProperty({ description: "Entry line numbers this item came from" })
   @IsArray()
   @IsNumber({}, { each: true })
   entries: number[];
 
-  @ApiPropertyOptional({ description: 'Weld data' })
+  @ApiPropertyOptional({ description: "Weld data" })
   @IsOptional()
   welds?: {
     pipeWeld?: number;
@@ -42,7 +35,7 @@ export class ConsolidatedItemDto {
     teeWeld?: number;
   };
 
-  @ApiPropertyOptional({ description: 'Surface area data' })
+  @ApiPropertyOptional({ description: "Surface area data" })
   @IsOptional()
   areas?: {
     intAreaM2?: number;
@@ -51,37 +44,37 @@ export class ConsolidatedItemDto {
 }
 
 export class CustomerInfoDto {
-  @ApiProperty({ description: 'Customer name' })
+  @ApiProperty({ description: "Customer name" })
   @IsString()
   name: string;
 
-  @ApiProperty({ description: 'Customer email' })
+  @ApiProperty({ description: "Customer email" })
   @IsEmail()
   email: string;
 
-  @ApiPropertyOptional({ description: 'Customer phone' })
+  @ApiPropertyOptional({ description: "Customer phone" })
   @IsOptional()
   @IsString()
   @IsZAPhone()
   phone?: string;
 
-  @ApiPropertyOptional({ description: 'Customer company' })
+  @ApiPropertyOptional({ description: "Customer company" })
   @IsOptional()
   @IsString()
   company?: string;
 }
 
 export class ProjectInfoDto {
-  @ApiProperty({ description: 'Project name' })
+  @ApiProperty({ description: "Project name" })
   @IsString()
   name: string;
 
-  @ApiPropertyOptional({ description: 'Project description' })
+  @ApiPropertyOptional({ description: "Project description" })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Required delivery date' })
+  @ApiPropertyOptional({ description: "Required delivery date" })
   @IsOptional()
   @IsString()
   requiredDate?: string;
@@ -258,18 +251,18 @@ export class ConsolidatedBoqDataDto {
 }
 
 export class SubmitBoqDto {
-  @ApiProperty({ description: 'Consolidated BOQ data' })
+  @ApiProperty({ description: "Consolidated BOQ data" })
   @ValidateNested()
   @Type(() => ConsolidatedBoqDataDto)
   boqData: ConsolidatedBoqDataDto;
 
-  @ApiPropertyOptional({ description: 'Customer information' })
+  @ApiPropertyOptional({ description: "Customer information" })
   @IsOptional()
   @ValidateNested()
   @Type(() => CustomerInfoDto)
   customerInfo?: CustomerInfoDto;
 
-  @ApiPropertyOptional({ description: 'Project information' })
+  @ApiPropertyOptional({ description: "Project information" })
   @IsOptional()
   @ValidateNested()
   @Type(() => ProjectInfoDto)
@@ -278,28 +271,28 @@ export class SubmitBoqDto {
 
 // Response DTO
 export class SubmitBoqResponseDto {
-  @ApiProperty({ description: 'BOQ ID' })
+  @ApiProperty({ description: "BOQ ID" })
   boqId: number;
 
-  @ApiProperty({ description: 'BOQ Number' })
+  @ApiProperty({ description: "BOQ Number" })
   boqNumber: string;
 
-  @ApiProperty({ description: 'Number of sections created' })
+  @ApiProperty({ description: "Number of sections created" })
   sectionsCreated: number;
 
-  @ApiProperty({ description: 'Number of suppliers notified' })
+  @ApiProperty({ description: "Number of suppliers notified" })
   suppliersNotified: number;
 
   @ApiProperty({
-    description: 'Summary of sections',
-    type: 'array',
+    description: "Summary of sections",
+    type: "array",
     items: {
-      type: 'object',
+      type: "object",
       properties: {
-        sectionType: { type: 'string' },
-        sectionTitle: { type: 'string' },
-        itemCount: { type: 'number' },
-        totalWeightKg: { type: 'number' },
+        sectionType: { type: "string" },
+        sectionTitle: { type: "string" },
+        itemCount: { type: "number" },
+        totalWeightKg: { type: "number" },
       },
     },
   })

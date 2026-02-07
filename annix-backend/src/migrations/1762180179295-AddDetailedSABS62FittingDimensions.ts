@@ -1,8 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddDetailedSABS62FittingDimensions1762180179295 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('🔧 Adding detailed SABS 62 fitting dimensions...');
+    console.warn("🔧 Adding detailed SABS 62 fitting dimensions...");
 
     // Get SABS 62 steel specification IDs
     const sabs62Medium = await queryRunner.query(
@@ -14,7 +14,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
 
     if (!sabs62Medium.length || !sabs62Heavy.length) {
       console.error(
-        'SABS 62 steel specifications not found. Please run SABS 62 pipe data migration first.',
+        "SABS 62 steel specifications not found. Please run SABS 62 pipe data migration first.",
       );
       return;
     }
@@ -39,23 +39,23 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     await this.insertGussettedTees(queryRunner, mediumId);
     await this.insertBullheadTees(queryRunner, mediumId);
 
-    console.warn('✅ SABS 62 detailed fitting dimensions added successfully');
+    console.warn("✅ SABS 62 detailed fitting dimensions added successfully");
   }
 
   private async insertFittingTypes(queryRunner: QueryRunner): Promise<void> {
     const fittingTypes = [
-      'Pulled Bend 90°',
-      'Spring Bend 5D',
-      'Spring Bend 3D',
-      'Equal Tee',
-      'Unequal Tee',
-      'Lateral',
-      'Sweep Tee',
-      'Equal Cross',
-      'Unequal Cross',
-      'Y Piece',
-      'Gussetted Tee',
-      'Bullhead Tee',
+      "Pulled Bend 90°",
+      "Spring Bend 5D",
+      "Spring Bend 3D",
+      "Equal Tee",
+      "Unequal Tee",
+      "Lateral",
+      "Sweep Tee",
+      "Equal Cross",
+      "Unequal Cross",
+      "Y Piece",
+      "Gussetted Tee",
+      "Bullhead Tee",
     ];
 
     for (const type of fittingTypes) {
@@ -72,9 +72,9 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     mediumId: number,
     heavyId: number,
   ): Promise<void> {
-    console.warn('  📐 Adding 90° Pulled Bends...');
+    console.warn("  📐 Adding 90° Pulled Bends...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Pulled Bend 90°');
+    const typeId = await this.getFittingTypeId(queryRunner, "Pulled Bend 90°");
 
     // Create fitting for SABS 62 Medium
     const mediumFittingResult = await queryRunner.query(`
@@ -108,11 +108,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const bend of bendsData) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        bend.nb,
-        bend.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, bend.nb, bend.od);
 
       if (nominalOdId) {
         // Create variants for 3D and 5D bends for both medium and heavy
@@ -121,25 +117,25 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
             fitting: mediumFittingId,
             radius: bend.r3d,
             length: bend.l3d,
-            type: '3D',
+            type: "3D",
           },
           {
             fitting: mediumFittingId,
             radius: bend.r5d,
             length: bend.l5d,
-            type: '5D',
+            type: "5D",
           },
           {
             fitting: heavyFittingId,
             radius: bend.r3d,
             length: bend.l3d,
-            type: '3D',
+            type: "3D",
           },
           {
             fitting: heavyFittingId,
             radius: bend.r5d,
             length: bend.l5d,
-            type: '5D',
+            type: "5D",
           },
         ];
 
@@ -177,13 +173,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertSpringBends5D(
-    queryRunner: QueryRunner,
-    heavyId: number,
-  ): Promise<void> {
-    console.warn('  🌸 Adding Spring Bends 5D...');
+  private async insertSpringBends5D(queryRunner: QueryRunner, heavyId: number): Promise<void> {
+    console.warn("  🌸 Adding Spring Bends 5D...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Spring Bend 5D');
+    const typeId = await this.getFittingTypeId(queryRunner, "Spring Bend 5D");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -207,17 +200,13 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const bend of springBends5D) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        bend.nb,
-        bend.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, bend.nb, bend.od);
 
       if (nominalOdId) {
         // Create variants for different angle ranges
         const variants = [
-          { angles: '46°-90°', length: bend.l46_90 },
-          { angles: '1°-45°', length: bend.l1_45 },
+          { angles: "46°-90°", length: bend.l46_90 },
+          { angles: "1°-45°", length: bend.l1_45 },
         ];
 
         for (const variant of variants) {
@@ -244,13 +233,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertSpringBends3D(
-    queryRunner: QueryRunner,
-    heavyId: number,
-  ): Promise<void> {
-    console.warn('  🌿 Adding Spring Bends 3D...');
+  private async insertSpringBends3D(queryRunner: QueryRunner, heavyId: number): Promise<void> {
+    console.warn("  🌿 Adding Spring Bends 3D...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Spring Bend 3D');
+    const typeId = await this.getFittingTypeId(queryRunner, "Spring Bend 3D");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -276,16 +262,12 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const bend of springBends3D) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        bend.nb,
-        bend.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, bend.nb, bend.od);
 
       if (nominalOdId) {
         const variants = [
-          { angles: '46°-90°', length: bend.l46_90 },
-          { angles: '1°-45°', length: bend.l1_45 },
+          { angles: "46°-90°", length: bend.l46_90 },
+          { angles: "1°-45°", length: bend.l1_45 },
         ];
 
         for (const variant of variants) {
@@ -312,13 +294,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertEqualTees(
-    queryRunner: QueryRunner,
-    mediumId: number,
-  ): Promise<void> {
-    console.warn('  🔀 Adding Equal Tees...');
+  private async insertEqualTees(queryRunner: QueryRunner, mediumId: number): Promise<void> {
+    console.warn("  🔀 Adding Equal Tees...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Equal Tee');
+    const typeId = await this.getFittingTypeId(queryRunner, "Equal Tee");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -343,11 +322,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const tee of equalTees) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        tee.nb,
-        tee.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, tee.nb, tee.od);
 
       if (nominalOdId) {
         const variantResult = await queryRunner.query(`
@@ -374,13 +349,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertUnequalTees(
-    queryRunner: QueryRunner,
-    mediumId: number,
-  ): Promise<void> {
-    console.warn('  🔀 Adding Unequal Tees...');
+  private async insertUnequalTees(queryRunner: QueryRunner, mediumId: number): Promise<void> {
+    console.warn("  🔀 Adding Unequal Tees...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Unequal Tee');
+    const typeId = await this.getFittingTypeId(queryRunner, "Unequal Tee");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -406,11 +378,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const tee of unequalTees) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        tee.nb,
-        tee.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, tee.nb, tee.od);
 
       if (nominalOdId) {
         const variantResult = await queryRunner.query(`
@@ -436,13 +404,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertLaterals(
-    queryRunner: QueryRunner,
-    mediumId: number,
-  ): Promise<void> {
-    console.warn('  📐 Adding Laterals...');
+  private async insertLaterals(queryRunner: QueryRunner, mediumId: number): Promise<void> {
+    console.warn("  📐 Adding Laterals...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Lateral');
+    const typeId = await this.getFittingTypeId(queryRunner, "Lateral");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -525,17 +490,13 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const lateral of laterals) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        lateral.nb,
-        lateral.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, lateral.nb, lateral.od);
 
       if (nominalOdId) {
         const angleRanges = [
-          { range: '60°-90°', a: lateral.a60_90, b: lateral.b60_90 },
-          { range: '45°-59°', a: lateral.a45_59, b: lateral.b45_59 },
-          { range: '30°-44°', a: lateral.a30_44, b: lateral.b30_44 },
+          { range: "60°-90°", a: lateral.a60_90, b: lateral.b60_90 },
+          { range: "45°-59°", a: lateral.a45_59, b: lateral.b45_59 },
+          { range: "30°-44°", a: lateral.a30_44, b: lateral.b30_44 },
         ];
 
         for (const range of angleRanges) {
@@ -565,13 +526,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertSweepTees(
-    queryRunner: QueryRunner,
-    mediumId: number,
-  ): Promise<void> {
-    console.warn('  🌊 Adding Sweep Tees...');
+  private async insertSweepTees(queryRunner: QueryRunner, mediumId: number): Promise<void> {
+    console.warn("  🌊 Adding Sweep Tees...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Sweep Tee');
+    const typeId = await this.getFittingTypeId(queryRunner, "Sweep Tee");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -594,11 +552,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const tee of sweepTees) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        tee.nb,
-        tee.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, tee.nb, tee.od);
 
       if (nominalOdId) {
         const variantResult = await queryRunner.query(`
@@ -627,13 +581,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertEqualCrosses(
-    queryRunner: QueryRunner,
-    mediumId: number,
-  ): Promise<void> {
-    console.warn('  ✚ Adding Equal Crosses...');
+  private async insertEqualCrosses(queryRunner: QueryRunner, mediumId: number): Promise<void> {
+    console.warn("  ✚ Adding Equal Crosses...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Equal Cross');
+    const typeId = await this.getFittingTypeId(queryRunner, "Equal Cross");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -658,11 +609,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const cross of equalCrosses) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        cross.nb,
-        cross.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, cross.nb, cross.od);
 
       if (nominalOdId) {
         const variantResult = await queryRunner.query(`
@@ -690,13 +637,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertUnequalCrosses(
-    queryRunner: QueryRunner,
-    mediumId: number,
-  ): Promise<void> {
-    console.warn('  ✚ Adding Unequal Crosses...');
+  private async insertUnequalCrosses(queryRunner: QueryRunner, mediumId: number): Promise<void> {
+    console.warn("  ✚ Adding Unequal Crosses...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Unequal Cross');
+    const typeId = await this.getFittingTypeId(queryRunner, "Unequal Cross");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -721,11 +665,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const cross of unequalCrosses) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        cross.nb,
-        cross.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, cross.nb, cross.od);
 
       if (nominalOdId) {
         const variantResult = await queryRunner.query(`
@@ -751,13 +691,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertYPieces(
-    queryRunner: QueryRunner,
-    mediumId: number,
-  ): Promise<void> {
-    console.warn('  🔀 Adding Y Pieces...');
+  private async insertYPieces(queryRunner: QueryRunner, mediumId: number): Promise<void> {
+    console.warn("  🔀 Adding Y Pieces...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Y Piece');
+    const typeId = await this.getFittingTypeId(queryRunner, "Y Piece");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -840,17 +777,13 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const yPiece of yPieces) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        yPiece.nb,
-        yPiece.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, yPiece.nb, yPiece.od);
 
       if (nominalOdId) {
         const angleRanges = [
-          { range: '60°-90°', a: yPiece.a60_90, b: yPiece.b60_90 },
-          { range: '45°-59°', a: yPiece.a45_59, b: yPiece.b45_59 },
-          { range: '30°-44°', a: yPiece.a30_44, b: yPiece.b30_44 },
+          { range: "60°-90°", a: yPiece.a60_90, b: yPiece.b60_90 },
+          { range: "45°-59°", a: yPiece.a45_59, b: yPiece.b45_59 },
+          { range: "30°-44°", a: yPiece.a30_44, b: yPiece.b30_44 },
         ];
 
         for (const range of angleRanges) {
@@ -880,13 +813,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertGussettedTees(
-    queryRunner: QueryRunner,
-    mediumId: number,
-  ): Promise<void> {
-    console.warn('  🔧 Adding Gussetted Tees...');
+  private async insertGussettedTees(queryRunner: QueryRunner, mediumId: number): Promise<void> {
+    console.warn("  🔧 Adding Gussetted Tees...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Gussetted Tee');
+    const typeId = await this.getFittingTypeId(queryRunner, "Gussetted Tee");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -904,11 +834,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const tee of gussettedTees) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        tee.nb,
-        tee.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, tee.nb, tee.od);
 
       if (nominalOdId) {
         const variantResult = await queryRunner.query(`
@@ -934,13 +860,10 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async insertBullheadTees(
-    queryRunner: QueryRunner,
-    mediumId: number,
-  ): Promise<void> {
-    console.warn('  🐂 Adding Bullhead Tees...');
+  private async insertBullheadTees(queryRunner: QueryRunner, mediumId: number): Promise<void> {
+    console.warn("  🐂 Adding Bullhead Tees...");
 
-    const typeId = await this.getFittingTypeId(queryRunner, 'Bullhead Tee');
+    const typeId = await this.getFittingTypeId(queryRunner, "Bullhead Tee");
 
     const fittingResult = await queryRunner.query(`
             INSERT INTO fittings (steel_specification_id, fitting_type_id)
@@ -965,11 +888,7 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     ];
 
     for (const tee of bullheadTees) {
-      const nominalOdId = await this.getNominalOdId(
-        queryRunner,
-        tee.nb,
-        tee.od,
-      );
+      const nominalOdId = await this.getNominalOdId(queryRunner, tee.nb, tee.od);
 
       if (nominalOdId) {
         const variantResult = await queryRunner.query(`
@@ -994,13 +913,8 @@ export class AddDetailedSABS62FittingDimensions1762180179295 implements Migratio
     }
   }
 
-  private async getFittingTypeId(
-    queryRunner: QueryRunner,
-    name: string,
-  ): Promise<number> {
-    const result = await queryRunner.query(
-      `SELECT id FROM fitting_types WHERE name = '${name}'`,
-    );
+  private async getFittingTypeId(queryRunner: QueryRunner, name: string): Promise<number> {
+    const result = await queryRunner.query(`SELECT id FROM fitting_types WHERE name = '${name}'`);
     return result[0].id;
   }
 

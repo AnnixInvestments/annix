@@ -24,16 +24,12 @@
 //     return `This action removes a #${id} angleRange`;
 //   }
 // }
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { AngleRange } from './entities/angle-range.entity';
-import { CreateAngleRangeDto } from './dto/create-angle-range.dto';
-import { UpdateAngleRangeDto } from './dto/update-angle-range.dto';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CreateAngleRangeDto } from "./dto/create-angle-range.dto";
+import { UpdateAngleRangeDto } from "./dto/update-angle-range.dto";
+import { AngleRange } from "./entities/angle-range.entity";
 
 @Injectable()
 export class AngleRangeService {
@@ -57,13 +53,13 @@ export class AngleRangeService {
   }
 
   async findAll(): Promise<AngleRange[]> {
-    return this.rangeRepo.find({ relations: ['fittingDimensions'] });
+    return this.rangeRepo.find({ relations: ["fittingDimensions"] });
   }
 
   async findOne(id: number): Promise<AngleRange> {
     const range = await this.rangeRepo.findOne({
       where: { id },
-      relations: ['fittingDimensions'],
+      relations: ["fittingDimensions"],
     });
     if (!range) throw new NotFoundException(`AngleRange ${id} not found`);
     return range;

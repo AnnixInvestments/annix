@@ -69,16 +69,12 @@
 //   }
 // }
 
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { SteelSpecification } from './entities/steel-specification.entity';
-import { CreateSteelSpecificationDto } from './dto/create-steel-specification.dto';
-import { UpdateSteelSpecificationDto } from './dto/update-steel-specification.dto';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CreateSteelSpecificationDto } from "./dto/create-steel-specification.dto";
+import { UpdateSteelSpecificationDto } from "./dto/update-steel-specification.dto";
+import { SteelSpecification } from "./entities/steel-specification.entity";
 
 @Injectable()
 export class SteelSpecificationService {
@@ -92,42 +88,33 @@ export class SteelSpecificationService {
       where: { steelSpecName: dto.steelSpecName },
     });
     if (existing)
-      throw new BadRequestException(
-        `SteelSpecification "${dto.steelSpecName}" already exists`,
-      );
+      throw new BadRequestException(`SteelSpecification "${dto.steelSpecName}" already exists`);
 
     const spec = this.steelRepo.create(dto);
     return this.steelRepo.save(spec);
   }
 
   async findAll(): Promise<SteelSpecification[]> {
-    return this.steelRepo.find({ relations: ['fittings', 'pipeDimensions'] });
-    0.0;
+    return this.steelRepo.find({ relations: ["fittings", "pipeDimensions"] });
   }
 
   async findOne(id: number): Promise<SteelSpecification> {
     const spec = await this.steelRepo.findOne({
       where: { id },
-      relations: ['fittings', 'pipeDimensions'],
+      relations: ["fittings", "pipeDimensions"],
     });
-    if (!spec)
-      throw new NotFoundException(`SteelSpecification ${id} not found`);
+    if (!spec) throw new NotFoundException(`SteelSpecification ${id} not found`);
     return spec;
   }
 
-  async update(
-    id: number,
-    dto: UpdateSteelSpecificationDto,
-  ): Promise<SteelSpecification> {
+  async update(id: number, dto: UpdateSteelSpecificationDto): Promise<SteelSpecification> {
     const spec = await this.findOne(id);
     if (dto.steelSpecName && dto.steelSpecName !== spec.steelSpecName) {
       const duplicate = await this.steelRepo.findOne({
         where: { steelSpecName: dto.steelSpecName },
       });
       if (duplicate)
-        throw new BadRequestException(
-          `SteelSpecification "${dto.steelSpecName}" already exists`,
-        );
+        throw new BadRequestException(`SteelSpecification "${dto.steelSpecName}" already exists`);
       spec.steelSpecName = dto.steelSpecName;
     }
     return this.steelRepo.save(spec);

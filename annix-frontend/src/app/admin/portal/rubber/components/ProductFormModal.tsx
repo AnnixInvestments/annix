@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from "react";
 import {
-  rubberPortalApi,
-  RubberProductDto,
   CreateRubberProductDto,
-} from '@/app/lib/api/rubberPortalApi';
-import { ProductForm, INITIAL_FORM_DATA, formDataFromProduct } from './ProductForm';
+  RubberProductDto,
+  rubberPortalApi,
+} from "@/app/lib/api/rubberPortalApi";
+import { formDataFromProduct, INITIAL_FORM_DATA, ProductForm } from "./ProductForm";
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -48,7 +48,7 @@ export function ProductFormModal({ isOpen, product, onSave, onCancel }: ProductF
       <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
-            {isEditing ? 'Edit Product' : 'Create New Product'}
+            {isEditing ? "Edit Product" : "Create New Product"}
           </h2>
         </div>
 
@@ -57,7 +57,7 @@ export function ProductFormModal({ isOpen, product, onSave, onCancel }: ProductF
             initialData={initialData}
             onSubmit={handleSubmit}
             onCancel={onCancel}
-            submitLabel={isEditing ? 'Update Product' : 'Create Product'}
+            submitLabel={isEditing ? "Update Product" : "Create Product"}
             isSaving={isSaving}
           />
         </div>

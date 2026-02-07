@@ -1,12 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class FixBS4504PNVariants1777700000001 implements MigrationInterface {
-  name = 'FixBS4504PNVariants1777700000001';
+  name = "FixBS4504PNVariants1777700000001";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      'Adding P-T data for BS 4504 PN variants (PN16/7, PN25/7, PN40/7)...',
-    );
+    console.warn("Adding P-T data for BS 4504 PN variants (PN16/7, PN25/7, PN40/7)...");
 
     const insertPtRating = async (
       classId: number,
@@ -92,13 +90,13 @@ export class FixBS4504PNVariants1777700000001 implements MigrationInterface {
           for (const [temp, factor] of carbonSteelDerating) {
             await insertPtRating(
               cls.id,
-              'Carbon Steel',
+              "Carbon Steel",
               temp,
               Math.round(basePN * factor * 10) / 10,
             );
             await insertPtRating(
               cls.id,
-              'Carbon Steel A105 (Group 1.1)',
+              "Carbon Steel A105 (Group 1.1)",
               temp,
               Math.round(basePN * factor * 10) / 10,
             );
@@ -107,7 +105,7 @@ export class FixBS4504PNVariants1777700000001 implements MigrationInterface {
           for (const [temp, factor] of ss304Derating) {
             await insertPtRating(
               cls.id,
-              'Stainless Steel 304 (Group 2.1)',
+              "Stainless Steel 304 (Group 2.1)",
               temp,
               Math.round(basePN * factor * 10) / 10,
             );
@@ -116,7 +114,7 @@ export class FixBS4504PNVariants1777700000001 implements MigrationInterface {
           for (const [temp, factor] of ss316Derating) {
             await insertPtRating(
               cls.id,
-              'Stainless Steel 316 (Group 2.2)',
+              "Stainless Steel 316 (Group 2.2)",
               temp,
               Math.round(basePN * factor * 10) / 10,
             );
@@ -127,7 +125,7 @@ export class FixBS4504PNVariants1777700000001 implements MigrationInterface {
       }
     }
 
-    console.warn('BS 4504 PN variants P-T data complete.');
+    console.warn("BS 4504 PN variants P-T data complete.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

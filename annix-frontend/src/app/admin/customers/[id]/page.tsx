@@ -1,14 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import {
-  useAdminCustomerDetail,
-  useAdminCustomerLoginHistory,
-} from '@/app/lib/query/hooks';
-import { adminApiClient } from '@/app/lib/api/adminApi';
-import { formatDateTimeZA } from '@/app/lib/datetime';
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useState } from "react";
+import { adminApiClient } from "@/app/lib/api/adminApi";
+import { formatDateTimeZA } from "@/app/lib/datetime";
+import { useAdminCustomerDetail, useAdminCustomerLoginHistory } from "@/app/lib/query/hooks";
 
 export default function AdminCustomerDetailPage() {
   const params = useParams();
@@ -28,12 +25,12 @@ export default function AdminCustomerDetailPage() {
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showReactivateModal, setShowReactivateModal] = useState(false);
   const [showResetDeviceModal, setShowResetDeviceModal] = useState(false);
-  const [actionReason, setActionReason] = useState('');
+  const [actionReason, setActionReason] = useState("");
   const [isPerformingAction, setIsPerformingAction] = useState(false);
 
   const handleSuspend = async () => {
     if (!actionReason.trim()) {
-      setError('Please provide a reason for suspension');
+      setError("Please provide a reason for suspension");
       return;
     }
 
@@ -42,12 +39,12 @@ export default function AdminCustomerDetailPage() {
 
     try {
       await adminApiClient.suspendCustomer(customerId, { reason: actionReason });
-      setSuccessMessage('Customer account suspended successfully');
+      setSuccessMessage("Customer account suspended successfully");
       setShowSuspendModal(false);
-      setActionReason('');
+      setActionReason("");
       await refetch();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to suspend customer');
+      setError(e instanceof Error ? e.message : "Failed to suspend customer");
     } finally {
       setIsPerformingAction(false);
     }
@@ -61,14 +58,12 @@ export default function AdminCustomerDetailPage() {
       await adminApiClient.reactivateCustomer(customerId, {
         note: actionReason || undefined,
       });
-      setSuccessMessage('Customer account reactivated successfully');
+      setSuccessMessage("Customer account reactivated successfully");
       setShowReactivateModal(false);
-      setActionReason('');
+      setActionReason("");
       await refetch();
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : 'Failed to reactivate customer'
-      );
+      setError(e instanceof Error ? e.message : "Failed to reactivate customer");
     } finally {
       setIsPerformingAction(false);
     }
@@ -76,7 +71,7 @@ export default function AdminCustomerDetailPage() {
 
   const handleResetDevice = async () => {
     if (!actionReason.trim()) {
-      setError('Please provide a reason for device reset');
+      setError("Please provide a reason for device reset");
       return;
     }
 
@@ -88,15 +83,13 @@ export default function AdminCustomerDetailPage() {
         reason: actionReason,
       });
       setSuccessMessage(
-        'Device binding reset successfully. Customer will need to register new device on next login.'
+        "Device binding reset successfully. Customer will need to register new device on next login.",
       );
       setShowResetDeviceModal(false);
-      setActionReason('');
+      setActionReason("");
       await refetch();
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : 'Failed to reset device binding'
-      );
+      setError(e instanceof Error ? e.message : "Failed to reset device binding");
     } finally {
       setIsPerformingAction(false);
     }
@@ -104,16 +97,16 @@ export default function AdminCustomerDetailPage() {
 
   const statusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'suspended':
-        return 'bg-red-100 text-red-800';
-      case 'deactivated':
-        return 'bg-gray-100 text-gray-600';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "suspended":
+        return "bg-red-100 text-red-800";
+      case "deactivated":
+        return "bg-gray-100 text-gray-600";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -130,15 +123,10 @@ export default function AdminCustomerDetailPage() {
       <div className="p-6 space-y-4">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-sm text-red-700">
-            {queryError instanceof Error
-              ? queryError.message
-              : 'Customer not found'}
+            {queryError instanceof Error ? queryError.message : "Customer not found"}
           </p>
         </div>
-        <Link
-          href="/admin/customers"
-          className="text-blue-600 hover:underline"
-        >
+        <Link href="/admin/customers" className="text-blue-600 hover:underline">
           Back to customer list
         </Link>
       </div>
@@ -150,16 +138,8 @@ export default function AdminCustomerDetailPage() {
       <div className="flex justify-between items-start">
         <div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/admin/customers"
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+            <Link href="/admin/customers" className="text-gray-500 hover:text-gray-700">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -197,138 +177,96 @@ export default function AdminCustomerDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Profile Information
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900">Profile Information</h2>
             </div>
             <div className="p-6">
               <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">
-                    First Name
-                  </dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {customer.firstName}
-                  </dd>
+                  <dt className="text-sm font-medium text-gray-500">First Name</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{customer.firstName}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">
-                    Last Name
-                  </dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {customer.lastName}
-                  </dd>
+                  <dt className="text-sm font-medium text-gray-500">Last Name</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{customer.lastName}</dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Email</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{customer.email}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Job Title</dt>
+                  <dd className="mt-1 text-sm text-gray-900">{customer.jobTitle || "Not set"}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Direct Phone</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {customer.email}
+                    {customer.directPhone || "Not set"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">
-                    Job Title
-                  </dt>
+                  <dt className="text-sm font-medium text-gray-500">Mobile Phone</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {customer.jobTitle || 'Not set'}
+                    {customer.mobilePhone || "Not set"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">
-                    Direct Phone
-                  </dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {customer.directPhone || 'Not set'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">
-                    Mobile Phone
-                  </dt>
-                  <dd className="mt-1 text-sm text-gray-900">
-                    {customer.mobilePhone || 'Not set'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">
-                    Registered
-                  </dt>
+                  <dt className="text-sm font-medium text-gray-500">Registered</dt>
                   <dd className="mt-1 text-sm text-gray-900">
                     {formatDateTimeZA(customer.createdAt)}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">
-                    Last Login
-                  </dt>
+                  <dt className="text-sm font-medium text-gray-500">Last Login</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {customer.lastLoginAt
-                      ? formatDateTimeZA(customer.lastLoginAt)
-                      : 'Never'}
+                    {customer.lastLoginAt ? formatDateTimeZA(customer.lastLoginAt) : "Never"}
                   </dd>
                 </div>
               </dl>
 
-              {customer.accountStatus === 'suspended' &&
-                customer.suspensionReason && (
-                  <div className="mt-6 p-4 bg-red-50 rounded-lg">
-                    <h4 className="text-sm font-medium text-red-800">
-                      Suspension Information
-                    </h4>
-                    <p className="mt-1 text-sm text-red-700">
-                      <strong>Reason:</strong> {customer.suspensionReason}
+              {customer.accountStatus === "suspended" && customer.suspensionReason && (
+                <div className="mt-6 p-4 bg-red-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-red-800">Suspension Information</h4>
+                  <p className="mt-1 text-sm text-red-700">
+                    <strong>Reason:</strong> {customer.suspensionReason}
+                  </p>
+                  {customer.suspendedAt && (
+                    <p className="text-sm text-red-700">
+                      <strong>Suspended At:</strong> {formatDateTimeZA(customer.suspendedAt)}
                     </p>
-                    {customer.suspendedAt && (
-                      <p className="text-sm text-red-700">
-                        <strong>Suspended At:</strong>{' '}
-                        {formatDateTimeZA(customer.suspendedAt)}
-                      </p>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           {customer.company && (
             <div className="bg-white rounded-lg shadow">
               <div className="p-6 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Company Information
-                </h2>
+                <h2 className="text-lg font-semibold text-gray-900">Company Information</h2>
               </div>
               <div className="p-6">
                 <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">
-                      Company Name
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900">
-                      {customer.company.name}
+                    <dt className="text-sm font-medium text-gray-500">Company Name</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{customer.company.name}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Registration Number</dt>
+                    <dd className="mt-1 text-sm text-gray-900 font-mono">
+                      {customer.company.registrationNumber || "Not set"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500">
-                      Registration Number
-                    </dt>
+                    <dt className="text-sm font-medium text-gray-500">VAT Number</dt>
                     <dd className="mt-1 text-sm text-gray-900 font-mono">
-                      {customer.company.registrationNumber || 'Not set'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm font-medium text-gray-500">
-                      VAT Number
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900 font-mono">
-                      {customer.company.vatNumber || 'Not registered'}
+                      {customer.company.vatNumber || "Not registered"}
                     </dd>
                   </div>
                   {(customer.company.address ||
                     customer.company.city ||
                     customer.company.province) && (
                     <div className="md:col-span-2">
-                      <dt className="text-sm font-medium text-gray-500">
-                        Address
-                      </dt>
+                      <dt className="text-sm font-medium text-gray-500">Address</dt>
                       <dd className="mt-1 text-sm text-gray-900">
                         {customer.company.address && (
                           <>
@@ -342,7 +280,7 @@ export default function AdminCustomerDetailPage() {
                           customer.company.postalCode,
                         ]
                           .filter(Boolean)
-                          .join(', ')}
+                          .join(", ")}
                       </dd>
                     </div>
                   )}
@@ -353,15 +291,11 @@ export default function AdminCustomerDetailPage() {
 
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Recent Login Attempts
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900">Recent Login Attempts</h2>
             </div>
             <div className="overflow-x-auto">
               {loginHistory.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  No login history available
-                </div>
+                <div className="p-6 text-center text-gray-500">No login history available</div>
               ) : (
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -404,10 +338,10 @@ export default function AdminCustomerDetailPage() {
                           {login.ipAddress}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                          {login.userAgent || '-'}
+                          {login.userAgent || "-"}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500">
-                          {login.failureReason || '-'}
+                          {login.failureReason || "-"}
                         </td>
                       </tr>
                     ))}
@@ -421,9 +355,7 @@ export default function AdminCustomerDetailPage() {
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                Device Binding
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900">Device Binding</h2>
             </div>
             <div className="p-6">
               {customer.deviceBound ? (
@@ -431,9 +363,7 @@ export default function AdminCustomerDetailPage() {
                   Device Bound
                 </span>
               ) : (
-                <p className="text-sm text-gray-500">
-                  No device bound to this account
-                </p>
+                <p className="text-sm text-gray-500">No device bound to this account</p>
               )}
             </div>
           </div>
@@ -443,7 +373,7 @@ export default function AdminCustomerDetailPage() {
               <h2 className="text-lg font-semibold text-gray-900">Actions</h2>
             </div>
             <div className="p-6 space-y-3">
-              {customer.accountStatus === 'active' && (
+              {customer.accountStatus === "active" && (
                 <button
                   onClick={() => setShowSuspendModal(true)}
                   className="w-full flex items-center justify-center px-4 py-2 border border-red-300 text-red-700 rounded-md hover:bg-red-50"
@@ -465,7 +395,7 @@ export default function AdminCustomerDetailPage() {
                 </button>
               )}
 
-              {customer.accountStatus === 'suspended' && (
+              {customer.accountStatus === "suspended" && (
                 <button
                   onClick={() => setShowReactivateModal(true)}
                   className="w-full flex items-center justify-center px-4 py-2 border border-green-300 text-green-700 rounded-md hover:bg-green-50"
@@ -516,13 +446,10 @@ export default function AdminCustomerDetailPage() {
       {showSuspendModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Suspend Customer Account
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Suspend Customer Account</h3>
             <p className="text-sm text-gray-600 mb-4">
-              This will suspend the customer's account and invalidate all active
-              sessions. The customer will not be able to log in until
-              reactivated.
+              This will suspend the customer's account and invalidate all active sessions. The
+              customer will not be able to log in until reactivated.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -540,7 +467,7 @@ export default function AdminCustomerDetailPage() {
               <button
                 onClick={() => {
                   setShowSuspendModal(false);
-                  setActionReason('');
+                  setActionReason("");
                 }}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
@@ -551,7 +478,7 @@ export default function AdminCustomerDetailPage() {
                 disabled={isPerformingAction || !actionReason.trim()}
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400"
               >
-                {isPerformingAction ? 'Suspending...' : 'Suspend Account'}
+                {isPerformingAction ? "Suspending..." : "Suspend Account"}
               </button>
             </div>
           </div>
@@ -565,8 +492,7 @@ export default function AdminCustomerDetailPage() {
               Reactivate Customer Account
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              This will reactivate the customer's account and allow them to log
-              in again.
+              This will reactivate the customer's account and allow them to log in again.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -584,7 +510,7 @@ export default function AdminCustomerDetailPage() {
               <button
                 onClick={() => {
                   setShowReactivateModal(false);
-                  setActionReason('');
+                  setActionReason("");
                 }}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
@@ -595,7 +521,7 @@ export default function AdminCustomerDetailPage() {
                 disabled={isPerformingAction}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
               >
-                {isPerformingAction ? 'Reactivating...' : 'Reactivate Account'}
+                {isPerformingAction ? "Reactivating..." : "Reactivate Account"}
               </button>
             </div>
           </div>
@@ -605,13 +531,10 @@ export default function AdminCustomerDetailPage() {
       {showResetDeviceModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Reset Device Binding
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Reset Device Binding</h3>
             <p className="text-sm text-gray-600 mb-4">
-              This will reset the customer's device binding and invalidate all
-              active sessions. The customer will need to register a new device on
-              their next login.
+              This will reset the customer's device binding and invalidate all active sessions. The
+              customer will need to register a new device on their next login.
             </p>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -629,7 +552,7 @@ export default function AdminCustomerDetailPage() {
               <button
                 onClick={() => {
                   setShowResetDeviceModal(false);
-                  setActionReason('');
+                  setActionReason("");
                 }}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
               >
@@ -640,7 +563,7 @@ export default function AdminCustomerDetailPage() {
                 disabled={isPerformingAction || !actionReason.trim()}
                 className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:bg-gray-400"
               >
-                {isPerformingAction ? 'Resetting...' : 'Reset Device'}
+                {isPerformingAction ? "Resetting..." : "Reset Device"}
               </button>
             </div>
           </div>

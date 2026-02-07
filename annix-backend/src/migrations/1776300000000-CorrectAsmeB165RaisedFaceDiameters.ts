@@ -1,18 +1,18 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CorrectAsmeB165RaisedFaceDiameters1776300000000 implements MigrationInterface {
-  name = 'CorrectAsmeB165RaisedFaceDiameters1776300000000';
+  name = "CorrectAsmeB165RaisedFaceDiameters1776300000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     console.warn(
-      'Correcting ASME B16.5 raised face diameter (d4) values per MPS Technical Manual...',
+      "Correcting ASME B16.5 raised face diameter (d4) values per MPS Technical Manual...",
     );
 
     const asmeB165Result = await queryRunner.query(
       `SELECT id FROM flange_standards WHERE code = 'ASME B16.5'`,
     );
     if (asmeB165Result.length === 0) {
-      console.warn('ASME B16.5 standard not found, skipping...');
+      console.warn("ASME B16.5 standard not found, skipping...");
       return;
     }
     const asmeB165Id = asmeB165Result[0].id;
@@ -45,18 +45,16 @@ export class CorrectAsmeB165RaisedFaceDiameters1776300000000 implements Migratio
     };
 
     const getTypeId = async (code: string) => {
-      const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`,
-      );
+      const result = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '${code}'`);
       return result[0]?.id;
     };
 
-    const blindTypeId = await getTypeId('/8');
+    const blindTypeId = await getTypeId("/8");
 
     let updatedCount = 0;
 
     for (const [nbStr, correctD4] of Object.entries(correctD4Values)) {
-      const nb = parseInt(nbStr);
+      const nb = parseInt(nbStr, 10);
 
       const nominalResult = await queryRunner.query(`
         SELECT id FROM nominal_outside_diameters
@@ -82,9 +80,7 @@ export class CorrectAsmeB165RaisedFaceDiameters1776300000000 implements Migratio
 
       const rowCount = result[1] || 0;
       if (rowCount > 0) {
-        console.warn(
-          `Updated ${rowCount} records for ${nb}NB to d4=${correctD4}`,
-        );
+        console.warn(`Updated ${rowCount} records for ${nb}NB to d4=${correctD4}`);
         updatedCount += rowCount;
       }
     }
@@ -96,7 +92,7 @@ export class CorrectAsmeB165RaisedFaceDiameters1776300000000 implements Migratio
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     console.warn(
-      'Reverting ASME B16.5 raised face diameters to previous (incorrect) pipe OD values',
+      "Reverting ASME B16.5 raised face diameters to previous (incorrect) pipe OD values",
     );
 
     const asmeB165Result = await queryRunner.query(
@@ -130,16 +126,14 @@ export class CorrectAsmeB165RaisedFaceDiameters1776300000000 implements Migratio
     };
 
     const getTypeId = async (code: string) => {
-      const result = await queryRunner.query(
-        `SELECT id FROM flange_types WHERE code = '${code}'`,
-      );
+      const result = await queryRunner.query(`SELECT id FROM flange_types WHERE code = '${code}'`);
       return result[0]?.id;
     };
 
-    const blindTypeId = await getTypeId('/8');
+    const blindTypeId = await getTypeId("/8");
 
     for (const [nbStr, previousD4] of Object.entries(previousD4Values)) {
-      const nb = parseInt(nbStr);
+      const nb = parseInt(nbStr, 10);
 
       const nominalResult = await queryRunner.query(`
         SELECT id FROM nominal_outside_diameters
@@ -159,6 +153,6 @@ export class CorrectAsmeB165RaisedFaceDiameters1776300000000 implements Migratio
       `);
     }
 
-    console.warn('Reverted ASME B16.5 raised face diameters');
+    console.warn("Reverted ASME B16.5 raised face diameters");
   }
 }

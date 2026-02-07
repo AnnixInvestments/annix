@@ -1,9 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateCustomerBlockedSuppliersTable1780000000000
-  implements MigrationInterface
-{
-  name = 'CreateCustomerBlockedSuppliersTable1780000000000';
+export class CreateCustomerBlockedSuppliersTable1780000000000 implements MigrationInterface {
+  name = "CreateCustomerBlockedSuppliersTable1780000000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -34,12 +32,8 @@ export class CreateCustomerBlockedSuppliersTable1780000000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX "IDX_customer_blocked_suppliers_supplier"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "IDX_customer_blocked_suppliers_company"`,
-    );
+    await queryRunner.query(`DROP INDEX "IDX_customer_blocked_suppliers_supplier"`);
+    await queryRunner.query(`DROP INDEX "IDX_customer_blocked_suppliers_company"`);
     await queryRunner.query(`DROP TABLE "customer_blocked_suppliers"`);
   }
 }

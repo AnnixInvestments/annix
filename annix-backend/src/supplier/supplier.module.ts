@@ -1,51 +1,43 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-
+import { forwardRef, Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { JwtModule } from "@nestjs/jwt";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { AdminModule } from "../admin/admin.module";
+import { AuditModule } from "../audit/audit.module";
+import { BoqModule } from "../boq/boq.module";
+import { CustomerPreferredSupplier, SupplierInvitation } from "../customer/entities";
+import { EmailModule } from "../email/email.module";
+import { MessagingModule } from "../messaging/messaging.module";
+import { NixModule } from "../nix/nix.module";
+import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
+import { StorageModule } from "../storage/storage.module";
+import { User } from "../user/entities/user.entity";
+// External modules
+import { UserModule } from "../user/user.module";
+import { UserRole } from "../user-roles/entities/user-role.entity";
 // Entities
 import {
-  SupplierCompany,
-  SupplierProfile,
-  SupplierOnboarding,
-  SupplierDocument,
-  SupplierDeviceBinding,
-  SupplierLoginAttempt,
-  SupplierSession,
   SupplierCapability,
-} from './entities';
-import { User } from '../user/entities/user.entity';
-import { UserRole } from '../user-roles/entities/user-role.entity';
-import {
-  SupplierInvitation,
-  CustomerPreferredSupplier,
-} from '../customer/entities';
-
-// Services
-import { SupplierAuthService } from './supplier-auth.service';
-import { SupplierService } from './supplier.service';
-import { SupplierAdminService } from './supplier-admin.service';
-
-// Controllers
-import { SupplierAuthController } from './supplier-auth.controller';
-import { SupplierController } from './supplier.controller';
-import { SupplierAdminController } from './supplier-admin.controller';
-import { SupplierBoqController } from './supplier-boq.controller';
-import { SupplierMessagingController } from './supplier-messaging.controller';
-
+  SupplierCompany,
+  SupplierDeviceBinding,
+  SupplierDocument,
+  SupplierLoginAttempt,
+  SupplierOnboarding,
+  SupplierProfile,
+  SupplierSession,
+} from "./entities";
 // Guards
-import { SupplierAuthGuard } from './guards/supplier-auth.guard';
-
-// External modules
-import { UserModule } from '../user/user.module';
-import { AuditModule } from '../audit/audit.module';
-import { EmailModule } from '../email/email.module';
-import { AdminModule } from '../admin/admin.module';
-import { BoqModule } from '../boq/boq.module';
-import { NixModule } from '../nix/nix.module';
-import { StorageModule } from '../storage/storage.module';
-import { MessagingModule } from '../messaging/messaging.module';
-import { SecureDocumentsModule } from '../secure-documents/secure-documents.module';
+import { SupplierAuthGuard } from "./guards/supplier-auth.guard";
+import { SupplierController } from "./supplier.controller";
+import { SupplierService } from "./supplier.service";
+import { SupplierAdminController } from "./supplier-admin.controller";
+import { SupplierAdminService } from "./supplier-admin.service";
+// Controllers
+import { SupplierAuthController } from "./supplier-auth.controller";
+// Services
+import { SupplierAuthService } from "./supplier-auth.service";
+import { SupplierBoqController } from "./supplier-boq.controller";
+import { SupplierMessagingController } from "./supplier-messaging.controller";
 
 @Module({
   imports: [
@@ -66,9 +58,9 @@ import { SecureDocumentsModule } from '../secure-documents/secure-documents.modu
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.getOrThrow<string>('JWT_SECRET'),
+        secret: configService.getOrThrow<string>("JWT_SECRET"),
         signOptions: {
-          expiresIn: '1h',
+          expiresIn: "1h",
         },
       }),
       inject: [ConfigService],
@@ -76,12 +68,12 @@ import { SecureDocumentsModule } from '../secure-documents/secure-documents.modu
     UserModule,
     AuditModule,
     EmailModule,
-    AdminModule,
+    forwardRef(() => AdminModule),
     forwardRef(() => BoqModule),
     forwardRef(() => NixModule),
     StorageModule,
     MessagingModule,
-    SecureDocumentsModule,
+    forwardRef(() => SecureDocumentsModule),
   ],
   controllers: [
     SupplierAuthController,
@@ -90,12 +82,7 @@ import { SecureDocumentsModule } from '../secure-documents/secure-documents.modu
     SupplierBoqController,
     SupplierMessagingController,
   ],
-  providers: [
-    SupplierAuthService,
-    SupplierService,
-    SupplierAdminService,
-    SupplierAuthGuard,
-  ],
+  providers: [SupplierAuthService, SupplierService, SupplierAdminService, SupplierAuthGuard],
   exports: [
     SupplierAuthService,
     SupplierService,

@@ -1,30 +1,26 @@
-'use client';
+"use client";
 
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useRubberProductDetail } from '@/app/lib/query/hooks';
-import { Breadcrumb } from '../../components/Breadcrumb';
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useRubberProductDetail } from "@/app/lib/query/hooks";
+import { Breadcrumb } from "../../components/Breadcrumb";
 
 function formatCurrency(value: number | null): string {
-  if (value === null) return '-';
-  return `R ${value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (value === null) return "-";
+  return `R ${value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
       <dt className="text-sm font-medium text-gray-500">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{value || '-'}</dd>
+      <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{value || "-"}</dd>
     </div>
   );
 }
 
 function PropertyBadge({ label, color }: { label: string; color: string }) {
-  return (
-    <span className={`px-3 py-1 text-sm font-medium rounded-full ${color}`}>
-      {label}
-    </span>
-  );
+  return <span className={`px-3 py-1 text-sm font-medium rounded-full ${color}`}>{label}</span>;
 }
 
 export default function RubberProductDetailPage() {
@@ -51,8 +47,15 @@ export default function RubberProductDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Product</div>
-          <p className="text-gray-600">{productQuery.error instanceof Error ? productQuery.error.message : 'Failed to load product'}</p>
-          <button onClick={() => productQuery.refetch()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <p className="text-gray-600">
+            {productQuery.error instanceof Error
+              ? productQuery.error.message
+              : "Failed to load product"}
+          </p>
+          <button
+            onClick={() => productQuery.refetch()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
             Retry
           </button>
         </div>
@@ -65,7 +68,9 @@ export default function RubberProductDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-gray-500 text-lg font-semibold mb-2">Product Not Found</div>
-          <p className="text-gray-400 mb-4">The product you are looking for does not exist or has been deleted.</p>
+          <p className="text-gray-400 mb-4">
+            The product you are looking for does not exist or has been deleted.
+          </p>
           <Link href="/admin/portal/rubber/products" className="text-blue-600 hover:text-blue-800">
             Back to Products
           </Link>
@@ -74,24 +79,30 @@ export default function RubberProductDetailPage() {
     );
   }
 
-  const calculatedPricePerKg = product.costPerKg && product.markup
-    ? product.costPerKg * (1 + product.markup / 100)
-    : null;
+  const calculatedPricePerKg =
+    product.costPerKg && product.markup ? product.costPerKg * (1 + product.markup / 100) : null;
 
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: 'Products', href: '/admin/portal/rubber/products' }, { label: product.title || 'Untitled Product' }]} />
+      <Breadcrumb
+        items={[
+          { label: "Products", href: "/admin/portal/rubber/products" },
+          { label: product.title || "Untitled Product" },
+        ]}
+      />
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{product.title || 'Untitled Product'}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {product.title || "Untitled Product"}
+          </h1>
           {product.description && (
             <p className="mt-1 text-sm text-gray-600">{product.description}</p>
           )}
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => router.push('/admin/portal/rubber/products')}
+            onClick={() => router.push("/admin/portal/rubber/products")}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             Back
@@ -101,7 +112,12 @@ export default function RubberProductDetailPage() {
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
             Edit Product
           </Link>
@@ -131,11 +147,19 @@ export default function RubberProductDetailPage() {
                 <PropertyBadge label={product.gradeName} color="bg-green-100 text-green-700" />
               )}
               {product.curingMethodName && (
-                <PropertyBadge label={product.curingMethodName} color="bg-purple-100 text-purple-700" />
+                <PropertyBadge
+                  label={product.curingMethodName}
+                  color="bg-purple-100 text-purple-700"
+                />
               )}
-              {!product.typeName && !product.compoundName && !product.colourName && !product.hardnessName && !product.gradeName && !product.curingMethodName && (
-                <span className="text-sm text-gray-500">No properties assigned</span>
-              )}
+              {!product.typeName &&
+                !product.compoundName &&
+                !product.colourName &&
+                !product.hardnessName &&
+                !product.gradeName &&
+                !product.curingMethodName && (
+                  <span className="text-sm text-gray-500">No properties assigned</span>
+                )}
             </div>
           </div>
         </div>
@@ -148,21 +172,29 @@ export default function RubberProductDetailPage() {
             <dl className="divide-y divide-gray-200">
               <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
                 <dt className="text-sm font-medium text-gray-500">Cost per kg</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{formatCurrency(product.costPerKg)}</dd>
+                <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                  {formatCurrency(product.costPerKg)}
+                </dd>
               </div>
               <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
                 <dt className="text-sm font-medium text-gray-500">Markup</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">{product.markup !== null ? `${product.markup}%` : '-'}</dd>
+                <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
+                  {product.markup !== null ? `${product.markup}%` : "-"}
+                </dd>
               </div>
               <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
                 <dt className="text-sm font-medium text-gray-500">Price per kg</dt>
-                <dd className="mt-1 text-sm font-semibold text-gray-900 sm:col-span-2 sm:mt-0">{formatCurrency(product.pricePerKg)}</dd>
+                <dd className="mt-1 text-sm font-semibold text-gray-900 sm:col-span-2 sm:mt-0">
+                  {formatCurrency(product.pricePerKg)}
+                </dd>
               </div>
             </dl>
             {product.costPerKg !== null && product.markup !== null && (
               <div className="mt-4 p-3 bg-blue-50 rounded-md">
                 <p className="text-xs text-blue-700">
-                  <span className="font-medium">Calculation:</span> {formatCurrency(product.costPerKg)} x (1 + {product.markup}% / 100) = {formatCurrency(calculatedPricePerKg)}
+                  <span className="font-medium">Calculation:</span>{" "}
+                  {formatCurrency(product.costPerKg)} x (1 + {product.markup}% / 100) ={" "}
+                  {formatCurrency(calculatedPricePerKg)}
                 </p>
               </div>
             )}
@@ -186,7 +218,7 @@ export default function RubberProductDetailPage() {
             <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
               <dt className="text-sm font-medium text-gray-500">Specific Gravity</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-                {product.specificGravity !== null ? product.specificGravity.toFixed(2) : '-'}
+                {product.specificGravity !== null ? product.specificGravity.toFixed(2) : "-"}
               </dd>
             </div>
           </dl>
@@ -195,20 +227,38 @@ export default function RubberProductDetailPage() {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex">
-          <svg className="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="h-5 w-5 text-blue-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-blue-800">Pricing Formula</h3>
             <div className="mt-2 text-sm text-blue-700 space-y-1">
-              <p><span className="font-medium">Price per kg</span> = Cost per kg x (1 + Markup% / 100)</p>
-              <p><span className="font-medium">Sale price per kg</span> = Price per kg x Company Pricing Factor</p>
-              <p><span className="font-medium">Kg per roll</span> = Thickness x (Width / 1000) x Length x Specific Gravity</p>
+              <p>
+                <span className="font-medium">Price per kg</span> = Cost per kg x (1 + Markup% /
+                100)
+              </p>
+              <p>
+                <span className="font-medium">Sale price per kg</span> = Price per kg x Company
+                Pricing Factor
+              </p>
+              <p>
+                <span className="font-medium">Kg per roll</span> = Thickness x (Width / 1000) x
+                Length x Specific Gravity
+              </p>
             </div>
           </div>
         </div>
       </div>
-
     </div>
   );
 }

@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NbNpsLookupController } from './nb-nps-lookup.controller';
-import { NbNpsLookupService } from './nb-nps-lookup.service';
-import { NbNpsLookup } from './entities/nb-nps-lookup.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { NbNpsLookup } from "./entities/nb-nps-lookup.entity";
+import { NbNpsLookupController } from "./nb-nps-lookup.controller";
+import { NbNpsLookupService } from "./nb-nps-lookup.service";
 
-describe('NbNpsLookupController', () => {
+describe("NbNpsLookupController", () => {
   let controller: NbNpsLookupController;
   let service: NbNpsLookupService;
 
@@ -39,7 +39,7 @@ describe('NbNpsLookupController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

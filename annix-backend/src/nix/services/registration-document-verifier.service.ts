@@ -1,13 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { createWorker } from 'tesseract.js';
-import * as fs from 'fs/promises';
-import { AiExtractionService } from '../ai-providers/ai-extraction.service';
-import { DocumentAnnotationService } from './document-annotation.service';
+import * as fs from "node:fs/promises";
+import { Injectable, Logger } from "@nestjs/common";
+import { createWorker } from "tesseract.js";
+import { AiExtractionService } from "../ai-providers/ai-extraction.service";
+import { DocumentAnnotationService } from "./document-annotation.service";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse').default || require('pdf-parse');
+const pdfParse = require("pdf-parse").default || require("pdf-parse");
 
-export type RegistrationDocumentType = 'vat' | 'registration' | 'bee';
+export type RegistrationDocumentType = "vat" | "registration" | "bee";
 
 export interface ExpectedCompanyData {
   vatNumber?: string;
@@ -55,7 +55,7 @@ export interface RegistrationVerificationResult {
   allFieldsMatch: boolean;
   autoCorrections: Array<{ field: string; value: string | number }>;
   warnings: string[];
-  ocrMethod: 'pdf-parse' | 'tesseract' | 'ai' | 'region' | 'none';
+  ocrMethod: "pdf-parse" | "tesseract" | "ai" | "region" | "none";
   processingTimeMs: number;
 }
 
@@ -93,9 +93,7 @@ Return ONLY a JSON object with these fields (use null for missing values):
 
 @Injectable()
 export class RegistrationDocumentVerifierService {
-  private readonly logger = new Logger(
-    RegistrationDocumentVerifierService.name,
-  );
+  private readonly logger = new Logger(RegistrationDocumentVerifierService.name);
 
   private readonly VAT_NUMBER_PATTERN = /\b4\d{9}\b/g;
   private readonly REGISTRATION_NUMBER_PATTERN = /\b\d{4}\/\d{6}\/\d{2}\b/g;
@@ -103,15 +101,15 @@ export class RegistrationDocumentVerifierService {
   private readonly BEE_LEVEL_PATTERN = /(?:level|lvl)\s*[:\s]?\s*([1-8])/i;
 
   private readonly SA_PROVINCES = [
-    'EASTERN CAPE',
-    'FREE STATE',
-    'GAUTENG',
-    'KWAZULU-NATAL',
-    'LIMPOPO',
-    'MPUMALANGA',
-    'NORTHERN CAPE',
-    'NORTH WEST',
-    'WESTERN CAPE',
+    "EASTERN CAPE",
+    "FREE STATE",
+    "GAUTENG",
+    "KWAZULU-NATAL",
+    "LIMPOPO",
+    "MPUMALANGA",
+    "NORTHERN CAPE",
+    "NORTH WEST",
+    "WESTERN CAPE",
   ];
 
   constructor(
@@ -129,36 +127,26 @@ export class RegistrationDocumentVerifierService {
 
     try {
       const extractedData = await this.extractDocumentData(file, documentType);
-      const fieldResults = this.compareFields(
-        documentType,
-        extractedData,
-        expectedData,
-      );
-      const autoCorrections = this.determineAutoCorrections(
-        fieldResults,
-        extractedData,
-      );
+      const fieldResults = this.compareFields(documentType, extractedData, expectedData);
+      const autoCorrections = this.determineAutoCorrections(fieldResults, extractedData);
       const allFieldsMatch = fieldResults.every((f) => f.match);
-      const overallConfidence = this.calculateOverallConfidence(
-        extractedData,
-        fieldResults,
-      );
+      const overallConfidence = this.calculateOverallConfidence(extractedData, fieldResults);
 
       const warnings: string[] = [];
       if (extractedData.confidence < 0.5) {
-        warnings.push('Low OCR confidence - document may be difficult to read');
+        warnings.push("Low OCR confidence - document may be difficult to read");
       }
       if (!allFieldsMatch && overallConfidence > 0.7) {
         warnings.push(
-          'Some fields differ from provided data - extracted values may be more accurate',
+          "Some fields differ from provided data - extracted values may be more accurate",
         );
       }
 
       const ocrMethod = extractedData.usedLearnedRegions
-        ? 'region'
+        ? "region"
         : extractedData.rawText
-        ? 'pdf-parse'
-        : 'none';
+          ? "pdf-parse"
+          : "none";
 
       return {
         success: true,
@@ -183,7 +171,7 @@ export class RegistrationDocumentVerifierService {
         allFieldsMatch: false,
         autoCorrections: [],
         warnings: [error.message],
-        ocrMethod: 'none',
+        ocrMethod: "none",
         processingTimeMs: Date.now() - startTime,
       };
     }
@@ -197,9 +185,7 @@ export class RegistrationDocumentVerifierService {
     expectedData: ExpectedCompanyData,
   ): Promise<RegistrationVerificationResult[]> {
     const results = await Promise.all(
-      files.map(({ file, documentType }) =>
-        this.verifyDocument(file, documentType, expectedData),
-      ),
+      files.map(({ file, documentType }) => this.verifyDocument(file, documentType, expectedData)),
     );
     return results;
   }
@@ -212,7 +198,7 @@ export class RegistrationDocumentVerifierService {
       this.logger.log(`Reading file from disk: ${file.path}`);
       return fs.readFile(file.path);
     }
-    throw new Error('No file buffer or path available');
+    throw new Error("No file buffer or path available");
   }
 
   private async extractDocumentData(
@@ -220,7 +206,7 @@ export class RegistrationDocumentVerifierService {
     documentType: RegistrationDocumentType,
   ): Promise<ExtractedRegistrationData> {
     const mimeType = file.mimetype;
-    let rawText = '';
+    let rawText = "";
     let ocrConfidence = 0.8;
 
     this.logger.log(`Starting document extraction for type: ${documentType}`);
@@ -233,7 +219,9 @@ export class RegistrationDocumentVerifierService {
       documentType,
     );
 
-    this.logger.log(`Learned regions extraction returned ${regionResults.size} fields for ${documentType}`);
+    this.logger.log(
+      `Learned regions extraction returned ${regionResults.size} fields for ${documentType}`,
+    );
 
     if (regionResults.size > 0) {
       this.logger.log(
@@ -265,31 +253,27 @@ export class RegistrationDocumentVerifierService {
       );
 
       if (missingFields.length === 0) {
-        this.logger.log('All expected fields extracted from learned regions');
+        this.logger.log("All expected fields extracted from learned regions");
         regionExtracted.usedLearnedRegions = true;
         return regionExtracted as ExtractedRegistrationData;
       }
 
       this.logger.log(
-        `Missing fields from regions: ${missingFields.join(', ')}. Falling back to additional extraction.`,
+        `Missing fields from regions: ${missingFields.join(", ")}. Falling back to additional extraction.`,
       );
 
-      if (mimeType === 'application/pdf') {
+      if (mimeType === "application/pdf") {
         const pdfResult = await this.extractFromPdf(buffer);
         rawText = pdfResult.text;
         ocrConfidence = pdfResult.confidence;
-      } else if (mimeType.startsWith('image/')) {
+      } else if (mimeType.startsWith("image/")) {
         const imageResult = await this.extractFromImage(buffer);
         rawText = imageResult.text;
         ocrConfidence = imageResult.confidence;
       }
 
       if (rawText && rawText.trim().length >= 10) {
-        const patternExtracted = this.extractWithPatterns(
-          rawText,
-          documentType,
-          ocrConfidence,
-        );
+        const patternExtracted = this.extractWithPatterns(rawText, documentType, ocrConfidence);
 
         missingFields.forEach((field) => {
           if ((patternExtracted as any)[field]) {
@@ -304,24 +288,32 @@ export class RegistrationDocumentVerifierService {
       return regionExtracted as ExtractedRegistrationData;
     }
 
-    this.logger.log(`No learned regions returned useful data, falling back to traditional OCR for ${documentType}`);
+    this.logger.log(
+      `No learned regions returned useful data, falling back to traditional OCR for ${documentType}`,
+    );
 
-    if (mimeType === 'application/pdf') {
+    if (mimeType === "application/pdf") {
       const pdfResult = await this.extractFromPdf(buffer);
       rawText = pdfResult.text;
       ocrConfidence = pdfResult.confidence;
-      this.logger.log(`PDF extraction returned ${rawText.length} chars with confidence ${ocrConfidence}`);
-    } else if (mimeType.startsWith('image/')) {
+      this.logger.log(
+        `PDF extraction returned ${rawText.length} chars with confidence ${ocrConfidence}`,
+      );
+    } else if (mimeType.startsWith("image/")) {
       const imageResult = await this.extractFromImage(buffer);
       rawText = imageResult.text;
       ocrConfidence = imageResult.confidence;
-      this.logger.log(`Image OCR returned ${rawText.length} chars with confidence ${ocrConfidence}`);
+      this.logger.log(
+        `Image OCR returned ${rawText.length} chars with confidence ${ocrConfidence}`,
+      );
     } else {
       throw new Error(`Unsupported file type: ${mimeType}`);
     }
 
     if (!rawText || rawText.trim().length < 10) {
-      this.logger.warn(`Insufficient text extracted (${rawText?.length || 0} chars), returning empty result`);
+      this.logger.warn(
+        `Insufficient text extracted (${rawText?.length || 0} chars), returning empty result`,
+      );
       return {
         confidence: 0,
         fieldsExtracted: [],
@@ -352,54 +344,50 @@ export class RegistrationDocumentVerifierService {
 
   private expectedFieldsForDocumentType(documentType: RegistrationDocumentType): string[] {
     switch (documentType) {
-      case 'vat':
-        return ['vatNumber', 'registrationNumber', 'companyName'];
-      case 'registration':
+      case "vat":
+        return ["vatNumber", "registrationNumber", "companyName"];
+      case "registration":
         return [
-          'registrationNumber',
-          'companyName',
-          'streetAddress',
-          'city',
-          'provinceState',
-          'postalCode',
+          "registrationNumber",
+          "companyName",
+          "streetAddress",
+          "city",
+          "provinceState",
+          "postalCode",
         ];
-      case 'bee':
-        return ['beeLevel', 'companyName', 'beeExpiryDate', 'verificationAgency'];
+      case "bee":
+        return ["beeLevel", "companyName", "beeExpiryDate", "verificationAgency"];
       default:
         return [];
     }
   }
 
-  private async extractFromPdf(
-    buffer: Buffer,
-  ): Promise<{ text: string; confidence: number }> {
+  private async extractFromPdf(buffer: Buffer): Promise<{ text: string; confidence: number }> {
     try {
       const data = await pdfParse(buffer);
-      const text = data.text || '';
+      const text = data.text || "";
       const confidence = text.length > 100 ? 0.85 : 0.6;
       return { text, confidence };
     } catch (error) {
       this.logger.error(`PDF extraction failed: ${error.message}`);
-      return { text: '', confidence: 0 };
+      return { text: "", confidence: 0 };
     }
   }
 
-  private async extractFromImage(
-    buffer: Buffer,
-  ): Promise<{ text: string; confidence: number }> {
+  private async extractFromImage(buffer: Buffer): Promise<{ text: string; confidence: number }> {
     let worker;
     try {
-      worker = await createWorker('eng');
+      worker = await createWorker("eng");
       const { data } = await worker.recognize(buffer);
       await worker.terminate();
       return {
-        text: data.text || '',
+        text: data.text || "",
         confidence: data.confidence / 100,
       };
     } catch (error) {
       if (worker) await worker.terminate();
       this.logger.error(`Image OCR failed: ${error.message}`);
-      return { text: '', confidence: 0 };
+      return { text: "", confidence: 0 };
     }
   }
 
@@ -416,16 +404,16 @@ export class RegistrationDocumentVerifierService {
       const parsed = JSON.parse(response);
       const fieldsExtracted: string[] = [];
 
-      if (parsed.vatNumber) fieldsExtracted.push('vatNumber');
-      if (parsed.registrationNumber) fieldsExtracted.push('registrationNumber');
-      if (parsed.companyName) fieldsExtracted.push('companyName');
-      if (parsed.streetAddress) fieldsExtracted.push('streetAddress');
-      if (parsed.city) fieldsExtracted.push('city');
-      if (parsed.provinceState) fieldsExtracted.push('provinceState');
-      if (parsed.postalCode) fieldsExtracted.push('postalCode');
-      if (parsed.beeLevel) fieldsExtracted.push('beeLevel');
-      if (parsed.beeExpiryDate) fieldsExtracted.push('beeExpiryDate');
-      if (parsed.verificationAgency) fieldsExtracted.push('verificationAgency');
+      if (parsed.vatNumber) fieldsExtracted.push("vatNumber");
+      if (parsed.registrationNumber) fieldsExtracted.push("registrationNumber");
+      if (parsed.companyName) fieldsExtracted.push("companyName");
+      if (parsed.streetAddress) fieldsExtracted.push("streetAddress");
+      if (parsed.city) fieldsExtracted.push("city");
+      if (parsed.provinceState) fieldsExtracted.push("provinceState");
+      if (parsed.postalCode) fieldsExtracted.push("postalCode");
+      if (parsed.beeLevel) fieldsExtracted.push("beeLevel");
+      if (parsed.beeExpiryDate) fieldsExtracted.push("beeExpiryDate");
+      if (parsed.verificationAgency) fieldsExtracted.push("verificationAgency");
 
       return {
         vatNumber: parsed.vatNumber || undefined,
@@ -451,26 +439,24 @@ export class RegistrationDocumentVerifierService {
     const availableProviders = await this.aiExtractor.getAvailableProviders();
     if (availableProviders.length === 0) return null;
 
-    const provider = availableProviders.includes('gemini')
-      ? 'gemini'
-      : 'claude';
+    const provider = availableProviders.includes("gemini") ? "gemini" : "claude";
 
     try {
-      if (provider === 'gemini') {
+      if (provider === "gemini") {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) return null;
 
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
           {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
               generationConfig: {
                 temperature: 0.1,
                 maxOutputTokens: 2048,
-                responseMimeType: 'application/json',
+                responseMimeType: "application/json",
               },
             }),
           },
@@ -482,18 +468,18 @@ export class RegistrationDocumentVerifierService {
         const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) return null;
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
           },
           body: JSON.stringify({
-            model: 'claude-3-haiku-20240307',
+            model: "claude-3-haiku-20240307",
             max_tokens: 2048,
             temperature: 0.1,
-            messages: [{ role: 'user', content: prompt }],
+            messages: [{ role: "user", content: prompt }],
           }),
         });
 
@@ -517,65 +503,65 @@ export class RegistrationDocumentVerifierService {
       rawText,
     };
 
-    if (documentType === 'vat' || documentType === 'registration') {
+    if (documentType === "vat" || documentType === "registration") {
       const vatMatches = rawText.match(this.VAT_NUMBER_PATTERN);
       if (vatMatches?.[0]) {
         result.vatNumber = vatMatches[0];
-        fieldsExtracted.push('vatNumber');
+        fieldsExtracted.push("vatNumber");
       }
 
       const regMatches = rawText.match(this.REGISTRATION_NUMBER_PATTERN);
       if (regMatches?.[0]) {
         result.registrationNumber = regMatches[0];
-        fieldsExtracted.push('registrationNumber');
+        fieldsExtracted.push("registrationNumber");
       }
 
       const companyName = this.extractCompanyName(rawText);
       if (companyName) {
         result.companyName = companyName;
-        fieldsExtracted.push('companyName');
+        fieldsExtracted.push("companyName");
       }
 
-      if (documentType === 'registration') {
+      if (documentType === "registration") {
         const addressInfo = this.extractAddress(rawText);
         if (addressInfo.streetAddress) {
           result.streetAddress = addressInfo.streetAddress;
-          fieldsExtracted.push('streetAddress');
+          fieldsExtracted.push("streetAddress");
         }
         if (addressInfo.city) {
           result.city = addressInfo.city;
-          fieldsExtracted.push('city');
+          fieldsExtracted.push("city");
         }
         if (addressInfo.provinceState) {
           result.provinceState = addressInfo.provinceState;
-          fieldsExtracted.push('provinceState');
+          fieldsExtracted.push("provinceState");
         }
         if (addressInfo.postalCode) {
           result.postalCode = addressInfo.postalCode;
-          fieldsExtracted.push('postalCode');
+          fieldsExtracted.push("postalCode");
         }
       }
     }
 
-    if (documentType === 'bee') {
+    if (documentType === "bee") {
       const beeMatch = rawText.match(this.BEE_LEVEL_PATTERN);
       if (beeMatch?.[1]) {
         result.beeLevel = parseInt(beeMatch[1], 10);
-        fieldsExtracted.push('beeLevel');
+        fieldsExtracted.push("beeLevel");
       }
 
       const companyName = this.extractCompanyName(rawText);
       if (companyName) {
         result.companyName = companyName;
-        fieldsExtracted.push('companyName');
+        fieldsExtracted.push("companyName");
       }
 
       const expiryMatch = rawText.match(
-        /(?:expir|valid.*until|valid.*to)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+        /(?:expir|valid.*until|valid.*to)[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
       );
       if (expiryMatch?.[1]) {
         result.beeExpiryDate = expiryMatch[1];
-        fieldsExtracted.push('beeExpiryDate');
+        fieldsExtracted.push("beeExpiryDate");
       }
 
       const agencyPatterns = [
@@ -587,7 +573,7 @@ export class RegistrationDocumentVerifierService {
         const match = rawText.match(pattern);
         if (match?.[1]) {
           result.verificationAgency = match[1].trim();
-          fieldsExtracted.push('verificationAgency');
+          fieldsExtracted.push("verificationAgency");
           break;
         }
       }
@@ -600,7 +586,7 @@ export class RegistrationDocumentVerifierService {
   }
 
   private extractCompanyName(text: string): string | null {
-    const normalizedText = text.replace(/\s+/g, ' ').trim();
+    const normalizedText = text.replace(/\s+/g, " ").trim();
 
     const companyPatterns = [
       /([A-Z][A-Z\s&'-]+)\s*\(PTY\)\s*LTD/i,
@@ -614,11 +600,8 @@ export class RegistrationDocumentVerifierService {
     for (const pattern of companyPatterns) {
       const match = normalizedText.match(pattern);
       if (match?.[1] && match.index !== undefined) {
-        const fullMatch = normalizedText.substring(
-          match.index,
-          match.index + match[0].length,
-        );
-        return fullMatch.toUpperCase().replace(/\s+/g, ' ').trim();
+        const fullMatch = normalizedText.substring(match.index, match.index + match[0].length);
+        return fullMatch.toUpperCase().replace(/\s+/g, " ").trim();
       }
     }
 
@@ -638,7 +621,7 @@ export class RegistrationDocumentVerifierService {
 
   private extractAddress(text: string): Partial<ExtractedRegistrationData> {
     const result: Partial<ExtractedRegistrationData> = {};
-    const normalizedText = text.toUpperCase().replace(/\s+/g, ' ');
+    const normalizedText = text.toUpperCase().replace(/\s+/g, " ");
 
     for (const province of this.SA_PROVINCES) {
       if (normalizedText.includes(province)) {
@@ -650,7 +633,7 @@ export class RegistrationDocumentVerifierService {
     const postalMatches = text.match(/\b(\d{4})\b/g);
     if (postalMatches?.length) {
       const filtered = postalMatches.filter((code) => {
-        const num = parseInt(code);
+        const num = parseInt(code, 10);
         return num < 1900 || num > 2099;
       });
       if (filtered.length) {
@@ -667,7 +650,7 @@ export class RegistrationDocumentVerifierService {
       if (match?.[1]) {
         const lines = match[1]
           .trim()
-          .split('\n')
+          .split("\n")
           .map((l) => l.trim())
           .filter((l) => l);
         if (lines.length) {
@@ -675,11 +658,9 @@ export class RegistrationDocumentVerifierService {
           if (lines.length > 1) {
             let cityLine = lines[lines.length - 2] || lines[lines.length - 1];
             cityLine = cityLine.toUpperCase();
-            if (result.postalCode)
-              cityLine = cityLine.replace(result.postalCode, '').trim();
-            if (result.provinceState)
-              cityLine = cityLine.replace(result.provinceState, '').trim();
-            cityLine = cityLine.replace(/,/g, '').trim();
+            if (result.postalCode) cityLine = cityLine.replace(result.postalCode, "").trim();
+            if (result.provinceState) cityLine = cityLine.replace(result.provinceState, "").trim();
+            cityLine = cityLine.replace(/,/g, "").trim();
             if (cityLine) result.city = cityLine;
           }
         }
@@ -697,112 +678,83 @@ export class RegistrationDocumentVerifierService {
   ): FieldVerificationResult[] {
     const results: FieldVerificationResult[] = [];
 
-    if (documentType === 'vat') {
+    if (documentType === "vat") {
       if (expected.vatNumber) {
         results.push(
-          this.compareField(
-            'vatNumber',
-            expected.vatNumber,
-            extracted.vatNumber,
-            'exact',
-          ),
+          this.compareField("vatNumber", expected.vatNumber, extracted.vatNumber, "exact"),
         );
       }
       if (expected.registrationNumber) {
         results.push(
           this.compareField(
-            'registrationNumber',
+            "registrationNumber",
             expected.registrationNumber,
             extracted.registrationNumber,
-            'exact',
+            "exact",
           ),
         );
       }
       if (expected.companyName) {
         results.push(
-          this.compareField(
-            'companyName',
-            expected.companyName,
-            extracted.companyName,
-            'fuzzy',
-          ),
+          this.compareField("companyName", expected.companyName, extracted.companyName, "fuzzy"),
         );
       }
     }
 
-    if (documentType === 'registration') {
+    if (documentType === "registration") {
       if (expected.registrationNumber) {
         results.push(
           this.compareField(
-            'registrationNumber',
+            "registrationNumber",
             expected.registrationNumber,
             extracted.registrationNumber,
-            'exact',
+            "exact",
           ),
         );
       }
       if (expected.companyName) {
         results.push(
-          this.compareField(
-            'companyName',
-            expected.companyName,
-            extracted.companyName,
-            'fuzzy',
-          ),
+          this.compareField("companyName", expected.companyName, extracted.companyName, "fuzzy"),
         );
       }
       if (expected.streetAddress) {
         results.push(
           this.compareField(
-            'streetAddress',
+            "streetAddress",
             expected.streetAddress,
             extracted.streetAddress,
-            'fuzzy',
+            "fuzzy",
             70,
           ),
         );
       }
       if (expected.city) {
-        results.push(
-          this.compareField('city', expected.city, extracted.city, 'fuzzy', 80),
-        );
+        results.push(this.compareField("city", expected.city, extracted.city, "fuzzy", 80));
       }
       if (expected.provinceState) {
         results.push(
           this.compareField(
-            'provinceState',
+            "provinceState",
             expected.provinceState,
             extracted.provinceState,
-            'exact',
+            "exact",
           ),
         );
       }
       if (expected.postalCode) {
         results.push(
-          this.compareField(
-            'postalCode',
-            expected.postalCode,
-            extracted.postalCode,
-            'exact',
-          ),
+          this.compareField("postalCode", expected.postalCode, extracted.postalCode, "exact"),
         );
       }
     }
 
-    if (documentType === 'bee') {
+    if (documentType === "bee") {
       if (expected.beeLevel !== undefined) {
-        results.push(
-          this.compareBeeLevelField(expected.beeLevel, extracted.beeLevel),
-        );
+        results.push(this.compareBeeLevelField(expected.beeLevel, extracted.beeLevel));
       }
       if (expected.companyName) {
         results.push(
-          this.compareField(
-            'companyName',
-            expected.companyName,
-            extracted.companyName,
-            'fuzzy',
-          ),
+          this.compareField("companyName", expected.companyName, extracted.companyName, "fuzzy"),
         );
       }
     }
@@ -814,7 +766,7 @@ export class RegistrationDocumentVerifierService {
     field: string,
     expected: string | number | undefined,
     extracted: string | number | undefined,
-    matchType: 'exact' | 'fuzzy',
+    matchType: "exact" | "fuzzy",
     threshold = 85,
   ): FieldVerificationResult {
     if (!expected) {
@@ -836,7 +788,7 @@ export class RegistrationDocumentVerifierService {
       };
     }
 
-    if (matchType === 'exact') {
+    if (matchType === "exact") {
       const normalizedExpected = this.normalizeValue(String(expected));
       const normalizedExtracted = this.normalizeValue(String(extracted));
       const match = normalizedExpected === normalizedExtracted;
@@ -850,10 +802,7 @@ export class RegistrationDocumentVerifierService {
       };
     }
 
-    const similarity = this.calculateSimilarity(
-      String(expected),
-      String(extracted),
-    );
+    const similarity = this.calculateSimilarity(String(expected), String(extracted));
     const match = similarity >= threshold;
 
     return {
@@ -872,7 +821,7 @@ export class RegistrationDocumentVerifierService {
   ): FieldVerificationResult {
     if (expected === undefined) {
       return {
-        field: 'beeLevel',
+        field: "beeLevel",
         expected: null,
         extracted: extracted ?? null,
         match: true,
@@ -882,19 +831,19 @@ export class RegistrationDocumentVerifierService {
 
     if (!extracted) {
       return {
-        field: 'beeLevel',
+        field: "beeLevel",
         expected,
         extracted: null,
         match: false,
       };
     }
 
-    const expectedNum = typeof expected === 'number' ? expected : parseInt(String(expected), 10);
+    const expectedNum = typeof expected === "number" ? expected : parseInt(String(expected), 10);
     let extractedNum: number | null = null;
 
-    if (typeof extracted === 'number') {
+    if (typeof extracted === "number") {
       extractedNum = extracted;
-    } else if (typeof extracted === 'string') {
+    } else if (typeof extracted === "string") {
       const levelMatch = extracted.match(/(?:level|lvl)\s*[:\s]?\s*([1-8])/i);
       if (levelMatch) {
         extractedNum = parseInt(levelMatch[1], 10);
@@ -909,7 +858,7 @@ export class RegistrationDocumentVerifierService {
     const match = extractedNum !== null && expectedNum === extractedNum;
 
     return {
-      field: 'beeLevel',
+      field: "beeLevel",
       expected,
       extracted,
       match,
@@ -919,7 +868,7 @@ export class RegistrationDocumentVerifierService {
   }
 
   private normalizeValue(value: string): string {
-    return value.replace(/[\s\-]/g, '').toUpperCase();
+    return value.replace(/[\s-]/g, "").toUpperCase();
   }
 
   private calculateSimilarity(str1: string, str2: string): number {
@@ -940,29 +889,26 @@ export class RegistrationDocumentVerifierService {
     let normalized = name.toUpperCase();
 
     const suffixes = [
-      '\\(PTY\\)\\s*LTD',
-      '\\(PTY\\)\\s*LIMITED',
-      'LIMITED',
-      '\\(RF\\)\\s*NPC',
-      'NPC',
-      'CC',
-      'INC',
-      'INCORPORATED',
-      'CORP',
-      'CORPORATION',
-      'LTD',
+      "\\(PTY\\)\\s*LTD",
+      "\\(PTY\\)\\s*LIMITED",
+      "LIMITED",
+      "\\(RF\\)\\s*NPC",
+      "NPC",
+      "CC",
+      "INC",
+      "INCORPORATED",
+      "CORP",
+      "CORPORATION",
+      "LTD",
     ];
 
     for (const suffix of suffixes) {
-      normalized = normalized.replace(
-        new RegExp(`\\s*${suffix}\\s*$`, 'i'),
-        '',
-      );
+      normalized = normalized.replace(new RegExp(`\\s*${suffix}\\s*$`, "i"), "");
     }
 
     return normalized
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
-      .replace(/\s+/g, ' ')
+      .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "")
+      .replace(/\s+/g, " ")
       .trim();
   }
 
@@ -1011,16 +957,16 @@ export class RegistrationDocumentVerifierService {
     }
 
     const extractableFields: Array<keyof ExtractedRegistrationData> = [
-      'vatNumber',
-      'registrationNumber',
-      'companyName',
-      'streetAddress',
-      'city',
-      'provinceState',
-      'postalCode',
-      'beeLevel',
-      'beeExpiryDate',
-      'verificationAgency',
+      "vatNumber",
+      "registrationNumber",
+      "companyName",
+      "streetAddress",
+      "city",
+      "provinceState",
+      "postalCode",
+      "beeLevel",
+      "beeExpiryDate",
+      "verificationAgency",
     ];
 
     for (const field of extractableFields) {
@@ -1052,10 +998,7 @@ export class RegistrationDocumentVerifierService {
 
     return (
       Math.round(
-        (extracted.confidence * 0.3 +
-          matchRatio * 0.5 +
-          (avgSimilarity / 100) * 0.2) *
-          100,
+        (extracted.confidence * 0.3 + matchRatio * 0.5 + (avgSimilarity / 100) * 0.2) * 100,
       ) / 100
     );
   }
@@ -1064,34 +1007,27 @@ export class RegistrationDocumentVerifierService {
     const mismatches = result.fieldResults.filter((r) => !r.match);
 
     if (mismatches.length === 0) {
-      return 'All fields verified successfully.';
+      return "All fields verified successfully.";
     }
 
-    const lines = [
-      'Document verification found the following discrepancies:',
-      '',
-    ];
+    const lines = ["Document verification found the following discrepancies:", ""];
 
     for (const mismatch of mismatches) {
       const similarity =
-        mismatch.similarity !== undefined
-          ? ` (${mismatch.similarity}% similar)`
-          : '';
+        mismatch.similarity !== undefined ? ` (${mismatch.similarity}% similar)` : "";
       lines.push(`• ${mismatch.field}:`);
       lines.push(`  - You entered: ${mismatch.expected}`);
-      lines.push(
-        `  - Document shows: ${mismatch.extracted || 'Not found'}${similarity}`,
-      );
-      lines.push('');
+      lines.push(`  - Document shows: ${mismatch.extracted || "Not found"}${similarity}`);
+      lines.push("");
     }
 
     if (result.autoCorrections.length > 0) {
-      lines.push('Suggested corrections:');
+      lines.push("Suggested corrections:");
       for (const correction of result.autoCorrections) {
         lines.push(`• ${correction.field}: ${correction.value}`);
       }
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 }

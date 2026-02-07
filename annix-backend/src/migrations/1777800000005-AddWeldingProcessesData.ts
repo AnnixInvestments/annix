@@ -1,18 +1,18 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddWeldingProcessesData1777800000005 implements MigrationInterface {
-  name = 'AddWeldingProcessesData1777800000005';
+  name = "AddWeldingProcessesData1777800000005";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const tableExists = async (tableName: string): Promise<boolean> => {
       const result = await queryRunner.query(
-        `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)`,
+        "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
         [tableName],
       );
       return result[0].exists;
     };
 
-    if (!(await tableExists('welding_processes'))) {
+    if (!(await tableExists("welding_processes"))) {
       await queryRunner.query(`
         CREATE TABLE welding_processes (
           id SERIAL PRIMARY KEY,
@@ -44,7 +44,7 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
       `);
     }
 
-    if (!(await tableExists('fuel_gas_temperatures'))) {
+    if (!(await tableExists("fuel_gas_temperatures"))) {
       await queryRunner.query(`
         CREATE TABLE fuel_gas_temperatures (
           id SERIAL PRIMARY KEY,
@@ -68,7 +68,7 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
       `);
     }
 
-    if (!(await tableExists('flame_types'))) {
+    if (!(await tableExists("flame_types"))) {
       await queryRunner.query(`
         CREATE TABLE flame_types (
           id SERIAL PRIMARY KEY,
@@ -89,7 +89,7 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
       `);
     }
 
-    if (!(await tableExists('electrode_current_ranges'))) {
+    if (!(await tableExists("electrode_current_ranges"))) {
       await queryRunner.query(`
         CREATE TABLE electrode_current_ranges (
           id SERIAL PRIMARY KEY,
@@ -115,7 +115,7 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
       `);
     }
 
-    if (!(await tableExists('welding_shielding_gases'))) {
+    if (!(await tableExists("welding_shielding_gases"))) {
       await queryRunner.query(`
         CREATE TABLE welding_shielding_gases (
           id SERIAL PRIMARY KEY,
@@ -147,7 +147,7 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
       `);
     }
 
-    if (!(await tableExists('metal_transfer_modes'))) {
+    if (!(await tableExists("metal_transfer_modes"))) {
       await queryRunner.query(`
         CREATE TABLE metal_transfer_modes (
           id SERIAL PRIMARY KEY,
@@ -170,7 +170,7 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
       `);
     }
 
-    if (!(await tableExists('tungsten_electrode_types'))) {
+    if (!(await tableExists("tungsten_electrode_types"))) {
       await queryRunner.query(`
         CREATE TABLE tungsten_electrode_types (
           id SERIAL PRIMARY KEY,
@@ -199,7 +199,7 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
       `);
     }
 
-    if (!(await tableExists('welding_groove_types'))) {
+    if (!(await tableExists("welding_groove_types"))) {
       await queryRunner.query(`
         CREATE TABLE welding_groove_types (
           id SERIAL PRIMARY KEY,
@@ -229,7 +229,7 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
       `);
     }
 
-    if (!(await tableExists('resistance_welding_params'))) {
+    if (!(await tableExists("resistance_welding_params"))) {
       await queryRunner.query(`
         CREATE TABLE resistance_welding_params (
           id SERIAL PRIMARY KEY,
@@ -261,7 +261,7 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
       `);
     }
 
-    if (!(await tableExists('welding_electrode_standards'))) {
+    if (!(await tableExists("welding_electrode_standards"))) {
       await queryRunner.query(`
         CREATE TABLE welding_electrode_standards (
           id SERIAL PRIMARY KEY,
@@ -298,15 +298,15 @@ export class AddWeldingProcessesData1777800000005 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS welding_electrode_standards`);
-    await queryRunner.query(`DROP TABLE IF EXISTS resistance_welding_params`);
-    await queryRunner.query(`DROP TABLE IF EXISTS welding_groove_types`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tungsten_electrode_types`);
-    await queryRunner.query(`DROP TABLE IF EXISTS metal_transfer_modes`);
-    await queryRunner.query(`DROP TABLE IF EXISTS welding_shielding_gases`);
-    await queryRunner.query(`DROP TABLE IF EXISTS electrode_current_ranges`);
-    await queryRunner.query(`DROP TABLE IF EXISTS flame_types`);
-    await queryRunner.query(`DROP TABLE IF EXISTS fuel_gas_temperatures`);
-    await queryRunner.query(`DROP TABLE IF EXISTS welding_processes`);
+    await queryRunner.query("DROP TABLE IF EXISTS welding_electrode_standards");
+    await queryRunner.query("DROP TABLE IF EXISTS resistance_welding_params");
+    await queryRunner.query("DROP TABLE IF EXISTS welding_groove_types");
+    await queryRunner.query("DROP TABLE IF EXISTS tungsten_electrode_types");
+    await queryRunner.query("DROP TABLE IF EXISTS metal_transfer_modes");
+    await queryRunner.query("DROP TABLE IF EXISTS welding_shielding_gases");
+    await queryRunner.query("DROP TABLE IF EXISTS electrode_current_ranges");
+    await queryRunner.query("DROP TABLE IF EXISTS flame_types");
+    await queryRunner.query("DROP TABLE IF EXISTS fuel_gas_temperatures");
+    await queryRunner.query("DROP TABLE IF EXISTS welding_processes");
   }
 }

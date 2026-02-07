@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateAdminSession1766730613788 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -34,13 +34,11 @@ export class CreateAdminSession1766730613788 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes first
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS idx_admin_session_expires_at`,
-    );
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_admin_session_user_id`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_admin_session_token`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_admin_session_expires_at");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_admin_session_user_id");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_admin_session_token");
 
     // Drop table
-    await queryRunner.query(`DROP TABLE IF EXISTS admin_sessions`);
+    await queryRunner.query("DROP TABLE IF EXISTS admin_sessions");
   }
 }

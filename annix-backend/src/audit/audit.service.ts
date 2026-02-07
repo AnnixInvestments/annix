@@ -1,12 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, FindOptionsWhere } from 'typeorm';
-import { AuditLog, AuditAction } from './entities/audit-log.entity';
-import {
-  CreateAuditLogDto,
-  AdminAuditLogDto,
-} from './dto/create-audit-log.dto';
-import { User } from '../user/entities/user.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Between, FindOptionsWhere, Repository } from "typeorm";
+import { User } from "../user/entities/user.entity";
+import { AdminAuditLogDto, CreateAuditLogDto } from "./dto/create-audit-log.dto";
+import { AuditAction, AuditLog } from "./entities/audit-log.entity";
 
 export interface AuditLogQuery {
   entityType?: string;
@@ -30,7 +27,7 @@ export class AuditService {
 
   async log(dto: CreateAuditLogDto | AdminAuditLogDto): Promise<AuditLog> {
     // Handle AdminAuditLogDto format
-    if ('userId' in dto || 'metadata' in dto) {
+    if ("userId" in dto || "metadata" in dto) {
       const adminDto = dto;
       let performedBy: User | undefined;
 
@@ -43,11 +40,10 @@ export class AuditService {
 
       // Map string action to AuditAction enum if needed
       let action: AuditAction;
-      if (typeof adminDto.action === 'string') {
+      if (typeof adminDto.action === "string") {
         action =
-          (AuditAction as any)[
-            adminDto.action.toUpperCase().replace(/ /g, '_')
-          ] || AuditAction.UPDATE;
+          (AuditAction as any)[adminDto.action.toUpperCase().replace(/ /g, "_")] ||
+          AuditAction.UPDATE;
       } else {
         action = adminDto.action;
       }
@@ -80,20 +76,15 @@ export class AuditService {
     return this.auditLogRepository.save(auditLog);
   }
 
-  async findByEntity(
-    entityType: string,
-    entityId: number,
-  ): Promise<AuditLog[]> {
+  async findByEntity(entityType: string, entityId: number): Promise<AuditLog[]> {
     return this.auditLogRepository.find({
       where: { entityType, entityId },
-      relations: ['performedBy'],
-      order: { timestamp: 'DESC' },
+      relations: ["performedBy"],
+      order: { timestamp: "DESC" },
     });
   }
 
-  async findAll(
-    query: AuditLogQuery,
-  ): Promise<{ data: AuditLog[]; total: number }> {
+  async findAll(query: AuditLogQuery): Promise<{ data: AuditLog[]; total: number }> {
     const where: FindOptionsWhere<AuditLog> = {};
 
     if (query.entityType) {
@@ -118,8 +109,8 @@ export class AuditService {
 
     const [data, total] = await this.auditLogRepository.findAndCount({
       where,
-      relations: ['performedBy'],
-      order: { timestamp: 'DESC' },
+      relations: ["performedBy"],
+      order: { timestamp: "DESC" },
       take: query.limit || 50,
       skip: query.offset || 0,
     });
@@ -134,8 +125,8 @@ export class AuditService {
   ): Promise<AuditLog[]> {
     return this.auditLogRepository.find({
       where: { entityType, entityId },
-      relations: ['performedBy'],
-      order: { timestamp: 'DESC' },
+      relations: ["performedBy"],
+      order: { timestamp: "DESC" },
       take: limit,
     });
   }
@@ -156,8 +147,8 @@ export class AuditService {
 
     return this.auditLogRepository.find({
       where,
-      relations: ['performedBy'],
-      order: { timestamp: 'DESC' },
+      relations: ["performedBy"],
+      order: { timestamp: "DESC" },
       take: limit,
     });
   }

@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddBlankFlangeAndGenericWeights1778000400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -8,7 +8,7 @@ export class AddBlankFlangeAndGenericWeights1778000400000 implements MigrationIn
     for (const pc of Object.keys(blankWeights)) {
       const values = Object.entries(blankWeights[pc])
         .map(([nb, weight]) => `(NULL, '${pc}', 'BLANK', ${nb}, ${weight})`)
-        .join(', ');
+        .join(", ");
       if (values) {
         await queryRunner.query(`
           INSERT INTO flange_type_weights (flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm, weight_kg)
@@ -20,7 +20,7 @@ export class AddBlankFlangeAndGenericWeights1778000400000 implements MigrationIn
     for (const pc of Object.keys(genericWeights)) {
       const values = Object.entries(genericWeights[pc])
         .map(([nb, weight]) => `(NULL, '${pc}', 'GENERIC', ${nb}, ${weight})`)
-        .join(', ');
+        .join(", ");
       if (values) {
         await queryRunner.query(`
           INSERT INTO flange_type_weights (flange_standard_id, pressure_class, flange_type_code, nominal_bore_mm, weight_kg)
@@ -166,7 +166,7 @@ export class AddBlankFlangeAndGenericWeights1778000400000 implements MigrationIn
         500: 320.0,
         600: 480.0,
       },
-      'Class 150': {
+      "Class 150": {
         15: 0.7,
         20: 1.0,
         25: 1.2,
@@ -187,7 +187,7 @@ export class AddBlankFlangeAndGenericWeights1778000400000 implements MigrationIn
         500: 165.0,
         600: 240.0,
       },
-      'Class 300': {
+      "Class 300": {
         15: 1.0,
         20: 1.5,
         25: 1.8,
@@ -208,7 +208,7 @@ export class AddBlankFlangeAndGenericWeights1778000400000 implements MigrationIn
         500: 320.0,
         600: 480.0,
       },
-      'Class 600': {
+      "Class 600": {
         15: 1.5,
         20: 2.2,
         25: 2.8,
@@ -402,7 +402,7 @@ export class AddBlankFlangeAndGenericWeights1778000400000 implements MigrationIn
         1050: 940.0,
         1200: 1400.0,
       },
-      'Class 150': {
+      "Class 150": {
         15: 0.5,
         20: 0.9,
         25: 0.9,
@@ -430,7 +430,7 @@ export class AddBlankFlangeAndGenericWeights1778000400000 implements MigrationIn
         1050: 350.0,
         1200: 500.0,
       },
-      'Class 300': {
+      "Class 300": {
         15: 0.9,
         20: 1.4,
         25: 1.4,
@@ -458,7 +458,7 @@ export class AddBlankFlangeAndGenericWeights1778000400000 implements MigrationIn
         1050: 820.0,
         1200: 1200.0,
       },
-      'Class 600': {
+      "Class 600": {
         15: 1.4,
         20: 2.0,
         25: 2.3,

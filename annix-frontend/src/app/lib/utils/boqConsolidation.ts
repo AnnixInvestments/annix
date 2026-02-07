@@ -1,17 +1,17 @@
-import {
-  flangeWeightSync as getFlangeWeight,
-  bnwSetInfoSync as getBnwSetInfo,
-  gasketWeightSync as getGasketWeight,
-  blankFlangeSurfaceAreaSync as blankFlangeSurfaceArea,
-  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
-  blankFlangeWeightSync as blankFlangeWeight,
-} from '@/app/lib/hooks/useFlangeWeights';
+import { ConsolidatedBoqDataDto, ConsolidatedItemDto } from "@/app/lib/api/client";
 import {
   boltSetCountPerBend,
-  boltSetCountPerPipe,
   boltSetCountPerFitting,
-} from '@/app/lib/config/rfq/pipeEndOptions';
-import { ConsolidatedBoqDataDto, ConsolidatedItemDto } from '@/app/lib/api/client';
+  boltSetCountPerPipe,
+} from "@/app/lib/config/rfq/pipeEndOptions";
+import {
+  blankFlangeSurfaceAreaSync as blankFlangeSurfaceArea,
+  blankFlangeWeightSync as blankFlangeWeight,
+  bnwSetInfoSync as getBnwSetInfo,
+  flangeWeightSync as getFlangeWeight,
+  gasketWeightSync as getGasketWeight,
+  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
+} from "@/app/lib/hooks/useFlangeWeights";
 
 export interface ConsolidationInput {
   entries: any[];
@@ -42,60 +42,92 @@ interface ConsolidatedItem {
 
 function flangeSpec(
   entry: any,
-  globalSpecs?: ConsolidationInput['globalSpecs'],
-  masterData?: ConsolidationInput['masterData']
+  globalSpecs?: ConsolidationInput["globalSpecs"],
+  masterData?: ConsolidationInput["masterData"],
 ): { spec: string; standard: string; pressureClass: string; flangeTypeCode?: string } {
   const flangeStandardId = entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-  const flangePressureClassId = entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
-  const flangeStandard = flangeStandardId && masterData?.flangeStandards
-    ? masterData.flangeStandards.find((s) => s.id === flangeStandardId)?.code || ''
-    : '';
-  const pressureClass = flangePressureClassId && masterData?.pressureClasses
-    ? masterData.pressureClasses.find((p) => p.id === flangePressureClassId)?.designation || globalSpecs?.pressureClassDesignation || 'PN16'
-    : globalSpecs?.pressureClassDesignation || 'PN16';
+  const flangePressureClassId =
+    entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+  const flangeStandard =
+    flangeStandardId && masterData?.flangeStandards
+      ? masterData.flangeStandards.find((s) => s.id === flangeStandardId)?.code || ""
+      : "";
+  const pressureClass =
+    flangePressureClassId && masterData?.pressureClasses
+      ? masterData.pressureClasses.find((p) => p.id === flangePressureClassId)?.designation ||
+        globalSpecs?.pressureClassDesignation ||
+        "PN16"
+      : globalSpecs?.pressureClassDesignation || "PN16";
   const flangeTypeCode = entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
-  const spec = flangeStandard && pressureClass ? `${flangeStandard} ${pressureClass}` : pressureClass;
+  const spec =
+    flangeStandard && pressureClass ? `${flangeStandard} ${pressureClass}` : pressureClass;
   return { spec, standard: flangeStandard, pressureClass, flangeTypeCode };
 }
 
-function getFlangeCountFromConfig(config: string, itemType: string): { main: number; branch: number } {
-  if (itemType === 'bend' || itemType === 'straight_pipe' || !itemType) {
+function getFlangeCountFromConfig(
+  config: string,
+  itemType: string,
+): { main: number; branch: number } {
+  if (itemType === "bend" || itemType === "straight_pipe" || !itemType) {
     switch (config) {
-      case 'PE': return { main: 0, branch: 0 };
-      case 'FOE': return { main: 1, branch: 0 };
-      case 'FBE': return { main: 2, branch: 0 };
-      case 'FOE_LF': return { main: 2, branch: 0 };
-      case 'FOE_RF': return { main: 2, branch: 0 };
-      case '2X_RF': return { main: 2, branch: 0 };
-      case '2xLF': return { main: 4, branch: 0 };
-      default: return { main: 0, branch: 0 };
+      case "PE":
+        return { main: 0, branch: 0 };
+      case "FOE":
+        return { main: 1, branch: 0 };
+      case "FBE":
+        return { main: 2, branch: 0 };
+      case "FOE_LF":
+        return { main: 2, branch: 0 };
+      case "FOE_RF":
+        return { main: 2, branch: 0 };
+      case "2X_RF":
+        return { main: 2, branch: 0 };
+      case "2xLF":
+        return { main: 4, branch: 0 };
+      default:
+        return { main: 0, branch: 0 };
     }
   }
-  if (itemType === 'fitting') {
+  if (itemType === "fitting") {
     switch (config) {
-      case 'PE': return { main: 0, branch: 0 };
-      case 'FAE': case 'FFF': return { main: 2, branch: 1 };
-      case 'F2E': case 'FFP': return { main: 2, branch: 0 };
-      case 'F2E_RF': case 'F2E_LF': return { main: 1, branch: 1 };
-      case 'PFF': return { main: 1, branch: 1 };
-      case 'PPF': return { main: 0, branch: 1 };
-      case 'FPP': return { main: 1, branch: 0 };
-      case 'PFP': return { main: 1, branch: 0 };
-      default: return { main: 0, branch: 0 };
+      case "PE":
+        return { main: 0, branch: 0 };
+      case "FAE":
+      case "FFF":
+        return { main: 2, branch: 1 };
+      case "F2E":
+      case "FFP":
+        return { main: 2, branch: 0 };
+      case "F2E_RF":
+      case "F2E_LF":
+        return { main: 1, branch: 1 };
+      case "PFF":
+        return { main: 1, branch: 1 };
+      case "PPF":
+        return { main: 0, branch: 1 };
+      case "FPP":
+        return { main: 1, branch: 0 };
+      case "PFP":
+        return { main: 1, branch: 0 };
+      default:
+        return { main: 0, branch: 0 };
     }
   }
   return { main: 0, branch: 0 };
 }
 
 function getFlangeTypeName(config: string): string {
-  if (!config || config === 'PE') return 'Slip On';
-  if (config.includes('LF') || config.includes('_L')) return 'Slip On';
-  if (config.includes('RF') || config.includes('_R')) return 'Rotating';
-  return 'Slip On';
+  if (!config || config === "PE") return "Slip On";
+  if (config.includes("LF") || config.includes("_L")) return "Slip On";
+  if (config.includes("RF") || config.includes("_R")) return "Rotating";
+  return "Slip On";
 }
 
 function getBlankFlangeWeight(nbMm: number, pressureClass: string, flangeStandard: string): number {
-  const isSans = pressureClass.match(/^\d+\/\d$/) || flangeStandard.toUpperCase().includes('SANS') || flangeStandard.toUpperCase().includes('SABS');
+  const isSans =
+    pressureClass.match(/^\d+\/\d$/) ||
+    flangeStandard.toUpperCase().includes("SANS") ||
+    flangeStandard.toUpperCase().includes("SABS");
   if (isSans) {
     return sansBlankFlangeWeight(nbMm, pressureClass);
   }
@@ -121,12 +153,17 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
   entries.forEach((entry, index) => {
     const itemNumber = index + 1;
     const qty = entry.specs?.quantityValue || entry.calculation?.calculatedPipeCount || 1;
-    const { spec: flangeSpecStr, standard: flangeStandard, pressureClass, flangeTypeCode } = flangeSpec(entry, globalSpecs, masterData);
+    const {
+      spec: flangeSpecStr,
+      standard: flangeStandard,
+      pressureClass,
+      flangeTypeCode,
+    } = flangeSpec(entry, globalSpecs, masterData);
 
-    if (entry.itemType === 'bend') {
+    if (entry.itemType === "bend") {
       const nb = entry.specs?.nominalBoreMm || 100;
-      const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-      const flangeCount = getFlangeCountFromConfig(bendEndConfig, 'bend');
+      const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+      const flangeCount = getFlangeCountFromConfig(bendEndConfig, "bend");
       const flangeTypeName = getFlangeTypeName(bendEndConfig);
 
       if (flangeCount.main > 0) {
@@ -143,7 +180,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${flangeTypeName} Flange ${flangeSpecStr}`,
             qty: flangeQty,
-            unit: 'Each',
+            unit: "Each",
             weight: flangeWeight * flangeQty,
             entries: [itemNumber],
           });
@@ -164,7 +201,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             consolidatedBnwSets.set(bnwKey, {
               description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpecStr}`,
               qty: boltSetQty,
-              unit: 'sets',
+              unit: "sets",
               weight: bnwWeight * boltSetQty,
               entries: [itemNumber],
             });
@@ -186,7 +223,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
               consolidatedGaskets.set(gasketKey, {
                 description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpecStr}`,
                 qty: gasketQty,
-                unit: 'Each',
+                unit: "Each",
                 weight: gasketWeight * gasketQty,
                 entries: [itemNumber],
               });
@@ -211,7 +248,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           consolidatedBlankFlanges.set(blankFlangeKey, {
             description: `${blankNb}NB Blank Flange ${flangeSpecStr}`,
             qty: blankQty,
-            unit: 'Each',
+            unit: "Each",
             weight: blankWeight * blankQty,
             entries: [itemNumber],
             extAreaM2: blankSurfaceArea.external * blankQty,
@@ -219,11 +256,11 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           });
         }
       }
-    } else if (entry.itemType === 'fitting') {
+    } else if (entry.itemType === "fitting") {
       const nb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 100;
       const branchNb = entry.specs?.branchNominalDiameterMm || nb;
-      const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-      const flangeCount = getFlangeCountFromConfig(fittingEndConfig, 'fitting');
+      const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+      const flangeCount = getFlangeCountFromConfig(fittingEndConfig, "fitting");
       const flangeTypeName = getFlangeTypeName(fittingEndConfig);
       const isEqualBranch = branchNb === nb;
       const fittingBoltSets = boltSetCountPerFitting(fittingEndConfig, isEqualBranch);
@@ -242,7 +279,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${flangeTypeName} Flange ${flangeSpecStr}`,
             qty: flangeQty,
-            unit: 'Each',
+            unit: "Each",
             weight: flangeWeight * flangeQty,
             entries: [itemNumber],
           });
@@ -263,7 +300,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             consolidatedBnwSets.set(bnwKey, {
               description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpecStr}`,
               qty: mainBoltSetQty,
-              unit: 'sets',
+              unit: "sets",
               weight: bnwWeight * mainBoltSetQty,
               entries: [itemNumber],
             });
@@ -283,7 +320,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             consolidatedGaskets.set(gasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpecStr}`,
               qty: mainBoltSetQty,
-              unit: 'Each',
+              unit: "Each",
               weight: gasketWeight * mainBoltSetQty,
               entries: [itemNumber],
             });
@@ -295,7 +332,12 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         const branchFlangeKey = `FLANGE_${branchNb}_${flangeSpecStr}_${flangeTypeName}`;
         const existingBranchFlange = consolidatedFlanges.get(branchFlangeKey);
         const branchFlangeQty = flangeCount.branch * qty;
-        const branchFlangeWeight = getFlangeWeight(branchNb, pressureClass, flangeStandard, flangeTypeCode);
+        const branchFlangeWeight = getFlangeWeight(
+          branchNb,
+          pressureClass,
+          flangeStandard,
+          flangeTypeCode,
+        );
 
         if (existingBranchFlange) {
           existingBranchFlange.qty += branchFlangeQty;
@@ -305,7 +347,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           consolidatedFlanges.set(branchFlangeKey, {
             description: `${branchNb}NB ${flangeTypeName} Flange ${flangeSpecStr}`,
             qty: branchFlangeQty,
-            unit: 'Each',
+            unit: "Each",
             weight: branchFlangeWeight * branchFlangeQty,
             entries: [itemNumber],
           });
@@ -326,7 +368,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             consolidatedBnwSets.set(branchBnwKey, {
               description: `${branchBnwInfo.boltSize} BNW Set x${branchBnwInfo.holesPerFlange} for ${branchNb}NB ${flangeSpecStr}`,
               qty: branchBoltSetQty,
-              unit: 'sets',
+              unit: "sets",
               weight: branchBnwWeight * branchBoltSetQty,
               entries: [itemNumber],
             });
@@ -346,7 +388,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             consolidatedGaskets.set(branchGasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${branchNb}NB ${flangeSpecStr}`,
               qty: branchBoltSetQty,
-              unit: 'Each',
+              unit: "Each",
               weight: branchGasketWeight * branchBoltSetQty,
               entries: [itemNumber],
             });
@@ -370,7 +412,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           consolidatedBlankFlanges.set(blankFlangeKey, {
             description: `${blankNb}NB Blank Flange ${flangeSpecStr}`,
             qty: blankQty,
-            unit: 'Each',
+            unit: "Each",
             weight: blankWeight * blankQty,
             entries: [itemNumber],
             extAreaM2: blankSurfaceArea.external * blankQty,
@@ -378,17 +420,17 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           });
         }
       }
-    } else if (entry.itemType === 'valve') {
-      const valveType = entry.specs?.valveType || 'valve';
-      const size = entry.specs?.size || 'DN100';
-      const pressureClass = entry.specs?.pressureClass || 'Class 150';
-      const bodyMaterial = entry.specs?.bodyMaterial || 'CF8M';
-      const actuatorType = entry.specs?.actuatorType || 'manual';
+    } else if (entry.itemType === "valve") {
+      const valveType = entry.specs?.valveType || "valve";
+      const size = entry.specs?.size || "DN100";
+      const pressureClass = entry.specs?.pressureClass || "Class 150";
+      const bodyMaterial = entry.specs?.bodyMaterial || "CF8M";
+      const actuatorType = entry.specs?.actuatorType || "manual";
 
       const valveKey = `VALVE_${valveType}_${size}_${pressureClass}_${bodyMaterial}_${actuatorType}`;
       const existingValve = consolidatedValves.get(valveKey);
 
-      const description = `${size} ${valveType.replace(/_/g, ' ')} ${pressureClass} ${bodyMaterial}${actuatorType !== 'manual' ? ` (${actuatorType})` : ''}`;
+      const description = `${size} ${valveType.replace(/_/g, " ")} ${pressureClass} ${bodyMaterial}${actuatorType !== "manual" ? ` (${actuatorType})` : ""}`;
 
       if (existingValve) {
         existingValve.qty += qty;
@@ -397,21 +439,21 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         consolidatedValves.set(valveKey, {
           description,
           qty,
-          unit: 'Each',
+          unit: "Each",
           weight: 0,
           entries: [itemNumber],
         });
       }
-    } else if (entry.itemType === 'instrument') {
-      const instrumentType = entry.specs?.instrumentType || 'instrument';
-      const instrumentCategory = entry.specs?.instrumentCategory || 'flow';
-      const size = entry.specs?.size || '';
-      const processConnection = entry.specs?.processConnection || '';
+    } else if (entry.itemType === "instrument") {
+      const instrumentType = entry.specs?.instrumentType || "instrument";
+      const instrumentCategory = entry.specs?.instrumentCategory || "flow";
+      const size = entry.specs?.size || "";
+      const processConnection = entry.specs?.processConnection || "";
 
       const instrumentKey = `INSTRUMENT_${instrumentCategory}_${instrumentType}_${size}_${processConnection}`;
       const existingInstrument = consolidatedInstruments.get(instrumentKey);
 
-      const description = `${instrumentType.replace(/_/g, ' ')}${size ? ` ${size}` : ''}${processConnection ? ` ${processConnection}` : ''}`;
+      const description = `${instrumentType.replace(/_/g, " ")}${size ? ` ${size}` : ""}${processConnection ? ` ${processConnection}` : ""}`;
 
       if (existingInstrument) {
         existingInstrument.qty += qty;
@@ -420,37 +462,37 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         consolidatedInstruments.set(instrumentKey, {
           description,
           qty,
-          unit: 'Each',
+          unit: "Each",
           weight: 0,
           entries: [itemNumber],
         });
       }
-    } else if (entry.itemType === 'pump') {
-      const pumpType = entry.specs?.pumpType || 'centrifugal';
-      const manufacturer = entry.specs?.manufacturer || '';
-      const model = entry.specs?.model || '';
-      const flowRate = entry.specs?.flowRateM3h || '';
-      const head = entry.specs?.headM || '';
-      const power = entry.specs?.motorPowerKw || '';
-      const material = entry.specs?.wetEndMaterial || '';
-      const sealType = entry.specs?.sealType || '';
+    } else if (entry.itemType === "pump") {
+      const pumpType = entry.specs?.pumpType || "centrifugal";
+      const manufacturer = entry.specs?.manufacturer || "";
+      const model = entry.specs?.model || "";
+      const flowRate = entry.specs?.flowRateM3h || "";
+      const head = entry.specs?.headM || "";
+      const power = entry.specs?.motorPowerKw || "";
+      const material = entry.specs?.wetEndMaterial || "";
+      const sealType = entry.specs?.sealType || "";
       const estimatedWeight = entry.specs?.estimatedWeightKg || 0;
 
       const pumpKey = `PUMP_${pumpType}_${manufacturer}_${model}_${flowRate}_${head}_${material}`;
       const existingPump = consolidatedPumps.get(pumpKey);
 
       const descriptionParts = [
-        pumpType.replace(/_/g, ' '),
+        pumpType.replace(/_/g, " "),
         manufacturer,
         model,
-        flowRate ? `${flowRate} m³/h` : '',
-        head ? `${head}m head` : '',
-        power ? `${power}kW` : '',
+        flowRate ? `${flowRate} m³/h` : "",
+        head ? `${head}m head` : "",
+        power ? `${power}kW` : "",
         material,
-        sealType ? `${sealType} seal` : '',
+        sealType ? `${sealType} seal` : "",
       ].filter(Boolean);
 
-      const description = descriptionParts.join(' ');
+      const description = descriptionParts.join(" ");
 
       if (existingPump) {
         existingPump.qty += qty;
@@ -460,29 +502,29 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         consolidatedPumps.set(pumpKey, {
           description,
           qty,
-          unit: 'Each',
+          unit: "Each",
           weight: estimatedWeight * qty,
           entries: [itemNumber],
         });
       }
-    } else if (entry.itemType === 'pump_part') {
-      const partType = entry.specs?.partType || 'part';
-      const partDescription = entry.specs?.partDescription || '';
-      const partNumber = entry.specs?.partNumber || '';
-      const material = entry.specs?.material || '';
+    } else if (entry.itemType === "pump_part") {
+      const partType = entry.specs?.partType || "part";
+      const partDescription = entry.specs?.partDescription || "";
+      const partNumber = entry.specs?.partNumber || "";
+      const material = entry.specs?.material || "";
       const estimatedWeight = entry.specs?.estimatedWeightKg || 0;
 
       const partKey = `PUMP_PART_${partType}_${partNumber}_${material}`;
       const existingPart = consolidatedPumpParts.get(partKey);
 
       const descriptionParts = [
-        partType.replace(/_/g, ' '),
+        partType.replace(/_/g, " "),
         partDescription,
-        partNumber ? `P/N: ${partNumber}` : '',
+        partNumber ? `P/N: ${partNumber}` : "",
         material,
       ].filter(Boolean);
 
-      const description = descriptionParts.join(' ');
+      const description = descriptionParts.join(" ");
 
       if (existingPart) {
         existingPart.qty += qty;
@@ -492,31 +534,31 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         consolidatedPumpParts.set(partKey, {
           description,
           qty,
-          unit: 'Each',
+          unit: "Each",
           weight: estimatedWeight * qty,
           entries: [itemNumber],
         });
       }
-    } else if (entry.itemType === 'pump_spare') {
-      const spareType = entry.specs?.spareType || 'spare';
-      const spareDescription = entry.specs?.spareDescription || '';
-      const partNumber = entry.specs?.partNumber || '';
-      const oemPartNumber = entry.specs?.oemPartNumber || '';
-      const material = entry.specs?.material || '';
+    } else if (entry.itemType === "pump_spare") {
+      const spareType = entry.specs?.spareType || "spare";
+      const spareDescription = entry.specs?.spareDescription || "";
+      const partNumber = entry.specs?.partNumber || "";
+      const oemPartNumber = entry.specs?.oemPartNumber || "";
+      const material = entry.specs?.material || "";
       const estimatedWeight = entry.specs?.estimatedWeightKg || 0;
 
       const spareKey = `PUMP_SPARE_${spareType}_${partNumber}_${oemPartNumber}_${material}`;
       const existingSpare = consolidatedPumpSpares.get(spareKey);
 
       const descriptionParts = [
-        spareType.replace(/_/g, ' '),
+        spareType.replace(/_/g, " "),
         spareDescription,
-        partNumber ? `P/N: ${partNumber}` : '',
-        oemPartNumber ? `OEM: ${oemPartNumber}` : '',
+        partNumber ? `P/N: ${partNumber}` : "",
+        oemPartNumber ? `OEM: ${oemPartNumber}` : "",
         material,
       ].filter(Boolean);
 
-      const description = descriptionParts.join(' ');
+      const description = descriptionParts.join(" ");
 
       if (existingSpare) {
         existingSpare.qty += qty;
@@ -526,15 +568,15 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
         consolidatedPumpSpares.set(spareKey, {
           description,
           qty,
-          unit: 'Each',
+          unit: "Each",
           weight: estimatedWeight * qty,
           entries: [itemNumber],
         });
       }
     } else {
       const nb = entry.specs?.nominalBoreMm || 100;
-      const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-      const flangeCount = getFlangeCountFromConfig(pipeEndConfig, 'straight_pipe');
+      const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+      const flangeCount = getFlangeCountFromConfig(pipeEndConfig, "straight_pipe");
       const flangeTypeName = getFlangeTypeName(pipeEndConfig);
       const pipeQty = entry.calculation?.calculatedPipeCount || qty;
 
@@ -552,7 +594,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${flangeTypeName} Flange ${flangeSpecStr}`,
             qty: flangeQty,
-            unit: 'Each',
+            unit: "Each",
             weight: flangeWeight * flangeQty,
             entries: [itemNumber],
           });
@@ -573,7 +615,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             consolidatedBnwSets.set(bnwKey, {
               description: `${bnwInfo.boltSize} BNW Set x${bnwInfo.holesPerFlange} for ${nb}NB ${flangeSpecStr}`,
               qty: pipeBoltSetQty,
-              unit: 'sets',
+              unit: "sets",
               weight: bnwWeight * pipeBoltSetQty,
               entries: [itemNumber],
             });
@@ -593,7 +635,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             consolidatedGaskets.set(gasketKey, {
               description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpecStr}`,
               qty: pipeBoltSetQty,
-              unit: 'Each',
+              unit: "Each",
               weight: gasketWeight * pipeBoltSetQty,
               entries: [itemNumber],
             });
@@ -617,7 +659,7 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
           consolidatedBlankFlanges.set(blankFlangeKey, {
             description: `${blankNb}NB Blank Flange ${flangeSpecStr}`,
             qty: blankQty,
-            unit: 'Each',
+            unit: "Each",
             weight: blankWeight * blankQty,
             entries: [itemNumber],
             extAreaM2: blankSurfaceArea.external * blankQty,
@@ -635,22 +677,28 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
       unit: item.unit,
       weightKg: item.weight,
       entries: item.entries,
-      welds: item.welds ? {
-        pipeWeld: item.welds['Pipe Weld'],
-        flangeWeld: item.welds['Flange Weld'],
-        mitreWeld: item.welds['Mitre Weld'],
-        teeWeld: item.welds['Tee Weld'],
-      } : undefined,
-      areas: (item.intAreaM2 || item.extAreaM2) ? {
-        intAreaM2: item.intAreaM2,
-        extAreaM2: item.extAreaM2,
-      } : undefined,
+      welds: item.welds
+        ? {
+            pipeWeld: item.welds["Pipe Weld"],
+            flangeWeld: item.welds["Flange Weld"],
+            mitreWeld: item.welds["Mitre Weld"],
+            teeWeld: item.welds["Tee Weld"],
+          }
+        : undefined,
+      areas:
+        item.intAreaM2 || item.extAreaM2
+          ? {
+              intAreaM2: item.intAreaM2,
+              extAreaM2: item.extAreaM2,
+            }
+          : undefined,
     }));
   };
 
   return {
     flanges: consolidatedFlanges.size > 0 ? mapToDto(consolidatedFlanges) : undefined,
-    blankFlanges: consolidatedBlankFlanges.size > 0 ? mapToDto(consolidatedBlankFlanges) : undefined,
+    blankFlanges:
+      consolidatedBlankFlanges.size > 0 ? mapToDto(consolidatedBlankFlanges) : undefined,
     bnwSets: consolidatedBnwSets.size > 0 ? mapToDto(consolidatedBnwSets) : undefined,
     gaskets: consolidatedGaskets.size > 0 ? mapToDto(consolidatedGaskets) : undefined,
     valves: consolidatedValves.size > 0 ? mapToDto(consolidatedValves) : undefined,

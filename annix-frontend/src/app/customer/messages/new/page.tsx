@@ -1,14 +1,11 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useCustomerAuth } from '@/app/context/CustomerAuthContext';
-import { useToast } from '@/app/components/Toast';
-import {
-  ConversationType,
-  RelatedEntityType,
-} from '@/app/lib/api/messagingApi';
-import { useCreateCustomerConversation } from '@/app/lib/query/hooks';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
+import { ConversationType, RelatedEntityType } from "@/app/lib/api/messagingApi";
+import { useCreateCustomerConversation } from "@/app/lib/query/hooks";
 
 export default function NewConversationPage() {
   const router = useRouter();
@@ -16,12 +13,12 @@ export default function NewConversationPage() {
   const { showToast } = useToast();
   const createConversationMutation = useCreateCustomerConversation();
 
-  const [subject, setSubject] = useState('');
-  const [initialMessage, setInitialMessage] = useState('');
+  const [subject, setSubject] = useState("");
+  const [initialMessage, setInitialMessage] = useState("");
   const [relatedEntityType, setRelatedEntityType] = useState<RelatedEntityType>(
     RelatedEntityType.GENERAL,
   );
-  const [relatedEntityId, setRelatedEntityId] = useState('');
+  const [relatedEntityId, setRelatedEntityId] = useState("");
 
   const isSubmitting = createConversationMutation.isPending;
 
@@ -29,12 +26,12 @@ export default function NewConversationPage() {
     e.preventDefault();
 
     if (!subject.trim()) {
-      showToast('Please enter a subject', 'error');
+      showToast("Please enter a subject", "error");
       return;
     }
 
     if (!initialMessage.trim()) {
-      showToast('Please enter a message', 'error');
+      showToast("Please enter a message", "error");
       return;
     }
 
@@ -48,10 +45,10 @@ export default function NewConversationPage() {
         initialMessage: initialMessage.trim(),
       });
 
-      showToast('Conversation created', 'success');
+      showToast("Conversation created", "success");
       router.push(`/customer/messages/${conversation.id}`);
     } catch (error: any) {
-      showToast(error.message || 'Failed to create conversation', 'error');
+      showToast(error.message || "Failed to create conversation", "error");
     }
   };
 
@@ -67,15 +64,10 @@ export default function NewConversationPage() {
     <div className="max-w-2xl mx-auto">
       <div className="mb-6 flex items-center gap-4">
         <button
-          onClick={() => router.push('/customer/messages')}
+          onClick={() => router.push("/customer/messages")}
           className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -84,9 +76,7 @@ export default function NewConversationPage() {
             />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          New Conversation
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">New Conversation</h1>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -120,15 +110,11 @@ export default function NewConversationPage() {
               <select
                 id="relatedType"
                 value={relatedEntityType}
-                onChange={(e) =>
-                  setRelatedEntityType(e.target.value as RelatedEntityType)
-                }
+                onChange={(e) => setRelatedEntityType(e.target.value as RelatedEntityType)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={isSubmitting}
               >
-                <option value={RelatedEntityType.GENERAL}>
-                  General Inquiry
-                </option>
+                <option value={RelatedEntityType.GENERAL}>General Inquiry</option>
                 <option value={RelatedEntityType.RFQ}>RFQ</option>
                 <option value={RelatedEntityType.BOQ}>BOQ</option>
               </select>
@@ -166,7 +152,7 @@ export default function NewConversationPage() {
           <div className="flex justify-end gap-4">
             <button
               type="button"
-              onClick={() => router.push('/customer/messages')}
+              onClick={() => router.push("/customer/messages")}
               className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               disabled={isSubmitting}
             >
@@ -179,11 +165,7 @@ export default function NewConversationPage() {
             >
               {isSubmitting ? (
                 <>
-                  <svg
-                    className="w-5 h-5 animate-spin"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle
                       className="opacity-25"
                       cx="12"
@@ -201,7 +183,7 @@ export default function NewConversationPage() {
                   Creating...
                 </>
               ) : (
-                'Create Conversation'
+                "Create Conversation"
               )}
             </button>
           </div>

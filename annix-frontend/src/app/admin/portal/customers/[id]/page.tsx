@@ -1,28 +1,32 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { adminApiClient, CustomerDocument, DocumentReviewData } from '@/app/lib/api/adminApi';
-import { useToast } from '@/app/components/Toast';
-import { formatDateTimeZA, formatDateZA } from '@/app/lib/datetime';
-import { StatusBadge } from '@/app/admin/components';
-import { DocumentPreviewModal, PreviewModalState, initialPreviewState } from '@/app/components/DocumentPreviewModal';
-import { DocumentReviewModal } from '@/app/admin/components/DocumentReviewModal';
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { StatusBadge } from "@/app/admin/components";
+import { DocumentReviewModal } from "@/app/admin/components/DocumentReviewModal";
 import {
-  useAdminCustomerDetail,
-  useAdminCustomerLoginHistory,
-  useAdminCustomerDocuments,
-  useAdminCustomerRfqs,
+  DocumentPreviewModal,
+  initialPreviewState,
+  PreviewModalState,
+} from "@/app/components/DocumentPreviewModal";
+import { useToast } from "@/app/components/Toast";
+import { adminApiClient, CustomerDocument, DocumentReviewData } from "@/app/lib/api/adminApi";
+import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import {
   useAdminCustomerCustomFields,
-} from '@/app/lib/query/hooks';
+  useAdminCustomerDetail,
+  useAdminCustomerDocuments,
+  useAdminCustomerLoginHistory,
+  useAdminCustomerRfqs,
+} from "@/app/lib/query/hooks";
 
-type TabType = 'overview' | 'documents' | 'activity' | 'rfqs';
+type TabType = "overview" | "documents" | "activity" | "rfqs";
 
 export default function CustomerDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const {showToast} = useToast();
-  const customerId = parseInt(params?.id as string);
+  const { showToast } = useToast();
+  const customerId = parseInt(params?.id as string, 10);
 
   const customerQuery = useAdminCustomerDetail(customerId);
   const loginHistoryQuery = useAdminCustomerLoginHistory(customerId);
@@ -36,9 +40,9 @@ export default function CustomerDetailPage() {
   const customerRfqs = rfqsQuery.data ?? [];
   const customFields = customFieldsQuery.data?.fields ?? [];
 
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
-  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendReason, setSuspendReason] = useState("");
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewState, setPreviewState] = useState<PreviewModalState>(initialPreviewState);
@@ -56,7 +60,7 @@ export default function CustomerDetailPage() {
 
   const handleSuspend = async () => {
     if (!suspendReason.trim()) {
-      showToast('Please provide a reason for suspension', 'warning');
+      showToast("Please provide a reason for suspension", "warning");
       return;
     }
 
@@ -64,51 +68,56 @@ export default function CustomerDetailPage() {
       setIsSubmitting(true);
       await adminApiClient.suspendCustomer(customerId, { reason: suspendReason });
       setSuspendDialogOpen(false);
-      setSuspendReason('');
-      showToast('Customer account suspended', 'success');
+      setSuspendReason("");
+      showToast("Customer account suspended", "success");
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to suspend customer: ${err.message}`, 'error');
+      showToast(`Failed to suspend customer: ${err.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleReactivate = async () => {
-    if (!confirm('Are you sure you want to reactivate this customer account?')) {
+    if (!confirm("Are you sure you want to reactivate this customer account?")) {
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await adminApiClient.reactivateCustomer(customerId, { note: 'Account reactivated by admin' });
-      showToast('Customer account reactivated', 'success');
+      await adminApiClient.reactivateCustomer(customerId, { note: "Account reactivated by admin" });
+      showToast("Customer account reactivated", "success");
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to reactivate customer: ${err.message}`, 'error');
+      showToast(`Failed to reactivate customer: ${err.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleResetDevice = async () => {
-    const reason = prompt('Please provide a reason for resetting device binding:');
+    const reason = prompt("Please provide a reason for resetting device binding:");
     if (!reason) return;
 
     try {
       setIsSubmitting(true);
       await adminApiClient.resetDeviceBinding(customerId, { reason });
-      showToast('Device binding reset successfully', 'success');
+      showToast("Device binding reset successfully", "success");
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to reset device binding: ${err.message}`, 'error');
+      showToast(`Failed to reset device binding: ${err.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleViewDocument = async (doc: CustomerDocument) => {
-    setPreviewState({ ...initialPreviewState, isOpen: true, isLoading: true, filename: doc.fileName });
+    setPreviewState({
+      ...initialPreviewState,
+      isOpen: true,
+      isLoading: true,
+      filename: doc.fileName,
+    });
     try {
       const result = await adminApiClient.getCustomerDocumentUrl(doc.id);
       setPreviewState({
@@ -119,7 +128,7 @@ export default function CustomerDetailPage() {
         isLoading: false,
       });
     } catch (err: any) {
-      showToast(`Failed to load document: ${err.message}`, 'error');
+      showToast(`Failed to load document: ${err.message}`, "error");
       setPreviewState(initialPreviewState);
     }
   };
@@ -132,7 +141,7 @@ export default function CustomerDetailPage() {
       const data = await adminApiClient.getCustomerDocumentReviewData(doc.id);
       setReviewData(data);
     } catch (err: any) {
-      showToast(`Failed to load document review data: ${err.message}`, 'error');
+      showToast(`Failed to load document review data: ${err.message}`, "error");
       setReviewModalOpen(false);
     } finally {
       setReviewLoading(false);
@@ -143,12 +152,16 @@ export default function CustomerDetailPage() {
     if (!reviewData) return;
     try {
       setIsSubmitting(true);
-      await adminApiClient.reviewCustomerDocument(reviewData.documentId, 'valid', 'Approved by admin');
-      showToast('Document approved', 'success');
+      await adminApiClient.reviewCustomerDocument(
+        reviewData.documentId,
+        "valid",
+        "Approved by admin",
+      );
+      showToast("Document approved", "success");
       setReviewModalOpen(false);
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to approve document: ${err.message}`, 'error');
+      showToast(`Failed to approve document: ${err.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -158,12 +171,12 @@ export default function CustomerDetailPage() {
     if (!reviewData) return;
     try {
       setIsSubmitting(true);
-      await adminApiClient.reviewCustomerDocument(reviewData.documentId, 'invalid', reason);
-      showToast('Document rejected', 'success');
+      await adminApiClient.reviewCustomerDocument(reviewData.documentId, "invalid", reason);
+      showToast("Document rejected", "success");
       setReviewModalOpen(false);
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to reject document: ${err.message}`, 'error');
+      showToast(`Failed to reject document: ${err.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -175,15 +188,17 @@ export default function CustomerDetailPage() {
       setIsSubmitting(true);
       const result = await adminApiClient.reVerifyCustomerDocument(reviewData.documentId);
       if (result.success) {
-        showToast('Document re-verified successfully', 'success');
-        const updatedData = await adminApiClient.getCustomerDocumentReviewData(reviewData.documentId);
+        showToast("Document re-verified successfully", "success");
+        const updatedData = await adminApiClient.getCustomerDocumentReviewData(
+          reviewData.documentId,
+        );
         setReviewData(updatedData);
         refetchAll();
       } else {
-        showToast(result.errorMessage || 'Re-verification failed', 'error');
+        showToast(result.errorMessage || "Re-verification failed", "error");
       }
     } catch (err: any) {
-      showToast(`Failed to re-verify document: ${err.message}`, 'error');
+      showToast(`Failed to re-verify document: ${err.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -191,7 +206,7 @@ export default function CustomerDetailPage() {
 
   const handleApproveCustomer = async () => {
     if (!customer?.onboarding?.id) {
-      showToast('No onboarding record found', 'error');
+      showToast("No onboarding record found", "error");
       return;
     }
 
@@ -199,10 +214,10 @@ export default function CustomerDetailPage() {
       setIsSubmitting(true);
       await adminApiClient.approveCustomerOnboarding(customer.onboarding.id);
       setApproveDialogOpen(false);
-      showToast('Customer approved successfully', 'success');
+      showToast("Customer approved successfully", "success");
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to approve customer: ${err.message}`, 'error');
+      showToast(`Failed to approve customer: ${err.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -210,25 +225,26 @@ export default function CustomerDetailPage() {
 
   const canApproveCustomer = (): boolean => {
     if (!customer) return false;
-    if (customer.accountStatus !== 'pending') return false;
+    if (customer.accountStatus !== "pending") return false;
     if (!customer.onboarding) return false;
-    if (!['submitted', 'under_review'].includes(customer.onboarding.status)) return false;
-    const allDocsValid = documents.length > 0 && documents.every(doc => doc.validationStatus === 'valid');
+    if (!["submitted", "under_review"].includes(customer.onboarding.status)) return false;
+    const allDocsValid =
+      documents.length > 0 && documents.every((doc) => doc.validationStatus === "valid");
     return allDocsValid;
   };
 
   const statusBadgeClass = (status: string): string => {
     switch (status) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'suspended':
-        return 'bg-red-100 text-red-800';
-      case 'deactivated':
-        return 'bg-gray-100 text-gray-800';
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "suspended":
+        return "bg-red-100 text-red-800";
+      case "deactivated":
+        return "bg-gray-100 text-gray-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -252,7 +268,7 @@ export default function CustomerDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Customer</div>
-          <p className="text-gray-600">{customerQuery.error?.message || 'Customer not found'}</p>
+          <p className="text-gray-600">{customerQuery.error?.message || "Customer not found"}</p>
           <button
             onClick={() => customerQuery.refetch()}
             className="mt-4 mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -260,7 +276,7 @@ export default function CustomerDetailPage() {
             Retry
           </button>
           <button
-            onClick={() => router.push('/admin/portal/customers')}
+            onClick={() => router.push("/admin/portal/customers")}
             className="mt-4 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
           >
             Back to Customers
@@ -276,11 +292,21 @@ export default function CustomerDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => router.push('/admin/portal/customers')}
+            onClick={() => router.push("/admin/portal/customers")}
             className="p-2 hover:bg-gray-100 rounded-md transition-colors"
           >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg
+              className="w-5 h-5 text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
           </button>
           <div>
@@ -289,33 +315,45 @@ export default function CustomerDetailPage() {
             </h1>
             <p className="text-sm text-gray-600">{customer.email}</p>
           </div>
-          <span className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${statusBadgeClass(customer.accountStatus)}`}>
+          <span
+            className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${statusBadgeClass(customer.accountStatus)}`}
+          >
             {customer.accountStatus}
           </span>
         </div>
 
         {/* Actions */}
         <div className="flex space-x-3">
-          {customer.accountStatus === 'active' && (
+          {customer.accountStatus === "active" && (
             <button
               onClick={() => setSuspendDialogOpen(true)}
               disabled={isSubmitting}
               className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                />
               </svg>
               Suspend Account
             </button>
           )}
-          {customer.accountStatus === 'suspended' && (
+          {customer.accountStatus === "suspended" && (
             <button
               onClick={handleReactivate}
               disabled={isSubmitting}
               className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-white hover:bg-green-50 disabled:opacity-50"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               Reactivate Account
             </button>
@@ -327,7 +365,12 @@ export default function CustomerDetailPage() {
               className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               Approve Customer
             </button>
@@ -339,7 +382,12 @@ export default function CustomerDetailPage() {
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
               </svg>
               Reset Device
             </button>
@@ -351,41 +399,41 @@ export default function CustomerDetailPage() {
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
-            onClick={() => setActiveTab('overview')}
+            onClick={() => setActiveTab("overview")}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'overview'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              activeTab === "overview"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
             Overview
           </button>
           <button
-            onClick={() => setActiveTab('documents')}
+            onClick={() => setActiveTab("documents")}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'documents'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              activeTab === "documents"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
             Documents ({documents.length})
           </button>
           <button
-            onClick={() => setActiveTab('activity')}
+            onClick={() => setActiveTab("activity")}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'activity'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              activeTab === "activity"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
             Activity
           </button>
           <button
-            onClick={() => setActiveTab('rfqs')}
+            onClick={() => setActiveTab("rfqs")}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'rfqs'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              activeTab === "rfqs"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             }`}
           >
             RFQs ({customerRfqs.length})
@@ -394,7 +442,7 @@ export default function CustomerDetailPage() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'overview' && (
+      {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Personal Information */}
           <div className="bg-white shadow rounded-lg p-6">
@@ -402,7 +450,9 @@ export default function CustomerDetailPage() {
             <dl className="space-y-3">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Full Name</dt>
-                <dd className="mt-1 text-sm text-gray-900">{customer.firstName} {customer.lastName}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {customer.firstName} {customer.lastName}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Email</dt>
@@ -447,7 +497,9 @@ export default function CustomerDetailPage() {
                 {customer.company.registrationNumber && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Registration Number</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{customer.company.registrationNumber}</dd>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {customer.company.registrationNumber}
+                    </dd>
                   </div>
                 )}
                 {customer.company.address && (
@@ -472,7 +524,9 @@ export default function CustomerDetailPage() {
               <div>
                 <dt className="text-sm font-medium text-gray-500">Status</dt>
                 <dd className="mt-1">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(customer.accountStatus)}`}>
+                  <span
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(customer.accountStatus)}`}
+                  >
                     {customer.accountStatus}
                   </span>
                 </dd>
@@ -520,13 +574,15 @@ export default function CustomerDetailPage() {
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Status</dt>
                   <dd className="mt-1">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      customer.onboarding.status === 'approved'
-                        ? 'bg-green-100 text-green-800'
-                        : customer.onboarding.status === 'rejected'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        customer.onboarding.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : customer.onboarding.status === "rejected"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
                       {customer.onboarding.status}
                     </span>
                   </dd>
@@ -534,38 +590,46 @@ export default function CustomerDetailPage() {
                 {customer.onboarding.submittedAt && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Submitted At</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{formatDate(customer.onboarding.submittedAt)}</dd>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {formatDate(customer.onboarding.submittedAt)}
+                    </dd>
                   </div>
                 )}
                 {customer.onboarding.reviewedAt && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Approved At</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{formatDate(customer.onboarding.reviewedAt)}</dd>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {formatDate(customer.onboarding.reviewedAt)}
+                    </dd>
                   </div>
                 )}
                 {customer.onboarding.reviewedByName && (
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Approved By</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{customer.onboarding.reviewedByName}</dd>
+                    <dd className="mt-1 text-sm text-gray-900">
+                      {customer.onboarding.reviewedByName}
+                    </dd>
                   </div>
                 )}
               </dl>
-              {customer.accountStatus === 'pending' && customer.onboarding.status !== 'approved' && (
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-sm text-amber-800">
-                    {documents.length === 0 ? (
-                      'No documents uploaded. Customer must upload required documents before approval.'
-                    ) : documents.every(doc => doc.validationStatus === 'valid') ? (
-                      'All documents are valid. This customer can be approved.'
-                    ) : (
-                      <>
-                        <strong>Documents pending review:</strong>{' '}
-                        {documents.filter(doc => doc.validationStatus !== 'valid').length} document(s) need attention before approval.
-                      </>
-                    )}
-                  </p>
-                </div>
-              )}
+              {customer.accountStatus === "pending" &&
+                customer.onboarding.status !== "approved" && (
+                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-800">
+                      {documents.length === 0 ? (
+                        "No documents uploaded. Customer must upload required documents before approval."
+                      ) : documents.every((doc) => doc.validationStatus === "valid") ? (
+                        "All documents are valid. This customer can be approved."
+                      ) : (
+                        <>
+                          <strong>Documents pending review:</strong>{" "}
+                          {documents.filter((doc) => doc.validationStatus !== "valid").length}{" "}
+                          document(s) need attention before approval.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                )}
             </div>
           )}
 
@@ -580,25 +644,30 @@ export default function CustomerDetailPage() {
                 {customFields.map((field) => (
                   <div key={field.id} className="bg-gray-50 rounded-lg p-3">
                     <dt className="text-sm font-medium text-gray-500 capitalize">
-                      {field.fieldName.replace(/([A-Z])/g, ' $1').trim()}
+                      {field.fieldName.replace(/([A-Z])/g, " $1").trim()}
                     </dt>
                     <dd className="mt-1 text-sm text-gray-900 flex items-center gap-2">
-                      {field.fieldValue || '-'}
+                      {field.fieldValue || "-"}
                       {field.isVerified ? (
                         <span className="text-green-600" title="Verified">
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                         </span>
                       ) : field.confidence !== null ? (
-                        <span className="text-xs text-gray-400" title={`Confidence: ${Math.round(field.confidence * 100)}%`}>
+                        <span
+                          className="text-xs text-gray-400"
+                          title={`Confidence: ${Math.round(field.confidence * 100)}%`}
+                        >
                           ({Math.round(field.confidence * 100)}%)
                         </span>
                       ) : null}
                     </dd>
-                    <dd className="text-xs text-gray-400 mt-1">
-                      From: {field.documentCategory}
-                    </dd>
+                    <dd className="text-xs text-gray-400 mt-1">From: {field.documentCategory}</dd>
                   </div>
                 ))}
               </dl>
@@ -607,47 +676,88 @@ export default function CustomerDetailPage() {
         </div>
       )}
 
-      {activeTab === 'documents' && (
+      {activeTab === "documents" && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           {documents.length === 0 ? (
             <div className="text-center py-12">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">No documents</h3>
-              <p className="mt-1 text-sm text-gray-500">This customer has not uploaded any documents yet.</p>
+              <p className="mt-1 text-sm text-gray-500">
+                This customer has not uploaded any documents yet.
+              </p>
             </div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Document Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    File Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Uploaded
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Confidence
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {documents.map((doc) => (
-                  <tr key={doc.id} className={doc.validationStatus === 'manual_review' ? 'bg-yellow-50' : ''}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{doc.documentType}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{doc.fileName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(doc.uploadedAt)}</td>
+                  <tr
+                    key={doc.id}
+                    className={doc.validationStatus === "manual_review" ? "bg-yellow-50" : ""}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {doc.documentType}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {doc.fileName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(doc.uploadedAt)}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        doc.validationStatus === 'valid' ? 'bg-green-100 text-green-800' :
-                        doc.validationStatus === 'manual_review' ? 'bg-yellow-100 text-yellow-800' :
-                        doc.validationStatus === 'invalid' ? 'bg-red-100 text-red-800' :
-                        doc.validationStatus === 'failed' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {doc.validationStatus || 'pending'}
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          doc.validationStatus === "valid"
+                            ? "bg-green-100 text-green-800"
+                            : doc.validationStatus === "manual_review"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : doc.validationStatus === "invalid"
+                                ? "bg-red-100 text-red-800"
+                                : doc.validationStatus === "failed"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {doc.validationStatus || "pending"}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {doc.verificationConfidence != null ? `${Math.round(doc.verificationConfidence * 100)}%` : '-'}
+                      {doc.verificationConfidence != null
+                        ? `${Math.round(doc.verificationConfidence * 100)}%`
+                        : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                       <button
@@ -671,15 +781,25 @@ export default function CustomerDetailPage() {
         </div>
       )}
 
-      {activeTab === 'activity' && (
+      {activeTab === "activity" && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">Login History</h3>
           </div>
           {loginHistory.length === 0 ? (
             <div className="text-center py-12">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">No login activity</h3>
               <p className="mt-1 text-sm text-gray-500">This customer has not logged in yet.</p>
@@ -688,32 +808,54 @@ export default function CustomerDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Agent</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Timestamp
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    IP Address
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User Agent
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Result
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {loginHistory.map((log) => (
                   <tr key={log.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(log.timestamp)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{log.ipAddress}</td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{log.userAgent}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatDate(log.timestamp)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {log.ipAddress}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {log.userAgent}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       {log.success ? (
                         <span className="text-green-600 flex items-center">
                           <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                           Success
                         </span>
                       ) : (
                         <span className="text-red-600 flex items-center">
                           <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                              clipRule="evenodd"
+                            />
                           </svg>
-                          {log.failureReason || 'Failed'}
+                          {log.failureReason || "Failed"}
                         </span>
                       )}
                     </td>
@@ -725,26 +867,50 @@ export default function CustomerDetailPage() {
         </div>
       )}
 
-      {activeTab === 'rfqs' && (
+      {activeTab === "rfqs" && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           {customerRfqs.length === 0 ? (
             <div className="text-center py-12">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
               <h3 className="mt-2 text-sm font-medium text-gray-900">No RFQs</h3>
-              <p className="mt-1 text-sm text-gray-500">This customer has not created any RFQs yet.</p>
+              <p className="mt-1 text-sm text-gray-500">
+                This customer has not created any RFQs yet.
+              </p>
             </div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Project
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Items
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Created
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Updated
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -761,7 +927,7 @@ export default function CustomerDetailPage() {
                       <StatusBadge status={rfq.status} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {rfq.itemCount} item{rfq.itemCount !== 1 ? 's' : ''}
+                      {rfq.itemCount} item{rfq.itemCount !== 1 ? "s" : ""}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDateZA(rfq.createdAt)}
@@ -779,9 +945,24 @@ export default function CustomerDetailPage() {
                           title="View a read-only summary of this RFQ draft"
                           className="inline-flex items-center px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
                         >
-                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          <svg
+                            className="w-4 h-4 mr-1.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
                           </svg>
                           View
                         </button>
@@ -793,8 +974,18 @@ export default function CustomerDetailPage() {
                           title="Edit this RFQ draft"
                           className="inline-flex items-center px-3 py-1.5 text-sm text-green-600 hover:text-green-800 hover:bg-green-50 rounded-md transition-colors"
                         >
-                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          <svg
+                            className="w-4 h-4 mr-1.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            />
                           </svg>
                           Edit
                         </button>
@@ -814,7 +1005,8 @@ export default function CustomerDetailPage() {
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Suspend Customer Account</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Please provide a reason for suspending this customer account. The customer will be notified.
+              Please provide a reason for suspending this customer account. The customer will be
+              notified.
             </p>
             <textarea
               value={suspendReason}
@@ -827,7 +1019,7 @@ export default function CustomerDetailPage() {
               <button
                 onClick={() => {
                   setSuspendDialogOpen(false);
-                  setSuspendReason('');
+                  setSuspendReason("");
                 }}
                 disabled={isSubmitting}
                 className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
@@ -839,7 +1031,7 @@ export default function CustomerDetailPage() {
                 disabled={isSubmitting}
                 className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50"
               >
-                {isSubmitting ? 'Suspending...' : 'Suspend Account'}
+                {isSubmitting ? "Suspending..." : "Suspend Account"}
               </button>
             </div>
           </div>
@@ -852,8 +1044,18 @@ export default function CustomerDetailPage() {
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-white">Approve Customer</h3>
@@ -861,26 +1063,42 @@ export default function CustomerDetailPage() {
             </div>
             <div className="p-6">
               <p className="text-gray-700 mb-4">
-                You are about to approve <strong>{customer?.firstName} {customer?.lastName}</strong> from <strong>{customer?.company?.name}</strong>.
+                You are about to approve{" "}
+                <strong>
+                  {customer?.firstName} {customer?.lastName}
+                </strong>{" "}
+                from <strong>{customer?.company?.name}</strong>.
               </p>
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                 <h4 className="text-sm font-medium text-green-800 mb-2">This action will:</h4>
                 <ul className="text-sm text-green-700 space-y-1">
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     Activate the customer account
                   </li>
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     Send a confirmation email
                   </li>
                   <li className="flex items-center gap-2">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     Record your approval with timestamp
                   </li>
@@ -902,15 +1120,36 @@ export default function CustomerDetailPage() {
                   {isSubmitting ? (
                     <>
                       <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Approving...
                     </>
                   ) : (
                     <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                       Approve Customer
                     </>
@@ -938,7 +1177,9 @@ export default function CustomerDetailPage() {
         onReject={handleRejectDocument}
         onReVerify={handleReVerifyDocument}
         isSubmitting={isSubmitting}
-        fetchPreviewImages={(documentId) => adminApiClient.getCustomerDocumentPreviewImages(documentId)}
+        fetchPreviewImages={(documentId) =>
+          adminApiClient.getCustomerDocumentPreviewImages(documentId)
+        }
       />
     </div>
   );

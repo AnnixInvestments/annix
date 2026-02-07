@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { PUMPS_MODULE, PUMP_TYPES, PUMP_SPECIFICATIONS } from '@/app/lib/config/pumps';
-import { Breadcrumb } from '../../components/Breadcrumb';
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { PUMP_SPECIFICATIONS, PUMP_TYPES, PUMPS_MODULE } from "@/app/lib/config/pumps";
+import { Breadcrumb } from "../../components/Breadcrumb";
 
 interface MockPumpOrderDetail {
   id: number;
@@ -16,7 +16,7 @@ interface MockPumpOrderDetail {
   };
   serviceType: string;
   pumpType: string;
-  status: 'pending' | 'quoted' | 'approved' | 'in_progress' | 'completed' | 'cancelled';
+  status: "pending" | "quoted" | "approved" | "in_progress" | "completed" | "cancelled";
   specifications: {
     flowRateM3h: number;
     headM: number;
@@ -50,35 +50,35 @@ interface MockPumpOrderDetail {
 
 const MOCK_ORDER: MockPumpOrderDetail = {
   id: 1,
-  orderNumber: 'PMP-2026-001',
+  orderNumber: "PMP-2026-001",
   customer: {
-    name: 'Sasol Mining',
-    contact: 'John van der Merwe',
-    email: 'john.vdm@sasol.com',
-    phone: '+27 11 555 0123',
+    name: "Sasol Mining",
+    contact: "John van der Merwe",
+    email: "john.vdm@sasol.com",
+    phone: "+27 11 555 0123",
   },
-  serviceType: 'new_pump',
-  pumpType: 'centrifugal_end_suction',
-  status: 'quoted',
+  serviceType: "new_pump",
+  pumpType: "centrifugal_end_suction",
+  status: "quoted",
   specifications: {
     flowRateM3h: 250,
     headM: 45,
     temperatureC: 65,
-    fluidType: 'water',
+    fluidType: "water",
     viscosityCp: 1,
     solidsPercent: 0,
   },
   materials: {
-    casing: 'cast_iron',
-    impeller: 'stainless_316',
-    shaft: 'stainless_316',
-    sealType: 'mechanical_single',
+    casing: "cast_iron",
+    impeller: "stainless_316",
+    shaft: "stainless_316",
+    sealType: "mechanical_single",
   },
   motor: {
     powerKw: 45,
     voltage: 525,
     frequency: 50,
-    enclosure: 'TEFC',
+    enclosure: "TEFC",
   },
   pricing: {
     unitPrice: 145000,
@@ -86,27 +86,27 @@ const MOCK_ORDER: MockPumpOrderDetail = {
     discount: 0,
     totalPrice: 145000,
   },
-  notes: 'Customer requires delivery within 6 weeks. Installation support needed.',
-  createdAt: '2026-02-01',
-  updatedAt: '2026-02-03',
+  notes: "Customer requires delivery within 6 weeks. Installation support needed.",
+  createdAt: "2026-02-01",
+  updatedAt: "2026-02-03",
 };
 
-const STATUS_COLORS: Record<MockPumpOrderDetail['status'], string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  quoted: 'bg-blue-100 text-blue-800',
-  approved: 'bg-green-100 text-green-800',
-  in_progress: 'bg-purple-100 text-purple-800',
-  completed: 'bg-gray-100 text-gray-800',
-  cancelled: 'bg-red-100 text-red-800',
+const STATUS_COLORS: Record<MockPumpOrderDetail["status"], string> = {
+  pending: "bg-yellow-100 text-yellow-800",
+  quoted: "bg-blue-100 text-blue-800",
+  approved: "bg-green-100 text-green-800",
+  in_progress: "bg-purple-100 text-purple-800",
+  completed: "bg-gray-100 text-gray-800",
+  cancelled: "bg-red-100 text-red-800",
 };
 
-const STATUS_LABELS: Record<MockPumpOrderDetail['status'], string> = {
-  pending: 'Pending Quote',
-  quoted: 'Quoted',
-  approved: 'Approved',
-  in_progress: 'In Progress',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
+const STATUS_LABELS: Record<MockPumpOrderDetail["status"], string> = {
+  pending: "Pending Quote",
+  quoted: "Quoted",
+  approved: "Approved",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
 };
 
 function InfoRow({ label, value }: { label: string; value: string | number | null | undefined }) {
@@ -114,14 +114,14 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
     <div className="py-3 sm:grid sm:grid-cols-3 sm:gap-4">
       <dt className="text-sm font-medium text-gray-500">{label}</dt>
       <dd className="mt-1 text-sm text-gray-900 sm:col-span-2 sm:mt-0">
-        {value !== null && value !== undefined ? value : '-'}
+        {value !== null && value !== undefined ? value : "-"}
       </dd>
     </div>
   );
 }
 
 function formatCurrency(value: number): string {
-  return `R ${value.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `R ${value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function PumpOrderDetailPage() {
@@ -138,18 +138,20 @@ export default function PumpOrderDetailPage() {
 
   const pumpTypeLabel = (value: string): string => {
     const type = PUMP_TYPES.find((t) => t.value === value);
-    return type?.label || value.replace(/_/g, ' ');
+    return type?.label || value.replace(/_/g, " ");
   };
 
-  const materialLabel = (type: 'casing' | 'impeller' | 'shaft', value: string): string => {
-    const materials = PUMP_SPECIFICATIONS.materials[type === 'shaft' ? 'shaft' : type];
+  const materialLabel = (type: "casing" | "impeller" | "shaft", value: string): string => {
+    const materials = PUMP_SPECIFICATIONS.materials[type === "shaft" ? "shaft" : type];
     const material = materials?.find((m) => m.value === value);
-    return material?.label || value.replace(/_/g, ' ');
+    return material?.label || value.replace(/_/g, " ");
   };
 
   const sealTypeLabel = (value: string): string => {
-    const seal = PUMP_SPECIFICATIONS.materials.seal.find((s: { value: string; label: string }) => s.value === value);
-    return seal?.label || value.replace(/_/g, ' ');
+    const seal = PUMP_SPECIFICATIONS.materials.seal.find(
+      (s: { value: string; label: string }) => s.value === value,
+    );
+    return seal?.label || value.replace(/_/g, " ");
   };
 
   if (!order) {
@@ -170,7 +172,7 @@ export default function PumpOrderDetailPage() {
     <div className="space-y-6">
       <Breadcrumb
         items={[
-          { label: 'Orders', href: '/admin/portal/pumps/orders' },
+          { label: "Orders", href: "/admin/portal/pumps/orders" },
           { label: order.orderNumber },
         ]}
       />
@@ -179,7 +181,9 @@ export default function PumpOrderDetailPage() {
         <div>
           <div className="flex items-center space-x-3">
             <h1 className="text-2xl font-bold text-gray-900">{order.orderNumber}</h1>
-            <span className={`px-3 py-1 text-sm font-medium rounded-full ${STATUS_COLORS[order.status]}`}>
+            <span
+              className={`px-3 py-1 text-sm font-medium rounded-full ${STATUS_COLORS[order.status]}`}
+            >
               {STATUS_LABELS[order.status]}
             </span>
           </div>
@@ -189,7 +193,7 @@ export default function PumpOrderDetailPage() {
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => router.push('/admin/portal/pumps/orders')}
+            onClick={() => router.push("/admin/portal/pumps/orders")}
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             Back
@@ -199,7 +203,12 @@ export default function PumpOrderDetailPage() {
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
             Edit Order
           </button>
@@ -222,7 +231,10 @@ export default function PumpOrderDetailPage() {
                   <InfoRow label="Viscosity" value={`${order.specifications.viscosityCp} cP`} />
                 )}
                 {order.specifications.solidsPercent !== undefined && (
-                  <InfoRow label="Solids Content" value={`${order.specifications.solidsPercent}%`} />
+                  <InfoRow
+                    label="Solids Content"
+                    value={`${order.specifications.solidsPercent}%`}
+                  />
                 )}
               </dl>
             </div>
@@ -234,9 +246,12 @@ export default function PumpOrderDetailPage() {
             </div>
             <div className="px-6 py-4">
               <dl className="divide-y divide-gray-200">
-                <InfoRow label="Casing" value={materialLabel('casing', order.materials.casing)} />
-                <InfoRow label="Impeller" value={materialLabel('impeller', order.materials.impeller)} />
-                <InfoRow label="Shaft" value={materialLabel('shaft', order.materials.shaft)} />
+                <InfoRow label="Casing" value={materialLabel("casing", order.materials.casing)} />
+                <InfoRow
+                  label="Impeller"
+                  value={materialLabel("impeller", order.materials.impeller)}
+                />
+                <InfoRow label="Shaft" value={materialLabel("shaft", order.materials.shaft)} />
                 <InfoRow label="Seal Type" value={sealTypeLabel(order.materials.sealType)} />
               </dl>
             </div>
@@ -305,7 +320,9 @@ export default function PumpOrderDetailPage() {
               <dl className="space-y-3">
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-500">Unit Price</dt>
-                  <dd className="text-sm text-gray-900">{formatCurrency(order.pricing.unitPrice)}</dd>
+                  <dd className="text-sm text-gray-900">
+                    {formatCurrency(order.pricing.unitPrice)}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-500">Quantity</dt>
@@ -314,12 +331,16 @@ export default function PumpOrderDetailPage() {
                 {order.pricing.discount > 0 && (
                   <div className="flex justify-between">
                     <dt className="text-sm text-gray-500">Discount</dt>
-                    <dd className="text-sm text-green-600">-{formatCurrency(order.pricing.discount)}</dd>
+                    <dd className="text-sm text-green-600">
+                      -{formatCurrency(order.pricing.discount)}
+                    </dd>
                   </div>
                 )}
                 <div className="flex justify-between pt-3 border-t border-gray-200">
                   <dt className="text-sm font-medium text-gray-900">Total</dt>
-                  <dd className="text-lg font-bold text-gray-900">{formatCurrency(order.pricing.totalPrice)}</dd>
+                  <dd className="text-lg font-bold text-gray-900">
+                    {formatCurrency(order.pricing.totalPrice)}
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -367,15 +388,25 @@ export default function PumpOrderDetailPage() {
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex">
-          <svg className="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <svg
+            className="h-5 w-5 text-yellow-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
           </svg>
           <div className="ml-3">
             <h3 className="text-sm font-medium text-yellow-800">Demo Data</h3>
             <div className="mt-2 text-sm text-yellow-700">
               <p>
-                This page displays sample data for demonstration purposes. Connect to the pump orders
-                API to display real order data from your system.
+                This page displays sample data for demonstration purposes. Connect to the pump
+                orders API to display real order data from your system.
               </p>
             </div>
           </div>

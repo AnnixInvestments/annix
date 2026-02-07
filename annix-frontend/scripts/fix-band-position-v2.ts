@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content: string = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content: string = fs.readFileSync(filePath, "utf8");
 
 // Fix Band 1 and Band 2 in Review box (amber)
 const oldReviewBandRow = `                      <div className="flex justify-between items-center">
@@ -16,9 +16,9 @@ const newReviewBandRow = `                      <div className="flex gap-6 items
 
 if (content.includes(oldReviewBandRow)) {
   content = content.replace(oldReviewBandRow, newReviewBandRow);
-  console.log('Fixed Band 1 and Band 2 in Review box (amber)');
+  console.log("Fixed Band 1 and Band 2 in Review box (amber)");
 } else {
-  console.log('Could not find Band row in Review box');
+  console.log("Could not find Band row in Review box");
 }
 
 // Fix Band 1 and Band 2 in LOCKED box (green)
@@ -34,10 +34,10 @@ const newLockedBandRow = `                      <div className="flex gap-6 items
 
 if (content.includes(oldLockedBandRow)) {
   content = content.replace(oldLockedBandRow, newLockedBandRow);
-  console.log('Fixed Band 1 and Band 2 in LOCKED box (green)');
+  console.log("Fixed Band 1 and Band 2 in LOCKED box (green)");
 } else {
-  console.log('Could not find Band row in LOCKED box');
+  console.log("Could not find Band row in LOCKED box");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('File saved');
+console.log("File saved");

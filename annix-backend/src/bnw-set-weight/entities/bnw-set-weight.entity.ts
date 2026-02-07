@@ -1,31 +1,31 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
   Index,
-} from 'typeorm';
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
 
-@Entity('bnw_set_weights')
-@Index(['pressure_class', 'nominal_bore_mm'], { unique: true })
+@Entity("bnw_set_weights")
+@Index(["pressure_class", "nominal_bore_mm"], { unique: true })
 export class BnwSetWeight {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ type: "varchar", length: 50 })
   pressure_class: string;
 
-  @Column({ type: 'integer' })
+  @Column({ type: "integer" })
   nominal_bore_mm: number;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ type: "varchar", length: 50 })
   bolt_size: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 4 })
+  @Column({ type: "decimal", precision: 10, scale: 4 })
   weight_per_hole_kg: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: "integer" })
   num_holes: number;
 
   @CreateDateColumn()

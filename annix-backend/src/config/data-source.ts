@@ -1,24 +1,23 @@
-import { DataSource } from 'typeorm';
-import { config as dotenvConfig } from 'dotenv';
-import path from 'path';
+import path from "node:path";
+import { config as dotenvConfig } from "dotenv";
+import { DataSource } from "typeorm";
 
-dotenvConfig({ path: '.env' });
+dotenvConfig({ path: ".env" });
 
-const srcDirectory = path.resolve(process.cwd(), 'src');
+const srcDirectory = path.resolve(process.cwd(), "src");
 
 export const AppDataSource = new DataSource({
-  type: 'postgres',
+  type: "postgres",
   host: process.env.DATABASE_HOST,
   port: Number(process.env.DATABASE_PORT),
   username: process.env.DATABASE_USERNAME,
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
-  entities: [path.join(srcDirectory, '**/*.entity{.ts,.js}')],
-  migrations: [path.join(srcDirectory, 'migrations/*{.ts,.js}')],
+  entities: [path.join(srcDirectory, "**/*.entity{.ts,.js}")],
+  migrations: [path.join(srcDirectory, "migrations/*{.ts,.js}")],
   synchronize: false,
-  logging: process.env.NODE_ENV !== 'production',
-  ssl:
-    process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  logging: process.env.NODE_ENV !== "production",
+  ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : false,
   extra: {
     max: 10,
     min: 2,

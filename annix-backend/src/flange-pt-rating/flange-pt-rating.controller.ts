@@ -1,27 +1,27 @@
-import { Controller, Get, Post, Body, Query } from '@nestjs/common';
-import { FlangePtRatingService } from './flange-pt-rating.service';
+import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 import {
-  CreateFlangePtRatingDto,
   BulkCreateFlangePtRatingDto,
-} from './dto/create-flange-pt-rating.dto';
+  CreateFlangePtRatingDto,
+} from "./dto/create-flange-pt-rating.dto";
+import { FlangePtRatingService } from "./flange-pt-rating.service";
 
-@Controller('flange-pt-ratings')
+@Controller("flange-pt-ratings")
 export class FlangePtRatingController {
   constructor(private readonly ptRatingService: FlangePtRatingService) {}
 
-  @Get('recommendations')
+  @Get("recommendations")
   getPtRecommendations(
-    @Query('standardId') standardId: string,
-    @Query('workingPressureBar') workingPressureBar: string,
-    @Query('temperatureCelsius') temperatureCelsius: string,
-    @Query('materialGroup') materialGroup?: string,
-    @Query('currentPressureClassId') currentPressureClassId?: string,
+    @Query("standardId") standardId: string,
+    @Query("workingPressureBar") workingPressureBar: string,
+    @Query("temperatureCelsius") temperatureCelsius: string,
+    @Query("materialGroup") materialGroup?: string,
+    @Query("currentPressureClassId") currentPressureClassId?: string,
   ) {
     return this.ptRatingService.getPtRecommendations(
       Number(standardId),
       Number(workingPressureBar),
       Number(temperatureCelsius),
-      materialGroup || 'Carbon Steel A105 (Group 1.1)',
+      materialGroup || "Carbon Steel A105 (Group 1.1)",
       currentPressureClassId ? Number(currentPressureClassId) : undefined,
     );
   }
@@ -31,7 +31,7 @@ export class FlangePtRatingController {
     return this.ptRatingService.create(dto);
   }
 
-  @Post('bulk')
+  @Post("bulk")
   bulkCreate(@Body() dto: BulkCreateFlangePtRatingDto) {
     return this.ptRatingService.bulkCreate(dto);
   }
@@ -41,41 +41,41 @@ export class FlangePtRatingController {
     return this.ptRatingService.findAll();
   }
 
-  @Get('material-groups')
+  @Get("material-groups")
   getMaterialGroups() {
     return this.ptRatingService.getAvailableMaterialGroups();
   }
 
-  @Get('by-pressure-class')
-  findByPressureClass(@Query('pressureClassId') pressureClassId: string) {
+  @Get("by-pressure-class")
+  findByPressureClass(@Query("pressureClassId") pressureClassId: string) {
     return this.ptRatingService.findByPressureClass(Number(pressureClassId));
   }
 
-  @Get('max-pressure')
+  @Get("max-pressure")
   getMaxPressure(
-    @Query('pressureClassId') pressureClassId: string,
-    @Query('temperatureCelsius') temperatureCelsius: string,
-    @Query('materialGroup') materialGroup?: string,
+    @Query("pressureClassId") pressureClassId: string,
+    @Query("temperatureCelsius") temperatureCelsius: string,
+    @Query("materialGroup") materialGroup?: string,
   ) {
     return this.ptRatingService.getMaxPressureAtTemperature(
       Number(pressureClassId),
       Number(temperatureCelsius),
-      materialGroup || 'Carbon Steel A105 (Group 1.1)',
+      materialGroup || "Carbon Steel A105 (Group 1.1)",
     );
   }
 
-  @Get('recommended-class')
+  @Get("recommended-class")
   getRecommendedClass(
-    @Query('standardId') standardId: string,
-    @Query('workingPressureBar') workingPressureBar: string,
-    @Query('temperatureCelsius') temperatureCelsius: string,
-    @Query('materialGroup') materialGroup?: string,
+    @Query("standardId") standardId: string,
+    @Query("workingPressureBar") workingPressureBar: string,
+    @Query("temperatureCelsius") temperatureCelsius: string,
+    @Query("materialGroup") materialGroup?: string,
   ) {
     return this.ptRatingService.getRecommendedPressureClass(
       Number(standardId),
       Number(workingPressureBar),
       Number(temperatureCelsius),
-      materialGroup || 'Carbon Steel A105 (Group 1.1)',
+      materialGroup || "Carbon Steel A105 (Group 1.1)",
     );
   }
 }

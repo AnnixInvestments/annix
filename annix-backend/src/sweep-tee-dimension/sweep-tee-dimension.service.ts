@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { SweepTeeDimension } from './entities/sweep-tee-dimension.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { SweepTeeDimension } from "./entities/sweep-tee-dimension.entity";
 
 @Injectable()
 export class SweepTeeDimensionService {
@@ -13,8 +13,8 @@ export class SweepTeeDimensionService {
   async findAll(): Promise<SweepTeeDimension[]> {
     return this.sweepTeeDimensionRepository.find({
       order: {
-        nominalBoreMm: 'ASC',
-        radiusType: 'ASC',
+        nominalBoreMm: "ASC",
+        radiusType: "ASC",
       },
     });
   }
@@ -23,7 +23,7 @@ export class SweepTeeDimensionService {
     return this.sweepTeeDimensionRepository.find({
       where: { nominalBoreMm },
       order: {
-        radiusType: 'ASC',
+        radiusType: "ASC",
       },
     });
   }
@@ -32,7 +32,7 @@ export class SweepTeeDimensionService {
     return this.sweepTeeDimensionRepository.find({
       where: { radiusType },
       order: {
-        nominalBoreMm: 'ASC',
+        nominalBoreMm: "ASC",
       },
     });
   }
@@ -51,9 +51,9 @@ export class SweepTeeDimensionService {
 
   async availableNominalBores(): Promise<number[]> {
     const result = await this.sweepTeeDimensionRepository
-      .createQueryBuilder('st')
-      .select('DISTINCT st.nominalBoreMm', 'nominalBoreMm')
-      .orderBy('st.nominalBoreMm', 'ASC')
+      .createQueryBuilder("st")
+      .select("DISTINCT st.nominalBoreMm", "nominalBoreMm")
+      .orderBy("st.nominalBoreMm", "ASC")
       .getRawMany();
 
     return result.map((r) => r.nominalBoreMm);
@@ -61,8 +61,8 @@ export class SweepTeeDimensionService {
 
   async availableRadiusTypes(): Promise<string[]> {
     const result = await this.sweepTeeDimensionRepository
-      .createQueryBuilder('st')
-      .select('DISTINCT st.radiusType', 'radiusType')
+      .createQueryBuilder("st")
+      .select("DISTINCT st.radiusType", "radiusType")
       .getRawMany();
 
     return result.map((r) => r.radiusType).sort();

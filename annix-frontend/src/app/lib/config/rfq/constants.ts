@@ -14,7 +14,7 @@ export const steelDensity = {
 export const WORKING_PRESSURE_BAR = [6, 10, 16, 25, 40, 63, 100, 160, 250, 320, 400, 630] as const;
 
 export const WORKING_TEMPERATURE_CELSIUS = [
-  -196, -101, -46, -29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600
+  -196, -101, -46, -29, -20, 0, 20, 50, 80, 120, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600,
 ] as const;
 
 export const TEMPERATURE_CATEGORIES = {
@@ -27,20 +27,20 @@ export const TEMPERATURE_CATEGORIES = {
 } as const;
 
 export const STANDARD_PIPE_LENGTHS_M = [
-  { value: 6, label: '6m', description: 'Metric standard', isMetric: true },
-  { value: 6.1, label: '6.1m', description: '20ft imperial', isMetric: false },
-  { value: 9, label: '9m', description: 'Metric standard', isMetric: true },
-  { value: 9.144, label: '9.144m', description: '30ft imperial', isMetric: false },
-  { value: 12, label: '12m', description: 'Metric standard', isMetric: true },
-  { value: 12.192, label: '12.192m', description: '40ft imperial', isMetric: false },
+  { value: 6, label: "6m", description: "Metric standard", isMetric: true },
+  { value: 6.1, label: "6.1m", description: "20ft imperial", isMetric: false },
+  { value: 9, label: "9m", description: "Metric standard", isMetric: true },
+  { value: 9.144, label: "9.144m", description: "30ft imperial", isMetric: false },
+  { value: 12, label: "12m", description: "Metric standard", isMetric: true },
+  { value: 12.192, label: "12.192m", description: "40ft imperial", isMetric: false },
 ] as const;
 
 export const PUDDLE_PIPE_LENGTHS_M = [
-  { value: 1, label: '1m', description: 'Short puddle pipe' },
-  { value: 1.5, label: '1.5m', description: 'Standard puddle pipe' },
-  { value: 2, label: '2m', description: 'Standard puddle pipe' },
-  { value: 2.5, label: '2.5m', description: 'Medium puddle pipe' },
-  { value: 3, label: '3m', description: 'Long puddle pipe' },
+  { value: 1, label: "1m", description: "Short puddle pipe" },
+  { value: 1.5, label: "1.5m", description: "Standard puddle pipe" },
+  { value: 2, label: "2m", description: "Standard puddle pipe" },
+  { value: 2.5, label: "2.5m", description: "Medium puddle pipe" },
+  { value: 3, label: "3m", description: "Long puddle pipe" },
 ] as const;
 
 export const METRIC_PIPE_LENGTHS_M = [6, 9, 12] as const;
@@ -89,8 +89,8 @@ export const RETAINING_RING_CONFIG = {
 export const WELD_INCREMENT_MM = 0.5;
 
 export const DEFAULT_NOMINAL_BORES = [
-  15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300,
-  350, 400, 450, 500, 600, 700, 750, 800, 900, 1000, 1050, 1200
+  15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 750,
+  800, 900, 1000, 1050, 1200,
 ] as const;
 
 export const SABS_1123_PRESSURE_KPA = [600, 1000, 1600, 2500, 4000] as const;

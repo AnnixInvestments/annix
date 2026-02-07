@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { browserBaseUrl } from '@/lib/api-config';
+import { useCallback, useEffect, useState } from "react";
+import { browserBaseUrl } from "@/lib/api-config";
 
 export interface ExpiringDocument {
   id: number;
@@ -9,7 +9,7 @@ export interface ExpiringDocument {
   fileName: string;
   expiryDate: string;
   daysUntilExpiry: number;
-  ownerType: 'customer' | 'supplier';
+  ownerType: "customer" | "supplier";
   ownerId: number;
 }
 
@@ -19,7 +19,7 @@ export interface ExpiryCheckResult {
 }
 
 interface UseDocumentExpiryCheckOptions {
-  userType: 'customer' | 'supplier';
+  userType: "customer" | "supplier";
   enabled?: boolean;
   checkIntervalMs?: number;
 }
@@ -37,7 +37,7 @@ export function useDocumentExpiryCheck({
   const checkExpiry = useCallback(async () => {
     if (!enabled) return;
 
-    const token = localStorage.getItem('token') || localStorage.getItem('customerToken');
+    const token = localStorage.getItem("token") || localStorage.getItem("customerToken");
     if (!token) return;
 
     setIsLoading(true);
@@ -45,25 +45,26 @@ export function useDocumentExpiryCheck({
 
     try {
       const baseUrl = browserBaseUrl();
-      const endpoint = userType === 'customer'
-        ? `${baseUrl}/customer/documents/expiry-status`
-        : `${baseUrl}/supplier/documents/expiry-status`;
+      const endpoint =
+        userType === "customer"
+          ? `${baseUrl}/customer/documents/expiry-status`
+          : `${baseUrl}/supplier/documents/expiry-status`;
 
       const response = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to check document expiry');
+        throw new Error("Failed to check document expiry");
       }
 
       const result: ExpiryCheckResult = await response.json();
       setExpiryResult(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setIsLoading(false);
     }
@@ -79,14 +80,14 @@ export function useDocumentExpiryCheck({
   }, [checkExpiry, enabled, checkIntervalMs]);
 
   const dismissDocument = useCallback((documentId: number) => {
-    setDismissedIds(prev => new Set([...prev, documentId]));
+    setDismissedIds((prev) => new Set([...prev, documentId]));
   }, []);
 
   const dismissAll = useCallback(() => {
     if (expiryResult) {
       const allIds = [
-        ...expiryResult.expiringSoon.map(d => d.id),
-        ...expiryResult.expired.map(d => d.id),
+        ...expiryResult.expiringSoon.map((d) => d.id),
+        ...expiryResult.expired.map((d) => d.id),
       ];
       setDismissedIds(new Set(allIds));
     }
@@ -94,8 +95,8 @@ export function useDocumentExpiryCheck({
 
   const filteredResult: ExpiryCheckResult | null = expiryResult
     ? {
-        expiringSoon: expiryResult.expiringSoon.filter(d => !dismissedIds.has(d.id)),
-        expired: expiryResult.expired.filter(d => !dismissedIds.has(d.id)),
+        expiringSoon: expiryResult.expiringSoon.filter((d) => !dismissedIds.has(d.id)),
+        expired: expiryResult.expired.filter((d) => !dismissedIds.has(d.id)),
       }
     : null;
 

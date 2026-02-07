@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 import {
-  pvcApi,
-  NOMINAL_DIAMETERS,
   FITTING_TYPES,
+  NOMINAL_DIAMETERS,
   PvcFittingCostResponse,
   PvcFittingType,
-} from '@/app/lib/pvc';
+  pvcApi,
+} from "@/app/lib/pvc";
 
 interface FittingEntry {
   id: string;
@@ -19,7 +19,11 @@ interface FittingEntry {
 interface PvcFittingCalculatorProps {
   pricePerKg: number;
   cementJointPrice?: number;
-  onCalculationComplete?: (results: PvcFittingCostResponse[], totalWeight: number, totalCost: number) => void;
+  onCalculationComplete?: (
+    results: PvcFittingCostResponse[],
+    totalWeight: number,
+    totalCost: number,
+  ) => void;
 }
 
 export default function PvcFittingCalculator({
@@ -28,7 +32,7 @@ export default function PvcFittingCalculator({
   onCalculationComplete,
 }: PvcFittingCalculatorProps) {
   const [entries, setEntries] = useState<FittingEntry[]>([
-    { id: crypto.randomUUID(), fittingTypeCode: 'elbow_90', nominalDiameter: 110, quantity: 1 },
+    { id: crypto.randomUUID(), fittingTypeCode: "elbow_90", nominalDiameter: 110, quantity: 1 },
   ]);
   const [fittingTypes, setFittingTypes] = useState<PvcFittingType[]>([]);
   const [results, setResults] = useState<(PvcFittingCostResponse | null)[]>([]);
@@ -36,9 +40,12 @@ export default function PvcFittingCalculator({
   const [errors, setErrors] = useState<(string | null)[]>([]);
 
   useEffect(() => {
-    pvcApi.fittingTypes.getAll().then(setFittingTypes).catch(() => {
-      setFittingTypes([]);
-    });
+    pvcApi.fittingTypes
+      .getAll()
+      .then(setFittingTypes)
+      .catch(() => {
+        setFittingTypes([]);
+      });
   }, []);
 
   const calculateEntry = async (index: number) => {
@@ -78,7 +85,7 @@ export default function PvcFittingCalculator({
     } catch (err) {
       setErrors((prev) => {
         const next = [...prev];
-        next[index] = err instanceof Error ? err.message : 'Calculation failed';
+        next[index] = err instanceof Error ? err.message : "Calculation failed";
         return next;
       });
       setResults((prev) => {
@@ -112,7 +119,7 @@ export default function PvcFittingCalculator({
   const addEntry = () => {
     setEntries((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), fittingTypeCode: 'elbow_90', nominalDiameter: 110, quantity: 1 },
+      { id: crypto.randomUUID(), fittingTypeCode: "elbow_90", nominalDiameter: 110, quantity: 1 },
     ]);
     setResults((prev) => [...prev, null]);
     setErrors((prev) => [...prev, null]);
@@ -130,7 +137,7 @@ export default function PvcFittingCalculator({
   const updateEntry = <K extends keyof FittingEntry>(
     index: number,
     field: K,
-    value: FittingEntry[K]
+    value: FittingEntry[K],
   ) => {
     setEntries((prev) => {
       const next = [...prev];
@@ -144,20 +151,23 @@ export default function PvcFittingCalculator({
     });
   };
 
-  const displayFittingTypes = fittingTypes.length > 0 ? fittingTypes : FITTING_TYPES.map((f) => ({
-    id: 0,
-    code: f.code,
-    name: f.name,
-    numJoints: f.joints,
-    isSocket: true,
-    isFlanged: false,
-    isThreaded: false,
-    category: f.category,
-    angleDegrees: null,
-    description: f.description,
-    displayOrder: 0,
-    isActive: true,
-  }));
+  const displayFittingTypes =
+    fittingTypes.length > 0
+      ? fittingTypes
+      : FITTING_TYPES.map((f) => ({
+          id: 0,
+          code: f.code,
+          name: f.name,
+          numJoints: f.joints,
+          isSocket: true,
+          isFlanged: false,
+          isThreaded: false,
+          category: f.category,
+          angleDegrees: null,
+          description: f.description,
+          displayOrder: 0,
+          isActive: true,
+        }));
 
   const fittingInfo = (code: string) => {
     const found = displayFittingTypes.find((f) => f.code === code);
@@ -169,7 +179,7 @@ export default function PvcFittingCalculator({
   const totalJoints = results.reduce((sum, r, i) => {
     const entry = entries[i];
     const info = fittingInfo(entry.fittingTypeCode);
-    return sum + (info.numJoints * entry.quantity);
+    return sum + info.numJoints * entry.quantity;
   }, 0);
 
   return (
@@ -211,11 +221,11 @@ export default function PvcFittingCalculator({
                   </label>
                   <select
                     value={entry.fittingTypeCode}
-                    onChange={(e) => updateEntry(index, 'fittingTypeCode', e.target.value)}
+                    onChange={(e) => updateEntry(index, "fittingTypeCode", e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   >
                     {displayFittingTypes
-                      .filter((f) => f.code !== 'straight_pipe')
+                      .filter((f) => f.code !== "straight_pipe")
                       .map((ft) => (
                         <option key={ft.code} value={ft.code}>
                           {ft.name}
@@ -226,9 +236,7 @@ export default function PvcFittingCalculator({
                     {info.isSocket && <span className="text-blue-600">Socket</span>}
                     {info.isFlanged && <span className="text-purple-600 ml-2">Flanged</span>}
                     {info.isThreaded && <span className="text-orange-600 ml-2">Threaded</span>}
-                    {info.numJoints > 0 && (
-                      <span className="ml-2">({info.numJoints} joints)</span>
-                    )}
+                    {info.numJoints > 0 && <span className="ml-2">({info.numJoints} joints)</span>}
                   </div>
                 </div>
 
@@ -238,7 +246,7 @@ export default function PvcFittingCalculator({
                   </label>
                   <select
                     value={entry.nominalDiameter}
-                    onChange={(e) => updateEntry(index, 'nominalDiameter', Number(e.target.value))}
+                    onChange={(e) => updateEntry(index, "nominalDiameter", Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   >
                     {NOMINAL_DIAMETERS.map((dn) => (
@@ -258,7 +266,7 @@ export default function PvcFittingCalculator({
                     min="1"
                     step="1"
                     value={entry.quantity}
-                    onChange={(e) => updateEntry(index, 'quantity', Number(e.target.value))}
+                    onChange={(e) => updateEntry(index, "quantity", Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                   />
                 </div>
@@ -268,25 +276,25 @@ export default function PvcFittingCalculator({
                 <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Weight:</span>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">Weight:</span>{" "}
                       <span className="font-medium text-gray-900 dark:text-white">
                         {result.weightKg.toFixed(2)} kg
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Joints:</span>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">Joints:</span>{" "}
                       <span className="font-medium text-gray-900 dark:text-white">
                         {result.numJoints * entry.quantity}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Joint Cost:</span>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">Joint Cost:</span>{" "}
                       <span className="font-medium text-gray-900 dark:text-white">
                         R {result.cementJointCost.toFixed(2)}
                       </span>
                     </div>
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>{' '}
+                      <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>{" "}
                       <span className="font-medium text-green-600 dark:text-green-400">
                         R {result.totalCost.toFixed(2)}
                       </span>
@@ -328,24 +336,20 @@ export default function PvcFittingCalculator({
 
       {results.some((r) => r !== null) && (
         <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            Summary
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Summary</h3>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Total Weight:</span>{' '}
+              <span className="text-gray-600 dark:text-gray-400">Total Weight:</span>{" "}
               <span className="font-bold text-gray-900 dark:text-white">
                 {totalWeight.toFixed(2)} kg
               </span>
             </div>
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Total Joints:</span>{' '}
-              <span className="font-bold text-blue-600 dark:text-blue-400">
-                {totalJoints}
-              </span>
+              <span className="text-gray-600 dark:text-gray-400">Total Joints:</span>{" "}
+              <span className="font-bold text-blue-600 dark:text-blue-400">{totalJoints}</span>
             </div>
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>{' '}
+              <span className="text-gray-600 dark:text-gray-400">Total Cost:</span>{" "}
               <span className="font-bold text-green-600 dark:text-green-400">
                 R {totalCost.toFixed(2)}
               </span>

@@ -1,24 +1,24 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { StructuralSteelType } from './entities/structural-steel-type.entity';
-import { StructuralSteelSection } from './entities/structural-steel-section.entity';
-import { StructuralSteelGrade } from './entities/structural-steel-grade.entity';
-import { FabricationOperation } from './entities/fabrication-operation.entity';
-import { FabricationComplexity } from './entities/fabrication-complexity.entity';
-import { ShopLaborRate } from './entities/shop-labor-rate.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 import {
-  CalculateSteelWeightDto,
-  CalculatePlateDto,
+  CalculateFabricationCostDto,
   CalculateFlatBarDto,
+  CalculatePlateDto,
   CalculateRoundBarDto,
   CalculateSquareBarDto,
-  SteelCalculationResultDto,
-  CalculateFabricationCostDto,
-  FabricationCostResultDto,
+  CalculateSteelWeightDto,
   FabricationCostBreakdownDto,
+  FabricationCostResultDto,
+  SteelCalculationResultDto,
   UpdateLaborRateDto,
-} from './dto/structural-steel.dto';
+} from "./dto/structural-steel.dto";
+import { FabricationComplexity } from "./entities/fabrication-complexity.entity";
+import { FabricationOperation } from "./entities/fabrication-operation.entity";
+import { ShopLaborRate } from "./entities/shop-labor-rate.entity";
+import { StructuralSteelGrade } from "./entities/structural-steel-grade.entity";
+import { StructuralSteelSection } from "./entities/structural-steel-section.entity";
+import { StructuralSteelType } from "./entities/structural-steel-type.entity";
 
 // Steel density in kg/m³
 const STEEL_DENSITY_KG_M3 = 7850;
@@ -45,7 +45,7 @@ export class StructuralSteelService {
   async getAllTypes(): Promise<StructuralSteelType[]> {
     return this.typeRepo.find({
       where: { isActive: true },
-      order: { displayOrder: 'ASC', name: 'ASC' },
+      order: { displayOrder: "ASC", name: "ASC" },
     });
   }
 
@@ -53,12 +53,10 @@ export class StructuralSteelService {
     return this.typeRepo.findOne({ where: { code, isActive: true } });
   }
 
-  async getTypeWithSections(
-    typeId: number,
-  ): Promise<StructuralSteelType | null> {
+  async getTypeWithSections(typeId: number): Promise<StructuralSteelType | null> {
     return this.typeRepo.findOne({
       where: { id: typeId, isActive: true },
-      relations: ['sections'],
+      relations: ["sections"],
     });
   }
 
@@ -67,8 +65,8 @@ export class StructuralSteelService {
   async getAllSections(): Promise<StructuralSteelSection[]> {
     return this.sectionRepo.find({
       where: { isActive: true },
-      relations: ['steelType'],
-      order: { typeId: 'ASC', displayOrder: 'ASC' },
+      relations: ["steelType"],
+      order: { typeId: "ASC", displayOrder: "ASC" },
     });
   }
 
@@ -80,28 +78,27 @@ export class StructuralSteelService {
 
     return this.sectionRepo.find({
       where: { typeId: type.id, isActive: true },
-      order: { displayOrder: 'ASC', designation: 'ASC' },
+      order: { displayOrder: "ASC", designation: "ASC" },
     });
   }
 
   async getSectionById(id: number): Promise<StructuralSteelSection | null> {
     return this.sectionRepo.findOne({
       where: { id, isActive: true },
-      relations: ['steelType'],
+      relations: ["steelType"],
     });
   }
 
   async searchSections(query: string): Promise<StructuralSteelSection[]> {
     return this.sectionRepo
-      .createQueryBuilder('section')
-      .leftJoinAndSelect('section.steelType', 'type')
-      .where('section.is_active = :active', { active: true })
-      .andWhere(
-        '(section.designation ILIKE :query OR type.name ILIKE :query)',
-        { query: `%${query}%` },
-      )
-      .orderBy('type.display_order', 'ASC')
-      .addOrderBy('section.display_order', 'ASC')
+      .createQueryBuilder("section")
+      .leftJoinAndSelect("section.steelType", "type")
+      .where("section.is_active = :active", { active: true })
+      .andWhere("(section.designation ILIKE :query OR type.name ILIKE :query)", {
+        query: `%${query}%`,
+      })
+      .orderBy("type.display_order", "ASC")
+      .addOrderBy("section.display_order", "ASC")
       .getMany();
   }
 
@@ -110,16 +107,16 @@ export class StructuralSteelService {
   async getAllGrades(): Promise<StructuralSteelGrade[]> {
     return this.gradeRepo.find({
       where: { isActive: true },
-      order: { displayOrder: 'ASC', code: 'ASC' },
+      order: { displayOrder: "ASC", code: "ASC" },
     });
   }
 
   async getGradesForType(typeCode: string): Promise<StructuralSteelGrade[]> {
     return this.gradeRepo
-      .createQueryBuilder('grade')
-      .where('grade.is_active = :active', { active: true })
-      .andWhere(':typeCode = ANY(grade.compatible_types)', { typeCode })
-      .orderBy('grade.display_order', 'ASC')
+      .createQueryBuilder("grade")
+      .where("grade.is_active = :active", { active: true })
+      .andWhere(":typeCode = ANY(grade.compatible_types)", { typeCode })
+      .orderBy("grade.display_order", "ASC")
       .getMany();
   }
 
@@ -132,9 +129,7 @@ export class StructuralSteelService {
   /**
    * Calculate weight and surface area for a standard section
    */
-  async calculateForSection(
-    dto: CalculateSteelWeightDto,
-  ): Promise<SteelCalculationResultDto> {
+  async calculateForSection(dto: CalculateSteelWeightDto): Promise<SteelCalculationResultDto> {
     const section = await this.getSectionById(dto.sectionId);
     if (!section) {
       throw new NotFoundException(`Section with ID ${dto.sectionId} not found`);
@@ -170,8 +165,7 @@ export class StructuralSteelService {
     const lengthM = dto.lengthMm / 1000;
 
     // Weight per plate
-    const weightPerPlateKg =
-      thicknessM * widthM * lengthM * STEEL_DENSITY_KG_M3;
+    const weightPerPlateKg = thicknessM * widthM * lengthM * STEEL_DENSITY_KG_M3;
     // Surface area per plate (both sides)
     const surfacePerPlateM2 = 2 * widthM * lengthM;
 
@@ -189,7 +183,7 @@ export class StructuralSteelService {
       totalSurfaceAreaM2: Math.round(totalSurfaceAreaM2 * 1000) / 1000,
       lengthM: lengthM,
       quantity: dto.quantity,
-      typeName: 'Plate',
+      typeName: "Plate",
       gradeCode: dto.gradeCode,
       dimensions: {
         thicknessMm: dto.thicknessMm,
@@ -222,7 +216,7 @@ export class StructuralSteelService {
       totalSurfaceAreaM2: Math.round(totalSurfaceAreaM2 * 1000) / 1000,
       lengthM: dto.lengthM,
       quantity: dto.quantity,
-      typeName: 'Flat Bar',
+      typeName: "Flat Bar",
       gradeCode: dto.gradeCode,
       dimensions: {
         widthMm: dto.widthMm,
@@ -254,7 +248,7 @@ export class StructuralSteelService {
       totalSurfaceAreaM2: Math.round(totalSurfaceAreaM2 * 1000) / 1000,
       lengthM: dto.lengthM,
       quantity: dto.quantity,
-      typeName: 'Round Bar',
+      typeName: "Round Bar",
       gradeCode: dto.gradeCode,
       dimensions: {
         diameterMm: dto.diameterMm,
@@ -284,7 +278,7 @@ export class StructuralSteelService {
       totalSurfaceAreaM2: Math.round(totalSurfaceAreaM2 * 1000) / 1000,
       lengthM: dto.lengthM,
       quantity: dto.quantity,
-      typeName: 'Square Bar',
+      typeName: "Square Bar",
       gradeCode: dto.gradeCode,
       dimensions: {
         sideMm: dto.sideMm,
@@ -303,8 +297,7 @@ export class StructuralSteelService {
   ): { totalWeightKg: number; totalSurfaceAreaM2: number } {
     return {
       totalWeightKg: Math.round(weightKgPerM * lengthM * quantity * 100) / 100,
-      totalSurfaceAreaM2:
-        Math.round(surfaceAreaM2PerM * lengthM * quantity * 1000) / 1000,
+      totalSurfaceAreaM2: Math.round(surfaceAreaM2PerM * lengthM * quantity * 1000) / 1000,
     };
   }
 
@@ -331,7 +324,7 @@ export class StructuralSteelService {
   async getAllOperations(): Promise<FabricationOperation[]> {
     return this.operationRepo.find({
       where: { isActive: true },
-      order: { displayOrder: 'ASC', name: 'ASC' },
+      order: { displayOrder: "ASC", name: "ASC" },
     });
   }
 
@@ -346,13 +339,11 @@ export class StructuralSteelService {
   async getAllComplexityLevels(): Promise<FabricationComplexity[]> {
     return this.complexityRepo.find({
       where: { isActive: true },
-      order: { displayOrder: 'ASC' },
+      order: { displayOrder: "ASC" },
     });
   }
 
-  async getComplexityByLevel(
-    level: string,
-  ): Promise<FabricationComplexity | null> {
+  async getComplexityByLevel(level: string): Promise<FabricationComplexity | null> {
     return this.complexityRepo.findOne({
       where: { level, isActive: true },
     });
@@ -363,7 +354,7 @@ export class StructuralSteelService {
   async getAllLaborRates(): Promise<ShopLaborRate[]> {
     return this.laborRateRepo.find({
       where: { isActive: true },
-      order: { code: 'ASC' },
+      order: { code: "ASC" },
     });
   }
 
@@ -373,10 +364,7 @@ export class StructuralSteelService {
     });
   }
 
-  async updateLaborRate(
-    code: string,
-    dto: UpdateLaborRateDto,
-  ): Promise<ShopLaborRate> {
+  async updateLaborRate(code: string, dto: UpdateLaborRateDto): Promise<ShopLaborRate> {
     const rate = await this.laborRateRepo.findOne({ where: { code } });
     if (!rate) {
       throw new NotFoundException(`Labor rate with code ${code} not found`);
@@ -405,15 +393,12 @@ export class StructuralSteelService {
     // Get complexity level
     const complexity = await this.getComplexityByLevel(dto.complexityLevel);
     if (!complexity) {
-      throw new NotFoundException(
-        `Complexity level ${dto.complexityLevel} not found`,
-      );
+      throw new NotFoundException(`Complexity level ${dto.complexityLevel} not found`);
     }
 
     // Get labor rate
     const laborRateCode =
-      dto.laborRateCode ||
-      (dto.isStainless ? 'stainless_steel' : 'carbon_steel');
+      dto.laborRateCode || (dto.isStainless ? "stainless_steel" : "carbon_steel");
     const laborRate = await this.getLaborRateByCode(laborRateCode);
     if (!laborRate) {
       throw new NotFoundException(`Labor rate ${laborRateCode} not found`);
@@ -434,16 +419,12 @@ export class StructuralSteelService {
       for (const opItem of dto.operations) {
         const operation = await this.getOperationByCode(opItem.operationCode);
         if (!operation) {
-          throw new NotFoundException(
-            `Operation ${opItem.operationCode} not found`,
-          );
+          throw new NotFoundException(`Operation ${opItem.operationCode} not found`);
         }
 
         const hoursPerUnit = Number(operation.hoursPerUnit);
         const opHours = hoursPerUnit * opItem.quantity;
-        const stainlessMult = dto.isStainless
-          ? Number(operation.stainlessMultiplier)
-          : 1.0;
+        const stainlessMult = dto.isStainless ? Number(operation.stainlessMultiplier) : 1.0;
         const adjustedHours = opHours * stainlessMult;
 
         totalOperationHours += adjustedHours;
@@ -454,9 +435,7 @@ export class StructuralSteelService {
           quantity: opItem.quantity,
           hoursPerUnit,
           totalHours: Math.round(adjustedHours * 100) / 100,
-          cost:
-            Math.round(adjustedHours * Number(laborRate.ratePerHour) * 100) /
-            100,
+          cost: Math.round(adjustedHours * Number(laborRate.ratePerHour) * 100) / 100,
         });
       }
     }

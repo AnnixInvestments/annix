@@ -54,21 +54,21 @@ export const CALLOFF_STATUS = {
 export type CalloffStatus = (typeof CALLOFF_STATUS)[keyof typeof CALLOFF_STATUS];
 
 export const CALLOFF_STATUS_LABELS: Record<CalloffStatus, string> = {
-  [CALLOFF_STATUS.REQUESTED]: 'Requested',
-  [CALLOFF_STATUS.APPROVED]: 'Approved',
-  [CALLOFF_STATUS.IN_PRODUCTION]: 'In Production',
-  [CALLOFF_STATUS.DISPATCHED]: 'Dispatched',
-  [CALLOFF_STATUS.DELIVERED]: 'Delivered',
-  [CALLOFF_STATUS.CANCELLED]: 'Cancelled',
+  [CALLOFF_STATUS.REQUESTED]: "Requested",
+  [CALLOFF_STATUS.APPROVED]: "Approved",
+  [CALLOFF_STATUS.IN_PRODUCTION]: "In Production",
+  [CALLOFF_STATUS.DISPATCHED]: "Dispatched",
+  [CALLOFF_STATUS.DELIVERED]: "Delivered",
+  [CALLOFF_STATUS.CANCELLED]: "Cancelled",
 };
 
 export const CALLOFF_STATUS_COLORS: Record<CalloffStatus, string> = {
-  [CALLOFF_STATUS.REQUESTED]: 'bg-yellow-100 text-yellow-800',
-  [CALLOFF_STATUS.APPROVED]: 'bg-blue-100 text-blue-800',
-  [CALLOFF_STATUS.IN_PRODUCTION]: 'bg-indigo-100 text-indigo-800',
-  [CALLOFF_STATUS.DISPATCHED]: 'bg-purple-100 text-purple-800',
-  [CALLOFF_STATUS.DELIVERED]: 'bg-green-100 text-green-800',
-  [CALLOFF_STATUS.CANCELLED]: 'bg-red-100 text-red-800',
+  [CALLOFF_STATUS.REQUESTED]: "bg-yellow-100 text-yellow-800",
+  [CALLOFF_STATUS.APPROVED]: "bg-blue-100 text-blue-800",
+  [CALLOFF_STATUS.IN_PRODUCTION]: "bg-indigo-100 text-indigo-800",
+  [CALLOFF_STATUS.DISPATCHED]: "bg-purple-100 text-purple-800",
+  [CALLOFF_STATUS.DELIVERED]: "bg-green-100 text-green-800",
+  [CALLOFF_STATUS.CANCELLED]: "bg-red-100 text-red-800",
 };
 
 export const CALLOFF_STATUS_VALUES = Object.values(CALLOFF_STATUS) as readonly CalloffStatus[];
@@ -81,14 +81,14 @@ export const calloffStatusLabel = (status: number): string => {
   if (isValidCalloffStatus(status)) {
     return CALLOFF_STATUS_LABELS[status];
   }
-  return 'Unknown';
+  return "Unknown";
 };
 
 export const calloffStatusColor = (status: number): string => {
   if (isValidCalloffStatus(status)) {
     return CALLOFF_STATUS_COLORS[status];
   }
-  return 'bg-gray-100 text-gray-800';
+  return "bg-gray-100 text-gray-800";
 };
 
 export const CALLOFF_STATUS_OPTIONS = CALLOFF_STATUS_VALUES.map((value) => ({

@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { Message, Attachment } from '@/app/lib/api/messagingApi';
-import { MessageBubble } from './MessageBubble';
-import { fromISO } from '@/app/lib/datetime';
+import { useEffect, useRef } from "react";
+import { Attachment, Message } from "@/app/lib/api/messagingApi";
+import { fromISO } from "@/app/lib/datetime";
+import { MessageBubble } from "./MessageBubble";
 
 interface ConversationThreadProps {
   messages: Message[];
@@ -27,7 +27,7 @@ export function ConversationThread({
 
   useEffect(() => {
     if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages.length]);
 
@@ -43,12 +43,7 @@ export function ConversationThread({
   if (messages.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-gray-500 dark:text-gray-400">
-        <svg
-          className="w-16 h-16 mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg className="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -65,11 +60,7 @@ export function ConversationThread({
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
-    <div
-      ref={containerRef}
-      onScroll={handleScroll}
-      className="flex-1 overflow-y-auto p-4"
-    >
+    <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4">
       {hasMore && (
         <div className="flex justify-center mb-4">
           {isLoadingMore ? (
@@ -89,9 +80,7 @@ export function ConversationThread({
         <div key={date}>
           <div className="flex items-center justify-center my-4">
             <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
-            <span className="px-3 text-xs text-gray-500 dark:text-gray-400">
-              {date}
-            </span>
+            <span className="px-3 text-xs text-gray-500 dark:text-gray-400">{date}</span>
             <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
           </div>
 
@@ -99,8 +88,7 @@ export function ConversationThread({
             const isOwnMessage = message.senderId === currentUserId;
             const prevMessage = index > 0 ? dayMessages[index - 1] : null;
             const showSender =
-              !isOwnMessage &&
-              (!prevMessage || prevMessage.senderId !== message.senderId);
+              !isOwnMessage && (!prevMessage || prevMessage.senderId !== message.senderId);
 
             return (
               <MessageBubble
@@ -120,17 +108,15 @@ export function ConversationThread({
   );
 }
 
-function groupMessagesByDate(
-  messages: Message[],
-): { date: string; messages: Message[] }[] {
+function groupMessagesByDate(messages: Message[]): { date: string; messages: Message[] }[] {
   const groups: Map<string, Message[]> = new Map();
 
   messages.forEach((message) => {
     const date = fromISO(message.sentAt).toLocaleString({
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
 
     const existing = groups.get(date) || [];

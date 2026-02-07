@@ -1,37 +1,37 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, LessThan, IsNull, Not } from 'typeorm';
-import { now, fromJSDate } from '../lib/datetime';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, LessThan, Not, Repository } from "typeorm";
+import { now } from "../lib/datetime";
+import { User } from "../user/entities/user.entity";
+import {
+  AttachmentDto,
+  ConversationDetailDto,
+  ConversationFilterDto,
+  ConversationSummaryDto,
+  CreateConversationDto,
+  MessageDto,
+  MessagePaginationDto,
+  ParticipantDto,
+  SendMessageDto,
+} from "./dto";
 import {
   Conversation,
   ConversationParticipant,
+  ConversationType,
   Message,
   MessageAttachment,
   MessageReadReceipt,
-  ConversationType,
-  RelatedEntityType,
-  ParticipantRole,
   MessageType,
-} from './entities';
-import { User } from '../user/entities/user.entity';
-import {
-  CreateConversationDto,
-  ConversationFilterDto,
-  ConversationSummaryDto,
-  ConversationDetailDto,
-  MessageDto,
-  AttachmentDto,
-  ParticipantDto,
-  SendMessageDto,
-  MessagePaginationDto,
-} from './dto';
-import { ResponseMetricsService } from './response-metrics.service';
-import { MessageNotificationService } from './message-notification.service';
+  ParticipantRole,
+  RelatedEntityType,
+} from "./entities";
+import { MessageNotificationService } from "./message-notification.service";
+import { ResponseMetricsService } from "./response-metrics.service";
 
 @Injectable()
 export class MessagingService {
@@ -63,7 +63,7 @@ export class MessagingService {
     });
 
     if (users.length !== allParticipantIds.length) {
-      throw new BadRequestException('One or more participant IDs are invalid');
+      throw new BadRequestException("One or more participant IDs are invalid");
     }
 
     const conversation = this.conversationRepo.create({
@@ -82,10 +82,7 @@ export class MessagingService {
       this.participantRepo.create({
         conversationId: savedConversation.id,
         userId,
-        role:
-          userId === creatorId
-            ? ParticipantRole.OWNER
-            : ParticipantRole.PARTICIPANT,
+        role: userId === creatorId ? ParticipantRole.OWNER : ParticipantRole.PARTICIPANT,
         isActive: true,
         lastReadAt: null,
       }),
@@ -112,9 +109,7 @@ export class MessagingService {
     });
 
     if (!participant) {
-      throw new ForbiddenException(
-        'You are not a participant in this conversation',
-      );
+      throw new ForbiddenException("You are not a participant in this conversation");
     }
 
     const conversation = await this.conversationRepo.findOne({
@@ -122,16 +117,16 @@ export class MessagingService {
     });
 
     if (!conversation) {
-      throw new NotFoundException('Conversation not found');
+      throw new NotFoundException("Conversation not found");
     }
 
     if (conversation.isArchived) {
-      throw new BadRequestException('Cannot send messages to archived conversation');
+      throw new BadRequestException("Cannot send messages to archived conversation");
     }
 
     const sender = await this.userRepo.findOne({ where: { id: senderId } });
     if (!sender) {
-      throw new NotFoundException('Sender not found');
+      throw new NotFoundException("Sender not found");
     }
 
     const message = this.messageRepo.create({
@@ -163,7 +158,7 @@ export class MessagingService {
 
     const otherParticipants = await this.participantRepo.find({
       where: { conversationId, isActive: true, userId: Not(senderId) },
-      relations: ['user'],
+      relations: ["user"],
     });
 
     await this.notificationService.notifyNewMessage(
@@ -173,7 +168,7 @@ export class MessagingService {
       otherParticipants.map((p) => p.user),
     );
 
-    return this.messageToDto(savedMessage, sender.firstName || '', sender.lastName || '');
+    return this.messageToDto(savedMessage, sender.firstName || "", sender.lastName || "");
   }
 
   async conversationsForUser(
@@ -186,7 +181,7 @@ export class MessagingService {
 
     const participations = await this.participantRepo.find({
       where: { userId, isActive: true },
-      select: ['conversationId'],
+      select: ["conversationId"],
     });
 
     const conversationIds = participations.map((p) => p.conversationId);
@@ -196,31 +191,28 @@ export class MessagingService {
     }
 
     const queryBuilder = this.conversationRepo
-      .createQueryBuilder('c')
-      .where('c.id IN (:...ids)', { ids: conversationIds });
+      .createQueryBuilder("c")
+      .where("c.id IN (:...ids)", { ids: conversationIds });
 
     if (filters.isArchived !== undefined) {
-      queryBuilder.andWhere('c.isArchived = :isArchived', {
+      queryBuilder.andWhere("c.isArchived = :isArchived", {
         isArchived: filters.isArchived,
       });
     }
 
     if (filters.relatedEntityType) {
-      queryBuilder.andWhere('c.relatedEntityType = :relatedEntityType', {
+      queryBuilder.andWhere("c.relatedEntityType = :relatedEntityType", {
         relatedEntityType: filters.relatedEntityType,
       });
     }
 
     if (filters.relatedEntityId) {
-      queryBuilder.andWhere('c.relatedEntityId = :relatedEntityId', {
+      queryBuilder.andWhere("c.relatedEntityId = :relatedEntityId", {
         relatedEntityId: filters.relatedEntityId,
       });
     }
 
-    queryBuilder
-      .orderBy('c.lastMessageAt', 'DESC', 'NULLS LAST')
-      .skip(skip)
-      .take(limit);
+    queryBuilder.orderBy("c.lastMessageAt", "DESC", "NULLS LAST").skip(skip).take(limit);
 
     const [conversations, total] = await queryBuilder.getManyAndCount();
 
@@ -231,34 +223,25 @@ export class MessagingService {
     return { conversations: summaries, total };
   }
 
-  async conversationDetail(
-    conversationId: number,
-    userId: number,
-  ): Promise<ConversationDetailDto> {
+  async conversationDetail(conversationId: number, userId: number): Promise<ConversationDetailDto> {
     const participant = await this.participantRepo.findOne({
       where: { conversationId, userId, isActive: true },
     });
 
     if (!participant) {
-      throw new ForbiddenException(
-        'You are not a participant in this conversation',
-      );
+      throw new ForbiddenException("You are not a participant in this conversation");
     }
 
     const conversation = await this.conversationRepo.findOne({
       where: { id: conversationId },
-      relations: ['participants', 'participants.user'],
+      relations: ["participants", "participants.user"],
     });
 
     if (!conversation) {
-      throw new NotFoundException('Conversation not found');
+      throw new NotFoundException("Conversation not found");
     }
 
-    const messages = await this.messagesForConversation(
-      conversationId,
-      userId,
-      { limit: 50 },
-    );
+    const messages = await this.messagesForConversation(conversationId, userId, { limit: 50 });
 
     const summary = await this.conversationToSummary(conversation, userId);
 
@@ -283,32 +266,30 @@ export class MessagingService {
     });
 
     if (!participant) {
-      throw new ForbiddenException(
-        'You are not a participant in this conversation',
-      );
+      throw new ForbiddenException("You are not a participant in this conversation");
     }
 
     const limit = pagination.limit || 50;
 
     const queryBuilder = this.messageRepo
-      .createQueryBuilder('m')
-      .leftJoinAndSelect('m.sender', 'sender')
-      .leftJoinAndSelect('m.attachments', 'attachments')
-      .leftJoinAndSelect('m.readReceipts', 'receipts')
-      .where('m.conversationId = :conversationId', { conversationId })
-      .andWhere('m.isDeleted = false');
+      .createQueryBuilder("m")
+      .leftJoinAndSelect("m.sender", "sender")
+      .leftJoinAndSelect("m.attachments", "attachments")
+      .leftJoinAndSelect("m.readReceipts", "receipts")
+      .where("m.conversationId = :conversationId", { conversationId })
+      .andWhere("m.isDeleted = false");
 
     if (pagination.beforeId) {
-      queryBuilder.andWhere('m.id < :beforeId', {
+      queryBuilder.andWhere("m.id < :beforeId", {
         beforeId: pagination.beforeId,
       });
     }
 
     if (pagination.afterId) {
-      queryBuilder.andWhere('m.id > :afterId', { afterId: pagination.afterId });
+      queryBuilder.andWhere("m.id > :afterId", { afterId: pagination.afterId });
     }
 
-    queryBuilder.orderBy('m.sentAt', 'DESC').take(limit + 1);
+    queryBuilder.orderBy("m.sentAt", "DESC").take(limit + 1);
 
     const messages = await queryBuilder.getMany();
 
@@ -319,8 +300,8 @@ export class MessagingService {
       .map((m) =>
         this.messageToDto(
           m,
-          m.sender?.firstName || 'Unknown',
-          m.sender?.lastName || '',
+          m.sender?.firstName || "Unknown",
+          m.sender?.lastName || "",
           m.attachments,
           m.readReceipts,
         ),
@@ -336,18 +317,14 @@ export class MessagingService {
     });
 
     if (!participant) {
-      throw new ForbiddenException(
-        'You are not a participant in this conversation',
-      );
+      throw new ForbiddenException("You are not a participant in this conversation");
     }
 
     const unreadMessages = await this.messageRepo.find({
       where: {
         conversationId,
         senderId: Not(userId),
-        sentAt: participant.lastReadAt
-          ? LessThan(participant.lastReadAt)
-          : undefined,
+        sentAt: participant.lastReadAt ? LessThan(participant.lastReadAt) : undefined,
       },
     });
 
@@ -378,47 +355,33 @@ export class MessagingService {
     await this.participantRepo.save(participant);
   }
 
-  async archiveConversation(
-    conversationId: number,
-    userId: number,
-  ): Promise<void> {
+  async archiveConversation(conversationId: number, userId: number): Promise<void> {
     const participant = await this.participantRepo.findOne({
       where: { conversationId, userId, isActive: true },
     });
 
     if (!participant) {
-      throw new ForbiddenException(
-        'You are not a participant in this conversation',
-      );
+      throw new ForbiddenException("You are not a participant in this conversation");
     }
 
     if (participant.role !== ParticipantRole.OWNER) {
-      throw new ForbiddenException(
-        'Only the conversation owner can archive it',
-      );
+      throw new ForbiddenException("Only the conversation owner can archive it");
     }
 
     await this.conversationRepo.update(conversationId, { isArchived: true });
   }
 
-  async unarchiveConversation(
-    conversationId: number,
-    userId: number,
-  ): Promise<void> {
+  async unarchiveConversation(conversationId: number, userId: number): Promise<void> {
     const participant = await this.participantRepo.findOne({
       where: { conversationId, userId, isActive: true },
     });
 
     if (!participant) {
-      throw new ForbiddenException(
-        'You are not a participant in this conversation',
-      );
+      throw new ForbiddenException("You are not a participant in this conversation");
     }
 
     if (participant.role !== ParticipantRole.OWNER) {
-      throw new ForbiddenException(
-        'Only the conversation owner can unarchive it',
-      );
+      throw new ForbiddenException("Only the conversation owner can unarchive it");
     }
 
     await this.conversationRepo.update(conversationId, { isArchived: false });
@@ -437,13 +400,11 @@ export class MessagingService {
     });
 
     if (!message) {
-      throw new NotFoundException('Message not found');
+      throw new NotFoundException("Message not found");
     }
 
     if (message.senderId !== userId) {
-      throw new ForbiddenException(
-        'You can only add attachments to your own messages',
-      );
+      throw new ForbiddenException("You can only add attachments to your own messages");
     }
 
     const attachment = this.attachmentRepo.create({
@@ -468,11 +429,11 @@ export class MessagingService {
   async attachment(attachmentId: number, userId: number): Promise<MessageAttachment> {
     const attachment = await this.attachmentRepo.findOne({
       where: { id: attachmentId },
-      relations: ['message'],
+      relations: ["message"],
     });
 
     if (!attachment) {
-      throw new NotFoundException('Attachment not found');
+      throw new NotFoundException("Attachment not found");
     }
 
     const participant = await this.participantRepo.findOne({
@@ -484,7 +445,7 @@ export class MessagingService {
     });
 
     if (!participant) {
-      throw new ForbiddenException('You do not have access to this attachment');
+      throw new ForbiddenException("You do not have access to this attachment");
     }
 
     return attachment;
@@ -501,9 +462,7 @@ export class MessagingService {
           where: {
             conversationId: p.conversationId,
             senderId: Not(userId),
-            sentAt: p.lastReadAt
-              ? LessThan(p.lastReadAt)
-              : undefined,
+            sentAt: p.lastReadAt ? LessThan(p.lastReadAt) : undefined,
           },
         });
         return count;
@@ -519,14 +478,14 @@ export class MessagingService {
   ): Promise<ConversationSummaryDto> {
     const participants = await this.participantRepo.find({
       where: { conversationId: conversation.id, isActive: true },
-      relations: ['user'],
+      relations: ["user"],
     });
 
     const userParticipant = participants.find((p) => p.userId === userId);
 
     const lastMessage = await this.messageRepo.findOne({
       where: { conversationId: conversation.id, isDeleted: false },
-      order: { sentAt: 'DESC' },
+      order: { sentAt: "DESC" },
     });
 
     const unreadCount = userParticipant?.lastReadAt
@@ -548,9 +507,7 @@ export class MessagingService {
     const participantNames = participants
       .filter((p) => p.userId !== userId)
       .map((p) =>
-        p.user
-          ? `${p.user.firstName || ''} ${p.user.lastName || ''}`.trim()
-          : 'Unknown',
+        p.user ? `${p.user.firstName || ""} ${p.user.lastName || ""}`.trim() : "Unknown",
       );
 
     return {
@@ -560,9 +517,7 @@ export class MessagingService {
       relatedEntityType: conversation.relatedEntityType,
       relatedEntityId: conversation.relatedEntityId,
       unreadCount,
-      lastMessagePreview: lastMessage
-        ? lastMessage.content.substring(0, 100)
-        : null,
+      lastMessagePreview: lastMessage ? lastMessage.content.substring(0, 100) : null,
       lastMessageAt: conversation.lastMessageAt,
       participantNames,
       isArchived: conversation.isArchived,
@@ -575,9 +530,9 @@ export class MessagingService {
       id: participant.id,
       userId: participant.userId,
       name: participant.user
-        ? `${participant.user.firstName || ''} ${participant.user.lastName || ''}`.trim()
-        : 'Unknown',
-      email: participant.user?.email || '',
+        ? `${participant.user.firstName || ""} ${participant.user.lastName || ""}`.trim()
+        : "Unknown",
+      email: participant.user?.email || "",
       role: participant.role,
       isActive: participant.isActive,
       lastReadAt: participant.lastReadAt,

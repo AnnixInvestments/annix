@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class SeedHdpeData1766002300000 implements MigrationInterface {
-  name = 'SeedHdpeData1766002300000';
+  name = "SeedHdpeData1766002300000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Insert HDPE standards

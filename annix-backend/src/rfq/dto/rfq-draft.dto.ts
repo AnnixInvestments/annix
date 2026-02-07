@@ -1,18 +1,10 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { RfqStatus } from '../entities/rfq.entity';
-import {
-  IsOptional,
-  IsString,
-  IsNumber,
-  IsArray,
-  IsObject,
-  Min,
-  Max,
-} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsArray, IsNumber, IsObject, IsOptional, IsString, Max, Min } from "class-validator";
+import { RfqStatus } from "../entities/rfq.entity";
 
 export class SaveRfqDraftDto {
   @ApiPropertyOptional({
-    description: 'Existing draft ID (for updates)',
+    description: "Existing draft ID (for updates)",
     example: 1,
   })
   @IsOptional()
@@ -20,23 +12,23 @@ export class SaveRfqDraftDto {
   draftId?: number;
 
   @ApiPropertyOptional({
-    description: 'Customer RFQ reference number',
-    example: 'RFQ-2025-001',
+    description: "Customer RFQ reference number",
+    example: "RFQ-2025-001",
   })
   @IsOptional()
   @IsString()
   customerRfqReference?: string;
 
   @ApiPropertyOptional({
-    description: 'Project name',
-    example: '500NB Pipeline Extension',
+    description: "Project name",
+    example: "500NB Pipeline Extension",
   })
   @IsOptional()
   @IsString()
   projectName?: string;
 
   @ApiProperty({
-    description: 'Current step in the RFQ form (1-5)',
+    description: "Current step in the RFQ form (1-5)",
     example: 2,
   })
   @IsNumber()
@@ -45,34 +37,34 @@ export class SaveRfqDraftDto {
   currentStep: number;
 
   @ApiProperty({
-    description: 'Complete form data as JSON',
+    description: "Complete form data as JSON",
   })
   @IsObject()
   formData: Record<string, any>;
 
   @ApiPropertyOptional({
-    description: 'Global specifications as JSON',
+    description: "Global specifications as JSON",
   })
   @IsOptional()
   @IsObject()
   globalSpecs?: Record<string, any>;
 
   @ApiPropertyOptional({
-    description: 'Required products/services selected',
+    description: "Required products/services selected",
   })
   @IsOptional()
   @IsArray()
   requiredProducts?: string[];
 
   @ApiPropertyOptional({
-    description: 'Straight pipe entries as JSON',
+    description: "Straight pipe entries as JSON",
   })
   @IsOptional()
   @IsArray()
   straightPipeEntries?: Record<string, any>[];
 
   @ApiPropertyOptional({
-    description: 'Pending documents metadata',
+    description: "Pending documents metadata",
   })
   @IsOptional()
   @IsArray()
@@ -80,74 +72,74 @@ export class SaveRfqDraftDto {
 }
 
 export class RfqDraftResponseDto {
-  @ApiProperty({ description: 'Draft ID', example: 1 })
+  @ApiProperty({ description: "Draft ID", example: 1 })
   id: number;
 
   @ApiProperty({
-    description: 'Draft number',
-    example: 'DRAFT-2025-0001',
+    description: "Draft number",
+    example: "DRAFT-2025-0001",
   })
   draftNumber: string;
 
   @ApiPropertyOptional({
-    description: 'RFQ number (if submitted)',
-    example: 'RFQ-2025-0001',
+    description: "RFQ number (if submitted)",
+    example: "RFQ-2025-0001",
   })
   rfqNumber?: string;
 
   @ApiPropertyOptional({
-    description: 'Customer RFQ reference number',
-    example: 'RFQ-2025-001',
+    description: "Customer RFQ reference number",
+    example: "RFQ-2025-001",
   })
   customerRfqReference?: string;
 
   @ApiProperty({
-    description: 'Project name',
-    example: '500NB Pipeline Extension',
+    description: "Project name",
+    example: "500NB Pipeline Extension",
   })
   projectName?: string;
 
   @ApiProperty({
-    description: 'Current step',
+    description: "Current step",
     example: 2,
   })
   currentStep: number;
 
   @ApiProperty({
-    description: 'Completion percentage',
+    description: "Completion percentage",
     example: 45,
   })
   completionPercentage: number;
 
   @ApiProperty({
-    description: 'Status of the RFQ',
-    example: 'draft',
+    description: "Status of the RFQ",
+    example: "draft",
     enum: RfqStatus,
   })
   status: RfqStatus;
 
   @ApiProperty({
-    description: 'Creation date',
+    description: "Creation date",
   })
   createdAt: Date;
 
   @ApiProperty({
-    description: 'Last update date',
+    description: "Last update date",
   })
   updatedAt: Date;
 
   @ApiProperty({
-    description: 'Whether this draft was converted to an RFQ',
+    description: "Whether this draft was converted to an RFQ",
   })
   isConverted: boolean;
 
   @ApiPropertyOptional({
-    description: 'ID of the converted RFQ',
+    description: "ID of the converted RFQ",
   })
   convertedRfqId?: number;
 
   @ApiPropertyOptional({
-    description: 'Supplier response counts (only for submitted RFQs)',
+    description: "Supplier response counts (only for submitted RFQs)",
   })
   supplierCounts?: {
     pending: number;
@@ -159,27 +151,27 @@ export class RfqDraftResponseDto {
 
 export class RfqDraftFullResponseDto extends RfqDraftResponseDto {
   @ApiProperty({
-    description: 'Complete form data',
+    description: "Complete form data",
   })
   formData: Record<string, any>;
 
   @ApiPropertyOptional({
-    description: 'Global specifications',
+    description: "Global specifications",
   })
   globalSpecs?: Record<string, any>;
 
   @ApiPropertyOptional({
-    description: 'Required products',
+    description: "Required products",
   })
   requiredProducts?: string[];
 
   @ApiPropertyOptional({
-    description: 'Straight pipe entries',
+    description: "Straight pipe entries",
   })
   straightPipeEntries?: Record<string, any>[];
 
   @ApiPropertyOptional({
-    description: 'Pending documents',
+    description: "Pending documents",
   })
   pendingDocuments?: Record<string, any>[];
 }

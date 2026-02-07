@@ -1,12 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddPhase1CoreFabricationData1776400000000 implements MigrationInterface {
-  name = 'AddPhase1CoreFabricationData1776400000000';
+  name = "AddPhase1CoreFabricationData1776400000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      'Phase 1: Creating ANSI B16.9 and forged fitting tables with data...',
-    );
+    console.warn("Phase 1: Creating ANSI B16.9 and forged fitting tables with data...");
 
     await this.createAnsiB169Tables(queryRunner);
     await this.createForgedFittingTables(queryRunner);
@@ -14,11 +12,11 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
     await this.populateAnsiB169Data(queryRunner);
     await this.populateForgedFittingData(queryRunner);
 
-    console.warn('Phase 1 migration complete.');
+    console.warn("Phase 1 migration complete.");
   }
 
   private async createAnsiB169Tables(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Creating ANSI B16.9 fitting tables...');
+    console.warn("Creating ANSI B16.9 fitting tables...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS ansi_b16_9_fitting_types (
@@ -52,10 +50,8 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
     `);
   }
 
-  private async createForgedFittingTables(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Creating forged fitting tables...');
+  private async createForgedFittingTables(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Creating forged fitting tables...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS forged_fitting_series (
@@ -105,101 +101,99 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
     `);
   }
 
-  private async addAstmA312StainlessSchedules(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Adding ASTM A312 stainless steel pipe schedules...');
+  private async addAstmA312StainlessSchedules(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Adding ASTM A312 stainless steel pipe schedules...");
 
     const stainlessData = [
-      { nps: '1/8', nbMm: 6, odMm: 10.3, schedule: '10S', wallMm: 1.24 },
-      { nps: '1/4', nbMm: 8, odMm: 13.71, schedule: '10S', wallMm: 1.65 },
-      { nps: '1/4', nbMm: 8, odMm: 13.71, schedule: '40S', wallMm: 2.24 },
-      { nps: '3/8', nbMm: 10, odMm: 17.14, schedule: '5S', wallMm: 1.65 },
-      { nps: '3/8', nbMm: 10, odMm: 17.14, schedule: '10S', wallMm: 2.11 },
-      { nps: '3/8', nbMm: 10, odMm: 17.14, schedule: '40S', wallMm: 2.31 },
-      { nps: '1/2', nbMm: 15, odMm: 21.34, schedule: '5S', wallMm: 1.65 },
-      { nps: '1/2', nbMm: 15, odMm: 21.34, schedule: '10S', wallMm: 2.77 },
-      { nps: '1/2', nbMm: 15, odMm: 21.34, schedule: '40S', wallMm: 2.77 },
-      { nps: '1/2', nbMm: 15, odMm: 21.34, schedule: 'XS', wallMm: 3.73 },
-      { nps: '3/4', nbMm: 20, odMm: 26.67, schedule: '5S', wallMm: 1.65 },
-      { nps: '3/4', nbMm: 20, odMm: 26.67, schedule: '10S', wallMm: 2.11 },
-      { nps: '3/4', nbMm: 20, odMm: 26.67, schedule: '40S', wallMm: 2.87 },
-      { nps: '3/4', nbMm: 20, odMm: 26.67, schedule: 'XS', wallMm: 3.91 },
-      { nps: '1', nbMm: 25, odMm: 33.4, schedule: '5S', wallMm: 1.65 },
-      { nps: '1', nbMm: 25, odMm: 33.4, schedule: '10S', wallMm: 2.77 },
-      { nps: '1', nbMm: 25, odMm: 33.4, schedule: '40S', wallMm: 3.38 },
-      { nps: '1', nbMm: 25, odMm: 33.4, schedule: 'XS', wallMm: 4.55 },
-      { nps: '1-1/4', nbMm: 32, odMm: 42.16, schedule: '5S', wallMm: 1.65 },
-      { nps: '1-1/4', nbMm: 32, odMm: 42.16, schedule: '10S', wallMm: 2.77 },
-      { nps: '1-1/4', nbMm: 32, odMm: 42.16, schedule: '40S', wallMm: 3.56 },
-      { nps: '1-1/4', nbMm: 32, odMm: 42.16, schedule: 'XS', wallMm: 4.85 },
-      { nps: '1-1/2', nbMm: 40, odMm: 48.26, schedule: '5S', wallMm: 1.65 },
-      { nps: '1-1/2', nbMm: 40, odMm: 48.26, schedule: '10S', wallMm: 2.77 },
-      { nps: '1-1/2', nbMm: 40, odMm: 48.26, schedule: '40S', wallMm: 3.68 },
-      { nps: '1-1/2', nbMm: 40, odMm: 48.26, schedule: 'XS', wallMm: 5.08 },
-      { nps: '2', nbMm: 50, odMm: 60.32, schedule: '5S', wallMm: 1.65 },
-      { nps: '2', nbMm: 50, odMm: 60.32, schedule: '10S', wallMm: 2.77 },
-      { nps: '2', nbMm: 50, odMm: 60.32, schedule: '40S', wallMm: 3.91 },
-      { nps: '2', nbMm: 50, odMm: 60.32, schedule: 'XS', wallMm: 5.54 },
-      { nps: '2-1/2', nbMm: 65, odMm: 73.02, schedule: '5S', wallMm: 2.11 },
-      { nps: '2-1/2', nbMm: 65, odMm: 73.02, schedule: '10S', wallMm: 3.05 },
-      { nps: '2-1/2', nbMm: 65, odMm: 73.02, schedule: '40S', wallMm: 5.16 },
-      { nps: '2-1/2', nbMm: 65, odMm: 73.02, schedule: 'XS', wallMm: 7.01 },
-      { nps: '3', nbMm: 80, odMm: 88.9, schedule: '5S', wallMm: 2.11 },
-      { nps: '3', nbMm: 80, odMm: 88.9, schedule: '10S', wallMm: 3.05 },
-      { nps: '3', nbMm: 80, odMm: 88.9, schedule: '40S', wallMm: 5.49 },
-      { nps: '3', nbMm: 80, odMm: 88.9, schedule: 'XS', wallMm: 7.62 },
-      { nps: '3-1/2', nbMm: 90, odMm: 101.6, schedule: '5S', wallMm: 2.11 },
-      { nps: '3-1/2', nbMm: 90, odMm: 101.6, schedule: '10S', wallMm: 3.05 },
-      { nps: '3-1/2', nbMm: 90, odMm: 101.6, schedule: '40S', wallMm: 5.74 },
-      { nps: '3-1/2', nbMm: 90, odMm: 101.6, schedule: 'XS', wallMm: 8.08 },
-      { nps: '4', nbMm: 100, odMm: 114.3, schedule: '5S', wallMm: 2.11 },
-      { nps: '4', nbMm: 100, odMm: 114.3, schedule: '10S', wallMm: 3.05 },
-      { nps: '4', nbMm: 100, odMm: 114.3, schedule: '40S', wallMm: 6.02 },
-      { nps: '4', nbMm: 100, odMm: 114.3, schedule: 'XS', wallMm: 8.56 },
-      { nps: '5', nbMm: 125, odMm: 141.3, schedule: '5S', wallMm: 2.77 },
-      { nps: '5', nbMm: 125, odMm: 141.3, schedule: '10S', wallMm: 3.4 },
-      { nps: '5', nbMm: 125, odMm: 141.3, schedule: '40S', wallMm: 6.55 },
-      { nps: '5', nbMm: 125, odMm: 141.3, schedule: 'XS', wallMm: 9.52 },
-      { nps: '6', nbMm: 150, odMm: 168.3, schedule: '5S', wallMm: 2.77 },
-      { nps: '6', nbMm: 150, odMm: 168.3, schedule: '10S', wallMm: 3.4 },
-      { nps: '6', nbMm: 150, odMm: 168.3, schedule: '40S', wallMm: 7.11 },
-      { nps: '6', nbMm: 150, odMm: 168.3, schedule: 'XS', wallMm: 10.97 },
-      { nps: '8', nbMm: 200, odMm: 219.1, schedule: '5S', wallMm: 2.77 },
-      { nps: '8', nbMm: 200, odMm: 219.1, schedule: '10S', wallMm: 3.76 },
-      { nps: '8', nbMm: 200, odMm: 219.1, schedule: '30', wallMm: 7.04 },
-      { nps: '8', nbMm: 200, odMm: 219.1, schedule: '40S', wallMm: 8.18 },
-      { nps: '8', nbMm: 200, odMm: 219.1, schedule: 'XS', wallMm: 12.7 },
-      { nps: '10', nbMm: 250, odMm: 273.0, schedule: '5S', wallMm: 3.4 },
-      { nps: '10', nbMm: 250, odMm: 273.0, schedule: '10S', wallMm: 4.19 },
-      { nps: '10', nbMm: 250, odMm: 273.0, schedule: '30', wallMm: 7.8 },
-      { nps: '10', nbMm: 250, odMm: 273.0, schedule: '40S', wallMm: 9.27 },
-      { nps: '10', nbMm: 250, odMm: 273.0, schedule: 'XS', wallMm: 12.7 },
-      { nps: '12', nbMm: 300, odMm: 323.85, schedule: '5S', wallMm: 3.96 },
-      { nps: '12', nbMm: 300, odMm: 323.85, schedule: '10S', wallMm: 4.57 },
-      { nps: '12', nbMm: 300, odMm: 323.85, schedule: '30', wallMm: 8.38 },
-      { nps: '12', nbMm: 300, odMm: 323.85, schedule: '40S', wallMm: 9.52 },
-      { nps: '12', nbMm: 300, odMm: 323.85, schedule: 'XS', wallMm: 12.7 },
-      { nps: '14', nbMm: 350, odMm: 355.6, schedule: '5S', wallMm: 3.96 },
-      { nps: '14', nbMm: 350, odMm: 355.6, schedule: '10S', wallMm: 4.78 },
-      { nps: '14', nbMm: 350, odMm: 355.6, schedule: '30', wallMm: 9.52 },
-      { nps: '14', nbMm: 350, odMm: 355.6, schedule: 'XS', wallMm: 12.7 },
-      { nps: '16', nbMm: 400, odMm: 406.4, schedule: '5S', wallMm: 4.19 },
-      { nps: '16', nbMm: 400, odMm: 406.4, schedule: '10S', wallMm: 4.78 },
-      { nps: '16', nbMm: 400, odMm: 406.4, schedule: '30', wallMm: 9.52 },
-      { nps: '16', nbMm: 400, odMm: 406.4, schedule: 'XS', wallMm: 12.7 },
-      { nps: '18', nbMm: 450, odMm: 457.2, schedule: '5S', wallMm: 4.19 },
-      { nps: '18', nbMm: 450, odMm: 457.2, schedule: '10S', wallMm: 4.78 },
-      { nps: '18', nbMm: 450, odMm: 457.2, schedule: '30', wallMm: 11.13 },
-      { nps: '18', nbMm: 450, odMm: 457.2, schedule: 'XS', wallMm: 12.7 },
-      { nps: '20', nbMm: 500, odMm: 508.0, schedule: '5S', wallMm: 4.78 },
-      { nps: '20', nbMm: 500, odMm: 508.0, schedule: '10S', wallMm: 5.54 },
-      { nps: '20', nbMm: 500, odMm: 508.0, schedule: '30', wallMm: 12.7 },
-      { nps: '20', nbMm: 500, odMm: 508.0, schedule: 'XS', wallMm: 12.7 },
-      { nps: '24', nbMm: 600, odMm: 609.6, schedule: '5S', wallMm: 5.54 },
-      { nps: '24', nbMm: 600, odMm: 609.6, schedule: '10S', wallMm: 6.35 },
-      { nps: '24', nbMm: 600, odMm: 609.6, schedule: '30', wallMm: 14.27 },
-      { nps: '24', nbMm: 600, odMm: 609.6, schedule: 'XS', wallMm: 12.7 },
+      { nps: "1/8", nbMm: 6, odMm: 10.3, schedule: "10S", wallMm: 1.24 },
+      { nps: "1/4", nbMm: 8, odMm: 13.71, schedule: "10S", wallMm: 1.65 },
+      { nps: "1/4", nbMm: 8, odMm: 13.71, schedule: "40S", wallMm: 2.24 },
+      { nps: "3/8", nbMm: 10, odMm: 17.14, schedule: "5S", wallMm: 1.65 },
+      { nps: "3/8", nbMm: 10, odMm: 17.14, schedule: "10S", wallMm: 2.11 },
+      { nps: "3/8", nbMm: 10, odMm: 17.14, schedule: "40S", wallMm: 2.31 },
+      { nps: "1/2", nbMm: 15, odMm: 21.34, schedule: "5S", wallMm: 1.65 },
+      { nps: "1/2", nbMm: 15, odMm: 21.34, schedule: "10S", wallMm: 2.77 },
+      { nps: "1/2", nbMm: 15, odMm: 21.34, schedule: "40S", wallMm: 2.77 },
+      { nps: "1/2", nbMm: 15, odMm: 21.34, schedule: "XS", wallMm: 3.73 },
+      { nps: "3/4", nbMm: 20, odMm: 26.67, schedule: "5S", wallMm: 1.65 },
+      { nps: "3/4", nbMm: 20, odMm: 26.67, schedule: "10S", wallMm: 2.11 },
+      { nps: "3/4", nbMm: 20, odMm: 26.67, schedule: "40S", wallMm: 2.87 },
+      { nps: "3/4", nbMm: 20, odMm: 26.67, schedule: "XS", wallMm: 3.91 },
+      { nps: "1", nbMm: 25, odMm: 33.4, schedule: "5S", wallMm: 1.65 },
+      { nps: "1", nbMm: 25, odMm: 33.4, schedule: "10S", wallMm: 2.77 },
+      { nps: "1", nbMm: 25, odMm: 33.4, schedule: "40S", wallMm: 3.38 },
+      { nps: "1", nbMm: 25, odMm: 33.4, schedule: "XS", wallMm: 4.55 },
+      { nps: "1-1/4", nbMm: 32, odMm: 42.16, schedule: "5S", wallMm: 1.65 },
+      { nps: "1-1/4", nbMm: 32, odMm: 42.16, schedule: "10S", wallMm: 2.77 },
+      { nps: "1-1/4", nbMm: 32, odMm: 42.16, schedule: "40S", wallMm: 3.56 },
+      { nps: "1-1/4", nbMm: 32, odMm: 42.16, schedule: "XS", wallMm: 4.85 },
+      { nps: "1-1/2", nbMm: 40, odMm: 48.26, schedule: "5S", wallMm: 1.65 },
+      { nps: "1-1/2", nbMm: 40, odMm: 48.26, schedule: "10S", wallMm: 2.77 },
+      { nps: "1-1/2", nbMm: 40, odMm: 48.26, schedule: "40S", wallMm: 3.68 },
+      { nps: "1-1/2", nbMm: 40, odMm: 48.26, schedule: "XS", wallMm: 5.08 },
+      { nps: "2", nbMm: 50, odMm: 60.32, schedule: "5S", wallMm: 1.65 },
+      { nps: "2", nbMm: 50, odMm: 60.32, schedule: "10S", wallMm: 2.77 },
+      { nps: "2", nbMm: 50, odMm: 60.32, schedule: "40S", wallMm: 3.91 },
+      { nps: "2", nbMm: 50, odMm: 60.32, schedule: "XS", wallMm: 5.54 },
+      { nps: "2-1/2", nbMm: 65, odMm: 73.02, schedule: "5S", wallMm: 2.11 },
+      { nps: "2-1/2", nbMm: 65, odMm: 73.02, schedule: "10S", wallMm: 3.05 },
+      { nps: "2-1/2", nbMm: 65, odMm: 73.02, schedule: "40S", wallMm: 5.16 },
+      { nps: "2-1/2", nbMm: 65, odMm: 73.02, schedule: "XS", wallMm: 7.01 },
+      { nps: "3", nbMm: 80, odMm: 88.9, schedule: "5S", wallMm: 2.11 },
+      { nps: "3", nbMm: 80, odMm: 88.9, schedule: "10S", wallMm: 3.05 },
+      { nps: "3", nbMm: 80, odMm: 88.9, schedule: "40S", wallMm: 5.49 },
+      { nps: "3", nbMm: 80, odMm: 88.9, schedule: "XS", wallMm: 7.62 },
+      { nps: "3-1/2", nbMm: 90, odMm: 101.6, schedule: "5S", wallMm: 2.11 },
+      { nps: "3-1/2", nbMm: 90, odMm: 101.6, schedule: "10S", wallMm: 3.05 },
+      { nps: "3-1/2", nbMm: 90, odMm: 101.6, schedule: "40S", wallMm: 5.74 },
+      { nps: "3-1/2", nbMm: 90, odMm: 101.6, schedule: "XS", wallMm: 8.08 },
+      { nps: "4", nbMm: 100, odMm: 114.3, schedule: "5S", wallMm: 2.11 },
+      { nps: "4", nbMm: 100, odMm: 114.3, schedule: "10S", wallMm: 3.05 },
+      { nps: "4", nbMm: 100, odMm: 114.3, schedule: "40S", wallMm: 6.02 },
+      { nps: "4", nbMm: 100, odMm: 114.3, schedule: "XS", wallMm: 8.56 },
+      { nps: "5", nbMm: 125, odMm: 141.3, schedule: "5S", wallMm: 2.77 },
+      { nps: "5", nbMm: 125, odMm: 141.3, schedule: "10S", wallMm: 3.4 },
+      { nps: "5", nbMm: 125, odMm: 141.3, schedule: "40S", wallMm: 6.55 },
+      { nps: "5", nbMm: 125, odMm: 141.3, schedule: "XS", wallMm: 9.52 },
+      { nps: "6", nbMm: 150, odMm: 168.3, schedule: "5S", wallMm: 2.77 },
+      { nps: "6", nbMm: 150, odMm: 168.3, schedule: "10S", wallMm: 3.4 },
+      { nps: "6", nbMm: 150, odMm: 168.3, schedule: "40S", wallMm: 7.11 },
+      { nps: "6", nbMm: 150, odMm: 168.3, schedule: "XS", wallMm: 10.97 },
+      { nps: "8", nbMm: 200, odMm: 219.1, schedule: "5S", wallMm: 2.77 },
+      { nps: "8", nbMm: 200, odMm: 219.1, schedule: "10S", wallMm: 3.76 },
+      { nps: "8", nbMm: 200, odMm: 219.1, schedule: "30", wallMm: 7.04 },
+      { nps: "8", nbMm: 200, odMm: 219.1, schedule: "40S", wallMm: 8.18 },
+      { nps: "8", nbMm: 200, odMm: 219.1, schedule: "XS", wallMm: 12.7 },
+      { nps: "10", nbMm: 250, odMm: 273.0, schedule: "5S", wallMm: 3.4 },
+      { nps: "10", nbMm: 250, odMm: 273.0, schedule: "10S", wallMm: 4.19 },
+      { nps: "10", nbMm: 250, odMm: 273.0, schedule: "30", wallMm: 7.8 },
+      { nps: "10", nbMm: 250, odMm: 273.0, schedule: "40S", wallMm: 9.27 },
+      { nps: "10", nbMm: 250, odMm: 273.0, schedule: "XS", wallMm: 12.7 },
+      { nps: "12", nbMm: 300, odMm: 323.85, schedule: "5S", wallMm: 3.96 },
+      { nps: "12", nbMm: 300, odMm: 323.85, schedule: "10S", wallMm: 4.57 },
+      { nps: "12", nbMm: 300, odMm: 323.85, schedule: "30", wallMm: 8.38 },
+      { nps: "12", nbMm: 300, odMm: 323.85, schedule: "40S", wallMm: 9.52 },
+      { nps: "12", nbMm: 300, odMm: 323.85, schedule: "XS", wallMm: 12.7 },
+      { nps: "14", nbMm: 350, odMm: 355.6, schedule: "5S", wallMm: 3.96 },
+      { nps: "14", nbMm: 350, odMm: 355.6, schedule: "10S", wallMm: 4.78 },
+      { nps: "14", nbMm: 350, odMm: 355.6, schedule: "30", wallMm: 9.52 },
+      { nps: "14", nbMm: 350, odMm: 355.6, schedule: "XS", wallMm: 12.7 },
+      { nps: "16", nbMm: 400, odMm: 406.4, schedule: "5S", wallMm: 4.19 },
+      { nps: "16", nbMm: 400, odMm: 406.4, schedule: "10S", wallMm: 4.78 },
+      { nps: "16", nbMm: 400, odMm: 406.4, schedule: "30", wallMm: 9.52 },
+      { nps: "16", nbMm: 400, odMm: 406.4, schedule: "XS", wallMm: 12.7 },
+      { nps: "18", nbMm: 450, odMm: 457.2, schedule: "5S", wallMm: 4.19 },
+      { nps: "18", nbMm: 450, odMm: 457.2, schedule: "10S", wallMm: 4.78 },
+      { nps: "18", nbMm: 450, odMm: 457.2, schedule: "30", wallMm: 11.13 },
+      { nps: "18", nbMm: 450, odMm: 457.2, schedule: "XS", wallMm: 12.7 },
+      { nps: "20", nbMm: 500, odMm: 508.0, schedule: "5S", wallMm: 4.78 },
+      { nps: "20", nbMm: 500, odMm: 508.0, schedule: "10S", wallMm: 5.54 },
+      { nps: "20", nbMm: 500, odMm: 508.0, schedule: "30", wallMm: 12.7 },
+      { nps: "20", nbMm: 500, odMm: 508.0, schedule: "XS", wallMm: 12.7 },
+      { nps: "24", nbMm: 600, odMm: 609.6, schedule: "5S", wallMm: 5.54 },
+      { nps: "24", nbMm: 600, odMm: 609.6, schedule: "10S", wallMm: 6.35 },
+      { nps: "24", nbMm: 600, odMm: 609.6, schedule: "30", wallMm: 14.27 },
+      { nps: "24", nbMm: 600, odMm: 609.6, schedule: "XS", wallMm: 12.7 },
     ];
 
     let insertedCount = 0;
@@ -220,7 +214,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
           VALUES ('${row.nps}', ${row.nbMm}, '${row.schedule}', ${wallInch}, ${row.wallMm}, ${odInch}, ${row.odMm}, 'ASME B36.19')
         `);
         insertedCount++;
-      } else if (existing[0].standard_code !== 'ASME B36.19') {
+      } else if (existing[0].standard_code !== "ASME B36.19") {
         await queryRunner.query(`
           UPDATE pipe_schedules
           SET standard_code = 'ASME B36.19',
@@ -242,45 +236,45 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
   }
 
   private async populateAnsiB169Data(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Populating ANSI B16.9 fitting data...');
+    console.warn("Populating ANSI B16.9 fitting data...");
 
     const fittingTypes = [
       {
-        code: 'ELBOW_90_LR',
-        name: '90° Long Radius Elbow',
-        description: 'Long radius 90° elbow per ANSI B16.9',
+        code: "ELBOW_90_LR",
+        name: "90° Long Radius Elbow",
+        description: "Long radius 90° elbow per ANSI B16.9",
       },
       {
-        code: 'ELBOW_45_LR',
-        name: '45° Long Radius Elbow',
-        description: 'Long radius 45° elbow per ANSI B16.9',
+        code: "ELBOW_45_LR",
+        name: "45° Long Radius Elbow",
+        description: "Long radius 45° elbow per ANSI B16.9",
       },
       {
-        code: 'RETURN_180_LR',
-        name: '180° Long Radius Return',
-        description: 'Long radius 180° return bend per ANSI B16.9',
+        code: "RETURN_180_LR",
+        name: "180° Long Radius Return",
+        description: "Long radius 180° return bend per ANSI B16.9",
       },
       {
-        code: 'TEE_STRAIGHT',
-        name: 'Straight Tee',
-        description: 'Equal tee per ANSI B16.9',
+        code: "TEE_STRAIGHT",
+        name: "Straight Tee",
+        description: "Equal tee per ANSI B16.9",
       },
       {
-        code: 'TEE_REDUCING',
-        name: 'Reducing Tee',
-        description: 'Reducing tee per ANSI B16.9',
+        code: "TEE_REDUCING",
+        name: "Reducing Tee",
+        description: "Reducing tee per ANSI B16.9",
       },
       {
-        code: 'REDUCER_CON',
-        name: 'Concentric Reducer',
-        description: 'Concentric reducer per ANSI B16.9',
+        code: "REDUCER_CON",
+        name: "Concentric Reducer",
+        description: "Concentric reducer per ANSI B16.9",
       },
       {
-        code: 'REDUCER_ECC',
-        name: 'Eccentric Reducer',
-        description: 'Eccentric reducer per ANSI B16.9',
+        code: "REDUCER_ECC",
+        name: "Eccentric Reducer",
+        description: "Eccentric reducer per ANSI B16.9",
       },
-      { code: 'CAP', name: 'Cap', description: 'Pipe cap per ANSI B16.9' },
+      { code: "CAP", name: "Cap", description: "Pipe cap per ANSI B16.9" },
     ];
 
     for (const ft of fittingTypes) {
@@ -308,7 +302,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
 
     const elbowData90Schedule40 = [
       {
-        nps: '3/4',
+        nps: "3/4",
         nbMm: 20,
         odMm: 26.67,
         wallMm: 2.87,
@@ -317,7 +311,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 0.1,
       },
       {
-        nps: '1',
+        nps: "1",
         nbMm: 25,
         odMm: 33.4,
         wallMm: 3.38,
@@ -326,7 +320,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 0.2,
       },
       {
-        nps: '1-1/4',
+        nps: "1-1/4",
         nbMm: 32,
         odMm: 42.16,
         wallMm: 3.56,
@@ -335,7 +329,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 0.35,
       },
       {
-        nps: '1-1/2',
+        nps: "1-1/2",
         nbMm: 40,
         odMm: 48.26,
         wallMm: 3.68,
@@ -344,7 +338,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 0.51,
       },
       {
-        nps: '2',
+        nps: "2",
         nbMm: 50,
         odMm: 60.32,
         wallMm: 3.91,
@@ -353,7 +347,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 0.94,
       },
       {
-        nps: '2-1/2',
+        nps: "2-1/2",
         nbMm: 65,
         odMm: 73.02,
         wallMm: 5.16,
@@ -362,7 +356,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 1.79,
       },
       {
-        nps: '3',
+        nps: "3",
         nbMm: 80,
         odMm: 88.9,
         wallMm: 5.49,
@@ -371,7 +365,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 2.87,
       },
       {
-        nps: '3-1/2',
+        nps: "3-1/2",
         nbMm: 90,
         odMm: 101.6,
         wallMm: 5.74,
@@ -380,7 +374,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 4.1,
       },
       {
-        nps: '4',
+        nps: "4",
         nbMm: 100,
         odMm: 114.3,
         wallMm: 6.02,
@@ -389,7 +383,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 5.62,
       },
       {
-        nps: '5',
+        nps: "5",
         nbMm: 125,
         odMm: 141.3,
         wallMm: 6.55,
@@ -398,7 +392,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 9.71,
       },
       {
-        nps: '6',
+        nps: "6",
         nbMm: 150,
         odMm: 168.3,
         wallMm: 7.11,
@@ -407,7 +401,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 16.0,
       },
       {
-        nps: '8',
+        nps: "8",
         nbMm: 200,
         odMm: 219.1,
         wallMm: 8.18,
@@ -416,7 +410,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 32.2,
       },
       {
-        nps: '10',
+        nps: "10",
         nbMm: 250,
         odMm: 273.0,
         wallMm: 9.27,
@@ -425,7 +419,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 50.8,
       },
       {
-        nps: '12',
+        nps: "12",
         nbMm: 300,
         odMm: 323.8,
         wallMm: 9.52,
@@ -434,7 +428,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 73.5,
       },
       {
-        nps: '14',
+        nps: "14",
         nbMm: 350,
         odMm: 355.6,
         wallMm: 9.52,
@@ -443,7 +437,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 94.3,
       },
       {
-        nps: '16',
+        nps: "16",
         nbMm: 400,
         odMm: 406.4,
         wallMm: 9.52,
@@ -452,7 +446,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 124,
       },
       {
-        nps: '18',
+        nps: "18",
         nbMm: 450,
         odMm: 457.2,
         wallMm: 9.52,
@@ -461,7 +455,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 157,
       },
       {
-        nps: '20',
+        nps: "20",
         nbMm: 500,
         odMm: 508.0,
         wallMm: 9.52,
@@ -470,7 +464,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 194,
       },
       {
-        nps: '24',
+        nps: "24",
         nbMm: 600,
         odMm: 609.6,
         wallMm: 9.52,
@@ -503,7 +497,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
 
     const return180Data = [
       {
-        nps: '3/4',
+        nps: "3/4",
         nbMm: 20,
         odMm: 26.67,
         wallMm: 2.87,
@@ -512,7 +506,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 0.16,
       },
       {
-        nps: '1',
+        nps: "1",
         nbMm: 25,
         odMm: 33.4,
         wallMm: 3.38,
@@ -521,7 +515,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 0.31,
       },
       {
-        nps: '1-1/4',
+        nps: "1-1/4",
         nbMm: 32,
         odMm: 42.16,
         wallMm: 3.56,
@@ -530,7 +524,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 0.53,
       },
       {
-        nps: '1-1/2',
+        nps: "1-1/2",
         nbMm: 40,
         odMm: 48.26,
         wallMm: 3.68,
@@ -539,7 +533,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 0.76,
       },
       {
-        nps: '2',
+        nps: "2",
         nbMm: 50,
         odMm: 60.32,
         wallMm: 3.91,
@@ -548,7 +542,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 1.36,
       },
       {
-        nps: '2-1/2',
+        nps: "2-1/2",
         nbMm: 65,
         odMm: 73.02,
         wallMm: 5.16,
@@ -557,7 +551,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 2.7,
       },
       {
-        nps: '3',
+        nps: "3",
         nbMm: 80,
         odMm: 88.9,
         wallMm: 5.49,
@@ -566,7 +560,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 4.25,
       },
       {
-        nps: '3-1/2',
+        nps: "3-1/2",
         nbMm: 90,
         odMm: 101.6,
         wallMm: 5.74,
@@ -575,7 +569,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 5.94,
       },
       {
-        nps: '4',
+        nps: "4",
         nbMm: 100,
         odMm: 114.3,
         wallMm: 6.02,
@@ -584,7 +578,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 8.07,
       },
       {
-        nps: '5',
+        nps: "5",
         nbMm: 125,
         odMm: 141.3,
         wallMm: 6.55,
@@ -593,7 +587,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 13.7,
       },
       {
-        nps: '6',
+        nps: "6",
         nbMm: 150,
         odMm: 168.3,
         wallMm: 7.11,
@@ -602,7 +596,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 21.3,
       },
       {
-        nps: '8',
+        nps: "8",
         nbMm: 200,
         odMm: 219.1,
         wallMm: 8.18,
@@ -611,7 +605,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 42.6,
       },
       {
-        nps: '10',
+        nps: "10",
         nbMm: 250,
         odMm: 273.0,
         wallMm: 9.27,
@@ -620,7 +614,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 75.8,
       },
       {
-        nps: '12',
+        nps: "12",
         nbMm: 300,
         odMm: 323.8,
         wallMm: 9.52,
@@ -629,7 +623,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 112,
       },
       {
-        nps: '14',
+        nps: "14",
         nbMm: 350,
         odMm: 355.6,
         wallMm: 9.52,
@@ -638,7 +632,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 143,
       },
       {
-        nps: '16',
+        nps: "16",
         nbMm: 400,
         odMm: 406.4,
         wallMm: 9.52,
@@ -647,7 +641,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 188,
       },
       {
-        nps: '18',
+        nps: "18",
         nbMm: 450,
         odMm: 457.2,
         wallMm: 9.52,
@@ -656,7 +650,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 239,
       },
       {
-        nps: '20',
+        nps: "20",
         nbMm: 500,
         odMm: 508.0,
         wallMm: 9.52,
@@ -665,7 +659,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
         weightLb: 293,
       },
       {
-        nps: '24',
+        nps: "24",
         nbMm: 600,
         odMm: 609.6,
         wallMm: 9.52,
@@ -677,7 +671,7 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
 
     for (const row of return180Data) {
       const weightKg = (row.weightLb * 0.453592).toFixed(3);
-      const kVal = row.kMm ? row.kMm : 'NULL';
+      const kVal = row.kMm ? row.kMm : "NULL";
       await queryRunner.query(`
         INSERT INTO ansi_b16_9_fitting_dimensions
           (fitting_type_id, nps, nb_mm, outside_diameter_mm, schedule, wall_thickness_mm, center_to_center_o_mm, back_to_face_k_mm, weight_kg)
@@ -687,39 +681,37 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
       `);
     }
 
-    console.warn('ANSI B16.9 fitting data populated');
+    console.warn("ANSI B16.9 fitting data populated");
   }
 
-  private async populateForgedFittingData(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Populating forged fitting data...');
+  private async populateForgedFittingData(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Populating forged fitting data...");
 
     const seriesData = [
       {
         pressureClass: 2000,
-        connectionType: 'SW',
-        description: '2000 lb Socket Weld',
+        connectionType: "SW",
+        description: "2000 lb Socket Weld",
       },
       {
         pressureClass: 3000,
-        connectionType: 'SW',
-        description: '3000 lb Socket Weld',
+        connectionType: "SW",
+        description: "3000 lb Socket Weld",
       },
       {
         pressureClass: 3000,
-        connectionType: 'THD',
-        description: '3000 lb Threaded (NPT)',
+        connectionType: "THD",
+        description: "3000 lb Threaded (NPT)",
       },
       {
         pressureClass: 6000,
-        connectionType: 'SW',
-        description: '6000 lb Socket Weld',
+        connectionType: "SW",
+        description: "6000 lb Socket Weld",
       },
       {
         pressureClass: 6000,
-        connectionType: 'THD',
-        description: '6000 lb Threaded (NPT)',
+        connectionType: "THD",
+        description: "6000 lb Threaded (NPT)",
       },
     ];
 
@@ -732,35 +724,35 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
     }
 
     const fittingTypes = [
-      { code: 'TEE', name: 'Tee', description: 'Forged steel tee' },
+      { code: "TEE", name: "Tee", description: "Forged steel tee" },
       {
-        code: 'ELBOW_90',
-        name: '90° Elbow',
-        description: 'Forged steel 90° elbow',
+        code: "ELBOW_90",
+        name: "90° Elbow",
+        description: "Forged steel 90° elbow",
       },
       {
-        code: 'ELBOW_45',
-        name: '45° Elbow',
-        description: 'Forged steel 45° elbow',
+        code: "ELBOW_45",
+        name: "45° Elbow",
+        description: "Forged steel 45° elbow",
       },
       {
-        code: 'COUPLING',
-        name: 'Coupling',
-        description: 'Forged steel full coupling',
+        code: "COUPLING",
+        name: "Coupling",
+        description: "Forged steel full coupling",
       },
       {
-        code: 'HALF_COUPLING',
-        name: 'Half Coupling',
-        description: 'Forged steel half coupling',
+        code: "HALF_COUPLING",
+        name: "Half Coupling",
+        description: "Forged steel half coupling",
       },
-      { code: 'UNION', name: 'Union', description: 'Forged steel union' },
-      { code: 'CAP', name: 'Cap', description: 'Forged steel cap' },
+      { code: "UNION", name: "Union", description: "Forged steel union" },
+      { code: "CAP", name: "Cap", description: "Forged steel cap" },
       {
-        code: 'PLUG',
-        name: 'Plug',
-        description: 'Forged steel hexagonal head plug',
+        code: "PLUG",
+        name: "Plug",
+        description: "Forged steel hexagonal head plug",
       },
-      { code: 'CROSS', name: 'Cross', description: 'Forged steel cross' },
+      { code: "CROSS", name: "Cross", description: "Forged steel cross" },
     ];
 
     for (const ft of fittingTypes) {
@@ -909,26 +901,22 @@ export class AddPhase1CoreFabricationData1776400000000 implements MigrationInter
       }
     }
 
-    console.warn('Forged fitting data populated');
+    console.warn("Forged fitting data populated");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Reverting Phase 1 migration...');
+    console.warn("Reverting Phase 1 migration...");
 
-    await queryRunner.query(
-      `DELETE FROM pipe_schedules WHERE standard_code = 'ASME B36.19'`,
-    );
+    await queryRunner.query(`DELETE FROM pipe_schedules WHERE standard_code = 'ASME B36.19'`);
 
-    await queryRunner.query(`DROP TABLE IF EXISTS forged_fitting_pt_ratings`);
-    await queryRunner.query(`DROP TABLE IF EXISTS forged_fitting_dimensions`);
-    await queryRunner.query(`DROP TABLE IF EXISTS forged_fitting_types`);
-    await queryRunner.query(`DROP TABLE IF EXISTS forged_fitting_series`);
+    await queryRunner.query("DROP TABLE IF EXISTS forged_fitting_pt_ratings");
+    await queryRunner.query("DROP TABLE IF EXISTS forged_fitting_dimensions");
+    await queryRunner.query("DROP TABLE IF EXISTS forged_fitting_types");
+    await queryRunner.query("DROP TABLE IF EXISTS forged_fitting_series");
 
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS ansi_b16_9_fitting_dimensions`,
-    );
-    await queryRunner.query(`DROP TABLE IF EXISTS ansi_b16_9_fitting_types`);
+    await queryRunner.query("DROP TABLE IF EXISTS ansi_b16_9_fitting_dimensions");
+    await queryRunner.query("DROP TABLE IF EXISTS ansi_b16_9_fitting_types");
 
-    console.warn('Phase 1 migration reverted');
+    console.warn("Phase 1 migration reverted");
   }
 }

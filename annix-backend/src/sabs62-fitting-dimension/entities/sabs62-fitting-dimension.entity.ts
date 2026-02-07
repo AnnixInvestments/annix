@@ -1,38 +1,38 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
-} from 'typeorm';
+} from "typeorm";
 
-@Entity('sabs62_fitting_dimension')
+@Entity("sabs62_fitting_dimension")
 export class Sabs62FittingDimension {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'fitting_type', type: 'varchar', length: 50 })
+  @Column({ name: "fitting_type", type: "varchar", length: 50 })
   fittingType: string;
 
   @Column({
-    name: 'nominal_diameter_mm',
-    type: 'decimal',
+    name: "nominal_diameter_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
   })
   nominalDiameterMm: number;
 
   @Column({
-    name: 'outside_diameter_mm',
-    type: 'decimal',
+    name: "outside_diameter_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
   })
   outsideDiameterMm: number;
 
   @Column({
-    name: 'nominal_diameter_b_mm',
-    type: 'decimal',
+    name: "nominal_diameter_b_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -40,8 +40,8 @@ export class Sabs62FittingDimension {
   nominalDiameterBMm: number;
 
   @Column({
-    name: 'outside_diameter_b_mm',
-    type: 'decimal',
+    name: "outside_diameter_b_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -49,8 +49,8 @@ export class Sabs62FittingDimension {
   outsideDiameterBMm: number;
 
   @Column({
-    name: 'nominal_diameter_d_mm',
-    type: 'decimal',
+    name: "nominal_diameter_d_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -58,20 +58,20 @@ export class Sabs62FittingDimension {
   nominalDiameterDMm: number;
 
   @Column({
-    name: 'outside_diameter_d_mm',
-    type: 'decimal',
+    name: "outside_diameter_d_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
   })
   outsideDiameterDMm: number;
 
-  @Column({ name: 'angle_range', type: 'varchar', length: 20, nullable: true })
+  @Column({ name: "angle_range", type: "varchar", length: 20, nullable: true })
   angleRange: string;
 
   @Column({
-    name: 'dimension_a_mm',
-    type: 'decimal',
+    name: "dimension_a_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -79,8 +79,8 @@ export class Sabs62FittingDimension {
   dimensionAMm: number;
 
   @Column({
-    name: 'dimension_b_mm',
-    type: 'decimal',
+    name: "dimension_b_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -88,8 +88,8 @@ export class Sabs62FittingDimension {
   dimensionBMm: number;
 
   @Column({
-    name: 'centre_to_face_c_mm',
-    type: 'decimal',
+    name: "centre_to_face_c_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -97,8 +97,8 @@ export class Sabs62FittingDimension {
   centreToFaceCMm: number;
 
   @Column({
-    name: 'centre_to_face_d_mm',
-    type: 'decimal',
+    name: "centre_to_face_d_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -106,17 +106,17 @@ export class Sabs62FittingDimension {
   centreToFaceDMm: number;
 
   @Column({
-    name: 'radius_r_mm',
-    type: 'decimal',
+    name: "radius_r_mm",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
   })
   radiusRMm: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

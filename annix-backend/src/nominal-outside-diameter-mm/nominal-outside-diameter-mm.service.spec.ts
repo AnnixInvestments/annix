@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NominalOutsideDiameterMmService } from './nominal-outside-diameter-mm.service';
-import { NominalOutsideDiameterMm } from './entities/nominal-outside-diameter-mm.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { NominalOutsideDiameterMm } from "./entities/nominal-outside-diameter-mm.entity";
+import { NominalOutsideDiameterMmService } from "./nominal-outside-diameter-mm.service";
 
-describe('NominalOutsideDiameterMmService', () => {
+describe("NominalOutsideDiameterMmService", () => {
   let service: NominalOutsideDiameterMmService;
 
   const mockRepo = {
@@ -26,19 +26,17 @@ describe('NominalOutsideDiameterMmService', () => {
       ],
     }).compile();
 
-    service = module.get<NominalOutsideDiameterMmService>(
-      NominalOutsideDiameterMmService,
-    );
+    service = module.get<NominalOutsideDiameterMmService>(NominalOutsideDiameterMmService);
 
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new entity', async () => {
+  describe("create", () => {
+    it("should create a new entity", async () => {
       const dto = { nominal_diameter_mm: 65, outside_diameter_mm: 76.2 };
       const savedEntity: NominalOutsideDiameterMm = {
         id: 1,
@@ -64,7 +62,7 @@ describe('NominalOutsideDiameterMmService', () => {
       expect(mockRepo.save).toHaveBeenCalledWith(dto);
     });
 
-    it('should throw BadRequestException if duplicate exists', async () => {
+    it("should throw BadRequestException if duplicate exists", async () => {
       const dto = { nominal_diameter_mm: 65, outside_diameter_mm: 76.2 };
       mockRepo.findOne.mockResolvedValue({ id: 1, ...dto });
 
@@ -72,23 +70,21 @@ describe('NominalOutsideDiameterMmService', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return all entities', async () => {
-      const entities = [
-        { id: 1, nominal_diameter_mm: 65, outside_diameter_mm: 76.2 },
-      ];
+  describe("findAll", () => {
+    it("should return all entities", async () => {
+      const entities = [{ id: 1, nominal_diameter_mm: 65, outside_diameter_mm: 76.2 }];
       mockRepo.find.mockResolvedValue(entities);
 
       const result = await service.findAll();
       expect(result).toEqual(entities);
       expect(mockRepo.find).toHaveBeenCalledWith({
-        relations: ['pipeDimensions', 'fittingBores'],
+        relations: ["pipeDimensions", "fittingBores"],
       });
     });
   });
 
-  describe('findOne', () => {
-    it('should return one entity', async () => {
+  describe("findOne", () => {
+    it("should return one entity", async () => {
       const entity = {
         id: 1,
         nominal_diameter_mm: 65,
@@ -100,18 +96,18 @@ describe('NominalOutsideDiameterMmService', () => {
       expect(result).toEqual(entity);
       expect(mockRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['pipeDimensions', 'fittingBores'],
+        relations: ["pipeDimensions", "fittingBores"],
       });
     });
 
-    it('should throw NotFoundException if entity not found', async () => {
+    it("should throw NotFoundException if entity not found", async () => {
       mockRepo.findOne.mockResolvedValue(undefined);
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('update', () => {
-    it('should update an entity', async () => {
+  describe("update", () => {
+    it("should update an entity", async () => {
       const existing = {
         id: 1,
         nominal_diameter_mm: 65,
@@ -129,8 +125,8 @@ describe('NominalOutsideDiameterMmService', () => {
     });
   });
 
-  describe('remove', () => {
-    it('should delete an entity', async () => {
+  describe("remove", () => {
+    it("should delete an entity", async () => {
       const entity = {
         id: 1,
         nominal_diameter_mm: 65,

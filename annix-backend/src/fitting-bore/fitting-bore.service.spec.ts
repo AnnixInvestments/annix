@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FittingBoreService } from './fitting-bore.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { FittingBore } from './entities/fitting-bore.entity';
-import { FittingVariant } from '../fitting-variant/entities/fitting-variant.entity';
-import { NominalOutsideDiameterMm } from '../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { FittingVariant } from "../fitting-variant/entities/fitting-variant.entity";
+import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
+import { FittingBore } from "./entities/fitting-bore.entity";
+import { FittingBoreService } from "./fitting-bore.service";
 
-describe('FittingBoreService', () => {
+describe("FittingBoreService", () => {
   let service: FittingBoreService;
 
   const mockBoreRepo = {
@@ -46,20 +46,20 @@ describe('FittingBoreService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new fitting bore', async () => {
-      const dto = { variantId: 1, nominalId: 1, borePosition: 'center' };
+  describe("create", () => {
+    it("should create a new fitting bore", async () => {
+      const dto = { variantId: 1, nominalId: 1, borePosition: "center" };
       const variant = { id: 1 } as FittingVariant;
       const nominal = { id: 1 } as NominalOutsideDiameterMm;
       const entity = {
         id: 1,
         variant,
         nominalOutsideDiameter: nominal,
-        borePositionName: 'center',
+        borePositionName: "center",
       } as FittingBore;
 
       mockVariantRepo.findOne.mockResolvedValue(variant);
@@ -68,7 +68,7 @@ describe('FittingBoreService', () => {
       mockBoreRepo.create.mockReturnValue({
         variant,
         nominalOutsideDiameter: nominal,
-        borePositionName: 'center',
+        borePositionName: "center",
       });
       mockBoreRepo.save.mockResolvedValue(entity);
 
@@ -83,15 +83,15 @@ describe('FittingBoreService', () => {
       expect(mockBoreRepo.create).toHaveBeenCalledWith({
         variant,
         nominalOutsideDiameter: nominal,
-        borePositionName: 'center',
+        borePositionName: "center",
       });
     });
 
-    it('should throw BadRequestException if bore position already exists for variant', async () => {
-      const dto = { variantId: 1, nominalId: 1, borePosition: 'center' };
+    it("should throw BadRequestException if bore position already exists for variant", async () => {
+      const dto = { variantId: 1, nominalId: 1, borePosition: "center" };
       const variant = { id: 1 } as FittingVariant;
       const nominal = { id: 1 } as NominalOutsideDiameterMm;
-      const existing = { id: 2, borePositionName: 'center' } as FittingBore;
+      const existing = { id: 2, borePositionName: "center" } as FittingBore;
 
       mockVariantRepo.findOne.mockResolvedValue(variant);
       mockNominalRepo.findOne.mockResolvedValue(nominal);
@@ -101,39 +101,39 @@ describe('FittingBoreService', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return array of fitting bores', async () => {
+  describe("findAll", () => {
+    it("should return array of fitting bores", async () => {
       const result = [{ id: 1 }] as FittingBore[];
       mockBoreRepo.find.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
       expect(mockBoreRepo.find).toHaveBeenCalledWith({
-        relations: ['variant', 'nominalOutsideDiameter'],
+        relations: ["variant", "nominalOutsideDiameter"],
       });
     });
   });
 
-  describe('findOne', () => {
-    it('should return a fitting bore by id', async () => {
+  describe("findOne", () => {
+    it("should return a fitting bore by id", async () => {
       const result = { id: 1 } as FittingBore;
       mockBoreRepo.findOne.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
       expect(mockBoreRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['variant', 'nominalOutsideDiameter'],
+        relations: ["variant", "nominalOutsideDiameter"],
       });
     });
 
-    it('should throw NotFoundException if fitting bore not found', async () => {
+    it("should throw NotFoundException if fitting bore not found", async () => {
       mockBoreRepo.findOne.mockResolvedValue(undefined);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
   });
 
-  describe('remove', () => {
-    it('should delete a fitting bore', async () => {
+  describe("remove", () => {
+    it("should delete a fitting bore", async () => {
       const entity = { id: 1 } as FittingBore;
       mockBoreRepo.findOne.mockResolvedValue(entity);
       mockBoreRepo.remove.mockResolvedValue(undefined);

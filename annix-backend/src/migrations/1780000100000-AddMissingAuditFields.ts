@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddMissingAuditFields1780000100000 implements MigrationInterface {
-  name = 'AddMissingAuditFields1780000100000';
+  name = "AddMissingAuditFields1780000100000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -50,11 +50,7 @@ export class AddMissingAuditFields1780000100000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "supplier_device_bindings" DROP COLUMN IF EXISTS "updated_at"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "message" DROP COLUMN IF EXISTS "updated_at"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "broadcast" DROP COLUMN IF EXISTS "updated_at"`,
-    );
+    await queryRunner.query(`ALTER TABLE "message" DROP COLUMN IF EXISTS "updated_at"`);
+    await queryRunner.query(`ALTER TABLE "broadcast" DROP COLUMN IF EXISTS "updated_at"`);
   }
 }

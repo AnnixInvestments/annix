@@ -20,20 +20,16 @@
  * - Ensure a database backup has been taken before running
  */
 
-import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import {
-  S3Client,
-  PutObjectCommand,
-  HeadObjectCommand,
-} from '@aws-sdk/client-s3';
-import { DataSource } from 'typeorm';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { NestFactory } from "@nestjs/core";
+import { DataSource } from "typeorm";
 
 // Import the app module - adjust path as needed
-import { AppModule } from '../src/app.module';
+import { AppModule } from "../src/app.module";
 
 interface MigrationResult {
   type: string;
@@ -50,41 +46,43 @@ interface FileRecord {
   tableName: string;
 }
 
-const logger = new Logger('S3Migration');
+const logger = new Logger("S3Migration");
 
 async function migrateToS3() {
-  const isDryRun = process.argv.includes('--dry-run');
+  const isDryRun = process.argv.includes("--dry-run");
 
   if (isDryRun) {
-    logger.log('='.repeat(60));
-    logger.log('DRY RUN MODE - No actual changes will be made');
-    logger.log('='.repeat(60));
+    logger.log("=".repeat(60));
+    logger.log("DRY RUN MODE - No actual changes will be made");
+    logger.log("=".repeat(60));
   }
 
-  logger.log('Starting S3 Migration...');
-  logger.log('='.repeat(60));
+  logger.log("Starting S3 Migration...");
+  logger.log("=".repeat(60));
 
   // Create NestJS application context
   const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: ['error', 'warn', 'log'],
+    logger: ["error", "warn", "log"],
   });
 
   const configService = app.get(ConfigService);
   const dataSource = app.get(DataSource);
 
   // Validate configuration
-  const uploadDir = configService.get<string>('UPLOAD_DIR') || './uploads';
-  const awsRegion = configService.get<string>('AWS_REGION');
-  const awsBucket = configService.get<string>('AWS_S3_BUCKET');
-  const awsAccessKeyId = configService.get<string>('AWS_ACCESS_KEY_ID');
-  const awsSecretAccessKey = configService.get<string>('AWS_SECRET_ACCESS_KEY');
+  const uploadDir = configService.get<string>("UPLOAD_DIR") || "./uploads";
+  const awsRegion = configService.get<string>("AWS_REGION");
+  const awsBucket = configService.get<string>("AWS_S3_BUCKET");
+  const awsAccessKeyId = configService.get<string>("AWS_ACCESS_KEY_ID");
+  const awsSecretAccessKey = configService.get<string>("AWS_SECRET_ACCESS_KEY");
 
   if (!awsRegion || !awsBucket || !awsAccessKeyId || !awsSecretAccessKey) {
-    logger.error('Missing AWS configuration. Please ensure the following environment variables are set:');
-    logger.error('  - AWS_REGION');
-    logger.error('  - AWS_S3_BUCKET');
-    logger.error('  - AWS_ACCESS_KEY_ID');
-    logger.error('  - AWS_SECRET_ACCESS_KEY');
+    logger.error(
+      "Missing AWS configuration. Please ensure the following environment variables are set:",
+    );
+    logger.error("  - AWS_REGION");
+    logger.error("  - AWS_S3_BUCKET");
+    logger.error("  - AWS_ACCESS_KEY_ID");
+    logger.error("  - AWS_SECRET_ACCESS_KEY");
     await app.close();
     process.exit(1);
   }
@@ -100,7 +98,7 @@ async function migrateToS3() {
   logger.log(`Source directory: ${absoluteUploadDir}`);
   logger.log(`Target S3 bucket: ${awsBucket}`);
   logger.log(`AWS Region: ${awsRegion}`);
-  logger.log('');
+  logger.log("");
 
   // Initialize S3 client
   const s3Client = new S3Client({
@@ -114,24 +112,24 @@ async function migrateToS3() {
   // Define document types to migrate
   const documentTypes = [
     {
-      name: 'Drawing Versions',
-      tableName: 'drawing_versions',
-      pathColumn: 'file_path',
+      name: "Drawing Versions",
+      tableName: "drawing_versions",
+      pathColumn: "file_path",
     },
     {
-      name: 'RFQ Documents',
-      tableName: 'rfq_documents',
-      pathColumn: 'file_path',
+      name: "RFQ Documents",
+      tableName: "rfq_documents",
+      pathColumn: "file_path",
     },
     {
-      name: 'Customer Documents',
-      tableName: 'customer_documents',
-      pathColumn: 'file_path',
+      name: "Customer Documents",
+      tableName: "customer_documents",
+      pathColumn: "file_path",
     },
     {
-      name: 'Supplier Documents',
-      tableName: 'supplier_documents',
-      pathColumn: 'file_path',
+      name: "Supplier Documents",
+      tableName: "supplier_documents",
+      pathColumn: "file_path",
     },
   ];
 
@@ -139,7 +137,7 @@ async function migrateToS3() {
 
   for (const docType of documentTypes) {
     logger.log(`\nProcessing ${docType.name}...`);
-    logger.log('-'.repeat(40));
+    logger.log("-".repeat(40));
 
     const result: MigrationResult = {
       type: docType.name,
@@ -188,21 +186,23 @@ async function migrateToS3() {
           }
 
           // Normalize S3 key (remove leading slashes, use forward slashes)
-          const s3Key = record.filePath.replace(/\\/g, '/').replace(/^\//, '');
+          const s3Key = record.filePath.replace(/\\/g, "/").replace(/^\//, "");
 
           if (!isDryRun) {
             // Check if already exists in S3
             try {
-              await s3Client.send(new HeadObjectCommand({
-                Bucket: awsBucket,
-                Key: s3Key,
-              }));
+              await s3Client.send(
+                new HeadObjectCommand({
+                  Bucket: awsBucket,
+                  Key: s3Key,
+                }),
+              );
               logger.log(`  [SKIP] Already in S3: ${s3Key}`);
               result.skipped++;
               continue;
             } catch (error: any) {
               // File doesn't exist in S3, proceed with upload
-              if (error.name !== 'NotFound' && error.$metadata?.httpStatusCode !== 404) {
+              if (error.name !== "NotFound" && error.$metadata?.httpStatusCode !== 404) {
                 throw error;
               }
             }
@@ -211,20 +211,24 @@ async function migrateToS3() {
             const fileBuffer = fs.readFileSync(localPath);
             const mimeType = getMimeType(localPath);
 
-            await s3Client.send(new PutObjectCommand({
-              Bucket: awsBucket,
-              Key: s3Key,
-              Body: fileBuffer,
-              ContentType: mimeType,
-              Metadata: {
-                originalPath: record.filePath,
-                migratedAt: new Date().toISOString(),
-              },
-            }));
+            await s3Client.send(
+              new PutObjectCommand({
+                Bucket: awsBucket,
+                Key: s3Key,
+                Body: fileBuffer,
+                ContentType: mimeType,
+                Metadata: {
+                  originalPath: record.filePath,
+                  migratedAt: new Date().toISOString(),
+                },
+              }),
+            );
 
             logger.log(`  [OK] Migrated: ${s3Key}`);
           } else {
-            logger.log(`  [DRY-RUN] Would migrate: ${record.filePath} -> s3://${awsBucket}/${s3Key}`);
+            logger.log(
+              `  [DRY-RUN] Would migrate: ${record.filePath} -> s3://${awsBucket}/${s3Key}`,
+            );
           }
 
           result.migrated++;
@@ -244,9 +248,9 @@ async function migrateToS3() {
   }
 
   // Print summary
-  logger.log('\n' + '='.repeat(60));
-  logger.log('MIGRATION SUMMARY');
-  logger.log('='.repeat(60));
+  logger.log(`\n${"=".repeat(60)}`);
+  logger.log("MIGRATION SUMMARY");
+  logger.log("=".repeat(60));
 
   let totalMigrated = 0;
   let totalSkipped = 0;
@@ -264,28 +268,28 @@ async function migrateToS3() {
     totalFailed += result.failed;
 
     if (result.errors.length > 0) {
-      logger.log('  Errors:');
+      logger.log("  Errors:");
       result.errors.forEach((err) => logger.log(`    - ${err}`));
     }
   }
 
-  logger.log('\n' + '-'.repeat(40));
+  logger.log(`\n${"-".repeat(40)}`);
   logger.log(`Total migrated: ${totalMigrated}`);
   logger.log(`Total skipped: ${totalSkipped}`);
   logger.log(`Total failed: ${totalFailed}`);
-  logger.log('='.repeat(60));
+  logger.log("=".repeat(60));
 
   if (isDryRun) {
-    logger.log('\nDRY RUN COMPLETE - No changes were made');
-    logger.log('Run without --dry-run to perform actual migration');
+    logger.log("\nDRY RUN COMPLETE - No changes were made");
+    logger.log("Run without --dry-run to perform actual migration");
   } else if (totalMigrated > 0) {
-    logger.log('\nMigration complete!');
-    logger.log('\nNext steps:');
-    logger.log('  1. Verify files are accessible in S3');
-    logger.log('  2. Update STORAGE_TYPE=s3 in your .env file');
-    logger.log('  3. Restart your application');
-    logger.log('  4. Test file upload/download functionality');
-    logger.log('  5. Once verified, you can safely remove local files');
+    logger.log("\nMigration complete!");
+    logger.log("\nNext steps:");
+    logger.log("  1. Verify files are accessible in S3");
+    logger.log("  2. Update STORAGE_TYPE=s3 in your .env file");
+    logger.log("  3. Restart your application");
+    logger.log("  4. Test file upload/download functionality");
+    logger.log("  5. Once verified, you can safely remove local files");
   }
 
   await app.close();
@@ -294,19 +298,19 @@ async function migrateToS3() {
 function getMimeType(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
   const mimeTypes: Record<string, string> = {
-    '.pdf': 'application/pdf',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.dwg': 'application/acad',
-    '.dxf': 'application/dxf',
-    '.doc': 'application/msword',
-    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    '.xls': 'application/vnd.ms-excel',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".dwg": "application/acad",
+    ".dxf": "application/dxf",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   };
-  return mimeTypes[ext] || 'application/octet-stream';
+  return mimeTypes[ext] || "application/octet-stream";
 }
 
 // Run the migration
@@ -315,6 +319,6 @@ migrateToS3()
     process.exit(0);
   })
   .catch((error) => {
-    logger.error('Migration failed with error:', error);
+    logger.error("Migration failed with error:", error);
     process.exit(1);
   });

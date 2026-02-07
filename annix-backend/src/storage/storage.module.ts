@@ -1,10 +1,10 @@
-import { Module, Global, Logger } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { LocalStorageService } from './local-storage.service';
-import { S3StorageService } from './s3-storage.service';
-import { STORAGE_SERVICE, IStorageService } from './storage.interface';
+import { Global, Logger, Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { LocalStorageService } from "./local-storage.service";
+import { S3StorageService } from "./s3-storage.service";
+import { IStorageService, STORAGE_SERVICE } from "./storage.interface";
 
-const logger = new Logger('StorageModule');
+const logger = new Logger("StorageModule");
 
 /**
  * Factory function to determine which storage service to use based on STORAGE_TYPE environment variable.
@@ -20,17 +20,16 @@ const storageServiceFactory = {
     localStorageService: LocalStorageService,
     s3StorageService: S3StorageService,
   ): IStorageService => {
-    const storageType = configService.get<string>('STORAGE_TYPE') || 'local';
+    const storageType = configService.get<string>("STORAGE_TYPE") || "local";
 
     logger.log(`Storage type configured: ${storageType}`);
 
     switch (storageType.toLowerCase()) {
-      case 's3':
-        logger.log('Using S3 Storage Service');
+      case "s3":
+        logger.log("Using S3 Storage Service");
         return s3StorageService;
-      case 'local':
       default:
-        logger.log('Using Local Storage Service');
+        logger.log("Using Local Storage Service");
         return localStorageService;
     }
   },

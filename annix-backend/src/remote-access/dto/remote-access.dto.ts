@@ -1,21 +1,14 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import {
-  IsEnum,
-  IsInt,
-  IsOptional,
-  IsString,
-  IsBoolean,
-  MaxLength,
-} from 'class-validator';
-import {
-  RemoteAccessRequestType,
   RemoteAccessDocumentType,
+  RemoteAccessRequestType,
   RemoteAccessStatus,
-} from '../entities/remote-access-request.entity';
+} from "../entities/remote-access-request.entity";
 
 export class CreateRemoteAccessRequestDto {
   @ApiProperty({
-    description: 'Type of access requested',
+    description: "Type of access requested",
     enum: RemoteAccessRequestType,
     example: RemoteAccessRequestType.VIEW,
   })
@@ -23,7 +16,7 @@ export class CreateRemoteAccessRequestDto {
   requestType: RemoteAccessRequestType;
 
   @ApiProperty({
-    description: 'Type of document to access',
+    description: "Type of document to access",
     enum: RemoteAccessDocumentType,
     example: RemoteAccessDocumentType.RFQ,
   })
@@ -31,15 +24,15 @@ export class CreateRemoteAccessRequestDto {
   documentType: RemoteAccessDocumentType;
 
   @ApiProperty({
-    description: 'ID of the document to access',
+    description: "ID of the document to access",
     example: 1,
   })
   @IsInt()
   documentId: number;
 
   @ApiPropertyOptional({
-    description: 'Optional message to the document owner',
-    example: 'I need to review the specifications for quality assurance.',
+    description: "Optional message to the document owner",
+    example: "I need to review the specifications for quality assurance.",
     maxLength: 500,
   })
   @IsOptional()
@@ -50,15 +43,15 @@ export class CreateRemoteAccessRequestDto {
 
 export class RespondToAccessRequestDto {
   @ApiProperty({
-    description: 'Whether to approve the request',
+    description: "Whether to approve the request",
     example: true,
   })
   @IsBoolean()
   approved: boolean;
 
   @ApiPropertyOptional({
-    description: 'Reason for denial (required if not approved)',
-    example: 'This document contains confidential pricing information.',
+    description: "Reason for denial (required if not approved)",
+    example: "This document contains confidential pricing information.",
     maxLength: 500,
   })
   @IsOptional()
@@ -68,57 +61,57 @@ export class RespondToAccessRequestDto {
 }
 
 export class RemoteAccessRequestResponseDto {
-  @ApiProperty({ description: 'Request ID', example: 1 })
+  @ApiProperty({ description: "Request ID", example: 1 })
   id: number;
 
   @ApiProperty({
-    description: 'Type of access requested',
+    description: "Type of access requested",
     enum: RemoteAccessRequestType,
   })
   requestType: RemoteAccessRequestType;
 
   @ApiProperty({
-    description: 'Type of document',
+    description: "Type of document",
     enum: RemoteAccessDocumentType,
   })
   documentType: RemoteAccessDocumentType;
 
-  @ApiProperty({ description: 'Document ID', example: 1 })
+  @ApiProperty({ description: "Document ID", example: 1 })
   documentId: number;
 
   @ApiProperty({
-    description: 'Current status',
+    description: "Current status",
     enum: RemoteAccessStatus,
   })
   status: RemoteAccessStatus;
 
-  @ApiPropertyOptional({ description: 'Admin message' })
+  @ApiPropertyOptional({ description: "Admin message" })
   message?: string;
 
-  @ApiProperty({ description: 'When the request was made' })
+  @ApiProperty({ description: "When the request was made" })
   requestedAt: Date;
 
-  @ApiPropertyOptional({ description: 'When it expires' })
+  @ApiPropertyOptional({ description: "When it expires" })
   expiresAt: Date;
 
-  @ApiPropertyOptional({ description: 'When owner responded' })
+  @ApiPropertyOptional({ description: "When owner responded" })
   respondedAt?: Date;
 
-  @ApiPropertyOptional({ description: 'Admin who requested' })
+  @ApiPropertyOptional({ description: "Admin who requested" })
   requestedBy?: {
     id: number;
     name: string;
     email: string;
   };
 
-  @ApiPropertyOptional({ description: 'Document owner' })
+  @ApiPropertyOptional({ description: "Document owner" })
   documentOwner?: {
     id: number;
     name: string;
     email: string;
   };
 
-  @ApiPropertyOptional({ description: 'Document details' })
+  @ApiPropertyOptional({ description: "Document details" })
   document?: {
     id: number;
     name: string;
@@ -128,41 +121,41 @@ export class RemoteAccessRequestResponseDto {
 
 export class PendingAccessRequestsResponseDto {
   @ApiProperty({
-    description: 'List of pending access requests',
+    description: "List of pending access requests",
     type: [RemoteAccessRequestResponseDto],
   })
   requests: RemoteAccessRequestResponseDto[];
 
-  @ApiProperty({ description: 'Total count of pending requests', example: 3 })
+  @ApiProperty({ description: "Total count of pending requests", example: 3 })
   count: number;
 }
 
 export class AccessStatusResponseDto {
   @ApiProperty({
-    description: 'Whether access is granted',
+    description: "Whether access is granted",
     example: true,
   })
   hasAccess: boolean;
 
   @ApiProperty({
-    description: 'Current request status',
+    description: "Current request status",
     enum: RemoteAccessStatus,
   })
   status: RemoteAccessStatus;
 
   @ApiPropertyOptional({
-    description: 'Request ID if exists',
+    description: "Request ID if exists",
     example: 1,
   })
   requestId?: number;
 
   @ApiPropertyOptional({
-    description: 'When access expires',
+    description: "When access expires",
   })
   expiresAt?: Date;
 
   @ApiPropertyOptional({
-    description: 'Message from the request',
+    description: "Message from the request",
   })
   message?: string;
 }

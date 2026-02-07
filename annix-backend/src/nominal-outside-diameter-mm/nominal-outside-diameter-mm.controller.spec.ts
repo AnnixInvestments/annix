@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { NominalOutsideDiameterMmController } from './nominal-outside-diameter-mm.controller';
-import { NominalOutsideDiameterMmService } from './nominal-outside-diameter-mm.service';
-import { CreateNominalOutsideDiameterMmDto } from './dto/create-nominal-outside-diameter-mm.dto';
-import { UpdateNominalOutsideDiameterMmDto } from './dto/update-nominal-outside-diameter-mm.dto';
-import { NominalOutsideDiameterMm } from './entities/nominal-outside-diameter-mm.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { CreateNominalOutsideDiameterMmDto } from "./dto/create-nominal-outside-diameter-mm.dto";
+import { UpdateNominalOutsideDiameterMmDto } from "./dto/update-nominal-outside-diameter-mm.dto";
+import { NominalOutsideDiameterMm } from "./entities/nominal-outside-diameter-mm.entity";
+import { NominalOutsideDiameterMmController } from "./nominal-outside-diameter-mm.controller";
+import { NominalOutsideDiameterMmService } from "./nominal-outside-diameter-mm.service";
 
-describe('NominalOutsideDiameterMmController', () => {
+describe("NominalOutsideDiameterMmController", () => {
   let controller: NominalOutsideDiameterMmController;
   let service: jest.Mocked<NominalOutsideDiameterMmService>;
 
@@ -39,18 +39,16 @@ describe('NominalOutsideDiameterMmController', () => {
       ],
     }).compile();
 
-    controller = module.get<NominalOutsideDiameterMmController>(
-      NominalOutsideDiameterMmController,
-    );
+    controller = module.get<NominalOutsideDiameterMmController>(NominalOutsideDiameterMmController);
     service = module.get(NominalOutsideDiameterMmService);
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should call service.create with dto and return result', async () => {
+  describe("create", () => {
+    it("should call service.create with dto and return result", async () => {
       const dto: CreateNominalOutsideDiameterMmDto = {
         nominal_diameter_mm: 50,
         outside_diameter_mm: 60.32,
@@ -71,8 +69,8 @@ describe('NominalOutsideDiameterMmController', () => {
     });
   });
 
-  describe('findAll', () => {
-    it('should return array of values', async () => {
+  describe("findAll", () => {
+    it("should return array of values", async () => {
       const result: NominalOutsideDiameterMm[] = [
         {
           id: 1,
@@ -91,8 +89,8 @@ describe('NominalOutsideDiameterMmController', () => {
     });
   });
 
-  describe('findOne', () => {
-    it('should return one value by id', async () => {
+  describe("findOne", () => {
+    it("should return one value by id", async () => {
       const result: NominalOutsideDiameterMm = {
         id: 1,
         nominal_diameter_mm: 50,
@@ -109,8 +107,8 @@ describe('NominalOutsideDiameterMmController', () => {
     });
   });
 
-  describe('update', () => {
-    it('should call service.update with id and dto', async () => {
+  describe("update", () => {
+    it("should call service.update with id and dto", async () => {
       const dto: UpdateNominalOutsideDiameterMmDto = {
         nominal_diameter_mm: 65,
         outside_diameter_mm: 76.2,
@@ -127,13 +125,13 @@ describe('NominalOutsideDiameterMmController', () => {
 
       service.update.mockResolvedValue(result);
 
-      expect(await controller.update('1', dto)).toEqual(result);
+      expect(await controller.update("1", dto)).toEqual(result);
       expect(service.update).toHaveBeenCalledWith(1, dto);
     });
   });
 
-  describe('remove', () => {
-    it('should call service.remove with id', async () => {
+  describe("remove", () => {
+    it("should call service.remove with id", async () => {
       service.remove.mockResolvedValue(undefined);
 
       expect(await controller.remove(1)).toBeUndefined();

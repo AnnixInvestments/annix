@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddPhase2UserRoles1766000000000 implements MigrationInterface {
-  name = 'AddPhase2UserRoles1766000000000';
+  name = "AddPhase2UserRoles1766000000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Insert Phase 2 user roles

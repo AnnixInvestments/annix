@@ -1,24 +1,24 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsEmail,
   IsArray,
-  IsIn,
-  MaxLength,
-  IsInt,
-  Min,
-  Max,
   IsBoolean,
   IsDateString,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsZAPhone } from '../../shared/validators';
+  IsEmail,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from "class-validator";
+import { IsZAPhone } from "../../shared/validators";
 
 export class SupplierCompanyDto {
   @ApiProperty({
-    description: 'Company legal name',
-    example: 'ABC Supplies (Pty) Ltd',
+    description: "Company legal name",
+    example: "ABC Supplies (Pty) Ltd",
   })
   @IsString()
   @IsNotEmpty()
@@ -26,8 +26,8 @@ export class SupplierCompanyDto {
   legalName: string;
 
   @ApiPropertyOptional({
-    description: 'Trading name if different from legal name',
-    example: 'ABC Supplies',
+    description: "Trading name if different from legal name",
+    example: "ABC Supplies",
   })
   @IsString()
   @IsOptional()
@@ -35,23 +35,23 @@ export class SupplierCompanyDto {
   tradingName?: string;
 
   @ApiProperty({
-    description: 'Company registration number (CIPC)',
-    example: '2020/123456/07',
+    description: "Company registration number (CIPC)",
+    example: "2020/123456/07",
   })
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
   registrationNumber: string;
 
-  @ApiPropertyOptional({ description: 'Tax number', example: '1234567890' })
+  @ApiPropertyOptional({ description: "Tax number", example: "1234567890" })
   @IsString()
   @IsOptional()
   @MaxLength(50)
   taxNumber?: string;
 
   @ApiPropertyOptional({
-    description: 'VAT registration number',
-    example: '4123456789',
+    description: "VAT registration number",
+    example: "4123456789",
   })
   @IsString()
   @IsOptional()
@@ -59,40 +59,40 @@ export class SupplierCompanyDto {
   vatNumber?: string;
 
   @ApiProperty({
-    description: 'Street address',
-    example: '456 Supplier Avenue',
+    description: "Street address",
+    example: "456 Supplier Avenue",
   })
   @IsString()
   @IsNotEmpty()
   streetAddress: string;
 
-  @ApiPropertyOptional({ description: 'Address line 2', example: 'Unit 5' })
+  @ApiPropertyOptional({ description: "Address line 2", example: "Unit 5" })
   @IsString()
   @IsOptional()
   addressLine2?: string;
 
-  @ApiProperty({ description: 'City', example: 'Cape Town' })
+  @ApiProperty({ description: "City", example: "Cape Town" })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   city: string;
 
-  @ApiProperty({ description: 'Province or state', example: 'Western Cape' })
+  @ApiProperty({ description: "Province or state", example: "Western Cape" })
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   provinceState: string;
 
-  @ApiProperty({ description: 'Postal code', example: '8001' })
+  @ApiProperty({ description: "Postal code", example: "8001" })
   @IsString()
   @IsNotEmpty()
   @MaxLength(20)
   postalCode: string;
 
   @ApiPropertyOptional({
-    description: 'Country',
-    example: 'South Africa',
-    default: 'South Africa',
+    description: "Country",
+    example: "South Africa",
+    default: "South Africa",
   })
   @IsString()
   @IsOptional()
@@ -100,32 +100,32 @@ export class SupplierCompanyDto {
   country?: string;
 
   @ApiPropertyOptional({
-    description: 'Currency code (ISO 4217)',
-    example: 'ZAR',
-    default: 'ZAR',
+    description: "Currency code (ISO 4217)",
+    example: "ZAR",
+    default: "ZAR",
   })
   @IsString()
   @IsOptional()
   @MaxLength(3)
   currencyCode?: string;
 
-  @ApiProperty({ description: 'Primary contact name', example: 'Jane Doe' })
+  @ApiProperty({ description: "Primary contact name", example: "Jane Doe" })
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
   primaryContactName: string;
 
   @ApiProperty({
-    description: 'Primary contact email',
-    example: 'jane@abcsupplies.co.za',
+    description: "Primary contact email",
+    example: "jane@abcsupplies.co.za",
   })
   @IsEmail()
   @IsNotEmpty()
   primaryContactEmail: string;
 
   @ApiProperty({
-    description: 'Primary contact phone',
-    example: '+27 21 555 0123',
+    description: "Primary contact phone",
+    example: "+27 21 555 0123",
   })
   @IsString()
   @IsNotEmpty()
@@ -134,8 +134,8 @@ export class SupplierCompanyDto {
   primaryContactPhone: string;
 
   @ApiPropertyOptional({
-    description: 'Company main phone number',
-    example: '+27 21 555 0100',
+    description: "Company main phone number",
+    example: "+27 21 555 0100",
   })
   @IsString()
   @IsOptional()
@@ -144,8 +144,8 @@ export class SupplierCompanyDto {
   primaryPhone?: string;
 
   @ApiPropertyOptional({
-    description: 'Fax number',
-    example: '+27 21 555 0101',
+    description: "Fax number",
+    example: "+27 21 555 0101",
   })
   @IsString()
   @IsOptional()
@@ -153,16 +153,16 @@ export class SupplierCompanyDto {
   faxNumber?: string;
 
   @ApiPropertyOptional({
-    description: 'General company email',
-    example: 'info@abcsupplies.co.za',
+    description: "General company email",
+    example: "info@abcsupplies.co.za",
   })
   @IsEmail()
   @IsOptional()
   generalEmail?: string;
 
   @ApiPropertyOptional({
-    description: 'Company website',
-    example: 'https://www.abcsupplies.co.za',
+    description: "Company website",
+    example: "https://www.abcsupplies.co.za",
   })
   @IsString()
   @IsOptional()
@@ -170,8 +170,8 @@ export class SupplierCompanyDto {
   website?: string;
 
   @ApiPropertyOptional({
-    description: 'Operational regions',
-    example: ['Gauteng', 'Western Cape', 'KwaZulu-Natal'],
+    description: "Operational regions",
+    example: ["Gauteng", "Western Cape", "KwaZulu-Natal"],
     type: [String],
   })
   @IsArray()
@@ -180,8 +180,8 @@ export class SupplierCompanyDto {
   operationalRegions?: string[];
 
   @ApiPropertyOptional({
-    description: 'Industry type',
-    example: 'Manufacturing',
+    description: "Industry type",
+    example: "Manufacturing",
   })
   @IsString()
   @IsOptional()
@@ -189,16 +189,16 @@ export class SupplierCompanyDto {
   industryType?: string;
 
   @ApiPropertyOptional({
-    description: 'Company size category',
-    example: 'medium',
+    description: "Company size category",
+    example: "medium",
   })
-  @IsIn(['micro', 'small', 'medium', 'large', 'enterprise'])
+  @IsIn(["micro", "small", "medium", "large", "enterprise"])
   @IsOptional()
   companySize?: string;
 
   // BEE (Broad-Based Black Economic Empowerment) fields
   @ApiPropertyOptional({
-    description: 'BEE Level (1-8)',
+    description: "BEE Level (1-8)",
     example: 3,
   })
   @IsInt()
@@ -208,16 +208,16 @@ export class SupplierCompanyDto {
   beeLevel?: number;
 
   @ApiPropertyOptional({
-    description: 'BEE Certificate expiry date',
-    example: '2025-12-31',
+    description: "BEE Certificate expiry date",
+    example: "2025-12-31",
   })
   @IsDateString()
   @IsOptional()
   beeCertificateExpiry?: string;
 
   @ApiPropertyOptional({
-    description: 'BEE Verification agency name',
-    example: 'Empowerdex',
+    description: "BEE Verification agency name",
+    example: "Empowerdex",
   })
   @IsString()
   @IsOptional()
@@ -225,7 +225,7 @@ export class SupplierCompanyDto {
   beeVerificationAgency?: string;
 
   @ApiPropertyOptional({
-    description: 'Whether company is an exempt micro enterprise (EME)',
+    description: "Whether company is an exempt micro enterprise (EME)",
     example: false,
   })
   @IsBoolean()

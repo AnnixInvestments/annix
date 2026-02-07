@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateNixTables1737045600000 implements MigrationInterface {
-  name = 'CreateNixTables1737045600000';
+  name = "CreateNixTables1737045600000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -195,7 +195,7 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
     `);
 
     console.log(
-      'Created Nix AI tables: nix_extractions, nix_learning, nix_user_preferences, nix_clarifications',
+      "Created Nix AI tables: nix_extractions, nix_learning, nix_user_preferences, nix_clarifications",
     );
   }
 
@@ -206,17 +206,13 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS "nix_extractions"`);
 
     await queryRunner.query(`DROP TYPE IF EXISTS "nix_response_type_enum"`);
-    await queryRunner.query(
-      `DROP TYPE IF EXISTS "nix_clarification_type_enum"`,
-    );
-    await queryRunner.query(
-      `DROP TYPE IF EXISTS "nix_clarification_status_enum"`,
-    );
+    await queryRunner.query(`DROP TYPE IF EXISTS "nix_clarification_type_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "nix_clarification_status_enum"`);
     await queryRunner.query(`DROP TYPE IF EXISTS "nix_learning_source_enum"`);
     await queryRunner.query(`DROP TYPE IF EXISTS "nix_learning_type_enum"`);
     await queryRunner.query(`DROP TYPE IF EXISTS "nix_document_type_enum"`);
     await queryRunner.query(`DROP TYPE IF EXISTS "nix_extraction_status_enum"`);
 
-    console.log('Dropped Nix AI tables');
+    console.log("Dropped Nix AI tables");
   }
 }

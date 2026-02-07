@@ -1,6 +1,4 @@
-'use client';
-
-import React from 'react';
+"use client";
 
 export interface BoltRecommendation {
   grade: string;
@@ -37,45 +35,39 @@ export function FastenersGasketsSection({
     <div className="space-y-4">
       <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
         <span className="text-2xl">&#9881;&#65039;</span>
-        <h3 className="text-xl font-bold text-gray-900">
-          Nuts, Bolts, Washers & Gaskets
-        </h3>
+        <h3 className="text-xl font-bold text-gray-900">Nuts, Bolts, Washers & Gaskets</h3>
       </div>
 
-      {globalSpecs?.fastenersConfirmed &&
-        globalSpecs?.boltGrade &&
-        globalSpecs?.gasketType && (
-          <div className="bg-green-100 border border-green-400 rounded-md p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-green-800">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <span className="font-medium">Bolts:</span>{' '}
-                {globalSpecs.boltGrade}{' '}
-                <span className="mx-2">&bull;</span>{' '}
-                <span className="font-medium">Gasket:</span>{' '}
-                {globalSpecs.gasketType}
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  onUpdateGlobalSpecs({
-                    ...globalSpecs,
-                    fastenersConfirmed: false,
-                  })
-                }
-                className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
-              >
-                Edit
-              </button>
+      {globalSpecs?.fastenersConfirmed && globalSpecs?.boltGrade && globalSpecs?.gasketType && (
+        <div className="bg-green-100 border border-green-400 rounded-md p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-green-800">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="font-medium">Bolts:</span> {globalSpecs.boltGrade}{" "}
+              <span className="mx-2">&bull;</span> <span className="font-medium">Gasket:</span>{" "}
+              {globalSpecs.gasketType}
             </div>
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  fastenersConfirmed: false,
+                })
+              }
+              className="px-2 py-1 bg-gray-500 text-white font-medium rounded text-xs hover:bg-gray-600"
+            >
+              Edit
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
       {!globalSpecs?.fastenersConfirmed && (
         <>
@@ -85,7 +77,7 @@ export function FastenersGasketsSection({
                 Bolt, Nut & Washer Grade
               </label>
               <select
-                value={globalSpecs?.boltGrade || ''}
+                value={globalSpecs?.boltGrade || ""}
                 onChange={(e) =>
                   onUpdateGlobalSpecs({
                     ...globalSpecs,
@@ -96,26 +88,14 @@ export function FastenersGasketsSection({
               >
                 <option value="">Select bolt grade...</option>
                 <optgroup label="Carbon Steel (Standard Temperature)">
-                  <option value="B7/2H">
-                    ASTM A193 B7 / A194 2H (Standard, -40°C to 400°C)
-                  </option>
-                  <option value="B7/2H-HDG">
-                    ASTM A193 B7 / A194 2H - Hot Dip Galvanized
-                  </option>
-                  <option value="B16/4">
-                    ASTM A193 B16 / A194 4 (High Temperature, to 540°C)
-                  </option>
+                  <option value="B7/2H">ASTM A193 B7 / A194 2H (Standard, -40°C to 400°C)</option>
+                  <option value="B7/2H-HDG">ASTM A193 B7 / A194 2H - Hot Dip Galvanized</option>
+                  <option value="B16/4">ASTM A193 B16 / A194 4 (High Temperature, to 540°C)</option>
                 </optgroup>
                 <optgroup label="Low Temperature Service">
-                  <option value="B7M/2HM">
-                    ASTM A320 B7M / A194 2HM (-100°C to 200°C)
-                  </option>
-                  <option value="L7/7">
-                    ASTM A320 L7 / A194 7 (-100°C to 200°C)
-                  </option>
-                  <option value="L7M/7M">
-                    ASTM A320 L7M / A194 7M (-100°C to 200°C)
-                  </option>
+                  <option value="B7M/2HM">ASTM A320 B7M / A194 2HM (-100°C to 200°C)</option>
+                  <option value="L7/7">ASTM A320 L7 / A194 7 (-100°C to 200°C)</option>
+                  <option value="L7M/7M">ASTM A320 L7M / A194 7M (-100°C to 200°C)</option>
                   <option value="L43/7">ASTM A320 L43 / A194 7 (to -100°C)</option>
                 </optgroup>
                 <optgroup label="Stainless Steel">
@@ -125,9 +105,7 @@ export function FastenersGasketsSection({
                   <option value="B8T/8T">ASTM A193 B8T / A194 8T (321 SS)</option>
                 </optgroup>
                 <optgroup label="High Alloy / Special">
-                  <option value="B8S/8S">
-                    ASTM A193 B8S / A194 8S (Duplex 2205)
-                  </option>
+                  <option value="B8S/8S">ASTM A193 B8S / A194 8S (Duplex 2205)</option>
                   <option value="Monel">Monel 400/K-500</option>
                   <option value="Inconel">Inconel 625/718</option>
                 </optgroup>
@@ -155,9 +133,7 @@ export function FastenersGasketsSection({
                           <span className="font-medium">
                             Recommended: {boltRecommendation.grade}
                           </span>
-                          <span className="text-blue-600 ml-1">
-                            - {boltRecommendation.reason}
-                          </span>
+                          <span className="text-blue-600 ml-1">- {boltRecommendation.reason}</span>
                         </p>
                         <button
                           type="button"
@@ -194,9 +170,8 @@ export function FastenersGasketsSection({
                       </svg>
                       <div className="flex-1">
                         <p className="text-amber-800">
-                          Selected grade differs from recommendation (
-                          {boltRecommendation.grade}) for{' '}
-                          {globalSpecs.workingTemperatureC}°C
+                          Selected grade differs from recommendation ({boltRecommendation.grade})
+                          for {globalSpecs.workingTemperatureC}°C
                         </p>
                       </div>
                     </div>
@@ -212,7 +187,7 @@ export function FastenersGasketsSection({
                 Gasket Type & Thickness
               </label>
               <select
-                value={globalSpecs?.gasketType || ''}
+                value={globalSpecs?.gasketType || ""}
                 onChange={(e) =>
                   onUpdateGlobalSpecs({
                     ...globalSpecs,
@@ -223,9 +198,7 @@ export function FastenersGasketsSection({
               >
                 <option value="">Select gasket type...</option>
                 <optgroup label="Spiral Wound (ASME B16.20)">
-                  <option value="SW-CGI-316">
-                    Spiral Wound - CGI/316SS - 3.2mm (Standard)
-                  </option>
+                  <option value="SW-CGI-316">Spiral Wound - CGI/316SS - 3.2mm (Standard)</option>
                   <option value="SW-CGI-316-IR">
                     Spiral Wound - CGI/316SS with Inner Ring - 3.2mm
                   </option>
@@ -237,55 +210,34 @@ export function FastenersGasketsSection({
                   </option>
                 </optgroup>
                 <optgroup label="Ring Joint (RTJ) - ASME B16.20">
-                  <option value="RTJ-R-SS">
-                    RTJ Ring - Soft Iron/SS 304 (R-Series)
-                  </option>
-                  <option value="RTJ-RX-SS">
-                    RTJ Ring - SS 316 (RX-Series, High Pressure)
-                  </option>
-                  <option value="RTJ-BX-SS">
-                    RTJ Ring - SS 316 (BX-Series, API 6A)
-                  </option>
+                  <option value="RTJ-R-SS">RTJ Ring - Soft Iron/SS 304 (R-Series)</option>
+                  <option value="RTJ-RX-SS">RTJ Ring - SS 316 (RX-Series, High Pressure)</option>
+                  <option value="RTJ-BX-SS">RTJ Ring - SS 316 (BX-Series, API 6A)</option>
                   <option value="RTJ-R-Inconel">
                     RTJ Ring - Inconel 625 (High Temp/Corrosive)
                   </option>
                 </optgroup>
                 <optgroup label="Non-Metallic">
-                  <option value="PTFE-1.5">
-                    PTFE Sheet - 1.5mm (Chemical Service)
-                  </option>
-                  <option value="PTFE-3.0">
-                    PTFE Sheet - 3.0mm (Chemical Service)
-                  </option>
+                  <option value="PTFE-1.5">PTFE Sheet - 1.5mm (Chemical Service)</option>
+                  <option value="PTFE-3.0">PTFE Sheet - 3.0mm (Chemical Service)</option>
                   <option value="Graphite-1.5">
                     Flexible Graphite - 1.5mm (High Temp to 450°C)
                   </option>
                   <option value="Graphite-3.0">
                     Flexible Graphite - 3.0mm (High Temp to 450°C)
                   </option>
-                  <option value="CAF-1.5">
-                    Compressed Asbestos Free (CAF) - 1.5mm
-                  </option>
-                  <option value="CAF-3.0">
-                    Compressed Asbestos Free (CAF) - 3.0mm
-                  </option>
+                  <option value="CAF-1.5">Compressed Asbestos Free (CAF) - 1.5mm</option>
+                  <option value="CAF-3.0">Compressed Asbestos Free (CAF) - 3.0mm</option>
                 </optgroup>
                 <optgroup label="Rubber/Elastomer">
-                  <option value="EPDM-3.0">
-                    EPDM Rubber - 3.0mm (Water/Steam)
-                  </option>
+                  <option value="EPDM-3.0">EPDM Rubber - 3.0mm (Water/Steam)</option>
                   <option value="NBR-3.0">Nitrile (NBR) - 3.0mm (Oil/Fuel)</option>
-                  <option value="Viton-3.0">
-                    Viton (FKM) - 3.0mm (Chemical/High Temp)
-                  </option>
-                  <option value="Neoprene-3.0">
-                    Neoprene - 3.0mm (General Purpose)
-                  </option>
+                  <option value="Viton-3.0">Viton (FKM) - 3.0mm (Chemical/High Temp)</option>
+                  <option value="Neoprene-3.0">Neoprene - 3.0mm (General Purpose)</option>
                 </optgroup>
               </select>
               <p className="mt-1 text-xs text-gray-500">
-                Select based on pressure class, temperature, and media
-                compatibility
+                Select based on pressure class, temperature, and media compatibility
               </p>
 
               {!globalSpecs?.gasketType &&
@@ -312,9 +264,7 @@ export function FastenersGasketsSection({
                             Recommended: {gasketRecommendation.gasketName}
                           </span>
                         </p>
-                        <p className="text-blue-700 mt-0.5">
-                          {gasketRecommendation.reason}
-                        </p>
+                        <p className="text-blue-700 mt-0.5">{gasketRecommendation.reason}</p>
                         <button
                           type="button"
                           onClick={() =>
@@ -351,9 +301,9 @@ export function FastenersGasketsSection({
                       </svg>
                       <div className="flex-1">
                         <p className="text-amber-800">
-                          Selected gasket differs from recommendation for{' '}
-                          {globalSpecs.workingTemperatureC}°C / Class{' '}
-                          {currentPressureClass?.designation || 'N/A'}
+                          Selected gasket differs from recommendation for{" "}
+                          {globalSpecs.workingTemperatureC}°C / Class{" "}
+                          {currentPressureClass?.designation || "N/A"}
                         </p>
                         <p className="text-amber-700 text-[10px] mt-0.5">
                           Recommended: {gasketRecommendation.gasketName}
@@ -381,8 +331,8 @@ export function FastenersGasketsSection({
                 />
               </svg>
               <p className="text-amber-700 text-xs">
-                Bolt quantities and dimensions will be automatically calculated
-                based on your flange selections per ASME B16.5/B16.47 standards.
+                Bolt quantities and dimensions will be automatically calculated based on your flange
+                selections per ASME B16.5/B16.47 standards.
               </p>
             </div>
           </div>

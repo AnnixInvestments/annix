@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateWeldThicknessTables1768700000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -161,14 +161,8 @@ export class CreateWeldThicknessTables1768700000000 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS weld_thickness_fitting_recommendations`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS weld_thickness_pipe_recommendations`,
-    );
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS weld_thickness_pressure_classes`,
-    );
+    await queryRunner.query("DROP TABLE IF EXISTS weld_thickness_fitting_recommendations");
+    await queryRunner.query("DROP TABLE IF EXISTS weld_thickness_pipe_recommendations");
+    await queryRunner.query("DROP TABLE IF EXISTS weld_thickness_pressure_classes");
   }
 }

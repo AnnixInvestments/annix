@@ -1,13 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FittingVariantController } from './fitting-variant.controller';
-import { FittingVariantService } from './fitting-variant.service';
-import { FittingVariant } from './entities/fitting-variant.entity';
-import { Fitting } from '../fitting/entities/fitting.entity';
-import { FittingBore } from '../fitting-bore/entities/fitting-bore.entity';
-import { FittingDimension } from '../fitting-dimension/entities/fitting-dimension.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { Fitting } from "../fitting/entities/fitting.entity";
+import { FittingBore } from "../fitting-bore/entities/fitting-bore.entity";
+import { FittingDimension } from "../fitting-dimension/entities/fitting-dimension.entity";
+import { FittingVariant } from "./entities/fitting-variant.entity";
+import { FittingVariantController } from "./fitting-variant.controller";
+import { FittingVariantService } from "./fitting-variant.service";
 
-describe('FittingVariantController', () => {
+describe("FittingVariantController", () => {
   let controller: FittingVariantController;
   let service: FittingVariantService;
 
@@ -63,7 +63,7 @@ describe('FittingVariantController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

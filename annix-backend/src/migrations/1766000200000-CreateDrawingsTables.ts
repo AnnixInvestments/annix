@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateDrawingsTables1766000200000 implements MigrationInterface {
-  name = 'CreateDrawingsTables1766000200000';
+  name = "CreateDrawingsTables1766000200000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create drawing_file_type enum
@@ -157,12 +157,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
         `);
 
     // Create indexes
-    await queryRunner.query(
-      `CREATE INDEX "IDX_drawings_rfq_id" ON "drawings" ("rfq_id")`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_drawings_status" ON "drawings" ("status")`,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_drawings_rfq_id" ON "drawings" ("rfq_id")`);
+    await queryRunner.query(`CREATE INDEX "IDX_drawings_status" ON "drawings" ("status")`);
     await queryRunner.query(
       `CREATE INDEX "IDX_drawings_uploaded_by" ON "drawings" ("uploaded_by_user_id")`,
     );
@@ -202,12 +198,8 @@ export class CreateDrawingsTables1766000200000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "drawing_versions" DROP CONSTRAINT "FK_drawing_versions_drawing"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_uploaded_by"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_rfq"`,
-    );
+    await queryRunner.query(`ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_uploaded_by"`);
+    await queryRunner.query(`ALTER TABLE "drawings" DROP CONSTRAINT "FK_drawings_rfq"`);
 
     // Drop tables
     await queryRunner.query(`DROP TABLE "drawing_comments"`);

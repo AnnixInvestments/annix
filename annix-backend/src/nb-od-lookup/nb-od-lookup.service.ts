@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NbOdLookup } from './entities/nb-od-lookup.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { NbOdLookup } from "./entities/nb-od-lookup.entity";
 
 export interface NbOdLookupResult {
   found: boolean;
@@ -19,7 +19,7 @@ export class NbOdLookupService {
 
   async findAll(): Promise<NbOdLookup[]> {
     return this.nbOdLookupRepository.find({
-      order: { nominal_bore_mm: 'ASC' },
+      order: { nominal_bore_mm: "ASC" },
     });
   }
 
@@ -47,9 +47,9 @@ export class NbOdLookupService {
 
   async availableNominalBores(): Promise<number[]> {
     const result = await this.nbOdLookupRepository
-      .createQueryBuilder('nb')
-      .select('nb.nominal_bore_mm', 'nominalBoreMm')
-      .orderBy('nb.nominal_bore_mm', 'ASC')
+      .createQueryBuilder("nb")
+      .select("nb.nominal_bore_mm", "nominalBoreMm")
+      .orderBy("nb.nominal_bore_mm", "ASC")
       .getRawMany<{ nominalBoreMm: number }>();
 
     return result.map((r) => r.nominalBoreMm);

@@ -1,14 +1,13 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateFlangeTables1761660067946 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('🏗️ Creating flange tables if they do not exist...');
+    console.warn("🏗️ Creating flange tables if they do not exist...");
 
     // Create flange_standards table first (flange_pressure_classes depends on it)
-    const flangeStandardsExists =
-      await queryRunner.hasTable('flange_standards');
+    const flangeStandardsExists = await queryRunner.hasTable("flange_standards");
     if (!flangeStandardsExists) {
-      console.warn('Creating flange_standards table...');
+      console.warn("Creating flange_standards table...");
       await queryRunner.query(`
                 CREATE TABLE "flange_standards" (
                     "id" SERIAL NOT NULL,
@@ -20,11 +19,9 @@ export class CreateFlangeTables1761660067946 implements MigrationInterface {
     }
 
     // Create flange_pressure_classes table
-    const flangePressureClassesExists = await queryRunner.hasTable(
-      'flange_pressure_classes',
-    );
+    const flangePressureClassesExists = await queryRunner.hasTable("flange_pressure_classes");
     if (!flangePressureClassesExists) {
-      console.warn('Creating flange_pressure_classes table...');
+      console.warn("Creating flange_pressure_classes table...");
       await queryRunner.query(`
                 CREATE TABLE "flange_pressure_classes" (
                     "id" SERIAL NOT NULL,
@@ -45,11 +42,9 @@ export class CreateFlangeTables1761660067946 implements MigrationInterface {
     }
 
     // Create nominal_outside_diameters table if not exists
-    const nominalOutsideDiametersExists = await queryRunner.hasTable(
-      'nominal_outside_diameters',
-    );
+    const nominalOutsideDiametersExists = await queryRunner.hasTable("nominal_outside_diameters");
     if (!nominalOutsideDiametersExists) {
-      console.warn('Creating nominal_outside_diameters table...');
+      console.warn("Creating nominal_outside_diameters table...");
       await queryRunner.query(`
                 CREATE TABLE "nominal_outside_diameters" (
                     "id" SERIAL NOT NULL,
@@ -61,20 +56,16 @@ export class CreateFlangeTables1761660067946 implements MigrationInterface {
             `);
     }
 
-    console.warn('✅ Flange tables created successfully');
+    console.warn("✅ Flange tables created successfully");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('⏮️ Rolling back flange tables...');
+    console.warn("⏮️ Rolling back flange tables...");
 
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "flange_pressure_classes" CASCADE`,
-    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "flange_pressure_classes" CASCADE`);
     await queryRunner.query(`DROP TABLE IF EXISTS "flange_standards" CASCADE`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "nominal_outside_diameters" CASCADE`,
-    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "nominal_outside_diameters" CASCADE`);
 
-    console.warn('✅ Rollback complete');
+    console.warn("✅ Rollback complete");
   }
 }

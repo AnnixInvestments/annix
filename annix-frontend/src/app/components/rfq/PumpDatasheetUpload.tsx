@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState } from "react";
 
 export interface DatasheetDocument {
   file: File;
@@ -13,78 +13,78 @@ interface PumpDatasheetUploadProps {
   onRemoveDatasheet: (id: string) => void;
   maxDatasheets?: number;
   maxFileSizeMB?: number;
-  serviceType?: 'new_pump' | 'spare_parts' | 'repair_service' | 'rental';
+  serviceType?: "new_pump" | "spare_parts" | "repair_service" | "rental";
 }
 
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 }
 
 function getFileIcon(mimeType: string): React.ReactNode {
-  if (mimeType === 'application/pdf') {
+  if (mimeType === "application/pdf") {
     return (
       <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h2a1.5 1.5 0 0 1 0 3h-1v2H8v-5h.5zm4.5 0h2a1.5 1.5 0 0 1 1.5 1.5v2a1.5 1.5 0 0 1-1.5 1.5h-2v-5zm-3.5 1v1h1a.5.5 0 0 0 0-1h-1zm4.5 0v3h1a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5h-1z"/>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM8.5 13h2a1.5 1.5 0 0 1 0 3h-1v2H8v-5h.5zm4.5 0h2a1.5 1.5 0 0 1 1.5 1.5v2a1.5 1.5 0 0 1-1.5 1.5h-2v-5zm-3.5 1v1h1a.5.5 0 0 0 0-1h-1zm4.5 0v3h1a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5h-1z" />
       </svg>
     );
   }
 
-  if (mimeType.startsWith('image/')) {
+  if (mimeType.startsWith("image/")) {
     return (
       <svg className="w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/>
+        <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z" />
       </svg>
     );
   }
 
   return (
     <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z"/>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2l5 5h-5V4zM6 20V4h6v6h6v10H6z" />
     </svg>
   );
 }
 
-const ACCEPTED_FILE_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+const ACCEPTED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
 
 const SERVICE_TYPE_HELP: Record<string, { title: string; examples: string[] }> = {
   new_pump: {
-    title: 'Pump Datasheets & Curves',
+    title: "Pump Datasheets & Curves",
     examples: [
-      'Pump performance curves (head vs flow)',
-      'Technical datasheets from manufacturer',
-      'System curve calculations',
-      'Piping layout drawings',
+      "Pump performance curves (head vs flow)",
+      "Technical datasheets from manufacturer",
+      "System curve calculations",
+      "Piping layout drawings",
     ],
   },
   spare_parts: {
-    title: 'Pump & Parts Documentation',
+    title: "Pump & Parts Documentation",
     examples: [
-      'Exploded view / parts diagram',
-      'Existing pump nameplate photo',
-      'OEM parts list / cross-reference',
-      'Seal arrangement drawing',
+      "Exploded view / parts diagram",
+      "Existing pump nameplate photo",
+      "OEM parts list / cross-reference",
+      "Seal arrangement drawing",
     ],
   },
   repair_service: {
-    title: 'Repair Documentation',
+    title: "Repair Documentation",
     examples: [
-      'Inspection report / condition assessment',
-      'Photos of damaged components',
-      'Vibration analysis report',
-      'Previous repair history',
+      "Inspection report / condition assessment",
+      "Photos of damaged components",
+      "Vibration analysis report",
+      "Previous repair history",
     ],
   },
   rental: {
-    title: 'Site Information',
+    title: "Site Information",
     examples: [
-      'Site layout / pump location',
-      'Discharge point photos',
-      'Access road conditions',
-      'Power supply details',
+      "Site layout / pump location",
+      "Discharge point photos",
+      "Access road conditions",
+      "Power supply details",
     ],
   },
 };
@@ -95,7 +95,7 @@ export default function PumpDatasheetUpload({
   onRemoveDatasheet,
   maxDatasheets = 5,
   maxFileSizeMB = 25,
-  serviceType = 'new_pump',
+  serviceType = "new_pump",
 }: PumpDatasheetUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,43 +103,49 @@ export default function PumpDatasheetUpload({
   const maxFileSizeBytes = maxFileSizeMB * 1024 * 1024;
   const helpInfo = SERVICE_TYPE_HELP[serviceType] || SERVICE_TYPE_HELP.new_pump;
 
-  const validateAndAddFile = useCallback((file: File) => {
-    setError(null);
+  const validateAndAddFile = useCallback(
+    (file: File) => {
+      setError(null);
 
-    if (datasheets.length >= maxDatasheets) {
-      setError(`Maximum ${maxDatasheets} documents allowed`);
-      return;
-    }
+      if (datasheets.length >= maxDatasheets) {
+        setError(`Maximum ${maxDatasheets} documents allowed`);
+        return;
+      }
 
-    if (file.size === 0) {
-      setError(`File "${file.name}" is empty. Please select a valid file.`);
-      return;
-    }
+      if (file.size === 0) {
+        setError(`File "${file.name}" is empty. Please select a valid file.`);
+        return;
+      }
 
-    if (file.size > maxFileSizeBytes) {
-      setError(`File "${file.name}" exceeds maximum size of ${maxFileSizeMB}MB`);
-      return;
-    }
+      if (file.size > maxFileSizeBytes) {
+        setError(`File "${file.name}" exceeds maximum size of ${maxFileSizeMB}MB`);
+        return;
+      }
 
-    if (!ACCEPTED_FILE_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith('.pdf')) {
-      setError('Please upload PDF or image files only');
-      return;
-    }
+      if (!ACCEPTED_FILE_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith(".pdf")) {
+        setError("Please upload PDF or image files only");
+        return;
+      }
 
-    if (datasheets.some(doc => doc.file.name === file.name)) {
-      setError(`A file named "${file.name}" has already been added`);
-      return;
-    }
+      if (datasheets.some((doc) => doc.file.name === file.name)) {
+        setError(`A file named "${file.name}" has already been added`);
+        return;
+      }
 
-    onAddDatasheet(file);
-  }, [datasheets, maxDatasheets, maxFileSizeBytes, maxFileSizeMB, onAddDatasheet]);
+      onAddDatasheet(file);
+    },
+    [datasheets, maxDatasheets, maxFileSizeBytes, maxFileSizeMB, onAddDatasheet],
+  );
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const files = Array.from(e.dataTransfer.files);
-    files.forEach(validateAndAddFile);
-  }, [validateAndAddFile]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const files = Array.from(e.dataTransfer.files);
+      files.forEach(validateAndAddFile);
+    },
+    [validateAndAddFile],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -151,11 +157,14 @@ export default function PumpDatasheetUpload({
     setIsDragOver(false);
   }, []);
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    files.forEach(validateAndAddFile);
-    e.target.value = '';
-  }, [validateAndAddFile]);
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      files.forEach(validateAndAddFile);
+      e.target.value = "";
+    },
+    [validateAndAddFile],
+  );
 
   return (
     <div className="border-t pt-4 mt-4">
@@ -180,9 +189,7 @@ export default function PumpDatasheetUpload({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-          isDragOver
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
+          isDragOver ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-gray-400"
         }`}
       >
         <input
@@ -193,10 +200,7 @@ export default function PumpDatasheetUpload({
           className="hidden"
           id="pump-datasheet-input"
         />
-        <label
-          htmlFor="pump-datasheet-input"
-          className="cursor-pointer"
-        >
+        <label htmlFor="pump-datasheet-input" className="cursor-pointer">
           <div className="flex flex-col items-center">
             <svg
               className="w-10 h-10 text-gray-400 mb-2"
@@ -212,7 +216,8 @@ export default function PumpDatasheetUpload({
               />
             </svg>
             <span className="text-sm text-gray-600">
-              Drag & drop files here, or <span className="text-blue-600 hover:underline">browse</span>
+              Drag & drop files here, or{" "}
+              <span className="text-blue-600 hover:underline">browse</span>
             </span>
             <span className="text-xs text-gray-400 mt-1">
               PDF or images up to {maxFileSizeMB}MB each
@@ -240,9 +245,7 @@ export default function PumpDatasheetUpload({
                   <p className="text-sm font-medium text-gray-900 truncate max-w-xs">
                     {doc.file.name}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    {formatFileSize(doc.file.size)}
-                  </p>
+                  <p className="text-xs text-gray-500">{formatFileSize(doc.file.size)}</p>
                 </div>
               </div>
               <button

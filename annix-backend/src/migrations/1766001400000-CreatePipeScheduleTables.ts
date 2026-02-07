@@ -1,8 +1,8 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreatePipeScheduleTables1766001400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('🏗️ Creating pipe schedule tables...');
+    console.warn("🏗️ Creating pipe schedule tables...");
 
     // Create pipe_schedules table
     await queryRunner.query(`
@@ -37,10 +37,10 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
             )
         `);
 
-    console.warn('✅ Tables created successfully');
+    console.warn("✅ Tables created successfully");
 
     // Populate pipe schedule data
-    console.warn('📊 Populating pipe schedule data (ASME B36.10)...');
+    console.warn("📊 Populating pipe schedule data (ASME B36.10)...");
 
     // NPS to OD and NB mapping
     const npsData: {
@@ -49,250 +49,250 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
       odMm: number;
       nbMm: number;
     }[] = [
-      { nps: '1/2', odInch: 0.84, odMm: 21.34, nbMm: 15 },
-      { nps: '3/4', odInch: 1.05, odMm: 26.67, nbMm: 20 },
-      { nps: '1', odInch: 1.315, odMm: 33.4, nbMm: 25 },
-      { nps: '1-1/4', odInch: 1.66, odMm: 42.16, nbMm: 32 },
-      { nps: '1-1/2', odInch: 1.9, odMm: 48.26, nbMm: 40 },
-      { nps: '2', odInch: 2.375, odMm: 60.33, nbMm: 50 },
-      { nps: '2-1/2', odInch: 2.875, odMm: 73.03, nbMm: 65 },
-      { nps: '3', odInch: 3.5, odMm: 88.9, nbMm: 80 },
-      { nps: '3-1/2', odInch: 4.0, odMm: 101.6, nbMm: 90 },
-      { nps: '4', odInch: 4.5, odMm: 114.3, nbMm: 100 },
-      { nps: '5', odInch: 5.563, odMm: 141.3, nbMm: 125 },
-      { nps: '6', odInch: 6.625, odMm: 168.28, nbMm: 150 },
-      { nps: '8', odInch: 8.625, odMm: 219.08, nbMm: 200 },
-      { nps: '10', odInch: 10.75, odMm: 273.05, nbMm: 250 },
-      { nps: '12', odInch: 12.75, odMm: 323.85, nbMm: 300 },
-      { nps: '14', odInch: 14.0, odMm: 355.6, nbMm: 350 },
-      { nps: '16', odInch: 16.0, odMm: 406.4, nbMm: 400 },
-      { nps: '18', odInch: 18.0, odMm: 457.2, nbMm: 450 },
-      { nps: '20', odInch: 20.0, odMm: 508.0, nbMm: 500 },
-      { nps: '24', odInch: 24.0, odMm: 609.6, nbMm: 600 },
+      { nps: "1/2", odInch: 0.84, odMm: 21.34, nbMm: 15 },
+      { nps: "3/4", odInch: 1.05, odMm: 26.67, nbMm: 20 },
+      { nps: "1", odInch: 1.315, odMm: 33.4, nbMm: 25 },
+      { nps: "1-1/4", odInch: 1.66, odMm: 42.16, nbMm: 32 },
+      { nps: "1-1/2", odInch: 1.9, odMm: 48.26, nbMm: 40 },
+      { nps: "2", odInch: 2.375, odMm: 60.33, nbMm: 50 },
+      { nps: "2-1/2", odInch: 2.875, odMm: 73.03, nbMm: 65 },
+      { nps: "3", odInch: 3.5, odMm: 88.9, nbMm: 80 },
+      { nps: "3-1/2", odInch: 4.0, odMm: 101.6, nbMm: 90 },
+      { nps: "4", odInch: 4.5, odMm: 114.3, nbMm: 100 },
+      { nps: "5", odInch: 5.563, odMm: 141.3, nbMm: 125 },
+      { nps: "6", odInch: 6.625, odMm: 168.28, nbMm: 150 },
+      { nps: "8", odInch: 8.625, odMm: 219.08, nbMm: 200 },
+      { nps: "10", odInch: 10.75, odMm: 273.05, nbMm: 250 },
+      { nps: "12", odInch: 12.75, odMm: 323.85, nbMm: 300 },
+      { nps: "14", odInch: 14.0, odMm: 355.6, nbMm: 350 },
+      { nps: "16", odInch: 16.0, odMm: 406.4, nbMm: 400 },
+      { nps: "18", odInch: 18.0, odMm: 457.2, nbMm: 450 },
+      { nps: "20", odInch: 20.0, odMm: 508.0, nbMm: 500 },
+      { nps: "24", odInch: 24.0, odMm: 609.6, nbMm: 600 },
     ];
 
     // Schedule data: NPS -> { schedule: wallThicknessInch }
     const scheduleData: { [nps: string]: { [sch: string]: number } } = {
-      '1/2': {
-        '5S': 0.065,
-        '10S': 0.083,
-        '40': 0.109,
-        '40S': 0.109,
-        '80': 0.147,
-        '80S': 0.147,
-        '160': 0.188,
+      "1/2": {
+        "5S": 0.065,
+        "10S": 0.083,
+        "40": 0.109,
+        "40S": 0.109,
+        "80": 0.147,
+        "80S": 0.147,
+        "160": 0.188,
         XXS: 0.294,
       },
-      '3/4': {
-        '5S': 0.065,
-        '10S': 0.083,
-        '40': 0.113,
-        '40S': 0.113,
-        '80': 0.154,
-        '80S': 0.154,
-        '160': 0.219,
+      "3/4": {
+        "5S": 0.065,
+        "10S": 0.083,
+        "40": 0.113,
+        "40S": 0.113,
+        "80": 0.154,
+        "80S": 0.154,
+        "160": 0.219,
         XXS: 0.308,
       },
-      '1': {
-        '5S': 0.065,
-        '10S': 0.109,
-        '40': 0.133,
-        '40S': 0.133,
-        '80': 0.179,
-        '80S': 0.179,
-        '160': 0.25,
+      "1": {
+        "5S": 0.065,
+        "10S": 0.109,
+        "40": 0.133,
+        "40S": 0.133,
+        "80": 0.179,
+        "80S": 0.179,
+        "160": 0.25,
         XXS: 0.358,
       },
-      '1-1/4': {
-        '5S': 0.065,
-        '10S': 0.109,
-        '40': 0.14,
-        '40S': 0.14,
-        '80': 0.191,
-        '80S': 0.191,
-        '160': 0.25,
+      "1-1/4": {
+        "5S": 0.065,
+        "10S": 0.109,
+        "40": 0.14,
+        "40S": 0.14,
+        "80": 0.191,
+        "80S": 0.191,
+        "160": 0.25,
         XXS: 0.382,
       },
-      '1-1/2': {
-        '5S': 0.065,
-        '10S': 0.109,
-        '40': 0.145,
-        '40S': 0.145,
-        '80': 0.2,
-        '80S': 0.2,
-        '160': 0.281,
+      "1-1/2": {
+        "5S": 0.065,
+        "10S": 0.109,
+        "40": 0.145,
+        "40S": 0.145,
+        "80": 0.2,
+        "80S": 0.2,
+        "160": 0.281,
         XXS: 0.4,
       },
-      '2': {
-        '5S': 0.065,
-        '10S': 0.109,
-        '40': 0.154,
-        '40S': 0.154,
-        '80': 0.218,
-        '80S': 0.218,
-        '160': 0.344,
+      "2": {
+        "5S": 0.065,
+        "10S": 0.109,
+        "40": 0.154,
+        "40S": 0.154,
+        "80": 0.218,
+        "80S": 0.218,
+        "160": 0.344,
         XXS: 0.436,
       },
-      '2-1/2': {
-        '5S': 0.083,
-        '10S': 0.12,
-        '40': 0.203,
-        '40S': 0.203,
-        '80': 0.276,
-        '80S': 0.276,
-        '160': 0.375,
+      "2-1/2": {
+        "5S": 0.083,
+        "10S": 0.12,
+        "40": 0.203,
+        "40S": 0.203,
+        "80": 0.276,
+        "80S": 0.276,
+        "160": 0.375,
         XXS: 0.552,
       },
-      '3': {
-        '5S': 0.083,
-        '10S': 0.12,
-        '40': 0.216,
-        '40S': 0.216,
-        '80': 0.3,
-        '80S': 0.3,
-        '160': 0.438,
+      "3": {
+        "5S": 0.083,
+        "10S": 0.12,
+        "40": 0.216,
+        "40S": 0.216,
+        "80": 0.3,
+        "80S": 0.3,
+        "160": 0.438,
         XXS: 0.6,
       },
-      '3-1/2': {
-        '5S': 0.083,
-        '10S': 0.12,
-        '40': 0.226,
-        '40S': 0.226,
-        '80': 0.318,
-        '80S': 0.318,
+      "3-1/2": {
+        "5S": 0.083,
+        "10S": 0.12,
+        "40": 0.226,
+        "40S": 0.226,
+        "80": 0.318,
+        "80S": 0.318,
       },
-      '4': {
-        '5S': 0.083,
-        '10S': 0.12,
-        '40': 0.237,
-        '40S': 0.237,
-        '80': 0.337,
-        '80S': 0.337,
-        '120': 0.438,
-        '160': 0.531,
+      "4": {
+        "5S": 0.083,
+        "10S": 0.12,
+        "40": 0.237,
+        "40S": 0.237,
+        "80": 0.337,
+        "80S": 0.337,
+        "120": 0.438,
+        "160": 0.531,
         XXS: 0.674,
       },
-      '5': {
-        '5S': 0.109,
-        '10S': 0.134,
-        '40': 0.258,
-        '40S': 0.258,
-        '80': 0.375,
-        '80S': 0.375,
-        '120': 0.5,
-        '160': 0.625,
+      "5": {
+        "5S": 0.109,
+        "10S": 0.134,
+        "40": 0.258,
+        "40S": 0.258,
+        "80": 0.375,
+        "80S": 0.375,
+        "120": 0.5,
+        "160": 0.625,
         XXS: 0.75,
       },
-      '6': {
-        '5S': 0.109,
-        '10S': 0.134,
-        '40': 0.28,
-        '40S': 0.28,
-        '80': 0.432,
-        '80S': 0.432,
-        '120': 0.562,
-        '160': 0.719,
+      "6": {
+        "5S": 0.109,
+        "10S": 0.134,
+        "40": 0.28,
+        "40S": 0.28,
+        "80": 0.432,
+        "80S": 0.432,
+        "120": 0.562,
+        "160": 0.719,
         XXS: 0.864,
       },
-      '8': {
-        '5S': 0.109,
-        '10S': 0.148,
-        '20': 0.25,
-        '30': 0.277,
-        '40': 0.322,
-        '60': 0.406,
-        '80': 0.5,
-        '100': 0.594,
-        '120': 0.719,
-        '140': 0.812,
-        '160': 0.906,
+      "8": {
+        "5S": 0.109,
+        "10S": 0.148,
+        "20": 0.25,
+        "30": 0.277,
+        "40": 0.322,
+        "60": 0.406,
+        "80": 0.5,
+        "100": 0.594,
+        "120": 0.719,
+        "140": 0.812,
+        "160": 0.906,
         XXS: 0.875,
       },
-      '10': {
-        '5S': 0.134,
-        '10S': 0.165,
-        '20': 0.25,
-        '30': 0.307,
-        '40': 0.365,
-        '60': 0.5,
-        '80': 0.594,
-        '100': 0.719,
-        '120': 0.844,
-        '140': 1.0,
-        '160': 1.125,
+      "10": {
+        "5S": 0.134,
+        "10S": 0.165,
+        "20": 0.25,
+        "30": 0.307,
+        "40": 0.365,
+        "60": 0.5,
+        "80": 0.594,
+        "100": 0.719,
+        "120": 0.844,
+        "140": 1.0,
+        "160": 1.125,
       },
-      '12': {
-        '5S': 0.156,
-        '10S': 0.18,
-        '20': 0.25,
-        '30': 0.33,
-        '40': 0.406,
-        '60': 0.562,
-        '80': 0.688,
-        '100': 0.844,
-        '120': 1.0,
-        '140': 1.125,
-        '160': 1.312,
+      "12": {
+        "5S": 0.156,
+        "10S": 0.18,
+        "20": 0.25,
+        "30": 0.33,
+        "40": 0.406,
+        "60": 0.562,
+        "80": 0.688,
+        "100": 0.844,
+        "120": 1.0,
+        "140": 1.125,
+        "160": 1.312,
       },
-      '14': {
-        '10': 0.25,
-        '20': 0.312,
-        '30': 0.375,
-        '40': 0.438,
-        '60': 0.594,
-        '80': 0.75,
-        '100': 0.938,
-        '120': 1.094,
-        '140': 1.25,
-        '160': 1.406,
+      "14": {
+        "10": 0.25,
+        "20": 0.312,
+        "30": 0.375,
+        "40": 0.438,
+        "60": 0.594,
+        "80": 0.75,
+        "100": 0.938,
+        "120": 1.094,
+        "140": 1.25,
+        "160": 1.406,
       },
-      '16': {
-        '10': 0.25,
-        '20': 0.312,
-        '30': 0.375,
-        '40': 0.5,
-        '60': 0.656,
-        '80': 0.844,
-        '100': 1.031,
-        '120': 1.219,
-        '140': 1.438,
-        '160': 1.594,
+      "16": {
+        "10": 0.25,
+        "20": 0.312,
+        "30": 0.375,
+        "40": 0.5,
+        "60": 0.656,
+        "80": 0.844,
+        "100": 1.031,
+        "120": 1.219,
+        "140": 1.438,
+        "160": 1.594,
       },
-      '18': {
-        '10': 0.25,
-        '20': 0.312,
-        '30': 0.438,
-        '40': 0.562,
-        '60': 0.75,
-        '80': 0.938,
-        '100': 1.156,
-        '120': 1.375,
-        '140': 1.562,
-        '160': 1.781,
+      "18": {
+        "10": 0.25,
+        "20": 0.312,
+        "30": 0.438,
+        "40": 0.562,
+        "60": 0.75,
+        "80": 0.938,
+        "100": 1.156,
+        "120": 1.375,
+        "140": 1.562,
+        "160": 1.781,
       },
-      '20': {
-        '10': 0.25,
-        '20': 0.375,
-        '30': 0.5,
-        '40': 0.594,
-        '60': 0.812,
-        '80': 1.031,
-        '100': 1.281,
-        '120': 1.5,
-        '140': 1.75,
-        '160': 1.969,
+      "20": {
+        "10": 0.25,
+        "20": 0.375,
+        "30": 0.5,
+        "40": 0.594,
+        "60": 0.812,
+        "80": 1.031,
+        "100": 1.281,
+        "120": 1.5,
+        "140": 1.75,
+        "160": 1.969,
       },
-      '24': {
-        '10': 0.25,
-        '20': 0.375,
-        '30': 0.562,
-        '40': 0.688,
-        '60': 0.969,
-        '80': 1.219,
-        '100': 1.531,
-        '120': 1.812,
-        '140': 2.062,
-        '160': 2.344,
+      "24": {
+        "10": 0.25,
+        "20": 0.375,
+        "30": 0.562,
+        "40": 0.688,
+        "60": 0.969,
+        "80": 1.219,
+        "100": 1.531,
+        "120": 1.812,
+        "140": 2.062,
+        "160": 2.344,
       },
     };
 
@@ -318,17 +318,17 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
             wallMm,
             npsInfo.odInch,
             npsInfo.odMm,
-            'ASME B36.10',
+            "ASME B36.10",
           ],
         );
       }
       console.warn(`  ✓ Added schedules for NPS ${npsInfo.nps}`);
     }
 
-    console.warn('✅ Pipe schedule data populated');
+    console.warn("✅ Pipe schedule data populated");
 
     // Populate material allowable stress data
-    console.warn('📊 Populating material allowable stress data...');
+    console.warn("📊 Populating material allowable stress data...");
 
     // ASTM A106 Grade B (Carbon Steel - most common for high temp)
     // Values from ASME B31.3 Table A-1
@@ -363,17 +363,17 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
                 ON CONFLICT (material_code, temperature_celsius) DO NOTHING
             `,
         [
-          'ASTM_A106_Grade_B',
-          'ASTM A106 Grade B (Seamless Carbon Steel)',
+          "ASTM_A106_Grade_B",
+          "ASTM A106 Grade B (Seamless Carbon Steel)",
           stress.tempC,
           stress.tempF,
           stress.stressKsi,
           stressMpa,
-          'ASME B31.3',
+          "ASME B31.3",
         ],
       );
     }
-    console.warn('  ✓ Added ASTM A106 Grade B stresses');
+    console.warn("  ✓ Added ASTM A106 Grade B stresses");
 
     // ASTM A53 Grade B (ERW Carbon Steel)
     const a53GradeBStresses: {
@@ -401,17 +401,17 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
                 ON CONFLICT (material_code, temperature_celsius) DO NOTHING
             `,
         [
-          'ASTM_A53_Grade_B',
-          'ASTM A53 Grade B (ERW Carbon Steel)',
+          "ASTM_A53_Grade_B",
+          "ASTM A53 Grade B (ERW Carbon Steel)",
           stress.tempC,
           stress.tempF,
           stress.stressKsi,
           stressMpa,
-          'ASME B31.3',
+          "ASME B31.3",
         ],
       );
     }
-    console.warn('  ✓ Added ASTM A53 Grade B stresses');
+    console.warn("  ✓ Added ASTM A53 Grade B stresses");
 
     // API 5L Grade B (Line Pipe)
     const api5lGradeBStresses: {
@@ -437,17 +437,17 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
                 ON CONFLICT (material_code, temperature_celsius) DO NOTHING
             `,
         [
-          'API_5L_Grade_B',
-          'API 5L Grade B (Line Pipe)',
+          "API_5L_Grade_B",
+          "API 5L Grade B (Line Pipe)",
           stress.tempC,
           stress.tempF,
           stress.stressKsi,
           stressMpa,
-          'ASME B31.3',
+          "ASME B31.3",
         ],
       );
     }
-    console.warn('  ✓ Added API 5L Grade B stresses');
+    console.warn("  ✓ Added API 5L Grade B stresses");
 
     // ASTM A312 TP304 (Stainless Steel)
     const a312Tp304Stresses: {
@@ -482,17 +482,17 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
                 ON CONFLICT (material_code, temperature_celsius) DO NOTHING
             `,
         [
-          'ASTM_A312_TP304',
-          'ASTM A312 TP304 (304 Stainless Steel)',
+          "ASTM_A312_TP304",
+          "ASTM A312 TP304 (304 Stainless Steel)",
           stress.tempC,
           stress.tempF,
           stress.stressKsi,
           stressMpa,
-          'ASME B31.3',
+          "ASME B31.3",
         ],
       );
     }
-    console.warn('  ✓ Added ASTM A312 TP304 stresses');
+    console.warn("  ✓ Added ASTM A312 TP304 stresses");
 
     // ASTM A312 TP316 (316 Stainless Steel)
     const a312Tp316Stresses: {
@@ -527,17 +527,17 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
                 ON CONFLICT (material_code, temperature_celsius) DO NOTHING
             `,
         [
-          'ASTM_A312_TP316',
-          'ASTM A312 TP316 (316 Stainless Steel)',
+          "ASTM_A312_TP316",
+          "ASTM A312 TP316 (316 Stainless Steel)",
           stress.tempC,
           stress.tempF,
           stress.stressKsi,
           stressMpa,
-          'ASME B31.3',
+          "ASME B31.3",
         ],
       );
     }
-    console.warn('  ✓ Added ASTM A312 TP316 stresses');
+    console.warn("  ✓ Added ASTM A312 TP316 stresses");
 
     // ASTM A335 P11 (Chrome-Moly)
     const a335P11Stresses: {
@@ -571,17 +571,17 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
                 ON CONFLICT (material_code, temperature_celsius) DO NOTHING
             `,
         [
-          'ASTM_A335_P11',
-          'ASTM A335 P11 (1-1/4Cr-1/2Mo Chrome-Moly)',
+          "ASTM_A335_P11",
+          "ASTM A335 P11 (1-1/4Cr-1/2Mo Chrome-Moly)",
           stress.tempC,
           stress.tempF,
           stress.stressKsi,
           stressMpa,
-          'ASME B31.3',
+          "ASME B31.3",
         ],
       );
     }
-    console.warn('  ✓ Added ASTM A335 P11 stresses');
+    console.warn("  ✓ Added ASTM A335 P11 stresses");
 
     // ASTM A335 P22 (2-1/4Cr-1Mo Chrome-Moly)
     const a335P22Stresses: {
@@ -615,28 +615,26 @@ export class CreatePipeScheduleTables1766001400000 implements MigrationInterface
                 ON CONFLICT (material_code, temperature_celsius) DO NOTHING
             `,
         [
-          'ASTM_A335_P22',
-          'ASTM A335 P22 (2-1/4Cr-1Mo Chrome-Moly)',
+          "ASTM_A335_P22",
+          "ASTM A335 P22 (2-1/4Cr-1Mo Chrome-Moly)",
           stress.tempC,
           stress.tempF,
           stress.stressKsi,
           stressMpa,
-          'ASME B31.3',
+          "ASME B31.3",
         ],
       );
     }
-    console.warn('  ✓ Added ASTM A335 P22 stresses');
+    console.warn("  ✓ Added ASTM A335 P22 stresses");
 
-    console.warn('✅ Material allowable stress data populated');
-    console.warn('✅ Migration complete!');
+    console.warn("✅ Material allowable stress data populated");
+    console.warn("✅ Migration complete!");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('⏮️ Dropping pipe schedule tables...');
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "material_allowable_stresses" CASCADE`,
-    );
+    console.warn("⏮️ Dropping pipe schedule tables...");
+    await queryRunner.query(`DROP TABLE IF EXISTS "material_allowable_stresses" CASCADE`);
     await queryRunner.query(`DROP TABLE IF EXISTS "pipe_schedules" CASCADE`);
-    console.warn('✅ Rollback complete');
+    console.warn("✅ Rollback complete");
   }
 }

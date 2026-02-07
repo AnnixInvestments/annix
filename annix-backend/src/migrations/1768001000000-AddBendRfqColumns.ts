@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddBendRfqColumns1768001000000 implements MigrationInterface {
-  name = 'AddBendRfqColumns1768001000000';
+  name = "AddBendRfqColumns1768001000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

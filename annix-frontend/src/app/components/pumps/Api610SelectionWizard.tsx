@@ -1,54 +1,65 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
+import { useMemo, useState } from "react";
 import {
+  Api610PumpCategory,
   Api610SelectionCriteria,
   Api610SelectionResult,
-  Api610PumpCategory,
-  Api610PumpType,
-  selectApi610PumpType,
   api610CategoryDescription,
-  API_610_PUMP_TYPES,
-} from '@/app/lib/config/pumps/api610Classification';
+  selectApi610PumpType,
+} from "@/app/lib/config/pumps/api610Classification";
 
 interface Api610SelectionWizardProps {
   onComplete?: (result: Api610SelectionResult, criteria: Api610SelectionCriteria) => void;
   initialCriteria?: Partial<Api610SelectionCriteria>;
 }
 
-type WizardStep = 'operating-conditions' | 'installation' | 'preferences' | 'results';
+type WizardStep = "operating-conditions" | "installation" | "preferences" | "results";
 
 const STEPS: { id: WizardStep; title: string; description: string }[] = [
-  { id: 'operating-conditions', title: 'Operating Conditions', description: 'Flow, head, temperature, and pressure' },
-  { id: 'installation', title: 'Installation', description: 'Layout and space requirements' },
-  { id: 'preferences', title: 'Preferences', description: 'Fluid type and maintenance access' },
-  { id: 'results', title: 'Results', description: 'Recommended pump types' },
+  {
+    id: "operating-conditions",
+    title: "Operating Conditions",
+    description: "Flow, head, temperature, and pressure",
+  },
+  { id: "installation", title: "Installation", description: "Layout and space requirements" },
+  { id: "preferences", title: "Preferences", description: "Fluid type and maintenance access" },
+  { id: "results", title: "Results", description: "Recommended pump types" },
 ];
 
-const FLUID_TYPES: { value: Api610SelectionCriteria['fluidType']; label: string; description: string }[] = [
-  { value: 'hydrocarbon', label: 'Hydrocarbon', description: 'Oil, gas, refined products' },
-  { value: 'water', label: 'Water', description: 'Cooling water, process water, boiler feed' },
-  { value: 'chemical', label: 'Chemical', description: 'Acids, caustics, solvents' },
-  { value: 'slurry', label: 'Slurry', description: 'Solids-laden fluids' },
+const FLUID_TYPES: {
+  value: Api610SelectionCriteria["fluidType"];
+  label: string;
+  description: string;
+}[] = [
+  { value: "hydrocarbon", label: "Hydrocarbon", description: "Oil, gas, refined products" },
+  { value: "water", label: "Water", description: "Cooling water, process water, boiler feed" },
+  { value: "chemical", label: "Chemical", description: "Acids, caustics, solvents" },
+  { value: "slurry", label: "Slurry", description: "Solids-laden fluids" },
 ];
 
-const INSTALLATION_TYPES: { value: Api610SelectionCriteria['installationType']; label: string; description: string }[] = [
-  { value: 'horizontal', label: 'Horizontal', description: 'Standard floor-mounted installation' },
-  { value: 'vertical', label: 'Vertical', description: 'Pit or can-mounted vertical pumps' },
-  { value: 'inline', label: 'Inline', description: 'Pipe-mounted, space-saving design' },
+const INSTALLATION_TYPES: {
+  value: Api610SelectionCriteria["installationType"];
+  label: string;
+  description: string;
+}[] = [
+  { value: "horizontal", label: "Horizontal", description: "Standard floor-mounted installation" },
+  { value: "vertical", label: "Vertical", description: "Pit or can-mounted vertical pumps" },
+  { value: "inline", label: "Inline", description: "Pipe-mounted, space-saving design" },
 ];
 
-const MAINTENANCE_ACCESS: { value: Api610SelectionCriteria['maintenanceAccess']; label: string; description: string }[] = [
-  { value: 'easy', label: 'Easy Access', description: 'Full crane access, open area' },
-  { value: 'moderate', label: 'Moderate Access', description: 'Limited overhead access' },
-  { value: 'difficult', label: 'Difficult Access', description: 'Tight space, minimal access' },
+const MAINTENANCE_ACCESS: {
+  value: Api610SelectionCriteria["maintenanceAccess"];
+  label: string;
+  description: string;
+}[] = [
+  { value: "easy", label: "Easy Access", description: "Full crane access, open area" },
+  { value: "moderate", label: "Moderate Access", description: "Limited overhead access" },
+  { value: "difficult", label: "Difficult Access", description: "Tight space, minimal access" },
 ];
 
-export function Api610SelectionWizard({
-  onComplete,
-  initialCriteria,
-}: Api610SelectionWizardProps) {
-  const [currentStep, setCurrentStep] = useState<WizardStep>('operating-conditions');
+export function Api610SelectionWizard({ onComplete, initialCriteria }: Api610SelectionWizardProps) {
+  const [currentStep, setCurrentStep] = useState<WizardStep>("operating-conditions");
   const [criteria, setCriteria] = useState<Api610SelectionCriteria>({
     flowRateM3h: initialCriteria?.flowRateM3h ?? 100,
     headM: initialCriteria?.headM ?? 50,
@@ -57,9 +68,9 @@ export function Api610SelectionWizard({
     powerKw: initialCriteria?.powerKw ?? 50,
     category: initialCriteria?.category,
     fluidType: initialCriteria?.fluidType,
-    installationType: initialCriteria?.installationType ?? 'horizontal',
+    installationType: initialCriteria?.installationType ?? "horizontal",
     spaceConstrained: initialCriteria?.spaceConstrained ?? false,
-    maintenanceAccess: initialCriteria?.maintenanceAccess ?? 'moderate',
+    maintenanceAccess: initialCriteria?.maintenanceAccess ?? "moderate",
   });
 
   const [expandedType, setExpandedType] = useState<string | null>(null);
@@ -72,7 +83,7 @@ export function Api610SelectionWizard({
 
   const handleCriteriaChange = <K extends keyof Api610SelectionCriteria>(
     key: K,
-    value: Api610SelectionCriteria[K]
+    value: Api610SelectionCriteria[K],
   ) => {
     setCriteria((prev) => ({ ...prev, [key]: value }));
   };
@@ -82,7 +93,7 @@ export function Api610SelectionWizard({
     if (nextIndex < STEPS.length) {
       setCurrentStep(STEPS[nextIndex].id);
     }
-    if (currentStep === 'preferences' && onComplete) {
+    if (currentStep === "preferences" && onComplete) {
       onComplete(result, criteria);
     }
   };
@@ -99,22 +110,22 @@ export function Api610SelectionWizard({
   };
 
   const scoreColor = (score: number): string => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+    if (score >= 80) return "text-green-600";
+    if (score >= 60) return "text-yellow-600";
+    return "text-red-600";
   };
 
   const scoreBgColor = (score: number): string => {
-    if (score >= 80) return 'bg-green-100 border-green-200';
-    if (score >= 60) return 'bg-yellow-100 border-yellow-200';
-    return 'bg-red-100 border-red-200';
+    if (score >= 80) return "bg-green-100 border-green-200";
+    if (score >= 60) return "bg-yellow-100 border-yellow-200";
+    return "bg-red-100 border-red-200";
   };
 
   const categoryColor = (category: Api610PumpCategory): string => {
     const colors: Record<Api610PumpCategory, string> = {
-      OH: 'bg-blue-100 text-blue-800',
-      BB: 'bg-purple-100 text-purple-800',
-      VS: 'bg-emerald-100 text-emerald-800',
+      OH: "bg-blue-100 text-blue-800",
+      BB: "bg-purple-100 text-purple-800",
+      VS: "bg-emerald-100 text-emerald-800",
     };
     return colors[category];
   };
@@ -123,13 +134,11 @@ export function Api610SelectionWizard({
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Flow Rate (m³/h)
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Flow Rate (m³/h)</label>
           <input
             type="number"
             value={criteria.flowRateM3h}
-            onChange={(e) => handleCriteriaChange('flowRateM3h', parseFloat(e.target.value) || 0)}
+            onChange={(e) => handleCriteriaChange("flowRateM3h", parseFloat(e.target.value) || 0)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
             min={0}
             step={10}
@@ -138,13 +147,11 @@ export function Api610SelectionWizard({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Total Head (m)
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Total Head (m)</label>
           <input
             type="number"
             value={criteria.headM}
-            onChange={(e) => handleCriteriaChange('headM', parseFloat(e.target.value) || 0)}
+            onChange={(e) => handleCriteriaChange("headM", parseFloat(e.target.value) || 0)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
             min={0}
             step={5}
@@ -159,7 +166,7 @@ export function Api610SelectionWizard({
           <input
             type="number"
             value={criteria.temperatureC}
-            onChange={(e) => handleCriteriaChange('temperatureC', parseFloat(e.target.value) || 0)}
+            onChange={(e) => handleCriteriaChange("temperatureC", parseFloat(e.target.value) || 0)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
             min={-50}
             max={500}
@@ -175,7 +182,7 @@ export function Api610SelectionWizard({
           <input
             type="number"
             value={criteria.pressureBar}
-            onChange={(e) => handleCriteriaChange('pressureBar', parseFloat(e.target.value) || 0)}
+            onChange={(e) => handleCriteriaChange("pressureBar", parseFloat(e.target.value) || 0)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
             min={0}
             step={5}
@@ -190,7 +197,7 @@ export function Api610SelectionWizard({
           <input
             type="number"
             value={criteria.powerKw}
-            onChange={(e) => handleCriteriaChange('powerKw', parseFloat(e.target.value) || 0)}
+            onChange={(e) => handleCriteriaChange("powerKw", parseFloat(e.target.value) || 0)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
             min={0}
             step={10}
@@ -203,8 +210,13 @@ export function Api610SelectionWizard({
             Preferred Category (Optional)
           </label>
           <select
-            value={criteria.category ?? ''}
-            onChange={(e) => handleCriteriaChange('category', (e.target.value || undefined) as Api610PumpCategory | undefined)}
+            value={criteria.category ?? ""}
+            onChange={(e) =>
+              handleCriteriaChange(
+                "category",
+                (e.target.value || undefined) as Api610PumpCategory | undefined,
+              )
+            }
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Any Category</option>
@@ -221,19 +233,17 @@ export function Api610SelectionWizard({
   const renderInstallation = () => (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          Installation Type
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-3">Installation Type</label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {INSTALLATION_TYPES.map((type) => (
             <button
               key={type.value}
               type="button"
-              onClick={() => handleCriteriaChange('installationType', type.value)}
+              onClick={() => handleCriteriaChange("installationType", type.value)}
               className={`p-4 rounded-lg border-2 text-left transition-colors ${
                 criteria.installationType === type.value
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200 hover:border-gray-300"
               }`}
             >
               <div className="font-medium text-gray-900">{type.label}</div>
@@ -248,7 +258,7 @@ export function Api610SelectionWizard({
           <input
             type="checkbox"
             checked={criteria.spaceConstrained ?? false}
-            onChange={(e) => handleCriteriaChange('spaceConstrained', e.target.checked)}
+            onChange={(e) => handleCriteriaChange("spaceConstrained", e.target.checked)}
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-5 w-5"
           />
           <div>
@@ -261,9 +271,15 @@ export function Api610SelectionWizard({
       <div className="bg-gray-50 rounded-lg p-4">
         <h4 className="font-medium text-gray-700 mb-2">Installation Guide</h4>
         <ul className="text-sm text-gray-600 space-y-2">
-          <li><strong>Horizontal:</strong> Most common, use OH or BB types</li>
-          <li><strong>Vertical:</strong> For pit/sump applications, use VS types</li>
-          <li><strong>Inline:</strong> For pipe-mounted installations, OH3/OH4 preferred</li>
+          <li>
+            <strong>Horizontal:</strong> Most common, use OH or BB types
+          </li>
+          <li>
+            <strong>Vertical:</strong> For pit/sump applications, use VS types
+          </li>
+          <li>
+            <strong>Inline:</strong> For pipe-mounted installations, OH3/OH4 preferred
+          </li>
         </ul>
       </div>
     </div>
@@ -272,19 +288,17 @@ export function Api610SelectionWizard({
   const renderPreferences = () => (
     <div className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          Fluid Type
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-3">Fluid Type</label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {FLUID_TYPES.map((type) => (
             <button
               key={type.value}
               type="button"
-              onClick={() => handleCriteriaChange('fluidType', type.value)}
+              onClick={() => handleCriteriaChange("fluidType", type.value)}
               className={`p-4 rounded-lg border-2 text-left transition-colors ${
                 criteria.fluidType === type.value
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200 hover:border-gray-300"
               }`}
             >
               <div className="font-medium text-gray-900">{type.label}</div>
@@ -295,19 +309,17 @@ export function Api610SelectionWizard({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          Maintenance Access
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-3">Maintenance Access</label>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {MAINTENANCE_ACCESS.map((access) => (
             <button
               key={access.value}
               type="button"
-              onClick={() => handleCriteriaChange('maintenanceAccess', access.value)}
+              onClick={() => handleCriteriaChange("maintenanceAccess", access.value)}
               className={`p-4 rounded-lg border-2 text-left transition-colors ${
                 criteria.maintenanceAccess === access.value
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200 hover:border-gray-300"
               }`}
             >
               <div className="font-medium text-gray-900">{access.label}</div>
@@ -323,12 +335,16 @@ export function Api610SelectionWizard({
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-center gap-3">
-          <div className={`px-3 py-1 rounded-full text-sm font-medium ${categoryColor(result.categoryRecommendation)}`}>
+          <div
+            className={`px-3 py-1 rounded-full text-sm font-medium ${categoryColor(result.categoryRecommendation)}`}
+          >
             {result.categoryRecommendation}
           </div>
           <div>
             <h4 className="font-medium text-blue-900">Recommended Category</h4>
-            <p className="text-sm text-blue-700">{api610CategoryDescription(result.categoryRecommendation)}</p>
+            <p className="text-sm text-blue-700">
+              {api610CategoryDescription(result.categoryRecommendation)}
+            </p>
           </div>
         </div>
       </div>
@@ -339,8 +355,18 @@ export function Api610SelectionWizard({
           <ul className="text-sm text-amber-700 space-y-1">
             {result.designNotes.map((note, idx) => (
               <li key={idx} className="flex items-start gap-2">
-                <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 {note}
               </li>
@@ -359,14 +385,18 @@ export function Api610SelectionWizard({
             >
               <button
                 type="button"
-                onClick={() => setExpandedType(expandedType === item.type.code ? null : item.type.code)}
+                onClick={() =>
+                  setExpandedType(expandedType === item.type.code ? null : item.type.code)
+                }
                 className="w-full p-4 text-left flex items-center justify-between"
               >
                 <div className="flex items-center gap-4">
                   <div className="text-2xl font-bold text-gray-400">#{idx + 1}</div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${categoryColor(item.type.category)}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs font-medium ${categoryColor(item.type.category)}`}
+                      >
                         {item.type.category}
                       </span>
                       <span className="font-medium text-gray-900">{item.type.code}</span>
@@ -380,12 +410,17 @@ export function Api610SelectionWizard({
                     {item.score}%
                   </div>
                   <svg
-                    className={`w-5 h-5 text-gray-400 transition-transform ${expandedType === item.type.code ? 'rotate-180' : ''}`}
+                    className={`w-5 h-5 text-gray-400 transition-transform ${expandedType === item.type.code ? "rotate-180" : ""}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </div>
               </button>
@@ -398,7 +433,9 @@ export function Api610SelectionWizard({
                       <p className="text-sm text-gray-600">{item.type.configuration}</p>
                     </div>
                     <div>
-                      <h5 className="text-sm font-medium text-gray-700 mb-2">Bearing Arrangement</h5>
+                      <h5 className="text-sm font-medium text-gray-700 mb-2">
+                        Bearing Arrangement
+                      </h5>
                       <p className="text-sm text-gray-600">{item.type.bearingArrangement}</p>
                     </div>
                     <div>
@@ -414,11 +451,15 @@ export function Api610SelectionWizard({
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-gray-50 rounded p-2 text-center">
                       <div className="text-xs text-gray-500">Max Temp</div>
-                      <div className="font-medium">{item.type.operatingLimits.maxTemperatureC}°C</div>
+                      <div className="font-medium">
+                        {item.type.operatingLimits.maxTemperatureC}°C
+                      </div>
                     </div>
                     <div className="bg-gray-50 rounded p-2 text-center">
                       <div className="text-xs text-gray-500">Max Pressure</div>
-                      <div className="font-medium">{item.type.operatingLimits.maxPressureBar} bar</div>
+                      <div className="font-medium">
+                        {item.type.operatingLimits.maxPressureBar} bar
+                      </div>
                     </div>
                     <div className="bg-gray-50 rounded p-2 text-center">
                       <div className="text-xs text-gray-500">Max Power</div>
@@ -432,12 +473,24 @@ export function Api610SelectionWizard({
 
                   {item.reasons.length > 0 && (
                     <div>
-                      <h5 className="text-sm font-medium text-green-700 mb-2">Advantages for This Application</h5>
+                      <h5 className="text-sm font-medium text-green-700 mb-2">
+                        Advantages for This Application
+                      </h5>
                       <ul className="text-sm text-green-600 space-y-1">
                         {item.reasons.map((reason, i) => (
                           <li key={i} className="flex items-start gap-2">
-                            <svg className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            <svg
+                              className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
                             {reason}
                           </li>
@@ -452,8 +505,18 @@ export function Api610SelectionWizard({
                       <ul className="text-sm text-amber-600 space-y-1">
                         {item.warnings.map((warning, i) => (
                           <li key={i} className="flex items-start gap-2">
-                            <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            <svg
+                              className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                              />
                             </svg>
                             {warning}
                           </li>
@@ -466,7 +529,10 @@ export function Api610SelectionWizard({
                     <h5 className="text-sm font-medium text-gray-700 mb-2">Typical Applications</h5>
                     <div className="flex flex-wrap gap-2">
                       {item.type.typicalApplications.map((app, i) => (
-                        <span key={i} className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                        <span
+                          key={i}
+                          className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
+                        >
                           {app}
                         </span>
                       ))}
@@ -523,7 +589,9 @@ export function Api610SelectionWizard({
           </div>
           <div>
             <span className="text-gray-500">Installation:</span>
-            <span className="ml-2 font-medium capitalize">{criteria.installationType ?? 'Not specified'}</span>
+            <span className="ml-2 font-medium capitalize">
+              {criteria.installationType ?? "Not specified"}
+            </span>
           </div>
         </div>
       </div>
@@ -532,13 +600,13 @@ export function Api610SelectionWizard({
 
   const renderStep = () => {
     switch (currentStep) {
-      case 'operating-conditions':
+      case "operating-conditions":
         return renderOperatingConditions();
-      case 'installation':
+      case "installation":
         return renderInstallation();
-      case 'preferences':
+      case "preferences":
         return renderPreferences();
-      case 'results':
+      case "results":
         return renderResults();
       default:
         return null;
@@ -563,23 +631,30 @@ export function Api610SelectionWizard({
               onClick={() => handleStepClick(step.id)}
               className={`flex-1 py-4 px-4 text-center border-b-2 transition-colors ${
                 currentStep === step.id
-                  ? 'border-blue-500 text-blue-600'
+                  ? "border-blue-500 text-blue-600"
                   : idx < currentStepIndex
-                  ? 'border-transparent text-gray-900 hover:text-blue-600'
-                  : 'border-transparent text-gray-400'
+                    ? "border-transparent text-gray-900 hover:text-blue-600"
+                    : "border-transparent text-gray-400"
               }`}
             >
               <div className="flex items-center justify-center gap-2">
-                <span className={`w-6 h-6 rounded-full text-xs flex items-center justify-center ${
-                  currentStep === step.id
-                    ? 'bg-blue-500 text-white'
-                    : idx < currentStepIndex
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 text-gray-500'
-                }`}>
+                <span
+                  className={`w-6 h-6 rounded-full text-xs flex items-center justify-center ${
+                    currentStep === step.id
+                      ? "bg-blue-500 text-white"
+                      : idx < currentStepIndex
+                        ? "bg-green-500 text-white"
+                        : "bg-gray-200 text-gray-500"
+                  }`}
+                >
                   {idx < currentStepIndex ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   ) : (
                     idx + 1
@@ -601,20 +676,20 @@ export function Api610SelectionWizard({
           disabled={currentStepIndex === 0}
           className={`px-4 py-2 rounded-md text-sm font-medium ${
             currentStepIndex === 0
-              ? 'text-gray-400 cursor-not-allowed'
-              : 'text-gray-700 hover:bg-gray-100'
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-gray-700 hover:bg-gray-100"
           }`}
         >
           Back
         </button>
 
-        {currentStep !== 'results' && (
+        {currentStep !== "results" && (
           <button
             type="button"
             onClick={handleNext}
             className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
           >
-            {currentStep === 'preferences' ? 'View Results' : 'Next'}
+            {currentStep === "preferences" ? "View Results" : "Next"}
           </button>
         )}
       </div>

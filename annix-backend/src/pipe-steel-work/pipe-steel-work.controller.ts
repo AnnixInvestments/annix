@@ -1,182 +1,168 @@
-import { Controller, Get, Post, Body, Query, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
-import { PipeSteelWorkService } from './pipe-steel-work.service';
+import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
-  CalculateSupportSpacingDto,
-  CalculateReinforcementPadDto,
-  SupportSpacingResponseDto,
-  ReinforcementPadResponseDto,
-  BracketTypeResponseDto,
-  PipeSteelWorkCalculationDto,
-  PipeSteelWorkCalculationResponseDto,
-  CalculateThermalExpansionDto,
-  ThermalExpansionResponseDto,
-  ValidateBracketCompatibilityDto,
-  BracketCompatibilityResponseDto,
   BatchCalculationDto,
   BatchCalculationResponseDto,
-  CalculateSupportSpacingMultiStandardDto,
-  MultiStandardSpacingResponseDto,
+  BracketCompatibilityResponseDto,
+  BracketTypeResponseDto,
+  CalculateReinforcementPadDto,
   CalculateReinforcementPadWithDeratingDto,
-  ReinforcementPadWithDeratingResponseDto,
-  CalculateVibrationAnalysisDto,
-  VibrationAnalysisResponseDto,
   CalculateStressAnalysisDto,
-  StressAnalysisResponseDto,
-  MaterialCompatibilityCheckDto,
-  MaterialCompatibilityResponseDto,
+  CalculateSupportSpacingDto,
+  CalculateSupportSpacingMultiStandardDto,
+  CalculateThermalExpansionDto,
+  CalculateVibrationAnalysisDto,
   ExportReportDto,
   ExportReportResponseDto,
-  StandardPlateSizeDto,
-  GasketMaterialDto,
   GasketCompatibilityCheckDto,
   GasketCompatibilityResponseDto,
+  GasketMaterialDto,
   HeatTreatmentDto,
   HeatTreatmentRequirementDto,
   HeatTreatmentRequirementResponseDto,
-} from './dto/pipe-steel-work.dto';
+  MaterialCompatibilityCheckDto,
+  MaterialCompatibilityResponseDto,
+  MultiStandardSpacingResponseDto,
+  PipeSteelWorkCalculationDto,
+  PipeSteelWorkCalculationResponseDto,
+  ReinforcementPadResponseDto,
+  ReinforcementPadWithDeratingResponseDto,
+  StandardPlateSizeDto,
+  StressAnalysisResponseDto,
+  SupportSpacingResponseDto,
+  ThermalExpansionResponseDto,
+  ValidateBracketCompatibilityDto,
+  VibrationAnalysisResponseDto,
+} from "./dto/pipe-steel-work.dto";
+import { PipeSteelWorkService } from "./pipe-steel-work.service";
 
-@ApiTags('Pipe Steel Work')
-@Controller('pipe-steel-work')
+@ApiTags("Pipe Steel Work")
+@Controller("pipe-steel-work")
 export class PipeSteelWorkController {
   constructor(private readonly pipeSteelWorkService: PipeSteelWorkService) {}
 
-  @Post('support-spacing')
-  @ApiOperation({ summary: 'Calculate recommended pipe support spacing' })
+  @Post("support-spacing")
+  @ApiOperation({ summary: "Calculate recommended pipe support spacing" })
   @ApiResponse({
     status: 200,
-    description: 'Support spacing calculated successfully',
+    description: "Support spacing calculated successfully",
     type: SupportSpacingResponseDto,
   })
-  supportSpacing(
-    @Body() dto: CalculateSupportSpacingDto,
-  ): SupportSpacingResponseDto {
+  supportSpacing(@Body() dto: CalculateSupportSpacingDto): SupportSpacingResponseDto {
     return this.pipeSteelWorkService.supportSpacing(dto);
   }
 
-  @Post('reinforcement-pad')
-  @ApiOperation({ summary: 'Calculate reinforcement pad requirements' })
+  @Post("reinforcement-pad")
+  @ApiOperation({ summary: "Calculate reinforcement pad requirements" })
   @ApiResponse({
     status: 200,
-    description: 'Reinforcement pad calculation completed',
+    description: "Reinforcement pad calculation completed",
     type: ReinforcementPadResponseDto,
   })
-  reinforcementPad(
-    @Body() dto: CalculateReinforcementPadDto,
-  ): ReinforcementPadResponseDto {
+  reinforcementPad(@Body() dto: CalculateReinforcementPadDto): ReinforcementPadResponseDto {
     return this.pipeSteelWorkService.reinforcementPad(dto);
   }
 
-  @Get('bracket-types')
-  @ApiOperation({ summary: 'Get available bracket types' })
+  @Get("bracket-types")
+  @ApiOperation({ summary: "Get available bracket types" })
   @ApiQuery({
-    name: 'nominalDiameterMm',
+    name: "nominalDiameterMm",
     required: false,
-    description: 'Filter by pipe nominal diameter',
+    description: "Filter by pipe nominal diameter",
   })
   @ApiResponse({
     status: 200,
-    description: 'List of bracket types',
+    description: "List of bracket types",
     type: [BracketTypeResponseDto],
   })
   async bracketTypes(
-    @Query('nominalDiameterMm') nominalDiameterMm?: number,
+    @Query("nominalDiameterMm") nominalDiameterMm?: number,
   ): Promise<BracketTypeResponseDto[]> {
     return this.pipeSteelWorkService.bracketTypes(
       nominalDiameterMm ? Number(nominalDiameterMm) : undefined,
     );
   }
 
-  @Post('calculate')
+  @Post("calculate")
   @ApiOperation({
-    summary: 'Perform comprehensive pipe steel work calculation',
+    summary: "Perform comprehensive pipe steel work calculation",
   })
   @ApiResponse({
     status: 200,
-    description: 'Calculation completed successfully',
+    description: "Calculation completed successfully",
     type: PipeSteelWorkCalculationResponseDto,
   })
-  calculate(
-    @Body() dto: PipeSteelWorkCalculationDto,
-  ): PipeSteelWorkCalculationResponseDto {
+  calculate(@Body() dto: PipeSteelWorkCalculationDto): PipeSteelWorkCalculationResponseDto {
     return this.pipeSteelWorkService.calculate(dto);
   }
 
-  @Get('pad-standard')
-  @ApiOperation({ summary: 'Get standard reinforcement pad dimensions' })
+  @Get("pad-standard")
+  @ApiOperation({ summary: "Get standard reinforcement pad dimensions" })
   @ApiQuery({
-    name: 'branchNbMm',
+    name: "branchNbMm",
     required: true,
-    description: 'Branch nominal bore (mm)',
+    description: "Branch nominal bore (mm)",
   })
   @ApiQuery({
-    name: 'headerNbMm',
+    name: "headerNbMm",
     required: true,
-    description: 'Header nominal bore (mm)',
+    description: "Header nominal bore (mm)",
   })
   @ApiResponse({
     status: 200,
-    description: 'Standard pad dimensions or null if not found',
+    description: "Standard pad dimensions or null if not found",
   })
   async padStandard(
-    @Query('branchNbMm') branchNbMm: number,
-    @Query('headerNbMm') headerNbMm: number,
+    @Query("branchNbMm") branchNbMm: number,
+    @Query("headerNbMm") headerNbMm: number,
   ) {
-    return this.pipeSteelWorkService.padStandard(
-      Number(branchNbMm),
-      Number(headerNbMm),
-    );
+    return this.pipeSteelWorkService.padStandard(Number(branchNbMm), Number(headerNbMm));
   }
 
-  @Get('bracket-dimensions')
-  @ApiOperation({ summary: 'Get bracket dimensions by type and size' })
+  @Get("bracket-dimensions")
+  @ApiOperation({ summary: "Get bracket dimensions by type and size" })
   @ApiQuery({
-    name: 'bracketTypeCode',
+    name: "bracketTypeCode",
     required: true,
-    description: 'Bracket type code (e.g., CLEVIS_HANGER)',
+    description: "Bracket type code (e.g., CLEVIS_HANGER)",
   })
   @ApiQuery({
-    name: 'nbMm',
+    name: "nbMm",
     required: false,
-    description: 'Nominal bore (mm) - if omitted, returns all sizes for type',
+    description: "Nominal bore (mm) - if omitted, returns all sizes for type",
   })
   @ApiResponse({
     status: 200,
-    description: 'Bracket dimensions for specified type/size',
+    description: "Bracket dimensions for specified type/size",
   })
   async bracketDimensions(
-    @Query('bracketTypeCode') bracketTypeCode: string,
-    @Query('nbMm') nbMm?: number,
+    @Query("bracketTypeCode") bracketTypeCode: string,
+    @Query("nbMm") nbMm?: number,
   ) {
     if (nbMm) {
-      return this.pipeSteelWorkService.bracketDimension(
-        bracketTypeCode,
-        Number(nbMm),
-      );
+      return this.pipeSteelWorkService.bracketDimension(bracketTypeCode, Number(nbMm));
     }
     return this.pipeSteelWorkService.bracketDimensionsForType(bracketTypeCode);
   }
 
-  @Post('thermal-expansion')
-  @ApiOperation({ summary: 'Calculate thermal expansion/contraction of pipe' })
+  @Post("thermal-expansion")
+  @ApiOperation({ summary: "Calculate thermal expansion/contraction of pipe" })
   @ApiResponse({
     status: 200,
-    description: 'Thermal expansion calculation completed',
+    description: "Thermal expansion calculation completed",
     type: ThermalExpansionResponseDto,
   })
-  thermalExpansion(
-    @Body() dto: CalculateThermalExpansionDto,
-  ): ThermalExpansionResponseDto {
+  thermalExpansion(@Body() dto: CalculateThermalExpansionDto): ThermalExpansionResponseDto {
     return this.pipeSteelWorkService.thermalExpansion(dto);
   }
 
-  @Post('validate-bracket')
+  @Post("validate-bracket")
   @ApiOperation({
-    summary: 'Validate bracket compatibility with pipe specifications',
+    summary: "Validate bracket compatibility with pipe specifications",
   })
   @ApiResponse({
     status: 200,
-    description: 'Bracket compatibility validation completed',
+    description: "Bracket compatibility validation completed",
     type: BracketCompatibilityResponseDto,
   })
   async validateBracket(
@@ -185,30 +171,30 @@ export class PipeSteelWorkController {
     return this.pipeSteelWorkService.validateBracketCompatibility(dto);
   }
 
-  @Get('config')
-  @ApiOperation({ summary: 'Get all configuration values' })
+  @Get("config")
+  @ApiOperation({ summary: "Get all configuration values" })
   @ApiQuery({
-    name: 'category',
+    name: "category",
     required: false,
-    description: 'Filter by category',
+    description: "Filter by category",
   })
-  @ApiResponse({ status: 200, description: 'Configuration values retrieved' })
-  async configs(@Query('category') category?: string) {
+  @ApiResponse({ status: 200, description: "Configuration values retrieved" })
+  async configs(@Query("category") category?: string) {
     return this.pipeSteelWorkService.allConfigs(category);
   }
 
-  @Get('config/:key')
-  @ApiOperation({ summary: 'Get a specific configuration value' })
-  @ApiResponse({ status: 200, description: 'Configuration value retrieved' })
-  async config(@Param('key') key: string) {
+  @Get("config/:key")
+  @ApiOperation({ summary: "Get a specific configuration value" })
+  @ApiResponse({ status: 200, description: "Configuration value retrieved" })
+  async config(@Param("key") key: string) {
     const value = await this.pipeSteelWorkService.configValue(key);
     return { key, value };
   }
 
-  @Post('config/:key')
-  @ApiOperation({ summary: 'Update a configuration value' })
-  @ApiResponse({ status: 200, description: 'Configuration value updated' })
-  async updateConfig(@Param('key') key: string, @Body('value') value: string) {
+  @Post("config/:key")
+  @ApiOperation({ summary: "Update a configuration value" })
+  @ApiResponse({ status: 200, description: "Configuration value updated" })
+  async updateConfig(@Param("key") key: string, @Body("value") value: string) {
     const updated = await this.pipeSteelWorkService.updateConfig(key, value);
     if (!updated) {
       return {
@@ -219,29 +205,26 @@ export class PipeSteelWorkController {
     return { success: true, config: updated };
   }
 
-  @Post('batch-calculate')
+  @Post("batch-calculate")
   @ApiOperation({
-    summary: 'Perform multiple calculations in a single request',
+    summary: "Perform multiple calculations in a single request",
   })
   @ApiResponse({
     status: 200,
-    description: 'Batch calculation completed',
+    description: "Batch calculation completed",
     type: BatchCalculationResponseDto,
   })
-  batchCalculate(
-    @Body() dto: BatchCalculationDto,
-  ): BatchCalculationResponseDto {
+  batchCalculate(@Body() dto: BatchCalculationDto): BatchCalculationResponseDto {
     return this.pipeSteelWorkService.batchCalculate(dto);
   }
 
-  @Post('support-spacing/multi-standard')
+  @Post("support-spacing/multi-standard")
   @ApiOperation({
-    summary:
-      'Compare support spacing across multiple standards (MSS-SP-58, DIN, EN, ASME)',
+    summary: "Compare support spacing across multiple standards (MSS-SP-58, DIN, EN, ASME)",
   })
   @ApiResponse({
     status: 200,
-    description: 'Multi-standard comparison completed',
+    description: "Multi-standard comparison completed",
     type: MultiStandardSpacingResponseDto,
   })
   supportSpacingMultiStandard(
@@ -250,14 +233,13 @@ export class PipeSteelWorkController {
     return this.pipeSteelWorkService.supportSpacingMultiStandard(dto);
   }
 
-  @Post('reinforcement-pad/with-derating')
+  @Post("reinforcement-pad/with-derating")
   @ApiOperation({
-    summary:
-      'Calculate reinforcement pad with pressure/temperature derating factors',
+    summary: "Calculate reinforcement pad with pressure/temperature derating factors",
   })
   @ApiResponse({
     status: 200,
-    description: 'Reinforcement pad calculation with derating completed',
+    description: "Reinforcement pad calculation with derating completed",
     type: ReinforcementPadWithDeratingResponseDto,
   })
   reinforcementPadWithDerating(
@@ -266,28 +248,26 @@ export class PipeSteelWorkController {
     return this.pipeSteelWorkService.reinforcementPadWithDerating(dto);
   }
 
-  @Post('vibration-analysis')
+  @Post("vibration-analysis")
   @ApiOperation({
-    summary: 'Perform vibration/natural frequency analysis for pipe spans',
+    summary: "Perform vibration/natural frequency analysis for pipe spans",
   })
   @ApiResponse({
     status: 200,
-    description: 'Vibration analysis completed',
+    description: "Vibration analysis completed",
     type: VibrationAnalysisResponseDto,
   })
-  vibrationAnalysis(
-    @Body() dto: CalculateVibrationAnalysisDto,
-  ): VibrationAnalysisResponseDto {
+  vibrationAnalysis(@Body() dto: CalculateVibrationAnalysisDto): VibrationAnalysisResponseDto {
     return this.pipeSteelWorkService.vibrationAnalysis(dto);
   }
 
-  @Post('stress-analysis')
+  @Post("stress-analysis")
   @ApiOperation({
-    summary: 'Perform stress analysis on bracket/hanger components',
+    summary: "Perform stress analysis on bracket/hanger components",
   })
   @ApiResponse({
     status: 200,
-    description: 'Stress analysis completed',
+    description: "Stress analysis completed",
     type: StressAnalysisResponseDto,
   })
   async stressAnalysis(
@@ -296,13 +276,13 @@ export class PipeSteelWorkController {
     return this.pipeSteelWorkService.stressAnalysis(dto);
   }
 
-  @Post('material-compatibility')
+  @Post("material-compatibility")
   @ApiOperation({
-    summary: 'Check material compatibility between pipe and bracket materials',
+    summary: "Check material compatibility between pipe and bracket materials",
   })
   @ApiResponse({
     status: 200,
-    description: 'Material compatibility check completed',
+    description: "Material compatibility check completed",
     type: MaterialCompatibilityResponseDto,
   })
   materialCompatibility(
@@ -311,88 +291,84 @@ export class PipeSteelWorkController {
     return this.pipeSteelWorkService.materialCompatibility(dto);
   }
 
-  @Post('export')
-  @ApiOperation({ summary: 'Export calculation results to PDF, Excel, or CSV' })
+  @Post("export")
+  @ApiOperation({ summary: "Export calculation results to PDF, Excel, or CSV" })
   @ApiResponse({
     status: 200,
-    description: 'Report exported successfully',
+    description: "Report exported successfully",
     type: ExportReportResponseDto,
   })
   exportReport(@Body() dto: ExportReportDto): ExportReportResponseDto {
     return this.pipeSteelWorkService.exportReport(dto);
   }
 
-  @Get('standard-plate-sizes')
+  @Get("standard-plate-sizes")
   @ApiOperation({
-    summary: 'Get standard plate sizes for brackets and compensation plates',
+    summary: "Get standard plate sizes for brackets and compensation plates",
   })
   @ApiQuery({
-    name: 'category',
+    name: "category",
     required: false,
-    description: 'Filter by category (small, medium, large)',
+    description: "Filter by category (small, medium, large)",
   })
   @ApiResponse({
     status: 200,
-    description: 'List of standard plate sizes',
+    description: "List of standard plate sizes",
     type: [StandardPlateSizeDto],
   })
-  standardPlateSizes(
-    @Query('category') category?: string,
-  ): StandardPlateSizeDto[] {
+  standardPlateSizes(@Query("category") category?: string): StandardPlateSizeDto[] {
     return this.pipeSteelWorkService.standardPlateSizes(category);
   }
 
-  @Get('gasket-materials')
+  @Get("gasket-materials")
   @ApiOperation({
-    summary: 'Get available gasket materials with specifications',
+    summary: "Get available gasket materials with specifications",
   })
   @ApiQuery({
-    name: 'type',
+    name: "type",
     required: false,
-    description: 'Filter by gasket type',
+    description: "Filter by gasket type",
   })
   @ApiResponse({
     status: 200,
-    description: 'List of gasket materials',
+    description: "List of gasket materials",
     type: [GasketMaterialDto],
   })
-  gasketMaterials(@Query('type') type?: string): GasketMaterialDto[] {
+  gasketMaterials(@Query("type") type?: string): GasketMaterialDto[] {
     return this.pipeSteelWorkService.gasketMaterials(type);
   }
 
-  @Post('gasket-compatibility')
+  @Post("gasket-compatibility")
   @ApiOperation({
-    summary: 'Check gasket compatibility with service conditions',
+    summary: "Check gasket compatibility with service conditions",
   })
   @ApiResponse({
     status: 200,
-    description: 'Compatibility check result',
+    description: "Compatibility check result",
     type: GasketCompatibilityResponseDto,
   })
-  gasketCompatibility(
-    @Body() dto: GasketCompatibilityCheckDto,
-  ): GasketCompatibilityResponseDto {
+  gasketCompatibility(@Body() dto: GasketCompatibilityCheckDto): GasketCompatibilityResponseDto {
     return this.pipeSteelWorkService.gasketCompatibility(dto);
   }
 
-  @Get('heat-treatments')
-  @ApiOperation({ summary: 'Get available heat treatment options' })
+  @Get("heat-treatments")
+  @ApiOperation({ summary: "Get available heat treatment options" })
   @ApiResponse({
     status: 200,
-    description: 'List of heat treatments',
+    description: "List of heat treatments",
     type: [HeatTreatmentDto],
   })
   heatTreatments(): HeatTreatmentDto[] {
     return this.pipeSteelWorkService.heatTreatments();
   }
 
-  @Post('heat-treatment-requirement')
+  @Post("heat-treatment-requirement")
   @ApiOperation({
-    summary: 'Check if heat treatment is required and get details',
+    summary: "Check if heat treatment is required and get details",
   })
   @ApiResponse({
     status: 200,
-    description: 'Heat treatment requirement result',
+    description: "Heat treatment requirement result",
     type: HeatTreatmentRequirementResponseDto,
   })
   heatTreatmentRequirement(

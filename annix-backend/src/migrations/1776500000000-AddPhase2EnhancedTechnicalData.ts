@@ -1,10 +1,10 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInterface {
-  name = 'AddPhase2EnhancedTechnicalData1776500000000';
+  name = "AddPhase2EnhancedTechnicalData1776500000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Phase 2: Adding enhanced technical data from MPS manual...');
+    console.warn("Phase 2: Adding enhanced technical data from MPS manual...");
 
     await this.createSabs719TestPressureTable(queryRunner);
     await this.createStainlessSteelGradesTable(queryRunner);
@@ -12,13 +12,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
     await this.populateSabs719PipeMassData(queryRunner);
     await this.populateStainlessSteelGrades(queryRunner);
 
-    console.warn('Phase 2 migration complete.');
+    console.warn("Phase 2 migration complete.");
   }
 
-  private async createSabs719TestPressureTable(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Creating SABS 719 test pressure table...');
+  private async createSabs719TestPressureTable(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Creating SABS 719 test pressure table...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS sabs_719_test_pressures (
@@ -34,10 +32,8 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
     `);
   }
 
-  private async createStainlessSteelGradesTable(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
-    console.warn('Creating stainless steel grades table...');
+  private async createStainlessSteelGradesTable(queryRunner: QueryRunner): Promise<void> {
+    console.warn("Creating stainless steel grades table...");
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS stainless_steel_grades (
@@ -61,17 +57,15 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
     `);
   }
 
-  private async populateSabs719TestPressureData(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
+  private async populateSabs719TestPressureData(queryRunner: QueryRunner): Promise<void> {
     const existing = await queryRunner.query(
-      `SELECT COUNT(*) as count FROM sabs_719_test_pressures`,
+      "SELECT COUNT(*) as count FROM sabs_719_test_pressures",
     );
-    if (parseInt(existing[0]?.count) > 0) {
-      console.warn('SABS 719 test pressure data already exists, skipping...');
+    if (parseInt(existing[0]?.count, 10) > 0) {
+      console.warn("SABS 719 test pressure data already exists, skipping...");
       return;
     }
-    console.warn('Populating SABS 719 test pressure data...');
+    console.warn("Populating SABS 719 test pressure data...");
 
     const gradeBData = [
       {
@@ -569,29 +563,25 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
 
     await queryRunner.query(`
       INSERT INTO sabs_719_test_pressures (grade, nominal_bore_mm, outside_diameter_mm, wall_thickness_mm, test_pressure_kpa, yield_stress_mpa)
-      VALUES ${values.join(',\n')}
+      VALUES ${values.join(",\n")}
       ON CONFLICT DO NOTHING
     `);
 
     console.warn(`Added ${values.length} SABS 719 test pressure entries`);
   }
 
-  private async populateSabs719PipeMassData(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
+  private async populateSabs719PipeMassData(queryRunner: QueryRunner): Promise<void> {
     const tableExists = await queryRunner.query(`
       SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'sabs_719_pipe_mass')
     `);
     if (tableExists[0]?.exists) {
-      const existing = await queryRunner.query(
-        `SELECT COUNT(*) as count FROM sabs_719_pipe_mass`,
-      );
-      if (parseInt(existing[0]?.count) > 0) {
-        console.warn('SABS 719 pipe mass data already exists, skipping...');
+      const existing = await queryRunner.query("SELECT COUNT(*) as count FROM sabs_719_pipe_mass");
+      if (parseInt(existing[0]?.count, 10) > 0) {
+        console.warn("SABS 719 pipe mass data already exists, skipping...");
         return;
       }
     }
-    console.warn('Populating SABS 719 pipe mass data...');
+    console.warn("Populating SABS 719 pipe mass data...");
 
     const columnExists = await queryRunner.query(`
       SELECT column_name FROM information_schema.columns
@@ -769,74 +759,72 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
 
     await queryRunner.query(`
       INSERT INTO sabs_719_pipe_mass (nominal_bore_mm, outside_diameter_mm, wall_thickness_mm, mass_kg_per_m)
-      VALUES ${values.join(',\n')}
+      VALUES ${values.join(",\n")}
       ON CONFLICT DO NOTHING
     `);
 
     console.warn(`Added ${values.length} SABS 719 pipe mass entries`);
   }
 
-  private async populateStainlessSteelGrades(
-    queryRunner: QueryRunner,
-  ): Promise<void> {
+  private async populateStainlessSteelGrades(queryRunner: QueryRunner): Promise<void> {
     const existing = await queryRunner.query(
-      `SELECT COUNT(*) as count FROM stainless_steel_grades`,
+      "SELECT COUNT(*) as count FROM stainless_steel_grades",
     );
-    if (parseInt(existing[0]?.count) > 0) {
-      console.warn('Stainless steel grades already exist, skipping...');
+    if (parseInt(existing[0]?.count, 10) > 0) {
+      console.warn("Stainless steel grades already exist, skipping...");
       return;
     }
-    console.warn('Populating stainless steel grades...');
+    console.warn("Populating stainless steel grades...");
 
     const grades = [
       {
-        gradeNumber: '201',
-        unsNumber: 'S20100',
-        enNumber: '1.4372',
-        enDesignation: 'X12CrMnNiN 17-7-5',
-        family: 'Austenitic',
+        gradeNumber: "201",
+        unsNumber: "S20100",
+        enNumber: "1.4372",
+        enDesignation: "X12CrMnNiN 17-7-5",
+        family: "Austenitic",
         carbonMaxPct: 0.15,
         chromiumMin: 16.0,
         chromiumMax: 18.0,
         nickelMin: 3.5,
         nickelMax: 5.5,
         nitrogenMax: 0.25,
-        otherElements: '5.5-7.5% Mn',
+        otherElements: "5.5-7.5% Mn",
       },
       {
-        gradeNumber: '201L',
-        unsNumber: 'S20103',
-        enNumber: '1.4371',
-        enDesignation: 'X2CrMnNiN 17-7-5',
-        family: 'Austenitic',
+        gradeNumber: "201L",
+        unsNumber: "S20103",
+        enNumber: "1.4371",
+        enDesignation: "X2CrMnNiN 17-7-5",
+        family: "Austenitic",
         carbonMaxPct: 0.03,
         chromiumMin: 16.0,
         chromiumMax: 18.0,
         nickelMin: 3.5,
         nickelMax: 5.5,
         nitrogenMax: 0.25,
-        otherElements: '5.5-7.5% Mn',
+        otherElements: "5.5-7.5% Mn",
       },
       {
-        gradeNumber: '202',
-        unsNumber: 'S20200',
-        enNumber: '1.4373',
-        enDesignation: 'X12CrMnNiN 18-9-5',
-        family: 'Austenitic',
+        gradeNumber: "202",
+        unsNumber: "S20200",
+        enNumber: "1.4373",
+        enDesignation: "X12CrMnNiN 18-9-5",
+        family: "Austenitic",
         carbonMaxPct: 0.15,
         chromiumMin: 17.0,
         chromiumMax: 19.0,
         nickelMin: 4.0,
         nickelMax: 6.0,
         nitrogenMax: 0.25,
-        otherElements: '7.5-10.0% Mn',
+        otherElements: "7.5-10.0% Mn",
       },
       {
-        gradeNumber: '301',
-        unsNumber: 'S30100',
-        enNumber: '1.4310',
-        enDesignation: 'X10CrNi 18-8',
-        family: 'Austenitic',
+        gradeNumber: "301",
+        unsNumber: "S30100",
+        enNumber: "1.4310",
+        enDesignation: "X10CrNi 18-8",
+        family: "Austenitic",
         carbonMaxPct: 0.15,
         chromiumMin: 16.0,
         chromiumMax: 18.0,
@@ -846,25 +834,25 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '303',
-        unsNumber: 'S30300',
-        enNumber: '1.4305',
-        enDesignation: 'X8CrNiS 18-9',
-        family: 'Austenitic',
+        gradeNumber: "303",
+        unsNumber: "S30300",
+        enNumber: "1.4305",
+        enDesignation: "X8CrNiS 18-9",
+        family: "Austenitic",
         carbonMaxPct: 0.15,
         chromiumMin: 17.0,
         chromiumMax: 19.0,
         nickelMin: 8.0,
         nickelMax: 10.0,
         nitrogenMax: null,
-        otherElements: '>0.15% S (Free Machining)',
+        otherElements: ">0.15% S (Free Machining)",
       },
       {
-        gradeNumber: '304',
-        unsNumber: 'S30400',
-        enNumber: '1.4301',
-        enDesignation: 'X5CrNi 18-10',
-        family: 'Austenitic',
+        gradeNumber: "304",
+        unsNumber: "S30400",
+        enNumber: "1.4301",
+        enDesignation: "X5CrNi 18-10",
+        family: "Austenitic",
         carbonMaxPct: 0.08,
         chromiumMin: 18.0,
         chromiumMax: 20.0,
@@ -874,11 +862,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '304L',
-        unsNumber: 'S30403',
-        enNumber: '1.4306',
-        enDesignation: 'X2CrNi 19-11',
-        family: 'Austenitic',
+        gradeNumber: "304L",
+        unsNumber: "S30403",
+        enNumber: "1.4306",
+        enDesignation: "X2CrNi 19-11",
+        family: "Austenitic",
         carbonMaxPct: 0.03,
         chromiumMin: 18.0,
         chromiumMax: 20.0,
@@ -888,25 +876,25 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '304H',
-        unsNumber: 'S30409',
+        gradeNumber: "304H",
+        unsNumber: "S30409",
         enNumber: null,
         enDesignation: null,
-        family: 'Austenitic',
+        family: "Austenitic",
         carbonMaxPct: 0.1,
         chromiumMin: 18.0,
         chromiumMax: 20.0,
         nickelMin: 8.0,
         nickelMax: 10.5,
         nitrogenMax: null,
-        otherElements: 'High carbon for elevated temp',
+        otherElements: "High carbon for elevated temp",
       },
       {
-        gradeNumber: '309',
-        unsNumber: 'S30900',
-        enNumber: '1.4828',
-        enDesignation: 'X15CrNiSi 20-12',
-        family: 'Austenitic',
+        gradeNumber: "309",
+        unsNumber: "S30900",
+        enNumber: "1.4828",
+        enDesignation: "X15CrNiSi 20-12",
+        family: "Austenitic",
         carbonMaxPct: 0.2,
         chromiumMin: 22.0,
         chromiumMax: 24.0,
@@ -916,11 +904,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '310',
-        unsNumber: 'S31000',
-        enNumber: '1.4845',
-        enDesignation: 'X8CrNi 25-21',
-        family: 'Austenitic',
+        gradeNumber: "310",
+        unsNumber: "S31000",
+        enNumber: "1.4845",
+        enDesignation: "X8CrNi 25-21",
+        family: "Austenitic",
         carbonMaxPct: 0.25,
         chromiumMin: 24.0,
         chromiumMax: 26.0,
@@ -930,11 +918,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '316',
-        unsNumber: 'S31600',
-        enNumber: '1.4401',
-        enDesignation: 'X5CrNiMo 17-12-2',
-        family: 'Austenitic',
+        gradeNumber: "316",
+        unsNumber: "S31600",
+        enNumber: "1.4401",
+        enDesignation: "X5CrNiMo 17-12-2",
+        family: "Austenitic",
         carbonMaxPct: 0.08,
         chromiumMin: 16.0,
         chromiumMax: 18.0,
@@ -946,11 +934,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '316L',
-        unsNumber: 'S31603',
-        enNumber: '1.4404',
-        enDesignation: 'X2CrNiMo 17-12-2',
-        family: 'Austenitic',
+        gradeNumber: "316L",
+        unsNumber: "S31603",
+        enNumber: "1.4404",
+        enDesignation: "X2CrNiMo 17-12-2",
+        family: "Austenitic",
         carbonMaxPct: 0.03,
         chromiumMin: 16.0,
         chromiumMax: 18.0,
@@ -962,11 +950,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '316Ti',
-        unsNumber: 'S31635',
-        enNumber: '1.4571',
-        enDesignation: 'X6CrNiMoTi 17-12-2',
-        family: 'Austenitic',
+        gradeNumber: "316Ti",
+        unsNumber: "S31635",
+        enNumber: "1.4571",
+        enDesignation: "X6CrNiMoTi 17-12-2",
+        family: "Austenitic",
         carbonMaxPct: 0.08,
         chromiumMin: 16.0,
         chromiumMax: 18.0,
@@ -975,14 +963,14 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         molybdenumMin: 2.0,
         molybdenumMax: 3.0,
         nitrogenMax: null,
-        otherElements: 'Ti stabilized',
+        otherElements: "Ti stabilized",
       },
       {
-        gradeNumber: '317',
-        unsNumber: 'S31700',
-        enNumber: '1.4449',
-        enDesignation: 'X3CrNiMo 18-12-3',
-        family: 'Austenitic',
+        gradeNumber: "317",
+        unsNumber: "S31700",
+        enNumber: "1.4449",
+        enDesignation: "X3CrNiMo 18-12-3",
+        family: "Austenitic",
         carbonMaxPct: 0.08,
         chromiumMin: 18.0,
         chromiumMax: 20.0,
@@ -994,53 +982,53 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '321',
-        unsNumber: 'S32100',
-        enNumber: '1.4541',
-        enDesignation: 'X6CrNiTi 18-10',
-        family: 'Austenitic',
+        gradeNumber: "321",
+        unsNumber: "S32100",
+        enNumber: "1.4541",
+        enDesignation: "X6CrNiTi 18-10",
+        family: "Austenitic",
         carbonMaxPct: 0.08,
         chromiumMin: 17.0,
         chromiumMax: 19.0,
         nickelMin: 9.0,
         nickelMax: 12.0,
         nitrogenMax: 0.1,
-        otherElements: 'Ti stabilized (5xC min)',
+        otherElements: "Ti stabilized (5xC min)",
       },
       {
-        gradeNumber: '347',
-        unsNumber: 'S34700',
-        enNumber: '1.4550',
-        enDesignation: 'X6CrNiNb 18-10',
-        family: 'Austenitic',
+        gradeNumber: "347",
+        unsNumber: "S34700",
+        enNumber: "1.4550",
+        enDesignation: "X6CrNiNb 18-10",
+        family: "Austenitic",
         carbonMaxPct: 0.08,
         chromiumMin: 17.0,
         chromiumMax: 19.0,
         nickelMin: 9.0,
         nickelMax: 13.0,
         nitrogenMax: null,
-        otherElements: 'Nb stabilized (10xC min)',
+        otherElements: "Nb stabilized (10xC min)",
       },
       {
-        gradeNumber: '409',
-        unsNumber: 'S40900',
-        enNumber: '1.4512',
-        enDesignation: 'X2CrTi 12',
-        family: 'Ferritic',
+        gradeNumber: "409",
+        unsNumber: "S40900",
+        enNumber: "1.4512",
+        enDesignation: "X2CrTi 12",
+        family: "Ferritic",
         carbonMaxPct: 0.08,
         chromiumMin: 10.5,
         chromiumMax: 11.75,
         nickelMin: null,
         nickelMax: 0.5,
         nitrogenMax: null,
-        otherElements: 'Ti stabilized',
+        otherElements: "Ti stabilized",
       },
       {
-        gradeNumber: '410',
-        unsNumber: 'S41000',
-        enNumber: '1.4006',
-        enDesignation: 'X12Cr 13',
-        family: 'Martensitic',
+        gradeNumber: "410",
+        unsNumber: "S41000",
+        enNumber: "1.4006",
+        enDesignation: "X12Cr 13",
+        family: "Martensitic",
         carbonMaxPct: 0.15,
         chromiumMin: 11.5,
         chromiumMax: 13.5,
@@ -1050,11 +1038,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '420',
-        unsNumber: 'S42000',
-        enNumber: '1.4021',
-        enDesignation: 'X20Cr 13',
-        family: 'Martensitic',
+        gradeNumber: "420",
+        unsNumber: "S42000",
+        enNumber: "1.4021",
+        enDesignation: "X20Cr 13",
+        family: "Martensitic",
         carbonMaxPct: 0.35,
         chromiumMin: 12.0,
         chromiumMax: 14.0,
@@ -1064,11 +1052,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '430',
-        unsNumber: 'S43000',
-        enNumber: '1.4016',
-        enDesignation: 'X6Cr 17',
-        family: 'Ferritic',
+        gradeNumber: "430",
+        unsNumber: "S43000",
+        enNumber: "1.4016",
+        enDesignation: "X6Cr 17",
+        family: "Ferritic",
         carbonMaxPct: 0.12,
         chromiumMin: 16.0,
         chromiumMax: 18.0,
@@ -1078,11 +1066,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '431',
-        unsNumber: 'S43100',
-        enNumber: '1.4057',
-        enDesignation: 'X17CrNi 16-2',
-        family: 'Martensitic',
+        gradeNumber: "431",
+        unsNumber: "S43100",
+        enNumber: "1.4057",
+        enDesignation: "X17CrNi 16-2",
+        family: "Martensitic",
         carbonMaxPct: 0.2,
         chromiumMin: 15.0,
         chromiumMax: 17.0,
@@ -1092,11 +1080,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '440A',
-        unsNumber: 'S44002',
-        enNumber: '1.4109',
-        enDesignation: 'X70CrMo 15',
-        family: 'Martensitic',
+        gradeNumber: "440A",
+        unsNumber: "S44002",
+        enNumber: "1.4109",
+        enDesignation: "X70CrMo 15",
+        family: "Martensitic",
         carbonMaxPct: 0.75,
         chromiumMin: 16.0,
         chromiumMax: 18.0,
@@ -1108,11 +1096,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '440C',
-        unsNumber: 'S44004',
-        enNumber: '1.4125',
-        enDesignation: 'X105CrMo 17',
-        family: 'Martensitic',
+        gradeNumber: "440C",
+        unsNumber: "S44004",
+        enNumber: "1.4125",
+        enDesignation: "X105CrMo 17",
+        family: "Martensitic",
         carbonMaxPct: 1.2,
         chromiumMin: 16.0,
         chromiumMax: 18.0,
@@ -1124,11 +1112,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '2205',
-        unsNumber: 'S32205',
-        enNumber: '1.4462',
-        enDesignation: 'X2CrNiMoN 22-5-3',
-        family: 'Duplex',
+        gradeNumber: "2205",
+        unsNumber: "S32205",
+        enNumber: "1.4462",
+        enDesignation: "X2CrNiMoN 22-5-3",
+        family: "Duplex",
         carbonMaxPct: 0.03,
         chromiumMin: 22.0,
         chromiumMax: 23.0,
@@ -1140,11 +1128,11 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '2507',
-        unsNumber: 'S32750',
-        enNumber: '1.4410',
-        enDesignation: 'X2CrNiMoN 25-7-4',
-        family: 'Super Duplex',
+        gradeNumber: "2507",
+        unsNumber: "S32750",
+        enNumber: "1.4410",
+        enDesignation: "X2CrNiMoN 25-7-4",
+        family: "Super Duplex",
         carbonMaxPct: 0.03,
         chromiumMin: 24.0,
         chromiumMax: 26.0,
@@ -1156,34 +1144,32 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
         otherElements: null,
       },
       {
-        gradeNumber: '3CR12',
-        unsNumber: 'S41003',
-        enNumber: '1.4003',
-        enDesignation: 'X2CrNi 12',
-        family: 'Ferritic/Martensitic',
+        gradeNumber: "3CR12",
+        unsNumber: "S41003",
+        enNumber: "1.4003",
+        enDesignation: "X2CrNi 12",
+        family: "Ferritic/Martensitic",
         carbonMaxPct: 0.03,
         chromiumMin: 10.5,
         chromiumMax: 12.5,
         nickelMin: 0.3,
         nickelMax: 1.0,
         nitrogenMax: null,
-        otherElements: 'SA proprietary grade',
+        otherElements: "SA proprietary grade",
       },
     ];
 
     const values: string[] = [];
     for (const g of grades) {
-      const enDesig = g.enDesignation ? `'${g.enDesignation}'` : 'NULL';
-      const enNum = g.enNumber ? `'${g.enNumber}'` : 'NULL';
-      const uns = g.unsNumber ? `'${g.unsNumber}'` : 'NULL';
-      const other = g.otherElements
-        ? `'${g.otherElements.replace(/'/g, "''")}'`
-        : 'NULL';
-      const moMin = (g as any).molybdenumMin ?? 'NULL';
-      const moMax = (g as any).molybdenumMax ?? 'NULL';
-      const niMin = g.nickelMin ?? 'NULL';
-      const niMax = g.nickelMax ?? 'NULL';
-      const nMax = g.nitrogenMax ?? 'NULL';
+      const enDesig = g.enDesignation ? `'${g.enDesignation}'` : "NULL";
+      const enNum = g.enNumber ? `'${g.enNumber}'` : "NULL";
+      const uns = g.unsNumber ? `'${g.unsNumber}'` : "NULL";
+      const other = g.otherElements ? `'${g.otherElements.replace(/'/g, "''")}'` : "NULL";
+      const moMin = (g as any).molybdenumMin ?? "NULL";
+      const moMax = (g as any).molybdenumMax ?? "NULL";
+      const niMin = g.nickelMin ?? "NULL";
+      const niMax = g.nickelMax ?? "NULL";
+      const nMax = g.nitrogenMax ?? "NULL";
 
       values.push(
         `('${g.gradeNumber}', ${uns}, ${enNum}, ${enDesig}, '${g.family}', ${g.carbonMaxPct}, ${g.chromiumMin}, ${g.chromiumMax}, ${niMin}, ${niMax}, ${moMin}, ${moMax}, ${nMax}, ${other})`,
@@ -1193,7 +1179,7 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
     await queryRunner.query(`
       INSERT INTO stainless_steel_grades
         (grade_number, uns_number, en_number, en_designation, family, carbon_max_pct, chromium_min_pct, chromium_max_pct, nickel_min_pct, nickel_max_pct, molybdenum_min_pct, molybdenum_max_pct, nitrogen_max_pct, other_elements)
-      VALUES ${values.join(',\n')}
+      VALUES ${values.join(",\n")}
       ON CONFLICT (grade_number) DO NOTHING
     `);
 
@@ -1201,12 +1187,12 @@ export class AddPhase2EnhancedTechnicalData1776500000000 implements MigrationInt
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Reverting Phase 2 migration...');
+    console.warn("Reverting Phase 2 migration...");
 
-    await queryRunner.query(`DROP TABLE IF EXISTS stainless_steel_grades`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sabs_719_pipe_mass`);
-    await queryRunner.query(`DROP TABLE IF EXISTS sabs_719_test_pressures`);
+    await queryRunner.query("DROP TABLE IF EXISTS stainless_steel_grades");
+    await queryRunner.query("DROP TABLE IF EXISTS sabs_719_pipe_mass");
+    await queryRunner.query("DROP TABLE IF EXISTS sabs_719_test_pressures");
 
-    console.warn('Phase 2 migration reverted');
+    console.warn("Phase 2 migration reverted");
   }
 }

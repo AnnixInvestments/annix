@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Washer } from './entities/washer.entity';
-import { CreateWasherDto } from './dto/create-washer.dto';
-import { UpdateWasherDto } from './dto/update-washer.dto';
-import { Bolt } from '../bolt/entities/bolt.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Bolt } from "../bolt/entities/bolt.entity";
+import { CreateWasherDto } from "./dto/create-washer.dto";
+import { UpdateWasherDto } from "./dto/update-washer.dto";
+import { Washer } from "./entities/washer.entity";
 
 @Injectable()
 export class WasherService {
@@ -36,47 +36,41 @@ export class WasherService {
     material?: string;
   }): Promise<Washer[]> {
     const query = this.washerRepo
-      .createQueryBuilder('washer')
-      .leftJoinAndSelect('washer.bolt', 'bolt');
+      .createQueryBuilder("washer")
+      .leftJoinAndSelect("washer.bolt", "bolt");
 
     if (filters?.boltId) {
-      query.andWhere('bolt.id = :boltId', { boltId: filters.boltId });
+      query.andWhere("bolt.id = :boltId", { boltId: filters.boltId });
     }
     if (filters?.type) {
-      query.andWhere('washer.type = :type', { type: filters.type });
+      query.andWhere("washer.type = :type", { type: filters.type });
     }
     if (filters?.material) {
-      query.andWhere('washer.material ILIKE :material', {
+      query.andWhere("washer.material ILIKE :material", {
         material: `%${filters.material}%`,
       });
     }
 
-    return query
-      .orderBy('bolt.designation', 'ASC')
-      .addOrderBy('washer.type', 'ASC')
-      .getMany();
+    return query.orderBy("bolt.designation", "ASC").addOrderBy("washer.type", "ASC").getMany();
   }
 
   async findOne(id: number): Promise<Washer> {
     const washer = await this.washerRepo.findOne({
       where: { id },
-      relations: ['bolt'],
+      relations: ["bolt"],
     });
     if (!washer) throw new NotFoundException(`Washer ${id} not found`);
     return washer;
   }
 
-  async findByBoltDesignation(
-    designation: string,
-    type?: string,
-  ): Promise<Washer[]> {
+  async findByBoltDesignation(designation: string, type?: string): Promise<Washer[]> {
     const query = this.washerRepo
-      .createQueryBuilder('washer')
-      .leftJoinAndSelect('washer.bolt', 'bolt')
-      .where('bolt.designation = :designation', { designation });
+      .createQueryBuilder("washer")
+      .leftJoinAndSelect("washer.bolt", "bolt")
+      .where("bolt.designation = :designation", { designation });
 
     if (type) {
-      query.andWhere('washer.type = :type', { type });
+      query.andWhere("washer.type = :type", { type });
     }
 
     return query.getMany();
@@ -96,8 +90,7 @@ export class WasherService {
     if (dto.massKg !== undefined) washer.massKg = dto.massKg;
     if (dto.odMm !== undefined) washer.odMm = dto.odMm || null;
     if (dto.idMm !== undefined) washer.idMm = dto.idMm || null;
-    if (dto.thicknessMm !== undefined)
-      washer.thicknessMm = dto.thicknessMm || null;
+    if (dto.thicknessMm !== undefined) washer.thicknessMm = dto.thicknessMm || null;
 
     return this.washerRepo.save(washer);
   }

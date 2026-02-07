@@ -1,23 +1,23 @@
-import { Entity, PrimaryGeneratedColumn, Column, Unique } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, Unique } from "typeorm";
 
-@Entity('flow_coefficients')
-@Unique(['material', 'condition'])
+@Entity("flow_coefficients")
+@Unique(["material", "condition"])
 export class FlowCoefficient {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ type: "varchar", length: 50 })
   material: string;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ type: "varchar", length: 50 })
   condition: string;
 
-  @Column({ name: 'hazen_williams_c', type: 'int' })
+  @Column({ name: "hazen_williams_c", type: "int" })
   hazenWilliamsC: number;
 
   @Column({
-    name: 'manning_n',
-    type: 'decimal',
+    name: "manning_n",
+    type: "decimal",
     precision: 5,
     scale: 4,
     nullable: true,
@@ -25,14 +25,14 @@ export class FlowCoefficient {
   manningN: number | null;
 
   @Column({
-    name: 'absolute_roughness_mm',
-    type: 'decimal',
+    name: "absolute_roughness_mm",
+    type: "decimal",
     precision: 6,
     scale: 4,
     nullable: true,
   })
   absoluteRoughnessMm: number | null;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true })
   notes: string | null;
 }

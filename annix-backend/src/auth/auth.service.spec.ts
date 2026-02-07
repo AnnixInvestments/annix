@@ -1,20 +1,20 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { User } from '../user/entities/user.entity';
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { User } from "../user/entities/user.entity";
+import { AuthService } from "./auth.service";
 
-jest.mock('bcrypt', () => ({
+jest.mock("bcrypt", () => ({
   hash: jest.fn(),
   compare: jest.fn(),
 }));
 
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from "bcrypt";
 
-describe('AuthService', () => {
+describe("AuthService", () => {
   let service: AuthService;
   let userRepo: jest.Mocked<Repository<User>>;
   let jwtService: jest.Mocked<JwtService>;
@@ -50,81 +50,80 @@ describe('AuthService', () => {
     jest.resetAllMocks();
   });
 
-  describe('validateUser', () => {
-    it('should return user data without password and salt if credentials are valid', async () => {
+  describe("validateUser", () => {
+    it("should return user data without password and salt if credentials are valid", async () => {
       const user = {
         id: 1,
-        username: 'john',
-        email: 'john@test.com',
-        password: 'hashed_pass',
-        salt: 'random_salt',
-        roles: [{ id: 1, name: 'employee' }],
+        username: "john",
+        email: "john@test.com",
+        password: "hashed_pass",
+        salt: "random_salt",
+        roles: [{ id: 1, name: "employee" }],
       } as User;
 
       mockUserRepo.findOne.mockResolvedValue(user);
 
-      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed_pass');
+      (bcrypt.hash as jest.Mock).mockResolvedValue("hashed_pass");
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = await service.validateUser('john@test.com', '123456');
+      const result = await service.validateUser("john@test.com", "123456");
 
       expect(result).toEqual({
         id: 1,
-        username: 'john',
-        email: 'john@test.com',
-        roles: [{ id: 1, name: 'employee' }],
+        username: "john",
+        email: "john@test.com",
+        roles: [{ id: 1, name: "employee" }],
       });
     });
 
-    it('should throw UnauthorizedException if user is not found', async () => {
+    it("should throw UnauthorizedException if user is not found", async () => {
       mockUserRepo.findOne.mockResolvedValue(null);
-      await expect(
-        service.validateUser('nonexistent@test.com', '123456'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.validateUser("nonexistent@test.com", "123456")).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
-    it('should throw UnauthorizedException if password is invalid', async () => {
+    it("should throw UnauthorizedException if password is invalid", async () => {
       const user = {
         id: 1,
-        username: 'john',
-        email: 'john@test.com',
-        password: 'hashed_pass',
-        salt: 'random_salt',
-        roles: [{ id: 1, name: 'employee' }],
+        username: "john",
+        email: "john@test.com",
+        password: "hashed_pass",
+        salt: "random_salt",
+        roles: [{ id: 1, name: "employee" }],
       } as User;
 
       mockUserRepo.findOne.mockResolvedValue(user);
 
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(
-        service.validateUser('john@test.com', '123456'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.validateUser("john@test.com", "123456")).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
-  describe('login', () => {
-    it('should return access token', async () => {
+  describe("login", () => {
+    it("should return access token", async () => {
       const user = {
         id: 1,
-        username: 'john',
-        roles: [{ id: 1, name: 'employee' }],
+        username: "john",
+        roles: [{ id: 1, name: "employee" }],
       };
 
-      mockJwtService.signAsync.mockResolvedValue('signed_jwt_token');
+      mockJwtService.signAsync.mockResolvedValue("signed_jwt_token");
 
       const result = await service.login(user);
 
       expect(result).toEqual({
-        access_token: 'signed_jwt_token',
-        refresh_token: 'signed_jwt_token',
-        token_type: 'Bearer',
+        access_token: "signed_jwt_token",
+        refresh_token: "signed_jwt_token",
+        token_type: "Bearer",
         expires_in: 3600,
       });
-      expect(mockJwtService.signAsync).toHaveBeenCalledWith(
-        expect.any(Object),
-        { expiresIn: '1h' },
-      );
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith(expect.any(Object), {
+        expiresIn: "1h",
+      });
     });
   });
 });

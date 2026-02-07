@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { BendCenterToFace } from './entities/bend-center-to-face.entity';
-import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
-import { FlangeDimension } from '../flange-dimension/entities/flange-dimension.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
+import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
+import { BendCenterToFace } from "./entities/bend-center-to-face.entity";
 
 @Injectable()
 export class BendCenterToFaceService {
@@ -19,9 +19,9 @@ export class BendCenterToFaceService {
   async findAll(): Promise<BendCenterToFace[]> {
     return this.bendCenterToFaceRepository.find({
       order: {
-        bendType: 'ASC',
-        nominalBoreMm: 'ASC',
-        degrees: 'ASC',
+        bendType: "ASC",
+        nominalBoreMm: "ASC",
+        degrees: "ASC",
       },
     });
   }
@@ -30,8 +30,8 @@ export class BendCenterToFaceService {
     return this.bendCenterToFaceRepository.find({
       where: { bendType },
       order: {
-        nominalBoreMm: 'ASC',
-        degrees: 'ASC',
+        nominalBoreMm: "ASC",
+        degrees: "ASC",
       },
     });
   }
@@ -40,8 +40,8 @@ export class BendCenterToFaceService {
     return this.bendCenterToFaceRepository.find({
       where: { nominalBoreMm },
       order: {
-        bendType: 'ASC',
-        degrees: 'ASC',
+        bendType: "ASC",
+        degrees: "ASC",
       },
     });
   }
@@ -72,7 +72,7 @@ export class BendCenterToFaceService {
         nominalBoreMm,
       },
       order: {
-        degrees: 'ASC',
+        degrees: "ASC",
       },
     });
 
@@ -95,8 +95,8 @@ export class BendCenterToFaceService {
 
   async getBendTypes(): Promise<string[]> {
     const result = await this.bendCenterToFaceRepository
-      .createQueryBuilder('bend')
-      .select('DISTINCT bend.bendType', 'bendType')
+      .createQueryBuilder("bend")
+      .select("DISTINCT bend.bendType", "bendType")
       .getRawMany();
 
     return result.map((r) => r.bendType).sort();
@@ -104,29 +104,26 @@ export class BendCenterToFaceService {
 
   async getNominalBoresForBendType(bendType: string): Promise<number[]> {
     const result = await this.bendCenterToFaceRepository
-      .createQueryBuilder('bend')
-      .select('DISTINCT bend.nominalBoreMm', 'nominalBoreMm')
-      .where('bend.bendType = :bendType', { bendType })
-      .orderBy('bend.nominalBoreMm', 'ASC')
+      .createQueryBuilder("bend")
+      .select("DISTINCT bend.nominalBoreMm", "nominalBoreMm")
+      .where("bend.bendType = :bendType", { bendType })
+      .orderBy("bend.nominalBoreMm", "ASC")
       .getRawMany();
 
     return result.map((r) => r.nominalBoreMm);
   }
 
-  async getDegreesForBendType(
-    bendType: string,
-    nominalBoreMm?: number,
-  ): Promise<number[]> {
+  async getDegreesForBendType(bendType: string, nominalBoreMm?: number): Promise<number[]> {
     const qb = this.bendCenterToFaceRepository
-      .createQueryBuilder('bend')
-      .select('DISTINCT bend.degrees', 'degrees')
-      .where('bend.bendType = :bendType', { bendType });
+      .createQueryBuilder("bend")
+      .select("DISTINCT bend.degrees", "degrees")
+      .where("bend.bendType = :bendType", { bendType });
 
-    if (typeof nominalBoreMm === 'number') {
-      qb.andWhere('bend.nominalBoreMm = :nominalBoreMm', { nominalBoreMm });
+    if (typeof nominalBoreMm === "number") {
+      qb.andWhere("bend.nominalBoreMm = :nominalBoreMm", { nominalBoreMm });
     }
 
-    const result = await qb.orderBy('degrees', 'ASC').getRawMany();
+    const result = await qb.orderBy("degrees", "ASC").getRawMany();
 
     return result.map((r) => Number(r.degrees));
   }
@@ -146,7 +143,7 @@ export class BendCenterToFaceService {
     scheduleNumber?: string;
     bendType: string;
     bendDegrees: number;
-    bendStyle?: 'pulled' | 'segmented';
+    bendStyle?: "pulled" | "segmented";
     numberOfTangents?: number;
     tangentLengths?: number[];
     quantity?: number;
@@ -159,7 +156,7 @@ export class BendCenterToFaceService {
       wallThicknessMm,
       bendType,
       bendDegrees,
-      bendStyle = 'pulled',
+      bendStyle = "pulled",
       numberOfTangents = 0,
       tangentLengths = [],
       quantity = 1,
@@ -168,11 +165,7 @@ export class BendCenterToFaceService {
     } = params;
 
     // Get bend center-to-face dimension
-    const bendData = await this.findNearestBendDimension(
-      bendType,
-      nominalBoreMm,
-      bendDegrees,
-    );
+    const bendData = await this.findNearestBendDimension(bendType, nominalBoreMm, bendDegrees);
     if (!bendData) {
       throw new NotFoundException(
         `No bend data found for ${bendType} ${nominalBoreMm}mm at ${bendDegrees}°`,
@@ -185,7 +178,7 @@ export class BendCenterToFaceService {
         nominalOutsideDiameter: { nominal_diameter_mm: nominalBoreMm },
         wall_thickness_mm: wallThicknessMm,
       },
-      relations: ['nominalOutsideDiameter'],
+      relations: ["nominalOutsideDiameter"],
     });
 
     if (!pipeDimension) {
@@ -195,19 +188,9 @@ export class BendCenterToFaceService {
     }
 
     // Calculate weights
-    const pipeOdMm =
-      pipeDimension.nominalOutsideDiameter?.nominal_diameter_mm ||
-      nominalBoreMm;
-    const bendWeight = this.calculateBendWeight(
-      bendData,
-      pipeDimension,
-      bendStyle,
-      pipeOdMm,
-    );
-    const tangentWeight = this.calculateTangentWeight(
-      tangentLengths,
-      pipeDimension,
-    );
+    const pipeOdMm = pipeDimension.nominalOutsideDiameter?.nominal_diameter_mm || nominalBoreMm;
+    const bendWeight = this.calculateBendWeight(bendData, pipeDimension, bendStyle, pipeOdMm);
+    const tangentWeight = this.calculateTangentWeight(tangentLengths, pipeDimension);
 
     // Calculate flanges if specified
     let flangeWeight = 0;
@@ -226,7 +209,7 @@ export class BendCenterToFaceService {
             standard: { id: flangeStandardId },
             pressureClass: { id: flangePressureClassId },
           },
-          relations: ['nominalOutsideDiameter', 'standard', 'pressureClass'],
+          relations: ["nominalOutsideDiameter", "standard", "pressureClass"],
         });
 
         if (flangeDimension) {
@@ -248,8 +231,7 @@ export class BendCenterToFaceService {
     // Total system weight (multiply by quantity)
     const totalBendWeight = bendWeight * quantity;
     const totalTangentWeight = tangentWeight * quantity;
-    const totalSystemWeight =
-      (bendWeight + tangentWeight + flangeWeight) * quantity;
+    const totalSystemWeight = (bendWeight + tangentWeight + flangeWeight) * quantity;
 
     return {
       centerToFaceDimension: Number(bendData.centerToFaceMm),
@@ -268,16 +250,14 @@ export class BendCenterToFaceService {
   private calculateBendWeight(
     bendData: BendCenterToFace,
     pipeDimension: PipeDimension,
-    bendStyle: 'pulled' | 'segmented' = 'pulled',
+    bendStyle: "pulled" | "segmented" = "pulled",
     pipeOdMm: number = 0,
   ): number {
     const centerLineRadius = Number(bendData.radiusMm);
     const angleRad = Number(bendData.radians);
 
     const effectiveRadius =
-      bendStyle === 'pulled'
-        ? centerLineRadius + pipeOdMm / 2
-        : centerLineRadius;
+      bendStyle === "pulled" ? centerLineRadius + pipeOdMm / 2 : centerLineRadius;
     const arcLength = effectiveRadius * angleRad;
 
     const weightKg = (arcLength / 1000) * (pipeDimension.mass_kgm || 0);
@@ -285,16 +265,10 @@ export class BendCenterToFaceService {
     return weightKg * 1.12;
   }
 
-  private calculateTangentWeight(
-    tangentLengths: number[],
-    pipeDimension: PipeDimension,
-  ): number {
+  private calculateTangentWeight(tangentLengths: number[], pipeDimension: PipeDimension): number {
     if (!tangentLengths.length) return 0;
 
-    const totalLengthMm = tangentLengths.reduce(
-      (sum, length) => sum + length,
-      0,
-    );
+    const totalLengthMm = tangentLengths.reduce((sum, length) => sum + length, 0);
     const totalLengthM = totalLengthMm / 1000;
 
     return totalLengthM * (pipeDimension.mass_kgm || 0);

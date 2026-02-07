@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { FlangeStandardService } from './flange-standard.service';
-import { FlangeStandardController } from './flange-standard.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { FlangeStandard } from './entities/flange-standard.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { FlangeStandard } from "./entities/flange-standard.entity";
+import { FlangeStandardController } from "./flange-standard.controller";
+import { FlangeStandardService } from "./flange-standard.service";
 
 @Module({
   imports: [TypeOrmModule.forFeature([FlangeStandard])],

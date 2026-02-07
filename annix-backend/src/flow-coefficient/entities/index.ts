@@ -1,1 +1,1 @@
-export * from './flow-coefficient.entity';
+export * from "./flow-coefficient.entity";

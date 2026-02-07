@@ -1,4 +1,4 @@
-import type { FlangeSpecData } from '@/app/lib/hooks/useFlangeSpecs';
+import type { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 
 export interface FlangeDataEntry {
   flangeOD: number;
@@ -236,7 +236,7 @@ export interface ResolvedFlangeData {
 
 export function resolveFlangeData(
   nb: number,
-  apiSpecs?: FlangeSpecData | null
+  apiSpecs?: FlangeSpecData | null,
 ): ResolvedFlangeData {
   if (apiSpecs) {
     return {

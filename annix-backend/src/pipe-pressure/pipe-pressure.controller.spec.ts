@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { PipePressureController } from './pipe-pressure.controller';
-import { PipePressureService } from './pipe-pressure.service';
-import { PipePressure } from './entities/pipe-pressure.entity';
-import { PipeDimension } from '../pipe-dimension/entities/pipe-dimension.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
+import { PipePressure } from "./entities/pipe-pressure.entity";
+import { PipePressureController } from "./pipe-pressure.controller";
+import { PipePressureService } from "./pipe-pressure.service";
 
-describe('PipePressureController', () => {
+describe("PipePressureController", () => {
   let controller: PipePressureController;
   let service: PipePressureService;
 
@@ -52,7 +52,7 @@ describe('PipePressureController', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(controller).toBeDefined();
   });
 });

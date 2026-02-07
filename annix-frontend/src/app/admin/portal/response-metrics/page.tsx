@@ -1,60 +1,60 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/app/components/Toast';
-import type { RatingBreakdown, SlaConfig } from '@/app/lib/api/messagingApi';
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import type { RatingBreakdown, SlaConfig } from "@/app/lib/api/messagingApi";
 import {
   useAdminResponseMetrics,
   useAdminSlaConfig,
   useUpdateSlaConfig,
-} from '@/app/lib/query/hooks';
+} from "@/app/lib/query/hooks";
 
 type RatingKey = keyof RatingBreakdown;
 
 const ratingLabels: Record<RatingKey, string> = {
-  excellent: 'Excellent',
-  good: 'Good',
-  acceptable: 'Acceptable',
-  poor: 'Poor',
-  critical: 'Critical',
+  excellent: "Excellent",
+  good: "Good",
+  acceptable: "Acceptable",
+  poor: "Poor",
+  critical: "Critical",
 };
 
 const ratingColors: Record<RatingKey, string> = {
-  excellent: 'bg-emerald-500',
-  good: 'bg-green-500',
-  acceptable: 'bg-yellow-500',
-  poor: 'bg-orange-500',
-  critical: 'bg-red-500',
+  excellent: "bg-emerald-500",
+  good: "bg-green-500",
+  acceptable: "bg-yellow-500",
+  poor: "bg-orange-500",
+  critical: "bg-red-500",
 };
 
 const ratingBgColors: Record<RatingKey, string> = {
-  excellent: 'bg-emerald-100 dark:bg-emerald-900/30',
-  good: 'bg-green-100 dark:bg-green-900/30',
-  acceptable: 'bg-yellow-100 dark:bg-yellow-900/30',
-  poor: 'bg-orange-100 dark:bg-orange-900/30',
-  critical: 'bg-red-100 dark:bg-red-900/30',
+  excellent: "bg-emerald-100 dark:bg-emerald-900/30",
+  good: "bg-green-100 dark:bg-green-900/30",
+  acceptable: "bg-yellow-100 dark:bg-yellow-900/30",
+  poor: "bg-orange-100 dark:bg-orange-900/30",
+  critical: "bg-red-100 dark:bg-red-900/30",
 };
 
 const ratingTextColors: Record<RatingKey, string> = {
-  excellent: 'text-emerald-700 dark:text-emerald-400',
-  good: 'text-green-700 dark:text-green-400',
-  acceptable: 'text-yellow-700 dark:text-yellow-400',
-  poor: 'text-orange-700 dark:text-orange-400',
-  critical: 'text-red-700 dark:text-red-400',
+  excellent: "text-emerald-700 dark:text-emerald-400",
+  good: "text-green-700 dark:text-green-400",
+  acceptable: "text-yellow-700 dark:text-yellow-400",
+  poor: "text-orange-700 dark:text-orange-400",
+  critical: "text-red-700 dark:text-red-400",
 };
 
-const ratingOrder: RatingKey[] = ['excellent', 'good', 'acceptable', 'poor', 'critical'];
+const ratingOrder: RatingKey[] = ["excellent", "good", "acceptable", "poor", "critical"];
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
     return `${Math.round(minutes)} min`;
   } else if (minutes < 1440) {
-    const hours = Math.round(minutes / 60 * 10) / 10;
-    return `${hours} hr${hours !== 1 ? 's' : ''}`;
+    const hours = Math.round((minutes / 60) * 10) / 10;
+    return `${hours} hr${hours !== 1 ? "s" : ""}`;
   } else {
-    const days = Math.round(minutes / 1440 * 10) / 10;
-    return `${days} day${days !== 1 ? 's' : ''}`;
+    const days = Math.round((minutes / 1440) * 10) / 10;
+    return `${days} day${days !== 1 ? "s" : ""}`;
   }
 }
 
@@ -91,11 +91,11 @@ export default function ResponseMetricsPage() {
       onSuccess: () => {
         setIsEditingSla(false);
         setEditedSla(null);
-        showToast('SLA configuration updated', 'success');
+        showToast("SLA configuration updated", "success");
       },
       onError: (err: unknown) => {
-        const message = err instanceof Error ? err.message : 'Failed to update SLA configuration';
-        showToast(message, 'error');
+        const message = err instanceof Error ? err.message : "Failed to update SLA configuration";
+        showToast(message, "error");
       },
     });
   };
@@ -120,15 +120,10 @@ export default function ResponseMetricsPage() {
     <div className="max-w-6xl mx-auto">
       <div className="mb-6 flex items-center gap-4">
         <button
-          onClick={() => router.push('/admin/portal/messages')}
+          onClick={() => router.push("/admin/portal/messages")}
           className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -137,9 +132,7 @@ export default function ResponseMetricsPage() {
             />
           </svg>
         </button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Response Metrics
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Response Metrics</h1>
       </div>
 
       {metrics && (
@@ -148,9 +141,7 @@ export default function ResponseMetricsPage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Average Response Time
-                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Average Response Time</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {formatDuration(metrics.averageResponseTimeMinutes)}
                   </p>
@@ -176,27 +167,27 @@ export default function ResponseMetricsPage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    SLA Compliance
-                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">SLA Compliance</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {metrics.slaCompliancePercent.toFixed(1)}%
                   </p>
                 </div>
-                <div className={`p-3 rounded-full ${
-                  metrics.slaCompliancePercent >= 80
-                    ? 'bg-green-100 dark:bg-green-900/30'
-                    : metrics.slaCompliancePercent >= 60
-                    ? 'bg-yellow-100 dark:bg-yellow-900/30'
-                    : 'bg-red-100 dark:bg-red-900/30'
-                }`}>
+                <div
+                  className={`p-3 rounded-full ${
+                    metrics.slaCompliancePercent >= 80
+                      ? "bg-green-100 dark:bg-green-900/30"
+                      : metrics.slaCompliancePercent >= 60
+                        ? "bg-yellow-100 dark:bg-yellow-900/30"
+                        : "bg-red-100 dark:bg-red-900/30"
+                  }`}
+                >
                   <svg
                     className={`w-6 h-6 ${
                       metrics.slaCompliancePercent >= 80
-                        ? 'text-green-600 dark:text-green-400'
+                        ? "text-green-600 dark:text-green-400"
                         : metrics.slaCompliancePercent >= 60
-                        ? 'text-yellow-600 dark:text-yellow-400'
-                        : 'text-red-600 dark:text-red-400'
+                          ? "text-yellow-600 dark:text-yellow-400"
+                          : "text-red-600 dark:text-red-400"
                     }`}
                     fill="none"
                     stroke="currentColor"
@@ -216,9 +207,7 @@ export default function ResponseMetricsPage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Total Responses
-                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Total Responses</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {metrics.totalResponses.toLocaleString()}
                   </p>
@@ -244,23 +233,23 @@ export default function ResponseMetricsPage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Pending Responses
-                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Pending Responses</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {pendingResponses.toLocaleString()}
                   </p>
                 </div>
-                <div className={`p-3 rounded-full ${
-                  pendingResponses === 0
-                    ? 'bg-green-100 dark:bg-green-900/30'
-                    : 'bg-amber-100 dark:bg-amber-900/30'
-                }`}>
+                <div
+                  className={`p-3 rounded-full ${
+                    pendingResponses === 0
+                      ? "bg-green-100 dark:bg-green-900/30"
+                      : "bg-amber-100 dark:bg-amber-900/30"
+                  }`}
+                >
                   <svg
                     className={`w-6 h-6 ${
                       pendingResponses === 0
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-amber-600 dark:text-amber-400'
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-amber-600 dark:text-amber-400"
                     }`}
                     fill="none"
                     stroke="currentColor"
@@ -286,9 +275,7 @@ export default function ResponseMetricsPage() {
               <div className="space-y-4">
                 {ratingOrder.map((rating) => {
                   const count = metrics.ratingBreakdown[rating];
-                  const percentage = totalRatings > 0
-                    ? (count / totalRatings) * 100
-                    : 0;
+                  const percentage = totalRatings > 0 ? (count / totalRatings) * 100 : 0;
                   return (
                     <div key={rating}>
                       <div className="flex justify-between items-center mb-1">
@@ -362,33 +349,25 @@ export default function ResponseMetricsPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                    <span className="text-sm text-green-600 dark:text-green-400">
-                      Good
-                    </span>
+                    <span className="text-sm text-green-600 dark:text-green-400">Good</span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">
                       {slaConfig.excellentThresholdHours} - {slaConfig.goodThresholdHours} hours
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                    <span className="text-sm text-yellow-600 dark:text-yellow-400">
-                      Acceptable
-                    </span>
+                    <span className="text-sm text-yellow-600 dark:text-yellow-400">Acceptable</span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">
                       {slaConfig.goodThresholdHours} - {slaConfig.acceptableThresholdHours} hours
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                    <span className="text-sm text-orange-600 dark:text-orange-400">
-                      Poor
-                    </span>
+                    <span className="text-sm text-orange-600 dark:text-orange-400">Poor</span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">
                       {slaConfig.acceptableThresholdHours} - {slaConfig.poorThresholdHours} hours
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-2">
-                    <span className="text-sm text-red-600 dark:text-red-400">
-                      Critical
-                    </span>
+                    <span className="text-sm text-red-600 dark:text-red-400">Critical</span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">
                       &gt; {slaConfig.poorThresholdHours} hours
                     </span>
@@ -405,10 +384,12 @@ export default function ResponseMetricsPage() {
                     <input
                       type="number"
                       value={editedSla.responseTimeHours}
-                      onChange={(e) => setEditedSla({
-                        ...editedSla,
-                        responseTimeHours: Number(e.target.value),
-                      })}
+                      onChange={(e) =>
+                        setEditedSla({
+                          ...editedSla,
+                          responseTimeHours: Number(e.target.value),
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       min={1}
                     />
@@ -421,10 +402,12 @@ export default function ResponseMetricsPage() {
                       <input
                         type="number"
                         value={editedSla.excellentThresholdHours}
-                        onChange={(e) => setEditedSla({
-                          ...editedSla,
-                          excellentThresholdHours: Number(e.target.value),
-                        })}
+                        onChange={(e) =>
+                          setEditedSla({
+                            ...editedSla,
+                            excellentThresholdHours: Number(e.target.value),
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         min={1}
                       />
@@ -436,10 +419,12 @@ export default function ResponseMetricsPage() {
                       <input
                         type="number"
                         value={editedSla.goodThresholdHours}
-                        onChange={(e) => setEditedSla({
-                          ...editedSla,
-                          goodThresholdHours: Number(e.target.value),
-                        })}
+                        onChange={(e) =>
+                          setEditedSla({
+                            ...editedSla,
+                            goodThresholdHours: Number(e.target.value),
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         min={1}
                       />
@@ -451,10 +436,12 @@ export default function ResponseMetricsPage() {
                       <input
                         type="number"
                         value={editedSla.acceptableThresholdHours}
-                        onChange={(e) => setEditedSla({
-                          ...editedSla,
-                          acceptableThresholdHours: Number(e.target.value),
-                        })}
+                        onChange={(e) =>
+                          setEditedSla({
+                            ...editedSla,
+                            acceptableThresholdHours: Number(e.target.value),
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         min={1}
                       />
@@ -466,10 +453,12 @@ export default function ResponseMetricsPage() {
                       <input
                         type="number"
                         value={editedSla.poorThresholdHours}
-                        onChange={(e) => setEditedSla({
-                          ...editedSla,
-                          poorThresholdHours: Number(e.target.value),
-                        })}
+                        onChange={(e) =>
+                          setEditedSla({
+                            ...editedSla,
+                            poorThresholdHours: Number(e.target.value),
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         min={1}
                       />
@@ -488,7 +477,7 @@ export default function ResponseMetricsPage() {
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                       disabled={updateSlaMutation.isPending}
                     >
-                      {updateSlaMutation.isPending ? 'Saving...' : 'Save Changes'}
+                      {updateSlaMutation.isPending ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
                 </div>

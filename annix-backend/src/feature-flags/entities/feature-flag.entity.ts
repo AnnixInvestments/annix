@@ -1,26 +1,20 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  UpdateDateColumn,
-  Unique,
-} from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 
-@Entity('feature_flags')
-@Unique(['flagKey'])
+@Entity("feature_flags")
+@Unique(["flagKey"])
 export class FeatureFlag {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'flag_key', type: 'varchar', length: 100 })
+  @Column({ name: "flag_key", type: "varchar", length: 100 })
   flagKey: string;
 
-  @Column({ name: 'enabled', type: 'boolean', default: false })
+  @Column({ name: "enabled", type: "boolean", default: false })
   enabled: boolean;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true })
   description: string | null;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

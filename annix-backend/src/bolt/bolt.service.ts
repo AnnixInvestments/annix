@@ -1,15 +1,11 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { CreateBoltDto } from './dto/create-bolt.dto';
-import { UpdateBoltDto } from './dto/update-bolt.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Bolt } from './entities/bolt.entity';
-import { UBoltEntity } from './entities/u-bolt.entity';
-import { PipeClampEntity } from './entities/pipe-clamp.entity';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CreateBoltDto } from "./dto/create-bolt.dto";
+import { UpdateBoltDto } from "./dto/update-bolt.dto";
+import { Bolt } from "./entities/bolt.entity";
+import { PipeClampEntity } from "./entities/pipe-clamp.entity";
+import { UBoltEntity } from "./entities/u-bolt.entity";
 
 @Injectable()
 export class BoltService {
@@ -25,10 +21,7 @@ export class BoltService {
     const exists = await this.boltRepo.findOne({
       where: { designation: createBoltDto.designation },
     });
-    if (exists)
-      throw new BadRequestException(
-        `Bolt ${createBoltDto.designation} already exists`,
-      );
+    if (exists) throw new BadRequestException(`Bolt ${createBoltDto.designation} already exists`);
 
     const bolt = this.boltRepo.create(createBoltDto);
     return this.boltRepo.save(bolt);
@@ -40,28 +33,28 @@ export class BoltService {
     headStyle?: string;
     size?: string;
   }): Promise<Bolt[]> {
-    const query = this.boltRepo.createQueryBuilder('bolt');
+    const query = this.boltRepo.createQueryBuilder("bolt");
 
     if (filters?.grade) {
-      query.andWhere('bolt.grade = :grade', { grade: filters.grade });
+      query.andWhere("bolt.grade = :grade", { grade: filters.grade });
     }
     if (filters?.material) {
-      query.andWhere('bolt.material ILIKE :material', {
+      query.andWhere("bolt.material ILIKE :material", {
         material: `%${filters.material}%`,
       });
     }
     if (filters?.headStyle) {
-      query.andWhere('bolt.head_style = :headStyle', {
+      query.andWhere("bolt.head_style = :headStyle", {
         headStyle: filters.headStyle,
       });
     }
     if (filters?.size) {
-      query.andWhere('bolt.designation LIKE :size', {
+      query.andWhere("bolt.designation LIKE :size", {
         size: `${filters.size}%`,
       });
     }
 
-    return query.orderBy('bolt.designation', 'ASC').getMany();
+    return query.orderBy("bolt.designation", "ASC").getMany();
   }
 
   async findOne(id: number): Promise<Bolt> {
@@ -91,62 +84,49 @@ export class BoltService {
   }
 
   async uBolts(nbMm?: number): Promise<UBoltEntity[]> {
-    const query = this.uBoltRepo.createQueryBuilder('ub');
+    const query = this.uBoltRepo.createQueryBuilder("ub");
 
     if (nbMm) {
-      query.andWhere('ub.nb_mm = :nbMm', { nbMm });
+      query.andWhere("ub.nb_mm = :nbMm", { nbMm });
     }
 
-    return query.orderBy('ub.nb_mm', 'ASC').getMany();
+    return query.orderBy("ub.nb_mm", "ASC").getMany();
   }
 
   async uBolt(nbMm: number, threadSize?: string): Promise<UBoltEntity | null> {
-    const query = this.uBoltRepo
-      .createQueryBuilder('ub')
-      .where('ub.nb_mm = :nbMm', { nbMm });
+    const query = this.uBoltRepo.createQueryBuilder("ub").where("ub.nb_mm = :nbMm", { nbMm });
 
     if (threadSize) {
-      query.andWhere('ub.thread_size = :threadSize', { threadSize });
+      query.andWhere("ub.thread_size = :threadSize", { threadSize });
     }
 
     return query.getOne();
   }
 
-  async pipeClamps(
-    clampType?: string,
-    nbMm?: number,
-  ): Promise<PipeClampEntity[]> {
-    const query = this.pipeClampRepo.createQueryBuilder('pc');
+  async pipeClamps(clampType?: string, nbMm?: number): Promise<PipeClampEntity[]> {
+    const query = this.pipeClampRepo.createQueryBuilder("pc");
 
     if (clampType) {
-      query.andWhere('pc.clamp_type = :clampType', { clampType });
+      query.andWhere("pc.clamp_type = :clampType", { clampType });
     }
     if (nbMm) {
-      query.andWhere('pc.nb_mm = :nbMm', { nbMm });
+      query.andWhere("pc.nb_mm = :nbMm", { nbMm });
     }
 
-    return query
-      .orderBy('pc.clamp_type', 'ASC')
-      .addOrderBy('pc.nb_mm', 'ASC')
-      .getMany();
+    return query.orderBy("pc.clamp_type", "ASC").addOrderBy("pc.nb_mm", "ASC").getMany();
   }
 
-  async pipeClamp(
-    clampType: string,
-    nbMm: number,
-  ): Promise<PipeClampEntity | null> {
+  async pipeClamp(clampType: string, nbMm: number): Promise<PipeClampEntity | null> {
     return this.pipeClampRepo.findOne({
       where: { clampType, nbMm },
     });
   }
 
-  async pipeClampTypes(): Promise<
-    { clampType: string; clampDescription: string }[]
-  > {
+  async pipeClampTypes(): Promise<{ clampType: string; clampDescription: string }[]> {
     const results = await this.pipeClampRepo
-      .createQueryBuilder('pc')
-      .select('pc.clamp_type', 'clampType')
-      .addSelect('pc.clamp_description', 'clampDescription')
+      .createQueryBuilder("pc")
+      .select("pc.clamp_type", "clampType")
+      .addSelect("pc.clamp_description", "clampDescription")
       .distinct(true)
       .getRawMany();
     return results;

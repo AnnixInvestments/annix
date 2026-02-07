@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateHdpeTables1766002200000 implements MigrationInterface {
-  name = 'CreateHdpeTables1766002200000';
+  name = "CreateHdpeTables1766002200000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create hdpe_standards table
@@ -140,24 +140,12 @@ export class CreateHdpeTables1766002200000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_hdpe_fitting_weights_nb"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_hdpe_fitting_types_category"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_hdpe_fitting_types_code"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_hdpe_pipe_specifications_active"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_hdpe_pipe_specifications_sdr"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_hdpe_pipe_specifications_nb"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_hdpe_fitting_weights_nb"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_hdpe_fitting_types_category"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_hdpe_fitting_types_code"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_hdpe_pipe_specifications_active"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_hdpe_pipe_specifications_sdr"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_hdpe_pipe_specifications_nb"`);
 
     // Drop tables
     await queryRunner.query(`DROP TABLE IF EXISTS "hdpe_stub_prices"`);

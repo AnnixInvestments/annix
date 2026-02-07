@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { supplierPortalApi, SupplierProfileDto } from '@/app/lib/api/supplierApi';
-import { useSupplierAuth } from '@/app/context/SupplierAuthContext';
-import { useSupplierProfile } from '@/app/lib/query/hooks';
+import { useEffect, useState } from "react";
+import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
+import { SupplierProfileDto, supplierPortalApi } from "@/app/lib/api/supplierApi";
+import { useSupplierProfile } from "@/app/lib/query/hooks";
 
 interface ProfileData extends SupplierProfileDto {
   email?: string;
@@ -22,11 +22,11 @@ export default function SupplierProfilePage() {
   useEffect(() => {
     if (profile) {
       setEditData({
-        firstName: profile.firstName || '',
-        lastName: profile.lastName || '',
-        jobTitle: profile.jobTitle || '',
-        directPhone: profile.directPhone || '',
-        mobilePhone: profile.mobilePhone || '',
+        firstName: profile.firstName || "",
+        lastName: profile.lastName || "",
+        jobTitle: profile.jobTitle || "",
+        directPhone: profile.directPhone || "",
+        mobilePhone: profile.mobilePhone || "",
       });
     }
   }, [profile]);
@@ -45,10 +45,10 @@ export default function SupplierProfilePage() {
       await supplierPortalApi.updateProfile(editData);
       await profileQuery.refetch();
       setIsEditing(false);
-      setSuccess('Profile updated successfully');
+      setSuccess("Profile updated successfully");
       await refreshDashboard();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      setError(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
       setIsSaving(false);
     }
@@ -69,13 +69,13 @@ export default function SupplierProfilePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold">
-              {(profile?.firstName?.[0] || supplier?.email?.[0] || 'S').toUpperCase()}
+              {(profile?.firstName?.[0] || supplier?.email?.[0] || "S").toUpperCase()}
             </div>
             <div className="ml-4">
               <h1 className="text-2xl font-bold text-gray-900">
                 {profile?.firstName && profile?.lastName
                   ? `${profile.firstName} ${profile.lastName}`
-                  : 'Your Profile'}
+                  : "Your Profile"}
               </h1>
               <p className="text-gray-600">{profile?.email || supplier?.email}</p>
             </div>
@@ -113,12 +113,12 @@ export default function SupplierProfilePage() {
               <input
                 type="text"
                 name="firstName"
-                value={editData.firstName || ''}
+                value={editData.firstName || ""}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.firstName || '-'}</p>
+              <p className="mt-1 text-gray-900">{profile?.firstName || "-"}</p>
             )}
           </div>
           <div>
@@ -127,12 +127,12 @@ export default function SupplierProfilePage() {
               <input
                 type="text"
                 name="lastName"
-                value={editData.lastName || ''}
+                value={editData.lastName || ""}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.lastName || '-'}</p>
+              <p className="mt-1 text-gray-900">{profile?.lastName || "-"}</p>
             )}
           </div>
           <div>
@@ -141,12 +141,12 @@ export default function SupplierProfilePage() {
               <input
                 type="text"
                 name="jobTitle"
-                value={editData.jobTitle || ''}
+                value={editData.jobTitle || ""}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.jobTitle || '-'}</p>
+              <p className="mt-1 text-gray-900">{profile?.jobTitle || "-"}</p>
             )}
           </div>
           <div>
@@ -167,12 +167,12 @@ export default function SupplierProfilePage() {
               <input
                 type="tel"
                 name="directPhone"
-                value={editData.directPhone || ''}
+                value={editData.directPhone || ""}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.directPhone || '-'}</p>
+              <p className="mt-1 text-gray-900">{profile?.directPhone || "-"}</p>
             )}
           </div>
           <div>
@@ -181,12 +181,12 @@ export default function SupplierProfilePage() {
               <input
                 type="tel"
                 name="mobilePhone"
-                value={editData.mobilePhone || ''}
+                value={editData.mobilePhone || ""}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.mobilePhone || '-'}</p>
+              <p className="mt-1 text-gray-900">{profile?.mobilePhone || "-"}</p>
             )}
           </div>
         </div>
@@ -198,24 +198,28 @@ export default function SupplierProfilePage() {
         <div className="flex items-center space-x-4">
           <div>
             <p className="text-sm text-gray-500">Account Status</p>
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-              supplier?.accountStatus === 'active'
-                ? 'bg-green-100 text-green-800'
-                : 'bg-gray-100 text-gray-800'
-            }`}>
-              {supplier?.accountStatus?.toUpperCase() || 'PENDING'}
+            <span
+              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                supplier?.accountStatus === "active"
+                  ? "bg-green-100 text-green-800"
+                  : "bg-gray-100 text-gray-800"
+              }`}
+            >
+              {supplier?.accountStatus?.toUpperCase() || "PENDING"}
             </span>
           </div>
           <div>
             <p className="text-sm text-gray-500">Onboarding Status</p>
-            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-              supplier?.onboardingStatus === 'approved'
-                ? 'bg-green-100 text-green-800'
-                : supplier?.onboardingStatus === 'rejected'
-                ? 'bg-red-100 text-red-800'
-                : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {supplier?.onboardingStatus?.replace(/_/g, ' ').toUpperCase() || 'DRAFT'}
+            <span
+              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                supplier?.onboardingStatus === "approved"
+                  ? "bg-green-100 text-green-800"
+                  : supplier?.onboardingStatus === "rejected"
+                    ? "bg-red-100 text-red-800"
+                    : "bg-yellow-100 text-yellow-800"
+              }`}
+            >
+              {supplier?.onboardingStatus?.replace(/_/g, " ").toUpperCase() || "DRAFT"}
             </span>
           </div>
         </div>
@@ -235,7 +239,7 @@ export default function SupplierProfilePage() {
             disabled={isSaving}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       )}

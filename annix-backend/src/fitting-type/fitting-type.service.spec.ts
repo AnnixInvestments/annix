@@ -1,10 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { FittingTypeService } from './fitting-type.service';
-import { Repository } from 'typeorm';
-import { FittingType } from './entities/fitting-type.entity';
-import { getRepositoryToken } from '@nestjs/typeorm';
+import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { FittingType } from "./entities/fitting-type.entity";
+import { FittingTypeService } from "./fitting-type.service";
 
-describe('FittingTypeService', () => {
+describe("FittingTypeService", () => {
   let service: FittingTypeService;
 
   const mockRepo = {
@@ -27,7 +26,7 @@ describe('FittingTypeService', () => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
+  it("should be defined", () => {
     expect(service).toBeDefined();
   });
 });

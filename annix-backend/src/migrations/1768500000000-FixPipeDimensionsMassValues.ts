@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class FixPipeDimensionsMassValues1768500000000 implements MigrationInterface {
-  name = 'FixPipeDimensionsMassValues1768500000000';
+  name = "FixPipeDimensionsMassValues1768500000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -15,13 +15,11 @@ export class FixPipeDimensionsMassValues1768500000000 implements MigrationInterf
     `);
 
     console.warn(
-      'Updated pipe_dimensions mass_kgm values using formula: ((OD - WT) * WT) * 0.02466',
+      "Updated pipe_dimensions mass_kgm values using formula: ((OD - WT) * WT) * 0.02466",
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    console.warn(
-      'Cannot revert mass values - would need original values stored',
-    );
+    console.warn("Cannot revert mass values - would need original values stored");
   }
 }

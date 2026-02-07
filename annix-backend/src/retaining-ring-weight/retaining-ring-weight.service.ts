@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { RetainingRingWeight } from './entities/retaining-ring-weight.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { RetainingRingWeight } from "./entities/retaining-ring-weight.entity";
 
 export interface RetainingRingWeightResult {
   found: boolean;
@@ -21,13 +21,11 @@ export class RetainingRingWeightService {
 
   async findAll(): Promise<RetainingRingWeight[]> {
     return this.retainingRingWeightRepository.find({
-      order: { nominal_bore_mm: 'ASC' },
+      order: { nominal_bore_mm: "ASC" },
     });
   }
 
-  async retainingRingWeight(
-    nominalBoreMm: number,
-  ): Promise<RetainingRingWeightResult> {
+  async retainingRingWeight(nominalBoreMm: number): Promise<RetainingRingWeightResult> {
     const result = await this.retainingRingWeightRepository.findOne({
       where: { nominal_bore_mm: nominalBoreMm },
     });
@@ -59,10 +57,7 @@ export class RetainingRingWeightService {
     const ringIdM = ringIdMm / 1000;
     const thicknessM = ringThicknessMm / 1000;
 
-    const volumeM3 =
-      Math.PI *
-      ((Math.pow(ringOdM, 2) - Math.pow(ringIdM, 2)) / 4) *
-      thicknessM;
+    const volumeM3 = Math.PI * ((ringOdM ** 2 - ringIdM ** 2) / 4) * thicknessM;
     const weightKg = volumeM3 * this.STEEL_DENSITY_KG_M3;
 
     return Math.round(weightKg * 100) / 100;

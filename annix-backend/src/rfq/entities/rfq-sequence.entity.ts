@@ -1,36 +1,36 @@
+import { ApiProperty } from "@nestjs/swagger";
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
   Unique,
-} from 'typeorm';
-import { ApiProperty } from '@nestjs/swagger';
+  UpdateDateColumn,
+} from "typeorm";
 
-@Entity('rfq_sequences')
-@Unique(['year'])
+@Entity("rfq_sequences")
+@Unique(["year"])
 export class RfqSequence {
-  @ApiProperty({ description: 'Primary key', example: 1 })
+  @ApiProperty({ description: "Primary key", example: 1 })
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ description: 'Year for this sequence', example: 2026 })
-  @Column({ name: 'year', type: 'int' })
+  @ApiProperty({ description: "Year for this sequence", example: 2026 })
+  @Column({ name: "year", type: "int" })
   year: number;
 
   @ApiProperty({
-    description: 'Last used sequence number for this year',
+    description: "Last used sequence number for this year",
     example: 42,
   })
-  @Column({ name: 'last_sequence', type: 'int', default: 0 })
+  @Column({ name: "last_sequence", type: "int", default: 0 })
   lastSequence: number;
 
-  @ApiProperty({ description: 'Creation date' })
-  @CreateDateColumn({ name: 'created_at' })
+  @ApiProperty({ description: "Creation date" })
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @ApiProperty({ description: 'Last update date' })
-  @UpdateDateColumn({ name: 'updated_at' })
+  @ApiProperty({ description: "Last update date" })
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

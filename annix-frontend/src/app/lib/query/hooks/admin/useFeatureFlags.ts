@@ -1,38 +1,35 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  featureFlagsApi,
   type FeatureFlagDetail,
   type FeatureFlagDetailResponse,
-} from '@/app/lib/api/featureFlagsApi'
-import { featureFlagKeys } from '../../keys'
+  featureFlagsApi,
+} from "@/app/lib/api/featureFlagsApi";
+import { featureFlagKeys } from "../../keys";
 
 export function useFeatureFlags() {
   return useQuery<FeatureFlagDetailResponse>({
     queryKey: featureFlagKeys.detailed(),
     queryFn: () => featureFlagsApi.allFlagsDetailed(),
     select: (data) => data,
-  })
+  });
 }
 
 export function useToggleFeatureFlag() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ flagKey, enabled }: { flagKey: string; enabled: boolean }) =>
       featureFlagsApi.updateFlag(flagKey, enabled),
     onSuccess: (updated) => {
-      queryClient.setQueryData<FeatureFlagDetailResponse>(
-        featureFlagKeys.detailed(),
-        (old) => {
-          if (!old) return old
-          return {
-            ...old,
-            flags: old.flags.map((f: FeatureFlagDetail) =>
-              f.flagKey === updated.flagKey ? { ...f, enabled: updated.enabled } : f,
-            ),
-          }
-        },
-      )
+      queryClient.setQueryData<FeatureFlagDetailResponse>(featureFlagKeys.detailed(), (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          flags: old.flags.map((f: FeatureFlagDetail) =>
+            f.flagKey === updated.flagKey ? { ...f, enabled: updated.enabled } : f,
+          ),
+        };
+      });
     },
-  })
+  });
 }

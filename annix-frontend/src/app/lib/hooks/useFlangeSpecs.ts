@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useCallback } from 'react';
-import { masterDataApi, FlangeDimensionLookup } from '@/app/lib/api/client';
-import { log } from '@/app/lib/logger';
+import { useCallback } from "react";
+import { masterDataApi } from "@/app/lib/api/client";
+import { log } from "@/app/lib/logger";
 
 export interface FlangeSpecData {
   flangeOdMm: number;
@@ -24,7 +24,7 @@ export interface UseFlangeSpecsReturn {
     nominalBoreMm: number,
     flangeStandardId: number,
     flangePressureClassId: number,
-    flangeTypeId?: number
+    flangeTypeId?: number,
   ) => Promise<FlangeSpecData | null>;
 }
 
@@ -34,7 +34,7 @@ export function useFlangeSpecs(): UseFlangeSpecsReturn {
       nominalBoreMm: number,
       flangeStandardId: number,
       flangePressureClassId: number,
-      flangeTypeId?: number
+      flangeTypeId?: number,
     ): Promise<FlangeSpecData | null> => {
       if (!nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
         return null;
@@ -42,18 +42,18 @@ export function useFlangeSpecs(): UseFlangeSpecsReturn {
 
       try {
         log.debug(
-          `Looking up flange specs: NB=${nominalBoreMm}mm, standard=${flangeStandardId}, class=${flangePressureClassId}, type=${flangeTypeId}`
+          `Looking up flange specs: NB=${nominalBoreMm}mm, standard=${flangeStandardId}, class=${flangePressureClassId}, type=${flangeTypeId}`,
         );
 
         const result = await masterDataApi.lookupFlangeDimension(
           nominalBoreMm,
           flangeStandardId,
           flangePressureClassId,
-          flangeTypeId
+          flangeTypeId,
         );
 
         if (!result) {
-          log.debug('No flange dimension found for given specs');
+          log.debug("No flange dimension found for given specs");
           return null;
         }
 
@@ -75,14 +75,14 @@ export function useFlangeSpecs(): UseFlangeSpecsReturn {
           flangeData.boltMassKg = result.bolt.mass_kg;
         }
 
-        log.debug('Flange specs lookup result:', flangeData);
+        log.debug("Flange specs lookup result:", flangeData);
         return flangeData;
       } catch (error) {
-        log.error('Failed to lookup flange specs:', error);
+        log.error("Failed to lookup flange specs:", error);
         return null;
       }
     },
-    []
+    [],
   );
 
   return { lookupFlangeSpecs };
@@ -92,24 +92,33 @@ export async function fetchFlangeSpecsStatic(
   nominalBoreMm: number,
   flangeStandardId: number,
   flangePressureClassId: number,
-  flangeTypeId?: number
+  flangeTypeId?: number,
 ): Promise<FlangeSpecData | null> {
   if (!nominalBoreMm || !flangeStandardId || !flangePressureClassId) {
-    log.debug('fetchFlangeSpecsStatic: missing required params', { nominalBoreMm, flangeStandardId, flangePressureClassId });
+    log.debug("fetchFlangeSpecsStatic: missing required params", {
+      nominalBoreMm,
+      flangeStandardId,
+      flangePressureClassId,
+    });
     return null;
   }
 
   try {
-    log.debug('fetchFlangeSpecsStatic: looking up', { nominalBoreMm, flangeStandardId, flangePressureClassId, flangeTypeId });
+    log.debug("fetchFlangeSpecsStatic: looking up", {
+      nominalBoreMm,
+      flangeStandardId,
+      flangePressureClassId,
+      flangeTypeId,
+    });
     const result = await masterDataApi.lookupFlangeDimension(
       nominalBoreMm,
       flangeStandardId,
       flangePressureClassId,
-      flangeTypeId
+      flangeTypeId,
     );
 
     if (!result) {
-      log.debug('fetchFlangeSpecsStatic: no result from API');
+      log.debug("fetchFlangeSpecsStatic: no result from API");
       return null;
     }
 
@@ -131,10 +140,10 @@ export async function fetchFlangeSpecsStatic(
       flangeData.boltMassKg = result.bolt.mass_kg;
     }
 
-    log.debug('fetchFlangeSpecsStatic: success', flangeData);
+    log.debug("fetchFlangeSpecsStatic: success", flangeData);
     return flangeData;
   } catch (error) {
-    log.error('fetchFlangeSpecsStatic: API error', error);
+    log.error("fetchFlangeSpecsStatic: API error", error);
     return null;
   }
 }

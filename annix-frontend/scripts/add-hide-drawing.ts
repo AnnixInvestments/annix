@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content = fs.readFileSync(filePath, "utf8");
 
 // 1. Add state for hiding drawings - find a good place in ItemUploadStep
 // Look for existing useState declarations in ItemUploadStep
@@ -14,15 +14,18 @@ if (stateMatch) {
   const afterInsert = content.substring(insertPoint);
 
   // Check if state already exists
-  if (!content.includes('hiddenDrawings')) {
+  if (!content.includes("hiddenDrawings")) {
     // Find the first line after the function declaration
-    const firstNewline = afterInsert.indexOf('\n');
+    const firstNewline = afterInsert.indexOf("\n");
     const restOfContent = afterInsert.substring(firstNewline);
 
-    content = beforeInsert + '\n  // State for hiding/showing 3D drawings per item\n  const [hiddenDrawings, setHiddenDrawings] = React.useState<Record<string, boolean>>({});' + restOfContent;
-    console.log('✅ Added hiddenDrawings state');
+    content =
+      beforeInsert +
+      "\n  // State for hiding/showing 3D drawings per item\n  const [hiddenDrawings, setHiddenDrawings] = React.useState<Record<string, boolean>>({});" +
+      restOfContent;
+    console.log("✅ Added hiddenDrawings state");
   } else {
-    console.log('⚠️ hiddenDrawings state already exists');
+    console.log("⚠️ hiddenDrawings state already exists");
   }
 }
 
@@ -63,10 +66,10 @@ const newPipePreview = `              {/* 3D Pipe Preview - below specifications
 
 if (content.includes(oldPipePreview)) {
   content = content.replace(oldPipePreview, newPipePreview);
-  console.log('✅ Updated Pipe3DPreview with hide button');
+  console.log("✅ Updated Pipe3DPreview with hide button");
 } else {
-  console.log('❌ Could not find Pipe3DPreview section');
+  console.log("❌ Could not find Pipe3DPreview section");
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import type { RubberPricingTierDto } from '@/app/lib/api/rubberPortalApi';
-import { useToast } from '@/app/components/Toast';
+import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import type { RubberPricingTierDto } from "@/app/lib/api/rubberPortalApi";
 import {
-  useRubberPricingTiers,
-  useRubberCompanies,
-  useSaveRubberPricingTier,
   useDeleteRubberPricingTier,
-} from '@/app/lib/query/hooks';
-import { ConfirmModal } from '../components/ConfirmModal';
-import { Breadcrumb } from '../components/Breadcrumb';
-import { TableLoadingState, TableEmptyState, TableIcons } from '../components/TableComponents';
+  useRubberCompanies,
+  useRubberPricingTiers,
+  useSaveRubberPricingTier,
+} from "@/app/lib/query/hooks";
+import { Breadcrumb } from "../components/Breadcrumb";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { TableEmptyState, TableIcons, TableLoadingState } from "../components/TableComponents";
 
 export default function RubberPricingTiersPage() {
   const { showToast } = useToast();
@@ -28,7 +28,7 @@ export default function RubberPricingTiersPage() {
   const [editingTier, setEditingTier] = useState<RubberPricingTierDto | null>(null);
   const [deleteTierId, setDeleteTierId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
+    name: "",
     pricingFactor: 100,
   });
 
@@ -39,7 +39,7 @@ export default function RubberPricingTiersPage() {
   const openNewModal = () => {
     setEditingTier(null);
     setFormData({
-      name: '',
+      name: "",
       pricingFactor: 100,
     });
     setShowModal(true);
@@ -62,12 +62,12 @@ export default function RubberPricingTiersPage() {
       },
       {
         onSuccess: () => {
-          showToast(editingTier ? 'Pricing tier updated' : 'Pricing tier created', 'success');
+          showToast(editingTier ? "Pricing tier updated" : "Pricing tier created", "success");
           setShowModal(false);
         },
         onError: (err: unknown) => {
-          const errorMessage = err instanceof Error ? err.message : 'Failed to save pricing tier';
-          showToast(errorMessage, 'error');
+          const errorMessage = err instanceof Error ? err.message : "Failed to save pricing tier";
+          showToast(errorMessage, "error");
         },
       },
     );
@@ -76,12 +76,12 @@ export default function RubberPricingTiersPage() {
   const handleDelete = (id: number) => {
     deleteMutation.mutate(id, {
       onSuccess: () => {
-        showToast('Pricing tier deleted', 'success');
+        showToast("Pricing tier deleted", "success");
         setDeleteTierId(null);
       },
       onError: (err: unknown) => {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to delete pricing tier';
-        showToast(errorMessage, 'error');
+        const errorMessage = err instanceof Error ? err.message : "Failed to delete pricing tier";
+        showToast(errorMessage, "error");
       },
     });
   };
@@ -92,7 +92,10 @@ export default function RubberPricingTiersPage() {
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Pricing Tiers</div>
           <p className="text-gray-600">{tiersQuery.error.message}</p>
-          <button onClick={() => tiersQuery.refetch()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <button
+            onClick={() => tiersQuery.refetch()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
             Retry
           </button>
         </div>
@@ -102,7 +105,7 @@ export default function RubberPricingTiersPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: 'Pricing Tiers' }]} />
+      <Breadcrumb items={[{ label: "Pricing Tiers" }]} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Pricing Tiers</h1>
@@ -127,22 +130,34 @@ export default function RubberPricingTiersPage() {
             icon={TableIcons.currency}
             title="No pricing tiers found"
             subtitle="Get started by adding your first pricing tier."
-            action={{ label: 'Add Pricing Tier', onClick: openNewModal }}
+            action={{ label: "Add Pricing Tier", onClick: openNewModal }}
           />
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Name
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Pricing Factor
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Effect
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Companies
                 </th>
                 <th scope="col" className="relative px-6 py-3">
@@ -165,25 +180,34 @@ export default function RubberPricingTiersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {tier.pricingFactor === 100
-                        ? 'Standard pricing'
+                        ? "Standard pricing"
                         : tier.pricingFactor > 100
                           ? `${tier.pricingFactor - 100}% markup`
                           : `${100 - tier.pricingFactor}% discount`}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${companyCount > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${companyCount > 0 ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-500"}`}
+                      >
                         {companyCount}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => openEditModal(tier)} className="text-blue-600 hover:text-blue-900">
+                      <button
+                        onClick={() => openEditModal(tier)}
+                        className="text-blue-600 hover:text-blue-900"
+                      >
                         Edit
                       </button>
                       <button
                         onClick={() => setDeleteTierId(tier.id)}
-                        className={`ml-4 ${companyCount > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 hover:text-red-900'}`}
+                        className={`ml-4 ${companyCount > 0 ? "text-gray-400 cursor-not-allowed" : "text-red-600 hover:text-red-900"}`}
                         disabled={companyCount > 0}
-                        title={companyCount > 0 ? `Cannot delete: ${companyCount} company(ies) assigned` : 'Delete tier'}
+                        title={
+                          companyCount > 0
+                            ? `Cannot delete: ${companyCount} company(ies) assigned`
+                            : "Delete tier"
+                        }
                       >
                         Delete
                       </button>
@@ -199,10 +223,13 @@ export default function RubberPricingTiersPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowModal(false)} />
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              onClick={() => setShowModal(false)}
+            />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingTier ? 'Edit Pricing Tier' : 'Add Pricing Tier'}
+                {editingTier ? "Edit Pricing Tier" : "Add Pricing Tier"}
               </h3>
               <div className="space-y-4">
                 <div>
@@ -216,11 +243,15 @@ export default function RubberPricingTiersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Pricing Factor (%) *</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Pricing Factor (%) *
+                  </label>
                   <input
                     type="number"
                     value={formData.pricingFactor}
-                    onChange={(e) => setFormData({ ...formData, pricingFactor: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, pricingFactor: Number(e.target.value) })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
                     placeholder="100"
                     min="0"
@@ -243,7 +274,7 @@ export default function RubberPricingTiersPage() {
                   disabled={saveMutation.isPending || !formData.name}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {saveMutation.isPending ? 'Saving...' : 'Save'}
+                  {saveMutation.isPending ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>

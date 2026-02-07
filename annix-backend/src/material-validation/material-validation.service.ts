@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { MaterialLimit } from './entities/material-limit.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { MaterialLimit } from "./entities/material-limit.entity";
 
 export interface MaterialSuitabilityResult {
   isSuitable: boolean;
@@ -33,13 +33,13 @@ export class MaterialValidationService {
 
   async findAll(): Promise<MaterialLimit[]> {
     return this.materialLimitRepository.find({
-      relations: ['steelSpecification'],
+      relations: ["steelSpecification"],
     });
   }
 
   async findBySpecName(steelSpecName: string): Promise<MaterialLimit | null> {
     const allLimits = await this.materialLimitRepository.find({
-      relations: ['steelSpecification'],
+      relations: ["steelSpecification"],
     });
 
     const specNameLower = steelSpecName.toLowerCase();
@@ -50,19 +50,17 @@ export class MaterialValidationService {
       return (
         specNameLower.includes(pattern) ||
         pattern.includes(specNameLower) ||
-        new RegExp(pattern.replace(/%/g, '.*'), 'i').test(steelSpecName)
+        new RegExp(pattern.replace(/%/g, ".*"), "i").test(steelSpecName)
       );
     });
 
     return patternMatch || null;
   }
 
-  async findBySpecId(
-    steelSpecificationId: number,
-  ): Promise<MaterialLimit | null> {
+  async findBySpecId(steelSpecificationId: number): Promise<MaterialLimit | null> {
     return this.materialLimitRepository.findOne({
       where: { steel_specification_id: steelSpecificationId },
-      relations: ['steelSpecification'],
+      relations: ["steelSpecification"],
     });
   }
 
@@ -114,10 +112,7 @@ export class MaterialValidationService {
     // Generate recommendation if unsuitable
     let recommendation: string | undefined;
     if (!isSuitable) {
-      recommendation = await this.generateRecommendation(
-        temperatureC,
-        pressureBar,
-      );
+      recommendation = await this.generateRecommendation(temperatureC, pressureBar);
     }
 
     return {
@@ -145,10 +140,7 @@ export class MaterialValidationService {
       let isOk = true;
 
       if (temperatureC !== undefined) {
-        if (
-          temperatureC < limits.min_temp_c ||
-          temperatureC > limits.max_temp_c
-        ) {
+        if (temperatureC < limits.min_temp_c || temperatureC > limits.max_temp_c) {
           isOk = false;
         }
       }
@@ -173,17 +165,17 @@ export class MaterialValidationService {
     pressureBar: number | undefined,
   ): Promise<string> {
     if (temperatureC !== undefined && temperatureC > 400) {
-      return 'Consider ASTM A106 Grade B (up to 427°C), ASTM A335 P11/P22 (up to 593°C), or ASTM A312 stainless (up to 816°C)';
+      return "Consider ASTM A106 Grade B (up to 427°C), ASTM A335 P11/P22 (up to 593°C), or ASTM A312 stainless (up to 816°C)";
     } else if (temperatureC !== undefined && temperatureC < -29) {
-      return 'Consider ASTM A333 Grade 6 (down to -100°C) or ASTM A312 stainless (down to -196°C)';
+      return "Consider ASTM A333 Grade 6 (down to -100°C) or ASTM A312 stainless (down to -196°C)";
     }
 
     // Get suitable materials
     const suitable = await this.getSuitableMaterials(temperatureC, pressureBar);
     if (suitable.length > 0) {
-      return `Consider: ${suitable.slice(0, 3).join(', ')}`;
+      return `Consider: ${suitable.slice(0, 3).join(", ")}`;
     }
 
-    return 'Consult with materials engineer for special requirements';
+    return "Consult with materials engineer for special requirements";
   }
 }

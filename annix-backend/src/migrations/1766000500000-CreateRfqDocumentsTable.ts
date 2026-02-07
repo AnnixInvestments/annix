@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateRfqDocumentsTable1766000500000 implements MigrationInterface {
-  name = 'CreateRfqDocumentsTable1766000500000';
+  name = "CreateRfqDocumentsTable1766000500000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create rfq_documents table
@@ -52,9 +52,7 @@ export class CreateRfqDocumentsTable1766000500000 implements MigrationInterface 
     await queryRunner.query(
       `ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_uploaded_by"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_rfq"`,
-    );
+    await queryRunner.query(`ALTER TABLE "rfq_documents" DROP CONSTRAINT "FK_rfq_documents_rfq"`);
     await queryRunner.query(`DROP TABLE "rfq_documents"`);
   }
 }

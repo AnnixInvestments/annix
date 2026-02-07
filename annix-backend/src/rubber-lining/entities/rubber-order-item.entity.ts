@@ -1,14 +1,14 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
+  Entity,
   JoinColumn,
-} from 'typeorm';
-import { RubberOrder } from './rubber-order.entity';
-import { RubberProduct } from './rubber-product.entity';
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
+import { RubberOrder } from "./rubber-order.entity";
+import { RubberProduct } from "./rubber-product.entity";
 
 export interface CallOffEvent {
   timestamp: number;
@@ -26,36 +26,40 @@ export interface CallOff {
   createdAt?: number;
 }
 
-@Entity('rubber_order_item')
+@Entity("rubber_order_item")
 export class RubberOrderItem {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'order_id', type: 'int' })
+  @Column({ name: "order_id", type: "int" })
   orderId: number;
 
-  @ManyToOne(() => RubberOrder, (order) => order.items, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'order_id' })
+  @ManyToOne(
+    () => RubberOrder,
+    (order) => order.items,
+    { onDelete: "CASCADE" },
+  )
+  @JoinColumn({ name: "order_id" })
   order: RubberOrder;
 
   @Column({
-    name: 'product_firebase_uid',
-    type: 'varchar',
+    name: "product_firebase_uid",
+    type: "varchar",
     length: 100,
     nullable: true,
   })
   productFirebaseUid: string | null;
 
-  @Column({ name: 'product_id', type: 'int', nullable: true })
+  @Column({ name: "product_id", type: "int", nullable: true })
   productId: number | null;
 
   @ManyToOne(() => RubberProduct, { nullable: true })
-  @JoinColumn({ name: 'product_id' })
+  @JoinColumn({ name: "product_id" })
   product: RubberProduct | null;
 
   @Column({
-    name: 'thickness',
-    type: 'decimal',
+    name: "thickness",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -63,8 +67,8 @@ export class RubberOrderItem {
   thickness: number | null;
 
   @Column({
-    name: 'width',
-    type: 'decimal',
+    name: "width",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
@@ -72,43 +76,43 @@ export class RubberOrderItem {
   width: number | null;
 
   @Column({
-    name: 'length',
-    type: 'decimal',
+    name: "length",
+    type: "decimal",
     precision: 10,
     scale: 2,
     nullable: true,
   })
   length: number | null;
 
-  @Column({ name: 'quantity', type: 'int', nullable: true })
+  @Column({ name: "quantity", type: "int", nullable: true })
   quantity: number | null;
 
   @Column({
-    name: 'call_offs',
-    type: 'jsonb',
-    default: '[]',
+    name: "call_offs",
+    type: "jsonb",
+    default: "[]",
   })
   callOffs: CallOff[];
 
   @Column({
-    name: 'created_by_firebase_uid',
-    type: 'varchar',
+    name: "created_by_firebase_uid",
+    type: "varchar",
     length: 100,
     nullable: true,
   })
   createdByFirebaseUid: string | null;
 
   @Column({
-    name: 'updated_by_firebase_uid',
-    type: 'varchar',
+    name: "updated_by_firebase_uid",
+    type: "varchar",
     length: 100,
     nullable: true,
   })
   updatedByFirebaseUid: string | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

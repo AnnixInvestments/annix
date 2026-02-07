@@ -1,7 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateCustomerDeviceBindingsTable1766002500000 implements MigrationInterface {
-  name = 'CreateCustomerDeviceBindingsTable1766002500000';
+  name = "CreateCustomerDeviceBindingsTable1766002500000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Create customer_device_bindings table
@@ -45,12 +45,8 @@ export class CreateCustomerDeviceBindingsTable1766002500000 implements Migration
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX "IDX_customer_device_bindings_device_fingerprint"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX "IDX_customer_device_bindings_customer_profile"`,
-    );
+    await queryRunner.query(`DROP INDEX "IDX_customer_device_bindings_device_fingerprint"`);
+    await queryRunner.query(`DROP INDEX "IDX_customer_device_bindings_customer_profile"`);
     await queryRunner.query(
       `ALTER TABLE "customer_device_bindings" DROP CONSTRAINT "FK_customer_device_bindings_customer_profile"`,
     );

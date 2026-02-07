@@ -1,18 +1,14 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { CreateFlangeDimensionDto } from './dto/create-flange-dimension.dto';
-import { UpdateFlangeDimensionDto } from './dto/update-flange-dimension.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { FlangeDimension } from './entities/flange-dimension.entity';
-import { NominalOutsideDiameterMm } from 'src/nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity';
-import { FlangeStandard } from 'src/flange-standard/entities/flange-standard.entity';
-import { FlangePressureClass } from 'src/flange-pressure-class/entities/flange-pressure-class.entity';
-import { Bolt } from 'src/bolt/entities/bolt.entity';
-import { BoltMass } from 'src/bolt-mass/entities/bolt-mass.entity';
-import { Repository } from 'typeorm';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Bolt } from "src/bolt/entities/bolt.entity";
+import { BoltMass } from "src/bolt-mass/entities/bolt-mass.entity";
+import { FlangePressureClass } from "src/flange-pressure-class/entities/flange-pressure-class.entity";
+import { FlangeStandard } from "src/flange-standard/entities/flange-standard.entity";
+import { NominalOutsideDiameterMm } from "src/nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
+import { Repository } from "typeorm";
+import { CreateFlangeDimensionDto } from "./dto/create-flange-dimension.dto";
+import { UpdateFlangeDimensionDto } from "./dto/update-flange-dimension.dto";
+import { FlangeDimension } from "./entities/flange-dimension.entity";
 
 const ISO_METRIC_THREAD_PITCHES: Record<number, number> = {
   12: 1.75,
@@ -64,16 +60,13 @@ export class FlangeDimensionService {
     const standard = await this.standardRepo.findOne({
       where: { id: dto.standardId },
     });
-    if (!standard)
-      throw new NotFoundException(`FlangeStandard ${dto.standardId} not found`);
+    if (!standard) throw new NotFoundException(`FlangeStandard ${dto.standardId} not found`);
 
     const pressure = await this.pressureRepo.findOne({
       where: { id: dto.pressureClassId },
     });
     if (!pressure)
-      throw new NotFoundException(
-        `FlangePressureClass ${dto.pressureClassId} not found`,
-      );
+      throw new NotFoundException(`FlangePressureClass ${dto.pressureClassId} not found`);
 
     let bolt: Bolt | null = null;
     if (dto.boltId) {
@@ -96,16 +89,10 @@ export class FlangeDimensionService {
         mass_kg: dto.mass_kg,
         bolt: bolt ?? undefined,
       },
-      relations: [
-        'nominalOutsideDiameter',
-        'standard',
-        'pressureClass',
-        'bolt',
-      ],
+      relations: ["nominalOutsideDiameter", "standard", "pressureClass", "bolt"],
     });
 
-    if (exists)
-      throw new BadRequestException('Flange dimension already exists');
+    if (exists) throw new BadRequestException("Flange dimension already exists");
 
     const flange = this.flangeRepo.create({
       nominalOutsideDiameter: nominal,
@@ -127,33 +114,20 @@ export class FlangeDimensionService {
 
   async findAll(): Promise<FlangeDimension[]> {
     return this.flangeRepo.find({
-      relations: [
-        'nominalOutsideDiameter',
-        'standard',
-        'pressureClass',
-        'bolt',
-      ],
+      relations: ["nominalOutsideDiameter", "standard", "pressureClass", "bolt"],
     });
   }
 
   async findOne(id: number): Promise<FlangeDimension> {
     const flange = await this.flangeRepo.findOne({
       where: { id },
-      relations: [
-        'nominalOutsideDiameter',
-        'standard',
-        'pressureClass',
-        'bolt',
-      ],
+      relations: ["nominalOutsideDiameter", "standard", "pressureClass", "bolt"],
     });
     if (!flange) throw new NotFoundException(`FlangeDimension ${id} not found`);
     return flange;
   }
 
-  async update(
-    id: number,
-    dto: UpdateFlangeDimensionDto,
-  ): Promise<FlangeDimension> {
+  async update(id: number, dto: UpdateFlangeDimensionDto): Promise<FlangeDimension> {
     const flange = await this.findOne(id);
 
     if (dto.nominalOutsideDiameterId) {
@@ -171,10 +145,7 @@ export class FlangeDimensionService {
       const standard = await this.standardRepo.findOne({
         where: { id: dto.standardId },
       });
-      if (!standard)
-        throw new NotFoundException(
-          `FlangeStandard ${dto.standardId} not found`,
-        );
+      if (!standard) throw new NotFoundException(`FlangeStandard ${dto.standardId} not found`);
       flange.standard = standard;
     }
 
@@ -183,9 +154,7 @@ export class FlangeDimensionService {
         where: { id: dto.pressureClassId },
       });
       if (!pressure)
-        throw new NotFoundException(
-          `FlangePressureClass ${dto.pressureClassId} not found`,
-        );
+        throw new NotFoundException(`FlangePressureClass ${dto.pressureClassId} not found`);
       flange.pressureClass = pressure;
     }
 
@@ -223,13 +192,7 @@ export class FlangeDimensionService {
 
     let flange = await this.flangeRepo.findOne({
       where: whereCondition,
-      relations: [
-        'nominalOutsideDiameter',
-        'standard',
-        'pressureClass',
-        'flangeType',
-        'bolt',
-      ],
+      relations: ["nominalOutsideDiameter", "standard", "pressureClass", "flangeType", "bolt"],
     });
 
     if (!flange && flangeTypeId) {
@@ -239,13 +202,7 @@ export class FlangeDimensionService {
           standard: { id: standardId },
           pressureClass: { id: pressureClassId },
         },
-        relations: [
-          'nominalOutsideDiameter',
-          'standard',
-          'pressureClass',
-          'flangeType',
-          'bolt',
-        ],
+        relations: ["nominalOutsideDiameter", "standard", "pressureClass", "flangeType", "bolt"],
       });
     }
 
@@ -256,9 +213,7 @@ export class FlangeDimensionService {
     return this.transformFlangeWithBoltData(flange);
   }
 
-  private async transformFlangeWithBoltData(
-    flange: FlangeDimension,
-  ): Promise<any> {
+  private async transformFlangeWithBoltData(flange: FlangeDimension): Promise<any> {
     const result: any = {
       id: flange.id,
       D: flange.D,
@@ -276,13 +231,8 @@ export class FlangeDimensionService {
     };
 
     if (flange.bolt) {
-      const diameterMm = this.extractDiameterFromDesignation(
-        flange.bolt.designation,
-      );
-      const threadPitch =
-        flange.bolt.threadPitchMm ||
-        ISO_METRIC_THREAD_PITCHES[diameterMm] ||
-        2.0;
+      const diameterMm = this.extractDiameterFromDesignation(flange.bolt.designation);
+      const threadPitch = flange.bolt.threadPitchMm || ISO_METRIC_THREAD_PITCHES[diameterMm] || 2.0;
       const lengthMm = flange.boltLengthMm || 70;
 
       let massKg = 0;
@@ -297,10 +247,10 @@ export class FlangeDimensionService {
         massKg = boltMass.mass_kg;
       } else {
         const closestMass = await this.boltMassRepo
-          .createQueryBuilder('bm')
+          .createQueryBuilder("bm")
           .where('bm."boltId" = :boltId', { boltId: flange.bolt.id })
-          .orderBy('ABS(bm.length_mm - :length)', 'ASC')
-          .setParameter('length', lengthMm)
+          .orderBy("ABS(bm.length_mm - :length)", "ASC")
+          .setParameter("length", lengthMm)
           .getOne();
         massKg = closestMass?.mass_kg || 0;
       }

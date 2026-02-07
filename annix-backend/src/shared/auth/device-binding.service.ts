@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { ObjectLiteral, Repository } from 'typeorm';
-import { DeviceBindingEntity, DeviceVerificationResult } from './auth.interfaces';
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { ObjectLiteral, Repository } from "typeorm";
+import { DeviceBindingEntity, DeviceVerificationResult } from "./auth.interfaces";
 
 export interface CreateDeviceBindingData<TProfileId extends string> {
   profileId: number;
@@ -16,12 +16,10 @@ export class DeviceBindingService {
   constructor(private readonly configService: ConfigService) {}
 
   isDeviceBindingDisabled(): boolean {
-    return this.configService.get('DISABLE_DEVICE_FINGERPRINT') === 'true';
+    return this.configService.get("DISABLE_DEVICE_FINGERPRINT") === "true";
   }
 
-  findPrimaryActiveBinding<T extends DeviceBindingEntity>(
-    bindings: T[] | undefined,
-  ): T | null {
+  findPrimaryActiveBinding<T extends DeviceBindingEntity>(bindings: T[] | undefined): T | null {
     if (!bindings) return null;
     return bindings.find((b) => b.isActive && b.isPrimary) ?? null;
   }
@@ -37,7 +35,7 @@ export class DeviceBindingService {
       return {
         isValid: false,
         binding: null,
-        failureReason: 'no_binding',
+        failureReason: "no_binding",
         ipMismatchWarning: false,
       };
     }
@@ -46,15 +44,13 @@ export class DeviceBindingService {
       return {
         isValid: false,
         binding: activeBinding,
-        failureReason: 'fingerprint_mismatch',
+        failureReason: "fingerprint_mismatch",
         ipMismatchWarning: false,
       };
     }
 
-    const ipMismatchCheckDisabled =
-      this.configService.get('DISABLE_IP_MISMATCH_CHECK') === 'true';
-    const ipMismatchWarning =
-      !ipMismatchCheckDisabled && activeBinding.registeredIp !== clientIp;
+    const ipMismatchCheckDisabled = this.configService.get("DISABLE_IP_MISMATCH_CHECK") === "true";
+    const ipMismatchWarning = !ipMismatchCheckDisabled && activeBinding.registeredIp !== clientIp;
 
     return {
       isValid: true,

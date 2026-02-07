@@ -1,6 +1,4 @@
-'use client';
-
-import React from 'react';
+"use client";
 
 interface StructuralSteelIconProps {
   className?: string;
@@ -8,18 +6,12 @@ interface StructuralSteelIconProps {
 }
 
 // Structural Steel I-Beam / H-Beam icon
-export function StructuralSteelIcon({ className = '', size = 24 }: StructuralSteelIconProps) {
+export function StructuralSteelIcon({ className = "", size = 24 }: StructuralSteelIconProps) {
   const width = size * 1.6;
   const height = size;
 
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox="0 0 40 24"
-      fill="none"
-      className={className}
-    >
+    <svg width={width} height={height} viewBox="0 0 40 24" fill="none" className={className}>
       <defs>
         {/* Steel gradient - top flange */}
         <linearGradient id="steelTopGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -61,26 +53,76 @@ export function StructuralSteelIcon({ className = '', size = 24 }: StructuralSte
 
       {/* Main I-Beam */}
       {/* Top flange */}
-      <rect x="6" y="2" width="24" height="4" rx="0.5" fill="url(#steelTopGradient)" stroke="#4A6275" strokeWidth="0.5" />
+      <rect
+        x="6"
+        y="2"
+        width="24"
+        height="4"
+        rx="0.5"
+        fill="url(#steelTopGradient)"
+        stroke="#4A6275"
+        strokeWidth="0.5"
+      />
       {/* Top flange highlight */}
       <rect x="6" y="2" width="24" height="1.5" rx="0.3" fill="#D0DCE5" opacity="0.5" />
 
       {/* Web (vertical middle section) */}
-      <rect x="15" y="6" width="6" height="10" fill="url(#steelWebGradient)" stroke="#4A6275" strokeWidth="0.5" />
+      <rect
+        x="15"
+        y="6"
+        width="6"
+        height="10"
+        fill="url(#steelWebGradient)"
+        stroke="#4A6275"
+        strokeWidth="0.5"
+      />
       {/* Web center highlight */}
       <rect x="17" y="6" width="2" height="10" fill="#9AB5C5" opacity="0.4" />
 
       {/* Bottom flange */}
-      <rect x="6" y="16" width="24" height="4" rx="0.5" fill="url(#steelBottomGradient)" stroke="#4A6275" strokeWidth="0.5" />
+      <rect
+        x="6"
+        y="16"
+        width="24"
+        height="4"
+        rx="0.5"
+        fill="url(#steelBottomGradient)"
+        stroke="#4A6275"
+        strokeWidth="0.5"
+      />
       {/* Bottom flange top edge highlight */}
       <line x1="6" y1="16.5" x2="30" y2="16.5" stroke="#8FA4B5" strokeWidth="0.5" opacity="0.6" />
 
       {/* Cross-section end view (small, on the right) */}
       <g transform="translate(32, 6)">
         {/* Mini I-beam cross section */}
-        <rect x="0" y="0" width="6" height="1.5" fill="#7A9AAF" stroke="#4A6275" strokeWidth="0.3" />
-        <rect x="2" y="1.5" width="2" height="9" fill="#6B8299" stroke="#4A6275" strokeWidth="0.3" />
-        <rect x="0" y="10.5" width="6" height="1.5" fill="#5A7085" stroke="#4A6275" strokeWidth="0.3" />
+        <rect
+          x="0"
+          y="0"
+          width="6"
+          height="1.5"
+          fill="#7A9AAF"
+          stroke="#4A6275"
+          strokeWidth="0.3"
+        />
+        <rect
+          x="2"
+          y="1.5"
+          width="2"
+          height="9"
+          fill="#6B8299"
+          stroke="#4A6275"
+          strokeWidth="0.3"
+        />
+        <rect
+          x="0"
+          y="10.5"
+          width="6"
+          height="1.5"
+          fill="#5A7085"
+          stroke="#4A6275"
+          strokeWidth="0.3"
+        />
       </g>
 
       {/* Edge highlights for metallic effect */}

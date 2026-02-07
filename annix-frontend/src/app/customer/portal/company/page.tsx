@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { customerPortalApi, type CustomerCompanyDto } from '@/app/lib/api/customerApi';
-import { useCustomerCompany } from '@/app/lib/query/hooks';
+import { useState } from "react";
+import { customerPortalApi } from "@/app/lib/api/customerApi";
+import { useCustomerCompany } from "@/app/lib/query/hooks";
 
 export default function CustomerCompanyPage() {
   const companyQuery = useCustomerCompany();
@@ -14,11 +14,11 @@ export default function CustomerCompanyPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const addressForm = {
-    streetAddress: company?.streetAddress || '',
-    city: company?.city || '',
-    provinceState: company?.provinceState || '',
-    postalCode: company?.postalCode || '',
-    primaryPhone: company?.primaryPhone || '',
+    streetAddress: company?.streetAddress || "",
+    city: company?.city || "",
+    provinceState: company?.provinceState || "",
+    postalCode: company?.postalCode || "",
+    primaryPhone: company?.primaryPhone || "",
   };
   const [editAddressForm, setEditAddressForm] = useState(addressForm);
 
@@ -31,9 +31,9 @@ export default function CustomerCompanyPage() {
       await customerPortalApi.updateCompanyAddress(editAddressForm);
       await companyQuery.refetch();
       setIsEditingAddress(false);
-      setSuccessMessage('Address updated successfully');
+      setSuccessMessage("Address updated successfully");
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update address');
+      setError(e instanceof Error ? e.message : "Failed to update address");
     } finally {
       setIsSaving(false);
     }
@@ -81,37 +81,50 @@ export default function CustomerCompanyPage() {
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Trading Name</dt>
-              <dd className="mt-1 text-sm text-gray-900">{company?.tradingName || 'Same as legal name'}</dd>
+              <dd className="mt-1 text-sm text-gray-900">
+                {company?.tradingName || "Same as legal name"}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Registration Number</dt>
-              <dd className="mt-1 text-sm text-gray-900 font-mono">{company?.registrationNumber}</dd>
+              <dd className="mt-1 text-sm text-gray-900 font-mono">
+                {company?.registrationNumber}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">VAT Number</dt>
-              <dd className="mt-1 text-sm text-gray-900 font-mono">{company?.vatNumber || 'Not registered'}</dd>
+              <dd className="mt-1 text-sm text-gray-900 font-mono">
+                {company?.vatNumber || "Not registered"}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Industry</dt>
-              <dd className="mt-1 text-sm text-gray-900">{company?.industry || 'Not specified'}</dd>
+              <dd className="mt-1 text-sm text-gray-900">{company?.industry || "Not specified"}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Company Size</dt>
-              <dd className="mt-1 text-sm text-gray-900">{company?.companySize || 'Not specified'}</dd>
+              <dd className="mt-1 text-sm text-gray-900">
+                {company?.companySize || "Not specified"}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">General Email</dt>
-              <dd className="mt-1 text-sm text-gray-900">{company?.generalEmail || 'Not set'}</dd>
+              <dd className="mt-1 text-sm text-gray-900">{company?.generalEmail || "Not set"}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Website</dt>
               <dd className="mt-1 text-sm text-gray-900">
                 {company?.website ? (
-                  <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  <a
+                    href={company.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
                     {company.website}
                   </a>
                 ) : (
-                  'Not set'
+                  "Not set"
                 )}
               </dd>
             </div>
@@ -127,11 +140,11 @@ export default function CustomerCompanyPage() {
             <button
               onClick={() => {
                 setEditAddressForm({
-                  streetAddress: company?.streetAddress || '',
-                  city: company?.city || '',
-                  provinceState: company?.provinceState || '',
-                  postalCode: company?.postalCode || '',
-                  primaryPhone: company?.primaryPhone || '',
+                  streetAddress: company?.streetAddress || "",
+                  city: company?.city || "",
+                  provinceState: company?.provinceState || "",
+                  postalCode: company?.postalCode || "",
+                  primaryPhone: company?.primaryPhone || "",
                 });
                 setIsEditingAddress(true);
               }}
@@ -150,7 +163,9 @@ export default function CustomerCompanyPage() {
                   <input
                     type="text"
                     value={editAddressForm.streetAddress}
-                    onChange={(e) => setEditAddressForm({ ...editAddressForm, streetAddress: e.target.value })}
+                    onChange={(e) =>
+                      setEditAddressForm({ ...editAddressForm, streetAddress: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -159,7 +174,9 @@ export default function CustomerCompanyPage() {
                   <input
                     type="text"
                     value={editAddressForm.city}
-                    onChange={(e) => setEditAddressForm({ ...editAddressForm, city: e.target.value })}
+                    onChange={(e) =>
+                      setEditAddressForm({ ...editAddressForm, city: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -168,7 +185,9 @@ export default function CustomerCompanyPage() {
                   <input
                     type="text"
                     value={editAddressForm.provinceState}
-                    onChange={(e) => setEditAddressForm({ ...editAddressForm, provinceState: e.target.value })}
+                    onChange={(e) =>
+                      setEditAddressForm({ ...editAddressForm, provinceState: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -177,7 +196,9 @@ export default function CustomerCompanyPage() {
                   <input
                     type="text"
                     value={editAddressForm.postalCode}
-                    onChange={(e) => setEditAddressForm({ ...editAddressForm, postalCode: e.target.value })}
+                    onChange={(e) =>
+                      setEditAddressForm({ ...editAddressForm, postalCode: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -186,7 +207,9 @@ export default function CustomerCompanyPage() {
                   <input
                     type="tel"
                     value={editAddressForm.primaryPhone}
-                    onChange={(e) => setEditAddressForm({ ...editAddressForm, primaryPhone: e.target.value })}
+                    onChange={(e) =>
+                      setEditAddressForm({ ...editAddressForm, primaryPhone: e.target.value })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -194,7 +217,7 @@ export default function CustomerCompanyPage() {
                   <label className="block text-sm font-medium text-gray-700">Country</label>
                   <input
                     type="text"
-                    value={company?.country || ''}
+                    value={company?.country || ""}
                     disabled
                     className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
                   />
@@ -206,11 +229,11 @@ export default function CustomerCompanyPage() {
                   onClick={() => {
                     setIsEditingAddress(false);
                     setEditAddressForm({
-                      streetAddress: company?.streetAddress || '',
-                      city: company?.city || '',
-                      provinceState: company?.provinceState || '',
-                      postalCode: company?.postalCode || '',
-                      primaryPhone: company?.primaryPhone || '',
+                      streetAddress: company?.streetAddress || "",
+                      city: company?.city || "",
+                      provinceState: company?.provinceState || "",
+                      postalCode: company?.postalCode || "",
+                      primaryPhone: company?.primaryPhone || "",
                     });
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
@@ -222,7 +245,7 @@ export default function CustomerCompanyPage() {
                   disabled={isSaving}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </div>
@@ -254,7 +277,7 @@ export default function CustomerCompanyPage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Fax Number</dt>
-                <dd className="mt-1 text-sm text-gray-900">{company?.faxNumber || 'Not set'}</dd>
+                <dd className="mt-1 text-sm text-gray-900">{company?.faxNumber || "Not set"}</dd>
               </div>
             </dl>
           )}
@@ -264,14 +287,27 @@ export default function CustomerCompanyPage() {
       {/* Info box */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex">
-          <svg className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg
+            className="w-5 h-5 text-blue-600 mr-2 flex-shrink-0 mt-0.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           <div>
             <h4 className="text-sm font-medium text-blue-800">Need to update company details?</h4>
             <p className="mt-1 text-sm text-blue-700">
-              To update legal company information, registration numbers, or country, please contact our support team at{' '}
-              <a href="mailto:info@annix.co.za" className="underline">info@annix.co.za</a>
+              To update legal company information, registration numbers, or country, please contact
+              our support team at{" "}
+              <a href="mailto:info@annix.co.za" className="underline">
+                info@annix.co.za
+              </a>
             </p>
           </div>
         </div>

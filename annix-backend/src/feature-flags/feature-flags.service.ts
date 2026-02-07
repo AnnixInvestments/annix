@@ -1,14 +1,14 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 
-import { FeatureFlag } from './entities/feature-flag.entity';
+import { FeatureFlag } from "./entities/feature-flag.entity";
 import {
-  FEATURE_FLAGS,
   FEATURE_FLAG_DESCRIPTIONS,
+  FEATURE_FLAGS,
   FeatureFlagKey,
-} from './feature-flags.constants';
+} from "./feature-flags.constants";
 
 @Injectable()
 export class FeatureFlagsService {
@@ -24,35 +24,28 @@ export class FeatureFlagsService {
     const existing = await this.flagRepo.find();
     const existingKeys = new Set(existing.map((f) => f.flagKey));
 
-    const missing = Object.values(FEATURE_FLAGS).filter(
-      (key) => !existingKeys.has(key),
-    );
+    const missing = Object.values(FEATURE_FLAGS).filter((key) => !existingKeys.has(key));
 
     if (missing.length > 0) {
       const newFlags = missing.map((key) =>
         this.flagRepo.create({
           flagKey: key,
-          enabled:
-            this.configService.get(`ENABLE_${key}`) === 'true',
+          enabled: this.configService.get(`ENABLE_${key}`) === "true",
           description: FEATURE_FLAG_DESCRIPTIONS[key] || null,
         }),
       );
       await this.flagRepo.save(newFlags);
-      this.logger.log(
-        `Initialised feature flags: ${missing.join(', ')}`,
-      );
+      this.logger.log(`Initialised feature flags: ${missing.join(", ")}`);
     }
   }
 
   isEnabled(flagKey: FeatureFlagKey | string): Promise<boolean> {
-    return this.flagRepo
-      .findOne({ where: { flagKey } })
-      .then((flag) => {
-        if (flag) {
-          return flag.enabled;
-        }
-        return this.configService.get(`ENABLE_${flagKey}`) === 'true';
-      });
+    return this.flagRepo.findOne({ where: { flagKey } }).then((flag) => {
+      if (flag) {
+        return flag.enabled;
+      }
+      return this.configService.get(`ENABLE_${flagKey}`) === "true";
+    });
   }
 
   async allFlags(): Promise<Record<string, boolean>> {
@@ -68,7 +61,7 @@ export class FeatureFlagsService {
     Array<{ flagKey: string; enabled: boolean; description: string | null }>
   > {
     await this.ensureFlags();
-    const flags = await this.flagRepo.find({ order: { flagKey: 'ASC' } });
+    const flags = await this.flagRepo.find({ order: { flagKey: "ASC" } });
     return flags.map((f) => ({
       flagKey: f.flagKey,
       enabled: f.enabled,
@@ -89,9 +82,7 @@ export class FeatureFlagsService {
     flag.enabled = enabled;
     const saved = await this.flagRepo.save(flag);
 
-    this.logger.log(
-      `Feature flag '${flagKey}' ${enabled ? 'enabled' : 'disabled'}`,
-    );
+    this.logger.log(`Feature flag '${flagKey}' ${enabled ? "enabled" : "disabled"}`);
 
     return {
       flagKey: saved.flagKey,

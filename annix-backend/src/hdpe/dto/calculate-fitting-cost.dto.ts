@@ -1,11 +1,4 @@
-import {
-  IsInt,
-  IsNumber,
-  IsString,
-  IsPositive,
-  Min,
-  IsOptional,
-} from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsPositive, IsString, Min } from "class-validator";
 
 export class CalculateFittingCostDto {
   @IsString()

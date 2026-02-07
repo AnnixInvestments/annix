@@ -1,30 +1,33 @@
-'use client';
+"use client";
 
-import React from 'react';
 import {
+  boltSetCountPerBend as getBoltSetCountPerBend,
+  boltSetCountPerFitting as getBoltSetCountPerFitting,
+  boltSetCountPerPipe as getBoltSetCountPerPipe,
   weldCountPerBend as getWeldCountPerBend,
   weldCountPerFitting as getWeldCountPerFitting,
   weldCountPerPipe as getWeldCountPerPipe,
-  flangesPerPipe as getFlangesPerPipe,
-  boltSetCountPerBend as getBoltSetCountPerBend,
-  boltSetCountPerPipe as getBoltSetCountPerPipe,
-  boltSetCountPerFitting as getBoltSetCountPerFitting,
-} from '@/app/lib/config/rfq';
-import {
-  NB_TO_OD_LOOKUP,
-  bnwSetInfoSync as getBnwSetInfo,
-} from '@/app/lib/hooks/useFlangeWeights';
+} from "@/app/lib/config/rfq";
+import { bnwSetInfoSync as getBnwSetInfo, NB_TO_OD_LOOKUP } from "@/app/lib/hooks/useFlangeWeights";
 
-export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevStep, errors, loading }: any) {
+export default function ReviewSubmitStep({
+  entries,
+  rfqData,
+  onNextStep,
+  onPrevStep,
+  errors,
+  loading,
+}: any) {
   // Use unified items array that includes both straight pipes and bends
   const allItems = rfqData.items || entries || [];
-  
+
   const getTotalWeight = () => {
     return allItems.reduce((total: number, entry: any) => {
       // Bends and fittings use totalWeight, straight pipes use totalSystemWeight
-      const weight = (entry.itemType === 'bend' || entry.itemType === 'fitting')
-        ? (entry.calculation?.totalWeight || 0)
-        : (entry.calculation?.totalSystemWeight || 0);
+      const weight =
+        entry.itemType === "bend" || entry.itemType === "fitting"
+          ? entry.calculation?.totalWeight || 0
+          : entry.calculation?.totalSystemWeight || 0;
       return total + weight;
     }, 0);
   };
@@ -33,38 +36,39 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
     return allItems.reduce((total: number, entry: any) => {
       const qty = entry.specs?.quantityValue || 1;
 
-      if (entry.itemType === 'bend') {
+      if (entry.itemType === "bend") {
         // For bends: include arc length and tangent lengths, but NOT stub lengths
         const nb = entry.specs?.nominalBoreMm || 0;
-        const bendRadiusType = entry.specs?.bendType || '1.5D';
-        const radiusFactor = parseFloat(bendRadiusType.replace('D', '')) || 1.5;
+        const bendRadiusType = entry.specs?.bendType || "1.5D";
+        const radiusFactor = parseFloat(bendRadiusType.replace("D", "")) || 1.5;
         const bendRadiusMm = nb * radiusFactor;
         const bendAngleRad = ((entry.specs?.bendDegrees || 90) * Math.PI) / 180;
         const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
 
         // Add tangent lengths (but not stubs)
         const tangents = entry.specs?.tangentLengths || [];
-        const tangentLengthM = tangents.reduce((sum: number, t: number) => sum + (t || 0), 0) / 1000;
+        const tangentLengthM =
+          tangents.reduce((sum: number, t: number) => sum + (t || 0), 0) / 1000;
 
-        return total + ((arcLengthM + tangentLengthM) * qty);
+        return total + (arcLengthM + tangentLengthM) * qty;
       }
 
-      if (entry.itemType === 'fitting') {
+      if (entry.itemType === "fitting") {
         // For fittings (tees/laterals): include pipeLengthA + pipeLengthB
         const lengthAMm = entry.specs?.pipeLengthAMm || 0;
         const lengthBMm = entry.specs?.pipeLengthBMm || 0;
         const totalLengthM = (lengthAMm + lengthBMm) / 1000;
-        return total + (totalLengthM * qty);
+        return total + totalLengthM * qty;
       }
 
       // For straight pipes, calculate total length based on quantityType
-      if (entry.specs.quantityType === 'total_length') {
+      if (entry.specs.quantityType === "total_length") {
         return total + (entry.specs.quantityValue || 0);
       } else {
         // number_of_pipes: multiply by individual pipe length
         const numPipes = entry.specs.quantityValue || 1;
         const pipeLength = entry.specs.individualPipeLength || 0;
-        return total + (numPipes * pipeLength);
+        return total + numPipes * pipeLength;
       }
     }, 0);
   };
@@ -77,17 +81,17 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
     allItems.forEach((entry: any) => {
       const qty = entry.calculation?.calculatedPipeCount || entry.specs?.quantityValue || 1;
 
-      if (entry.itemType === 'bend') {
+      if (entry.itemType === "bend") {
         // Bend surface area calculation
         const nb = entry.specs?.nominalBoreMm;
         const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
-        const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
-        const id = od - (2 * wt);
+        const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+        const id = od - 2 * wt;
         const odM = od / 1000;
         const idM = id / 1000;
 
-        const bendRadiusType = entry.specs?.bendType || '1.5D';
-        const radiusFactor = parseFloat(bendRadiusType.replace('D', '')) || 1.5;
+        const bendRadiusType = entry.specs?.bendType || "1.5D";
+        const radiusFactor = parseFloat(bendRadiusType.replace("D", "")) || 1.5;
         const bendRadiusMm = nb * radiusFactor;
         const bendAngleRad = ((entry.specs?.bendDegrees || 90) * Math.PI) / 180;
         const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
@@ -107,7 +111,7 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
 
         totalExternal += extArea * qty;
         totalInternal += intArea * qty;
-      } else if (entry.itemType === 'fitting') {
+      } else if (entry.itemType === "fitting") {
         // Fitting (tee) surface area calculation - match calc results logic
         const nb = entry.specs?.nominalDiameterMm;
         const branchNb = entry.specs?.branchNominalDiameterMm || nb;
@@ -115,7 +119,7 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
         const lengthA = entry.specs?.pipeLengthAMm || 0;
         const lengthB = entry.specs?.pipeLengthBMm || 0;
         const teeHeight = entry.specs?.teeHeightMm || 0;
-        const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+        const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
 
         // Determine flange configuration for 100mm allowance
         const FLANGE_ALLOWANCE_MM = 100;
@@ -123,28 +127,28 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
         let branchEndCount = 0;
 
         // Count main pipe ends (inlet/outlet)
-        if (['FBE', 'FOE_RF', '2X_RF'].includes(pipeEndConfig)) {
+        if (["FBE", "FOE_RF", "2X_RF"].includes(pipeEndConfig)) {
           mainEndCount = 2;
-        } else if (pipeEndConfig !== 'PE') {
+        } else if (pipeEndConfig !== "PE") {
           mainEndCount = 1;
         }
         // Count branch end
-        if (entry.specs?.branchFlangeType && entry.specs?.branchFlangeType !== 'none') {
+        if (entry.specs?.branchFlangeType && entry.specs?.branchFlangeType !== "none") {
           branchEndCount = 1;
         }
 
         if (nb && (lengthA || lengthB || teeHeight)) {
-          const mainOd = entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[nb] || (nb * 1.1);
-          const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.1);
-          const mainId = mainOd - (2 * wt);
-          const branchId = branchOd - (2 * wt);
+          const mainOd = entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[nb] || nb * 1.1;
+          const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.1;
+          const mainId = mainOd - 2 * wt;
+          const branchId = branchOd - 2 * wt;
 
           // Add 100mm allowance per end
           const mainEndAllowance = (mainEndCount * FLANGE_ALLOWANCE_MM) / 1000;
           const branchEndAllowance = (branchEndCount * FLANGE_ALLOWANCE_MM) / 1000;
 
-          const runLengthM = ((lengthA + lengthB) / 1000) + mainEndAllowance;
-          const branchLengthM = (teeHeight / 1000) + branchEndAllowance;
+          const runLengthM = (lengthA + lengthB) / 1000 + mainEndAllowance;
+          const branchLengthM = teeHeight / 1000 + branchEndAllowance;
 
           const runExt = (mainOd / 1000) * Math.PI * runLengthM;
           const branchExt = branchLengthM > 0 ? (branchOd / 1000) * Math.PI * branchLengthM : 0;
@@ -159,7 +163,7 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
         // Straight pipe surface area
         if (entry.calculation?.outsideDiameterMm && entry.specs?.wallThicknessMm) {
           const od = entry.calculation.outsideDiameterMm;
-          const id = od - (2 * entry.specs.wallThicknessMm);
+          const id = od - 2 * entry.specs.wallThicknessMm;
           const lengthM = entry.specs.individualPipeLength || 0;
           const pipeCount = entry.calculation?.calculatedPipeCount || qty;
 
@@ -172,12 +176,12 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
     return { external: totalExternal, internal: totalInternal };
   };
 
-  const hasSurfaceProtection = rfqData.requiredProducts?.includes('surface_protection');
+  const hasSurfaceProtection = rfqData.requiredProducts?.includes("surface_protection");
 
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-900 mb-4">Review & Submit RFQ</h2>
-      
+
       <div className="space-y-8">
         {/* Project Summary */}
         <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -193,11 +197,11 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
             </div>
             <div>
               <p className="text-sm text-gray-600">Required Date</p>
-              <p className="font-medium text-gray-900">{rfqData.requiredDate || 'Not specified'}</p>
+              <p className="font-medium text-gray-900">{rfqData.requiredDate || "Not specified"}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Contact Email</p>
-              <p className="font-medium text-gray-900">{rfqData.customerEmail || 'Not provided'}</p>
+              <p className="font-medium text-gray-900">{rfqData.customerEmail || "Not provided"}</p>
             </div>
           </div>
           {rfqData.description && (
@@ -213,37 +217,47 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Item Requirements</h3>
           <div className="space-y-4">
             {allItems.map((entry: any, index: number) => (
-              <div key={`${entry.id}-${entry.itemType}-${index}`} className={`border border-gray-100 rounded-lg p-4 ${
-                entry.itemType === 'bend' ? 'bg-purple-50' : 
-                entry.itemType === 'fitting' ? 'bg-green-50' : 
-                'bg-gray-50'
-              }`}>
+              <div
+                key={`${entry.id}-${entry.itemType}-${index}`}
+                className={`border border-gray-100 rounded-lg p-4 ${
+                  entry.itemType === "bend"
+                    ? "bg-purple-50"
+                    : entry.itemType === "fitting"
+                      ? "bg-green-50"
+                      : "bg-gray-50"
+                }`}
+              >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded ${
-                      entry.itemType === 'bend' ? 'bg-purple-200 text-purple-800' : 
-                      entry.itemType === 'fitting' ? 'bg-green-200 text-green-800' : 
-                      'bg-blue-200 text-blue-800'
-                    }`}>
-                      {entry.itemType === 'bend' ? 'Bend' : 
-                       entry.itemType === 'fitting' ? 'Fitting' : 
-                       'Pipe'}
+                    <span
+                      className={`px-2 py-1 text-xs font-semibold rounded ${
+                        entry.itemType === "bend"
+                          ? "bg-purple-200 text-purple-800"
+                          : entry.itemType === "fitting"
+                            ? "bg-green-200 text-green-800"
+                            : "bg-blue-200 text-blue-800"
+                      }`}
+                    >
+                      {entry.itemType === "bend"
+                        ? "Bend"
+                        : entry.itemType === "fitting"
+                          ? "Fitting"
+                          : "Pipe"}
                     </span>
                     <h4 className="font-medium text-gray-800">Item #{index + 1}</h4>
                   </div>
                   <span className="text-sm text-gray-600">
-                    {entry.calculation ? 
-                      (entry.itemType === 'bend' || entry.itemType === 'fitting')
+                    {entry.calculation
+                      ? entry.itemType === "bend" || entry.itemType === "fitting"
                         ? `${entry.calculation.totalWeight?.toFixed(2) || 0} kg`
                         : `${entry.calculation.totalSystemWeight?.toFixed(2) || 0} kg`
-                      : 'Not calculated'
-                    }
+                      : "Not calculated"}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-2">{entry.description}</p>
-                
+
                 {/* Display fields based on item type */}
-                {entry.itemType === 'bend' ? (
+                {entry.itemType === "bend" ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
                     <div>NB: {entry.specs.nominalBoreMm}mm</div>
                     <div>Angle: {entry.specs.bendDegrees}°</div>
@@ -255,20 +269,22 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                     {entry.specs.numberOfStubs > 0 && (
                       <div className="col-span-2">Stubs: {entry.specs.numberOfStubs}</div>
                     )}
-                    <div>Weight/item: {(() => {
-                      const totalWt = entry.calculation?.totalWeight || 0;
-                      const qty = entry.specs?.quantityValue || 1;
-                      return (totalWt / qty).toFixed(2);
-                    })()} kg</div>
+                    <div>
+                      Weight/item: {(() => {
+                        const totalWt = entry.calculation?.totalWeight || 0;
+                        const qty = entry.specs?.quantityValue || 1;
+                        return (totalWt / qty).toFixed(2);
+                      })()} kg
+                    </div>
                     {/* Surface areas for bend - PER ITEM */}
                     {(() => {
                       const nb = entry.specs?.nominalBoreMm;
                       const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
                       if (!nb || !wt) return null;
-                      const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
-                      const id = od - (2 * wt);
-                      const bendRadiusType = entry.specs?.bendType || '1.5D';
-                      const radiusFactor = parseFloat(bendRadiusType.replace('D', '')) || 1.5;
+                      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+                      const id = od - 2 * wt;
+                      const bendRadiusType = entry.specs?.bendType || "1.5D";
+                      const radiusFactor = parseFloat(bendRadiusType.replace("D", "")) || 1.5;
                       const bendRadiusMm = nb * radiusFactor;
                       const bendAngleRad = ((entry.specs?.bendDegrees || 90) * Math.PI) / 180;
                       const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
@@ -284,8 +300,18 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       });
                       return (
                         <>
-                          <div className="text-indigo-700 font-medium">Ext/item: {extArea.toFixed(3)} m² <span className="text-indigo-500 font-normal text-[10px]">(arc + tangents)</span></div>
-                          <div className="text-purple-700 font-medium">Int/item: {intArea.toFixed(3)} m² <span className="text-purple-500 font-normal text-[10px]">(arc + tangents)</span></div>
+                          <div className="text-indigo-700 font-medium">
+                            Ext/item: {extArea.toFixed(3)} m²{" "}
+                            <span className="text-indigo-500 font-normal text-[10px]">
+                              (arc + tangents)
+                            </span>
+                          </div>
+                          <div className="text-purple-700 font-medium">
+                            Int/item: {intArea.toFixed(3)} m²{" "}
+                            <span className="text-purple-500 font-normal text-[10px]">
+                              (arc + tangents)
+                            </span>
+                          </div>
                         </>
                       );
                     })()}
@@ -293,10 +319,10 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                     {(() => {
                       const nb = entry.specs?.nominalBoreMm;
                       const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
-                      const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                      const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
                       const flangeConnections = getWeldCountPerBend(bendEndConfig);
                       if (!nb || !wt || flangeConnections === 0) return null;
-                      const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
                       const circumferenceMm = Math.PI * od;
                       // x2 because each flanged connection requires 2 welds (inside + outside)
                       const weldsPerConnection = 2;
@@ -304,20 +330,28 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       const linearWeldMm = totalWelds * circumferenceMm;
                       return (
                         <div className="text-purple-700 col-span-2 font-medium">
-                          Welds/item: {totalWelds} ({flangeConnections} flange × 2) @ {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
+                          Welds/item: {totalWelds} ({flangeConnections} flange × 2) @{" "}
+                          {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m
+                          ({wt.toFixed(1)}mm WT)
                         </div>
                       );
                     })()}
                     {/* Flange breakdown for bend */}
                     {(() => {
                       const nb = entry.specs?.nominalBoreMm;
-                      const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                      const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
-                      if (bendEndConfig === 'PE') return null;
-                      const flangeCount = bendEndConfig === 'FBE' ? 2 :
-                        ['FOE', 'FOE_LF', 'FOE_RF', '2xLF', '2X_RF'].includes(bendEndConfig) ?
-                          (bendEndConfig === '2xLF' || bendEndConfig === '2X_RF' ? 2 :
-                           bendEndConfig === 'FOE_LF' || bendEndConfig === 'FOE_RF' ? 2 : 1) : 1;
+                      const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+                      const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || "PN16";
+                      if (bendEndConfig === "PE") return null;
+                      const flangeCount =
+                        bendEndConfig === "FBE"
+                          ? 2
+                          : ["FOE", "FOE_LF", "FOE_RF", "2xLF", "2X_RF"].includes(bendEndConfig)
+                            ? bendEndConfig === "2xLF" || bendEndConfig === "2X_RF"
+                              ? 2
+                              : bendEndConfig === "FOE_LF" || bendEndConfig === "FOE_RF"
+                                ? 2
+                                : 1
+                            : 1;
                       return (
                         <div className="text-blue-600 col-span-2">
                           Flanges/item: {flangeCount}x {nb}NB {pressureClass}
@@ -325,11 +359,17 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       );
                     })()}
                   </div>
-                ) : entry.itemType === 'fitting' ? (
+                ) : entry.itemType === "fitting" ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
-                    <div>Type: {entry.specs.fittingType || 'N/A'}</div>
-                    <div>Standard: {entry.specs.fittingStandard || 'N/A'}</div>
-                    <div>NB: {entry.specs.nominalDiameterMm}mm{entry.specs.branchNominalDiameterMm && entry.specs.branchNominalDiameterMm !== entry.specs.nominalDiameterMm ? ` x ${entry.specs.branchNominalDiameterMm}mm` : ''}</div>
+                    <div>Type: {entry.specs.fittingType || "N/A"}</div>
+                    <div>Standard: {entry.specs.fittingStandard || "N/A"}</div>
+                    <div>
+                      NB: {entry.specs.nominalDiameterMm}mm
+                      {entry.specs.branchNominalDiameterMm &&
+                      entry.specs.branchNominalDiameterMm !== entry.specs.nominalDiameterMm
+                        ? ` x ${entry.specs.branchNominalDiameterMm}mm`
+                        : ""}
+                    </div>
                     <div>Qty: {entry.specs.quantityValue || 1}</div>
                     {entry.specs.pipeLengthAMm && (
                       <div>Length A: {entry.specs.pipeLengthAMm}mm</div>
@@ -337,7 +377,15 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                     {entry.specs.pipeLengthBMm && (
                       <div>Length B: {entry.specs.pipeLengthBMm}mm</div>
                     )}
-                    <div>Weight/item: {entry.calculation?.weightPerItem?.toFixed(2) || ((entry.calculation?.totalWeight || 0) / (entry.specs?.quantityValue || 1)).toFixed(2) || '-'} kg</div>
+                    <div>
+                      Weight/item:{" "}
+                      {entry.calculation?.weightPerItem?.toFixed(2) ||
+                        (
+                          (entry.calculation?.totalWeight || 0) / (entry.specs?.quantityValue || 1)
+                        ).toFixed(2) ||
+                        "-"}{" "}
+                      kg
+                    </div>
                     {/* Surface areas for fitting - PER ITEM */}
                     {(() => {
                       const nb = entry.specs?.nominalDiameterMm;
@@ -346,10 +394,10 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       const lengthA = entry.specs?.pipeLengthAMm || 0;
                       const lengthB = entry.specs?.pipeLengthBMm || 0;
                       if (!nb || (!lengthA && !lengthB)) return null;
-                      const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
-                      const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
-                      const mainId = mainOd - (2 * wt);
-                      const branchId = branchOd - (2 * wt);
+                      const mainOd = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+                      const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.05;
+                      const mainId = mainOd - 2 * wt;
+                      const branchId = branchOd - 2 * wt;
                       const runLengthM = (lengthA + lengthB) / 1000;
                       const branchLengthM = (branchOd * 2) / 1000;
                       const runExt = (mainOd / 1000) * Math.PI * runLengthM;
@@ -357,13 +405,23 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       const overlapExt = (branchOd / 1000) * (wt / 1000) * Math.PI;
                       const runInt = (mainId / 1000) * Math.PI * runLengthM;
                       const branchInt = (branchId / 1000) * Math.PI * branchLengthM;
-                      const holeCut = Math.PI * Math.pow((branchId / 1000) / 2, 2);
+                      const holeCut = Math.PI * (branchId / 1000 / 2) ** 2;
                       const extArea = runExt + branchExt - overlapExt;
                       const intArea = runInt + branchInt - holeCut;
                       return (
                         <>
-                          <div className="text-indigo-700 font-medium">Ext/item: {extArea.toFixed(3)} m² <span className="text-indigo-500 font-normal text-[10px]">(run + branch - overlap)</span></div>
-                          <div className="text-purple-700 font-medium">Int/item: {intArea.toFixed(3)} m² <span className="text-purple-500 font-normal text-[10px]">(run + branch - hole)</span></div>
+                          <div className="text-indigo-700 font-medium">
+                            Ext/item: {extArea.toFixed(3)} m²{" "}
+                            <span className="text-indigo-500 font-normal text-[10px]">
+                              (run + branch - overlap)
+                            </span>
+                          </div>
+                          <div className="text-purple-700 font-medium">
+                            Int/item: {intArea.toFixed(3)} m²{" "}
+                            <span className="text-purple-500 font-normal text-[10px]">
+                              (run + branch - hole)
+                            </span>
+                          </div>
                         </>
                       );
                     })()}
@@ -372,11 +430,11 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       const nb = entry.specs?.nominalDiameterMm;
                       const branchNb = entry.specs?.branchNominalDiameterMm || nb;
                       const wt = entry.specs?.wallThicknessMm || 10;
-                      const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                      const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
                       const weldCount = getWeldCountPerFitting(fittingEndConfig);
                       if (!nb || weldCount === 0) return null;
-                      const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
-                      const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+                      const mainOd = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+                      const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.05;
                       // For tees: 2 welds on main run + 1 weld on branch
                       // Total linear = 2 × main circ + 1 × branch circ
                       const mainCirc = Math.PI * mainOd;
@@ -384,7 +442,7 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       // Estimate: for FFF (3 flanges) = 3 welds, distribute proportionally
                       let linearWeldMm = 0;
                       if (weldCount >= 3) {
-                        linearWeldMm = (2 * mainCirc) + branchCirc; // 2 main + 1 branch
+                        linearWeldMm = 2 * mainCirc + branchCirc; // 2 main + 1 branch
                       } else if (weldCount === 2) {
                         linearWeldMm = 2 * mainCirc; // 2 main welds
                       } else {
@@ -392,7 +450,8 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       }
                       return (
                         <div className="text-purple-600 col-span-2">
-                          Welds/item: {weldCount} = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
+                          Welds/item: {weldCount} = {(linearWeldMm / 1000).toFixed(2)}m (
+                          {wt.toFixed(1)}mm WT)
                         </div>
                       );
                     })()}
@@ -400,24 +459,26 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                     {(() => {
                       const nb = entry.specs?.nominalDiameterMm;
                       const branchNb = entry.specs?.branchNominalDiameterMm || nb;
-                      const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                      const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
-                      if (fittingEndConfig === 'PE') return null;
+                      const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || "PN16";
+                      if (fittingEndConfig === "PE") return null;
                       // Parse fitting config for flanges
-                      const config = fittingEndConfig.split('');
+                      const config = fittingEndConfig.split("");
                       let mainFlanges = 0;
                       let branchFlanges = 0;
                       // Inlet (pos 0), Outlet (pos 1), Branch (pos 2)
-                      if (config[0] === 'F') mainFlanges++;
-                      if (config[1] === 'F') mainFlanges++;
-                      if (config[2] === 'F') branchFlanges++;
+                      if (config[0] === "F") mainFlanges++;
+                      if (config[1] === "F") mainFlanges++;
+                      if (config[2] === "F") branchFlanges++;
                       const flangeText = [];
-                      if (mainFlanges > 0) flangeText.push(`${mainFlanges}x ${nb}NB ${pressureClass}`);
-                      if (branchFlanges > 0) flangeText.push(`${branchFlanges}x ${branchNb}NB ${pressureClass}`);
+                      if (mainFlanges > 0)
+                        flangeText.push(`${mainFlanges}x ${nb}NB ${pressureClass}`);
+                      if (branchFlanges > 0)
+                        flangeText.push(`${branchFlanges}x ${branchNb}NB ${pressureClass}`);
                       if (flangeText.length === 0) return null;
                       return (
                         <div className="text-blue-600 col-span-2">
-                          Flanges/item: {flangeText.join(' + ')}
+                          Flanges/item: {flangeText.join(" + ")}
                         </div>
                       );
                     })()}
@@ -425,34 +486,43 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-500">
                     <div>NB: {entry.specs.nominalBoreMm}mm</div>
-                    <div>Schedule: {entry.specs.scheduleNumber || `${entry.specs.wallThicknessMm}mm WT`}</div>
-                    <div>Length/pipe: {(() => {
-                      // Show per-pipe length
-                      if (entry.specs.quantityType === 'total_length') {
-                        return Number(entry.specs.quantityValue || 0).toFixed(3);
-                      } else {
-                        return (entry.specs.individualPipeLength || 0).toFixed(3);
-                      }
-                    })()}m</div>
-                    <div>Qty: {(() => {
-                      if (entry.specs.quantityType === 'total_length') return '1';
-                      return entry.specs.quantityValue || 1;
-                    })()}</div>
-                    <div>Weight/pipe: {(() => {
-                      const totalWt = entry.calculation?.totalSystemWeight || 0;
-                      if (entry.specs.quantityType === 'total_length') return totalWt.toFixed(2);
-                      const qty = entry.specs.quantityValue || 1;
-                      return (totalWt / qty).toFixed(2);
-                    })()} kg</div>
+                    <div>
+                      Schedule:{" "}
+                      {entry.specs.scheduleNumber || `${entry.specs.wallThicknessMm}mm WT`}
+                    </div>
+                    <div>
+                      Length/pipe: {(() => {
+                        // Show per-pipe length
+                        if (entry.specs.quantityType === "total_length") {
+                          return Number(entry.specs.quantityValue || 0).toFixed(3);
+                        } else {
+                          return (entry.specs.individualPipeLength || 0).toFixed(3);
+                        }
+                      })()}m
+                    </div>
+                    <div>
+                      Qty: {(() => {
+                        if (entry.specs.quantityType === "total_length") return "1";
+                        return entry.specs.quantityValue || 1;
+                      })()}
+                    </div>
+                    <div>
+                      Weight/pipe: {(() => {
+                        const totalWt = entry.calculation?.totalSystemWeight || 0;
+                        if (entry.specs.quantityType === "total_length") return totalWt.toFixed(2);
+                        const qty = entry.specs.quantityValue || 1;
+                        return (totalWt / qty).toFixed(2);
+                      })()} kg
+                    </div>
                     {/* Surface areas for straight pipe - PER PIPE with calculation breakdown */}
                     {(() => {
                       const od = entry.calculation?.outsideDiameterMm;
                       const wt = entry.specs?.wallThicknessMm;
                       if (!od || !wt) return null;
-                      const id = od - (2 * wt);
+                      const id = od - 2 * wt;
                       // Per-pipe length
                       let perPipeLengthM = 0;
-                      if (entry.specs.quantityType === 'total_length') {
+                      if (entry.specs.quantityType === "total_length") {
                         perPipeLengthM = entry.specs.quantityValue || 0;
                       } else {
                         perPipeLengthM = entry.specs.individualPipeLength || 0;
@@ -461,8 +531,18 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       const intArea = (id / 1000) * Math.PI * perPipeLengthM;
                       return (
                         <>
-                          <div className="text-indigo-700 font-medium">Ext/pipe: {extArea.toFixed(3)} m² <span className="text-indigo-500 font-normal text-[10px]">({od.toFixed(0)}mm × π × {perPipeLengthM.toFixed(2)}m)</span></div>
-                          <div className="text-purple-700 font-medium">Int/pipe: {intArea.toFixed(3)} m² <span className="text-purple-500 font-normal text-[10px]">({id.toFixed(0)}mm × π × {perPipeLengthM.toFixed(2)}m)</span></div>
+                          <div className="text-indigo-700 font-medium">
+                            Ext/pipe: {extArea.toFixed(3)} m²{" "}
+                            <span className="text-indigo-500 font-normal text-[10px]">
+                              ({od.toFixed(0)}mm × π × {perPipeLengthM.toFixed(2)}m)
+                            </span>
+                          </div>
+                          <div className="text-purple-700 font-medium">
+                            Int/pipe: {intArea.toFixed(3)} m²{" "}
+                            <span className="text-purple-500 font-normal text-[10px]">
+                              ({id.toFixed(0)}mm × π × {perPipeLengthM.toFixed(2)}m)
+                            </span>
+                          </div>
                         </>
                       );
                     })()}
@@ -470,10 +550,10 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                     {(() => {
                       const nb = entry.specs?.nominalBoreMm;
                       const wt = entry.specs?.wallThicknessMm;
-                      const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                      const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
                       const flangeConnections = getWeldCountPerPipe(pipeEndConfig); // Number of flanged connections
                       if (!nb || !wt || flangeConnections === 0) return null;
-                      const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
                       const circumferenceMm = Math.PI * od;
                       // x2 because each flanged connection requires 2 welds (inside + outside)
                       const weldsPerConnection = 2;
@@ -481,19 +561,29 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                       const linearWeldMm = totalWelds * circumferenceMm;
                       return (
                         <div className="text-purple-700 col-span-2 font-medium">
-                          Welds/pipe: {totalWelds} ({flangeConnections} flange × 2) @ {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m ({wt.toFixed(1)}mm WT)
+                          Welds/pipe: {totalWelds} ({flangeConnections} flange × 2) @{" "}
+                          {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m
+                          ({wt.toFixed(1)}mm WT)
                         </div>
                       );
                     })()}
                     {/* Flange breakdown for pipe */}
                     {(() => {
                       const nb = entry.specs?.nominalBoreMm;
-                      const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                      const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
-                      if (pipeEndConfig === 'PE') return null;
-                      const flangeCount = pipeEndConfig === 'FBE' ? 2 :
-                        ['FOE', 'FOE_LF', 'FOE_RF', '2xLF', '2X_RF'].includes(pipeEndConfig) ?
-                          (pipeEndConfig === '2xLF' || pipeEndConfig === '2X_RF' || pipeEndConfig === 'FOE_LF' || pipeEndConfig === 'FOE_RF' ? 2 : 1) : 1;
+                      const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || "PN16";
+                      if (pipeEndConfig === "PE") return null;
+                      const flangeCount =
+                        pipeEndConfig === "FBE"
+                          ? 2
+                          : ["FOE", "FOE_LF", "FOE_RF", "2xLF", "2X_RF"].includes(pipeEndConfig)
+                            ? pipeEndConfig === "2xLF" ||
+                              pipeEndConfig === "2X_RF" ||
+                              pipeEndConfig === "FOE_LF" ||
+                              pipeEndConfig === "FOE_RF"
+                              ? 2
+                              : 1
+                            : 1;
                       return (
                         <div className="text-blue-600 col-span-2">
                           Flanges/pipe: {flangeCount}x {nb}NB {pressureClass}
@@ -504,90 +594,110 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                 )}
 
                 {/* Bolt Sets & Gaskets Information */}
-                {rfqData.requiredProducts?.includes('fasteners_gaskets') && (() => {
-                  // Determine if item has flanges and get flange count
-                  let hasFlanges = false;
-                  let flangeCount = 0;
-                  let nbMm = 0;
-                  let branchNbMm = 0;
-                  let branchFlangeCount = 0;
+                {rfqData.requiredProducts?.includes("fasteners_gaskets") &&
+                  (() => {
+                    // Determine if item has flanges and get flange count
+                    let hasFlanges = false;
+                    let flangeCount = 0;
+                    let nbMm = 0;
+                    let branchNbMm = 0;
+                    let branchFlangeCount = 0;
 
-                  // Stub info for bends
-                  let stubFlanges: Array<{nb: number; count: number}> = [];
+                    // Stub info for bends
+                    const stubFlanges: Array<{ nb: number; count: number }> = [];
 
-                  if (entry.itemType === 'bend') {
-                    const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                    hasFlanges = bendEndConfig !== 'PE';
-                    // Use bolt set count function - 2 same-sized flanges = 1 bolt set
-                    flangeCount = getBoltSetCountPerBend(bendEndConfig);
-                    nbMm = entry.specs?.nominalBoreMm || 100;
-                    // Get stub flanges - each stub of different size needs 1 bolt set
-                    if (entry.specs?.stubs?.length > 0) {
-                      entry.specs.stubs.forEach((stub: any) => {
-                        if (stub?.nominalBoreMm) {
-                          stubFlanges.push({ nb: stub.nominalBoreMm, count: 1 });
-                        }
-                      });
+                    if (entry.itemType === "bend") {
+                      const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+                      hasFlanges = bendEndConfig !== "PE";
+                      // Use bolt set count function - 2 same-sized flanges = 1 bolt set
+                      flangeCount = getBoltSetCountPerBend(bendEndConfig);
+                      nbMm = entry.specs?.nominalBoreMm || 100;
+                      // Get stub flanges - each stub of different size needs 1 bolt set
+                      if (entry.specs?.stubs?.length > 0) {
+                        entry.specs.stubs.forEach((stub: any) => {
+                          if (stub?.nominalBoreMm) {
+                            stubFlanges.push({ nb: stub.nominalBoreMm, count: 1 });
+                          }
+                        });
+                      }
+                    } else if (entry.itemType === "fitting") {
+                      const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      hasFlanges = fittingEndConfig !== "PE";
+                      nbMm = entry.specs?.nominalDiameterMm || 100;
+                      branchNbMm = entry.specs?.branchNominalDiameterMm || nbMm;
+                      // Use bolt set count function for fittings
+                      const isEqualBranch = nbMm === branchNbMm;
+                      const fittingBoltSets = getBoltSetCountPerFitting(
+                        fittingEndConfig,
+                        isEqualBranch,
+                      );
+                      flangeCount = fittingBoltSets.mainBoltSets;
+                      branchFlangeCount = fittingBoltSets.branchBoltSets;
+                    } else {
+                      // Straight pipe - use bolt set count function
+                      const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      hasFlanges = pipeEndConfig !== "PE";
+                      flangeCount = getBoltSetCountPerPipe(pipeEndConfig);
+                      nbMm = entry.specs?.nominalBoreMm || 100;
                     }
-                  } else if (entry.itemType === 'fitting') {
-                    const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                    hasFlanges = fittingEndConfig !== 'PE';
-                    nbMm = entry.specs?.nominalDiameterMm || 100;
-                    branchNbMm = entry.specs?.branchNominalDiameterMm || nbMm;
-                    // Use bolt set count function for fittings
-                    const isEqualBranch = nbMm === branchNbMm;
-                    const fittingBoltSets = getBoltSetCountPerFitting(fittingEndConfig, isEqualBranch);
-                    flangeCount = fittingBoltSets.mainBoltSets;
-                    branchFlangeCount = fittingBoltSets.branchBoltSets;
-                  } else {
-                    // Straight pipe - use bolt set count function
-                    const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                    hasFlanges = pipeEndConfig !== 'PE';
-                    flangeCount = getBoltSetCountPerPipe(pipeEndConfig);
-                    nbMm = entry.specs?.nominalBoreMm || 100;
-                  }
 
-                  if (!hasFlanges && stubFlanges.length === 0) return null;
+                    if (!hasFlanges && stubFlanges.length === 0) return null;
 
-                  const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
-                  const bnwInfo = getBnwSetInfo(nbMm, pressureClass);
-                  const branchBnwInfo = branchFlangeCount > 0 ? getBnwSetInfo(branchNbMm, pressureClass) : null;
-                  const gasketType = rfqData.globalSpecs?.gasketType;
-                  const qty = entry.specs?.quantityValue || 1;
-                  // Main bolt sets (not including stubs - stubs shown separately)
-                  const mainBoltSets = flangeCount * qty;
-                  const branchBoltSets = branchFlangeCount * qty;
+                    const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || "PN16";
+                    const bnwInfo = getBnwSetInfo(nbMm, pressureClass);
+                    const branchBnwInfo =
+                      branchFlangeCount > 0 ? getBnwSetInfo(branchNbMm, pressureClass) : null;
+                    const gasketType = rfqData.globalSpecs?.gasketType;
+                    const qty = entry.specs?.quantityValue || 1;
+                    // Main bolt sets (not including stubs - stubs shown separately)
+                    const mainBoltSets = flangeCount * qty;
+                    const branchBoltSets = branchFlangeCount * qty;
 
-                  return (
-                    <div className="mt-2 pt-2 border-t border-gray-200">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                        <div className="text-orange-700">
-                          <span className="font-medium">Bolt Sets:</span> {mainBoltSets} {mainBoltSets === 1 ? 'set' : 'sets'} @ {bnwInfo.boltSize} × {bnwInfo.holesPerFlange} holes ({nbMm}NB)
-                          {branchBoltSets > 0 && branchBnwInfo && (
-                            <span className="ml-2">+ Branch: {branchBoltSets} × {branchBnwInfo.boltSize} × {branchBnwInfo.holesPerFlange} holes ({branchNbMm}NB)</span>
-                          )}
-                          {stubFlanges.length > 0 && stubFlanges.map((stub, i) => {
-                            const stubBnwInfo = getBnwSetInfo(stub.nb, pressureClass);
-                            return (
-                              <span key={i} className="ml-2">+ Stub {i+1}: {stub.count * qty} × {stubBnwInfo.boltSize} × {stubBnwInfo.holesPerFlange} holes ({stub.nb}NB)</span>
-                            );
-                          })}
-                        </div>
-                        {gasketType && (
-                          <div className="text-green-700">
-                            <span className="font-medium">Gaskets:</span> {mainBoltSets} × {gasketType} ({nbMm}NB)
-                            {branchBoltSets > 0 && (
-                              <span className="ml-2">+ Branch: {branchBoltSets} × ({branchNbMm}NB)</span>
+                    return (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                          <div className="text-orange-700">
+                            <span className="font-medium">Bolt Sets:</span> {mainBoltSets}{" "}
+                            {mainBoltSets === 1 ? "set" : "sets"} @ {bnwInfo.boltSize} ×{" "}
+                            {bnwInfo.holesPerFlange} holes ({nbMm}NB)
+                            {branchBoltSets > 0 && branchBnwInfo && (
+                              <span className="ml-2">
+                                + Branch: {branchBoltSets} × {branchBnwInfo.boltSize} ×{" "}
+                                {branchBnwInfo.holesPerFlange} holes ({branchNbMm}NB)
+                              </span>
                             )}
-                            {stubFlanges.length > 0 && stubFlanges.map((stub, i) => (
-                              <span key={i} className="ml-2">+ Stub {i+1}: {stub.count * qty} × ({stub.nb}NB)</span>
-                            ))}
+                            {stubFlanges.length > 0 &&
+                              stubFlanges.map((stub, i) => {
+                                const stubBnwInfo = getBnwSetInfo(stub.nb, pressureClass);
+                                return (
+                                  <span key={i} className="ml-2">
+                                    + Stub {i + 1}: {stub.count * qty} × {stubBnwInfo.boltSize} ×{" "}
+                                    {stubBnwInfo.holesPerFlange} holes ({stub.nb}NB)
+                                  </span>
+                                );
+                              })}
                           </div>
-                        )}
+                          {gasketType && (
+                            <div className="text-green-700">
+                              <span className="font-medium">Gaskets:</span> {mainBoltSets} ×{" "}
+                              {gasketType} ({nbMm}NB)
+                              {branchBoltSets > 0 && (
+                                <span className="ml-2">
+                                  + Branch: {branchBoltSets} × ({branchNbMm}NB)
+                                </span>
+                              )}
+                              {stubFlanges.length > 0 &&
+                                stubFlanges.map((stub, i) => (
+                                  <span key={i} className="ml-2">
+                                    + Stub {i + 1}: {stub.count * qty} × ({stub.nb}NB)
+                                  </span>
+                                ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
               </div>
             ))}
           </div>
@@ -595,7 +705,9 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
 
         {/* Total Summary */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-blue-800 mb-4">Total Summary (All Items Combined)</h3>
+          <h3 className="text-lg font-semibold text-blue-800 mb-4">
+            Total Summary (All Items Combined)
+          </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             <div className="text-center">
               <p className="text-sm font-medium text-blue-700">Total Entries</p>
@@ -607,9 +719,7 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-blue-700">Total Weight</p>
-              <p className="text-2xl font-bold text-blue-900">
-                {getTotalWeight().toFixed(2)} kg
-              </p>
+              <p className="text-2xl font-bold text-blue-900">{getTotalWeight().toFixed(2)} kg</p>
             </div>
             {/* Total Weld Length */}
             {(() => {
@@ -618,47 +728,55 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
               allItems.forEach((entry: any) => {
                 const qty = entry.specs?.quantityValue || 1;
                 let itemQty = qty;
-                if (entry.itemType !== 'bend' && entry.itemType !== 'fitting' && entry.specs?.quantityType === 'total_length') {
+                if (
+                  entry.itemType !== "bend" &&
+                  entry.itemType !== "fitting" &&
+                  entry.specs?.quantityType === "total_length"
+                ) {
                   itemQty = 1;
                 }
-                if (entry.itemType === 'bend') {
+                if (entry.itemType === "bend") {
                   const nb = entry.specs?.nominalBoreMm;
-                  const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
+                  const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
                   const flangeConnections = getWeldCountPerBend(bendEndConfig);
                   if (nb && flangeConnections > 0) {
-                    const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                    const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
                     // Each flange connection has 2 welds (inside + outside), so x2
                     const weldsPerFlange = 2;
-                    totalWeldLengthM += (flangeConnections * weldsPerFlange * Math.PI * od / 1000) * itemQty;
-                    totalWeldCount += (flangeConnections * weldsPerFlange) * itemQty;
+                    totalWeldLengthM +=
+                      ((flangeConnections * weldsPerFlange * Math.PI * od) / 1000) * itemQty;
+                    totalWeldCount += flangeConnections * weldsPerFlange * itemQty;
                   }
-                } else if (entry.itemType === 'fitting') {
+                } else if (entry.itemType === "fitting") {
                   const nb = entry.specs?.nominalDiameterMm;
                   const branchNb = entry.specs?.branchNominalDiameterMm || nb;
-                  const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                  const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
                   const flangeConnections = getWeldCountPerFitting(fittingEndConfig);
                   if (nb && flangeConnections > 0) {
-                    const mainOd = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
-                    const branchOd = NB_TO_OD_LOOKUP[branchNb] || (branchNb * 1.05);
+                    const mainOd = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+                    const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.05;
                     // Each flange connection has 2 welds (inside + outside), so x2
                     const weldsPerFlange = 2;
                     let linearMm = 0;
-                    if (flangeConnections >= 3) linearMm = ((2 * Math.PI * mainOd) + (Math.PI * branchOd)) * weldsPerFlange;
-                    else if (flangeConnections === 2) linearMm = 2 * Math.PI * mainOd * weldsPerFlange;
+                    if (flangeConnections >= 3)
+                      linearMm = (2 * Math.PI * mainOd + Math.PI * branchOd) * weldsPerFlange;
+                    else if (flangeConnections === 2)
+                      linearMm = 2 * Math.PI * mainOd * weldsPerFlange;
                     else linearMm = Math.PI * mainOd * weldsPerFlange;
                     totalWeldLengthM += (linearMm / 1000) * itemQty;
-                    totalWeldCount += (flangeConnections * weldsPerFlange) * itemQty;
+                    totalWeldCount += flangeConnections * weldsPerFlange * itemQty;
                   }
                 } else {
                   const nb = entry.specs?.nominalBoreMm;
-                  const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
+                  const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
                   const flangeConnections = getWeldCountPerPipe(pipeEndConfig);
                   if (nb && flangeConnections > 0) {
-                    const od = NB_TO_OD_LOOKUP[nb] || (nb * 1.05);
+                    const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
                     // Each flange connection has 2 welds (inside + outside), so x2
                     const weldsPerFlange = 2;
-                    totalWeldLengthM += (flangeConnections * weldsPerFlange * Math.PI * od / 1000) * itemQty;
-                    totalWeldCount += (flangeConnections * weldsPerFlange) * itemQty;
+                    totalWeldLengthM +=
+                      ((flangeConnections * weldsPerFlange * Math.PI * od) / 1000) * itemQty;
+                    totalWeldCount += flangeConnections * weldsPerFlange * itemQty;
                   }
                 }
               });
@@ -666,7 +784,9 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
               return (
                 <div className="text-center">
                   <p className="text-sm font-medium text-purple-700">Total Welds</p>
-                  <p className="text-2xl font-bold text-purple-900">{totalWeldLengthM.toFixed(1)} m</p>
+                  <p className="text-2xl font-bold text-purple-900">
+                    {totalWeldLengthM.toFixed(1)} m
+                  </p>
                   <p className="text-xs text-purple-600">({totalWeldCount} welds)</p>
                 </div>
               );
@@ -677,51 +797,73 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
               allItems.forEach((entry: any) => {
                 const qty = entry.specs?.quantityValue || 1;
                 let itemQty = qty;
-                if (entry.itemType !== 'bend' && entry.itemType !== 'fitting' && entry.specs?.quantityType === 'total_length') {
+                if (
+                  entry.itemType !== "bend" &&
+                  entry.itemType !== "fitting" &&
+                  entry.specs?.quantityType === "total_length"
+                ) {
                   itemQty = 1;
                 }
-                if (entry.itemType === 'bend') {
+                if (entry.itemType === "bend") {
                   const nb = entry.specs?.nominalBoreMm;
-                  const bendEndConfig = entry.specs?.bendEndConfiguration || 'PE';
-                  if (bendEndConfig !== 'PE') {
-                    const flangeCount = bendEndConfig === 'FBE' ? 2 :
-                      (bendEndConfig === '2xLF' || bendEndConfig === '2X_RF' || bendEndConfig === 'FOE_LF' || bendEndConfig === 'FOE_RF' ? 2 : 1);
+                  const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
+                  if (bendEndConfig !== "PE") {
+                    const flangeCount =
+                      bendEndConfig === "FBE"
+                        ? 2
+                        : bendEndConfig === "2xLF" ||
+                            bendEndConfig === "2X_RF" ||
+                            bendEndConfig === "FOE_LF" ||
+                            bendEndConfig === "FOE_RF"
+                          ? 2
+                          : 1;
                     const key = `${nb}NB`;
-                    flangesBySize[key] = (flangesBySize[key] || 0) + (flangeCount * itemQty);
+                    flangesBySize[key] = (flangesBySize[key] || 0) + flangeCount * itemQty;
                   }
-                } else if (entry.itemType === 'fitting') {
+                } else if (entry.itemType === "fitting") {
                   const nb = entry.specs?.nominalDiameterMm;
                   const branchNb = entry.specs?.branchNominalDiameterMm || nb;
-                  const fittingEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                  if (fittingEndConfig !== 'PE') {
-                    const config = fittingEndConfig.split('');
-                    let mainFlanges = 0, branchFlanges = 0;
-                    if (config[0] === 'F') mainFlanges++;
-                    if (config[1] === 'F') mainFlanges++;
-                    if (config[2] === 'F') branchFlanges++;
+                  const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                  if (fittingEndConfig !== "PE") {
+                    const config = fittingEndConfig.split("");
+                    let mainFlanges = 0,
+                      branchFlanges = 0;
+                    if (config[0] === "F") mainFlanges++;
+                    if (config[1] === "F") mainFlanges++;
+                    if (config[2] === "F") branchFlanges++;
                     if (mainFlanges > 0) {
                       const key = `${nb}NB`;
-                      flangesBySize[key] = (flangesBySize[key] || 0) + (mainFlanges * itemQty);
+                      flangesBySize[key] = (flangesBySize[key] || 0) + mainFlanges * itemQty;
                     }
                     if (branchFlanges > 0) {
                       const key = `${branchNb}NB`;
-                      flangesBySize[key] = (flangesBySize[key] || 0) + (branchFlanges * itemQty);
+                      flangesBySize[key] = (flangesBySize[key] || 0) + branchFlanges * itemQty;
                     }
                   }
                 } else {
                   const nb = entry.specs?.nominalBoreMm;
-                  const pipeEndConfig = entry.specs?.pipeEndConfiguration || 'PE';
-                  if (pipeEndConfig !== 'PE') {
-                    const flangeCount = pipeEndConfig === 'FBE' ? 2 :
-                      (pipeEndConfig === '2xLF' || pipeEndConfig === '2X_RF' || pipeEndConfig === 'FOE_LF' || pipeEndConfig === 'FOE_RF' ? 2 : 1);
+                  const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                  if (pipeEndConfig !== "PE") {
+                    const flangeCount =
+                      pipeEndConfig === "FBE"
+                        ? 2
+                        : pipeEndConfig === "2xLF" ||
+                            pipeEndConfig === "2X_RF" ||
+                            pipeEndConfig === "FOE_LF" ||
+                            pipeEndConfig === "FOE_RF"
+                          ? 2
+                          : 1;
                     const key = `${nb}NB`;
-                    flangesBySize[key] = (flangesBySize[key] || 0) + (flangeCount * itemQty);
+                    flangesBySize[key] = (flangesBySize[key] || 0) + flangeCount * itemQty;
                   }
                 }
               });
-              const totalFlanges = Object.values(flangesBySize).reduce((sum, count) => sum + count, 0);
+              const totalFlanges = Object.values(flangesBySize).reduce(
+                (sum, count) => sum + count,
+                0,
+              );
               if (totalFlanges === 0) return null;
-              const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || 'PN16';
+              const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || "PN16";
               return (
                 <div className="text-center">
                   <p className="text-sm font-medium text-blue-700">Total Flanges</p>
@@ -730,21 +872,26 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
                 </div>
               );
             })()}
-            {hasSurfaceProtection && (() => {
-              const surfaceAreas = getTotalSurfaceAreas();
-              return (
-                <>
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-indigo-700">External Area</p>
-                    <p className="text-2xl font-bold text-indigo-900">{surfaceAreas.external.toFixed(2)} m²</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-indigo-700">Internal Area</p>
-                    <p className="text-2xl font-bold text-indigo-900">{surfaceAreas.internal.toFixed(2)} m²</p>
-                  </div>
-                </>
-              );
-            })()}
+            {hasSurfaceProtection &&
+              (() => {
+                const surfaceAreas = getTotalSurfaceAreas();
+                return (
+                  <>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-indigo-700">External Area</p>
+                      <p className="text-2xl font-bold text-indigo-900">
+                        {surfaceAreas.external.toFixed(2)} m²
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-indigo-700">Internal Area</p>
+                      <p className="text-2xl font-bold text-indigo-900">
+                        {surfaceAreas.internal.toFixed(2)} m²
+                      </p>
+                    </div>
+                  </>
+                );
+              })()}
           </div>
         </div>
 
@@ -766,10 +913,12 @@ export default function ReviewSubmitStep({ entries, rfqData, onNextStep, onPrevS
               Review BOQ →
             </button>
           </div>
-          
+
           {Object.keys(errors).length > 0 && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm font-medium text-red-800 mb-2">Please fix the following errors:</p>
+              <p className="text-sm font-medium text-red-800 mb-2">
+                Please fix the following errors:
+              </p>
               <ul className="text-sm text-red-600 space-y-1">
                 {Object.entries(errors).map(([key, message]) => (
                   <li key={key}>• {message as string}</li>

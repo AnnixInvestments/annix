@@ -1,7 +1,7 @@
-import * as fs from 'fs';
+import * as fs from "node:fs";
 
-const filePath = 'src/app/components/rfq/StraightPipeRfqOrchestrator.tsx';
-let content = fs.readFileSync(filePath, 'utf8');
+const filePath = "src/app/components/rfq/StraightPipeRfqOrchestrator.tsx";
+let content = fs.readFileSync(filePath, "utf8");
 
 // Gasket weight lookup table and function
 const gasketWeightCode = `
@@ -70,19 +70,19 @@ const getGasketWeight = (gasketType: string, nbMm: number): number => {
 `;
 
 // Check if already exists
-if (content.includes('GASKET_WEIGHTS')) {
-  console.log('⚠️ GASKET_WEIGHTS already exists');
+if (content.includes("GASKET_WEIGHTS")) {
+  console.log("⚠️ GASKET_WEIGHTS already exists");
 } else {
   // Find getBnwSetInfo function ending
-  const getBnwSetInfoEnd = content.indexOf('};', content.indexOf('const getBnwSetInfo'));
+  const getBnwSetInfoEnd = content.indexOf("};", content.indexOf("const getBnwSetInfo"));
   if (getBnwSetInfoEnd > 0) {
-    const insertPoint = content.indexOf('\n', getBnwSetInfoEnd) + 1;
+    const insertPoint = content.indexOf("\n", getBnwSetInfoEnd) + 1;
     content = content.substring(0, insertPoint) + gasketWeightCode + content.substring(insertPoint);
-    console.log('✅ Added GASKET_WEIGHTS lookup table and getGasketWeight function');
+    console.log("✅ Added GASKET_WEIGHTS lookup table and getGasketWeight function");
   } else {
-    console.log('❌ Could not find insertion point');
+    console.log("❌ Could not find insertion point");
   }
 }
 
 fs.writeFileSync(filePath, content);
-console.log('✅ File saved');
+console.log("✅ File saved");

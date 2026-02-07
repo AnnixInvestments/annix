@@ -1,74 +1,65 @@
-import {
-  MigrationInterface,
-  QueryRunner,
-  Table,
-  TableForeignKey,
-} from 'typeorm';
+import { MigrationInterface, QueryRunner, Table, TableForeignKey } from "typeorm";
 
 export class CreateWasherTable1772700000000 implements MigrationInterface {
-  name = 'CreateWasherTable1772700000000';
+  name = "CreateWasherTable1772700000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    console.warn('Creating washers table...');
+    console.warn("Creating washers table...");
 
-    const tableExists = await queryRunner.hasTable('washers');
+    const tableExists = await queryRunner.hasTable("washers");
     if (tableExists) {
       const columns = await queryRunner.query(
         `SELECT column_name FROM information_schema.columns WHERE table_name = 'washers' AND column_name = 'bolt_id'`,
       );
       if (columns.length > 0) {
-        console.warn(
-          'Washers table already exists with correct schema, skipping creation.',
-        );
+        console.warn("Washers table already exists with correct schema, skipping creation.");
         return;
       }
-      console.warn(
-        'Washers table exists with incorrect schema, dropping and recreating...',
-      );
-      await queryRunner.dropTable('washers');
+      console.warn("Washers table exists with incorrect schema, dropping and recreating...");
+      await queryRunner.dropTable("washers");
     }
 
     await queryRunner.createTable(
       new Table({
-        name: 'washers',
+        name: "washers",
         columns: [
           {
-            name: 'id',
-            type: 'int',
+            name: "id",
+            type: "int",
             isPrimary: true,
             isGenerated: true,
-            generationStrategy: 'increment',
+            generationStrategy: "increment",
           },
           {
-            name: 'bolt_id',
-            type: 'int',
+            name: "bolt_id",
+            type: "int",
           },
           {
-            name: 'type',
-            type: 'varchar',
+            name: "type",
+            type: "varchar",
           },
           {
-            name: 'material',
-            type: 'varchar',
+            name: "material",
+            type: "varchar",
             isNullable: true,
           },
           {
-            name: 'massKg',
-            type: 'float',
+            name: "massKg",
+            type: "float",
           },
           {
-            name: 'od_mm',
-            type: 'float',
+            name: "od_mm",
+            type: "float",
             isNullable: true,
           },
           {
-            name: 'id_mm',
-            type: 'float',
+            name: "id_mm",
+            type: "float",
             isNullable: true,
           },
           {
-            name: 'thickness_mm',
-            type: 'float',
+            name: "thickness_mm",
+            type: "float",
             isNullable: true,
           },
         ],
@@ -77,19 +68,19 @@ export class CreateWasherTable1772700000000 implements MigrationInterface {
     );
 
     await queryRunner.createForeignKey(
-      'washers',
+      "washers",
       new TableForeignKey({
-        columnNames: ['bolt_id'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'bolts',
-        onDelete: 'CASCADE',
+        columnNames: ["bolt_id"],
+        referencedColumnNames: ["id"],
+        referencedTableName: "bolts",
+        onDelete: "CASCADE",
       }),
     );
 
-    console.warn('Washers table created successfully.');
+    console.warn("Washers table created successfully.");
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropTable('washers');
+    await queryRunner.dropTable("washers");
   }
 }

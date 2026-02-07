@@ -1,9 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateRubberPortalTables1738500000000
-  implements MigrationInterface
-{
-  name = 'CreateRubberPortalTables1738500000000';
+export class CreateRubberPortalTables1738500000000 implements MigrationInterface {
+  name = "CreateRubberPortalTables1738500000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -118,28 +116,22 @@ export class CreateRubberPortalTables1738500000000
     `);
 
     await queryRunner.query(
-      `CREATE INDEX "IDX_rubber_product_coding_type" ON "rubber_product_coding" ("coding_type")`
+      `CREATE INDEX "IDX_rubber_product_coding_type" ON "rubber_product_coding" ("coding_type")`,
+    );
+    await queryRunner.query(`CREATE INDEX "IDX_rubber_order_status" ON "rubber_order" ("status")`);
+    await queryRunner.query(
+      `CREATE INDEX "IDX_rubber_order_company" ON "rubber_order" ("company_id")`,
     );
     await queryRunner.query(
-      `CREATE INDEX "IDX_rubber_order_status" ON "rubber_order" ("status")`
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_rubber_order_company" ON "rubber_order" ("company_id")`
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_rubber_order_item_order" ON "rubber_order_item" ("order_id")`
+      `CREATE INDEX "IDX_rubber_order_item_order" ON "rubber_order_item" ("order_id")`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_rubber_order_item_order"`
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_order_item_order"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_order_company"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_order_status"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_rubber_product_coding_type"`
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_rubber_product_coding_type"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "rubber_order_item"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "rubber_order"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "rubber_product"`);

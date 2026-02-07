@@ -89,16 +89,12 @@
 
 // }
 
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { NominalOutsideDiameterMm } from './entities/nominal-outside-diameter-mm.entity';
-import { CreateNominalOutsideDiameterMmDto } from './dto/create-nominal-outside-diameter-mm.dto';
-import { UpdateNominalOutsideDiameterMmDto } from './dto/update-nominal-outside-diameter-mm.dto';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { CreateNominalOutsideDiameterMmDto } from "./dto/create-nominal-outside-diameter-mm.dto";
+import { UpdateNominalOutsideDiameterMmDto } from "./dto/update-nominal-outside-diameter-mm.dto";
+import { NominalOutsideDiameterMm } from "./entities/nominal-outside-diameter-mm.entity";
 
 @Injectable()
 export class NominalOutsideDiameterMmService {
@@ -107,9 +103,7 @@ export class NominalOutsideDiameterMmService {
     private readonly nominalRepo: Repository<NominalOutsideDiameterMm>,
   ) {}
 
-  async create(
-    dto: CreateNominalOutsideDiameterMmDto,
-  ): Promise<NominalOutsideDiameterMm> {
+  async create(dto: CreateNominalOutsideDiameterMmDto): Promise<NominalOutsideDiameterMm> {
     const existing = await this.nominalRepo.findOne({
       where: {
         nominal_diameter_mm: dto.nominal_diameter_mm,
@@ -117,26 +111,23 @@ export class NominalOutsideDiameterMmService {
       },
     });
     if (existing)
-      throw new BadRequestException(
-        'This nominal + outside diameter combination already exists',
-      );
+      throw new BadRequestException("This nominal + outside diameter combination already exists");
     const nominal = this.nominalRepo.create(dto);
     return this.nominalRepo.save(nominal);
   }
 
   async findAll(): Promise<NominalOutsideDiameterMm[]> {
     return this.nominalRepo.find({
-      relations: ['pipeDimensions', 'fittingBores'],
+      relations: ["pipeDimensions", "fittingBores"],
     });
   }
 
   async findOne(id: number): Promise<NominalOutsideDiameterMm> {
     const nominal = await this.nominalRepo.findOne({
       where: { id },
-      relations: ['pipeDimensions', 'fittingBores'],
+      relations: ["pipeDimensions", "fittingBores"],
     });
-    if (!nominal)
-      throw new NotFoundException(`NominalOutsideDiameterMm ${id} not found`);
+    if (!nominal) throw new NotFoundException(`NominalOutsideDiameterMm ${id} not found`);
     return nominal;
   }
 

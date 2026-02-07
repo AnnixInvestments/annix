@@ -1,42 +1,31 @@
 import {
-  Injectable,
-  NotFoundException,
   BadRequestException,
   ForbiddenException,
-  Logger,
-  Inject,
   forwardRef,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
-import { now } from '../lib/datetime';
-
-import {
-  CustomerProfile,
-  CustomerOnboarding,
-  CustomerDocument,
-} from './entities';
-import { CustomerOnboardingStatus } from './entities/customer-onboarding.entity';
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { AuditService } from "../audit/audit.service";
+import { AuditAction } from "../audit/entities/audit-log.entity";
+import { EmailService } from "../email/email.service";
+import { now } from "../lib/datetime";
+import { DocumentVerificationService } from "../nix/services/document-verification.service";
+import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
+import { S3StorageService } from "../storage/s3-storage.service";
+import { CustomerDocument, CustomerOnboarding, CustomerProfile } from "./entities";
 import {
   CustomerDocumentType,
   CustomerDocumentValidationStatus,
-} from './entities/customer-document.entity';
-import { AuditService } from '../audit/audit.service';
-import { AuditAction } from '../audit/entities/audit-log.entity';
-import { EmailService } from '../email/email.service';
-import { S3StorageService } from '../storage/s3-storage.service';
-import { DocumentVerificationService } from '../nix/services/document-verification.service';
-import { SecureDocumentsService } from '../secure-documents/secure-documents.service';
+} from "./entities/customer-document.entity";
+import { CustomerOnboardingStatus } from "./entities/customer-onboarding.entity";
 
 // File constraints
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-];
+const ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/gif"];
 
 @Injectable()
 export class CustomerDocumentService {
@@ -60,7 +49,7 @@ export class CustomerDocumentService {
   async getDocuments(customerId: number) {
     const documents = await this.documentRepo.find({
       where: { customerId },
-      order: { uploadedAt: 'DESC' },
+      order: { uploadedAt: "DESC" },
     });
 
     return documents.map((doc) => ({
@@ -103,7 +92,7 @@ export class CustomerDocumentService {
     });
 
     if (!onboarding) {
-      throw new NotFoundException('Onboarding record not found');
+      throw new NotFoundException("Onboarding record not found");
     }
 
     // Check if there's an existing invalid document of this type that needs replacement
@@ -122,31 +111,32 @@ export class CustomerDocumentService {
         where: { customerId, documentType: CustomerDocumentType.BEE_CERT },
       });
       if (existingBeeDoc?.expiryDate) {
-        const today = now().startOf('day');
-        const expiry = now().set({
-          year: existingBeeDoc.expiryDate.getFullYear(),
-          month: existingBeeDoc.expiryDate.getMonth() + 1,
-          day: existingBeeDoc.expiryDate.getDate(),
-        }).startOf('day');
+        const today = now().startOf("day");
+        const expiry = now()
+          .set({
+            year: existingBeeDoc.expiryDate.getFullYear(),
+            month: existingBeeDoc.expiryDate.getMonth() + 1,
+            day: existingBeeDoc.expiryDate.getDate(),
+          })
+          .startOf("day");
         isExpiredBeeCertReplacement = expiry <= today;
       }
     }
 
     // Allow uploads in DRAFT/REJECTED status, replacing invalid document, or replacing expired BEE cert
     if (
-      ![
-        CustomerOnboardingStatus.DRAFT,
-        CustomerOnboardingStatus.REJECTED,
-      ].includes(onboarding.status) &&
+      ![CustomerOnboardingStatus.DRAFT, CustomerOnboardingStatus.REJECTED].includes(
+        onboarding.status,
+      ) &&
       !existingInvalidDoc &&
       !isExpiredBeeCertReplacement
     ) {
-      throw new ForbiddenException('Cannot upload documents at this stage');
+      throw new ForbiddenException("Cannot upload documents at this stage");
     }
 
     // Validate file
     if (!file) {
-      throw new BadRequestException('No file provided');
+      throw new BadRequestException("No file provided");
     }
 
     if (file.size > MAX_FILE_SIZE) {
@@ -157,7 +147,7 @@ export class CustomerDocumentService {
 
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       throw new BadRequestException(
-        `File type not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(', ')}`,
+        `File type not allowed. Allowed types: ${ALLOWED_MIME_TYPES.join(", ")}`,
       );
     }
 
@@ -191,9 +181,10 @@ export class CustomerDocumentService {
       // Apply pre-verification results if provided
       if (verificationResult?.success) {
         existingDoc.validationStatus = this.determineValidationStatus(verificationResult);
-        existingDoc.validationNotes = verificationResult.allFieldsMatch && verificationResult.overallConfidence >= 0.7
-          ? 'Automatic validation passed'
-          : 'Requires manual verification';
+        existingDoc.validationNotes =
+          verificationResult.allFieldsMatch && verificationResult.overallConfidence >= 0.7
+            ? "Automatic validation passed"
+            : "Requires manual verification";
         existingDoc.ocrExtractedData = this.extractOcrData(verificationResult.extractedData);
         existingDoc.fieldResults = this.extractFieldResults(verificationResult.fieldResults);
         existingDoc.verificationConfidence = verificationResult.overallConfidence;
@@ -207,7 +198,7 @@ export class CustomerDocumentService {
       const savedDoc = await this.documentRepo.save(existingDoc);
 
       await this.auditService.log({
-        entityType: 'customer_document',
+        entityType: "customer_document",
         entityId: savedDoc.id,
         action: AuditAction.UPDATE,
         newValues: {
@@ -247,9 +238,10 @@ export class CustomerDocumentService {
 
     if (verificationResult?.success) {
       documentData.validationStatus = this.determineValidationStatus(verificationResult);
-      documentData.validationNotes = verificationResult.allFieldsMatch && verificationResult.overallConfidence >= 0.7
-        ? 'Automatic validation passed'
-        : 'Requires manual verification';
+      documentData.validationNotes =
+        verificationResult.allFieldsMatch && verificationResult.overallConfidence >= 0.7
+          ? "Automatic validation passed"
+          : "Requires manual verification";
       documentData.ocrExtractedData = this.extractOcrData(verificationResult.extractedData);
       documentData.fieldResults = this.extractFieldResults(verificationResult.fieldResults);
       documentData.verificationConfidence = verificationResult.overallConfidence;
@@ -263,7 +255,7 @@ export class CustomerDocumentService {
     const savedDoc = await this.documentRepo.save(document);
 
     await this.auditService.log({
-      entityType: 'customer_document',
+      entityType: "customer_document",
       entityId: savedDoc.id,
       action: AuditAction.CREATE,
       newValues: {
@@ -298,7 +290,7 @@ export class CustomerDocumentService {
       try {
         const profile = await this.profileRepo.findOne({
           where: { id: customerId },
-          relations: ['user'],
+          relations: ["user"],
         });
         if (!profile) {
           this.logger.warn(`Profile not found for customer ${customerId} - skipping secure copy`);
@@ -306,7 +298,7 @@ export class CustomerDocumentService {
         }
 
         await this.secureDocumentsService.createFromEntityDocument(
-          'customer',
+          "customer",
           customerId,
           documentType,
           file.buffer,
@@ -328,7 +320,7 @@ export class CustomerDocumentService {
       try {
         this.logger.log(`Triggering verification for document ${documentId}`);
         await this.documentVerificationService.verifyDocument({
-          entityType: 'customer',
+          entityType: "customer",
           entityId: customerId,
           documentId,
         });
@@ -339,16 +331,17 @@ export class CustomerDocumentService {
     });
   }
 
-  private determineValidationStatus(
-    verificationResult: { allFieldsMatch: boolean; overallConfidence: number },
-  ): CustomerDocumentValidationStatus {
+  private determineValidationStatus(verificationResult: {
+    allFieldsMatch: boolean;
+    overallConfidence: number;
+  }): CustomerDocumentValidationStatus {
     if (verificationResult.allFieldsMatch && verificationResult.overallConfidence >= 0.7) {
       return CustomerDocumentValidationStatus.VALID;
     }
     return CustomerDocumentValidationStatus.MANUAL_REVIEW;
   }
 
-  private extractOcrData(extractedData: any): CustomerDocument['ocrExtractedData'] {
+  private extractOcrData(extractedData: any): CustomerDocument["ocrExtractedData"] {
     if (!extractedData) {
       return null;
     }
@@ -372,30 +365,26 @@ export class CustomerDocumentService {
       match: boolean;
       similarity?: number;
     }>,
-  ): CustomerDocument['fieldResults'] {
+  ): CustomerDocument["fieldResults"] {
     if (!fieldResults) {
       return null;
     }
     return fieldResults.map((fr) => ({
       fieldName: fr.field,
-      expected: String(fr.expected ?? ''),
-      extracted: String(fr.extracted ?? ''),
+      expected: String(fr.expected ?? ""),
+      extracted: String(fr.extracted ?? ""),
       matches: fr.match,
       similarity: fr.similarity ?? (fr.match ? 100 : 0),
     }));
   }
 
-  async deleteDocument(
-    customerId: number,
-    documentId: number,
-    clientIp: string,
-  ) {
+  async deleteDocument(customerId: number, documentId: number, clientIp: string) {
     const document = await this.documentRepo.findOne({
       where: { id: documentId, customerId },
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     // Validate onboarding status - allow deletion if document is invalid (rejected)
@@ -408,13 +397,12 @@ export class CustomerDocumentService {
 
     if (
       onboarding &&
-      ![
-        CustomerOnboardingStatus.DRAFT,
-        CustomerOnboardingStatus.REJECTED,
-      ].includes(onboarding.status) &&
+      ![CustomerOnboardingStatus.DRAFT, CustomerOnboardingStatus.REJECTED].includes(
+        onboarding.status,
+      ) &&
       !isInvalidDocument
     ) {
-      throw new ForbiddenException('Cannot delete documents at this stage');
+      throw new ForbiddenException("Cannot delete documents at this stage");
     }
 
     // Delete file from storage
@@ -427,7 +415,7 @@ export class CustomerDocumentService {
     await this.documentRepo.remove(document);
 
     await this.auditService.log({
-      entityType: 'customer_document',
+      entityType: "customer_document",
       entityId: documentId,
       action: AuditAction.DELETE,
       newValues: {
@@ -437,7 +425,7 @@ export class CustomerDocumentService {
       ipAddress: clientIp,
     });
 
-    return { success: true, message: 'Document deleted successfully' };
+    return { success: true, message: "Document deleted successfully" };
   }
 
   async getDocumentFile(customerId: number, documentId: number) {
@@ -446,12 +434,12 @@ export class CustomerDocumentService {
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     const exists = await this.storageService.exists(document.filePath);
     if (!exists) {
-      throw new NotFoundException('Document file not found');
+      throw new NotFoundException("Document file not found");
     }
 
     const buffer = await this.storageService.download(document.filePath);
@@ -484,11 +472,11 @@ export class CustomerDocumentService {
   ) {
     const document = await this.documentRepo.findOne({
       where: { id: documentId, customerId },
-      relations: ['customer', 'customer.company', 'customer.user'],
+      relations: ["customer", "customer.company", "customer.user"],
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     // Determine validation status based on OCR result
@@ -497,7 +485,7 @@ export class CustomerDocumentService {
 
     if (ocrResult.ocrFailed) {
       validationStatus = CustomerDocumentValidationStatus.MANUAL_REVIEW;
-      validationNotes = 'OCR processing failed - requires manual review';
+      validationNotes = "OCR processing failed - requires manual review";
     } else if (ocrResult.requiresManualReview) {
       validationStatus = CustomerDocumentValidationStatus.MANUAL_REVIEW;
       if (ocrResult.mismatches && ocrResult.mismatches.length > 0) {
@@ -506,18 +494,17 @@ export class CustomerDocumentService {
             (m) =>
               `${m.field}: expected "${m.expected}", found "${m.extracted}" (${m.similarity ? Math.round(m.similarity * 100) : 0}% match)`,
           )
-          .join('; ');
+          .join("; ");
         validationNotes = `Validation mismatches detected: ${mismatchDetails}`;
       } else {
-        validationNotes =
-          'Validation mismatches detected - requires manual review';
+        validationNotes = "Validation mismatches detected - requires manual review";
       }
     } else if (ocrResult.isValid) {
       validationStatus = CustomerDocumentValidationStatus.VALID;
-      validationNotes = 'Automatic validation passed';
+      validationNotes = "Automatic validation passed";
     } else {
       validationStatus = CustomerDocumentValidationStatus.INVALID;
-      validationNotes = 'Validation failed';
+      validationNotes = "Validation failed";
     }
 
     // Update document
@@ -532,8 +519,7 @@ export class CustomerDocumentService {
     // Send admin notification if manual review is required
     if (validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW) {
       await this.emailService.sendManualReviewNotification(
-        document.customer.company.tradingName ||
-          document.customer.company.legalName,
+        document.customer.company.tradingName || document.customer.company.legalName,
         document.customer.user.email,
         document.customer.id,
         document.documentType,
@@ -542,7 +528,7 @@ export class CustomerDocumentService {
     }
 
     await this.auditService.log({
-      entityType: 'customer_document',
+      entityType: "customer_document",
       entityId: documentId,
       action: AuditAction.UPDATE,
       newValues: {
@@ -551,15 +537,14 @@ export class CustomerDocumentService {
         ocrFailed: ocrResult.ocrFailed,
         requiresManualReview: ocrResult.requiresManualReview,
       },
-      ipAddress: 'system',
+      ipAddress: "system",
     });
 
     return {
       success: true,
       validationStatus,
       validationNotes,
-      requiresManualReview:
-        validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW,
+      requiresManualReview: validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW,
     };
   }
 }

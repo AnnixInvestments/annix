@@ -1,4 +1,4 @@
-import { AppDataSource } from '../src/config/data-source';
+import { AppDataSource } from "../src/config/data-source";
 
 interface OldItem {
   lineNumber: number;
@@ -18,7 +18,7 @@ interface NewItem {
 }
 
 async function fixFieldNames() {
-  console.log('Connecting to database...');
+  console.log("Connecting to database...");
   await AppDataSource.initialize();
 
   try {
@@ -44,16 +44,19 @@ async function fixFieldNames() {
       console.log(`  Before: ${JSON.stringify(oldItems[0])}`);
       console.log(`  After:  ${JSON.stringify(newItems[0])}`);
 
-      await AppDataSource.query(`
+      await AppDataSource.query(
+        `
         UPDATE boq_sections
         SET items = $1
         WHERE id = $2
-      `, [JSON.stringify(newItems), section.id]);
+      `,
+        [JSON.stringify(newItems), section.id],
+      );
 
-      console.log(`  Updated!\n`);
+      console.log("  Updated!\n");
     }
 
-    console.log('Verifying...');
+    console.log("Verifying...");
     const result = await AppDataSource.query(`
       SELECT section_type, items
       FROM boq_sections
@@ -67,7 +70,7 @@ async function fixFieldNames() {
       }
     }
 
-    console.log('\nDone!');
+    console.log("\nDone!");
   } finally {
     await AppDataSource.destroy();
   }

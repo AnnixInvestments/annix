@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { WasherService } from './washer.service';
-import { WasherController } from './washer.controller';
-import { Washer } from './entities/washer.entity';
-import { Bolt } from '../bolt/entities/bolt.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { Bolt } from "../bolt/entities/bolt.entity";
+import { Washer } from "./entities/washer.entity";
+import { WasherController } from "./washer.controller";
+import { WasherService } from "./washer.service";
 
 @Module({
   imports: [TypeOrmModule.forFeature([Washer, Bolt])],

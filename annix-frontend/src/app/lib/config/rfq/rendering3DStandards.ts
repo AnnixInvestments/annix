@@ -7,31 +7,31 @@
 
 // Steel pipe materials - high metalness for realistic industrial look
 export const PIPE_MATERIALS = {
-  outer: { color: '#2E8B57', metalness: 0.85, roughness: 0.25, envMapIntensity: 1.2 },
-  inner: { color: '#1a3a1a', metalness: 0.7, roughness: 0.4, envMapIntensity: 0.8 },
-  end: { color: '#4ADE80', metalness: 0.8, roughness: 0.2, envMapIntensity: 1.0 }
-} as const
+  outer: { color: "#2E8B57", metalness: 0.85, roughness: 0.25, envMapIntensity: 1.2 },
+  inner: { color: "#1a3a1a", metalness: 0.7, roughness: 0.4, envMapIntensity: 0.8 },
+  end: { color: "#4ADE80", metalness: 0.8, roughness: 0.2, envMapIntensity: 1.0 },
+} as const;
 
 // Weld materials - darker with matte finish to show weld bead texture
 export const WELD_MATERIALS = {
-  standard: { color: '#2a2a2a', metalness: 0.6, roughness: 0.7, envMapIntensity: 0.5 },
-  highlighted: { color: '#444444', metalness: 0.5, roughness: 0.6, envMapIntensity: 0.6 }
-} as const
+  standard: { color: "#2a2a2a", metalness: 0.6, roughness: 0.7, envMapIntensity: 0.5 },
+  highlighted: { color: "#444444", metalness: 0.5, roughness: 0.6, envMapIntensity: 0.6 },
+} as const;
 
 // Flange and bolt materials - polished machined surfaces
 export const FLANGE_MATERIALS = {
-  standard: { color: '#888888', metalness: 0.9, roughness: 0.15, envMapIntensity: 1.3 },
-  bolt: { color: '#b0b0b0', metalness: 0.9, roughness: 0.15, envMapIntensity: 1.3 },
-  blank: { color: '#cc3300', metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 }
-} as const
+  standard: { color: "#888888", metalness: 0.9, roughness: 0.15, envMapIntensity: 1.3 },
+  bolt: { color: "#b0b0b0", metalness: 0.9, roughness: 0.15, envMapIntensity: 1.3 },
+  blank: { color: "#cc3300", metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 },
+} as const;
 
 // Steelwork materials (base plates, gussets, ribs)
 export const STEELWORK_MATERIALS = {
-  basePlate: { color: '#555555', metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 },
-  rib: { color: '#666666', metalness: 0.8, roughness: 0.25, envMapIntensity: 1.0 },
-  gussetBlue: { color: '#0066cc', metalness: 0.8, roughness: 0.25, envMapIntensity: 1.0 },
-  gussetYellow: { color: '#cc8800', metalness: 0.8, roughness: 0.25, envMapIntensity: 1.0 }
-} as const
+  basePlate: { color: "#555555", metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 },
+  rib: { color: "#666666", metalness: 0.8, roughness: 0.25, envMapIntensity: 1.0 },
+  gussetBlue: { color: "#0066cc", metalness: 0.8, roughness: 0.25, envMapIntensity: 1.0 },
+  gussetYellow: { color: "#cc8800", metalness: 0.8, roughness: 0.25, envMapIntensity: 1.0 },
+} as const;
 
 // =============================================================================
 // LIGHTING STANDARDS (Three-Point Setup for Industrial Rendering)
@@ -42,9 +42,9 @@ export const LIGHTING_CONFIG = {
   keyLight: { position: [10, 15, 10] as [number, number, number], intensity: 2.5 },
   fillLight: { position: [-8, 10, -5] as [number, number, number], intensity: 1.5 },
   rimLight: { position: [0, -5, 0] as [number, number, number], intensity: 0.8 },
-  environment: { preset: 'warehouse' as const, background: false },
-  shadowMapSize: 1024
-} as const
+  environment: { preset: "warehouse" as const, background: false },
+  shadowMapSize: 1024,
+} as const;
 
 // =============================================================================
 // DIMENSION LINE STANDARDS (ASME Y14.5 / ISO 129-1:2018)
@@ -74,16 +74,16 @@ export const DIMENSION_STANDARDS = {
 
   // Colors by dimension type
   colors: {
-    tangent1: '#0066cc',
-    tangent2: '#cc0000',
-    centerToFace: '#cc6600',
-    closure: '#cc6600',
-    pipeA: '#009900',
-    rotatingFlange: '#ea580c',
-    stub: '#9333ea',
-    stubDistance: '#22c55e'
-  }
-} as const
+    tangent1: "#0066cc",
+    tangent2: "#cc0000",
+    centerToFace: "#cc6600",
+    closure: "#cc6600",
+    pipeA: "#009900",
+    rotatingFlange: "#ea580c",
+    stub: "#9333ea",
+    stubDistance: "#22c55e",
+  },
+} as const;
 
 // =============================================================================
 // WELD CALCULATION CONSTANTS (AWS D1.1)
@@ -103,8 +103,8 @@ export const WELD_CONSTANTS = {
 
   // Tack weld constants
   TACK_WELD_COUNT_PER_END: 8,
-  TACK_WELD_LENGTH_MM: 20
-} as const
+  TACK_WELD_LENGTH_MM: 20,
+} as const;
 
 // =============================================================================
 // GEOMETRY SCALE AND PRECISION
@@ -126,8 +126,8 @@ export const GEOMETRY_CONSTANTS = {
   CURVE_SEGMENTS: 64,
 
   // Weld tube thickness ratio
-  WELD_TUBE_RATIO: 0.06
-} as const
+  WELD_TUBE_RATIO: 0.06,
+} as const;
 
 // =============================================================================
 // STEELWORK STANDARDS (Duckfoot bends)
@@ -153,7 +153,7 @@ export const STEELWORK_STANDARDS = {
     750: { x: 915, y: 793, h: 535 },
     800: { x: 970, y: 833, h: 560 },
     850: { x: 1020, y: 883, h: 585 },
-    900: { x: 1070, y: 933, h: 610 }
+    900: { x: 1070, y: 933, h: 610 },
   } as Record<number, { x: number; y: number; h: number }>,
 
   // Default gusset angles (degrees)
@@ -162,8 +162,8 @@ export const STEELWORK_STANDARDS = {
 
   // Default plate thicknesses
   defaultPlateThickness: 12,
-  defaultRibThickness: 10
-} as const
+  defaultRibThickness: 10,
+} as const;
 
 // =============================================================================
 // NOMINAL BORE TO OD LOOKUP
@@ -195,35 +195,38 @@ export const NB_TO_OD_LOOKUP: Record<number, number> = {
   750: 762.0,
   800: 812.8,
   850: 863.6,
-  900: 914.4
-}
+  900: 914.4,
+};
 
-export const nbToOd = (nb: number): number => NB_TO_OD_LOOKUP[nb] || nb * 1.05
+export const nbToOd = (nb: number): number => NB_TO_OD_LOOKUP[nb] || nb * 1.05;
 
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
 export const calculateVisualWallThickness = (od: number, actualWt: number): number => {
-  const minVisualWt = od * GEOMETRY_CONSTANTS.MIN_VISUAL_WALL_RATIO
-  return Math.max(actualWt, minVisualWt)
-}
+  const minVisualWt = od * GEOMETRY_CONSTANTS.MIN_VISUAL_WALL_RATIO;
+  return Math.max(actualWt, minVisualWt);
+};
 
 export const calculateArrowSize = (dimensionLength: number): { length: number; width: number } => {
   const length = Math.min(
     DIMENSION_STANDARDS.arrowMaxLength,
-    Math.max(DIMENSION_STANDARDS.arrowMinLength, dimensionLength * DIMENSION_STANDARDS.arrowLengthRatio)
-  )
+    Math.max(
+      DIMENSION_STANDARDS.arrowMinLength,
+      dimensionLength * DIMENSION_STANDARDS.arrowLengthRatio,
+    ),
+  );
   return {
     length,
-    width: length * DIMENSION_STANDARDS.arrowWidthRatio
-  }
-}
+    width: length * DIMENSION_STANDARDS.arrowWidthRatio,
+  };
+};
 
 export const calculateSteinmetzWeldLength = (odMm: number): number => {
-  return WELD_CONSTANTS.STEINMETZ_FACTOR * odMm
-}
+  return WELD_CONSTANTS.STEINMETZ_FACTOR * odMm;
+};
 
 export const calculateEffectiveWeldLength = (totalLength: number): number => {
-  return totalLength * WELD_CONSTANTS.AWS_EFFECTIVE_FACTOR
-}
+  return totalLength * WELD_CONSTANTS.AWS_EFFECTIVE_FACTOR;
+};

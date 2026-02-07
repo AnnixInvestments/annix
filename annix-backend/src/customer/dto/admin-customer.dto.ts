@@ -1,38 +1,30 @@
-import {
-  IsString,
-  IsOptional,
-  IsNumber,
-  IsEnum,
-  IsPositive,
-  Min,
-  Max,
-} from 'class-validator';
-import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { CustomerAccountStatus } from '../entities/customer-profile.entity';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsEnum, IsNumber, IsOptional, IsPositive, IsString, Max, Min } from "class-validator";
+import { CustomerAccountStatus } from "../entities/customer-profile.entity";
 
 export class CustomerQueryDto {
-  @ApiPropertyOptional({ description: 'Search by company name or email' })
+  @ApiPropertyOptional({ description: "Search by company name or email" })
   @IsString()
   @IsOptional()
   search?: string;
 
   @ApiPropertyOptional({
-    description: 'Filter by account status',
+    description: "Filter by account status",
     enum: CustomerAccountStatus,
   })
   @IsEnum(CustomerAccountStatus)
   @IsOptional()
   status?: CustomerAccountStatus;
 
-  @ApiPropertyOptional({ description: 'Page number', default: 1 })
+  @ApiPropertyOptional({ description: "Page number", default: 1 })
   @Type(() => Number)
   @IsNumber()
   @IsPositive()
   @IsOptional()
   page?: number = 1;
 
-  @ApiPropertyOptional({ description: 'Items per page', default: 20 })
+  @ApiPropertyOptional({ description: "Items per page", default: 20 })
   @Type(() => Number)
   @IsNumber()
   @Min(1)
@@ -40,21 +32,21 @@ export class CustomerQueryDto {
   @IsOptional()
   limit?: number = 20;
 
-  @ApiPropertyOptional({ description: 'Sort field', default: 'createdAt' })
+  @ApiPropertyOptional({ description: "Sort field", default: "createdAt" })
   @IsString()
   @IsOptional()
-  sortBy?: string = 'createdAt';
+  sortBy?: string = "createdAt";
 
-  @ApiPropertyOptional({ description: 'Sort direction', default: 'DESC' })
+  @ApiPropertyOptional({ description: "Sort direction", default: "DESC" })
   @IsString()
   @IsOptional()
-  sortOrder?: 'ASC' | 'DESC' = 'DESC';
+  sortOrder?: "ASC" | "DESC" = "DESC";
 }
 
 export class SuspendCustomerDto {
   @ApiProperty({
-    description: 'Reason for suspension',
-    example: 'Violation of terms of service',
+    description: "Reason for suspension",
+    example: "Violation of terms of service",
   })
   @IsString()
   reason: string;
@@ -62,8 +54,8 @@ export class SuspendCustomerDto {
 
 export class ReactivateCustomerDto {
   @ApiPropertyOptional({
-    description: 'Note for reactivation',
-    example: 'Issue resolved',
+    description: "Note for reactivation",
+    example: "Issue resolved",
   })
   @IsString()
   @IsOptional()
@@ -72,8 +64,8 @@ export class ReactivateCustomerDto {
 
 export class ResetDeviceBindingDto {
   @ApiProperty({
-    description: 'Reason for device reset',
-    example: 'Customer requested device change',
+    description: "Reason for device reset",
+    example: "Customer requested device change",
   })
   @IsString()
   reason: string;

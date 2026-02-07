@@ -1,14 +1,10 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { CreateFlangePressureClassDto } from './dto/create-flange-pressure-class.dto';
-import { UpdateFlangePressureClassDto } from './dto/update-flange-pressure-class.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { FlangePressureClass } from './entities/flange-pressure-class.entity';
-import { Repository } from 'typeorm';
-import { FlangeStandard } from 'src/flange-standard/entities/flange-standard.entity';
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { FlangeStandard } from "src/flange-standard/entities/flange-standard.entity";
+import { Repository } from "typeorm";
+import { CreateFlangePressureClassDto } from "./dto/create-flange-pressure-class.dto";
+import { UpdateFlangePressureClassDto } from "./dto/update-flange-pressure-class.dto";
+import { FlangePressureClass } from "./entities/flange-pressure-class.entity";
 
 @Injectable()
 export class FlangePressureClassService {
@@ -19,24 +15,16 @@ export class FlangePressureClassService {
     private readonly standardRepo: Repository<FlangeStandard>,
   ) {}
 
-  async create(
-    dto: CreateFlangePressureClassDto,
-  ): Promise<FlangePressureClass> {
+  async create(dto: CreateFlangePressureClassDto): Promise<FlangePressureClass> {
     const standard = await this.standardRepo.findOne({
       where: { id: dto.standardId },
     });
-    if (!standard)
-      throw new NotFoundException(
-        `Flange standard ${dto.standardId} not found`,
-      );
+    if (!standard) throw new NotFoundException(`Flange standard ${dto.standardId} not found`);
 
     const exists = await this.pressureRepo.findOne({
       where: { designation: dto.designation, standard: { id: dto.standardId } },
     });
-    if (exists)
-      throw new BadRequestException(
-        'Pressure class already exists for this standard',
-      );
+    if (exists) throw new BadRequestException("Pressure class already exists for this standard");
 
     const pressure = this.pressureRepo.create({
       designation: dto.designation,
@@ -46,23 +34,19 @@ export class FlangePressureClassService {
   }
 
   async findAll(): Promise<FlangePressureClass[]> {
-    return this.pressureRepo.find({ relations: ['standard'] });
+    return this.pressureRepo.find({ relations: ["standard"] });
   }
 
   async findOne(id: number): Promise<FlangePressureClass> {
     const pressure = await this.pressureRepo.findOne({
       where: { id },
-      relations: ['standard'],
+      relations: ["standard"],
     });
-    if (!pressure)
-      throw new NotFoundException(`Flange pressure class ${id} not found`);
+    if (!pressure) throw new NotFoundException(`Flange pressure class ${id} not found`);
     return pressure;
   }
 
-  async update(
-    id: number,
-    dto: UpdateFlangePressureClassDto,
-  ): Promise<FlangePressureClass> {
+  async update(id: number, dto: UpdateFlangePressureClassDto): Promise<FlangePressureClass> {
     const pressure = await this.findOne(id);
     if (dto.designation) pressure.designation = dto.designation;
     return this.pressureRepo.save(pressure);
@@ -77,8 +61,7 @@ export class FlangePressureClassService {
     const standard = await this.standardRepo.findOne({
       where: { id: standardId },
     });
-    if (!standard)
-      throw new NotFoundException(`Flange standard ${standardId} not found`);
+    if (!standard) throw new NotFoundException(`Flange standard ${standardId} not found`);
     const classes = await this.pressureRepo.find({
       where: { standard: { id: standardId } },
     });
@@ -89,7 +72,7 @@ export class FlangePressureClassService {
       const getNumericValue = (designation: string): number => {
         // Extract first number from designation
         const match = designation?.match(/(\d+)/);
-        return match ? parseInt(match[1]) : 0;
+        return match ? parseInt(match[1], 10) : 0;
       };
       return getNumericValue(a.designation) - getNumericValue(b.designation);
     });

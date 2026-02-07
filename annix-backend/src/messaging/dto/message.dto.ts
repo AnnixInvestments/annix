@@ -1,16 +1,10 @@
-import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsNumber,
-  MaxLength,
-} from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength } from "class-validator";
 
 export class SendMessageDto {
   @ApiProperty({
-    description: 'Message content',
-    example: 'Thank you for your response...',
+    description: "Message content",
+    example: "Thank you for your response...",
   })
   @IsString()
   @IsNotEmpty()
@@ -18,7 +12,7 @@ export class SendMessageDto {
   content: string;
 
   @ApiPropertyOptional({
-    description: 'Parent message ID for replies',
+    description: "Parent message ID for replies",
     example: 45,
   })
   @IsNumber()
@@ -28,8 +22,8 @@ export class SendMessageDto {
 
 export class EditMessageDto {
   @ApiProperty({
-    description: 'Updated message content',
-    example: 'Updated: Thank you for your response...',
+    description: "Updated message content",
+    example: "Updated: Thank you for your response...",
   })
   @IsString()
   @IsNotEmpty()
@@ -39,7 +33,7 @@ export class EditMessageDto {
 
 export class MessagePaginationDto {
   @ApiPropertyOptional({
-    description: 'Page number',
+    description: "Page number",
     example: 1,
     default: 1,
   })
@@ -48,7 +42,7 @@ export class MessagePaginationDto {
   page?: number;
 
   @ApiPropertyOptional({
-    description: 'Items per page',
+    description: "Items per page",
     example: 50,
     default: 50,
   })
@@ -57,7 +51,7 @@ export class MessagePaginationDto {
   limit?: number;
 
   @ApiPropertyOptional({
-    description: 'Load messages before this ID',
+    description: "Load messages before this ID",
     example: 100,
   })
   @IsNumber()
@@ -65,7 +59,7 @@ export class MessagePaginationDto {
   beforeId?: number;
 
   @ApiPropertyOptional({
-    description: 'Load messages after this ID',
+    description: "Load messages after this ID",
     example: 50,
   })
   @IsNumber()
@@ -74,7 +68,7 @@ export class MessagePaginationDto {
 }
 
 export class UploadAttachmentDto {
-  @ApiProperty({ description: 'Message ID to attach to' })
+  @ApiProperty({ description: "Message ID to attach to" })
   @IsNumber()
   messageId: number;
 }

@@ -1,16 +1,17 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useToast } from '@/app/components/Toast';
-import { CreateRubberProductDto } from '@/app/lib/api/rubberPortalApi';
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import { CreateRubberProductDto } from "@/app/lib/api/rubberPortalApi";
+import { useRubberProductDetail, useUpdateRubberProduct } from "@/app/lib/query/hooks";
+import { Breadcrumb } from "../../../components/Breadcrumb";
 import {
-  useRubberProductDetail,
-  useUpdateRubberProduct,
-} from '@/app/lib/query/hooks';
-import { Breadcrumb } from '../../../components/Breadcrumb';
-import { ProductForm, formDataFromProduct, INITIAL_FORM_DATA } from '../../../components/ProductForm';
+  formDataFromProduct,
+  INITIAL_FORM_DATA,
+  ProductForm,
+} from "../../../components/ProductForm";
 
 export default function ProductEditPage() {
   const params = useParams();
@@ -35,11 +36,11 @@ export default function ProductEditPage() {
     try {
       setIsSaving(true);
       await updateMutation.mutateAsync({ id: productId, data: dto });
-      showToast('Product updated', 'success');
-      router.push('/admin/portal/rubber/products');
+      showToast("Product updated", "success");
+      router.push("/admin/portal/rubber/products");
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update product';
-      showToast(errorMessage, 'error');
+      const errorMessage = err instanceof Error ? err.message : "Failed to update product";
+      showToast(errorMessage, "error");
       throw err;
     } finally {
       setIsSaving(false);
@@ -47,7 +48,7 @@ export default function ProductEditPage() {
   };
 
   const handleCancel = () => {
-    router.push('/admin/portal/rubber/products');
+    router.push("/admin/portal/rubber/products");
   };
 
   if (productQuery.isLoading) {
@@ -66,8 +67,15 @@ export default function ProductEditPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Product</div>
-          <p className="text-gray-600">{productQuery.error instanceof Error ? productQuery.error.message : 'Failed to load product'}</p>
-          <button onClick={() => productQuery.refetch()} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <p className="text-gray-600">
+            {productQuery.error instanceof Error
+              ? productQuery.error.message
+              : "Failed to load product"}
+          </p>
+          <button
+            onClick={() => productQuery.refetch()}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
             Retry
           </button>
         </div>
@@ -92,9 +100,9 @@ export default function ProductEditPage() {
     <div className="space-y-6">
       <Breadcrumb
         items={[
-          { label: 'Products', href: '/admin/portal/rubber/products' },
+          { label: "Products", href: "/admin/portal/rubber/products" },
           { label: product.title || `Product #${product.id}` },
-          { label: 'Edit' },
+          { label: "Edit" },
         ]}
       />
 
