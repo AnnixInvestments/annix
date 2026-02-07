@@ -713,15 +713,17 @@ function FlangeComponent({
   );
 }
 
-// Realistic gusset plate component - isoceles right triangle at 45° as per SABS 719
-// Per the technical drawing, gussets are triangular plates with both legs equal to dimension C
-// The gusset extends from the branch pipe at 45° down to the run pipe
+// Gusset piece component - OVAL-SHAPED concave curved transition between run and branch pipes
+// Gussets are curved metal pieces on LEFT and RIGHT sides of the branch that:
+// 1. Have an oval/elliptical shape when viewed from the side
+// 2. Create a smooth curved fillet transition from run pipe to branch pipe
+// 3. Fill the corner like a scoop or saddle, opening up the branch connection
 function GussetPlate({
   runRadius,
   branchRadius,
-  gussetLength, // This is dimension C - both legs of the 45° triangle
+  gussetLength,
   thickness,
-  side, // 'left' or 'right' - which side of the branch (along run axis)
+  side,
   branchOffsetX,
 }: {
   runRadius: number;
@@ -732,72 +734,83 @@ function GussetPlate({
   branchOffsetX: number;
 }) {
   const geometry = useMemo(() => {
-    // Create an isoceles right triangle at 45° angle
-    // The triangle has:
-    // - One vertical leg along the branch pipe (length = C)
-    // - One horizontal leg along the run pipe (length = C)
-    // - Hypotenuse at 45° connecting them
-    const halfThick = thickness / 2;
-    const dir = side === "left" ? -1 : 1;
+    const radialSegments = 24;
+    const depthSegments = 12;
+    const vertices: number[] = [];
+    const indices: number[] = [];
 
-    // Triangle vertices (looking from front, +Z direction):
-    // Bottom corner: at branch edge on run pipe surface
-    // Top corner: up the branch by gussetLength
-    // Outer corner: outward along run pipe by gussetLength
+    const xDir = side === "left" ? -1 : 1;
+    const cornerX = branchOffsetX + xDir * branchRadius;
+    const cornerY = runRadius;
+    const ovalWidth = gussetLength;
+    const ovalHeight = gussetLength;
 
-    const bottomX = branchOffsetX + dir * branchRadius;
-    const bottomY = runRadius;
+    for (let di = 0; di <= depthSegments; di++) {
+      const depth = di / depthSegments;
 
-    const topX = branchOffsetX + dir * branchRadius;
-    const topY = runRadius + gussetLength;
+      for (let ri = 0; ri <= radialSegments; ri++) {
+        const angle = (ri / radialSegments) * (Math.PI / 2);
+        const ovalX = Math.cos(angle) * ovalWidth * (1 - depth);
+        const ovalY = Math.sin(angle) * ovalHeight * (1 - depth);
+        const x = cornerX + xDir * ovalX;
+        const y = cornerY + ovalY;
+        const zExtent = branchRadius * Math.sin(angle) * Math.cos(angle) * 2;
+        const z = zExtent * (1 - depth * 0.7);
 
-    const outerX = branchOffsetX + dir * (branchRadius + gussetLength);
-    const outerY = runRadius;
+        vertices.push(x, y, z);
+      }
+    }
 
-    const positions = new Float32Array([
-      // Front face (z = +halfThick)
-      bottomX,
-      bottomY,
-      halfThick, // 0
-      topX,
-      topY,
-      halfThick, // 1
-      outerX,
-      outerY,
-      halfThick, // 2
-      // Back face (z = -halfThick)
-      bottomX,
-      bottomY,
-      -halfThick, // 3
-      topX,
-      topY,
-      -halfThick, // 4
-      outerX,
-      outerY,
-      -halfThick, // 5
-    ]);
+    const frontVertexCount = vertices.length / 3;
+    for (let i = 0; i < frontVertexCount; i++) {
+      vertices.push(vertices[i * 3], vertices[i * 3 + 1], -vertices[i * 3 + 2]);
+    }
 
-    // Indices for all faces
-    const indices = [
-      // Front face
-      0, 1, 2,
-      // Back face (reversed winding)
-      3, 5, 4,
-      // Top edge (vertical leg)
-      0, 3, 1, 1, 3, 4,
-      // Bottom edge (horizontal leg)
-      0, 2, 3, 2, 5, 3,
-      // Hypotenuse edge (45° diagonal)
-      1, 4, 2, 2, 4, 5,
-    ];
+    const vertsPerRow = radialSegments + 1;
+
+    for (let di = 0; di < depthSegments; di++) {
+      for (let ri = 0; ri < radialSegments; ri++) {
+        const a = di * vertsPerRow + ri;
+        const b = a + 1;
+        const c = a + vertsPerRow;
+        const d = c + 1;
+
+        if (xDir > 0) {
+          indices.push(a, c, b);
+          indices.push(b, c, d);
+        } else {
+          indices.push(a, b, c);
+          indices.push(b, d, c);
+        }
+      }
+    }
+
+    const frontIndicesCount = indices.length;
+    for (let i = 0; i < frontIndicesCount; i += 3) {
+      indices.push(
+        indices[i] + frontVertexCount,
+        indices[i + 2] + frontVertexCount,
+        indices[i + 1] + frontVertexCount,
+      );
+    }
+
+    for (let ri = 0; ri < radialSegments; ri++) {
+      const frontA = ri;
+      const frontB = ri + 1;
+      const backA = frontA + frontVertexCount;
+      const backB = frontB + frontVertexCount;
+
+      indices.push(frontA, frontB, backA);
+      indices.push(frontB, backB, backA);
+    }
 
     const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
     geo.setIndex(indices);
     geo.computeVertexNormals();
 
     return geo;
-  }, [runRadius, branchRadius, gussetLength, thickness, side, branchOffsetX]);
+  }, [runRadius, branchRadius, gussetLength, side, branchOffsetX]);
 
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
@@ -806,7 +819,7 @@ function GussetPlate({
   );
 }
 
-// Weld bead component for gusset edges
+// Weld bead component for gusset - welds along the oval outer edge
 function GussetWeld({
   runRadius,
   branchRadius,
@@ -820,27 +833,44 @@ function GussetWeld({
   side: "left" | "right";
   branchOffsetX: number;
 }) {
-  const weldRadius = gussetLength * 0.03;
-  const dir = side === "left" ? -1 : 1;
+  const weldRadius = gussetLength * 0.025;
+  const xDir = side === "left" ? -1 : 1;
 
-  // Create weld beads along the edges
-  const points: THREE.Vector3[] = [];
-  const segments = 12;
+  const segments = 24;
+  const cornerX = branchOffsetX + xDir * branchRadius;
+  const cornerY = runRadius;
 
+  const frontPoints: THREE.Vector3[] = [];
   for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    const x = branchOffsetX + dir * (branchRadius + t * gussetLength);
-    const y = runRadius + t * gussetLength * 0.85;
-    points.push(new THREE.Vector3(x, y, 0));
+    const angle = (i / segments) * (Math.PI / 2);
+    const x = cornerX + xDir * Math.cos(angle) * gussetLength;
+    const y = cornerY + Math.sin(angle) * gussetLength;
+    const z = branchRadius * Math.sin(angle) * Math.cos(angle) * 2;
+    frontPoints.push(new THREE.Vector3(x, y, z));
   }
+  const frontCurve = new THREE.CatmullRomCurve3(frontPoints);
 
-  const curve = new THREE.CatmullRomCurve3(points);
+  const backPoints: THREE.Vector3[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const angle = (i / segments) * (Math.PI / 2);
+    const x = cornerX + xDir * Math.cos(angle) * gussetLength;
+    const y = cornerY + Math.sin(angle) * gussetLength;
+    const z = -branchRadius * Math.sin(angle) * Math.cos(angle) * 2;
+    backPoints.push(new THREE.Vector3(x, y, z));
+  }
+  const backCurve = new THREE.CatmullRomCurve3(backPoints);
 
   return (
-    <mesh>
-      <tubeGeometry args={[curve, 16, weldRadius, 8, false]} />
-      <meshStandardMaterial {...weldColor} />
-    </mesh>
+    <group>
+      <mesh>
+        <tubeGeometry args={[frontCurve, 16, weldRadius, 6, false]} />
+        <meshStandardMaterial {...weldColor} />
+      </mesh>
+      <mesh>
+        <tubeGeometry args={[backCurve, 16, weldRadius, 6, false]} />
+        <meshStandardMaterial {...weldColor} />
+      </mesh>
+    </group>
   );
 }
 
