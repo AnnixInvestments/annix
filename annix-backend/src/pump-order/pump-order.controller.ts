@@ -85,7 +85,12 @@ export class PumpOrderController {
     type: String,
     description: "Filter from date (ISO)",
   })
-  @ApiQuery({ name: "toDate", required: false, type: String, description: "Filter to date (ISO)" })
+  @ApiQuery({
+    name: "toDate",
+    required: false,
+    type: String,
+    description: "Filter to date (ISO)",
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: "List of orders",
@@ -183,14 +188,23 @@ export class PumpOrderController {
   @Patch(":id/status")
   @ApiOperation({ summary: "Update order status" })
   @ApiParam({ name: "id", type: Number })
-  @ApiQuery({ name: "status", enum: PumpOrderStatus, description: "New status" })
+  @ApiQuery({
+    name: "status",
+    enum: PumpOrderStatus,
+    description: "New status",
+  })
   @ApiQuery({
     name: "updatedBy",
     required: false,
     type: String,
     description: "User making the change",
   })
-  @ApiQuery({ name: "notes", required: false, type: String, description: "Status change notes" })
+  @ApiQuery({
+    name: "notes",
+    required: false,
+    type: String,
+    description: "Status change notes",
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Status updated successfully",

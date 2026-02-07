@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 
 interface PumpRfqItem {
   id: string;
@@ -35,6 +35,13 @@ interface SupplierQuoteFormProps {
   onCancel?: () => void;
 }
 
+interface QuoteAttachment {
+  id: string;
+  file: File;
+  type: "datasheet" | "curve" | "manual" | "certification" | "other";
+  description?: string;
+}
+
 interface SupplierQuote {
   rfqNumber?: string;
   quoteNumber: string;
@@ -48,7 +55,7 @@ interface SupplierQuote {
   totalAmount: number;
   generalNotes?: string;
   termsAndConditions?: string;
-  attachments?: string[];
+  attachments?: QuoteAttachment[];
 }
 
 const DELIVERY_TERMS = [
@@ -75,6 +82,14 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
 };
 
 const VAT_RATE = 0.15;
+
+const ATTACHMENT_TYPES = [
+  { value: "datasheet", label: "Technical Datasheet" },
+  { value: "curve", label: "Performance Curve" },
+  { value: "manual", label: "Installation/Operation Manual" },
+  { value: "certification", label: "Type Certification (API 610, ISO, etc.)" },
+  { value: "other", label: "Other Document" },
+];
 
 export function SupplierQuoteForm({
   rfqItems,
@@ -112,6 +127,10 @@ export function SupplierQuoteForm({
   );
 
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [attachments, setAttachments] = useState<QuoteAttachment[]>([]);
+  const [selectedAttachmentType, setSelectedAttachmentType] =
+    useState<QuoteAttachment["type"]>("datasheet");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateLineItem = (rfqItemId: string, updates: Partial<QuoteLineItem>) => {
     setLineItems((prev) =>
@@ -129,6 +148,33 @@ export function SupplierQuoteForm({
       }
       return next;
     });
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const newAttachment: QuoteAttachment = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      file,
+      type: selectedAttachmentType,
+    };
+
+    setAttachments((prev) => [...prev, newAttachment]);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const totals = useMemo(() => {
@@ -165,6 +211,7 @@ export function SupplierQuoteForm({
       ...totals,
       generalNotes: generalNotes || undefined,
       termsAndConditions: termsAndConditions || undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
 
     onSubmit(quote);
@@ -515,6 +562,105 @@ export function SupplierQuoteForm({
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
             rows={4}
           />
+        </div>
+
+        <div className="border-t border-gray-200 pt-6">
+          <h4 className="font-medium text-gray-900 mb-4">Attachments (Datasheets & Curves)</h4>
+          <p className="text-sm text-gray-600 mb-4">
+            Upload pump datasheets, performance curves, or other technical documents to support your
+            quote.
+          </p>
+
+          <div className="flex items-end gap-4 mb-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+              <select
+                value={selectedAttachmentType}
+                onChange={(e) =>
+                  setSelectedAttachmentType(e.target.value as QuoteAttachment["type"])
+                }
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {ATTACHMENT_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileSelect}
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+            </div>
+          </div>
+
+          {attachments.length > 0 && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm font-medium text-gray-700 mb-3">
+                Attached Documents ({attachments.length})
+              </p>
+              <div className="space-y-2">
+                {attachments.map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center justify-between bg-white rounded-md p-3 border border-gray-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <svg
+                        className="w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{attachment.file.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {ATTACHMENT_TYPES.find((t) => t.value === attachment.type)?.label} •{" "}
+                          {formatFileSize(attachment.file.size)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(attachment.id)}
+                      className="text-red-600 hover:text-red-800 p-1"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="mt-2 text-xs text-gray-500">
+            Accepted formats: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX. Maximum file size: 10MB per file.
+          </p>
         </div>
       </div>
 

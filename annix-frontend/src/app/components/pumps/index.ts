@@ -2,13 +2,16 @@ export { Api610SelectionWizard } from "./Api610SelectionWizard";
 export { MaterialCompatibilityChecker } from "./MaterialCompatibilityChecker";
 export { NpshCalculator } from "./NpshCalculator";
 export { OperatingRangeValidator } from "./OperatingRangeValidator";
+export { PumpComparisonTable } from "./PumpComparisonTable";
 export { PumpCurveChart } from "./PumpCurveChart";
-
+export { PumpFavorites } from "./PumpFavorites";
 export { PumpLifecycleCostCalculator } from "./PumpLifecycleCostCalculator";
 export { PumpProductBrowser } from "./PumpProductBrowser";
 export type { PumpProductCardData } from "./PumpProductCard";
 export { PumpProductCard } from "./PumpProductCard";
 export { PumpProductList } from "./PumpProductList";
+export type { QuickQuoteRequest } from "./PumpQuickQuote";
+export { PumpQuickQuote } from "./PumpQuickQuote";
 export { PumpQuoteComparison } from "./PumpQuoteComparison";
 export { PumpSelectionWizard } from "./PumpSelectionWizard";
 export { SupplierQuoteForm } from "./SupplierQuoteForm";

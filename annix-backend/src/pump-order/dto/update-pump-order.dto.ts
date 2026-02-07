@@ -198,7 +198,10 @@ export class UpdatePumpOrderDto {
   @IsInt()
   supplierId?: number;
 
-  @ApiPropertyOptional({ description: "Order items", type: [UpdatePumpOrderItemDto] })
+  @ApiPropertyOptional({
+    description: "Order items",
+    type: [UpdatePumpOrderItemDto],
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })

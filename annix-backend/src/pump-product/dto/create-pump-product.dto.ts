@@ -27,7 +27,10 @@ export class CreatePumpProductDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: "Pump type code", example: "centrifugal_end_suction" })
+  @ApiProperty({
+    description: "Pump type code",
+    example: "centrifugal_end_suction",
+  })
   @IsString()
   @MaxLength(100)
   pumpType: string;
@@ -36,7 +39,11 @@ export class CreatePumpProductDto {
   @IsEnum(PumpProductCategory)
   category: PumpProductCategory;
 
-  @ApiProperty({ description: "Product status", enum: PumpProductStatus, required: false })
+  @ApiProperty({
+    description: "Product status",
+    enum: PumpProductStatus,
+    required: false,
+  })
   @IsOptional()
   @IsEnum(PumpProductStatus)
   status?: PumpProductStatus;
@@ -46,13 +53,19 @@ export class CreatePumpProductDto {
   @MaxLength(100)
   manufacturer: string;
 
-  @ApiProperty({ description: "Manufacturer model/part number", required: false })
+  @ApiProperty({
+    description: "Manufacturer model/part number",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
   modelNumber?: string;
 
-  @ApiProperty({ description: "API 610 pump type classification", required: false })
+  @ApiProperty({
+    description: "API 610 pump type classification",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(20)
@@ -82,12 +95,18 @@ export class CreatePumpProductDto {
   @Min(0)
   headMax?: number;
 
-  @ApiProperty({ description: "Maximum operating temperature in Celsius", required: false })
+  @ApiProperty({
+    description: "Maximum operating temperature in Celsius",
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   maxTemperature?: number;
 
-  @ApiProperty({ description: "Maximum operating pressure in bar", required: false })
+  @ApiProperty({
+    description: "Maximum operating pressure in bar",
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -165,7 +184,10 @@ export class CreatePumpProductDto {
   @IsString({ each: true })
   applications?: string[];
 
-  @ApiProperty({ description: "Base cost from supplier in ZAR", required: false })
+  @ApiProperty({
+    description: "Base cost from supplier in ZAR",
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -207,7 +229,10 @@ export class CreatePumpProductDto {
   @MaxLength(500)
   imageUrl?: string;
 
-  @ApiProperty({ description: "Technical specifications as JSON", required: false })
+  @ApiProperty({
+    description: "Technical specifications as JSON",
+    required: false,
+  })
   @IsOptional()
   specifications?: Record<string, any>;
 

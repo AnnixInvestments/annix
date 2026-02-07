@@ -40,7 +40,10 @@ export class PumpProduct {
   @Column({ name: "description", type: "text", nullable: true })
   description: string | null;
 
-  @ApiProperty({ description: "Pump type code", example: "centrifugal_end_suction" })
+  @ApiProperty({
+    description: "Pump type code",
+    example: "centrifugal_end_suction",
+  })
   @Column({ name: "pump_type", type: "varchar", length: 100 })
   pumpType: string;
 
@@ -66,7 +69,12 @@ export class PumpProduct {
   manufacturer: string;
 
   @ApiProperty({ description: "Manufacturer model/part number" })
-  @Column({ name: "model_number", type: "varchar", length: 100, nullable: true })
+  @Column({
+    name: "model_number",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
   modelNumber: string | null;
 
   @ApiProperty({ description: "API 610 pump type classification" })
@@ -138,19 +146,39 @@ export class PumpProduct {
   suctionSize: string | null;
 
   @ApiProperty({ description: "Discharge size DN" })
-  @Column({ name: "discharge_size", type: "varchar", length: 20, nullable: true })
+  @Column({
+    name: "discharge_size",
+    type: "varchar",
+    length: 20,
+    nullable: true,
+  })
   dischargeSize: string | null;
 
   @ApiProperty({ description: "Default casing material" })
-  @Column({ name: "casing_material", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "casing_material",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   casingMaterial: string | null;
 
   @ApiProperty({ description: "Default impeller material" })
-  @Column({ name: "impeller_material", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "impeller_material",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   impellerMaterial: string | null;
 
   @ApiProperty({ description: "Default shaft material" })
-  @Column({ name: "shaft_material", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "shaft_material",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   shaftMaterial: string | null;
 
   @ApiProperty({ description: "Default seal type" })
@@ -242,7 +270,12 @@ export class PumpProduct {
   stockQuantity: number;
 
   @ApiProperty({ description: "Datasheet URL" })
-  @Column({ name: "datasheet_url", type: "varchar", length: 500, nullable: true })
+  @Column({
+    name: "datasheet_url",
+    type: "varchar",
+    length: 500,
+    nullable: true,
+  })
   datasheetUrl: string | null;
 
   @ApiProperty({ description: "Image URL" })

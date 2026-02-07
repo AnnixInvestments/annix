@@ -62,11 +62,21 @@ export class PumpOrderItem {
   pumpType: string | null;
 
   @ApiProperty({ description: "Manufacturer" })
-  @Column({ name: "manufacturer", type: "varchar", length: 100, nullable: true })
+  @Column({
+    name: "manufacturer",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
   manufacturer: string | null;
 
   @ApiProperty({ description: "Model number" })
-  @Column({ name: "model_number", type: "varchar", length: 100, nullable: true })
+  @Column({
+    name: "model_number",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
   modelNumber: string | null;
 
   @ApiProperty({ description: "Part number/SKU" })
@@ -104,11 +114,21 @@ export class PumpOrderItem {
   motorPowerKw: number | null;
 
   @ApiProperty({ description: "Casing material" })
-  @Column({ name: "casing_material", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "casing_material",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   casingMaterial: string | null;
 
   @ApiProperty({ description: "Impeller material" })
-  @Column({ name: "impeller_material", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "impeller_material",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   impellerMaterial: string | null;
 
   @ApiProperty({ description: "Seal type" })

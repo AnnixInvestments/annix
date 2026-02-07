@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Like, Repository } from "typeorm";
+import { In, Like, Repository } from "typeorm";
 import { CreatePumpProductDto } from "./dto/create-pump-product.dto";
 import {
   PumpProductListResponseDto,
@@ -24,6 +24,14 @@ export interface PumpProductQueryParams {
   maxFlowRate?: number;
   minHead?: number;
   maxHead?: number;
+  sortBy?: "title" | "manufacturer" | "flowRateMax" | "headMax" | "listPrice" | "relevance";
+  sortOrder?: "ASC" | "DESC";
+}
+
+export interface PumpSearchResult {
+  product: PumpProductResponseDto;
+  relevanceScore: number;
+  matchedFields: string[];
 }
 
 @Injectable()
@@ -90,11 +98,15 @@ export class PumpProductService {
     }
 
     if (minFlowRate !== undefined) {
-      queryBuilder.andWhere("product.flow_rate_max >= :minFlowRate", { minFlowRate });
+      queryBuilder.andWhere("product.flow_rate_max >= :minFlowRate", {
+        minFlowRate,
+      });
     }
 
     if (maxFlowRate !== undefined) {
-      queryBuilder.andWhere("product.flow_rate_min <= :maxFlowRate", { maxFlowRate });
+      queryBuilder.andWhere("product.flow_rate_min <= :maxFlowRate", {
+        maxFlowRate,
+      });
     }
 
     if (minHead !== undefined) {
@@ -198,7 +210,7 @@ export class PumpProductService {
   }
 
   async manufacturers(): Promise<string[]> {
-    const result = await this.productRepository
+    const result: Array<{ manufacturer: string }> = await this.productRepository
       .createQueryBuilder("product")
       .select("DISTINCT product.manufacturer", "manufacturer")
       .where("product.status = :status", { status: PumpProductStatus.ACTIVE })
@@ -206,6 +218,166 @@ export class PumpProductService {
       .getRawMany();
 
     return result.map((r) => r.manufacturer);
+  }
+
+  async fullTextSearch(
+    query: string,
+    params: PumpProductQueryParams = {},
+  ): Promise<{ results: PumpSearchResult[]; total: number }> {
+    const { page = 1, limit = 20, category, manufacturer, status } = params;
+
+    const searchTerms = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((term) => term.length > 1);
+
+    if (searchTerms.length === 0) {
+      return { results: [], total: 0 };
+    }
+
+    const queryBuilder = this.productRepository.createQueryBuilder("product");
+
+    const searchConditions = searchTerms.map((term, index) => {
+      const paramName = `term${index}`;
+      queryBuilder.setParameter(paramName, `%${term}%`);
+      return `(
+        product.title ILIKE :${paramName} OR
+        product.sku ILIKE :${paramName} OR
+        product.manufacturer ILIKE :${paramName} OR
+        product.description ILIKE :${paramName} OR
+        product.pump_type ILIKE :${paramName} OR
+        product.model_number ILIKE :${paramName}
+      )`;
+    });
+
+    queryBuilder.where(`(${searchConditions.join(" AND ")})`);
+
+    if (category) {
+      queryBuilder.andWhere("product.category = :category", { category });
+    }
+
+    if (manufacturer) {
+      queryBuilder.andWhere("product.manufacturer ILIKE :manufacturer", {
+        manufacturer: `%${manufacturer}%`,
+      });
+    }
+
+    if (status) {
+      queryBuilder.andWhere("product.status = :status", { status });
+    } else {
+      queryBuilder.andWhere("product.status = :defaultStatus", {
+        defaultStatus: PumpProductStatus.ACTIVE,
+      });
+    }
+
+    const total = await queryBuilder.getCount();
+
+    queryBuilder
+      .orderBy("product.title", "ASC")
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const products = await queryBuilder.getMany();
+
+    const results: PumpSearchResult[] = products.map((product) => {
+      const matchedFields: string[] = [];
+      const lowerQuery = query.toLowerCase();
+
+      if (product.title.toLowerCase().includes(lowerQuery)) {
+        matchedFields.push("title");
+      }
+      if (product.sku.toLowerCase().includes(lowerQuery)) {
+        matchedFields.push("sku");
+      }
+      if (product.manufacturer.toLowerCase().includes(lowerQuery)) {
+        matchedFields.push("manufacturer");
+      }
+      if (product.description?.toLowerCase().includes(lowerQuery)) {
+        matchedFields.push("description");
+      }
+      if (product.pumpType?.toLowerCase().includes(lowerQuery)) {
+        matchedFields.push("pumpType");
+      }
+      if (product.modelNumber?.toLowerCase().includes(lowerQuery)) {
+        matchedFields.push("modelNumber");
+      }
+
+      const titleBonus = matchedFields.includes("title") ? 3 : 0;
+      const skuBonus = matchedFields.includes("sku") ? 2 : 0;
+      const relevanceScore = matchedFields.length + titleBonus + skuBonus;
+
+      return {
+        product: this.mapToResponseDto(product),
+        relevanceScore,
+        matchedFields,
+      };
+    });
+
+    results.sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+    return { results, total };
+  }
+
+  async findByIds(ids: number[]): Promise<PumpProductResponseDto[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const products = await this.productRepository.find({
+      where: { id: In(ids) },
+    });
+
+    const productMap = new Map(products.map((p) => [p.id, p]));
+    return ids
+      .filter((id) => productMap.has(id))
+      .map((id) => this.mapToResponseDto(productMap.get(id)!));
+  }
+
+  async findSimilar(productId: number, limit: number = 4): Promise<PumpProductResponseDto[]> {
+    const product = await this.productRepository.findOne({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return [];
+    }
+
+    const queryBuilder = this.productRepository.createQueryBuilder("product");
+
+    queryBuilder.where("product.id != :productId", { productId });
+    queryBuilder.andWhere("product.status = :status", {
+      status: PumpProductStatus.ACTIVE,
+    });
+
+    queryBuilder.andWhere("product.category = :category", {
+      category: product.category,
+    });
+
+    if (product.flowRateMin && product.flowRateMax) {
+      const flowMiddle = (product.flowRateMin + product.flowRateMax) / 2;
+      const flowRange = (product.flowRateMax - product.flowRateMin) * 2;
+      queryBuilder.andWhere(
+        "product.flow_rate_min <= :flowHigh AND product.flow_rate_max >= :flowLow",
+        {
+          flowLow: flowMiddle - flowRange,
+          flowHigh: flowMiddle + flowRange,
+        },
+      );
+    }
+
+    if (product.headMin && product.headMax) {
+      const headMiddle = (product.headMin + product.headMax) / 2;
+      const headRange = (product.headMax - product.headMin) * 2;
+      queryBuilder.andWhere("product.head_min <= :headHigh AND product.head_max >= :headLow", {
+        headLow: headMiddle - headRange,
+        headHigh: headMiddle + headRange,
+      });
+    }
+
+    queryBuilder.orderBy("product.manufacturer", "ASC").take(limit);
+
+    const similar = await queryBuilder.getMany();
+    return similar.map((p) => this.mapToResponseDto(p));
   }
 
   async updateStock(id: number, quantity: number): Promise<PumpProductResponseDto> {

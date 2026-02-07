@@ -29,8 +29,11 @@ import { CustomerAuthGuard } from "../customer/guards/customer-auth.guard";
 import { BendCalculationResultDto } from "./dto/bend-calculation-result.dto";
 import { CreateBendRfqDto } from "./dto/create-bend-rfq.dto";
 import { CreateBendRfqWithItemDto } from "./dto/create-bend-rfq-with-item.dto";
+import { CreatePumpRfqDto } from "./dto/create-pump-rfq.dto";
+import { CreatePumpRfqWithItemDto } from "./dto/create-pump-rfq-with-item.dto";
 import { CreateStraightPipeRfqWithItemDto } from "./dto/create-rfq-item.dto";
 import { CreateUnifiedRfqDto } from "./dto/create-unified-rfq.dto";
+import { PumpCalculationResultDto } from "./dto/pump-calculation-result.dto";
 import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
 import { RfqResponseDto, StraightPipeCalculationResultDto } from "./dto/rfq-response.dto";
@@ -430,6 +433,136 @@ export class RfqController {
   ): Promise<{ rfq: Rfq; calculation: BendCalculationResultDto }> {
     const userId = (req as any).customer?.userId;
     return this.rfqService.createBendRfq(dto, userId);
+  }
+
+  @Post("pump/calculate")
+  @ApiOperation({
+    summary: "Calculate pump requirements",
+    description:
+      "Calculate hydraulic power, motor sizing, specific speed, NPSHr, and pump selection recommendations",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Pump calculation completed successfully",
+    type: PumpCalculationResultDto,
+  })
+  @ApiBody({
+    description: "Pump specifications for calculation",
+    type: CreatePumpRfqDto,
+  })
+  async calculatePumpRequirements(
+    @Body() dto: CreatePumpRfqDto,
+  ): Promise<PumpCalculationResultDto> {
+    return this.rfqService.calculatePumpRequirements(dto);
+  }
+
+  @Post("pump")
+  @ApiOperation({
+    summary: "Create pump RFQ",
+    description:
+      "Create a new RFQ for pumps with automatic calculations including hydraulic power, motor sizing, and pump selection recommendations",
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: "Pump RFQ created successfully",
+    schema: {
+      type: "object",
+      properties: {
+        rfq: {
+          $ref: "#/components/schemas/Rfq",
+        },
+        calculation: {
+          $ref: "#/components/schemas/PumpCalculationResultDto",
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "Invalid input data",
+  })
+  @ApiBody({
+    description: "Complete pump RFQ data",
+    type: CreatePumpRfqWithItemDto,
+    examples: {
+      example1: {
+        summary: "Example pump RFQ - Centrifugal water pump",
+        value: {
+          rfq: {
+            projectName: "Water Transfer Pump Station",
+            description: "New centrifugal pump for water supply system",
+            customerName: "Municipal Water Services",
+            customerEmail: "procurement@municipal-water.co.za",
+            customerPhone: "+27 11 555 0789",
+            requiredDate: "2025-12-31",
+            status: "draft",
+            notes: "API 610 compliance required",
+          },
+          pump: {
+            serviceType: "new_pump",
+            pumpType: "centrifugal_end_suction",
+            pumpCategory: "centrifugal",
+            flowRate: 100,
+            totalHead: 50,
+            npshAvailable: 8,
+            operatingTemp: 25,
+            fluidType: "water",
+            specificGravity: 1.0,
+            casingMaterial: "cast_iron",
+            impellerMaterial: "bronze",
+            sealType: "mechanical_single",
+            motorType: "electric_ac",
+            voltage: "380V",
+            frequency: "50Hz",
+            quantityValue: 2,
+          },
+          itemDescription: "Centrifugal End Suction Pump - 100 m³/h @ 50m TDH",
+          itemNotes: "Outdoor installation, weather protection required",
+        },
+      },
+      example2: {
+        summary: "Example pump RFQ - Spare parts request",
+        value: {
+          rfq: {
+            projectName: "KSB Pump Spare Parts",
+            description: "Spare parts for existing KSB pump",
+            customerName: "Mining Corp SA",
+            customerEmail: "maintenance@miningcorp.co.za",
+            customerPhone: "+27 11 555 0456",
+            requiredDate: "2025-11-30",
+            status: "draft",
+            notes: "Urgent - pump currently running on backup",
+          },
+          pump: {
+            serviceType: "spare_parts",
+            pumpType: "centrifugal_multistage",
+            fluidType: "process_water",
+            casingMaterial: "stainless_steel_316",
+            impellerMaterial: "stainless_steel_316",
+            existingPumpModel: "KSB Etanorm 80-200",
+            existingPumpSerial: "SN-2019-45678",
+            sparePartCategory: "rotating",
+            spareParts: [
+              { partNumber: "IMP-001", description: "Impeller", quantity: 1 },
+              { partNumber: "MSL-001", description: "Mechanical Seal", quantity: 2 },
+              { partNumber: "BRG-001", description: "Bearing Set", quantity: 1 },
+            ],
+            quantityValue: 1,
+          },
+          itemDescription: "Spare Parts Kit for KSB Etanorm 80-200",
+          itemNotes: "OEM parts preferred",
+        },
+      },
+    },
+  })
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  async createPumpRfq(
+    @Body() dto: CreatePumpRfqWithItemDto,
+    @Req() req: Request,
+  ): Promise<{ rfq: Rfq; calculation: PumpCalculationResultDto }> {
+    const userId = (req as any).customer?.userId;
+    return this.rfqService.createPumpRfq(dto, userId);
   }
 
   @Get()

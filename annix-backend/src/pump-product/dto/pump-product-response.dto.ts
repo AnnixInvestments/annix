@@ -127,7 +127,10 @@ export class PumpProductResponseDto {
 }
 
 export class PumpProductListResponseDto {
-  @ApiProperty({ description: "List of pump products", type: [PumpProductResponseDto] })
+  @ApiProperty({
+    description: "List of pump products",
+    type: [PumpProductResponseDto],
+  })
   items: PumpProductResponseDto[];
 
   @ApiProperty({ description: "Total count" })

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { nowISO } from "../lib/datetime";
+import { now, nowISO, nowMillis, toJSDate } from "../lib/datetime";
 import { CreatePumpOrderDto, CreatePumpOrderItemDto } from "./dto/create-pump-order.dto";
 import {
   PumpOrderListResponseDto,
@@ -35,8 +35,8 @@ export class PumpOrderService {
   ) {}
 
   private generateOrderNumber(): string {
-    const year = new Date().getFullYear();
-    const timestamp = Date.now().toString(36).toUpperCase();
+    const year = now().year;
+    const timestamp = nowMillis().toString(36).toUpperCase();
     return `PO-${year}-${timestamp}`;
   }
 
@@ -127,7 +127,7 @@ export class PumpOrderService {
       customerPhone: createDto.customerPhone ?? null,
       deliveryAddress: createDto.deliveryAddress ?? null,
       requestedDeliveryDate: createDto.requestedDeliveryDate
-        ? new Date(createDto.requestedDeliveryDate)
+        ? toJSDate(createDto.requestedDeliveryDate)
         : null,
       supplierId: createDto.supplierId ?? null,
       currency: createDto.currency ?? "ZAR",
@@ -192,23 +192,33 @@ export class PumpOrderService {
     }
 
     if (params.status) {
-      queryBuilder.andWhere("order.status = :status", { status: params.status });
+      queryBuilder.andWhere("order.status = :status", {
+        status: params.status,
+      });
     }
 
     if (params.orderType) {
-      queryBuilder.andWhere("order.orderType = :orderType", { orderType: params.orderType });
+      queryBuilder.andWhere("order.orderType = :orderType", {
+        orderType: params.orderType,
+      });
     }
 
     if (params.supplierId) {
-      queryBuilder.andWhere("order.supplierId = :supplierId", { supplierId: params.supplierId });
+      queryBuilder.andWhere("order.supplierId = :supplierId", {
+        supplierId: params.supplierId,
+      });
     }
 
     if (params.fromDate) {
-      queryBuilder.andWhere("order.createdAt >= :fromDate", { fromDate: params.fromDate });
+      queryBuilder.andWhere("order.createdAt >= :fromDate", {
+        fromDate: params.fromDate,
+      });
     }
 
     if (params.toDate) {
-      queryBuilder.andWhere("order.createdAt <= :toDate", { toDate: params.toDate });
+      queryBuilder.andWhere("order.createdAt <= :toDate", {
+        toDate: params.toDate,
+      });
     }
 
     const [orders, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
@@ -274,7 +284,9 @@ export class PumpOrderService {
         customerReference: updateDto.customerReference,
       }),
       ...(updateDto.status !== undefined && { status: updateDto.status }),
-      ...(updateDto.orderType !== undefined && { orderType: updateDto.orderType }),
+      ...(updateDto.orderType !== undefined && {
+        orderType: updateDto.orderType,
+      }),
       ...(updateDto.rfqId !== undefined && { rfqId: updateDto.rfqId }),
       ...(updateDto.customerCompany !== undefined && {
         customerCompany: updateDto.customerCompany,
@@ -282,28 +294,38 @@ export class PumpOrderService {
       ...(updateDto.customerContact !== undefined && {
         customerContact: updateDto.customerContact,
       }),
-      ...(updateDto.customerEmail !== undefined && { customerEmail: updateDto.customerEmail }),
-      ...(updateDto.customerPhone !== undefined && { customerPhone: updateDto.customerPhone }),
+      ...(updateDto.customerEmail !== undefined && {
+        customerEmail: updateDto.customerEmail,
+      }),
+      ...(updateDto.customerPhone !== undefined && {
+        customerPhone: updateDto.customerPhone,
+      }),
       ...(updateDto.deliveryAddress !== undefined && {
         deliveryAddress: updateDto.deliveryAddress,
       }),
       ...(updateDto.requestedDeliveryDate !== undefined && {
         requestedDeliveryDate: updateDto.requestedDeliveryDate
-          ? new Date(updateDto.requestedDeliveryDate)
+          ? toJSDate(updateDto.requestedDeliveryDate)
           : null,
       }),
       ...(updateDto.confirmedDeliveryDate !== undefined && {
         confirmedDeliveryDate: updateDto.confirmedDeliveryDate
-          ? new Date(updateDto.confirmedDeliveryDate)
+          ? toJSDate(updateDto.confirmedDeliveryDate)
           : null,
       }),
-      ...(updateDto.supplierId !== undefined && { supplierId: updateDto.supplierId }),
+      ...(updateDto.supplierId !== undefined && {
+        supplierId: updateDto.supplierId,
+      }),
       ...(updateDto.currency !== undefined && { currency: updateDto.currency }),
       ...(updateDto.specialInstructions !== undefined && {
         specialInstructions: updateDto.specialInstructions,
       }),
-      ...(updateDto.internalNotes !== undefined && { internalNotes: updateDto.internalNotes }),
-      ...(updateDto.updatedBy !== undefined && { updatedBy: updateDto.updatedBy }),
+      ...(updateDto.internalNotes !== undefined && {
+        internalNotes: updateDto.internalNotes,
+      }),
+      ...(updateDto.updatedBy !== undefined && {
+        updatedBy: updateDto.updatedBy,
+      }),
     });
 
     if (updateDto.items) {

@@ -178,7 +178,10 @@ export class CreatePumpRfqDto {
   @IsString()
   enclosure?: string;
 
-  @ApiProperty({ description: "Hazardous area classification", required: false })
+  @ApiProperty({
+    description: "Hazardous area classification",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   hazardousArea?: string;

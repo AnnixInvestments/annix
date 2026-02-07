@@ -50,7 +50,12 @@ export class PumpOrder {
   orderNumber: string;
 
   @ApiProperty({ description: "Customer reference/PO number" })
-  @Column({ name: "customer_reference", type: "varchar", length: 100, nullable: true })
+  @Column({
+    name: "customer_reference",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
   customerReference: string | null;
 
   @ApiProperty({ description: "Order status", enum: PumpOrderStatus })
@@ -75,19 +80,39 @@ export class PumpOrder {
   rfqId: number | null;
 
   @ApiProperty({ description: "Customer company name" })
-  @Column({ name: "customer_company", type: "varchar", length: 200, nullable: true })
+  @Column({
+    name: "customer_company",
+    type: "varchar",
+    length: 200,
+    nullable: true,
+  })
   customerCompany: string | null;
 
   @ApiProperty({ description: "Customer contact name" })
-  @Column({ name: "customer_contact", type: "varchar", length: 200, nullable: true })
+  @Column({
+    name: "customer_contact",
+    type: "varchar",
+    length: 200,
+    nullable: true,
+  })
   customerContact: string | null;
 
   @ApiProperty({ description: "Customer email" })
-  @Column({ name: "customer_email", type: "varchar", length: 200, nullable: true })
+  @Column({
+    name: "customer_email",
+    type: "varchar",
+    length: 200,
+    nullable: true,
+  })
   customerEmail: string | null;
 
   @ApiProperty({ description: "Customer phone" })
-  @Column({ name: "customer_phone", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "customer_phone",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   customerPhone: string | null;
 
   @ApiProperty({ description: "Delivery address" })

@@ -1899,3 +1899,173 @@ export const ptRatingApi = {
     return response.json();
   },
 };
+
+export interface PumpProductListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  category?: "CENTRIFUGAL" | "POSITIVE_DISPLACEMENT" | "SPECIALTY";
+  manufacturer?: string;
+  status?: "ACTIVE" | "DISCONTINUED" | "OUT_OF_STOCK";
+  minFlowRate?: number;
+  maxFlowRate?: number;
+  minHead?: number;
+  maxHead?: number;
+}
+
+export interface PumpProduct {
+  id: number;
+  sku: string;
+  title: string;
+  description?: string;
+  pumpType: string;
+  category: "CENTRIFUGAL" | "POSITIVE_DISPLACEMENT" | "SPECIALTY";
+  status: "ACTIVE" | "DISCONTINUED" | "OUT_OF_STOCK";
+  manufacturer: string;
+  modelNumber?: string;
+  flowRateMin?: number;
+  flowRateMax?: number;
+  headMin?: number;
+  headMax?: number;
+  motorPowerKw?: number;
+  listPrice?: number;
+  stockQuantity?: number;
+  certifications?: string[];
+  applications?: string[];
+  specifications?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PumpProductListResponse {
+  items: PumpProduct[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PumpCalculationParams {
+  pumpType: string;
+  flowRate?: number;
+  totalHead?: number;
+  specificGravity?: number;
+  viscosity?: number;
+  solidsContent?: number;
+  npshAvailable?: number;
+  isAbrasive?: boolean;
+  isCorrosive?: boolean;
+}
+
+export interface PumpCalculationResult {
+  hydraulicPowerKw: number;
+  estimatedMotorPowerKw: number;
+  estimatedEfficiency: number;
+  specificSpeed: number;
+  recommendedPumpType: string;
+  npshRequired: number;
+  bepFlowRate: number;
+  bepHead: number;
+  operatingPointPercentBep: number;
+  warnings: string[];
+  recommendations: string[];
+}
+
+export const pumpProductApi = {
+  list: async (params?: PumpProductListParams): Promise<PumpProductListResponse> => {
+    const queryParams = new URLSearchParams();
+
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.search) queryParams.append("search", params.search);
+    if (params?.category) queryParams.append("category", params.category);
+    if (params?.manufacturer) queryParams.append("manufacturer", params.manufacturer);
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.minFlowRate) queryParams.append("minFlowRate", params.minFlowRate.toString());
+    if (params?.maxFlowRate) queryParams.append("maxFlowRate", params.maxFlowRate.toString());
+    if (params?.minHead) queryParams.append("minHead", params.minHead.toString());
+    if (params?.maxHead) queryParams.append("maxHead", params.maxHead.toString());
+
+    const url = queryParams.toString()
+      ? `${API_BASE_URL}/pump-products?${queryParams.toString()}`
+      : `${API_BASE_URL}/pump-products`;
+
+    const response = await fetch(url, {
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch pump products");
+    }
+
+    return response.json();
+  },
+
+  findById: async (id: number): Promise<PumpProduct> => {
+    const response = await fetch(`${API_BASE_URL}/pump-products/${id}`, {
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch pump product");
+    }
+
+    return response.json();
+  },
+
+  findBySku: async (sku: string): Promise<PumpProduct | null> => {
+    const response = await fetch(`${API_BASE_URL}/pump-products/sku/${encodeURIComponent(sku)}`, {
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return response.json();
+  },
+
+  manufacturers: async (): Promise<string[]> => {
+    const response = await fetch(`${API_BASE_URL}/pump-products/manufacturers`, {
+      headers: authHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch manufacturers");
+    }
+
+    return response.json();
+  },
+
+  byCategory: async (category: string): Promise<PumpProduct[]> => {
+    const response = await fetch(
+      `${API_BASE_URL}/pump-products/category/${encodeURIComponent(category)}`,
+      {
+        headers: authHeaders(),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch products by category");
+    }
+
+    return response.json();
+  },
+
+  calculate: async (params: PumpCalculationParams): Promise<PumpCalculationResult> => {
+    const response = await fetch(`${API_BASE_URL}/rfq/pump/calculate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to calculate pump requirements");
+    }
+
+    return response.json();
+  },
+};

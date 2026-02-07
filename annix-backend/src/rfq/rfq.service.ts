@@ -17,8 +17,11 @@ import { User } from "../user/entities/user.entity";
 import { BendCalculationResultDto } from "./dto/bend-calculation-result.dto";
 import { CreateBendRfqDto } from "./dto/create-bend-rfq.dto";
 import { CreateBendRfqWithItemDto } from "./dto/create-bend-rfq-with-item.dto";
+import { CreatePumpRfqDto } from "./dto/create-pump-rfq.dto";
+import { CreatePumpRfqWithItemDto } from "./dto/create-pump-rfq-with-item.dto";
 import { CreateStraightPipeRfqWithItemDto } from "./dto/create-rfq-item.dto";
 import { CreateUnifiedRfqDto } from "./dto/create-unified-rfq.dto";
+import { PumpCalculationResultDto } from "./dto/pump-calculation-result.dto";
 import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
 import { RfqResponseDto, StraightPipeCalculationResultDto } from "./dto/rfq-response.dto";
@@ -1391,6 +1394,228 @@ export class RfqService {
       rfq: savedRfq,
       calculation,
     };
+  }
+
+  // ==================== Pump RFQ Methods ====================
+
+  async calculatePumpRequirements(dto: CreatePumpRfqDto): Promise<PumpCalculationResultDto> {
+    const flowRate = dto.flowRate || 0;
+    const totalHead = dto.totalHead || 0;
+    const specificGravity = dto.specificGravity || 1.0;
+
+    const hydraulicPowerKw = (flowRate * totalHead * specificGravity * 9.81) / 3600;
+
+    const estimatedEfficiency = this.estimatePumpEfficiency(flowRate, totalHead, dto.pumpType);
+
+    const estimatedMotorPowerKw = hydraulicPowerKw / (estimatedEfficiency / 100);
+
+    const specificSpeed = this.calculateSpecificSpeed(flowRate, totalHead);
+
+    const recommendedPumpType = this.recommendPumpType(specificSpeed);
+
+    const npshRequired = this.estimateNpshRequired(flowRate, specificSpeed);
+
+    const bepFlowRate = flowRate * 1.1;
+    const bepHead = totalHead * 1.05;
+    const operatingPointPercentBep = (flowRate / bepFlowRate) * 100;
+
+    const warnings: string[] = [];
+    const recommendations: string[] = [];
+
+    if (dto.npshAvailable && dto.npshAvailable < npshRequired * 1.3) {
+      warnings.push(
+        `NPSHa (${dto.npshAvailable}m) is close to NPSHr (${npshRequired.toFixed(2)}m). Risk of cavitation.`,
+      );
+    }
+
+    if (operatingPointPercentBep < 70 || operatingPointPercentBep > 120) {
+      warnings.push(
+        `Operating point (${operatingPointPercentBep.toFixed(0)}% of BEP) is outside optimal range (70-120%).`,
+      );
+    }
+
+    if (dto.viscosity && dto.viscosity > 100) {
+      recommendations.push("Consider positive displacement pump for high viscosity fluids.");
+    }
+
+    if (dto.solidsContent && dto.solidsContent > 10) {
+      recommendations.push(
+        "Consider slurry pump or recessed impeller design for high solids content.",
+      );
+    }
+
+    if (dto.isAbrasive) {
+      recommendations.push(
+        "Use hardened materials (high chrome, ceramic, or rubber-lined) for abrasive service.",
+      );
+    }
+
+    if (dto.isCorrosive) {
+      recommendations.push(
+        "Select corrosion-resistant materials appropriate for the specific chemical.",
+      );
+    }
+
+    if (specificSpeed < 500) {
+      recommendations.push("Low specific speed - consider radial flow centrifugal pump.");
+    } else if (specificSpeed > 10000) {
+      recommendations.push("High specific speed - consider axial flow pump or mixed flow design.");
+    }
+
+    return {
+      hydraulicPowerKw: Math.round(hydraulicPowerKw * 100) / 100,
+      estimatedMotorPowerKw: Math.round(estimatedMotorPowerKw * 100) / 100,
+      estimatedEfficiency: Math.round(estimatedEfficiency * 10) / 10,
+      specificSpeed: Math.round(specificSpeed),
+      recommendedPumpType,
+      npshRequired: Math.round(npshRequired * 100) / 100,
+      bepFlowRate: Math.round(bepFlowRate * 10) / 10,
+      bepHead: Math.round(bepHead * 10) / 10,
+      operatingPointPercentBep: Math.round(operatingPointPercentBep),
+      warnings,
+      recommendations,
+    };
+  }
+
+  private estimatePumpEfficiency(flowRate: number, head: number, pumpType: string): number {
+    let baseEfficiency = 70;
+
+    if (flowRate > 100) {
+      baseEfficiency += Math.min(15, Math.log10(flowRate / 100) * 10);
+    } else if (flowRate < 10) {
+      baseEfficiency -= 15;
+    }
+
+    if (head > 100) {
+      baseEfficiency -= Math.min(10, (head - 100) / 50);
+    }
+
+    if (pumpType.includes("multistage") || pumpType.includes("positive_displacement")) {
+      baseEfficiency -= 5;
+    }
+
+    return Math.max(30, Math.min(90, baseEfficiency));
+  }
+
+  private calculateSpecificSpeed(flowRate: number, head: number): number {
+    if (head <= 0 || flowRate <= 0) {
+      return 0;
+    }
+
+    const n = 2900;
+    return (n * Math.sqrt(flowRate)) / head ** 0.75;
+  }
+
+  private recommendPumpType(specificSpeed: number): string {
+    if (specificSpeed < 500) {
+      return "Radial flow centrifugal pump";
+    } else if (specificSpeed < 2000) {
+      return "End suction centrifugal pump";
+    } else if (specificSpeed < 5000) {
+      return "Mixed flow pump";
+    } else if (specificSpeed < 10000) {
+      return "Axial flow pump";
+    } else {
+      return "Propeller pump or axial flow design";
+    }
+  }
+
+  private estimateNpshRequired(flowRate: number, specificSpeed: number): number {
+    const baseNpsh = 2.5;
+    const flowFactor = (flowRate / 100) ** 0.33;
+    const speedFactor = specificSpeed > 2000 ? 1.2 : 1.0;
+
+    return baseNpsh * flowFactor * speedFactor;
+  }
+
+  async createPumpRfq(
+    dto: CreatePumpRfqWithItemDto,
+    userId: number,
+  ): Promise<{ rfq: Rfq; calculation: PumpCalculationResultDto }> {
+    const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
+
+    const calculation = await this.calculatePumpRequirements(dto.pump);
+
+    const rfqNumber = await this.nextRfqNumber();
+
+    const rfq = this.rfqRepository.create({
+      ...dto.rfq,
+      rfqNumber,
+      status: dto.rfq.status || RfqStatus.DRAFT,
+      ...(user && { createdBy: user }),
+    });
+
+    const savedRfq: Rfq = await this.rfqRepository.save(rfq);
+
+    const rfqItem = this.rfqItemRepository.create({
+      lineNumber: 1,
+      description: dto.itemDescription,
+      itemType: RfqItemType.PUMP,
+      quantity: dto.pump.quantityValue || 1,
+      notes: dto.itemNotes,
+      rfq: savedRfq,
+    });
+
+    const savedRfqItem: RfqItem = await this.rfqItemRepository.save(rfqItem);
+
+    const pumpRfq = this.pumpRfqRepository.create({
+      serviceType: dto.pump.serviceType || PumpServiceType.NEW_PUMP,
+      pumpType: dto.pump.pumpType,
+      pumpCategory: dto.pump.pumpCategory,
+      flowRate: dto.pump.flowRate,
+      totalHead: dto.pump.totalHead,
+      suctionHead: dto.pump.suctionHead,
+      npshAvailable: dto.pump.npshAvailable,
+      dischargePressure: dto.pump.dischargePressure,
+      operatingTemp: dto.pump.operatingTemp,
+      fluidType: dto.pump.fluidType,
+      specificGravity: dto.pump.specificGravity,
+      viscosity: dto.pump.viscosity,
+      solidsContent: dto.pump.solidsContent,
+      solidsSize: dto.pump.solidsSize,
+      ph: dto.pump.ph,
+      isAbrasive: dto.pump.isAbrasive || false,
+      isCorrosive: dto.pump.isCorrosive || false,
+      casingMaterial: dto.pump.casingMaterial,
+      impellerMaterial: dto.pump.impellerMaterial,
+      shaftMaterial: dto.pump.shaftMaterial,
+      sealType: dto.pump.sealType,
+      sealPlan: dto.pump.sealPlan,
+      suctionSize: dto.pump.suctionSize,
+      dischargeSize: dto.pump.dischargeSize,
+      connectionType: dto.pump.connectionType,
+      motorType: dto.pump.motorType || PumpMotorType.ELECTRIC_AC,
+      motorPower: dto.pump.motorPower || calculation.estimatedMotorPowerKw,
+      voltage: dto.pump.voltage,
+      frequency: dto.pump.frequency,
+      motorEfficiency: dto.pump.motorEfficiency,
+      enclosure: dto.pump.enclosure,
+      hazardousArea: dto.pump.hazardousArea || "none",
+      certifications: dto.pump.certifications || [],
+      sparePartCategory: dto.pump.sparePartCategory,
+      spareParts: dto.pump.spareParts,
+      existingPumpModel: dto.pump.existingPumpModel,
+      existingPumpSerial: dto.pump.existingPumpSerial,
+      rentalDurationDays: dto.pump.rentalDurationDays,
+      quantityValue: dto.pump.quantityValue || 1,
+      supplierReference: dto.pump.supplierReference,
+      unitCostFromSupplier: dto.pump.unitCostFromSupplier,
+      markupPercentage: dto.pump.markupPercentage || 15,
+      calculationData: {
+        ...calculation,
+        calculatedAt: now().toISO(),
+      },
+      rfqItem: savedRfqItem,
+    });
+
+    await this.pumpRfqRepository.save(pumpRfq);
+
+    const finalRfq = await this.rfqRepository.findOne({
+      where: { id: savedRfq.id },
+      relations: ["items", "items.pumpDetails"],
+    });
+
+    return { rfq: finalRfq!, calculation };
   }
 
   // ==================== Document Management Methods ====================

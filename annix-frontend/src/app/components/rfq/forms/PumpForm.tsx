@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Api610SelectionWizard,
+  MaterialCompatibilityChecker,
+  PumpSelectionWizard,
+} from "@/app/components/pumps";
 import { formatNotesForDisplay, SmartNotesDropdown } from "@/app/components/rfq/SmartNotesDropdown";
 import SplitPaneLayout from "@/app/components/rfq/SplitPaneLayout";
 import { Select } from "@/app/components/ui/Select";
@@ -26,6 +31,16 @@ import {
   PumpCategory,
   SPARE_PARTS_KITS,
 } from "@/app/lib/config/pumps";
+import type {
+  Api610SelectionCriteria,
+  Api610SelectionResult,
+} from "@/app/lib/config/pumps/api610Classification";
+import {
+  type PumpFormData,
+  type ValidationResult,
+  validatePumpForm,
+} from "@/app/lib/config/pumps/formValidation";
+import type { SelectionCriteria, SelectionResult } from "@/app/lib/config/pumps/pumpSelectionGuide";
 
 export interface PumpFormProps {
   entry: any;
@@ -63,6 +78,69 @@ export default function PumpForm({
 }: PumpFormProps) {
   const [calculationResults, setCalculationResults] = useState<any>(null);
   const [selectedSparePartCategory, setSelectedSparePartCategory] = useState<string | null>(null);
+  const [showSelectionWizard, setShowSelectionWizard] = useState(false);
+  const [showApi610Wizard, setShowApi610Wizard] = useState(false);
+  const [showMaterialChecker, setShowMaterialChecker] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+
+  const handleWizardComplete = useCallback(
+    (result: SelectionResult, criteria: SelectionCriteria) => {
+      const recommendedType = result.recommendedTypes[0]?.type;
+      if (recommendedType) {
+        onUpdateEntry(entry.id, {
+          specs: {
+            ...entry.specs,
+            pumpCategory: recommendedType.category,
+            pumpType: recommendedType.value,
+            flowRate: criteria.flowRateM3h,
+            totalHead: criteria.headM,
+            operatingTemp: criteria.temperatureC,
+            specificGravity: 1.0,
+            viscosity: criteria.viscosityCp,
+            solidsContent: criteria.solidsPercent,
+            fluidType: criteria.fluidType || "water",
+          },
+        });
+      }
+      setShowSelectionWizard(false);
+    },
+    [entry.id, entry.specs, onUpdateEntry],
+  );
+
+  const handleSelectPumpType = useCallback(
+    (pumpTypeValue: string) => {
+      onUpdateEntry(entry.id, {
+        specs: {
+          ...entry.specs,
+          pumpType: pumpTypeValue,
+        },
+      });
+      setShowSelectionWizard(false);
+    },
+    [entry.id, entry.specs, onUpdateEntry],
+  );
+
+  const handleApi610Complete = useCallback(
+    (result: Api610SelectionResult, criteria: Api610SelectionCriteria) => {
+      const recommendedType = result.suitableTypes[0]?.type;
+      if (recommendedType) {
+        onUpdateEntry(entry.id, {
+          specs: {
+            ...entry.specs,
+            pumpCategory: "centrifugal",
+            pumpType: recommendedType.code.toLowerCase(),
+            api610Type: recommendedType.code,
+            flowRate: criteria.flowRateM3h,
+            totalHead: criteria.headM,
+            operatingTemp: criteria.temperatureC,
+            dischargePressure: criteria.pressureBar,
+          },
+        });
+      }
+      setShowApi610Wizard(false);
+    },
+    [entry.id, entry.specs, onUpdateEntry],
+  );
 
   const serviceType = entry.specs?.serviceType || "new_pump";
   const pumpCategory = entry.specs?.pumpCategory || "centrifugal";
@@ -213,6 +291,86 @@ export default function PumpForm({
     onUpdateEntry,
   ]);
 
+  useEffect(() => {
+    const formData: PumpFormData = {
+      serviceType: serviceType as PumpFormData["serviceType"],
+      pumpCategory,
+      pumpType,
+      quantity,
+      flowRate,
+      totalHead,
+      suctionHead,
+      npshAvailable,
+      dischargePressure,
+      operatingTemp,
+      fluidType,
+      specificGravity,
+      viscosity,
+      solidsContent,
+      ph,
+      isAbrasive,
+      isCorrosive,
+      casingMaterial,
+      impellerMaterial,
+      shaftMaterial,
+      sealType,
+      sealPlan,
+      suctionSize,
+      dischargeSize,
+      connectionType,
+      motorType,
+      motorPower,
+      voltage,
+      frequency,
+      hazardousArea,
+      certifications,
+      spareParts,
+      existingPumpModel,
+      existingPumpSerial,
+      rentalDurationDays,
+      unitCostFromSupplier,
+    };
+    const result = validatePumpForm(formData);
+    setValidationResult(result);
+  }, [
+    serviceType,
+    pumpCategory,
+    pumpType,
+    quantity,
+    flowRate,
+    totalHead,
+    suctionHead,
+    npshAvailable,
+    dischargePressure,
+    operatingTemp,
+    fluidType,
+    specificGravity,
+    viscosity,
+    solidsContent,
+    ph,
+    isAbrasive,
+    isCorrosive,
+    casingMaterial,
+    impellerMaterial,
+    shaftMaterial,
+    sealType,
+    sealPlan,
+    suctionSize,
+    dischargeSize,
+    connectionType,
+    motorType,
+    motorPower,
+    voltage,
+    frequency,
+    hazardousArea,
+    certifications,
+    spareParts,
+    existingPumpModel,
+    existingPumpSerial,
+    rentalDurationDays,
+    unitCostFromSupplier,
+  ]);
+
   const updateSpec = (field: string, value: any) => {
     onUpdateEntry(entry.id, {
       specs: {
@@ -263,7 +421,41 @@ export default function PumpForm({
       return (
         <>
           <div className="border-t pt-4 mt-4">
-            <h4 className="font-medium text-gray-900 mb-3">Pump Selection</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-gray-900">Pump Selection</h4>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSelectionWizard(true)}
+                  className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    />
+                  </svg>
+                  Selection Wizard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowApi610Wizard(true)}
+                  className="px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                    />
+                  </svg>
+                  API 610 Wizard
+                </button>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -466,7 +658,24 @@ export default function PumpForm({
           </div>
 
           <div className="border-t pt-4 mt-4">
-            <h4 className="font-medium text-gray-900 mb-3">Construction Materials</h4>
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-gray-900">Construction Materials</h4>
+              <button
+                type="button"
+                onClick={() => setShowMaterialChecker(true)}
+                className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                  />
+                </svg>
+                Check Compatibility
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1130,6 +1339,70 @@ export default function PumpForm({
     return null;
   };
 
+  const renderValidationFeedback = () => {
+    if (!validationResult) return null;
+    if (validationResult.errors.length === 0 && validationResult.warnings.length === 0) return null;
+
+    return (
+      <div className="space-y-2">
+        {validationResult.errors.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <svg
+                className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-red-800">Missing Required Fields</p>
+                <ul className="mt-1 text-sm text-red-700 space-y-0.5">
+                  {validationResult.errors.map((error, idx) => (
+                    <li key={idx}>• {error.message}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+        {validationResult.warnings.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <svg
+                className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-amber-800">Warnings</p>
+                <ul className="mt-1 text-sm text-amber-700 space-y-0.5">
+                  {validationResult.warnings.map((warning, idx) => (
+                    <li key={idx}>• {warning.message}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderCalculationResults = () => {
     if (!calculationResults) return null;
 
@@ -1240,106 +1513,235 @@ export default function PumpForm({
   };
 
   return (
-    <SplitPaneLayout
-      entryId={entry.id}
-      itemType="pump"
-      showSplitToggle={true}
-      formContent={
-        <div className="space-y-4">
-          <div className="flex justify-between items-start">
-            <h3 className="text-lg font-semibold text-gray-900">Pump / Pump Parts Request</h3>
-            <button
-              type="button"
-              onClick={() => onRemoveEntry(entry.id)}
-              className="text-red-600 hover:text-red-800 text-sm"
-            >
-              Remove
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Service Type *</label>
-              <Select
-                value={serviceType}
-                onChange={(value) => updateSpec("serviceType", value)}
-                options={SERVICE_TYPE_OPTIONS}
-              />
+    <>
+      <SplitPaneLayout
+        entryId={entry.id}
+        itemType="pump"
+        showSplitToggle={true}
+        formContent={
+          <div className="space-y-4">
+            <div className="flex justify-between items-start">
+              <h3 className="text-lg font-semibold text-gray-900">Pump / Pump Parts Request</h3>
+              <button
+                type="button"
+                onClick={() => onRemoveEntry(entry.id)}
+                className="text-red-600 hover:text-red-800 text-sm"
+              >
+                Remove
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
-              <input
-                type="number"
-                min="1"
-                value={quantity}
-                onChange={(e) => updateSpec("quantityValue", parseInt(e.target.value, 10) || 1)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
 
-          {renderServiceTypeFields()}
-
-          <div className="border-t pt-4 mt-4">
-            <h4 className="font-medium text-gray-900 mb-3">Pricing</h4>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Supplier Reference
+                  Service Type *
                 </label>
-                <input
-                  type="text"
-                  value={supplierReference}
-                  onChange={(e) => updateSpec("supplierReference", e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                <Select
+                  value={serviceType}
+                  onChange={(value) => updateSpec("serviceType", value)}
+                  options={SERVICE_TYPE_OPTIONS}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {serviceType === "rental" ? "Daily Rate (R)" : "Cost from Supplier (R)"}
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
                 <input
                   type="number"
-                  value={unitCostFromSupplier || ""}
-                  onChange={(e) =>
-                    updateSpec("unitCostFromSupplier", parseFloat(e.target.value) || null)
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Markup (%)</label>
-                <input
-                  type="number"
-                  value={markupPercentage}
-                  onChange={(e) => updateSpec("markupPercentage", parseFloat(e.target.value) || 15)}
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => updateSpec("quantityValue", parseInt(e.target.value, 10) || 1)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
-          </div>
 
-          <div className="border-t pt-4 mt-4">
-            <SmartNotesDropdown
-              selectedNotes={entry.selectedNotes || []}
-              onNotesChange={(notes: string[]) =>
-                onUpdateEntry(entry.id, {
-                  selectedNotes: notes,
-                  notes: formatNotesForDisplay(notes),
-                })
-              }
-              placeholder="Select quality/inspection requirements..."
+            {renderServiceTypeFields()}
+
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-medium text-gray-900 mb-3">Pricing</h4>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Supplier Reference
+                  </label>
+                  <input
+                    type="text"
+                    value={supplierReference}
+                    onChange={(e) => updateSpec("supplierReference", e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {serviceType === "rental" ? "Daily Rate (R)" : "Cost from Supplier (R)"}
+                  </label>
+                  <input
+                    type="number"
+                    value={unitCostFromSupplier || ""}
+                    onChange={(e) =>
+                      updateSpec("unitCostFromSupplier", parseFloat(e.target.value) || null)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Markup (%)</label>
+                  <input
+                    type="number"
+                    value={markupPercentage}
+                    onChange={(e) =>
+                      updateSpec("markupPercentage", parseFloat(e.target.value) || 15)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4 mt-4">
+              <SmartNotesDropdown
+                selectedNotes={entry.selectedNotes || []}
+                onNotesChange={(notes: string[]) =>
+                  onUpdateEntry(entry.id, {
+                    selectedNotes: notes,
+                    notes: formatNotesForDisplay(notes),
+                  })
+                }
+                placeholder="Select quality/inspection requirements..."
+              />
+            </div>
+
+            {renderValidationFeedback()}
+          </div>
+        }
+        previewContent={
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-medium text-gray-900 mb-3">Item Preview</h4>
+            <p className="text-sm text-gray-700">{generateItemDescription(entry)}</p>
+          </div>
+        }
+        calcResultsContent={renderCalculationResults()}
+      />
+
+      {showSelectionWizard && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 py-8">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => setShowSelectionWizard(false)}
             />
+            <div className="relative bg-white rounded-lg max-w-3xl w-full shadow-xl">
+              <div className="absolute top-4 right-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSelectionWizard(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <PumpSelectionWizard
+                onComplete={handleWizardComplete}
+                onSelectPumpType={handleSelectPumpType}
+              />
+            </div>
           </div>
         </div>
-      }
-      previewContent={
-        <div className="bg-gray-50 rounded-lg p-4">
-          <h4 className="font-medium text-gray-900 mb-3">Item Preview</h4>
-          <p className="text-sm text-gray-700">{generateItemDescription(entry)}</p>
+      )}
+
+      {showApi610Wizard && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 py-8">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => setShowApi610Wizard(false)}
+            />
+            <div className="relative bg-white rounded-lg max-w-4xl w-full shadow-xl max-h-[90vh] overflow-y-auto">
+              <div className="absolute top-4 right-4 z-10">
+                <button
+                  type="button"
+                  onClick={() => setShowApi610Wizard(false)}
+                  className="text-gray-400 hover:text-gray-600 bg-white rounded-full p-1"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <Api610SelectionWizard
+                onComplete={handleApi610Complete}
+                initialCriteria={{
+                  flowRateM3h: flowRate || 100,
+                  headM: totalHead || 50,
+                  temperatureC: operatingTemp || 25,
+                  pressureBar: dischargePressure || 10,
+                }}
+              />
+            </div>
+          </div>
         </div>
-      }
-      calcResultsContent={renderCalculationResults()}
-    />
+      )}
+
+      {showMaterialChecker && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 py-8">
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => setShowMaterialChecker(false)}
+            />
+            <div className="relative bg-white rounded-lg max-w-3xl w-full shadow-xl max-h-[90vh] overflow-y-auto">
+              <div className="absolute top-4 right-4 z-10">
+                <button
+                  type="button"
+                  onClick={() => setShowMaterialChecker(false)}
+                  className="text-gray-400 hover:text-gray-600 bg-white rounded-full p-1"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              <MaterialCompatibilityChecker
+                onCompatibilityResult={(result) => {
+                  if (result.recommendedMaterial) {
+                    const materialMap: Record<string, string> = {
+                      "Carbon Steel": "cast_iron",
+                      "304 Stainless Steel": "ss_304",
+                      "316 Stainless Steel": "ss_316",
+                      "316L Stainless Steel": "ss_316l",
+                      "Duplex 2205": "duplex_2205",
+                      "Super Duplex 2507": "super_duplex",
+                      "Alloy 20": "alloy_20",
+                      "Hastelloy C-276": "hastelloy_c",
+                      "Monel 400": "monel",
+                      Titanium: "titanium",
+                    };
+                    const materialValue = materialMap[result.recommendedMaterial] || "ss_316";
+                    updateSpec("casingMaterial", materialValue);
+                    updateSpec("impellerMaterial", materialValue);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

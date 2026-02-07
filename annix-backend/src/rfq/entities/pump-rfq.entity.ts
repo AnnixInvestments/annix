@@ -200,7 +200,12 @@ export class PumpRfq {
   impellerMaterial: string;
 
   @ApiProperty({ description: "Shaft material" })
-  @Column({ name: "shaft_material", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "shaft_material",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   shaftMaterial?: string;
 
   @ApiProperty({ description: "Seal type", enum: PumpSealType })
@@ -221,11 +226,21 @@ export class PumpRfq {
   suctionSize?: string;
 
   @ApiProperty({ description: "Discharge size DN" })
-  @Column({ name: "discharge_size", type: "varchar", length: 20, nullable: true })
+  @Column({
+    name: "discharge_size",
+    type: "varchar",
+    length: 20,
+    nullable: true,
+  })
   dischargeSize?: string;
 
   @ApiProperty({ description: "Connection type" })
-  @Column({ name: "connection_type", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "connection_type",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   connectionType?: string;
 
   @ApiProperty({ description: "Motor type", enum: PumpMotorType })
@@ -256,7 +271,12 @@ export class PumpRfq {
   frequency?: string;
 
   @ApiProperty({ description: "Motor efficiency class" })
-  @Column({ name: "motor_efficiency", type: "varchar", length: 10, nullable: true })
+  @Column({
+    name: "motor_efficiency",
+    type: "varchar",
+    length: 10,
+    nullable: true,
+  })
   motorEfficiency?: string;
 
   @ApiProperty({ description: "Motor enclosure type" })
@@ -282,19 +302,36 @@ export class PumpRfq {
   certifications: string[];
 
   @ApiProperty({ description: "Spare part category (for spare parts service)" })
-  @Column({ name: "spare_part_category", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "spare_part_category",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   sparePartCategory?: string;
 
-  @ApiProperty({ description: "Spare parts list as JSON (for spare parts service)" })
+  @ApiProperty({
+    description: "Spare parts list as JSON (for spare parts service)",
+  })
   @Column({ name: "spare_parts", type: "jsonb", nullable: true })
   spareParts?: Record<string, any>[];
 
   @ApiProperty({ description: "Existing pump make/model (for parts/repair)" })
-  @Column({ name: "existing_pump_model", type: "varchar", length: 255, nullable: true })
+  @Column({
+    name: "existing_pump_model",
+    type: "varchar",
+    length: 255,
+    nullable: true,
+  })
   existingPumpModel?: string;
 
   @ApiProperty({ description: "Existing pump serial number" })
-  @Column({ name: "existing_pump_serial", type: "varchar", length: 100, nullable: true })
+  @Column({
+    name: "existing_pump_serial",
+    type: "varchar",
+    length: 100,
+    nullable: true,
+  })
   existingPumpSerial?: string;
 
   @ApiProperty({ description: "Rental duration in days (for rental)" })
