@@ -74,6 +74,8 @@ import { RetainingRingWeightModule } from './retaining-ring-weight/retaining-rin
 import { NbOdLookupModule } from './nb-od-lookup/nb-od-lookup.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { AuthSharedModule } from './shared/auth/auth-shared.module';
+import { PumpProductModule } from './pump-product/pump-product.module';
+import { PumpOrderModule } from './pump-order/pump-order.module';
 import typeormConfig from './config/typeorm';
 
 @Module({
@@ -149,6 +151,8 @@ import typeormConfig from './config/typeorm';
     RetainingRingWeightModule,
     NbOdLookupModule,
     MessagingModule,
+    PumpProductModule,
+    PumpOrderModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

@@ -10,6 +10,7 @@ export * from './calculations';
 export * from './api610Classification';
 export * from './pumpSelectionGuide';
 export * from './pumpComparison';
+export * from './formValidation';
 
 // Compatibility exports for admin pages
 import { NEW_PUMP_PRICING, SPARE_PARTS_PRICING, REPAIR_SERVICE_PRICING, RENTAL_PRICING } from './pricing';
