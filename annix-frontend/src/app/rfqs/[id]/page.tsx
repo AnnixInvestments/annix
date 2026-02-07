@@ -1,106 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { browserBaseUrl } from '@/lib/api-config';
+import { usePublicRfqDetail } from '@/app/lib/query/hooks';
 import { formatDateLongZA } from '@/app/lib/datetime';
-
-interface SteelSpecification {
-  id: number;
-  steel_spec_name: string;
-}
-
-interface StraightPipeDetails {
-  id: number;
-  nominalBoreMm: number;
-  scheduleType: string;
-  scheduleNumber?: string;
-  wallThicknessMm?: number;
-  pipeEndConfiguration?: string;
-  individualPipeLength: number;
-  lengthUnit: string;
-  quantityType: string;
-  quantityValue: number;
-  workingPressureBar: number;
-  workingTemperatureC?: number;
-  calculatedOdMm?: number;
-  calculatedWtMm?: number;
-  pipeWeightPerMeterKg?: number;
-  totalPipeWeightKg?: number;
-  calculatedPipeCount?: number;
-  calculatedTotalLengthM?: number;
-  numberOfFlanges?: number;
-  numberOfButtWelds?: number;
-  totalButtWeldLengthM?: number;
-  numberOfFlangeWelds?: number;
-  totalFlangeWeldLengthM?: number;
-  steelSpecification?: SteelSpecification;
-}
-
-interface RfqItem {
-  id: number;
-  lineNumber: number;
-  description: string;
-  itemType: string;
-  quantity: number;
-  weightPerUnitKg?: number;
-  totalWeightKg?: number;
-  unitPrice?: number;
-  totalPrice?: number;
-  notes?: string;
-  straightPipeDetails?: StraightPipeDetails;
-}
-
-interface Rfq {
-  id: number;
-  rfqNumber: string;
-  projectName: string;
-  description?: string;
-  customerName: string;
-  customerEmail?: string;
-  customerPhone?: string;
-  requiredDate?: string;
-  status: string;
-  notes?: string;
-  totalWeightKg?: number;
-  totalCost?: number;
-  createdAt: string;
-  updatedAt: string;
-  items: RfqItem[];
-}
 
 export default function RfqDetailsPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params?.id as string;
-  
-  const [rfq, setRfq] = useState<Rfq | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const rfqId = parseInt(params?.id as string, 10);
 
-  useEffect(() => {
-    if (id) {
-      fetchRfqDetails();
-    }
-  }, [id]);
+  const { data: rfq, isLoading: loading, error: queryError } = usePublicRfqDetail(rfqId);
 
-  const fetchRfqDetails = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${browserBaseUrl()}/rfq/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch RFQ details');
-      }
-      const data = await response.json();
-      setRfq(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
+  const statusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'draft':
         return 'bg-gray-100 text-gray-800';
@@ -139,7 +51,7 @@ export default function RfqDetailsPage() {
     );
   }
 
-  if (error || !rfq) {
+  if (queryError || !rfq) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -147,7 +59,7 @@ export default function RfqDetailsPage() {
             <span className="text-red-600 text-2xl">✕</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error || 'RFQ not found'}</p>
+          <p className="text-gray-600 mb-6">{queryError instanceof Error ? queryError.message : 'RFQ not found'}</p>
           <button
             onClick={() => router.push('/rfqs')}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
@@ -178,7 +90,7 @@ export default function RfqDetailsPage() {
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                   {rfq.rfqNumber}
                 </h1>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(rfq.status)}`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(rfq.status)}`}>
                   {rfq.status.toUpperCase()}
                 </span>
               </div>

@@ -2,137 +2,59 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import {
+  useReviews,
+  useReviewAction,
+  type ReviewWorkflow,
+} from '@/app/lib/query/hooks';
 import { formatDateTimeZA } from '@/app/lib/datetime';
-
-interface ReviewWorkflow {
-  id: number;
-  entityType: 'drawing' | 'boq';
-  entityId: number;
-  workflowType: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  fromStatus: string;
-  toStatus: string;
-  assignedReviewerId?: number;
-  assignedReviewer?: {
-    id: number;
-    username: string;
-  };
-  initiatedBy: {
-    id: number;
-    username: string;
-  };
-  completedBy?: {
-    id: number;
-    username: string;
-  };
-  comments?: string;
-  createdAt: string;
-  updatedAt: string;
-  completedAt?: string;
-  // Populated entity details
-  drawing?: {
-    id: number;
-    drawingNumber: string;
-    title: string;
-    status: string;
-  };
-  boq?: {
-    id: number;
-    boqNumber: string;
-    title: string;
-    status: string;
-  };
-}
-
-interface PaginatedResult {
-  data: ReviewWorkflow[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
 
 export default function ReviewDashboardPage() {
   const router = useRouter();
-  const [reviews, setReviews] = useState<ReviewWorkflow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [entityFilter, setEntityFilter] = useState<string>('all');
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchReviews();
+    setCurrentPage(1);
   }, [activeTab, entityFilter]);
 
-  const fetchReviews = async (page = 1) => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      params.set('page', page.toString());
-      params.set('limit', '20');
-      if (entityFilter !== 'all') {
-        params.set('entityType', entityFilter);
-      }
-
-      const endpoint = activeTab === 'pending' ? '/workflow/pending' : '/workflow/history';
-      const response = await fetch(`${browserBaseUrl()}${endpoint}?${params.toString()}`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch reviews');
-      }
-
-      const data: PaginatedResult = await response.json();
-      setReviews(data.data);
-      setPagination({
-        page: data.page,
-        totalPages: data.totalPages,
-        total: data.total,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
+  const reviewParams = {
+    entityType: entityFilter !== 'all' ? entityFilter : undefined,
+    page: currentPage,
+    limit: 20,
+  };
+  const { data: reviewData, isLoading: loading, error: queryError } = useReviews(activeTab, reviewParams);
+  const reviews = reviewData?.data ?? [];
+  const pagination = {
+    page: reviewData?.page ?? 1,
+    totalPages: reviewData?.totalPages ?? 1,
+    total: reviewData?.total ?? 0,
   };
 
-  const handleAction = async (
+  const reviewAction = useReviewAction();
+
+  const error = mutationError ?? (queryError ? queryError.message : null);
+
+  const handleAction = (
     entityType: string,
     entityId: number,
     action: 'approve' | 'reject' | 'request-changes',
     comments?: string
   ) => {
-    try {
-      const endpoint =
-        entityType === 'drawing'
-          ? `/drawings/${entityId}/${action}`
-          : `/boq/${entityId}/${action}`;
-
-      const response = await fetch(`${browserBaseUrl()}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
+    setMutationError(null);
+    reviewAction.mutate(
+      { entityType, entityId, action, comments },
+      {
+        onError: (err) => {
+          setMutationError(err instanceof Error ? err.message : `Failed to ${action}`);
         },
-        body: JSON.stringify({ comments }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || `Failed to ${action}`);
       }
-
-      // Refresh the list
-      fetchReviews(pagination.page);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `Failed to ${action}`);
-    }
+    );
   };
 
-  const getStatusColor = (status: string) => {
+  const statusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
@@ -147,7 +69,7 @@ export default function ReviewDashboardPage() {
     }
   };
 
-  const getEntityStatusColor = (status: string) => {
+  const entityStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'draft':
         return 'bg-gray-100 text-gray-800';
@@ -168,7 +90,7 @@ export default function ReviewDashboardPage() {
 
   const formatDate = (dateString: string) => formatDateTimeZA(dateString);
 
-  const getEntityInfo = (review: ReviewWorkflow) => {
+  const entityInfo = (review: ReviewWorkflow) => {
     if (review.entityType === 'drawing' && review.drawing) {
       return {
         type: 'Drawing',
@@ -210,7 +132,6 @@ export default function ReviewDashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Review Dashboard
@@ -218,10 +139,8 @@ export default function ReviewDashboardPage() {
           <p className="text-gray-600 mt-2">Manage pending reviews and view review history</p>
         </div>
 
-        {/* Tabs and Filters */}
         <div className="bg-white rounded-xl shadow-md p-4 mb-6">
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
-            {/* Tabs */}
             <div className="flex gap-2">
               <button
                 onClick={() => setActiveTab('pending')}
@@ -245,7 +164,6 @@ export default function ReviewDashboardPage() {
               </button>
             </div>
 
-            {/* Filter */}
             <div>
               <select
                 value={entityFilter}
@@ -260,12 +178,11 @@ export default function ReviewDashboardPage() {
           </div>
         </div>
 
-        {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
             {error}
             <button
-              onClick={() => setError(null)}
+              onClick={() => setMutationError(null)}
               className="float-right text-red-700 hover:text-red-900"
             >
               ×
@@ -273,7 +190,6 @@ export default function ReviewDashboardPage() {
           </div>
         )}
 
-        {/* Stats for pending tab */}
         {activeTab === 'pending' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-white rounded-xl shadow-md p-6">
@@ -316,7 +232,6 @@ export default function ReviewDashboardPage() {
           </div>
         )}
 
-        {/* Reviews List */}
         {reviews.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-md p-12 text-center">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -337,7 +252,7 @@ export default function ReviewDashboardPage() {
           <>
             <div className="grid gap-4">
               {reviews.map((review) => {
-                const entityInfo = getEntityInfo(review);
+                const info = entityInfo(review);
                 return (
                   <div
                     key={review.id}
@@ -345,28 +260,27 @@ export default function ReviewDashboardPage() {
                   >
                     <div className="p-6">
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        {/* Entity Info */}
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
                             <span
                               className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                entityInfo.type === 'Drawing'
+                                info.type === 'Drawing'
                                   ? 'bg-blue-100 text-blue-800'
                                   : 'bg-purple-100 text-purple-800'
                               }`}
                             >
-                              {entityInfo.type}
+                              {info.type}
                             </span>
-                            <span className="font-bold text-gray-900">{entityInfo.number}</span>
+                            <span className="font-bold text-gray-900">{info.number}</span>
                             <span
-                              className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getEntityStatusColor(
-                                entityInfo.status
+                              className={`px-2 py-0.5 rounded-full text-xs font-semibold ${entityStatusColor(
+                                info.status
                               )}`}
                             >
-                              {entityInfo.status.replace('_', ' ').toUpperCase()}
+                              {info.status.replace('_', ' ').toUpperCase()}
                             </span>
                           </div>
-                          <p className="text-gray-700 font-medium">{entityInfo.title}</p>
+                          <p className="text-gray-700 font-medium">{info.title}</p>
                           <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                             <span>
                               Initiated by:{' '}
@@ -381,7 +295,6 @@ export default function ReviewDashboardPage() {
                           )}
                         </div>
 
-                        {/* Actions / Status */}
                         <div className="flex items-center gap-3">
                           {activeTab === 'pending' ? (
                             <>
@@ -429,7 +342,7 @@ export default function ReviewDashboardPage() {
                           ) : (
                             <div className="text-right">
                               <span
-                                className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
+                                className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor(
                                   review.status
                                 )}`}
                               >
@@ -448,7 +361,7 @@ export default function ReviewDashboardPage() {
                             </div>
                           )}
                           <button
-                            onClick={() => router.push(entityInfo.link)}
+                            onClick={() => router.push(info.link)}
                             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
                           >
                             View
@@ -461,11 +374,10 @@ export default function ReviewDashboardPage() {
               })}
             </div>
 
-            {/* Pagination */}
             {pagination.totalPages > 1 && (
               <div className="mt-6 flex justify-center gap-2">
                 <button
-                  onClick={() => fetchReviews(pagination.page - 1)}
+                  onClick={() => setCurrentPage(currentPage - 1)}
                   disabled={pagination.page === 1}
                   className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -475,7 +387,7 @@ export default function ReviewDashboardPage() {
                   Page {pagination.page} of {pagination.totalPages}
                 </span>
                 <button
-                  onClick={() => fetchReviews(pagination.page + 1)}
+                  onClick={() => setCurrentPage(currentPage + 1)}
                   disabled={pagination.page === pagination.totalPages}
                   className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

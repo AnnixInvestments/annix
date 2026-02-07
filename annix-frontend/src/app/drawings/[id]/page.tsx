@@ -1,150 +1,39 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
 import { useToast } from '@/app/components/Toast';
 import { formatDateTimeZA, nowISO } from '@/app/lib/datetime';
-import { log } from '@/app/lib/logger';
-
-interface DrawingVersion {
-  id: number;
-  versionNumber: number;
-  filePath: string;
-  originalFilename: string;
-  fileSizeBytes: number;
-  changeNotes?: string;
-  uploadedBy: {
-    id: number;
-    username: string;
-  };
-  createdAt: string;
-}
-
-interface DrawingComment {
-  id: number;
-  commentText: string;
-  commentType: string;
-  isResolved: boolean;
-  user: {
-    id: number;
-    username: string;
-  };
-  createdAt: string;
-}
-
-interface Drawing {
-  id: number;
-  drawingNumber: string;
-  title: string;
-  description?: string;
-  fileType: string;
-  filePath: string;
-  originalFilename: string;
-  fileSizeBytes: number;
-  mimeType: string;
-  currentVersion: number;
-  status: string;
-  uploadedBy: {
-    id: number;
-    username: string;
-  };
-  rfq?: {
-    id: number;
-    rfqNumber: string;
-  };
-  versions: DrawingVersion[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface AnalysisResult {
-  success: boolean;
-  drawingTitle?: string;
-  drawingNumber?: string;
-  projectName?: string;
-  components: {
-    itemNumber?: string;
-    description: string;
-    materialType?: string;
-    dimensions?: {
-      diameter?: string;
-      length?: string;
-      thickness?: string;
-      size?: string;
-    };
-    quantity?: number;
-    unit?: string;
-    confidence: 'high' | 'medium' | 'low';
-  }[];
-  errors: string[];
-  warnings: string[];
-  metadata: {
-    pageCount: number;
-    extractionMethod: string;
-    analysisTimestamp: string;
-  };
-}
+import {
+  useDrawingDetail,
+  useDrawingComments,
+  useAddDrawingComment,
+  useUploadDrawingVersion,
+  useSubmitDrawingForReview,
+  useAnalyzeDrawing,
+} from '@/app/lib/query/hooks';
+import type { AnalysisResult } from '@/app/lib/query/hooks';
 
 export default function DrawingDetailPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
+  const drawingId = parseInt(id, 10);
   const { showToast } = useToast();
 
-  const [drawing, setDrawing] = useState<Drawing | null>(null);
-  const [comments, setComments] = useState<DrawingComment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: drawing, isLoading, error } = useDrawingDetail(drawingId);
+  const { data: comments = [] } = useDrawingComments(drawingId);
+
+  const addCommentMutation = useAddDrawingComment(drawingId);
+  const uploadVersionMutation = useUploadDrawingVersion(drawingId);
+  const submitForReviewMutation = useSubmitDrawingForReview(drawingId);
+  const analyzeMutation = useAnalyzeDrawing(drawingId);
+
   const [newComment, setNewComment] = useState('');
-  const [submittingComment, setSubmittingComment] = useState(false);
   const [showVersionModal, setShowVersionModal] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-
-  useEffect(() => {
-    if (id) {
-      fetchDrawing();
-      fetchComments();
-    }
-  }, [id]);
-
-  const fetchDrawing = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${browserBaseUrl()}/drawings/${id}`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch drawing');
-      }
-
-      const data = await response.json();
-      setDrawing(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchComments = async () => {
-    try {
-      const response = await fetch(`${browserBaseUrl()}/drawings/${id}/comments`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setComments(data);
-      }
-    } catch (err) {
-      log.error('Failed to fetch comments:', err);
-    }
-  };
 
   const handleDownload = async (version?: number) => {
     try {
@@ -178,20 +67,7 @@ export default function DrawingDetailPage() {
 
   const handleSubmitForReview = async () => {
     try {
-      const response = await fetch(`${browserBaseUrl()}/workflow/drawings/${id}/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to submit for review');
-      }
-
-      await fetchDrawing();
+      await submitForReviewMutation.mutateAsync();
       showToast('Drawing submitted for review', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to submit', 'error');
@@ -202,75 +78,30 @@ export default function DrawingDetailPage() {
     e.preventDefault();
     if (!newComment.trim()) return;
 
-    setSubmittingComment(true);
     try {
-      const response = await fetch(`${browserBaseUrl()}/drawings/${id}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify({ commentText: newComment }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add comment');
-      }
-
+      await addCommentMutation.mutateAsync(newComment);
       setNewComment('');
-      await fetchComments();
     } catch (err) {
       showToast('Failed to add comment', 'error');
-    } finally {
-      setSubmittingComment(false);
     }
   };
 
   const handleUploadNewVersion = async (file: File, changeNotes: string) => {
-    setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (changeNotes) {
-        formData.append('changeNotes', changeNotes);
-      }
-
-      const response = await fetch(`${browserBaseUrl()}/drawings/${id}/version`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Upload failed');
-      }
-
+      await uploadVersionMutation.mutateAsync({ file, changeNotes });
       setShowVersionModal(false);
-      await fetchDrawing();
       showToast('New version uploaded successfully', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Upload failed', 'error');
-    } finally {
-      setUploading(false);
     }
   };
 
   const handleAnalyzeDrawing = async () => {
-    setAnalyzing(true);
     setAnalysisResult(null);
     setShowAnalysisModal(true);
 
     try {
-      const response = await fetch(`${browserBaseUrl()}/drawings/${id}/analyze`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('Analysis failed');
-      }
-
-      const result = await response.json();
+      const result = await analyzeMutation.mutateAsync();
       setAnalysisResult(result);
     } catch (err) {
       setAnalysisResult({
@@ -284,12 +115,10 @@ export default function DrawingDetailPage() {
           analysisTimestamp: nowISO(),
         },
       });
-    } finally {
-      setAnalyzing(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const statusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'draft':
         return 'bg-gray-100 text-gray-800';
@@ -318,7 +147,7 @@ export default function DrawingDetailPage() {
     return formatDateTimeZA(dateString);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -334,7 +163,7 @@ export default function DrawingDetailPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error || 'Drawing not found'}</p>
+          <p className="text-gray-600 mb-6">{error instanceof Error ? error.message : 'Drawing not found'}</p>
           <button
             onClick={() => router.push('/drawings')}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -367,7 +196,7 @@ export default function DrawingDetailPage() {
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-bold text-gray-900">{drawing.drawingNumber}</h1>
                 <span
-                  className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColor(
                     drawing.status
                   )}`}
                 >
@@ -506,10 +335,10 @@ export default function DrawingDetailPage() {
                 <div className="flex justify-end mt-2">
                   <button
                     type="submit"
-                    disabled={!newComment.trim() || submittingComment}
+                    disabled={!newComment.trim() || addCommentMutation.isPending}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50"
                   >
-                    {submittingComment ? 'Posting...' : 'Post Comment'}
+                    {addCommentMutation.isPending ? 'Posting...' : 'Post Comment'}
                   </button>
                 </div>
               </form>
@@ -554,10 +383,10 @@ export default function DrawingDetailPage() {
                 {drawing.mimeType === 'application/pdf' && (
                   <button
                     onClick={handleAnalyzeDrawing}
-                    disabled={analyzing}
+                    disabled={analyzeMutation.isPending}
                     className="w-full px-4 py-3 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    {analyzing ? (
+                    {analyzeMutation.isPending ? (
                       <>
                         <span className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></span>
                         Analyzing...
@@ -592,7 +421,7 @@ export default function DrawingDetailPage() {
             <div className="bg-white rounded-2xl shadow-md p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-4">Status</h2>
               <div
-                className={`p-4 rounded-lg ${getStatusColor(drawing.status)} text-center font-semibold`}
+                className={`p-4 rounded-lg ${statusColor(drawing.status)} text-center font-semibold`}
               >
                 {drawing.status.replace('_', ' ').toUpperCase()}
               </div>
@@ -608,7 +437,7 @@ export default function DrawingDetailPage() {
           <UploadVersionModal
             onClose={() => setShowVersionModal(false)}
             onUpload={handleUploadNewVersion}
-            uploading={uploading}
+            uploading={uploadVersionMutation.isPending}
           />
         )}
 
@@ -629,7 +458,7 @@ export default function DrawingDetailPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-6">
-                {analyzing ? (
+                {analyzeMutation.isPending ? (
                   <div className="text-center py-12">
                     <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-gray-600 text-lg">Analyzing PDF drawing...</p>

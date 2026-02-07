@@ -11,4 +11,6 @@ export const drawingKeys = {
     [...drawingKeys.all, 'list', params ?? {}] as const,
   detail: (id: number) =>
     [...drawingKeys.all, 'detail', id] as const,
+  comments: (id: number) =>
+    [...drawingKeys.all, 'comments', id] as const,
 } as const

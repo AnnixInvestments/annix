@@ -1,25 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { browserBaseUrl } from '@/lib/api-config';
+import { usePublicStats, type PublicStats } from '@/app/lib/query/hooks';
 import { formatDateZA } from '@/app/lib/datetime';
-
-interface UpcomingRfq {
-  id: number;
-  rfqNumber: string;
-  projectName: string;
-  requiredDate: string;
-  daysRemaining: number;
-  status: string;
-}
-
-interface PublicStats {
-  totalRfqs: number;
-  totalSuppliers: number;
-  totalCustomers: number;
-  upcomingRfqs: UpcomingRfq[];
-}
 
 // Icon components for the dashboard cards
 const CustomerIcon = () => (
@@ -72,63 +56,15 @@ const AdminIcon = () => (
 );
 
 export default function HomePage() {
-  const [stats, setStats] = useState<PublicStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: stats, isLoading: loading } = usePublicStats();
 
   useEffect(() => {
     document.title = 'Annix Dashboard';
   }, []);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchStats = async () => {
-      try {
-        const baseUrl = browserBaseUrl();
-        const response = await fetch(`${baseUrl}/public/stats`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch stats');
-        }
-        const data = await response.json();
-        setStats(data);
-        setError(null);
-      } catch (err) {
-        // Ignore abort errors (component unmounted)
-        if (err instanceof Error && err.name === 'AbortError') {
-          return;
-        }
-        // Set default stats on error (backend may be unavailable)
-        setStats({
-          totalRfqs: 0,
-          totalSuppliers: 0,
-          totalCustomers: 0,
-          upcomingRfqs: [],
-        });
-        // Only set error message if it's not a network connectivity issue
-        if (err instanceof TypeError && err.message === 'Failed to fetch') {
-          // Backend is likely not running - silently use defaults
-          setError(null);
-        } else {
-          setError('Unable to load statistics');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-
-    return () => {
-      controller.abort();
-    };
-  }, []);
-
   const formatDate = (dateString: string) => formatDateZA(dateString);
 
-  const getDaysRemainingColor = (days: number) => {
+  const daysRemainingColor = (days: number) => {
     if (days <= 3) return 'text-red-600 bg-red-50';
     if (days <= 7) return 'text-orange-600 bg-orange-50';
     return 'text-green-600 bg-green-50';
@@ -375,7 +311,7 @@ export default function HomePage() {
                           {formatDate(rfq.requiredDate)}
                         </p>
                       </div>
-                      <span className={`px-3 py-1 text-sm font-medium rounded-full ${getDaysRemainingColor(rfq.daysRemaining)}`}>
+                      <span className={`px-3 py-1 text-sm font-medium rounded-full ${daysRemainingColor(rfq.daysRemaining)}`}>
                         {rfq.daysRemaining === 0 ? 'Today' :
                          rfq.daysRemaining === 1 ? '1 day' :
                          `${rfq.daysRemaining} days`}

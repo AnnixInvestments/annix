@@ -274,4 +274,36 @@ export function useSubmitBoqForReview(boqId: number) {
   })
 }
 
+export function useCreateBoq() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (data: {
+      title: string
+      description?: string
+      drawingId?: number
+      rfqId?: number
+    }) => {
+      const response = await fetch(`${browserBaseUrl()}/boq`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Failed to create BOQ')
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boqKeys.all })
+    },
+  })
+}
+
 export type { Boq, BoqDetail, BoqLineItem, PaginatedBoqResult, UploadResult }

@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { useUploadDrawing } from '@/app/lib/query/hooks';
 
 const ACCEPTED_FILE_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
 const ACCEPTED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.dwg', '.dxf'];
@@ -15,9 +15,9 @@ function UploadDrawingContent() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [rfqId, setRfqId] = useState<string>('');
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const uploadDrawingMutation = useUploadDrawing();
 
   useEffect(() => {
     const rfqIdParam = searchParams.get('rfqId');
@@ -93,37 +93,18 @@ function UploadDrawingContent() {
     e.preventDefault();
     if (!file || !title) return;
 
-    setUploading(true);
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('title', title);
-      if (description) {
-        formData.append('description', description);
-      }
-      if (rfqId) {
-        formData.append('rfqId', rfqId);
-      }
-
-      const response = await fetch(`${browserBaseUrl()}/drawings/upload`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: formData,
+      const drawing = await uploadDrawingMutation.mutateAsync({
+        file,
+        title,
+        description: description || undefined,
+        rfqId: rfqId || undefined,
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Upload failed');
-      }
-
-      const drawing = await response.json();
       router.push(`/drawings/${drawing.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -273,10 +254,10 @@ function UploadDrawingContent() {
             </button>
             <button
               type="submit"
-              disabled={!file || !title || uploading}
+              disabled={!file || !title || uploadDrawingMutation.isPending}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {uploading ? (
+              {uploadDrawingMutation.isPending ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                   Uploading...

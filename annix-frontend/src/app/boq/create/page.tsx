@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { useCreateBoq } from '@/app/lib/query/hooks';
 
 function CreateBoqContent() {
   const router = useRouter();
@@ -11,8 +11,8 @@ function CreateBoqContent() {
   const [description, setDescription] = useState('');
   const [drawingId, setDrawingId] = useState<string>('');
   const [rfqId, setRfqId] = useState<string>('');
-  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const createBoqMutation = useCreateBoq();
 
   useEffect(() => {
     const rfqIdParam = searchParams.get('rfqId');
@@ -29,35 +29,18 @@ function CreateBoqContent() {
     e.preventDefault();
     if (!title) return;
 
-    setCreating(true);
     setError(null);
 
     try {
-      const body: Record<string, any> = { title };
-      if (description) body.description = description;
-      if (drawingId) body.drawingId = parseInt(drawingId);
-      if (rfqId) body.rfqId = parseInt(rfqId);
+      const data: { title: string; description?: string; drawingId?: number; rfqId?: number } = { title };
+      if (description) data.description = description;
+      if (drawingId) data.drawingId = parseInt(drawingId);
+      if (rfqId) data.rfqId = parseInt(rfqId);
 
-      const response = await fetch(`${browserBaseUrl()}/boq`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to create BOQ');
-      }
-
-      const boq = await response.json();
+      const boq = await createBoqMutation.mutateAsync(data);
       router.push(`/boq/${boq.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create BOQ');
-    } finally {
-      setCreating(false);
     }
   };
 
@@ -157,10 +140,10 @@ function CreateBoqContent() {
             </button>
             <button
               type="submit"
-              disabled={!title || creating}
+              disabled={!title || createBoqMutation.isPending}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {creating ? (
+              {createBoqMutation.isPending ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                   Creating...
