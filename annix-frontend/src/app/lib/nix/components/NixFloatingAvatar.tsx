@@ -20,15 +20,6 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
   const avatarRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef<Position>({ x: 0, y: 0 });
 
-  useEffect(() => {
-    if (typeof window !== 'undefined' && position === null) {
-      setPosition({
-        x: window.innerWidth - 100,
-        y: window.innerHeight - 180,
-      });
-    }
-  }, [position]);
-
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!avatarRef.current) return;
 
@@ -37,6 +28,7 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     };
+    setPosition({ x: rect.left, y: rect.top });
     setIsDragging(true);
     setShowMenu(false);
   }, []);
@@ -63,6 +55,7 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
       x: touch.clientX - rect.left,
       y: touch.clientY - rect.top,
     };
+    setPosition({ x: rect.left, y: rect.top });
     setIsDragging(true);
     setShowMenu(false);
   }, []);
@@ -103,18 +96,18 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
     }
   }, [isDragging]);
 
-  if (!isVisible || position === null) return null;
+  if (!isVisible) return null;
 
   return (
     <>
       <div
         ref={avatarRef}
-        className={`fixed z-[9998] cursor-grab select-none ${isDragging ? 'cursor-grabbing' : ''}`}
-        style={{
+        className={`fixed z-[9998] cursor-grab select-none ${isDragging ? 'cursor-grabbing' : ''} ${position === null ? 'right-6 top-1/3' : ''}`}
+        style={position !== null ? {
           left: position.x,
           top: position.y,
           transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
-        }}
+        } : undefined}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onClick={handleClick}
@@ -151,7 +144,7 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
         </div>
       </div>
 
-      {showMenu && (
+      {showMenu && position !== null && (
         <div
           className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[160px]"
           style={{
