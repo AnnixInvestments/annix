@@ -158,5 +158,26 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    files: ['**/page.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'warn',
+        {
+          paths: [
+            {
+              name: 'luxon',
+              message: "Import from '@/app/lib/datetime' instead of 'luxon' directly to ensure consistent configuration",
+            },
+            {
+              name: '@/lib/api-config',
+              importNames: ['browserBaseUrl', 'getAuthHeaders'],
+              message: "Page components should use TanStack Query hooks from '@/app/lib/query/hooks' instead of raw fetch. Create a hook in the query/hooks directory if one doesn't exist yet.",
+            },
+          ],
+        },
+      ],
+    },
   }
 );

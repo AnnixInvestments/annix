@@ -1,52 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
 import { useToast } from '@/app/components/Toast';
 import { formatDateZA } from '@/app/lib/datetime';
-
-interface BoqLineItem {
-  id: number;
-  lineNumber: number;
-  itemCode?: string;
-  description: string;
-  itemType: string;
-  unitOfMeasure: string;
-  quantity: number;
-  unitWeightKg?: number;
-  totalWeightKg?: number;
-  unitPrice?: number;
-  totalPrice?: number;
-  notes?: string;
-  drawingReference?: string;
-}
-
-interface Boq {
-  id: number;
-  boqNumber: string;
-  title: string;
-  description?: string;
-  status: string;
-  totalQuantity?: number;
-  totalWeightKg?: number;
-  totalEstimatedCost?: number;
-  createdBy: {
-    id: number;
-    username: string;
-  };
-  drawing?: {
-    id: number;
-    drawingNumber: string;
-  };
-  rfq?: {
-    id: number;
-    rfqNumber: string;
-  };
-  lineItems: BoqLineItem[];
-  createdAt: string;
-  updatedAt: string;
-}
+import {
+  useBoqDetail,
+  useAddBoqLineItem,
+  useUpdateBoqLineItem,
+  useDeleteBoqLineItem,
+  useSubmitBoqForReview,
+  type BoqLineItem,
+} from '@/app/lib/query/hooks';
 
 const ITEM_TYPES = [
   { value: 'straight_pipe', label: 'Straight Pipe' },
@@ -63,59 +28,22 @@ const ITEM_TYPES = [
 export default function BoqDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params?.id as string;
+  const boqId = parseInt(params?.id as string);
   const { showToast } = useToast();
 
-  const [boq, setBoq] = useState<Boq | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: boq, isLoading, error } = useBoqDetail(boqId);
+  const addLineItemMutation = useAddBoqLineItem(boqId);
+  const updateLineItemMutation = useUpdateBoqLineItem(boqId);
+  const deleteLineItemMutation = useDeleteBoqLineItem(boqId);
+  const submitForReviewMutation = useSubmitBoqForReview(boqId);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState<BoqLineItem | null>(null);
 
-  useEffect(() => {
-    if (id) {
-      fetchBoq();
-    }
-  }, [id]);
-
-  const fetchBoq = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${browserBaseUrl()}/boq/${id}`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch BOQ');
-      }
-
-      const data = await response.json();
-      setBoq(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAddLineItem = async (item: Partial<BoqLineItem>) => {
     try {
-      const response = await fetch(`${browserBaseUrl()}/boq/${id}/line-items`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify(item),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to add line item');
-      }
-
+      await addLineItemMutation.mutateAsync(item);
       setShowAddModal(false);
-      await fetchBoq();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to add line item', 'error');
     }
@@ -123,22 +51,8 @@ export default function BoqDetailPage() {
 
   const handleUpdateLineItem = async (itemId: number, updates: Partial<BoqLineItem>) => {
     try {
-      const response = await fetch(`${browserBaseUrl()}/boq/${id}/line-items/${itemId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to update line item');
-      }
-
+      await updateLineItemMutation.mutateAsync({ itemId, updates });
       setEditingItem(null);
-      await fetchBoq();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to update line item', 'error');
     }
@@ -148,17 +62,7 @@ export default function BoqDetailPage() {
     if (!confirm('Are you sure you want to delete this line item?')) return;
 
     try {
-      const response = await fetch(`${browserBaseUrl()}/boq/${id}/line-items/${itemId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to delete line item');
-      }
-
-      await fetchBoq();
+      await deleteLineItemMutation.mutateAsync(itemId);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to delete line item', 'error');
     }
@@ -166,27 +70,14 @@ export default function BoqDetailPage() {
 
   const handleSubmitForReview = async () => {
     try {
-      const response = await fetch(`${browserBaseUrl()}/workflow/boqs/${id}/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeaders(),
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to submit for review');
-      }
-
-      await fetchBoq();
+      await submitForReviewMutation.mutateAsync();
       showToast('BOQ submitted for review', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to submit', 'error');
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const statusColorClass = (status: string) => {
     switch (status.toLowerCase()) {
       case 'draft':
         return 'bg-gray-100 text-gray-800';
@@ -213,9 +104,7 @@ export default function BoqDetailPage() {
     }).format(num);
   };
 
-  const formatDate = (dateString: string) => formatDateZA(dateString);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -231,7 +120,7 @@ export default function BoqDetailPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error || 'BOQ not found'}</p>
+          <p className="text-gray-600 mb-6">{error?.message || 'BOQ not found'}</p>
           <button
             onClick={() => router.push('/boq')}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -264,7 +153,7 @@ export default function BoqDetailPage() {
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-3xl font-bold text-gray-900">{boq.boqNumber}</h1>
                 <span
-                  className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColorClass(
                     boq.status
                   )}`}
                 >
@@ -286,9 +175,10 @@ export default function BoqDetailPage() {
               {canSubmit && (
                 <button
                   onClick={handleSubmitForReview}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-medium shadow-lg transition-all"
+                  disabled={submitForReviewMutation.isPending}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-medium shadow-lg transition-all disabled:opacity-50"
                 >
-                  Submit for Review
+                  {submitForReviewMutation.isPending ? 'Submitting...' : 'Submit for Review'}
                 </button>
               )}
             </div>
@@ -445,11 +335,11 @@ export default function BoqDetailPage() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Created</p>
-                <p className="font-medium text-gray-900">{formatDate(boq.createdAt)}</p>
+                <p className="font-medium text-gray-900">{formatDateZA(boq.createdAt)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Last Updated</p>
-                <p className="font-medium text-gray-900">{formatDate(boq.updatedAt)}</p>
+                <p className="font-medium text-gray-900">{formatDateZA(boq.updatedAt)}</p>
               </div>
             </div>
           </div>

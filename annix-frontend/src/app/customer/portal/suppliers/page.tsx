@@ -1,14 +1,25 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
-  customerSupplierApi,
-  PreferredSupplier,
-  SupplierInvitation,
-  DirectorySupplier,
-  DirectoryFilters,
+  type PreferredSupplier,
+  type SupplierInvitation,
+  type DirectorySupplier,
+  type DirectoryFilters,
 } from '@/app/lib/api/customerApi';
 import { formatDateZA } from '@/app/lib/datetime';
+import {
+  useCustomerPreferredSuppliers,
+  useCustomerInvitations,
+  useSupplierDirectory,
+  useAddPreferredSupplier,
+  useRemovePreferredSupplier,
+  useCreateInvitation,
+  useCancelInvitation,
+  useResendInvitation,
+  useBlockSupplier,
+  useUnblockSupplier,
+} from '@/app/lib/query/hooks';
 
 type Tab = 'suppliers' | 'invitations' | 'directory';
 
@@ -26,17 +37,11 @@ const SA_PROVINCES = [
 
 export default function CustomerSuppliersPage() {
   const [activeTab, setActiveTab] = useState<Tab>('suppliers');
-  const [suppliers, setSuppliers] = useState<PreferredSupplier[]>([]);
-  const [invitations, setInvitations] = useState<SupplierInvitation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [directorySuppliers, setDirectorySuppliers] = useState<DirectorySupplier[]>([]);
   const [directoryFilters, setDirectoryFilters] = useState<DirectoryFilters>({});
-  const [directoryLoading, setDirectoryLoading] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addingSupplier, setAddingSupplier] = useState(false);
   const [addForm, setAddForm] = useState({
     supplierName: '',
     supplierEmail: '',
@@ -46,7 +51,6 @@ export default function CustomerSuppliersPage() {
   const [addError, setAddError] = useState<string | null>(null);
 
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [sendingInvite, setSendingInvite] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     email: '',
     supplierCompanyName: '',
@@ -57,48 +61,27 @@ export default function CustomerSuppliersPage() {
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [blockingSupplier, setBlockingSupplier] = useState<DirectorySupplier | null>(null);
   const [blockReason, setBlockReason] = useState('');
-  const [blockSubmitting, setBlockSubmitting] = useState(false);
 
   const [showProductsModal, setShowProductsModal] = useState(false);
   const [productsModalSupplier, setProductsModalSupplier] = useState<DirectorySupplier | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const suppliersQuery = useCustomerPreferredSuppliers();
+  const invitationsQuery = useCustomerInvitations();
+  const directoryQuery = useSupplierDirectory(
+    activeTab === 'directory' ? directoryFilters : undefined,
+  );
 
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      const [suppliersData, invitationsData] = await Promise.all([
-        customerSupplierApi.getPreferredSuppliers(),
-        customerSupplierApi.getInvitations(),
-      ]);
-      setSuppliers(suppliersData);
-      setInvitations(invitationsData);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const addPreferredSupplier = useAddPreferredSupplier();
+  const removePreferredSupplier = useRemovePreferredSupplier();
+  const createInvitation = useCreateInvitation();
+  const cancelInvitation = useCancelInvitation();
+  const resendInvitation = useResendInvitation();
+  const blockSupplier = useBlockSupplier();
+  const unblockSupplier = useUnblockSupplier();
 
-  const loadDirectory = useCallback(async () => {
-    try {
-      setDirectoryLoading(true);
-      const data = await customerSupplierApi.supplierDirectory(directoryFilters);
-      setDirectorySuppliers(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load directory');
-    } finally {
-      setDirectoryLoading(false);
-    }
-  }, [directoryFilters]);
-
-  useEffect(() => {
-    if (activeTab === 'directory') {
-      loadDirectory();
-    }
-  }, [activeTab, loadDirectory]);
+  const suppliers = suppliersQuery.data ?? [];
+  const invitations = invitationsQuery.data ?? [];
+  const directorySuppliers = directoryQuery.data ?? [];
 
   const handleAddSupplier = async () => {
     if (!addForm.supplierName || !addForm.supplierEmail) {
@@ -107,21 +90,17 @@ export default function CustomerSuppliersPage() {
     }
 
     try {
-      setAddingSupplier(true);
       setAddError(null);
-      await customerSupplierApi.addPreferredSupplier({
+      await addPreferredSupplier.mutateAsync({
         supplierName: addForm.supplierName,
         supplierEmail: addForm.supplierEmail,
         priority: addForm.priority,
         notes: addForm.notes || undefined,
       });
-      await loadData();
       setShowAddModal(false);
       resetAddForm();
     } catch (e) {
       setAddError(e instanceof Error ? e.message : 'Failed to add supplier');
-    } finally {
-      setAddingSupplier(false);
     }
   };
 
@@ -129,11 +108,7 @@ export default function CustomerSuppliersPage() {
     if (!confirm('Are you sure you want to remove this supplier from your preferred list?')) return;
 
     try {
-      await customerSupplierApi.removePreferredSupplier(id);
-      await loadData();
-      if (activeTab === 'directory') {
-        await loadDirectory();
-      }
+      await removePreferredSupplier.mutateAsync(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to remove supplier');
     }
@@ -146,20 +121,16 @@ export default function CustomerSuppliersPage() {
     }
 
     try {
-      setSendingInvite(true);
       setInviteError(null);
-      await customerSupplierApi.createInvitation({
+      await createInvitation.mutateAsync({
         email: inviteForm.email,
         supplierCompanyName: inviteForm.supplierCompanyName || undefined,
         message: inviteForm.message || undefined,
       });
-      await loadData();
       setShowInviteModal(false);
       resetInviteForm();
     } catch (e) {
       setInviteError(e instanceof Error ? e.message : 'Failed to send invitation');
-    } finally {
-      setSendingInvite(false);
     }
   };
 
@@ -167,8 +138,7 @@ export default function CustomerSuppliersPage() {
     if (!confirm('Are you sure you want to cancel this invitation?')) return;
 
     try {
-      await customerSupplierApi.cancelInvitation(id);
-      await loadData();
+      await cancelInvitation.mutateAsync(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to cancel invitation');
     }
@@ -176,8 +146,7 @@ export default function CustomerSuppliersPage() {
 
   const handleResendInvitation = async (id: number) => {
     try {
-      await customerSupplierApi.resendInvitation(id);
-      await loadData();
+      await resendInvitation.mutateAsync(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to resend invitation');
     }
@@ -185,11 +154,9 @@ export default function CustomerSuppliersPage() {
 
   const handleAddToPreferred = async (supplier: DirectorySupplier) => {
     try {
-      await customerSupplierApi.addPreferredSupplier({
+      await addPreferredSupplier.mutateAsync({
         supplierProfileId: supplier.supplierProfileId,
       });
-      await loadData();
-      await loadDirectory();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to add supplier to preferred list');
     }
@@ -199,27 +166,21 @@ export default function CustomerSuppliersPage() {
     if (!blockingSupplier) return;
 
     try {
-      setBlockSubmitting(true);
-      await customerSupplierApi.blockSupplier(
-        blockingSupplier.supplierProfileId,
-        blockReason || undefined,
-      );
-      await loadData();
-      await loadDirectory();
+      await blockSupplier.mutateAsync({
+        supplierProfileId: blockingSupplier.supplierProfileId,
+        reason: blockReason || undefined,
+      });
       setShowBlockModal(false);
       setBlockingSupplier(null);
       setBlockReason('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to block supplier');
-    } finally {
-      setBlockSubmitting(false);
     }
   };
 
   const handleUnblockSupplier = async (supplier: DirectorySupplier) => {
     try {
-      await customerSupplierApi.unblockSupplier(supplier.supplierProfileId);
-      await loadDirectory();
+      await unblockSupplier.mutateAsync(supplier.supplierProfileId);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to unblock supplier');
     }
@@ -235,11 +196,7 @@ export default function CustomerSuppliersPage() {
     setInviteError(null);
   };
 
-  const formatDate = (dateString: string) => {
-    return formatDateZA(dateString);
-  };
-
-  const getInvitationStatusBadge = (invitation: SupplierInvitation) => {
+  const invitationStatusBadge = (invitation: SupplierInvitation) => {
     if (invitation.isExpired && invitation.status === 'pending') {
       return (
         <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
@@ -284,7 +241,7 @@ export default function CustomerSuppliersPage() {
     }
   };
 
-  if (isLoading) {
+  if (suppliersQuery.isLoading || invitationsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -433,7 +390,7 @@ export default function CustomerSuppliersPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
-                        {formatDate(supplier.createdAt)}
+                        {formatDateZA(supplier.createdAt)}
                         {supplier.addedBy && (
                           <div className="text-xs text-gray-500">by {supplier.addedBy}</div>
                         )}
@@ -508,14 +465,14 @@ export default function CustomerSuppliersPage() {
                       <td className="px-6 py-4 text-sm text-gray-700">
                         {invitation.supplierCompanyName || '-'}
                       </td>
-                      <td className="px-6 py-4">{getInvitationStatusBadge(invitation)}</td>
+                      <td className="px-6 py-4">{invitationStatusBadge(invitation)}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">
-                        {formatDate(invitation.createdAt)}
+                        {formatDateZA(invitation.createdAt)}
                         {invitation.invitedBy && (
                           <div className="text-xs text-gray-500">by {invitation.invitedBy}</div>
                         )}
                         <div className="text-xs text-gray-500">
-                          Expires: {formatDate(invitation.expiresAt)}
+                          Expires: {formatDateZA(invitation.expiresAt)}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2">
@@ -588,17 +545,17 @@ export default function CustomerSuppliersPage() {
               </div>
               <div className="flex items-end">
                 <button
-                  onClick={loadDirectory}
-                  disabled={directoryLoading}
+                  onClick={() => setDirectoryFilters({ ...directoryFilters })}
+                  disabled={directoryQuery.isLoading}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {directoryLoading ? 'Loading...' : 'Search'}
+                  {directoryQuery.isLoading ? 'Loading...' : 'Search'}
                 </button>
               </div>
             </div>
           </div>
 
-          {directoryLoading ? (
+          {directoryQuery.isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -822,10 +779,10 @@ export default function CustomerSuppliersPage() {
                 </button>
                 <button
                   onClick={handleAddSupplier}
-                  disabled={addingSupplier}
+                  disabled={addPreferredSupplier.isPending}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {addingSupplier ? 'Adding...' : 'Add Supplier'}
+                  {addPreferredSupplier.isPending ? 'Adding...' : 'Add Supplier'}
                 </button>
               </div>
             </div>
@@ -912,10 +869,10 @@ export default function CustomerSuppliersPage() {
                 </button>
                 <button
                   onClick={handleSendInvitation}
-                  disabled={sendingInvite}
+                  disabled={createInvitation.isPending}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {sendingInvite ? 'Sending...' : 'Send Invitation'}
+                  {createInvitation.isPending ? 'Sending...' : 'Send Invitation'}
                 </button>
               </div>
             </div>
@@ -971,10 +928,10 @@ export default function CustomerSuppliersPage() {
                 </button>
                 <button
                   onClick={handleBlockSupplier}
-                  disabled={blockSubmitting}
+                  disabled={blockSupplier.isPending}
                   className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-400"
                 >
-                  {blockSubmitting ? 'Blocking...' : 'Block Supplier'}
+                  {blockSupplier.isPending ? 'Blocking...' : 'Block Supplier'}
                 </button>
               </div>
             </div>

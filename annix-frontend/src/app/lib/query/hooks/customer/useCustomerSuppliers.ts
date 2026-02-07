@@ -3,6 +3,8 @@ import {
   customerSupplierApi,
   type PreferredSupplier,
   type SupplierInvitation,
+  type DirectorySupplier,
+  type DirectoryFilters,
 } from '@/app/lib/api/customerApi'
 import { customerKeys } from '../../keys'
 
@@ -87,6 +89,43 @@ export function useResendInvitation() {
       queryClient.invalidateQueries({
         queryKey: customerKeys.suppliers.invitations(),
       })
+    },
+  })
+}
+
+export function useSupplierDirectory(filters?: DirectoryFilters) {
+  return useQuery<DirectorySupplier[]>({
+    queryKey: customerKeys.suppliers.directory(filters as Record<string, unknown>),
+    queryFn: () => customerSupplierApi.supplierDirectory(filters),
+    enabled: filters !== undefined,
+  })
+}
+
+export function useBlockSupplier() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      supplierProfileId,
+      reason,
+    }: {
+      supplierProfileId: number
+      reason?: string
+    }) => customerSupplierApi.blockSupplier(supplierProfileId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customerKeys.suppliers.all })
+    },
+  })
+}
+
+export function useUnblockSupplier() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (supplierProfileId: number) =>
+      customerSupplierApi.unblockSupplier(supplierProfileId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: customerKeys.suppliers.all })
     },
   })
 }

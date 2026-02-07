@@ -35,6 +35,26 @@ interface PaginatedBoqResult {
   totalPages: number
 }
 
+interface BoqLineItem {
+  id: number
+  lineNumber: number
+  itemCode?: string
+  description: string
+  itemType: string
+  unitOfMeasure: string
+  quantity: number
+  unitWeightKg?: number
+  totalWeightKg?: number
+  unitPrice?: number
+  totalPrice?: number
+  notes?: string
+  drawingReference?: string
+}
+
+interface BoqDetail extends Boq {
+  lineItems: BoqLineItem[]
+}
+
 interface UploadResult {
   boq: Boq
   warnings: string[]
@@ -103,6 +123,27 @@ async function uploadBoq(args: {
   return response.json()
 }
 
+async function fetchBoqDetail(id: number): Promise<BoqDetail> {
+  const response = await fetch(`${browserBaseUrl()}/boq/${id}`, {
+    headers: getAuthHeaders(),
+  })
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(`Failed to fetch BOQ (${response.status}: ${body || response.statusText})`)
+  }
+
+  return response.json()
+}
+
+export function useBoqDetail(id: number) {
+  return useQuery<BoqDetail>({
+    queryKey: boqKeys.detail(id),
+    queryFn: () => fetchBoqDetail(id),
+    enabled: id > 0,
+  })
+}
+
 export function useUploadBoq() {
   const queryClient = useQueryClient()
 
@@ -114,4 +155,123 @@ export function useUploadBoq() {
   })
 }
 
-export type { Boq, PaginatedBoqResult, UploadResult }
+export function useAddBoqLineItem(boqId: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (item: Partial<BoqLineItem>) => {
+      const response = await fetch(`${browserBaseUrl()}/boq/${boqId}/line-items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(item),
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to add line item')
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boqKeys.detail(boqId) })
+    },
+  })
+}
+
+export function useUpdateBoqLineItem(boqId: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      itemId,
+      updates,
+    }: {
+      itemId: number
+      updates: Partial<BoqLineItem>
+    }) => {
+      const response = await fetch(
+        `${browserBaseUrl()}/boq/${boqId}/line-items/${itemId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify(updates),
+        },
+      )
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to update line item')
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boqKeys.detail(boqId) })
+    },
+  })
+}
+
+export function useDeleteBoqLineItem(boqId: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (itemId: number) => {
+      const response = await fetch(
+        `${browserBaseUrl()}/boq/${boqId}/line-items/${itemId}`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        },
+      )
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to delete line item')
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boqKeys.detail(boqId) })
+    },
+  })
+}
+
+export function useSubmitBoqForReview(boqId: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await fetch(
+        `${browserBaseUrl()}/workflow/boqs/${boqId}/submit`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+          },
+        },
+      )
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'Failed to submit for review')
+      }
+
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: boqKeys.detail(boqId) })
+      queryClient.invalidateQueries({ queryKey: boqKeys.all })
+    },
+  })
+}
+
+export type { Boq, BoqDetail, BoqLineItem, PaginatedBoqResult, UploadResult }

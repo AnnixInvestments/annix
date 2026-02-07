@@ -1,92 +1,35 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { browserBaseUrl, getAuthHeaders } from '@/lib/api-config';
+import { useDrawings, type Drawing } from '@/app/lib/query/hooks';
 import { formatDateZA } from '@/app/lib/datetime';
-
-interface Drawing {
-  id: number;
-  drawingNumber: string;
-  title: string;
-  description?: string;
-  fileType: string;
-  fileSizeBytes: number;
-  currentVersion: number;
-  status: string;
-  uploadedBy: {
-    id: number;
-    username: string;
-  };
-  rfq?: {
-    id: number;
-    rfqNumber: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface PaginatedResult {
-  data: Drawing[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
 
 export default function DrawingsListPage() {
   const router = useRouter();
-  const [drawings, setDrawings] = useState<Drawing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    fetchDrawings();
-  }, [statusFilter]);
+  const { data, isLoading, error, refetch } = useDrawings({
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    search: searchTerm || undefined,
+    page,
+    limit: 20,
+  });
 
-  const fetchDrawings = async (page = 1) => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      params.set('page', page.toString());
-      params.set('limit', '20');
-      if (statusFilter !== 'all') {
-        params.set('status', statusFilter);
-      }
-      if (searchTerm) {
-        params.set('search', searchTerm);
-      }
-
-      const response = await fetch(`${browserBaseUrl()}/drawings?${params.toString()}`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch drawings');
-      }
-
-      const data: PaginatedResult = await response.json();
-      setDrawings(data.data);
-      setPagination({
-        page: data.page,
-        totalPages: data.totalPages,
-        total: data.total,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
+  const drawings = data?.data ?? [];
+  const pagination = {
+    page: data?.page ?? 1,
+    totalPages: data?.totalPages ?? 1,
+    total: data?.total ?? 0,
   };
 
   const handleSearch = () => {
-    fetchDrawings(1);
+    setPage(1);
   };
 
-  const getStatusColor = (status: string) => {
+  const statusColorClass = (status: string) => {
     switch (status.toLowerCase()) {
       case 'draft':
         return 'bg-gray-100 text-gray-800';
@@ -111,11 +54,7 @@ export default function DrawingsListPage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const formatDate = (dateString: string) => {
-    return formatDateZA(dateString);
-  };
-
-  const getFileIcon = (fileType: string) => {
+  const fileIcon = (fileType: string) => {
     switch (fileType.toLowerCase()) {
       case 'pdf':
         return '📄';
@@ -131,7 +70,7 @@ export default function DrawingsListPage() {
     }
   };
 
-  if (loading && drawings.length === 0) {
+  if (isLoading && drawings.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -150,9 +89,9 @@ export default function DrawingsListPage() {
             <span className="text-red-600 text-2xl">✕</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-gray-600 mb-6">{error.message}</p>
           <button
-            onClick={() => fetchDrawings()}
+            onClick={() => refetch()}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
           >
             Try Again
@@ -203,7 +142,10 @@ export default function DrawingsListPage() {
             <div>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full sm:w-auto px-4 py-2 text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               >
                 <option value="all">All Status</option>
@@ -250,7 +192,7 @@ export default function DrawingsListPage() {
         ) : (
           <>
             <div className="grid gap-4">
-              {drawings.map((drawing) => (
+              {drawings.map((drawing: Drawing) => (
                 <div
                   key={drawing.id}
                   onClick={() => router.push(`/drawings/${drawing.id}`)}
@@ -260,7 +202,7 @@ export default function DrawingsListPage() {
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex items-start gap-4 flex-1">
                         <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-2xl flex-shrink-0">
-                          {getFileIcon(drawing.fileType)}
+                          {fileIcon(drawing.fileType)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-1">
@@ -268,7 +210,7 @@ export default function DrawingsListPage() {
                               {drawing.drawingNumber}
                             </h3>
                             <span
-                              className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(
+                              className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColorClass(
                                 drawing.status
                               )}`}
                             >
@@ -301,7 +243,7 @@ export default function DrawingsListPage() {
                         )}
                         <div className="text-center">
                           <p className="text-xs text-gray-400">Updated</p>
-                          <p>{formatDate(drawing.updatedAt)}</p>
+                          <p>{formatDateZA(drawing.updatedAt)}</p>
                         </div>
                         <span className="text-xl text-gray-400">→</span>
                       </div>
@@ -315,7 +257,7 @@ export default function DrawingsListPage() {
             {pagination.totalPages > 1 && (
               <div className="mt-6 flex justify-center gap-2">
                 <button
-                  onClick={() => fetchDrawings(pagination.page - 1)}
+                  onClick={() => setPage(pagination.page - 1)}
                   disabled={pagination.page === 1}
                   className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -325,7 +267,7 @@ export default function DrawingsListPage() {
                   Page {pagination.page} of {pagination.totalPages}
                 </span>
                 <button
-                  onClick={() => fetchDrawings(pagination.page + 1)}
+                  onClick={() => setPage(pagination.page + 1)}
                   disabled={pagination.page === pagination.totalPages}
                   className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

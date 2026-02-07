@@ -2,26 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { browserBaseUrl } from '@/lib/api-config';
+import { useRfqs, type Rfq } from '@/app/lib/query/hooks';
 import { formatDateZA } from '@/app/lib/datetime';
-
-interface RfqListItem {
-  id: number;
-  rfqNumber: string;
-  projectName: string;
-  customerName: string;
-  status: string;
-  totalWeightKg?: number;
-  totalCost?: number;
-  createdAt: string;
-  itemCount: number;
-}
 
 export default function RfqListPage() {
   const router = useRouter();
-  const [rfqs, setRfqs] = useState<RfqListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: rfqs = [], isLoading, error, refetch } = useRfqs();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -29,38 +15,18 @@ export default function RfqListPage() {
     document.title = 'Annix RFQs';
   }, []);
 
-  useEffect(() => {
-    fetchRfqs();
-  }, []);
-
-  const fetchRfqs = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`${browserBaseUrl()}/rfq`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch RFQs');
-      }
-      const data = await response.json();
-      setRfqs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filteredRfqs = rfqs.filter(rfq => {
-    const matchesSearch = 
+  const filteredRfqs = rfqs.filter((rfq: Rfq) => {
+    const matchesSearch =
       rfq.rfqNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rfq.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      rfq.customerName.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      (rfq.customerName ?? '').toLowerCase().includes(searchTerm.toLowerCase());
+
     const matchesStatus = statusFilter === 'all' || rfq.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusColor = (status: string) => {
+  const statusColorClass = (status: string) => {
     switch (status.toLowerCase()) {
       case 'draft':
         return 'bg-gray-100 text-gray-800';
@@ -75,8 +41,6 @@ export default function RfqListPage() {
     }
   };
 
-  const formatDate = (dateString: string) => formatDateZA(dateString);
-
   const formatNumber = (num?: number) => {
     if (num === undefined || num === null) return 'N/A';
     return new Intl.NumberFormat('en-ZA', {
@@ -85,7 +49,7 @@ export default function RfqListPage() {
     }).format(num);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -104,9 +68,9 @@ export default function RfqListPage() {
             <span className="text-red-600 text-2xl">✕</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-gray-600 mb-6">{error.message}</p>
           <button
-            onClick={fetchRfqs}
+            onClick={() => refetch()}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
           >
             Try Again
@@ -178,8 +142,8 @@ export default function RfqListPage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No RFQs Found</h3>
             <p className="text-gray-600 mb-6">
-              {searchTerm || statusFilter !== 'all' 
-                ? 'Try adjusting your filters' 
+              {searchTerm || statusFilter !== 'all'
+                ? 'Try adjusting your filters'
                 : 'Get started by creating your first RFQ'}
             </p>
             {!searchTerm && statusFilter === 'all' && (
@@ -193,7 +157,7 @@ export default function RfqListPage() {
           </div>
         ) : (
           <div className="grid gap-6">
-            {filteredRfqs.map((rfq) => (
+            {filteredRfqs.map((rfq: Rfq) => (
               <div
                 key={rfq.id}
                 onClick={() => router.push(`/rfqs/${rfq.id}`)}
@@ -204,7 +168,7 @@ export default function RfqListPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-2xl font-bold text-gray-900">{rfq.rfqNumber}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(rfq.status)}`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColorClass(rfq.status)}`}>
                           {rfq.status.toUpperCase()}
                         </span>
                       </div>
@@ -212,7 +176,7 @@ export default function RfqListPage() {
                       <p className="text-sm text-gray-500 mt-1">Customer: {rfq.customerName}</p>
                     </div>
                     <div className="flex items-center gap-2 text-gray-500">
-                      <span className="text-sm">{formatDate(rfq.createdAt)}</span>
+                      <span className="text-sm">{formatDateZA(rfq.createdAt)}</span>
                       <span className="text-2xl">→</span>
                     </div>
                   </div>

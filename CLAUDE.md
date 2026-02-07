@@ -40,6 +40,23 @@
     - `formatDateZA()`, `formatDateLongZA()` - localized date formatting
 - **ESLint enforces this**: Native Date usage will trigger lint errors
 
+### Data Fetching (TanStack Query)
+- **All page-level data fetching must use TanStack Query hooks**: Never use `useEffect` + `useState` + `fetch` in page components
+- **Hook location**: `annix-frontend/src/app/lib/query/hooks/{subject}/use{Subject}.ts`
+  - Subjects: `admin`, `boq`, `customer`, `drawing`, `rfq`, `supplier`
+- **Query key factories**: `annix-frontend/src/app/lib/query/keys/{subject}Keys.ts`
+  - Pattern: `{ all: [...], list: (params?) => [...], detail: (id) => [...] }`
+- **Barrel exports**: All hooks and types export through `hooks/index.ts` and `keys/index.ts`
+  - Pages always import from `@/app/lib/query/hooks` - never from individual hook files
+- **Creating new hooks**:
+  1. Add query key factory in `keys/{subject}Keys.ts`
+  2. Export from `keys/index.ts`
+  3. Create hook in `hooks/{subject}/use{Subject}.ts`
+  4. Export from `hooks/index.ts`
+- **Mutations**: Use `useMutation` with `onSuccess` that calls `queryClient.invalidateQueries`
+- **Fetch is the internal transport**: Hooks use `fetch` internally as the `queryFn` - this is expected
+- **ESLint enforces this**: Importing `browserBaseUrl`/`getAuthHeaders` in page.tsx files triggers a warning
+
 ### Error Handling
 - **No empty catches**: Never add `catch {}` or `catch (e) {}` blocks without at least one of:
     - Logging a meaningful message through the appropriate logger, or

@@ -24,6 +24,8 @@ export const customerKeys = {
     list: () => [...customerKeys.suppliers.all, 'list'] as const,
     invitations: () =>
       [...customerKeys.suppliers.all, 'invitations'] as const,
+    directory: (filters?: Record<string, unknown>) =>
+      [...customerKeys.suppliers.all, 'directory', filters ?? {}] as const,
   },
   company: {
     all: ['customer', 'company'] as const,
