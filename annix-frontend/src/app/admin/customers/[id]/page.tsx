@@ -3,96 +3,79 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { adminApiClient } from "@/app/lib/api/adminApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
-import { useAdminCustomerDetail, useAdminCustomerLoginHistory } from "@/app/lib/query/hooks";
+import {
+  useAdminCustomerDetail,
+  useAdminCustomerLoginHistory,
+  useReactivateCustomer,
+  useResetDeviceBinding,
+  useSuspendCustomer,
+} from "@/app/lib/query/hooks";
 
 export default function AdminCustomerDetailPage() {
   const params = useParams();
   const customerId = Number(params.id);
 
-  const {
-    data: customer,
-    isLoading,
-    error: queryError,
-    refetch,
-  } = useAdminCustomerDetail(customerId);
+  const { data: customer, isLoading, error: queryError } = useAdminCustomerDetail(customerId);
   const { data: loginHistory = [] } = useAdminCustomerLoginHistory(customerId);
 
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const suspendMutation = useSuspendCustomer(customerId);
+  const reactivateMutation = useReactivateCustomer(customerId);
+  const resetDeviceMutation = useResetDeviceBinding(customerId);
 
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showReactivateModal, setShowReactivateModal] = useState(false);
   const [showResetDeviceModal, setShowResetDeviceModal] = useState(false);
   const [actionReason, setActionReason] = useState("");
-  const [isPerformingAction, setIsPerformingAction] = useState(false);
 
-  const handleSuspend = async () => {
-    if (!actionReason.trim()) {
-      setError("Please provide a reason for suspension");
-      return;
-    }
+  const mutationError =
+    suspendMutation.error ?? reactivateMutation.error ?? resetDeviceMutation.error;
+  const error = mutationError instanceof Error ? mutationError.message : null;
+  const isPerformingAction =
+    suspendMutation.isPending || reactivateMutation.isPending || resetDeviceMutation.isPending;
 
-    setIsPerformingAction(true);
-    setError(null);
-
-    try {
-      await adminApiClient.suspendCustomer(customerId, { reason: actionReason });
-      setSuccessMessage("Customer account suspended successfully");
-      setShowSuspendModal(false);
-      setActionReason("");
-      await refetch();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to suspend customer");
-    } finally {
-      setIsPerformingAction(false);
-    }
+  const handleSuspend = () => {
+    if (!actionReason.trim()) return;
+    suspendMutation.mutate(
+      { reason: actionReason },
+      {
+        onSuccess: () => {
+          setSuccessMessage("Customer account suspended successfully");
+          setShowSuspendModal(false);
+          setActionReason("");
+        },
+      },
+    );
   };
 
-  const handleReactivate = async () => {
-    setIsPerformingAction(true);
-    setError(null);
-
-    try {
-      await adminApiClient.reactivateCustomer(customerId, {
-        note: actionReason || undefined,
-      });
-      setSuccessMessage("Customer account reactivated successfully");
-      setShowReactivateModal(false);
-      setActionReason("");
-      await refetch();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to reactivate customer");
-    } finally {
-      setIsPerformingAction(false);
-    }
+  const handleReactivate = () => {
+    reactivateMutation.mutate(
+      { note: actionReason || undefined },
+      {
+        onSuccess: () => {
+          setSuccessMessage("Customer account reactivated successfully");
+          setShowReactivateModal(false);
+          setActionReason("");
+        },
+      },
+    );
   };
 
-  const handleResetDevice = async () => {
-    if (!actionReason.trim()) {
-      setError("Please provide a reason for device reset");
-      return;
-    }
-
-    setIsPerformingAction(true);
-    setError(null);
-
-    try {
-      await adminApiClient.resetDeviceBinding(customerId, {
-        reason: actionReason,
-      });
-      setSuccessMessage(
-        "Device binding reset successfully. Customer will need to register new device on next login.",
-      );
-      setShowResetDeviceModal(false);
-      setActionReason("");
-      await refetch();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to reset device binding");
-    } finally {
-      setIsPerformingAction(false);
-    }
+  const handleResetDevice = () => {
+    if (!actionReason.trim()) return;
+    resetDeviceMutation.mutate(
+      { reason: actionReason },
+      {
+        onSuccess: () => {
+          setSuccessMessage(
+            "Device binding reset successfully. Customer will need to register new device on next login.",
+          );
+          setShowResetDeviceModal(false);
+          setActionReason("");
+        },
+      },
+    );
   };
 
   const statusBadgeClass = (status: string) => {

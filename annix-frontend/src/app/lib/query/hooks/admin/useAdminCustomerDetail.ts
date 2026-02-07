@@ -1,10 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adminApiClient,
   type CustomerDetail,
   type CustomerDocument,
   type CustomFieldValue,
   type LoginHistoryItem,
+  type ReactivateCustomerDto,
+  type ResetDeviceBindingDto,
+  type SuspendCustomerDto,
 } from "@/app/lib/api/adminApi";
 import { adminKeys } from "../../keys";
 
@@ -46,5 +49,37 @@ export function useAdminCustomerCustomFields(id: number) {
     queryKey: adminKeys.customers.customFields(id),
     queryFn: () => adminApiClient.customFieldValues("customer", id),
     enabled: id > 0,
+  });
+}
+
+export function useSuspendCustomer(customerId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: SuspendCustomerDto) => adminApiClient.suspendCustomer(customerId, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.customers.detail(customerId) });
+      queryClient.invalidateQueries({ queryKey: adminKeys.customers.all });
+    },
+  });
+}
+
+export function useReactivateCustomer(customerId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: ReactivateCustomerDto) => adminApiClient.reactivateCustomer(customerId, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.customers.detail(customerId) });
+      queryClient.invalidateQueries({ queryKey: adminKeys.customers.all });
+    },
+  });
+}
+
+export function useResetDeviceBinding(customerId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: ResetDeviceBindingDto) => adminApiClient.resetDeviceBinding(customerId, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.customers.detail(customerId) });
+    },
   });
 }

@@ -1,32 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 
 export default function AdminUsersPage() {
   const { admin } = useAdminAuth();
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Check if current user is an admin (not just employee)
   const isAdmin = admin?.roles?.includes("admin");
 
-  useEffect(() => {
-    setTimeout(() => setIsLoading(false), 500);
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading admin users...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if user has admin role
   if (!isAdmin) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
