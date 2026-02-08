@@ -130,8 +130,15 @@ export interface BendCalculation extends BaseCalculation {
 
 export interface FittingCalculation extends BaseCalculation {
   fittingWeight?: number;
+  pipeWeight?: number;
   flangeWeight?: number;
+  boltWeight?: number;
+  nutWeight?: number;
   weldLengthMm?: number;
+  numberOfFlanges?: number;
+  gussetWeight?: number;
+  gussetSectionMm?: number;
+  gussetWeldLength?: number;
 }
 
 export interface RfqEntry<TSpecs, TCalculation> {

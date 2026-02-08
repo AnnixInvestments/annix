@@ -2302,8 +2302,16 @@ export function calculateFittingWeldVolume(params: {
   numberOfMainFlangeWelds: number;
   numberOfBranchFlangeWelds: number;
   hasTeeJunctionWeld: boolean;
+  gussetSectionMm?: number;
+  gussetWallThicknessMm?: number;
   config?: WeldVolumeConfig;
-}): WeldVolumeResult & { teeJunctionVolumeMm3: number; teeJunctionVolumeCm3: number } {
+}): WeldVolumeResult & {
+  teeJunctionVolumeMm3: number;
+  teeJunctionVolumeCm3: number;
+  gussetWeldVolumeMm3: number;
+  gussetWeldVolumeCm3: number;
+  gussetWeldLengthMm: number;
+} {
   const mainFlangeWeld = calculateFlangeWeldVolume({
     outsideDiameterMm: params.mainOdMm,
     wallThicknessMm: params.mainWallThicknessMm,
@@ -2331,8 +2339,21 @@ export function calculateFittingWeldVolume(params: {
   }
   const teeJunctionVolumeCm3 = teeJunctionVolumeMm3 / 1000;
 
+  let gussetWeldVolumeMm3 = 0;
+  let gussetWeldLengthMm = 0;
+  if (params.gussetSectionMm && params.gussetWallThicknessMm && params.gussetSectionMm > 0) {
+    const gussetLegMm = params.gussetSectionMm;
+    const hypotenuseMm = gussetLegMm * Math.SQRT2;
+    const singleGussetWeldLengthMm = hypotenuseMm + 2 * gussetLegMm;
+    gussetWeldLengthMm = 2 * singleGussetWeldLengthMm;
+    const legSize = calculateFilletWeldLegSize(params.gussetWallThicknessMm);
+    const crossSection = filletWeldCrossSectionMm2(legSize);
+    gussetWeldVolumeMm3 = crossSection * gussetWeldLengthMm;
+  }
+  const gussetWeldVolumeCm3 = gussetWeldVolumeMm3 / 1000;
+
   const totalFilletVolumeMm3 =
-    mainFlangeWeld.volumeMm3 + branchFlangeVolumeMm3 + teeJunctionVolumeMm3;
+    mainFlangeWeld.volumeMm3 + branchFlangeVolumeMm3 + teeJunctionVolumeMm3 + gussetWeldVolumeMm3;
   const totalVolumeMm3 = totalFilletVolumeMm3;
   const totalVolumeCm3 = totalVolumeMm3 / 1000;
   const WELD_METAL_DENSITY_KG_CM3 = STEEL_DENSITY_KG_CM3;
@@ -2345,6 +2366,9 @@ export function calculateFittingWeldVolume(params: {
     buttWeldVolumeCm3: 0,
     teeJunctionVolumeMm3,
     teeJunctionVolumeCm3,
+    gussetWeldVolumeMm3,
+    gussetWeldVolumeCm3,
+    gussetWeldLengthMm,
     totalVolumeMm3,
     totalVolumeCm3,
     weldMetalWeightKg,

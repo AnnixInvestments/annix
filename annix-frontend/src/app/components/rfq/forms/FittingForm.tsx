@@ -2301,7 +2301,7 @@ function FittingFormComponent({
                     const branchFlangeWeldCount =
                       flangeConfigCalc.hasBranch && flangeConfigCalc.branchType !== "loose" ? 1 : 0;
                     const gussetSectionMm = isGussetTee
-                      ? entry.calculation?.gussetSectionMm || getGussetSection(nominalBore)
+                      ? getGussetSection(nominalBore) || entry.calculation?.gussetSectionMm || 0
                       : 0;
                     const gussetAreaMm2 = 0.5 * gussetSectionMm * gussetSectionMm;
                     const gussetVolumeDm3 = (gussetAreaMm2 * (pipeWallThickness || 0)) / 1e6;
@@ -2532,7 +2532,7 @@ function FittingFormComponent({
                                 {isGussetTee && gussetWeight > 0 && (
                                   <>
                                     <p className="font-medium mt-1">
-                                      2 × Gusset ({gussetSectionMm.toFixed(0)}mm):{" "}
+                                      2 × Gusset ({getGussetSection(nominalBore)}mm):{" "}
                                       {gussetWeight.toFixed(2)}kg
                                     </p>
                                     <p className="text-[10px]">
@@ -2575,11 +2575,22 @@ function FittingFormComponent({
                         {/* Weld Summary with Volume - Combined */}
                         {(() => {
                           const STEINMETZ_FACTOR = 2.7;
-                          const teeJunctionWeldMm =
-                            branchOdMm > 0 ? STEINMETZ_FACTOR * branchOdMm : 0;
                           const mainCircMm = Math.PI * mainOdMm;
                           const totalFlangeWeldMm = numFlanges * 2 * mainCircMm;
-                          const gussetWeldLengthMm = fittingWeldVolume?.gussetWeldLengthMm || 0;
+                          const effectiveGussetSection =
+                            getGussetSection(nominalBore) ||
+                            entry.calculation?.gussetSectionMm ||
+                            0;
+                          const calculatedGussetWeldLengthMm =
+                            effectiveGussetSection > 0
+                              ? 2 *
+                                (effectiveGussetSection * Math.SQRT2 + 2 * effectiveGussetSection)
+                              : 0;
+                          const gussetWeldLengthMm = isGussetTee
+                            ? fittingWeldVolume?.gussetWeldLengthMm || calculatedGussetWeldLengthMm
+                            : 0;
+                          const teeJunctionWeldMm =
+                            !isGussetTee && branchOdMm > 0 ? STEINMETZ_FACTOR * branchOdMm : 0;
                           const totalWeldLinearMm =
                             teeJunctionWeldMm + totalFlangeWeldMm + gussetWeldLengthMm;
 
@@ -2599,19 +2610,22 @@ function FittingFormComponent({
                                 </>
                               )}
                               <div className="mt-1 text-xs text-fuchsia-500 dark:text-fuchsia-400">
-                                <p>
-                                  Tee Junction: {teeJunctionWeldMm.toFixed(0)}mm @{" "}
-                                  {branchWeldThickness?.toFixed(1)}mm
-                                </p>
-                                {numFlanges > 0 && (
+                                {!isGussetTee && (
                                   <p>
-                                    {numFlanges} × Flange (2×{mainCircMm.toFixed(0)}mm) @{" "}
-                                    {fittingWeldThickness?.toFixed(1)}mm
+                                    Tee Junction: {teeJunctionWeldMm.toFixed(0)}mm @{" "}
+                                    {branchWeldThickness?.toFixed(1)}mm
                                   </p>
                                 )}
                                 {isGussetTee && gussetWeldLengthMm > 0 && (
                                   <p>
-                                    2 × Gusset (2×{(gussetWeldLengthMm / 2).toFixed(0)}mm) @{" "}
+                                    2 × Gusset ({effectiveGussetSection.toFixed(0)}mm):{" "}
+                                    {gussetWeldLengthMm.toFixed(0)}mm @{" "}
+                                    {fittingWeldThickness?.toFixed(1)}mm
+                                  </p>
+                                )}
+                                {numFlanges > 0 && (
+                                  <p>
+                                    {numFlanges} × Flange (2×{mainCircMm.toFixed(0)}mm) @{" "}
                                     {fittingWeldThickness?.toFixed(1)}mm
                                   </p>
                                 )}
