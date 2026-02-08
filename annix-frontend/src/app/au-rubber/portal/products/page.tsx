@@ -6,7 +6,6 @@ import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { now } from "@/app/lib/datetime";
-import { useDeleteRubberProduct, useRubberProducts } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { ProductFormModal } from "../../components/ProductFormModal";
@@ -71,9 +70,10 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
 
 export default function AuRubberProductsPage() {
   const { showToast } = useToast();
-  const productsQuery = useRubberProducts();
-  const deleteMutation = useDeleteRubberProduct();
-  const products = productsQuery.data ?? [];
+
+  const [products, setProducts] = useState<RubberProductDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -86,6 +86,23 @@ export default function AuRubberProductsPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedProducts, setSelectedProducts] = useState<Set<number>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+
+  const fetchProducts = async () => {
+    try {
+      setIsLoading(true);
+      const data = await auRubberApiClient.products();
+      setProducts(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load products"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const sortProducts = (productsToSort: RubberProductDto[]): RubberProductDto[] => {
     return [...productsToSort].sort((a, b) => {
@@ -159,7 +176,7 @@ export default function AuRubberProductsPage() {
         failCount > 0 ? "warning" : "success",
       );
       setSelectedProducts(new Set());
-      productsQuery.refetch();
+      fetchProducts();
     } else if (failCount > 0) {
       showToast(`Failed to delete ${failCount} product${failCount > 1 ? "s" : ""}`, "error");
     }
@@ -194,17 +211,16 @@ export default function AuRubberProductsPage() {
     setSelectedProducts(new Set());
   }, [searchQuery, typeFilter, compoundFilter]);
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id, {
-      onSuccess: () => {
-        showToast("Product deleted", "success");
-        setDeleteProductId(null);
-      },
-      onError: (err: unknown) => {
-        const errorMessage = err instanceof Error ? err.message : "Failed to delete product";
-        showToast(errorMessage, "error");
-      },
-    });
+  const handleDelete = async (id: number) => {
+    try {
+      await auRubberApiClient.deleteProduct(id);
+      showToast("Product deleted", "success");
+      setDeleteProductId(null);
+      fetchProducts();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete product";
+      showToast(errorMessage, "error");
+    }
   };
 
   const formatCurrency = (value: number | null): string => {
@@ -212,14 +228,14 @@ export default function AuRubberProductsPage() {
     return `R ${value.toFixed(2)}`;
   };
 
-  if (productsQuery.error) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Products</div>
-          <p className="text-gray-600">{productsQuery.error.message}</p>
+          <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => productsQuery.refetch()}
+            onClick={() => fetchProducts()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry
@@ -373,7 +389,7 @@ export default function AuRubberProductsPage() {
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {productsQuery.isLoading ? (
+        {isLoading ? (
           <TableLoadingState message="Loading products..." />
         ) : filteredProducts.length === 0 ? (
           <TableEmptyState
@@ -581,7 +597,7 @@ export default function AuRubberProductsPage() {
         onSave={() => {
           setShowCreateModal(false);
           showToast("Product created", "success");
-          productsQuery.refetch();
+          fetchProducts();
         }}
         onCancel={() => {
           setShowCreateModal(false);
@@ -603,7 +619,7 @@ export default function AuRubberProductsPage() {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImportComplete={() => {
-          productsQuery.refetch();
+          fetchProducts();
         }}
       />
     </div>

@@ -1,21 +1,12 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type { RubberOrderDto } from "@/app/lib/api/rubberPortalApi";
-import { statusColor } from "@/app/lib/config/rubber/orderStatus";
+import type { RubberCompanyDto, RubberOrderDto } from "@/app/lib/api/rubberPortalApi";
+import { ORDER_STATUS_OPTIONS, statusColor } from "@/app/lib/config/rubber/orderStatus";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
-import {
-  useCreateRubberOrder,
-  useDeleteRubberOrder,
-  useRubberCompanies,
-  useRubberOrderStatuses,
-  useRubberOrders,
-} from "@/app/lib/query/hooks";
-import { rubberKeys } from "@/app/lib/query/keys";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import {
@@ -63,7 +54,6 @@ const exportOrdersToCSV = (orders: RubberOrderDto[]) => {
 
 export default function AuRubberOrdersPage() {
   const { showToast } = useToast();
-  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   const [companyFilter, setCompanyFilter] = useState<number | undefined>(undefined);
@@ -79,15 +69,42 @@ export default function AuRubberOrdersPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedOrders, setSelectedOrders] = useState<Set<number>>(new Set());
 
-  const ordersQuery = useRubberOrders(statusFilter);
-  const companiesQuery = useRubberCompanies();
-  const statusesQuery = useRubberOrderStatuses();
-  const createMutation = useCreateRubberOrder();
-  const deleteMutation = useDeleteRubberOrder();
+  const [orders, setOrders] = useState<RubberOrderDto[]>([]);
+  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
+  const statuses = ORDER_STATUS_OPTIONS;
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
-  const orders = ordersQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const statuses = statusesQuery.data ?? [];
+  const fetchOrders = async (status?: number) => {
+    try {
+      setIsLoading(true);
+      const data = await auRubberApiClient.orders(status);
+      setOrders(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load orders"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCompanies = async () => {
+    try {
+      const data = await auRubberApiClient.companies();
+      setCompanies(data);
+    } catch (err) {
+      console.error("Failed to load companies:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders(statusFilter);
+  }, [statusFilter]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
 
   const sortOrders = (ordersToSort: RubberOrderDto[]): RubberOrderDto[] => {
     return [...ordersToSort].sort((a, b) => {
@@ -144,7 +161,7 @@ export default function AuRubberOrdersPage() {
         failCount > 0 ? "warning" : "success",
       );
       setSelectedOrders(new Set());
-      queryClient.invalidateQueries({ queryKey: rubberKeys.orders.all });
+      fetchOrders(statusFilter);
     } else if (failCount > 0) {
       showToast(`Failed to delete ${failCount} order${failCount > 1 ? "s" : ""}`, "error");
     }
@@ -174,43 +191,44 @@ export default function AuRubberOrdersPage() {
     setSelectedOrders(new Set());
   }, [searchQuery, companyFilter, dateFrom, dateTo, statusFilter]);
 
-  const handleCreateOrder = () => {
-    createMutation.mutate(
-      { companyId: newOrderCompanyId, companyOrderNumber: newOrderCompanyOrderNumber || undefined },
-      {
-        onSuccess: (order) => {
-          showToast(`Order ${order.orderNumber} created`, "success");
-          setShowNewOrderModal(false);
-          setNewOrderCompanyId(undefined);
-          setNewOrderCompanyOrderNumber("");
-        },
-        onError: (err: unknown) => {
-          showToast(err instanceof Error ? err.message : "Failed to create order", "error");
-        },
-      },
-    );
+  const handleCreateOrder = async () => {
+    try {
+      setIsCreating(true);
+      const order = await auRubberApiClient.createOrder({
+        companyId: newOrderCompanyId,
+        companyOrderNumber: newOrderCompanyOrderNumber || undefined,
+      });
+      showToast(`Order ${order.orderNumber} created`, "success");
+      setShowNewOrderModal(false);
+      setNewOrderCompanyId(undefined);
+      setNewOrderCompanyOrderNumber("");
+      fetchOrders(statusFilter);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to create order", "error");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const handleDeleteOrder = (id: number) => {
-    deleteMutation.mutate(id, {
-      onSuccess: () => {
-        showToast("Order deleted", "success");
-        setDeleteOrderId(null);
-      },
-      onError: (err: unknown) => {
-        showToast(err instanceof Error ? err.message : "Failed to delete order", "error");
-      },
-    });
+  const handleDeleteOrder = async (id: number) => {
+    try {
+      await auRubberApiClient.deleteOrder(id);
+      showToast("Order deleted", "success");
+      setDeleteOrderId(null);
+      fetchOrders(statusFilter);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to delete order", "error");
+    }
   };
 
-  if (ordersQuery.error) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Orders</div>
-          <p className="text-gray-600">{ordersQuery.error.message}</p>
+          <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => ordersQuery.refetch()}
+            onClick={() => fetchOrders(statusFilter)}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry
@@ -327,7 +345,7 @@ export default function AuRubberOrdersPage() {
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {ordersQuery.isLoading ? (
+        {isLoading ? (
           <TableLoadingState message="Loading orders..." />
         ) : filteredOrders.length === 0 ? (
           <TableEmptyState
@@ -536,10 +554,10 @@ export default function AuRubberOrdersPage() {
                 </button>
                 <button
                   onClick={handleCreateOrder}
-                  disabled={createMutation.isPending}
+                  disabled={isCreating}
                   className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
                 >
-                  {createMutation.isPending ? "Creating..." : "Create Order"}
+                  {isCreating ? "Creating..." : "Create Order"}
                 </button>
               </div>
             </div>

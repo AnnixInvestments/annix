@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useRubberProductDetail } from "@/app/lib/query/hooks";
+import { useEffect, useState } from "react";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 
 function formatCurrency(value: number | null): string {
@@ -28,10 +30,28 @@ export default function AuRubberProductDetailPage() {
   const router = useRouter();
   const productId = Number(params.id);
 
-  const productQuery = useRubberProductDetail(productId);
-  const product = productQuery.data ?? null;
+  const [product, setProduct] = useState<RubberProductDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  if (productQuery.isLoading) {
+  const fetchProduct = async () => {
+    try {
+      setIsLoading(true);
+      const data = await auRubberApiClient.productById(productId);
+      setProduct(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load product"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProduct();
+  }, [productId]);
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -42,18 +62,14 @@ export default function AuRubberProductDetailPage() {
     );
   }
 
-  if (productQuery.error) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Product</div>
-          <p className="text-gray-600">
-            {productQuery.error instanceof Error
-              ? productQuery.error.message
-              : "Failed to load product"}
-          </p>
+          <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => productQuery.refetch()}
+            onClick={() => fetchProduct()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry

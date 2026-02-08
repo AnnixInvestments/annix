@@ -1,14 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import { type RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import { CODING_TYPES, CodingType } from "@/app/lib/config/rubber/codingTypes";
-import {
-  useDeleteRubberCoding,
-  useRubberCodings,
-  useSaveRubberCoding,
-} from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { ITEMS_PER_PAGE, Pagination, TableLoadingState } from "../../components/TableComponents";
@@ -16,6 +12,12 @@ import { ITEMS_PER_PAGE, Pagination, TableLoadingState } from "../../components/
 export default function AuRubberCodingsPage() {
   const { showToast } = useToast();
   const [selectedType, setSelectedType] = useState<CodingType>("COMPOUND");
+
+  const [codings, setCodings] = useState<RubberProductCodingDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
   const [editingCoding, setEditingCoding] = useState<RubberProductCodingDto | null>(null);
   const [deleteCodingId, setDeleteCodingId] = useState<number | null>(null);
@@ -26,11 +28,22 @@ export default function AuRubberCodingsPage() {
   });
   const [currentPage, setCurrentPage] = useState(0);
 
-  const codingsQuery = useRubberCodings(selectedType);
-  const saveMutation = useSaveRubberCoding();
-  const deleteMutation = useDeleteRubberCoding();
+  const fetchCodings = async (type: CodingType) => {
+    try {
+      setIsLoading(true);
+      const data = await auRubberApiClient.productCodings(type);
+      setCodings(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load codings"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const codings = codingsQuery.data ?? [];
+  useEffect(() => {
+    fetchCodings(selectedType);
+  }, [selectedType]);
 
   const paginatedCodings = codings.slice(
     currentPage * ITEMS_PER_PAGE,
@@ -57,42 +70,40 @@ export default function AuRubberCodingsPage() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    const payload = {
-      codingType: formData.codingType,
-      code: formData.code,
-      name: formData.name,
-    };
-
-    saveMutation.mutate(
-      {
-        id: editingCoding?.id,
-        payload,
-      },
-      {
-        onSuccess: () => {
-          showToast(editingCoding ? "Coding updated" : "Coding created", "success");
-          setShowModal(false);
-        },
-        onError: (err: unknown) => {
-          const errorMessage = err instanceof Error ? err.message : "Failed to save coding";
-          showToast(errorMessage, "error");
-        },
-      },
-    );
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      const payload = {
+        codingType: formData.codingType,
+        code: formData.code,
+        name: formData.name,
+      };
+      if (editingCoding) {
+        await auRubberApiClient.updateProductCoding(editingCoding.id, payload);
+      } else {
+        await auRubberApiClient.createProductCoding(payload);
+      }
+      showToast(editingCoding ? "Coding updated" : "Coding created", "success");
+      setShowModal(false);
+      fetchCodings(selectedType);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to save coding";
+      showToast(errorMessage, "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id, {
-      onSuccess: () => {
-        showToast("Coding deleted", "success");
-        setDeleteCodingId(null);
-      },
-      onError: (err: unknown) => {
-        const errorMessage = err instanceof Error ? err.message : "Failed to delete coding";
-        showToast(errorMessage, "error");
-      },
-    });
+  const handleDelete = async (id: number) => {
+    try {
+      await auRubberApiClient.deleteProductCoding(id);
+      showToast("Coding deleted", "success");
+      setDeleteCodingId(null);
+      fetchCodings(selectedType);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete coding";
+      showToast(errorMessage, "error");
+    }
   };
 
   const handleTypeChange = (type: CodingType) => {
@@ -102,18 +113,14 @@ export default function AuRubberCodingsPage() {
 
   const currentTypeInfo = CODING_TYPES.find((t) => t.value === selectedType);
 
-  if (codingsQuery.error) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Codings</div>
-          <p className="text-gray-600">
-            {codingsQuery.error instanceof Error
-              ? codingsQuery.error.message
-              : "Failed to load codings"}
-          </p>
+          <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => codingsQuery.refetch()}
+            onClick={() => fetchCodings(selectedType)}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry
@@ -163,7 +170,7 @@ export default function AuRubberCodingsPage() {
       {currentTypeInfo && <p className="text-sm text-gray-500">{currentTypeInfo.description}</p>}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
-        {codingsQuery.isLoading ? (
+        {isLoading ? (
           <TableLoadingState message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`} />
         ) : codings.length === 0 ? (
           <div className="text-center py-12">
@@ -308,10 +315,10 @@ export default function AuRubberCodingsPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saveMutation.isPending || !formData.code || !formData.name}
+                  disabled={isSaving || !formData.code || !formData.name}
                   className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
                 >
-                  {saveMutation.isPending ? "Saving..." : "Save"}
+                  {isSaving ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>

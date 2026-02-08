@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import type {
+  RubberCompanyDto,
+  RubberOrderDto,
+  RubberProductDto,
+} from "@/app/lib/api/rubberPortalApi";
 import { RUBBER_ORDER_STATUS, statusColor, statusLabel } from "@/app/lib/config/rubber/orderStatus";
 import { formatDateZA } from "@/app/lib/datetime";
-import { useRubberCompanies, useRubberOrders, useRubberProducts } from "@/app/lib/query/hooks";
 
 interface StatusCount {
   status: number;
@@ -15,24 +20,40 @@ interface StatusCount {
 const ORDERS_PER_PAGE = 5;
 
 export default function AuRubberDashboard() {
-  const ordersQuery = useRubberOrders();
-  const companiesQuery = useRubberCompanies();
-  const productsQuery = useRubberProducts();
-
+  const [orders, setOrders] = useState<RubberOrderDto[]>([]);
+  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
+  const [products, setProducts] = useState<RubberProductDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
 
-  const orders = ordersQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const products = productsQuery.data ?? [];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [ordersData, companiesData, productsData] = await Promise.all([
+          auRubberApiClient.orders(),
+          auRubberApiClient.companies(),
+          auRubberApiClient.products(),
+        ]);
+        setOrders(ordersData);
+        setCompanies(companiesData);
+        setProducts(productsData);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error("Failed to load data"));
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const ordersByStatus: StatusCount[] = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
     status: value,
     label: statusLabel(value),
     count: orders.filter((o) => o.status === value).length,
   }));
-
-  const isLoading = ordersQuery.isLoading || companiesQuery.isLoading || productsQuery.isLoading;
-  const error = ordersQuery.error || companiesQuery.error || productsQuery.error;
 
   const totalPages = Math.ceil(orders.length / ORDERS_PER_PAGE);
   const paginatedOrders = orders.slice(

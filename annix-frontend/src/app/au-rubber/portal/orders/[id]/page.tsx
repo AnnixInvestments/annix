@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { CallOff } from "@/app/lib/api/rubberPortalApi";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import type {
+  CallOff,
+  RubberCompanyDto,
+  RubberOrderDto,
+  RubberProductDto,
+} from "@/app/lib/api/rubberPortalApi";
 import {
   CALLOFF_STATUS,
   CALLOFF_STATUS_OPTIONS,
@@ -19,19 +25,13 @@ import {
 } from "@/app/lib/config/rubber/dimensions";
 import {
   isTerminalStatus,
+  ORDER_STATUS_OPTIONS,
   STATUS_LABELS,
   statusColor,
   statusLabel,
   validNextStatuses,
 } from "@/app/lib/config/rubber/orderStatus";
 import { formatDateTimeZA, formatDateZA, fromMillis, nowMillis } from "@/app/lib/datetime";
-import {
-  useRubberCompanies,
-  useRubberOrderDetail,
-  useRubberOrderStatuses,
-  useRubberProducts,
-  useUpdateRubberOrder,
-} from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import { CalloffInput } from "../components/CalloffInput";
 
@@ -137,18 +137,50 @@ export default function AuRubberOrderDetailPage() {
   const orderId = Number(params.id);
   const { showToast } = useToast();
 
-  const orderQuery = useRubberOrderDetail(orderId);
-  const productsQuery = useRubberProducts();
-  const companiesQuery = useRubberCompanies();
-  const statusesQuery = useRubberOrderStatuses();
-  const updateOrderMutation = useUpdateRubberOrder();
-
-  const order = orderQuery.data ?? null;
-  const products = productsQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const statuses = statusesQuery.data ?? [];
-
+  const [order, setOrder] = useState<RubberOrderDto | null>(null);
+  const [products, setProducts] = useState<RubberProductDto[]>([]);
+  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
+  const statuses = ORDER_STATUS_OPTIONS;
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const fetchOrder = async () => {
+    try {
+      setIsLoading(true);
+      const data = await auRubberApiClient.orderById(orderId);
+      setOrder(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load order"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const data = await auRubberApiClient.products();
+      setProducts(data);
+    } catch (err) {
+      console.error("Failed to load products:", err);
+    }
+  };
+
+  const fetchCompanies = async () => {
+    try {
+      const data = await auRubberApiClient.companies();
+      setCompanies(data);
+    } catch (err) {
+      console.error("Failed to load companies:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrder();
+    fetchProducts();
+    fetchCompanies();
+  }, [orderId]);
 
   const [editStatus, setEditStatus] = useState<number>(0);
   const [editCompanyId, setEditCompanyId] = useState<number | undefined>(undefined);
@@ -265,25 +297,23 @@ export default function AuRubberOrderDetailPage() {
 
     try {
       setIsSaving(true);
-      await updateOrderMutation.mutateAsync({
-        id: orderId,
-        data: {
-          status: editStatus,
-          companyId: editCompanyId,
-          companyOrderNumber: editCompanyOrderNumber || undefined,
-          items: editItems
-            .filter((item) => item.productId)
-            .map((item) => ({
-              productId: item.productId,
-              thickness: item.thickness,
-              width: item.width,
-              length: item.length,
-              quantity: item.quantity,
-              callOffs: item.callOffs,
-            })),
-        },
+      await auRubberApiClient.updateOrder(orderId, {
+        status: editStatus,
+        companyId: editCompanyId,
+        companyOrderNumber: editCompanyOrderNumber || undefined,
+        items: editItems
+          .filter((item) => item.productId)
+          .map((item) => ({
+            productId: item.productId,
+            thickness: item.thickness,
+            width: item.width,
+            length: item.length,
+            quantity: item.quantity,
+            callOffs: item.callOffs,
+          })),
       });
       showToast("Order updated", "success");
+      fetchOrder();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update order";
       showToast(errorMessage, "error");
@@ -453,7 +483,7 @@ export default function AuRubberOrderDetailPage() {
     return `R ${value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  if (orderQuery.isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -464,16 +494,14 @@ export default function AuRubberOrderDetailPage() {
     );
   }
 
-  if (orderQuery.error) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Order</div>
-          <p className="text-gray-600">
-            {orderQuery.error instanceof Error ? orderQuery.error.message : "Failed to load order"}
-          </p>
+          <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => orderQuery.refetch()}
+            onClick={() => fetchOrder()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry

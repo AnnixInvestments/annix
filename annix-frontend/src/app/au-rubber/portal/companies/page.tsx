@@ -3,14 +3,11 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
-import {
-  useDeleteRubberCompany,
-  useRubberCompanies,
-  useRubberPricingTiers,
-  useRubberProducts,
-  useSaveRubberCompany,
-} from "@/app/lib/query/hooks";
+import type {
+  RubberCompanyDto,
+  RubberPricingTierDto,
+  RubberProductDto,
+} from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import {
@@ -28,16 +25,12 @@ type SortColumn = "name" | "code" | "pricingTier" | "vatNumber" | "isCompoundOwn
 export default function AuRubberCompaniesPage() {
   const { showToast } = useToast();
 
-  const companiesQuery = useRubberCompanies();
-  const tiersQuery = useRubberPricingTiers();
-  const productsQuery = useRubberProducts();
-  const saveMutation = useSaveRubberCompany();
-  const deleteMutation = useDeleteRubberCompany();
-
-  const companies = companiesQuery.data ?? [];
-  const pricingTiers = tiersQuery.data ?? [];
-  const products = productsQuery.data ?? [];
-  const isLoading = companiesQuery.isLoading || tiersQuery.isLoading || productsQuery.isLoading;
+  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
+  const [pricingTiers, setPricingTiers] = useState<RubberPricingTierDto[]>([]);
+  const [products, setProducts] = useState<RubberProductDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState<RubberCompanyDto | null>(null);
@@ -59,6 +52,29 @@ export default function AuRubberCompaniesPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedCompanies, setSelectedCompanies] = useState<Set<number>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [companiesData, tiersData, productsData] = await Promise.all([
+        auRubberApiClient.companies(),
+        auRubberApiClient.pricingTiers(),
+        auRubberApiClient.products(),
+      ]);
+      setCompanies(companiesData);
+      setPricingTiers(tiersData);
+      setProducts(productsData);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load data"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const sortCompanies = (companiesToSort: RubberCompanyDto[]): RubberCompanyDto[] => {
     return [...companiesToSort].sort((a, b) => {
@@ -120,7 +136,7 @@ export default function AuRubberCompaniesPage() {
         failCount > 0 ? "warning" : "success",
       );
       setSelectedCompanies(new Set());
-      companiesQuery.refetch();
+      fetchData();
     } else if (failCount > 0) {
       showToast(`Failed to delete ${failCount} compan${failCount > 1 ? "ies" : "y"}`, "error");
     }
@@ -181,49 +197,51 @@ export default function AuRubberCompaniesPage() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    const addressEntries = Object.entries(formData.address).filter(([, v]) => v.trim() !== "");
-    const cleanedAddress =
-      addressEntries.length > 0 ? Object.fromEntries(addressEntries) : undefined;
-    const payload = {
-      ...formData,
-      pricingTierId: formData.pricingTierId ?? undefined,
-      address: cleanedAddress,
-    };
-    saveMutation.mutate(
-      { id: editingCompany?.id, payload },
-      {
-        onSuccess: () => {
-          showToast(editingCompany ? "Company updated" : "Company created", "success");
-          setShowModal(false);
-        },
-        onError: (err: unknown) => {
-          showToast(err instanceof Error ? err.message : "Failed to save company", "error");
-        },
-      },
-    );
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      const addressEntries = Object.entries(formData.address).filter(([, v]) => v.trim() !== "");
+      const cleanedAddress =
+        addressEntries.length > 0 ? Object.fromEntries(addressEntries) : undefined;
+      const payload = {
+        ...formData,
+        pricingTierId: formData.pricingTierId ?? undefined,
+        address: cleanedAddress,
+      };
+      if (editingCompany) {
+        await auRubberApiClient.updateCompany(editingCompany.id, payload);
+      } else {
+        await auRubberApiClient.createCompany(payload);
+      }
+      showToast(editingCompany ? "Company updated" : "Company created", "success");
+      setShowModal(false);
+      fetchData();
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to save company", "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id, {
-      onSuccess: () => {
-        showToast("Company deleted", "success");
-        setDeleteCompanyId(null);
-      },
-      onError: (err: unknown) => {
-        showToast(err instanceof Error ? err.message : "Failed to delete company", "error");
-      },
-    });
+  const handleDelete = async (id: number) => {
+    try {
+      await auRubberApiClient.deleteCompany(id);
+      showToast("Company deleted", "success");
+      setDeleteCompanyId(null);
+      fetchData();
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to delete company", "error");
+    }
   };
 
-  if (companiesQuery.error) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Companies</div>
-          <p className="text-gray-600">{companiesQuery.error.message}</p>
+          <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => companiesQuery.refetch()}
+            onClick={() => fetchData()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry
@@ -578,10 +596,10 @@ export default function AuRubberCompaniesPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saveMutation.isPending || !formData.name}
+                  disabled={isSaving || !formData.name}
                   className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
                 >
-                  {saveMutation.isPending ? "Saving..." : "Save"}
+                  {isSaving ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>

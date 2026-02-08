@@ -1,28 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { RubberPricingTierDto } from "@/app/lib/api/rubberPortalApi";
-import {
-  useDeleteRubberPricingTier,
-  useRubberCompanies,
-  useRubberPricingTiers,
-  useSaveRubberPricingTier,
-} from "@/app/lib/query/hooks";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import type { RubberCompanyDto, RubberPricingTierDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { TableEmptyState, TableIcons, TableLoadingState } from "../../components/TableComponents";
 
 export default function AuRubberPricingTiersPage() {
   const { showToast } = useToast();
-  const tiersQuery = useRubberPricingTiers();
-  const companiesQuery = useRubberCompanies();
-  const saveMutation = useSaveRubberPricingTier();
-  const deleteMutation = useDeleteRubberPricingTier();
 
-  const tiers = tiersQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const isLoading = tiersQuery.isLoading || companiesQuery.isLoading;
+  const [tiers, setTiers] = useState<RubberPricingTierDto[]>([]);
+  const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [editingTier, setEditingTier] = useState<RubberPricingTierDto | null>(null);
@@ -31,6 +24,27 @@ export default function AuRubberPricingTiersPage() {
     name: "",
     pricingFactor: 100,
   });
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [tiersData, companiesData] = await Promise.all([
+        auRubberApiClient.pricingTiers(),
+        auRubberApiClient.companies(),
+      ]);
+      setTiers(tiersData);
+      setCompanies(companiesData);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load data"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const companyCountByTier = (tierId: number) => {
     return companies.filter((c) => c.pricingTierId === tierId).length;
@@ -54,46 +68,45 @@ export default function AuRubberPricingTiersPage() {
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    saveMutation.mutate(
-      {
-        id: editingTier?.id,
-        payload: formData,
-      },
-      {
-        onSuccess: () => {
-          showToast(editingTier ? "Pricing tier updated" : "Pricing tier created", "success");
-          setShowModal(false);
-        },
-        onError: (err: unknown) => {
-          const errorMessage = err instanceof Error ? err.message : "Failed to save pricing tier";
-          showToast(errorMessage, "error");
-        },
-      },
-    );
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      if (editingTier) {
+        await auRubberApiClient.updatePricingTier(editingTier.id, formData);
+      } else {
+        await auRubberApiClient.createPricingTier(formData);
+      }
+      showToast(editingTier ? "Pricing tier updated" : "Pricing tier created", "success");
+      setShowModal(false);
+      fetchData();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to save pricing tier";
+      showToast(errorMessage, "error");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id, {
-      onSuccess: () => {
-        showToast("Pricing tier deleted", "success");
-        setDeleteTierId(null);
-      },
-      onError: (err: unknown) => {
-        const errorMessage = err instanceof Error ? err.message : "Failed to delete pricing tier";
-        showToast(errorMessage, "error");
-      },
-    });
+  const handleDelete = async (id: number) => {
+    try {
+      await auRubberApiClient.deletePricingTier(id);
+      showToast("Pricing tier deleted", "success");
+      setDeleteTierId(null);
+      fetchData();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete pricing tier";
+      showToast(errorMessage, "error");
+    }
   };
 
-  if (tiersQuery.error) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Pricing Tiers</div>
-          <p className="text-gray-600">{tiersQuery.error.message}</p>
+          <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => tiersQuery.refetch()}
+            onClick={() => fetchData()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry
@@ -271,10 +284,10 @@ export default function AuRubberPricingTiersPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saveMutation.isPending || !formData.name}
+                  disabled={isSaving || !formData.name}
                   className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50"
                 >
-                  {saveMutation.isPending ? "Saving..." : "Save"}
+                  {isSaving ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>

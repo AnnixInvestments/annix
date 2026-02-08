@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type { CreateRubberProductDto } from "@/app/lib/api/rubberPortalApi";
-import { useRubberProductDetail } from "@/app/lib/query/hooks";
+import type { CreateRubberProductDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../../../components/Breadcrumb";
 import {
   formDataFromProduct,
@@ -20,9 +19,27 @@ export default function AuRubberProductEditPage() {
   const productId = Number(params.id);
   const { showToast } = useToast();
 
-  const productQuery = useRubberProductDetail(productId);
-  const product = productQuery.data ?? null;
+  const [product, setProduct] = useState<RubberProductDto | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const fetchProduct = async () => {
+    try {
+      setIsLoading(true);
+      const data = await auRubberApiClient.productById(productId);
+      setProduct(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load product"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProduct();
+  }, [productId]);
 
   const initialData = useMemo(() => {
     if (product) {
@@ -50,7 +67,7 @@ export default function AuRubberProductEditPage() {
     router.push("/au-rubber/portal/products");
   };
 
-  if (productQuery.isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -61,18 +78,14 @@ export default function AuRubberProductEditPage() {
     );
   }
 
-  if (productQuery.error) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Product</div>
-          <p className="text-gray-600">
-            {productQuery.error instanceof Error
-              ? productQuery.error.message
-              : "Failed to load product"}
-          </p>
+          <p className="text-gray-600">{error.message}</p>
           <button
-            onClick={() => productQuery.refetch()}
+            onClick={() => fetchProduct()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
           >
             Retry
