@@ -83,6 +83,17 @@ const AdminIcon = () => (
   </svg>
 );
 
+const RubberIcon = () => (
+  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"
+    />
+  </svg>
+);
+
 export default function HomePage() {
   const { data: stats, isLoading: loading } = usePublicStats();
 
@@ -289,6 +300,37 @@ export default function HomePage() {
                 </p>
                 <span className="inline-flex items-center text-green-600 font-semibold group-hover:translate-x-1 transition-transform">
                   View Pricing
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          {/* AU Rubber App Card */}
+          <Link href="/au-rubber/login" className="group">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-yellow-400 hover:shadow-xl transition-all duration-300 h-full">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 rounded-2xl text-yellow-600 mb-6 group-hover:bg-yellow-600 group-hover:text-white transition-colors">
+                  <RubberIcon />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">AU Rubber App</h3>
+                <p className="text-gray-600 mb-6">
+                  Manage rubber lining products, orders, and companies with the AU Rubber portal.
+                </p>
+                <span className="inline-flex items-center text-yellow-600 font-semibold group-hover:translate-x-1 transition-transform">
+                  Login
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"

@@ -52,13 +52,6 @@ const navItems = [
     roles: ["admin"],
   },
   {
-    href: "/admin/portal/rubber",
-    label: "Rubber Lining",
-    icon: "M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z",
-    roles: ["admin", "employee"],
-    featureFlag: "RUBBER_PORTAL",
-  },
-  {
     href: "/admin/portal/pumps",
     label: "Pumps",
     icon: "M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 007.92 12.446A9 9 0 1112 3zm0 0a9 9 0 109 9M12 3v9m0 0l6.364-6.364M12 12l-6.364-6.364",
