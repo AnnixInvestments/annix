@@ -112,10 +112,10 @@ export function AuSidebar() {
     window.location.href = "/au-rubber/login";
   };
 
+  const firstInitial = user?.firstName?.[0] ?? "";
+  const lastInitial = user?.lastName?.[0] ?? "";
   const userInitials =
-    user?.firstName && user?.lastName
-      ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase()
-      : "AU";
+    firstInitial && lastInitial ? `${firstInitial}${lastInitial}`.toUpperCase() : "AU";
 
   return (
     <div
