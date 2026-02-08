@@ -126,6 +126,75 @@ export interface SupplierDashboardResponse {
 // BOQ Types
 export type SupplierBoqStatus = "pending" | "viewed" | "quoted" | "declined" | "expired";
 
+// Pump Quote Types
+export type SupplierPumpQuoteStatus = "pending" | "viewed" | "quoted" | "declined" | "expired";
+
+export interface SupplierPumpQuoteListItem {
+  id: number;
+  rfqNumber: string;
+  projectName: string;
+  customerName: string;
+  pumpType: string;
+  flowRate: number | null;
+  totalHead: number | null;
+  quantity: number;
+  status: SupplierPumpQuoteStatus;
+  requiredDate: string | null;
+  createdAt: string;
+  viewedAt: string | null;
+  quotedAt: string | null;
+}
+
+export interface SupplierPumpQuoteDetailResponse {
+  rfq: {
+    id: number;
+    rfqNumber: string;
+    projectName: string;
+    description?: string;
+    status: string;
+    requiredDate?: string;
+    notes?: string;
+  };
+  customer: {
+    name: string;
+    email: string;
+    phone?: string;
+    company?: string;
+  };
+  pump: {
+    serviceType: string;
+    pumpType: string;
+    pumpCategory?: string;
+    flowRate?: number;
+    totalHead?: number;
+    npshAvailable?: number;
+    operatingTemp?: number;
+    fluidType?: string;
+    specificGravity?: number;
+    viscosity?: number;
+    casingMaterial?: string;
+    impellerMaterial?: string;
+    shaftMaterial?: string;
+    sealType?: string;
+    motorType?: string;
+    voltage?: string;
+    frequency?: string;
+    quantity: number;
+    existingPumpModel?: string;
+    existingPumpSerial?: string;
+    spareParts?: Array<{ partNumber: string; description: string; quantity: number }>;
+    rentalDurationDays?: number;
+  } | null;
+  item: {
+    id: number;
+    description: string;
+    quantity: number;
+    notes?: string;
+  } | null;
+  accessStatus: SupplierPumpQuoteStatus;
+  viewedAt: string;
+}
+
 export interface SupplierBoqListItem {
   id: number;
   boqNumber: string;
@@ -711,6 +780,50 @@ class SupplierApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  // Pump quote endpoints
+  async getMyPumpQuotes(status?: SupplierPumpQuoteStatus): Promise<SupplierPumpQuoteListItem[]> {
+    const queryString = status ? `?status=${status}` : "";
+    return this.request<SupplierPumpQuoteListItem[]>(`/supplier/pump-quotes${queryString}`);
+  }
+
+  async getPumpQuoteDetails(rfqId: number): Promise<SupplierPumpQuoteDetailResponse> {
+    return this.request<SupplierPumpQuoteDetailResponse>(`/supplier/pump-quotes/${rfqId}`);
+  }
+
+  async markPumpQuoteViewed(
+    rfqId: number,
+  ): Promise<{ success: boolean; viewedAt: string; status: string }> {
+    return this.request(`/supplier/pump-quotes/${rfqId}/view`, {
+      method: "POST",
+    });
+  }
+
+  async declinePumpQuote(
+    rfqId: number,
+    reason: string,
+  ): Promise<{ success: boolean; status: string; respondedAt: string }> {
+    return this.request(`/supplier/pump-quotes/${rfqId}/decline`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async submitPumpQuote(
+    rfqId: number,
+    data: {
+      unitPrice: number;
+      totalPrice: number;
+      leadTimeDays?: number;
+      notes?: string;
+      breakdown?: Record<string, number>;
+    },
+  ): Promise<{ success: boolean; status: string; quotedAt: string }> {
+    return this.request(`/supplier/pump-quotes/${rfqId}/quote`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const supplierApiClient = new SupplierApiClient();
@@ -783,4 +896,20 @@ export const supplierPortalApi = {
       notes?: string;
     },
   ) => supplierApiClient.submitQuote(boqId, data),
+  // Pump quote methods
+  getMyPumpQuotes: (status?: SupplierPumpQuoteStatus) => supplierApiClient.getMyPumpQuotes(status),
+  getPumpQuoteDetails: (rfqId: number) => supplierApiClient.getPumpQuoteDetails(rfqId),
+  markPumpQuoteViewed: (rfqId: number) => supplierApiClient.markPumpQuoteViewed(rfqId),
+  declinePumpQuote: (rfqId: number, reason: string) =>
+    supplierApiClient.declinePumpQuote(rfqId, reason),
+  submitPumpQuote: (
+    rfqId: number,
+    data: {
+      unitPrice: number;
+      totalPrice: number;
+      leadTimeDays?: number;
+      notes?: string;
+      breakdown?: Record<string, number>;
+    },
+  ) => supplierApiClient.submitPumpQuote(rfqId, data),
 };

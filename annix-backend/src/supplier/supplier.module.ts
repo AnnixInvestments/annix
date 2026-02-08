@@ -9,6 +9,9 @@ import { CustomerPreferredSupplier, SupplierInvitation } from "../customer/entit
 import { EmailModule } from "../email/email.module";
 import { MessagingModule } from "../messaging/messaging.module";
 import { NixModule } from "../nix/nix.module";
+import { PumpRfq } from "../rfq/entities/pump-rfq.entity";
+import { Rfq } from "../rfq/entities/rfq.entity";
+import { RfqItem } from "../rfq/entities/rfq-item.entity";
 import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
 import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
@@ -38,6 +41,7 @@ import { SupplierAuthController } from "./supplier-auth.controller";
 import { SupplierAuthService } from "./supplier-auth.service";
 import { SupplierBoqController } from "./supplier-boq.controller";
 import { SupplierMessagingController } from "./supplier-messaging.controller";
+import { SupplierPumpQuoteController } from "./supplier-pump-quote.controller";
 
 @Module({
   imports: [
@@ -54,6 +58,9 @@ import { SupplierMessagingController } from "./supplier-messaging.controller";
       UserRole,
       SupplierInvitation,
       CustomerPreferredSupplier,
+      Rfq,
+      RfqItem,
+      PumpRfq,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -81,6 +88,7 @@ import { SupplierMessagingController } from "./supplier-messaging.controller";
     SupplierAdminController,
     SupplierBoqController,
     SupplierMessagingController,
+    SupplierPumpQuoteController,
   ],
   providers: [SupplierAuthService, SupplierService, SupplierAdminService, SupplierAuthGuard],
   exports: [

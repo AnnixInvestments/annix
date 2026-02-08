@@ -2,128 +2,65 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useToast } from "@/app/components/Toast";
-import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
+import type { SupplierPumpQuoteStatus } from "@/app/lib/api/supplierApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
-
-interface PumpQuoteRequest {
-  id: number;
-  requestNumber: string;
-  customerCompany: string;
-  customerContact: string;
-  requestDate: string;
-  requiredDate: string;
-  status: "pending" | "quoted" | "accepted" | "declined" | "expired";
-  pumpType: string;
-  quantity: number;
-  flowRate: number;
-  totalHead: number;
-  application: string;
-  priority: "normal" | "urgent";
-}
-
-const MOCK_QUOTE_REQUESTS: PumpQuoteRequest[] = [
-  {
-    id: 1,
-    requestNumber: "PQR-2026-001",
-    customerCompany: "Mining Corp SA",
-    customerContact: "John Smith",
-    requestDate: "2026-02-01",
-    requiredDate: "2026-02-15",
-    status: "pending",
-    pumpType: "Slurry Pump",
-    quantity: 2,
-    flowRate: 200,
-    totalHead: 45,
-    application: "Mining slurry transfer",
-    priority: "urgent",
-  },
-  {
-    id: 2,
-    requestNumber: "PQR-2026-002",
-    customerCompany: "Water Utilities PTY",
-    customerContact: "Sarah Johnson",
-    requestDate: "2026-02-03",
-    requiredDate: "2026-02-28",
-    status: "pending",
-    pumpType: "Multistage Centrifugal",
-    quantity: 4,
-    flowRate: 50,
-    totalHead: 120,
-    application: "Municipal water boosting",
-    priority: "normal",
-  },
-  {
-    id: 3,
-    requestNumber: "PQR-2026-003",
-    customerCompany: "ChemProcess Industries",
-    customerContact: "Mike Peters",
-    requestDate: "2026-01-28",
-    requiredDate: "2026-02-10",
-    status: "quoted",
-    pumpType: "API 610 Process Pump",
-    quantity: 1,
-    flowRate: 150,
-    totalHead: 80,
-    application: "Chemical process circulation",
-    priority: "urgent",
-  },
-  {
-    id: 4,
-    requestNumber: "PQR-2026-004",
-    customerCompany: "Food & Bev Co",
-    customerContact: "Lisa Brown",
-    requestDate: "2026-01-25",
-    requiredDate: "2026-02-05",
-    status: "accepted",
-    pumpType: "Sanitary Pump",
-    quantity: 3,
-    flowRate: 25,
-    totalHead: 30,
-    application: "Food processing line",
-    priority: "normal",
-  },
-];
+import { useSupplierPumpQuotes } from "@/app/lib/query/hooks";
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }> = {
   pending: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Pending Quote" },
+  viewed: { bg: "bg-blue-50", text: "text-blue-700", label: "Viewed" },
   quoted: { bg: "bg-blue-100", text: "text-blue-800", label: "Quote Submitted" },
-  accepted: { bg: "bg-green-100", text: "text-green-800", label: "Accepted" },
   declined: { bg: "bg-red-100", text: "text-red-800", label: "Declined" },
   expired: { bg: "bg-gray-100", text: "text-gray-800", label: "Expired" },
 };
 
 export default function SupplierPumpQuotesPage() {
-  const { supplier } = useSupplierAuth();
-  const { showToast } = useToast();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<SupplierPumpQuoteStatus | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredRequests = MOCK_QUOTE_REQUESTS.filter((req) => {
-    if (statusFilter !== "all" && req.status !== statusFilter) return false;
+  const { data: pumpQuotes = [], isLoading, error } = useSupplierPumpQuotes(statusFilter);
+
+  const filteredRequests = pumpQuotes.filter((req) => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
-        req.requestNumber.toLowerCase().includes(query) ||
-        req.customerCompany.toLowerCase().includes(query) ||
+        req.rfqNumber.toLowerCase().includes(query) ||
+        req.customerName.toLowerCase().includes(query) ||
         req.pumpType.toLowerCase().includes(query)
       );
     }
     return true;
   });
 
-  const daysUntilDeadline = (dateString: string): number => {
+  const daysUntilDeadline = (dateString: string | null): number => {
+    if (!dateString) return 999;
     const deadline = fromISO(dateString).startOf("day");
     const today = now().startOf("day");
     return Math.ceil(deadline.diff(today, "days").days);
   };
 
   const stats = {
-    pending: MOCK_QUOTE_REQUESTS.filter((r) => r.status === "pending").length,
-    quoted: MOCK_QUOTE_REQUESTS.filter((r) => r.status === "quoted").length,
-    accepted: MOCK_QUOTE_REQUESTS.filter((r) => r.status === "accepted").length,
-    total: MOCK_QUOTE_REQUESTS.length,
+    pending: pumpQuotes.filter((r) => r.status === "pending").length,
+    viewed: pumpQuotes.filter((r) => r.status === "viewed").length,
+    quoted: pumpQuotes.filter((r) => r.status === "quoted").length,
+    total: pumpQuotes.length,
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600">Error loading pump quotes. Please try again later.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -221,15 +158,15 @@ export default function SupplierPumpQuotesPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-green-200">
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-purple-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-green-700">{stats.accepted}</p>
-              <p className="text-sm text-gray-500">Accepted</p>
+              <p className="text-2xl font-bold text-purple-700">{stats.viewed}</p>
+              <p className="text-sm text-gray-500">Viewed</p>
             </div>
-            <div className="p-2 bg-green-100 rounded-lg">
+            <div className="p-2 bg-purple-100 rounded-lg">
               <svg
-                className="w-6 h-6 text-green-600"
+                className="w-6 h-6 text-purple-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -238,7 +175,13 @@ export default function SupplierPumpQuotesPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M5 13l4 4L19 7"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                 />
               </svg>
             </div>
@@ -255,7 +198,7 @@ export default function SupplierPumpQuotesPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by request number, customer, or pump type..."
+                  placeholder="Search by RFQ number, customer, or pump type..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
                 <svg
@@ -275,14 +218,20 @@ export default function SupplierPumpQuotesPage() {
             </div>
             <div>
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                value={statusFilter ?? "all"}
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value === "all"
+                      ? undefined
+                      : (e.target.value as SupplierPumpQuoteStatus),
+                  )
+                }
                 className="border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
+                <option value="viewed">Viewed</option>
                 <option value="quoted">Quoted</option>
-                <option value="accepted">Accepted</option>
                 <option value="declined">Declined</option>
                 <option value="expired">Expired</option>
               </select>
@@ -305,18 +254,19 @@ export default function SupplierPumpQuotesPage() {
                 d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
               />
             </svg>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">No quote requests found</h3>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">No pump quote requests found</h3>
             <p className="mt-2 text-sm text-gray-500">
-              Try adjusting your search or filter criteria.
+              {pumpQuotes.length === 0
+                ? "You have no pump quote requests assigned to you yet."
+                : "Try adjusting your search or filter criteria."}
             </p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
             {filteredRequests.map((request) => {
-              const statusStyle = STATUS_STYLES[request.status];
+              const statusStyle = STATUS_STYLES[request.status] ?? STATUS_STYLES.pending;
               const daysLeft = daysUntilDeadline(request.requiredDate);
-              const isUrgent = request.priority === "urgent" || daysLeft <= 3;
-              const canQuote = request.status === "pending";
+              const canQuote = request.status === "pending" || request.status === "viewed";
 
               return (
                 <div key={request.id} className="p-4 hover:bg-gray-50 transition-colors">
@@ -328,15 +278,8 @@ export default function SupplierPumpQuotesPage() {
                         >
                           {statusStyle.label}
                         </span>
-                        <h3 className="text-sm font-semibold text-gray-900">
-                          {request.requestNumber}
-                        </h3>
-                        {request.priority === "urgent" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-                            Urgent
-                          </span>
-                        )}
-                        {canQuote && daysLeft <= 3 && (
+                        <h3 className="text-sm font-semibold text-gray-900">{request.rfqNumber}</h3>
+                        {canQuote && daysLeft <= 3 && daysLeft >= 0 && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800">
                             {daysLeft === 0 ? "Due Today!" : `${daysLeft} days left`}
                           </span>
@@ -346,7 +289,7 @@ export default function SupplierPumpQuotesPage() {
                       <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <span className="text-gray-500">Customer:</span>
-                          <p className="font-medium text-gray-900">{request.customerCompany}</p>
+                          <p className="font-medium text-gray-900">{request.customerName}</p>
                         </div>
                         <div>
                           <span className="text-gray-500">Pump Type:</span>
@@ -359,17 +302,18 @@ export default function SupplierPumpQuotesPage() {
                         <div>
                           <span className="text-gray-500">Due:</span>
                           <p className="font-medium text-gray-900">
-                            {formatDateZA(request.requiredDate)}
+                            {request.requiredDate ? formatDateZA(request.requiredDate) : "N/A"}
                           </p>
                         </div>
                       </div>
 
-                      <div className="mt-2 text-sm text-gray-600">
-                        <span className="font-medium">Specs:</span> {request.flowRate} m³/h @{" "}
-                        {request.totalHead}m head
-                        <span className="mx-2">|</span>
-                        <span className="font-medium">Application:</span> {request.application}
-                      </div>
+                      {(request.flowRate || request.totalHead) && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span className="font-medium">Specs:</span>{" "}
+                          {request.flowRate ? `${request.flowRate} m³/h` : "N/A"}{" "}
+                          {request.totalHead ? `@ ${request.totalHead}m head` : ""}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -400,7 +344,7 @@ export default function SupplierPumpQuotesPage() {
                       </Link>
                       {canQuote && (
                         <Link
-                          href={`/supplier/portal/pump-quotes/${request.id}/respond`}
+                          href={`/supplier/portal/pump-quotes/${request.id}`}
                           className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
                         >
                           <svg

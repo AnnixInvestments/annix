@@ -715,17 +715,17 @@ function FlangeComponent({
   );
 }
 
-// Gusset piece component - OVAL-SHAPED concave curved transition between run and branch pipes
-// Gussets are curved metal pieces on LEFT and RIGHT sides of the branch that:
-// 1. Have an oval/elliptical shape when viewed from the side
-// 2. Create a smooth curved fillet transition from run pipe to branch pipe
-// 3. Fill the corner like a scoop or saddle, opening up the branch connection
+// Gusset piece component - diamond-shaped reinforcement plate that spans
+// over the top of the run pipe, connecting the front and back V-weld points.
+// There are TWO gussets - one on each side (left/right) of the branch.
+// The gusset is widest at the center (top of run) and tapers to points at
+// the front and back V-welds. It follows the curvature of the run pipe.
 function GussetPlate({
   runRadius,
   branchRadius,
-  gussetLength, // Dimension C - the extent/size of the gusset
-  thickness, // Wall thickness of the gusset piece
-  side, // 'left' (-X direction) or 'right' (+X direction) relative to branch
+  gussetLength,
+  thickness,
+  side,
   branchOffsetX,
 }: {
   runRadius: number;
@@ -736,100 +736,84 @@ function GussetPlate({
   branchOffsetX: number;
 }) {
   const geometry = useMemo(() => {
-    // Gusset is an oval-shaped concave surface on left/right of the branch
-    // It fills the inside corner between run pipe and branch pipe
-    // The outer edge forms an oval/ellipse shape
-    // The surface is concave (like a scoop) curving inward
-
-    const radialSegments = 24; // Around the oval perimeter
-    const depthSegments = 12; // From outer edge to inner corner
+    const segments = 48; // Higher resolution for smooth gusset shape
     const vertices: number[] = [];
     const indices: number[] = [];
 
     const xDir = side === "left" ? -1 : 1;
+    const halfWidth = gussetLength / 2;
 
-    // The gusset center is at the corner where branch meets run
-    const cornerX = branchOffsetX + xDir * branchRadius;
-    const cornerY = runRadius;
+    // The gusset spans from front V-point (Z = +branchRadius) to back V-point (Z = -branchRadius)
+    // At each Z position, it has a width that varies from 0 at the V-points to maximum at center
+    // The outer edge follows the saddle curve, the inner edge extends toward the run center
 
-    // Oval dimensions - the gusset extends outward from the corner
-    // Width along X (into the run pipe direction)
-    // Height along Y (up the branch pipe direction)
-    const ovalWidth = gussetLength;
-    const ovalHeight = gussetLength;
+    // Extend slightly beyond branchRadius to ensure gusset reaches V-weld points
+    const zExtent = branchRadius * 1.02;
 
-    // Generate the concave oval surface
-    for (let di = 0; di <= depthSegments; di++) {
-      const depth = di / depthSegments; // 0 = outer edge, 1 = inner corner
+    for (let ui = 0; ui <= segments; ui++) {
+      const u = ui / segments;
+      // Z goes from front V-weld to back V-weld
+      const z = zExtent * (1 - 2 * u);
 
-      for (let ri = 0; ri <= radialSegments; ri++) {
-        const angle = (ri / radialSegments) * (Math.PI / 2); // 0 to 90 degrees (quarter oval)
+      // Clamp Z to branchRadius for saddle curve calculations
+      const zClamped = Math.max(-branchRadius, Math.min(branchRadius, z));
 
-        // Outer edge follows an oval/ellipse at 45° orientation
-        // The oval is in the plane that bisects the corner
-        const ovalX = Math.cos(angle) * ovalWidth * (1 - depth);
-        const ovalY = Math.sin(angle) * ovalHeight * (1 - depth);
+      // Y position on run pipe surface - follows the saddle/V-weld curve
+      const yOnRun = Math.sqrt(Math.max(0, runRadius * runRadius - zClamped * zClamped));
 
-        // Position relative to corner
-        const x = cornerX + xDir * ovalX;
-        const y = cornerY + ovalY;
+      // Width at this Z position - diamond shape, widest at center (z=0)
+      // At the V-points, width = 0, so gusset comes to a point
+      const zNormalized = Math.max(-1, Math.min(1, zClamped / branchRadius));
+      const widthFraction = Math.sqrt(Math.max(0, 1 - zNormalized * zNormalized));
+      const currentHalfWidth = halfWidth * widthFraction;
 
-        // Z position creates the concave scoop shape
-        // At the outer edge (depth=0): extends out in Z based on position around oval
-        // At the inner corner (depth=1): Z approaches 0
-        // The Z extent is larger in the middle of the oval (45° position)
-        const zExtent = branchRadius * Math.sin(angle) * Math.cos(angle) * 2;
-        const z = zExtent * (1 - depth * 0.7);
+      // X position at saddle curve (where branch meets run on this side)
+      const xSaddleOffset = Math.sqrt(
+        Math.max(0, branchRadius * branchRadius - zClamped * zClamped),
+      );
+      const xAtSaddle = branchOffsetX + xDir * xSaddleOffset;
+
+      for (let vi = 0; vi <= segments; vi++) {
+        const v = vi / segments;
+
+        // v=0: inner edge (at saddle, where gusset meets branch) - higher up
+        // v=1: outer edge (on run pipe surface) - at run surface level
+        const xInner = xAtSaddle;
+        const xOuter = xAtSaddle + xDir * currentHalfWidth;
+
+        // Linear interpolation for X (edge to edge)
+        const x = xInner * (1 - v) + xOuter * v;
+
+        // Y creates 45-degree angle from inner to outer
+        // Inner edge is elevated by currentHalfWidth (so tan(45°) = rise/run = 1)
+        // Outer edge is on run pipe surface
+        // At V-points (z = ±branchRadius), currentHalfWidth = 0, so both edges
+        // meet at the V-weld position: Y = yOnRun = sqrt(runRadius² - branchRadius²)
+        const yInner = yOnRun + currentHalfWidth;
+        const yOuter = yOnRun;
+        const y = yInner * (1 - v) + yOuter * v;
 
         vertices.push(x, y, z);
       }
     }
 
-    // Also generate the back half (mirror in Z)
-    const frontVertexCount = vertices.length / 3;
-    for (let i = 0; i < frontVertexCount; i++) {
-      vertices.push(vertices[i * 3], vertices[i * 3 + 1], -vertices[i * 3 + 2]);
-    }
-
-    const vertsPerRow = radialSegments + 1;
-
-    // Generate front surface indices
-    for (let di = 0; di < depthSegments; di++) {
-      for (let ri = 0; ri < radialSegments; ri++) {
-        const a = di * vertsPerRow + ri;
+    // Generate triangle indices
+    const vertsPerRow = segments + 1;
+    for (let ui = 0; ui < segments; ui++) {
+      for (let vi = 0; vi < segments; vi++) {
+        const a = ui * vertsPerRow + vi;
         const b = a + 1;
         const c = a + vertsPerRow;
         const d = c + 1;
 
         if (xDir > 0) {
-          indices.push(a, c, b);
-          indices.push(b, c, d);
-        } else {
           indices.push(a, b, c);
           indices.push(b, d, c);
+        } else {
+          indices.push(a, c, b);
+          indices.push(b, c, d);
         }
       }
-    }
-
-    // Generate back surface indices (reversed winding)
-    const frontIndicesCount = indices.length;
-    for (let i = 0; i < frontIndicesCount; i += 3) {
-      indices.push(
-        indices[i] + frontVertexCount,
-        indices[i + 2] + frontVertexCount,
-        indices[i + 1] + frontVertexCount,
-      );
-    }
-
-    // Connect front and back surfaces at the outer edge (di = 0)
-    for (let ri = 0; ri < radialSegments; ri++) {
-      const frontA = ri;
-      const frontB = ri + 1;
-      const backA = frontA + frontVertexCount;
-      const backB = frontB + frontVertexCount;
-
-      indices.push(frontA, frontB, backA);
-      indices.push(frontB, backB, backA);
     }
 
     const geo = new THREE.BufferGeometry();
@@ -847,7 +831,7 @@ function GussetPlate({
   );
 }
 
-// Weld bead component for gusset - welds along the oval outer edge
+// Weld bead component for gusset - welds along the inner and outer edges
 function GussetWeld({
   runRadius,
   branchRadius,
@@ -861,46 +845,55 @@ function GussetWeld({
   side: "left" | "right";
   branchOffsetX: number;
 }) {
-  const weldRadius = gussetLength * 0.025;
+  const weldRadius = gussetLength * 0.015;
   const xDir = side === "left" ? -1 : 1;
+  const segments = 32; // Higher resolution for smooth weld curve
+  const halfWidth = gussetLength / 2;
 
-  const segments = 24;
-  const cornerX = branchOffsetX + xDir * branchRadius;
-  const cornerY = runRadius;
+  // Extend slightly beyond branchRadius to reach V-weld points
+  const zExtent = branchRadius * 1.02;
 
-  // Weld follows the outer oval edge of the gusset
-  // Front half (+Z)
-  const frontPoints: THREE.Vector3[] = [];
+  // Inner edge: elevated at 45 degrees, meeting V-weld at the endpoints
+  const innerEdgePoints: THREE.Vector3[] = [];
   for (let i = 0; i <= segments; i++) {
-    const angle = (i / segments) * (Math.PI / 2);
-    const x = cornerX + xDir * Math.cos(angle) * gussetLength;
-    const y = cornerY + Math.sin(angle) * gussetLength;
-    const z = branchRadius * Math.sin(angle) * Math.cos(angle) * 2;
-    frontPoints.push(new THREE.Vector3(x, y, z));
+    const u = i / segments;
+    const z = zExtent * (1 - 2 * u);
+    const zClamped = Math.max(-branchRadius, Math.min(branchRadius, z));
+    const yOnRun = Math.sqrt(Math.max(0, runRadius * runRadius - zClamped * zClamped));
+    const zNormalized = Math.max(-1, Math.min(1, zClamped / branchRadius));
+    const widthFraction = Math.sqrt(Math.max(0, 1 - zNormalized * zNormalized));
+    const currentHalfWidth = halfWidth * widthFraction;
+    const xSaddleOffset = Math.sqrt(Math.max(0, branchRadius * branchRadius - zClamped * zClamped));
+    const x = branchOffsetX + xDir * xSaddleOffset;
+    const y = yOnRun + currentHalfWidth;
+    innerEdgePoints.push(new THREE.Vector3(x, y, z));
   }
-  const frontCurve = new THREE.CatmullRomCurve3(frontPoints);
+  const innerEdgeCurve = new THREE.CatmullRomCurve3(innerEdgePoints);
 
-  // Back half (-Z)
-  const backPoints: THREE.Vector3[] = [];
+  // Outer edge: follows the diamond shape outline on run pipe surface
+  const outerEdgePoints: THREE.Vector3[] = [];
   for (let i = 0; i <= segments; i++) {
-    const angle = (i / segments) * (Math.PI / 2);
-    const x = cornerX + xDir * Math.cos(angle) * gussetLength;
-    const y = cornerY + Math.sin(angle) * gussetLength;
-    const z = -branchRadius * Math.sin(angle) * Math.cos(angle) * 2;
-    backPoints.push(new THREE.Vector3(x, y, z));
+    const u = i / segments;
+    const z = zExtent * (1 - 2 * u);
+    const zClamped = Math.max(-branchRadius, Math.min(branchRadius, z));
+    const yOnRun = Math.sqrt(Math.max(0, runRadius * runRadius - zClamped * zClamped));
+    const zNormalized = Math.max(-1, Math.min(1, zClamped / branchRadius));
+    const widthFraction = Math.sqrt(Math.max(0, 1 - zNormalized * zNormalized));
+    const currentHalfWidth = halfWidth * widthFraction;
+    const xSaddleOffset = Math.sqrt(Math.max(0, branchRadius * branchRadius - zClamped * zClamped));
+    const x = branchOffsetX + xDir * (xSaddleOffset + currentHalfWidth);
+    outerEdgePoints.push(new THREE.Vector3(x, yOnRun, z));
   }
-  const backCurve = new THREE.CatmullRomCurve3(backPoints);
+  const outerEdgeCurve = new THREE.CatmullRomCurve3(outerEdgePoints);
 
   return (
     <group>
-      {/* Front edge weld */}
       <mesh>
-        <tubeGeometry args={[frontCurve, 16, weldRadius, 6, false]} />
+        <tubeGeometry args={[innerEdgeCurve, 32, weldRadius, 8, false]} />
         <meshStandardMaterial {...weldColor} />
       </mesh>
-      {/* Back edge weld */}
       <mesh>
-        <tubeGeometry args={[backCurve, 16, weldRadius, 6, false]} />
+        <tubeGeometry args={[outerEdgeCurve, 32, weldRadius, 8, false]} />
         <meshStandardMaterial {...weldColor} />
       </mesh>
     </group>
@@ -1113,11 +1106,13 @@ function TeeScene(props: Tee3DPreviewProps) {
 
   // Create saddle-cut branch pipe geometry
   // The bottom of the branch pipe is cut to follow the curve of the run pipe (Steinmetz intersection)
+  // For gusset tees, the bottom follows the gusset inner edge (V-shape)
   const createSaddleCutBranchGeometry = (
     branchOuterR: number,
     branchInnerR: number,
     runOuterR: number,
     totalHeight: number,
+    gussetHalfWidth?: number,
   ) => {
     const radialSegments = 48;
     const heightSegments = 24;
@@ -1129,10 +1124,22 @@ function TeeScene(props: Tee3DPreviewProps) {
 
     // Calculate saddle cut depth at each angle
     // For a branch meeting a run at 90°, the bottom follows: y = sqrt(R² - z²) where R is run radius
+    // For gusset tees, the bottom follows the gusset inner edge (V-shaped curve)
     const saddleBottomY = (angle: number): number => {
       const z = branchOuterR * Math.sin(angle);
       // The bottom of the saddle where branch meets run surface
-      return Math.sqrt(Math.max(0, runOuterR * runOuterR - z * z));
+      const saddleY = Math.sqrt(Math.max(0, runOuterR * runOuterR - z * z));
+
+      if (gussetHalfWidth === undefined) return saddleY;
+
+      // For gusset tees, follow the gusset inner edge V-shape
+      // The gusset inner edge Y = yOnRun + currentHalfWidth
+      // where currentHalfWidth varies from max at z=0 to 0 at z=±branchRadius
+      const zNormalized = Math.max(-1, Math.min(1, z / branchOuterR));
+      const widthFraction = Math.sqrt(Math.max(0, 1 - zNormalized * zNormalized));
+      const gussetInnerY = saddleY + gussetHalfWidth * widthFraction;
+
+      return gussetInnerY;
     };
 
     // Generate outer surface vertices
@@ -1163,7 +1170,16 @@ function TeeScene(props: Tee3DPreviewProps) {
       const z = branchInnerR * Math.sin(angle);
       // Inner surface follows a slightly different curve
       const innerRunR = runOuterR - (branchOuterR - branchInnerR);
-      return Math.sqrt(Math.max(0, innerRunR * innerRunR - z * z));
+      const saddleY = Math.sqrt(Math.max(0, innerRunR * innerRunR - z * z));
+
+      if (gussetHalfWidth === undefined) return saddleY;
+
+      // For gusset tees, follow the gusset inner edge V-shape
+      const zNormalized = Math.max(-1, Math.min(1, z / branchInnerR));
+      const widthFraction = Math.sqrt(Math.max(0, 1 - zNormalized * zNormalized));
+      const gussetInnerY = saddleY + gussetHalfWidth * widthFraction;
+
+      return gussetInnerY;
     };
 
     for (let h = 0; h <= heightSegments; h++) {
@@ -1243,6 +1259,7 @@ function TeeScene(props: Tee3DPreviewProps) {
 
   // Create run pipe with hole cut where branch enters
   // This creates a realistic pipe with proper inner/outer surfaces and end caps
+  // For gusset tees, holeExtension makes the hole larger to show gusset interior
   const createRunPipeWithHoleGeometry = (
     runOuterR: number,
     runInnerR: number,
@@ -1250,39 +1267,78 @@ function TeeScene(props: Tee3DPreviewProps) {
     branchOuterR: number,
     branchInnerR: number,
     branchOffsetXVal: number,
+    holeExtension: number = 0,
   ) => {
     const geometry = new THREE.BufferGeometry();
     const vertices: number[] = [];
     const indices: number[] = [];
     const normals: number[] = [];
 
-    const lengthSegments = 128; // High resolution for smooth hole edge
-    const radialSegments = 128;
+    const lengthSegments = 512; // Very high resolution for smooth gusset hole edge
+    const radialSegments = 512;
     const halfLength = runLength / 2;
 
     // Cut a hole where the branch intersects the run pipe (Steinmetz curve)
-    // For a branch cylinder (Y-axis) intersecting a run cylinder (X-axis):
-    // A point (x, y, z) on the run surface is inside the branch hole if (x - branchOffsetX)² + z² < branchR²
+    // For gusset tees, the hole follows the gusset outer edge (diamond shape)
     const isInBranchHole = (x: number, angle: number, radius: number): boolean => {
       const z = radius * Math.sin(angle);
+      const y = radius * Math.cos(angle);
+      if (y <= 0) return false; // Only cut hole on top half of run pipe
+
       const zSq = z * z;
       const branchRSq = branchOuterR * branchOuterR;
-      if (zSq >= branchRSq) return false;
-      const xDist = Math.abs(x - branchOffsetXVal);
-      const holeHalfWidth = Math.sqrt(branchRSq - zSq);
-      const y = radius * Math.cos(angle);
-      return xDist < holeHalfWidth && y > 0;
+
+      if (holeExtension > 0) {
+        // For gusset tees: hole follows the gusset outer edge shape
+        // The gusset outer edge X distance from branch center is:
+        // xSaddleOffset + currentHalfWidth
+        // where xSaddleOffset = sqrt(branchR² - z²) and currentHalfWidth varies with z
+        if (zSq >= branchRSq) return false;
+
+        const xSaddleOffset = Math.sqrt(branchRSq - zSq);
+        const zNormalized = Math.abs(z) / branchOuterR;
+        const widthFraction = Math.sqrt(Math.max(0, 1 - zNormalized * zNormalized));
+        const gussetHalfWidth = holeExtension * widthFraction;
+        const holeHalfWidth = xSaddleOffset + gussetHalfWidth;
+
+        const xDist = Math.abs(x - branchOffsetXVal);
+        return xDist < holeHalfWidth;
+      } else {
+        // Standard branch hole (cylinder intersection)
+        if (zSq >= branchRSq) return false;
+        const xDist = Math.abs(x - branchOffsetXVal);
+        const holeHalfWidth = Math.sqrt(branchRSq - zSq);
+        return xDist < holeHalfWidth;
+      }
     };
 
     const isInBranchInnerHole = (x: number, angle: number): boolean => {
       const z = runInnerR * Math.sin(angle);
+      const y = runInnerR * Math.cos(angle);
+      if (y <= 0) return false;
+
       const zSq = z * z;
       const branchInnerRSq = branchInnerR * branchInnerR;
-      if (zSq >= branchInnerRSq) return false;
-      const xDist = Math.abs(x - branchOffsetXVal);
-      const holeHalfWidth = Math.sqrt(branchInnerRSq - zSq);
-      const y = runInnerR * Math.cos(angle);
-      return xDist < holeHalfWidth && y > 0;
+
+      if (holeExtension > 0) {
+        // For gusset tees: hole follows gusset outer edge shape
+        if (zSq >= branchInnerRSq) return false;
+
+        const xSaddleOffset = Math.sqrt(branchInnerRSq - zSq);
+        const zNormalized = Math.abs(z) / branchInnerR;
+        const widthFraction = Math.sqrt(Math.max(0, 1 - zNormalized * zNormalized));
+        const gussetHalfWidth = holeExtension * widthFraction;
+        const holeHalfWidth = xSaddleOffset + gussetHalfWidth;
+
+        const xDist = Math.abs(x - branchOffsetXVal);
+        return xDist < holeHalfWidth;
+      } else {
+        // Standard branch hole
+        if (zSq >= branchInnerRSq) return false;
+        const xDist = Math.abs(x - branchOffsetXVal);
+        const holeHalfWidth = Math.sqrt(branchInnerRSq - zSq);
+        return xDist < holeHalfWidth;
+      }
     };
 
     // Generate outer surface with hole
@@ -1424,6 +1480,7 @@ function TeeScene(props: Tee3DPreviewProps) {
               branchOuterRadius,
               branchInnerRadius,
               branchOffsetX,
+              teeType === "gusset" ? gussetSize / 2 : 0,
             )}
             attach="geometry"
           />
@@ -1431,6 +1488,7 @@ function TeeScene(props: Tee3DPreviewProps) {
         </mesh>
 
         {/* Branch pipe (vertical) - saddle-cut bottom fits into run pipe curve */}
+        {/* For gusset tees, branch bottom follows the gusset inner edge V-shape */}
         <mesh position={[branchOffsetX, 0, 0]} castShadow receiveShadow>
           <primitive
             object={createSaddleCutBranchGeometry(
@@ -1438,24 +1496,28 @@ function TeeScene(props: Tee3DPreviewProps) {
               branchInnerRadius,
               outerRadius,
               height,
+              teeType === "gusset" ? gussetSize / 2 : undefined,
             )}
             attach="geometry"
           />
           <meshStandardMaterial {...gussetColor} />
         </mesh>
 
-        {/* V-groove saddle weld at branch junction - follows Steinmetz curve */}
-        <SaddleWeld
-          runRadius={outerRadius}
-          branchRadius={branchOuterRadius}
-          branchOffsetX={branchOffsetX}
-          weldThickness={0.12}
-        />
+        {/* V-groove saddle weld at branch junction - only for non-gusset tees */}
+        {/* For gusset tees, the gusset welds replace the saddle weld */}
+        {teeType !== "gusset" && (
+          <SaddleWeld
+            runRadius={outerRadius}
+            branchRadius={branchOuterRadius}
+            branchOffsetX={branchOffsetX}
+            weldThickness={0.12}
+          />
+        )}
 
-        {/* Gusset plates for Gusset Tees - curved reinforcement plates on both sides of branch */}
+        {/* Gusset plates for Gusset Tees - flat triangular reinforcement plates on front and back of branch */}
         {teeType === "gusset" && gussetSize > 0 && (
           <>
-            {/* Left gusset (-X side) - extends from run pipe up along branch */}
+            {/* Left gusset (-X side) - diamond shape over run pipe */}
             <GussetPlate
               runRadius={outerRadius}
               branchRadius={branchOuterRadius}
@@ -1464,7 +1526,6 @@ function TeeScene(props: Tee3DPreviewProps) {
               side="left"
               branchOffsetX={branchOffsetX}
             />
-            {/* Left gusset weld */}
             <GussetWeld
               runRadius={outerRadius}
               branchRadius={branchOuterRadius}
@@ -1472,7 +1533,7 @@ function TeeScene(props: Tee3DPreviewProps) {
               side="left"
               branchOffsetX={branchOffsetX}
             />
-            {/* Right gusset (+X side) */}
+            {/* Right gusset (+X side) - diamond shape over run pipe */}
             <GussetPlate
               runRadius={outerRadius}
               branchRadius={branchOuterRadius}
@@ -1481,7 +1542,6 @@ function TeeScene(props: Tee3DPreviewProps) {
               side="right"
               branchOffsetX={branchOffsetX}
             />
-            {/* Right gusset weld */}
             <GussetWeld
               runRadius={outerRadius}
               branchRadius={branchOuterRadius}
@@ -2151,113 +2211,322 @@ function TeeScene(props: Tee3DPreviewProps) {
         )}
 
         {/* Dimension lines */}
-        {/* Height dimension (vertical) - positioned at branch location */}
-        <Line
-          points={[
-            [branchOffsetX + branchOuterRadius + 0.3, 0, 0],
-            [branchOffsetX + branchOuterRadius + 0.3, height, 0],
-          ]}
-          color="#dc2626"
-          lineWidth={2}
-        />
-        <Line
-          points={[
-            [branchOffsetX + branchOuterRadius + 0.1, 0, 0],
-            [branchOffsetX + branchOuterRadius + 0.4, 0, 0],
-          ]}
-          color="#dc2626"
-          lineWidth={1}
-        />
-        <Line
-          points={[
-            [branchOffsetX + branchOuterRadius + 0.1, height, 0],
-            [branchOffsetX + branchOuterRadius + 0.4, height, 0],
-          ]}
-          color="#dc2626"
-          lineWidth={1}
-        />
-        <Text
-          position={[branchOffsetX + branchOuterRadius + 0.5, height / 2, 0]}
-          fontSize={0.2}
-          color="#dc2626"
-          anchorX="left"
-          anchorY="middle"
-          fontWeight="bold"
-        >
-          {`${teeHeight}mm`}
-        </Text>
+        {/* Branch C/F dimension (vertical) - from top of main pipe to branch top/flange face */}
+        {/* Positioned away from model with dotted extension lines */}
+        {(() => {
+          const dimOffset = 0.25; // Offset from branch edge for dimension line
+          const dimX = branchOffsetX + branchOuterRadius + dimOffset;
+          const extendX = branchOffsetX + branchOuterRadius + dimOffset + 0.15;
+          const branchCF = teeHeight - od / 2 / (scaleFactor / 2); // C/F is from run OD to branch top
+          return (
+            <>
+              {/* Main dimension line - from top of run pipe to top of branch */}
+              <Line
+                points={[
+                  [dimX, outerRadius, 0],
+                  [dimX, height, 0],
+                ]}
+                color="#dc2626"
+                lineWidth={2}
+              />
+              {/* End caps */}
+              <Line
+                points={[
+                  [dimX - 0.08, outerRadius, 0],
+                  [dimX + 0.08, outerRadius, 0],
+                ]}
+                color="#dc2626"
+                lineWidth={1}
+              />
+              <Line
+                points={[
+                  [dimX - 0.08, height, 0],
+                  [dimX + 0.08, height, 0],
+                ]}
+                color="#dc2626"
+                lineWidth={1}
+              />
+              {/* Dotted extension line from run pipe surface to dimension */}
+              <Line
+                points={[
+                  [branchOffsetX + branchOuterRadius + 0.02, outerRadius, 0],
+                  [dimX, outerRadius, 0],
+                ]}
+                color="#dc2626"
+                lineWidth={1}
+                dashed
+                dashSize={0.03}
+                gapSize={0.02}
+              />
+              {/* Dotted extension line from branch top/flange to dimension */}
+              <Line
+                points={[
+                  [branchOffsetX + branchOuterRadius + 0.02, height, 0],
+                  [dimX, height, 0],
+                ]}
+                color="#dc2626"
+                lineWidth={1}
+                dashed
+                dashSize={0.03}
+                gapSize={0.02}
+              />
+              {/* Dotted line showing pipe center reference */}
+              <Line
+                points={[
+                  [branchOffsetX, 0, 0],
+                  [extendX, 0, 0],
+                ]}
+                color="#dc2626"
+                lineWidth={1}
+                dashed
+                dashSize={0.03}
+                gapSize={0.02}
+              />
+              {/* Label */}
+              <Text
+                position={[extendX + 0.05, (outerRadius + height) / 2, 0]}
+                fontSize={0.15}
+                color="#dc2626"
+                anchorX="left"
+                anchorY="middle"
+                fontWeight="bold"
+              >
+                {`C/F: ${Math.round(teeHeight - od / 2)}mm`}
+              </Text>
+            </>
+          );
+        })()}
 
-        {/* Branch position dimension line (horizontal from left flange to branch center) */}
-        {branchPositionMm !== undefined && (
-          <>
-            <Line
-              points={[
-                [-halfRunLength, -outerRadius - 0.3, 0],
-                [branchOffsetX, -outerRadius - 0.3, 0],
-              ]}
-              color="#16a34a"
-              lineWidth={2}
-            />
-            <Line
-              points={[
-                [-halfRunLength, -outerRadius - 0.15, 0],
-                [-halfRunLength, -outerRadius - 0.45, 0],
-              ]}
-              color="#16a34a"
-              lineWidth={1}
-            />
-            <Line
-              points={[
-                [branchOffsetX, -outerRadius - 0.15, 0],
-                [branchOffsetX, -outerRadius - 0.45, 0],
-              ]}
-              color="#16a34a"
-              lineWidth={1}
-            />
-            <Text
-              position={[(-halfRunLength + branchOffsetX) / 2, -outerRadius - 0.55, 0]}
-              fontSize={0.18}
-              color="#16a34a"
-              anchorX="center"
-              anchorY="top"
-              fontWeight="bold"
-            >
-              {`${branchPositionMm}mm`}
-            </Text>
-          </>
-        )}
+        {/* Total run pipe length dimension - at bottom of main pipe */}
+        {(() => {
+          const dimOffset = 0.25; // Offset below pipe
+          const dimY = -outerRadius - dimOffset;
+          return (
+            <>
+              {/* Main dimension line */}
+              <Line
+                points={[
+                  [-halfRunLength, dimY, 0],
+                  [halfRunLength, dimY, 0],
+                ]}
+                color="#9333ea"
+                lineWidth={2}
+              />
+              {/* End caps */}
+              <Line
+                points={[
+                  [-halfRunLength, dimY - 0.08, 0],
+                  [-halfRunLength, dimY + 0.08, 0],
+                ]}
+                color="#9333ea"
+                lineWidth={1}
+              />
+              <Line
+                points={[
+                  [halfRunLength, dimY - 0.08, 0],
+                  [halfRunLength, dimY + 0.08, 0],
+                ]}
+                color="#9333ea"
+                lineWidth={1}
+              />
+              {/* Dotted extension lines from pipe ends to dimension */}
+              <Line
+                points={[
+                  [-halfRunLength, -outerRadius - 0.02, 0],
+                  [-halfRunLength, dimY, 0],
+                ]}
+                color="#9333ea"
+                lineWidth={1}
+                dashed
+                dashSize={0.03}
+                gapSize={0.02}
+              />
+              <Line
+                points={[
+                  [halfRunLength, -outerRadius - 0.02, 0],
+                  [halfRunLength, dimY, 0],
+                ]}
+                color="#9333ea"
+                lineWidth={1}
+                dashed
+                dashSize={0.03}
+                gapSize={0.02}
+              />
+              {/* Label */}
+              <Text
+                position={[0, dimY - 0.12, 0]}
+                fontSize={0.15}
+                color="#9333ea"
+                anchorX="center"
+                anchorY="top"
+                fontWeight="bold"
+              >
+                {`L: ${totalRunLength}mm`}
+              </Text>
+            </>
+          );
+        })()}
 
-        {/* Gusset dimension for gusset tees - shows vertical gusset length */}
-        {teeType === "gusset" && gussetSize > 0 && (
-          <>
-            <Line
-              points={[
-                [branchOffsetX + branchOuterRadius + gussetSize + 0.1, outerRadius, 0.3],
-                [
-                  branchOffsetX + branchOuterRadius + gussetSize + 0.1,
-                  outerRadius + gussetSize * 0.85,
-                  0.3,
-                ],
-              ]}
-              color="#0066cc"
-              lineWidth={2}
-            />
-            <Text
-              position={[
-                branchOffsetX + branchOuterRadius + gussetSize + 0.25,
-                outerRadius + gussetSize * 0.4,
-                0.3,
-              ]}
-              fontSize={0.12}
-              color="#0066cc"
-              anchorX="left"
-              anchorY="middle"
-              fontWeight="bold"
-            >
-              {`C: ${gussetSection}mm`}
-            </Text>
-          </>
-        )}
+        {/* Branch position dimension line (horizontal from left end to branch center) */}
+        {branchPositionMm !== undefined &&
+          (() => {
+            const dimOffset = 0.4; // Offset below pipe (below the length dimension)
+            const dimY = -outerRadius - dimOffset;
+            return (
+              <>
+                {/* Main dimension line */}
+                <Line
+                  points={[
+                    [-halfRunLength, dimY, 0],
+                    [branchOffsetX, dimY, 0],
+                  ]}
+                  color="#16a34a"
+                  lineWidth={2}
+                />
+                {/* End caps */}
+                <Line
+                  points={[
+                    [-halfRunLength, dimY - 0.06, 0],
+                    [-halfRunLength, dimY + 0.06, 0],
+                  ]}
+                  color="#16a34a"
+                  lineWidth={1}
+                />
+                <Line
+                  points={[
+                    [branchOffsetX, dimY - 0.06, 0],
+                    [branchOffsetX, dimY + 0.06, 0],
+                  ]}
+                  color="#16a34a"
+                  lineWidth={1}
+                />
+                {/* Dotted extension line from left pipe end */}
+                <Line
+                  points={[
+                    [-halfRunLength, -outerRadius - 0.27, 0],
+                    [-halfRunLength, dimY, 0],
+                  ]}
+                  color="#16a34a"
+                  lineWidth={1}
+                  dashed
+                  dashSize={0.03}
+                  gapSize={0.02}
+                />
+                {/* Dotted extension line to branch center */}
+                <Line
+                  points={[
+                    [branchOffsetX, 0, 0],
+                    [branchOffsetX, dimY, 0],
+                  ]}
+                  color="#16a34a"
+                  lineWidth={1}
+                  dashed
+                  dashSize={0.03}
+                  gapSize={0.02}
+                />
+                {/* Label */}
+                <Text
+                  position={[(-halfRunLength + branchOffsetX) / 2, dimY - 0.1, 0]}
+                  fontSize={0.12}
+                  color="#16a34a"
+                  anchorX="center"
+                  anchorY="top"
+                  fontWeight="bold"
+                >
+                  {`Branch pos: ${branchPositionMm}mm`}
+                </Text>
+              </>
+            );
+          })()}
+
+        {/* Gusset dimension for gusset tees - shows width across the gusset plate */}
+        {/* Positioned away from gusset with dotted extension lines */}
+        {teeType === "gusset" &&
+          gussetSize > 0 &&
+          (() => {
+            const dimOffset = 0.15; // Offset from gusset surface (150mm scaled)
+            // Gusset inner edge at z=0: X = branchOffsetX + branchOuterRadius, Y = outerRadius + gussetSize/2
+            // Gusset outer edge at z=0: X = branchOffsetX + branchOuterRadius + gussetSize/2, Y = outerRadius
+            const innerX = branchOffsetX + branchOuterRadius;
+            const innerY = outerRadius + gussetSize / 2;
+            const outerX = branchOffsetX + branchOuterRadius + gussetSize / 2;
+            const outerY = outerRadius;
+            // Offset dimension line perpendicular to the gusset surface (45 degrees, so offset in both X and Y)
+            const offsetDir = Math.SQRT1_2; // 1/sqrt(2) for 45 degree offset
+            const dimInnerX = innerX + dimOffset * offsetDir;
+            const dimInnerY = innerY + dimOffset * offsetDir;
+            const dimOuterX = outerX + dimOffset * offsetDir;
+            const dimOuterY = outerY + dimOffset * offsetDir;
+            return (
+              <>
+                {/* Main dimension line - offset from gusset surface */}
+                <Line
+                  points={[
+                    [dimInnerX, dimInnerY, 0.02],
+                    [dimOuterX, dimOuterY, 0.02],
+                  ]}
+                  color="#0066cc"
+                  lineWidth={2}
+                />
+                {/* End caps perpendicular to the 45-degree line */}
+                <Line
+                  points={[
+                    [dimInnerX - 0.04, dimInnerY + 0.04, 0.02],
+                    [dimInnerX + 0.04, dimInnerY - 0.04, 0.02],
+                  ]}
+                  color="#0066cc"
+                  lineWidth={1}
+                />
+                <Line
+                  points={[
+                    [dimOuterX - 0.04, dimOuterY + 0.04, 0.02],
+                    [dimOuterX + 0.04, dimOuterY - 0.04, 0.02],
+                  ]}
+                  color="#0066cc"
+                  lineWidth={1}
+                />
+                {/* Dotted extension line from gusset inner edge to dimension */}
+                <Line
+                  points={[
+                    [innerX, innerY, 0.02],
+                    [dimInnerX, dimInnerY, 0.02],
+                  ]}
+                  color="#0066cc"
+                  lineWidth={1}
+                  dashed
+                  dashSize={0.02}
+                  gapSize={0.015}
+                />
+                {/* Dotted extension line from gusset outer edge to dimension */}
+                <Line
+                  points={[
+                    [outerX, outerY, 0.02],
+                    [dimOuterX, dimOuterY, 0.02],
+                  ]}
+                  color="#0066cc"
+                  lineWidth={1}
+                  dashed
+                  dashSize={0.02}
+                  gapSize={0.015}
+                />
+                {/* Label */}
+                <Text
+                  position={[
+                    (dimInnerX + dimOuterX) / 2 + 0.1,
+                    (dimInnerY + dimOuterY) / 2 + 0.1,
+                    0.02,
+                  ]}
+                  fontSize={0.12}
+                  color="#0066cc"
+                  anchorX="left"
+                  anchorY="bottom"
+                  fontWeight="bold"
+                >
+                  {`C: ${gussetSection}mm`}
+                </Text>
+              </>
+            );
+          })()}
       </group>
     </Center>
   );

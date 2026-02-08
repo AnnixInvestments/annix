@@ -1,4 +1,4 @@
-import type { SupplierBoqStatus } from "@/app/lib/api/supplierApi";
+import type { SupplierBoqStatus, SupplierPumpQuoteStatus } from "@/app/lib/api/supplierApi";
 
 export const supplierKeys = {
   dashboard: {
@@ -14,6 +14,12 @@ export const supplierKeys = {
     list: (status?: SupplierBoqStatus) =>
       [...supplierKeys.boqs.all, "list", status ?? "all"] as const,
     detail: (id: number) => [...supplierKeys.boqs.all, "detail", id] as const,
+  },
+  pumpQuotes: {
+    all: ["supplier", "pumpQuotes"] as const,
+    list: (status?: SupplierPumpQuoteStatus) =>
+      [...supplierKeys.pumpQuotes.all, "list", status ?? "all"] as const,
+    detail: (id: number) => [...supplierKeys.pumpQuotes.all, "detail", id] as const,
   },
   profile: {
     all: ["supplier", "profile"] as const,
