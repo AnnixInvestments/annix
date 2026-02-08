@@ -42,6 +42,7 @@ import {
   getMinWallThicknessForNB,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
+import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 
@@ -2216,6 +2217,12 @@ function FittingFormComponent({
                     const isUnequalTeeCalc = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
                       fittingType,
                     );
+                    const isGussetTee = [
+                      "GUSSET_TEE",
+                      "UNEQUAL_GUSSET_TEE",
+                      "GUSSET_REDUCING_TEE",
+                      "GUSSETTED_TEE",
+                    ].includes(fittingType);
                     // For unequal tees, use teeNominalDiameterMm; for reducing tees, use branchNominalDiameterMm
                     const branchNB =
                       entry.specs?.branchNominalDiameterMm ||
@@ -2293,6 +2300,16 @@ function FittingFormComponent({
                         : 0);
                     const branchFlangeWeldCount =
                       flangeConfigCalc.hasBranch && flangeConfigCalc.branchType !== "loose" ? 1 : 0;
+                    const gussetSectionMm = isGussetTee
+                      ? entry.calculation?.gussetSectionMm || getGussetSection(nominalBore)
+                      : 0;
+                    const gussetAreaMm2 = 0.5 * gussetSectionMm * gussetSectionMm;
+                    const gussetVolumeDm3 = (gussetAreaMm2 * (pipeWallThickness || 0)) / 1e6;
+                    const singleGussetWeight = gussetVolumeDm3 * 7.85;
+                    const calculatedGussetWeight = 2 * singleGussetWeight * quantity;
+                    const gussetWeight = isGussetTee
+                      ? entry.calculation?.gussetWeight || calculatedGussetWeight
+                      : 0;
                     const fittingWeldVolume =
                       mainOdMm && pipeWallThickness
                         ? calculateFittingWeldVolume({
@@ -2303,6 +2320,9 @@ function FittingFormComponent({
                             numberOfMainFlangeWelds: mainFlangeWeldCount,
                             numberOfBranchFlangeWelds: branchFlangeWeldCount,
                             hasTeeJunctionWeld: true,
+                            gussetSectionMm: gussetSectionMm > 0 ? gussetSectionMm : undefined,
+                            gussetWallThicknessMm:
+                              gussetSectionMm > 0 ? pipeWallThickness : undefined,
                           })
                         : null;
 
@@ -2408,7 +2428,8 @@ function FittingFormComponent({
                       (entry.calculation.pipeWeight || 0) +
                       dynamicTotalFlangeWeight +
                       (entry.calculation.boltWeight || 0) +
-                      (entry.calculation.nutWeight || 0);
+                      (entry.calculation.nutWeight || 0) +
+                      gussetWeight;
 
                     const totalWeight =
                       baseWeight +
@@ -2508,6 +2529,17 @@ function FittingFormComponent({
                                 {closureTotalWeight > 0 && (
                                   <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
                                 )}
+                                {isGussetTee && gussetWeight > 0 && (
+                                  <>
+                                    <p className="font-medium mt-1">
+                                      2 × Gusset ({gussetSectionMm.toFixed(0)}mm):{" "}
+                                      {gussetWeight.toFixed(2)}kg
+                                    </p>
+                                    <p className="text-[10px]">
+                                      ({(gussetWeight / 2).toFixed(2)}kg each)
+                                    </p>
+                                  </>
+                                )}
                               </div>
                             </div>
                           );
@@ -2542,15 +2574,14 @@ function FittingFormComponent({
 
                         {/* Weld Summary with Volume - Combined */}
                         {(() => {
-                          // Tee junction weld length calculation (Steinmetz curve)
-                          // For a branch pipe meeting a run pipe at 90°, the saddle weld follows
-                          // the intersection curve. Length ≈ 2.7 × branch OD (Steinmetz factor)
                           const STEINMETZ_FACTOR = 2.7;
                           const teeJunctionWeldMm =
                             branchOdMm > 0 ? STEINMETZ_FACTOR * branchOdMm : 0;
                           const mainCircMm = Math.PI * mainOdMm;
                           const totalFlangeWeldMm = numFlanges * 2 * mainCircMm;
-                          const totalWeldLinearMm = teeJunctionWeldMm + totalFlangeWeldMm;
+                          const gussetWeldLengthMm = fittingWeldVolume?.gussetWeldLengthMm || 0;
+                          const totalWeldLinearMm =
+                            teeJunctionWeldMm + totalFlangeWeldMm + gussetWeldLengthMm;
 
                           return (
                             <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
@@ -2575,6 +2606,12 @@ function FittingFormComponent({
                                 {numFlanges > 0 && (
                                   <p>
                                     {numFlanges} × Flange (2×{mainCircMm.toFixed(0)}mm) @{" "}
+                                    {fittingWeldThickness?.toFixed(1)}mm
+                                  </p>
+                                )}
+                                {isGussetTee && gussetWeldLengthMm > 0 && (
+                                  <p>
+                                    2 × Gusset (2×{(gussetWeldLengthMm / 2).toFixed(0)}mm) @{" "}
                                     {fittingWeldThickness?.toFixed(1)}mm
                                   </p>
                                 )}
