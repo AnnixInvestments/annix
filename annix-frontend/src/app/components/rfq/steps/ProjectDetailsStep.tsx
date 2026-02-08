@@ -20,9 +20,10 @@ import {
   isProjectTypeAvailableForUnregistered,
   PRODUCTS_AND_SERVICES,
 } from "@/app/lib/config/productsServices";
+import { generateUniqueId } from "@/app/lib/datetime";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
-import type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
+import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { generateSystemReferenceNumber } from "@/app/lib/utils/systemUtils";
 
 interface RestrictionPopupPosition {
@@ -116,19 +117,6 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 export type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
 
 interface ProjectDetailsStepProps {
-  rfqData: any;
-  onUpdate: (field: string, value: any) => void;
-  errors: Record<string, string>;
-  onSetValidationError: (field: string, message: string | null) => void;
-  globalSpecs: any;
-  onUpdateGlobalSpecs: (specs: any) => void;
-  pendingDocuments: PendingDocument[];
-  onAddDocument: (file: File) => void;
-  onRemoveDocument: (id: string) => void;
-  pendingTenderDocuments: PendingDocument[];
-  onAddTenderDocument: (file: File) => void;
-  onRemoveTenderDocument: (id: string) => void;
-  useNix?: boolean;
   onShowNixPopup?: () => void;
   onStopUsingNix?: () => void;
   onProcessWithNix?: () => void;
@@ -136,24 +124,47 @@ interface ProjectDetailsStepProps {
 }
 
 export default function ProjectDetailsStep({
-  rfqData,
-  onUpdate,
-  errors,
-  onSetValidationError,
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  pendingDocuments,
-  onAddDocument,
-  onRemoveDocument,
-  pendingTenderDocuments,
-  onAddTenderDocument,
-  onRemoveTenderDocument,
-  useNix,
   onShowNixPopup,
   onStopUsingNix,
   onProcessWithNix,
   isNixProcessing,
 }: ProjectDetailsStepProps) {
+  const rfqData = useRfqWizardStore((s) => s.rfqData) as any;
+  const errors = useRfqWizardStore((s) => s.validationErrors);
+  const pendingDocuments = useRfqWizardStore((s) => s.pendingDocuments);
+  const pendingTenderDocuments = useRfqWizardStore((s) => s.pendingTenderDocuments);
+  const onUpdate = useRfqWizardStore((s) => s.updateRfqField) as (
+    field: string,
+    value: any,
+  ) => void;
+  const onSetValidationError = useRfqWizardStore((s) => s.setValidationError);
+  const onUpdateGlobalSpecs = useRfqWizardStore((s) => s.updateGlobalSpecs) as (specs: any) => void;
+  const storeAddDocument = useRfqWizardStore((s) => s.addDocument);
+  const onRemoveDocument = useRfqWizardStore((s) => s.removeDocument);
+  const storeAddTenderDocument = useRfqWizardStore((s) => s.addTenderDocument);
+  const onRemoveTenderDocument = useRfqWizardStore((s) => s.removeTenderDocument);
+  const globalSpecs = rfqData.globalSpecs;
+  const useNix = rfqData.useNix;
+
+  const onAddDocument = useCallback(
+    (file: File) => {
+      storeAddDocument({
+        file,
+        id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
+      });
+    },
+    [storeAddDocument],
+  );
+
+  const onAddTenderDocument = useCallback(
+    (file: File) => {
+      storeAddTenderDocument({
+        file,
+        id: `tender-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
+      });
+    },
+    [storeAddTenderDocument],
+  );
   const { showToast } = useToast();
   const [additionalNotes, setAdditionalNotes] = useState<string[]>([]);
   const [showMapPicker, setShowMapPicker] = useState(false);

@@ -29,6 +29,7 @@ import {
 } from "@/app/lib/hooks/useFlangeWeights";
 import { usePtRecommendations } from "@/app/lib/hooks/usePtRecommendations";
 import { log } from "@/app/lib/logger";
+import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 
 interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -755,15 +756,22 @@ function FeatureRestrictionPopup({ feature, position, onClose }: FeatureRestrict
 }
 
 export default function SpecificationsStep({
-  globalSpecs,
-  onUpdateGlobalSpecs,
-  masterData,
-  errors,
   fetchAndSelectPressureClass,
-  availablePressureClasses,
-  requiredProducts = [],
-  rfqData,
-}: any) {
+}: {
+  fetchAndSelectPressureClass: (
+    standardId: number,
+    workingPressureBar?: number,
+    temperatureCelsius?: number,
+    materialGroup?: string,
+  ) => Promise<any>;
+}) {
+  const rfqData = useRfqWizardStore((s) => s.rfqData) as any;
+  const masterData = useRfqWizardStore((s) => s.masterData);
+  const errors = useRfqWizardStore((s) => s.validationErrors);
+  const availablePressureClasses = useRfqWizardStore((s) => s.availablePressureClasses);
+  const onUpdateGlobalSpecs = useRfqWizardStore((s) => s.updateGlobalSpecs) as (specs: any) => void;
+  const globalSpecs = rfqData.globalSpecs;
+  const requiredProducts = rfqData.requiredProducts || [];
   // Authentication status for restrictions
   const { isAuthenticated: isCustomerAuthenticated } = useOptionalCustomerAuth();
   const { isAuthenticated: isAdminAuthenticated } = useOptionalAdminAuth();

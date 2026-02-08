@@ -25,7 +25,7 @@ import {
   getScheduleListForSpec,
   STEEL_DENSITY_KG_M3,
 } from "@/app/lib/config/rfq";
-import { generateUniqueId, nowISO } from "@/app/lib/datetime";
+import { nowISO } from "@/app/lib/datetime";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
 import {
   flangeWeightSync as getFlangeWeight,
@@ -251,19 +251,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     setAvailablePressureClasses,
     pressureClassesByStandard,
     setPressureClassesByStandard,
-    bendOptionsCache,
-    setBendOptionsCache,
     pendingDocuments,
     setPendingDocuments,
     pendingTenderDocuments,
     setPendingTenderDocuments,
     showCloseConfirmation,
     setShowCloseConfirmation,
-    addDocument,
-    removeDocument,
-    addTenderDocument,
-    removeTenderDocument,
-    setValidationError,
   } = useRfqWizardStore();
 
   const rfqDataRef = useRef(rfqData);
@@ -345,32 +338,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     setCurrentStep,
     showToast,
   });
-
-  const handleAddDocument = (file: File) => {
-    addDocument({
-      file,
-      id: `doc-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
-    });
-  };
-
-  const handleRemoveDocument = (id: string) => {
-    removeDocument(id);
-  };
-
-  const handleAddTenderDocument = (file: File) => {
-    addTenderDocument({
-      file,
-      id: `tender-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`,
-    });
-  };
-
-  const handleRemoveTenderDocument = (id: string) => {
-    removeTenderDocument(id);
-  };
-
-  const handleSetValidationError = (field: string, message: string | null) => {
-    setValidationError(field, message);
-  };
 
   // Get filtered pressure classes for a specific standard (with caching)
   const getFilteredPressureClasses = useCallback(
@@ -1299,162 +1266,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       }
     },
     [availableSchedulesMap, masterData.nominalBores],
-  );
-
-  // Fetch bend options (nominal bores and degrees) for a bend type
-  const fetchBendOptions = useCallback(
-    async (bendType: string) => {
-      // Return cached data if available
-      if (bendOptionsCache[bendType]) {
-        return bendOptionsCache[bendType];
-      }
-
-      try {
-        const { masterDataApi } = await import("@/app/lib/api/client");
-        const options = await masterDataApi.getBendOptions(bendType);
-
-        // Cache the result
-        setBendOptionsCache((prev) => ({
-          ...prev,
-          [bendType]: options,
-        }));
-
-        return options;
-      } catch (error) {
-        if (error instanceof Error && error.message !== "Backend unavailable") {
-          log.error(`Error fetching bend options for ${bendType}:`, error);
-        }
-        return { nominalBores: [], degrees: [] };
-      }
-    },
-    [bendOptionsCache],
-  );
-
-  // Fetch center-to-face dimension from API based on bend type, NB, and angle
-  const fetchCenterToFace = useCallback(
-    async (entryId: string, bendType: string, nominalBoreMm: number, degrees: number) => {
-      if (!bendType || !nominalBoreMm || !degrees) {
-        log.debug("[CenterToFace] Missing required parameters:", {
-          bendType,
-          nominalBoreMm,
-          degrees,
-        });
-        return null;
-      }
-
-      try {
-        const { masterDataApi } = await import("@/app/lib/api/client");
-        const result = await masterDataApi.getBendCenterToFace(bendType, nominalBoreMm, degrees);
-
-        if (result?.centerToFaceMm) {
-          log.debug(
-            `[CenterToFace] Found: ${result.centerToFaceMm}mm for ${bendType} ${nominalBoreMm}NB @ ${degrees}°`,
-          );
-
-          // Find the current entry to merge specs using ref for stable reference
-          const currentEntry = rfqDataRef.current.items.find((item: any) => item.id === entryId);
-          if (currentEntry?.specs) {
-            // Update the entry with the center-to-face value, merging with existing specs
-            updateItem(entryId, {
-              specs: {
-                ...currentEntry.specs,
-                centerToFaceMm: Number(result.centerToFaceMm),
-                bendRadiusMm: Number(result.radiusMm),
-              } as any,
-            });
-          }
-
-          return result;
-        }
-        return null;
-      } catch (error) {
-        if (error instanceof Error && error.message !== "Backend unavailable") {
-          log.error(
-            `[CenterToFace] Error fetching for ${bendType} ${nominalBoreMm}NB @ ${degrees}°:`,
-            error,
-          );
-        }
-        return null;
-      }
-    },
-    [updateItem],
-  );
-
-  // Auto-select flange specifications based on item-level operating conditions
-  const autoSelectFlangeSpecs = useCallback(
-    async (
-      entryId: string,
-      entryType: "straight-pipe" | "bend",
-      workingPressureBar: number,
-      flangeStandardId?: number,
-      updateCallback?: (updates: any) => void,
-      temperatureCelsius?: number,
-      materialGroup?: string,
-    ) => {
-      if (!workingPressureBar || !flangeStandardId) return;
-
-      try {
-        // Fetch pressure classes for the standard and get recommendation
-        const { masterDataApi } = await import("@/app/lib/api/client");
-        const classes = await masterDataApi.getFlangePressureClassesByStandard(flangeStandardId);
-
-        if (classes.length > 0) {
-          let recommendedId: number | null = null;
-
-          // Try P/T rating API for temperature-based selection with material group
-          if (temperatureCelsius !== undefined) {
-            try {
-              const ptMaterialGroup = materialGroup || "Carbon Steel A105 (Group 1.1)";
-              const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001"}/flange-pt-ratings/recommended-class?standardId=${flangeStandardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`,
-              );
-              if (response.ok) {
-                const text = await response.text();
-                if (text?.trim()) {
-                  try {
-                    recommendedId = JSON.parse(text);
-                    if (recommendedId && updateCallback) {
-                      const recommendedClass = classes.find((c: any) => c.id === recommendedId);
-                      updateCallback({
-                        flangePressureClassId: recommendedId,
-                        autoSelectedPressureClass: true,
-                      });
-                      log.debug(
-                        `Auto-selected pressure class ${recommendedClass?.designation || recommendedId} for ${workingPressureBar} bar at ${temperatureCelsius}°C (${ptMaterialGroup})`,
-                      );
-                      return;
-                    }
-                  } catch {
-                    // Invalid JSON, fall through to fallback
-                  }
-                }
-              }
-            } catch {
-              // Fall back to local calculation
-            }
-          }
-
-          // Fallback to local temperature-derated calculation
-          const recommended = getRecommendedPressureClass(
-            workingPressureBar,
-            classes,
-            temperatureCelsius,
-          );
-          if (recommended && updateCallback) {
-            updateCallback({
-              flangePressureClassId: recommended.id,
-              autoSelectedPressureClass: true,
-            });
-            log.debug(
-              `Auto-selected pressure class ${recommended.designation} for ${workingPressureBar} bar at ${temperatureCelsius ?? "ambient"}°C`,
-            );
-          }
-        }
-      } catch (error) {
-        log.error("Error auto-selecting flange specs:", error);
-      }
-    },
-    [],
   );
 
   // Refetch available schedules when global steel specification changes
@@ -3318,19 +3129,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         case 1:
           return (
             <ProjectDetailsStep
-              rfqData={rfqData}
-              onUpdate={updateRfqField as (field: string, value: any) => void}
-              errors={validationErrors}
-              onSetValidationError={handleSetValidationError}
-              globalSpecs={rfqData.globalSpecs}
-              onUpdateGlobalSpecs={updateGlobalSpecs}
-              pendingDocuments={pendingDocuments}
-              onAddDocument={handleAddDocument}
-              onRemoveDocument={handleRemoveDocument}
-              pendingTenderDocuments={pendingTenderDocuments}
-              onAddTenderDocument={handleAddTenderDocument}
-              onRemoveTenderDocument={handleRemoveTenderDocument}
-              useNix={rfqData.useNix}
               onShowNixPopup={handleShowNixPopup}
               onStopUsingNix={handleStopUsingNix}
               onProcessWithNix={handleProcessDocumentsWithNix}
@@ -3340,63 +3138,24 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         case 2:
           return (
             <ItemUploadStep
-              entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
-              globalSpecs={rfqData.globalSpecs}
-              masterData={masterData}
-              onAddEntry={addStraightPipeEntry}
-              onAddBendEntry={addBendEntry}
-              onAddFittingEntry={addFittingEntry}
-              onAddPipeSteelWorkEntry={addPipeSteelWorkEntry}
-              onAddExpansionJointEntry={addExpansionJointEntry}
-              onAddValveEntry={addValveEntry}
-              onAddInstrumentEntry={addInstrumentEntry}
-              onAddPumpEntry={addPumpEntry}
               onUpdateEntry={handleUpdateEntry}
-              onRemoveEntry={removeStraightPipeEntry}
-              onDuplicateEntry={duplicateItem}
               onCalculate={handleCalculateAll}
               onCalculateBend={handleCalculateBend}
               onCalculateFitting={handleCalculateFitting}
-              errors={validationErrors}
-              loading={false}
               fetchAvailableSchedules={fetchAvailableSchedules}
-              availableSchedulesMap={availableSchedulesMap}
-              setAvailableSchedulesMap={setAvailableSchedulesMap}
-              fetchBendOptions={fetchBendOptions}
-              fetchCenterToFace={fetchCenterToFace}
-              bendOptionsCache={bendOptionsCache}
-              autoSelectFlangeSpecs={autoSelectFlangeSpecs}
-              requiredProducts={rfqData.requiredProducts}
-              pressureClassesByStandard={pressureClassesByStandard}
               getFilteredPressureClasses={getFilteredPressureClasses}
-              hideDrawings={rfqData.useNix}
               onReady={rfqData.useNix ? handleItemsPageReady : undefined}
             />
           );
         case 3:
-          return (
-            <ReviewSubmitStep
-              entries={rfqData.straightPipeEntries}
-              rfqData={rfqData}
-              onNextStep={handleNextStep}
-              onPrevStep={handlePrevStep}
-              errors={validationErrors}
-              loading={isSubmitting}
-            />
-          );
+          return <ReviewSubmitStep onNextStep={handleNextStep} onPrevStep={handlePrevStep} />;
         case 4:
           return (
             <BOQStep
-              rfqData={rfqData}
-              entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
-              globalSpecs={rfqData.globalSpecs}
-              requiredProducts={rfqData.requiredProducts || []}
-              masterData={masterData}
               onPrevStep={handlePrevStep}
               onSubmit={handleSubmit}
               onResubmit={handleResubmit}
               isEditing={isEditing}
-              loading={isSubmitting}
             />
           );
         default:
@@ -3407,95 +3166,33 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         case 1:
           return (
             <ProjectDetailsStep
-              rfqData={rfqData}
-              onUpdate={updateRfqField as (field: string, value: any) => void}
-              errors={validationErrors}
-              onSetValidationError={handleSetValidationError}
-              globalSpecs={rfqData.globalSpecs}
-              onUpdateGlobalSpecs={updateGlobalSpecs}
-              pendingDocuments={pendingDocuments}
-              onAddDocument={handleAddDocument}
-              onRemoveDocument={handleRemoveDocument}
-              pendingTenderDocuments={pendingTenderDocuments}
-              onAddTenderDocument={handleAddTenderDocument}
-              onRemoveTenderDocument={handleRemoveTenderDocument}
-              useNix={rfqData.useNix}
               onShowNixPopup={handleShowNixPopup}
               onStopUsingNix={handleStopUsingNix}
             />
           );
         case 2:
-          return (
-            <SpecificationsStep
-              globalSpecs={rfqData.globalSpecs}
-              onUpdateGlobalSpecs={updateGlobalSpecs}
-              masterData={masterData}
-              errors={validationErrors}
-              fetchAndSelectPressureClass={fetchAndSelectPressureClass}
-              availablePressureClasses={availablePressureClasses}
-              requiredProducts={rfqData.requiredProducts}
-              rfqData={rfqData}
-            />
-          );
+          return <SpecificationsStep fetchAndSelectPressureClass={fetchAndSelectPressureClass} />;
         case 3:
           return (
             <ItemUploadStep
-              entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
-              globalSpecs={rfqData.globalSpecs}
-              masterData={masterData}
-              onAddEntry={addStraightPipeEntry}
-              onAddBendEntry={addBendEntry}
-              onAddFittingEntry={addFittingEntry}
-              onAddPipeSteelWorkEntry={addPipeSteelWorkEntry}
-              onAddExpansionJointEntry={addExpansionJointEntry}
-              onAddValveEntry={addValveEntry}
-              onAddInstrumentEntry={addInstrumentEntry}
-              onAddPumpEntry={addPumpEntry}
               onUpdateEntry={handleUpdateEntry}
-              onRemoveEntry={removeStraightPipeEntry}
-              onDuplicateEntry={duplicateItem}
               onCalculate={handleCalculateAll}
               onCalculateBend={handleCalculateBend}
               onCalculateFitting={handleCalculateFitting}
-              errors={validationErrors}
-              loading={false}
               fetchAvailableSchedules={fetchAvailableSchedules}
-              availableSchedulesMap={availableSchedulesMap}
-              setAvailableSchedulesMap={setAvailableSchedulesMap}
-              fetchBendOptions={fetchBendOptions}
-              fetchCenterToFace={fetchCenterToFace}
-              bendOptionsCache={bendOptionsCache}
-              autoSelectFlangeSpecs={autoSelectFlangeSpecs}
-              requiredProducts={rfqData.requiredProducts}
-              pressureClassesByStandard={pressureClassesByStandard}
               getFilteredPressureClasses={getFilteredPressureClasses}
-              hideDrawings={rfqData.useNix}
+              onReady={rfqData.useNix ? handleItemsPageReady : undefined}
             />
           );
         case 4:
-          return (
-            <ReviewSubmitStep
-              entries={rfqData.straightPipeEntries}
-              rfqData={rfqData}
-              onNextStep={handleNextStep}
-              onPrevStep={handlePrevStep}
-              errors={validationErrors}
-              loading={isSubmitting}
-            />
-          );
+          return <ReviewSubmitStep onNextStep={handleNextStep} onPrevStep={handlePrevStep} />;
         case 5:
           return (
             <BOQStep
-              rfqData={rfqData}
-              entries={rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries}
-              globalSpecs={rfqData.globalSpecs}
-              requiredProducts={rfqData.requiredProducts || []}
-              masterData={masterData}
               onPrevStep={handlePrevStep}
               onSubmit={handleSubmit}
               onResubmit={handleResubmit}
               isEditing={isEditing}
-              loading={isSubmitting}
             />
           );
         default:

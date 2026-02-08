@@ -19,6 +19,7 @@ import {
   NB_TO_OD_LOOKUP,
 } from "@/app/lib/hooks/useFlangeWeights";
 import { log } from "@/app/lib/logger";
+import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import {
   calculateInsideDiameter,
   calculateTotalSurfaceArea,
@@ -326,38 +327,45 @@ const ItemWrapper = memo(function ItemWrapper({
 let itemUploadStepRenderCount = 0;
 
 export default function ItemUploadStep({
-  entries,
-  globalSpecs,
-  masterData,
-  onAddEntry,
-  onAddBendEntry,
-  onAddFittingEntry,
-  onAddPipeSteelWorkEntry,
-  onAddExpansionJointEntry,
-  onAddValveEntry,
-  onAddInstrumentEntry,
-  onAddPumpEntry,
   onUpdateEntry,
-  onRemoveEntry,
-  onDuplicateEntry,
   onCalculate,
   onCalculateBend,
   onCalculateFitting,
-  errors: _errors,
-  loading: _loading,
   fetchAvailableSchedules,
-  availableSchedulesMap,
-  setAvailableSchedulesMap,
-  fetchBendOptions: _fetchBendOptions,
-  fetchCenterToFace: _fetchCenterToFace,
-  bendOptionsCache: _bendOptionsCache,
-  autoSelectFlangeSpecs: _autoSelectFlangeSpecs,
-  requiredProducts = [],
-  pressureClassesByStandard = {},
   getFilteredPressureClasses,
-  hideDrawings = false,
   onReady,
-}: any) {
+}: {
+  onUpdateEntry: (id: string, updates: any) => void;
+  onCalculate?: () => void;
+  onCalculateBend?: (id: string) => void;
+  onCalculateFitting?: (id: string) => void;
+  fetchAvailableSchedules: (
+    entryId: string,
+    steelSpecId: number,
+    nominalBoreMm: number,
+  ) => Promise<any[]>;
+  getFilteredPressureClasses: (standardId: number) => Promise<any[]>;
+  onReady?: () => void;
+}) {
+  const rfqData = useRfqWizardStore((s) => s.rfqData);
+  const masterData = useRfqWizardStore((s) => s.masterData);
+  const availableSchedulesMap = useRfqWizardStore((s) => s.availableSchedulesMap);
+  const setAvailableSchedulesMap = useRfqWizardStore((s) => s.setAvailableSchedulesMap);
+  const pressureClassesByStandard = useRfqWizardStore((s) => s.pressureClassesByStandard);
+  const onAddEntry = useRfqWizardStore((s) => s.addStraightPipeEntry);
+  const onAddBendEntry = useRfqWizardStore((s) => s.addBendEntry);
+  const onAddFittingEntry = useRfqWizardStore((s) => s.addFittingEntry);
+  const onAddPipeSteelWorkEntry = useRfqWizardStore((s) => s.addPipeSteelWorkEntry);
+  const onAddExpansionJointEntry = useRfqWizardStore((s) => s.addExpansionJointEntry);
+  const onAddValveEntry = useRfqWizardStore((s) => s.addValveEntry);
+  const onAddInstrumentEntry = useRfqWizardStore((s) => s.addInstrumentEntry);
+  const onAddPumpEntry = useRfqWizardStore((s) => s.addPumpEntry);
+  const onRemoveEntry = useRfqWizardStore((s) => s.removeStraightPipeEntry);
+  const onDuplicateEntry = useRfqWizardStore((s) => s.duplicateItem);
+  const entries = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
+  const globalSpecs = rfqData.globalSpecs;
+  const requiredProducts = rfqData.requiredProducts || [];
+  const hideDrawings = rfqData.useNix ?? false;
   itemUploadStepRenderCount++;
   log.info(`🔄 ItemUploadStep RENDER #${itemUploadStepRenderCount} - entries: ${entries?.length}`);
 
@@ -604,10 +612,10 @@ export default function ItemUploadStep({
   // Remove duplicates using Set and sort
   // Handle both snake_case (from API) and camelCase (from fallback data) property names
   const allNominalBores = (
-    masterData.nominalBores?.length > 0
+    (masterData.nominalBores?.length ?? 0) > 0
       ? Array.from(
           new Set(
-            masterData.nominalBores.map(
+            masterData.nominalBores!.map(
               (nb: any) => (nb.nominal_diameter_mm ?? nb.nominalDiameterMm) as number,
             ),
           ),
@@ -2901,7 +2909,7 @@ export default function ItemUploadStep({
                             if (!stub?.nominalBoreMm) return null;
                             const stubNb = stub.nominalBoreMm;
                             const stubGasketWeight = getGasketWeight(
-                              globalSpecs.gasketType,
+                              globalSpecs.gasketType!,
                               stubNb,
                             );
                             const stubGasketTotalWeight = stubGasketWeight * qty;

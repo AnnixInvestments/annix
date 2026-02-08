@@ -17,31 +17,25 @@ import {
   flangeWeightSync as getFlangeWeight,
   gasketWeightSync as getGasketWeight,
 } from "@/app/lib/hooks/useFlangeWeights";
-import { GlobalSpecs, RfqFormData } from "@/app/lib/hooks/useRfqForm";
+import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 
 export default function BOQStep({
-  rfqData,
-  entries,
-  globalSpecs,
-  requiredProducts,
-  masterData,
   onPrevStep,
   onSubmit,
   onResubmit,
   isEditing,
-  loading,
 }: {
-  rfqData: RfqFormData;
-  entries: any[];
-  globalSpecs: GlobalSpecs;
-  requiredProducts: string[];
-  masterData?: any;
   onPrevStep?: () => void;
   onSubmit?: () => void;
   onResubmit?: () => void;
   isEditing?: boolean;
-  loading?: boolean;
 }) {
+  const rfqData = useRfqWizardStore((s) => s.rfqData);
+  const masterData = useRfqWizardStore((s) => s.masterData);
+  const loading = useRfqWizardStore((s) => s.isSubmitting);
+  const entries: any[] = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
+  const globalSpecs = rfqData.globalSpecs;
+  const requiredProducts = rfqData.requiredProducts || [];
   // Authentication status for unregistered customer restrictions
   const { isAuthenticated: isCustomerAuthenticated } = useOptionalCustomerAuth();
   const { isAuthenticated: isAdminAuthenticated } = useOptionalAdminAuth();

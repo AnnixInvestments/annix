@@ -9,17 +9,20 @@ import {
   weldCountPerPipe as getWeldCountPerPipe,
 } from "@/app/lib/config/rfq";
 import { bnwSetInfoSync as getBnwSetInfo, NB_TO_OD_LOOKUP } from "@/app/lib/hooks/useFlangeWeights";
+import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 
 export default function ReviewSubmitStep({
-  entries,
-  rfqData,
   onNextStep,
   onPrevStep,
-  errors,
-  loading,
-}: any) {
-  // Use unified items array that includes both straight pipes and bends
-  const allItems = rfqData.items || entries || [];
+}: {
+  onNextStep: () => void;
+  onPrevStep: () => void;
+}) {
+  const rfqData = useRfqWizardStore((s) => s.rfqData) as any;
+  const errors = useRfqWizardStore((s) => s.validationErrors);
+  const loading = useRfqWizardStore((s) => s.isSubmitting);
+
+  const allItems = rfqData.items || rfqData.straightPipeEntries || [];
 
   const getTotalWeight = () => {
     return allItems.reduce((total: number, entry: any) => {
