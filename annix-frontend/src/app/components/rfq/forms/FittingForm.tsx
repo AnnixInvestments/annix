@@ -60,6 +60,7 @@ export interface FittingFormProps {
   onCalculateFitting?: (id: string) => void;
   generateItemDescription: (entry: any) => string;
   Tee3DPreview?: React.ComponentType<any> | null;
+  Lateral3DPreview?: React.ComponentType<any> | null;
   pressureClassesByStandard: Record<number, any[]>;
   getFilteredPressureClasses: (standardId: number) => void;
   requiredProducts?: string[];
@@ -85,6 +86,7 @@ function FittingFormComponent({
   onCalculateFitting,
   generateItemDescription,
   Tee3DPreview,
+  Lateral3DPreview,
   pressureClassesByStandard,
   getFilteredPressureClasses,
   requiredProducts = [],
@@ -291,6 +293,8 @@ function FittingFormComponent({
             "UNEQUAL_TEE",
             "SWEEP_TEE",
             "GUSSETTED_TEE",
+            "LATERAL",
+            "REDUCING_LATERAL",
           ].includes(entry.specs?.fittingType)
         }
         formContent={
@@ -2734,14 +2738,6 @@ function FittingFormComponent({
             );
           }
 
-          if (!Tee3DPreview) {
-            return (
-              <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
-                3D preview hidden. Use the toggle above to show drawings.
-              </div>
-            );
-          }
-
           const fittingType = entry.specs?.fittingType || "";
           const isTeeType = [
             "SHORT_TEE",
@@ -2756,10 +2752,28 @@ function FittingFormComponent({
             "GUSSETTED_TEE",
           ].includes(fittingType);
 
-          if (!isTeeType) {
+          const isLateralType = ["LATERAL", "REDUCING_LATERAL"].includes(fittingType);
+
+          if (isTeeType && !Tee3DPreview) {
             return (
               <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
-                3D preview is only available for tee fittings
+                3D preview hidden. Use the toggle above to show drawings.
+              </div>
+            );
+          }
+
+          if (isLateralType && !Lateral3DPreview) {
+            return (
+              <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
+                3D preview hidden. Use the toggle above to show drawings.
+              </div>
+            );
+          }
+
+          if (!isTeeType && !isLateralType) {
+            return (
+              <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
+                3D preview is only available for tee and lateral fittings
               </div>
             );
           }
@@ -2811,6 +2825,38 @@ function FittingFormComponent({
           const pressureClassDesignation = pressureClass?.designation || "";
 
           const teeNominalBore = entry.specs?.teeNominalDiameterMm;
+
+          if (isLateralType && Lateral3DPreview) {
+            const angleRange = entry.specs?.angleRange as "60-90" | "45-59" | "30-44" | undefined;
+            const defaultAngles: Record<string, number> = {
+              "60-90": 60,
+              "45-59": 45,
+              "30-44": 30,
+            };
+            const angleDegrees = angleRange ? defaultAngles[angleRange] || 60 : 60;
+            return (
+              <Lateral3DPreview
+                nominalBore={nominalBore}
+                outerDiameter={outerDiameter}
+                wallThickness={wallThickness}
+                angleDegrees={angleDegrees}
+                angleRange={angleRange}
+                hasInletFlange={
+                  getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasInlet
+                }
+                hasOutletFlange={
+                  getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasOutlet
+                }
+                hasBranchFlange={
+                  getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasBranch
+                }
+              />
+            );
+          }
+
+          if (!Tee3DPreview) {
+            return null;
+          }
 
           return (
             <Tee3DPreview
