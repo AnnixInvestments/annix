@@ -161,7 +161,7 @@ export default function AuRubberOrderDetailPage() {
   const fetchProducts = async () => {
     try {
       const data = await auRubberApiClient.products();
-      setProducts(data);
+      setProducts(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load products:", err);
     }
@@ -170,7 +170,7 @@ export default function AuRubberOrderDetailPage() {
   const fetchCompanies = async () => {
     try {
       const data = await auRubberApiClient.companies();
-      setCompanies(data);
+      setCompanies(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load companies:", err);
     }

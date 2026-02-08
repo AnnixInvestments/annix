@@ -36,9 +36,9 @@ export default function AuRubberDashboard() {
           auRubberApiClient.companies(),
           auRubberApiClient.products(),
         ]);
-        setOrders(ordersData);
-        setCompanies(companiesData);
-        setProducts(productsData);
+        setOrders(Array.isArray(ordersData) ? ordersData : []);
+        setCompanies(Array.isArray(companiesData) ? companiesData : []);
+        setProducts(Array.isArray(productsData) ? productsData : []);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err : new Error("Failed to load data"));
