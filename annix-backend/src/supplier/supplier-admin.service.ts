@@ -78,7 +78,9 @@ export class SupplierAdminService {
       .orderBy("profile.createdAt", "DESC");
 
     if (accountStatus) {
-      queryBuilder.andWhere("profile.accountStatus = :accountStatus", { accountStatus });
+      queryBuilder.andWhere("profile.accountStatus = :accountStatus", {
+        accountStatus,
+      });
     }
 
     const total = await queryBuilder.getCount();

@@ -67,7 +67,11 @@ export class RubberLiningController {
     description:
       "Returns all rubber lining types per ISO 6529/SANS standards (NR, SBR, NBR, CR, EPDM, IIR, CSM, FKM)",
   })
-  @ApiResponse({ status: 200, description: "List of rubber types", type: [RubberTypeDto] })
+  @ApiResponse({
+    status: 200,
+    description: "List of rubber types",
+    type: [RubberTypeDto],
+  })
   async rubberTypes(): Promise<RubberTypeDto[]> {
     return this.rubberLiningService.allRubberTypes();
   }
@@ -77,8 +81,16 @@ export class RubberLiningController {
     summary: "Get rubber type by ID",
     description: "Returns a single rubber type by database ID",
   })
-  @ApiParam({ name: "id", description: "Rubber type database ID", type: Number })
-  @ApiResponse({ status: 200, description: "Rubber type details", type: RubberTypeDto })
+  @ApiParam({
+    name: "id",
+    description: "Rubber type database ID",
+    type: Number,
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Rubber type details",
+    type: RubberTypeDto,
+  })
   @ApiResponse({ status: 404, description: "Rubber type not found" })
   async rubberTypeById(@Param("id") id: string): Promise<RubberTypeDto | null> {
     return this.rubberLiningService.rubberTypeById(Number(id));
@@ -94,7 +106,11 @@ export class RubberLiningController {
     description: "Standard type number (1=NR, 2=SBR, 3=NBR, etc.)",
     type: Number,
   })
-  @ApiResponse({ status: 200, description: "Rubber type details", type: RubberTypeDto })
+  @ApiResponse({
+    status: 200,
+    description: "Rubber type details",
+    type: RubberTypeDto,
+  })
   @ApiResponse({ status: 404, description: "Rubber type not found" })
   async rubberTypeByNumber(@Param("typeNumber") typeNumber: string): Promise<RubberTypeDto | null> {
     return this.rubberLiningService.rubberTypeByNumber(Number(typeNumber));
@@ -120,7 +136,11 @@ export class RubberLiningController {
     summary: "Get specifications by rubber type",
     description: "Returns all specifications for a given rubber type number",
   })
-  @ApiParam({ name: "typeNumber", description: "Standard type number (1-8)", type: Number })
+  @ApiParam({
+    name: "typeNumber",
+    description: "Standard type number (1-8)",
+    type: Number,
+  })
   @ApiResponse({
     status: 200,
     description: "List of specifications for the type",
@@ -138,14 +158,26 @@ export class RubberLiningController {
     description:
       "Returns the specification matching a specific line callout (type/grade/hardness combination)",
   })
-  @ApiParam({ name: "typeNumber", description: "Standard type number (1-8)", type: Number })
-  @ApiParam({ name: "grade", description: "Grade letter (A, B, C, or D)", type: String })
+  @ApiParam({
+    name: "typeNumber",
+    description: "Standard type number (1-8)",
+    type: Number,
+  })
+  @ApiParam({
+    name: "grade",
+    description: "Grade letter (A, B, C, or D)",
+    type: String,
+  })
   @ApiParam({
     name: "hardnessClass",
     description: "Hardness class in IRHD (40, 50, 60, 70)",
     type: Number,
   })
-  @ApiResponse({ status: 200, description: "Matching specification", type: RubberSpecificationDto })
+  @ApiResponse({
+    status: 200,
+    description: "Matching specification",
+    type: RubberSpecificationDto,
+  })
   @ApiResponse({ status: 404, description: "Specification not found" })
   async specificationByCallout(
     @Param("typeNumber") typeNumber: string,
@@ -253,7 +285,12 @@ export class RubberLiningController {
     description:
       'Generates a standard line callout string (e.g., "3A60-III") from component values',
   })
-  @ApiQuery({ name: "type", description: "Rubber type number (1-8)", required: true, type: Number })
+  @ApiQuery({
+    name: "type",
+    description: "Rubber type number (1-8)",
+    required: true,
+    type: Number,
+  })
   @ApiQuery({
     name: "grade",
     description: "Grade letter (A, B, C, D)",
@@ -272,7 +309,11 @@ export class RubberLiningController {
     required: false,
     type: String,
   })
-  @ApiResponse({ status: 200, description: "Generated line callout", type: LineCalloutDto })
+  @ApiResponse({
+    status: 200,
+    description: "Generated line callout",
+    type: LineCalloutDto,
+  })
   async lineCallout(
     @Query("type") type: string,
     @Query("grade") grade: string,
@@ -293,7 +334,10 @@ export class RubberLiningController {
     summary: "List chemical categories",
     description: "Returns all chemical categories for application rating lookups",
   })
-  @ApiResponse({ status: 200, description: "List of chemical categories with value/label pairs" })
+  @ApiResponse({
+    status: 200,
+    description: "List of chemical categories with value/label pairs",
+  })
   async chemicalCategories(): Promise<{ value: string; label: string }[]> {
     return [
       { value: "acids_inorganic", label: "Inorganic Acids (H2SO4, HCl, HNO3)" },
@@ -316,7 +360,10 @@ export class RubberLiningController {
     summary: "List hardness classes",
     description: "Returns IRHD hardness classes with descriptions (40=Soft to 70=Hard)",
   })
-  @ApiResponse({ status: 200, description: "List of hardness classes with value/label pairs" })
+  @ApiResponse({
+    status: 200,
+    description: "List of hardness classes with value/label pairs",
+  })
   async hardnessClasses(): Promise<{ value: number; label: string }[]> {
     return [
       {
@@ -335,7 +382,10 @@ export class RubberLiningController {
     description:
       "Returns rubber grades (A-D) with minimum tensile strength requirements per ISO standards",
   })
-  @ApiResponse({ status: 200, description: "List of grades with tensile strength requirements" })
+  @ApiResponse({
+    status: 200,
+    description: "List of grades with tensile strength requirements",
+  })
   async grades(): Promise<{ value: string; label: string; tensileMin: number }[]> {
     return [
       {
@@ -715,7 +765,10 @@ export class RubberLiningController {
     description:
       "Bulk import products. Coding fields (type, compound, colour, etc.) use names which are resolved to Firebase UIDs. Supports create and update modes.",
   })
-  @ApiResponse({ status: 200, description: "Import results with counts and per-row status" })
+  @ApiResponse({
+    status: 200,
+    description: "Import results with counts and per-row status",
+  })
   async importProducts(@Body() dto: ImportProductsRequestDto): Promise<ImportProductsResultDto> {
     return this.rubberLiningService.importProducts(dto.rows, dto.updateExisting ?? false);
   }

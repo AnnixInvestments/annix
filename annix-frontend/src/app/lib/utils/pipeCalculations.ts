@@ -1924,6 +1924,14 @@ export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): Su
   let flangeOdMm: number | undefined;
   let raisedFaceDiaMm: number | undefined;
 
+  // Detect if this is a flat face flange (SABS 1123 / BS 4504) vs raised face (ANSI)
+  // SABS 1123 format: "1000/3" (pressure/table) - flat face flanges
+  // BS 4504 format: "PN16" - flat face flanges
+  // ANSI format: "Class 150", "150" - raised face flanges
+  const isFlatFaceFlange = pressureClass
+    ? /^\d+\/\d+$/.test(pressureClass) || /^PN\d+$/i.test(pressureClass)
+    : false;
+
   // Get flange dimensions if DN is provided (using pressure class if available)
   if (numberOfFlanges > 0 && dn) {
     const flangeDims = getFlangeDimensionsByDn(dn, pressureClass);
@@ -1939,11 +1947,14 @@ export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): Su
       externalFlangeBackAreaM2 =
         annularAreaM2(flangeDims.flangeOdMm, outsideDiameterMm) * numberOfFlanges;
 
-      // Internal flange face area (the gasket seating surface)
-      // This is the annular area from raised face diameter to bore ID
-      // This is coated when internal lining is applied
+      // Internal flange face area
+      // For flat face flanges (SABS 1123 / BS 4504): use flange OD to pipe ID
+      // For raised face flanges (ANSI): use raised face diameter to pipe ID
+      const internalFaceDiameter = isFlatFaceFlange
+        ? flangeDims.flangeOdMm
+        : flangeDims.raisedFaceDiaMm;
       internalFlangeFaceAreaM2 =
-        annularAreaM2(flangeDims.raisedFaceDiaMm, flangeDims.boreIdMm) * numberOfFlanges;
+        annularAreaM2(internalFaceDiameter, insideDiameterMm) * numberOfFlanges;
     } else {
       // Estimate flange areas if DN not found
       // Use typical flange OD ≈ 1.8 × Pipe OD for Class 150
@@ -1952,8 +1963,12 @@ export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): Su
 
       externalFlangeBackAreaM2 =
         annularAreaM2(estimatedFlangeOdMm, outsideDiameterMm) * numberOfFlanges;
+      // Internal flange face area (estimated)
+      const estimatedInternalFaceDiameter = isFlatFaceFlange
+        ? estimatedFlangeOdMm
+        : estimatedRaisedFaceDiaMm;
       internalFlangeFaceAreaM2 =
-        annularAreaM2(estimatedRaisedFaceDiaMm, insideDiameterMm) * numberOfFlanges;
+        annularAreaM2(estimatedInternalFaceDiameter, insideDiameterMm) * numberOfFlanges;
       flangeOdMm = estimatedFlangeOdMm;
       raisedFaceDiaMm = estimatedRaisedFaceDiaMm;
     }

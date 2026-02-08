@@ -192,6 +192,7 @@ function FittingFormComponent({
     "SHORT_REDUCING_TEE",
     "GUSSET_REDUCING_TEE",
   ].includes(fittingType || "");
+  const isUnequalTee = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(fittingType || "");
   const isSABS719ForDims =
     (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
   const effectiveStandardForDims =
@@ -222,28 +223,34 @@ function FittingFormComponent({
       )
       .then((dims) => {
         if (dims) {
-          const isGussetTee = ["GUSSET_TEE", "UNEQUAL_GUSSET_TEE", "GUSSET_REDUCING_TEE"].includes(
-            fittingType!,
-          );
-          let standardLength: number | null = null;
+          const isEqualTee = ["SHORT_TEE", "GUSSET_TEE", "EQUAL_TEE"].includes(fittingType!);
+          let pipeLengthA: number | null = null;
+          let pipeLengthB: number | null = null;
 
           if (effectiveStandardForDims === "SABS62") {
             const centreToFace = dims.centreToFaceCMm ? Number(dims.centreToFaceCMm) : null;
-            standardLength = centreToFace ? centreToFace * 2 : null;
+            if (isEqualTee && centreToFace) {
+              pipeLengthA = centreToFace * 2;
+              pipeLengthB = centreToFace;
+            } else if (centreToFace) {
+              pipeLengthA = centreToFace;
+              pipeLengthB = centreToFace;
+            }
           } else {
             const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
             const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
-            standardLength = isGussetTee ? dimB || dimA : dimA;
+            pipeLengthA = dimA;
+            pipeLengthB = dimB;
           }
 
-          if (standardLength) {
+          if (pipeLengthA && pipeLengthB) {
             onUpdateEntry(entry.id, {
               specs: {
                 ...entry.specs,
-                pipeLengthAMm: standardLength,
-                pipeLengthAMmAuto: standardLength,
-                pipeLengthBMm: standardLength,
-                pipeLengthBMmAuto: standardLength,
+                pipeLengthAMm: pipeLengthA,
+                pipeLengthAMmAuto: pipeLengthA,
+                pipeLengthBMm: pipeLengthB,
+                pipeLengthBMmAuto: pipeLengthB,
               },
             });
           }
@@ -476,17 +483,10 @@ function FittingFormComponent({
                     ];
                     const sabs719Options = [
                       { value: "SHORT_TEE", label: "Short Tee (Equal)" },
-                      { value: "UNEQUAL_SHORT_TEE", label: "Short Tee (Unequal)" },
-                      { value: "SHORT_REDUCING_TEE", label: "Short Reducing Tee" },
+                      { value: "UNEQUAL_SHORT_TEE", label: "Short Tee (Unequal/Reducing)" },
                       { value: "GUSSET_TEE", label: "Gusset Tee (Equal)" },
-                      { value: "UNEQUAL_GUSSET_TEE", label: "Gusset Tee (Unequal)" },
-                      { value: "GUSSET_REDUCING_TEE", label: "Gusset Reducing Tee" },
+                      { value: "UNEQUAL_GUSSET_TEE", label: "Gusset Tee (Unequal/Reducing)" },
                       { value: "LATERAL", label: "Lateral" },
-                      { value: "DUCKFOOT_SHORT", label: "Duckfoot (Short)" },
-                      { value: "DUCKFOOT_GUSSETTED", label: "Duckfoot (Gussetted)" },
-                      { value: "SWEEP_LONG_RADIUS", label: "Sweep (Long Radius)" },
-                      { value: "SWEEP_MEDIUM_RADIUS", label: "Sweep (Medium Radius)" },
-                      { value: "SWEEP_ELBOW", label: "Sweep Elbow" },
                     ];
                     const commonOptions = [
                       { value: "CON_REDUCER", label: "Concentric Reducer" },
@@ -512,6 +512,9 @@ function FittingFormComponent({
                           const isEqualTee = ["SHORT_TEE", "GUSSET_TEE", "EQUAL_TEE"].includes(
                             fittingType,
                           );
+                          const isUnequalTee = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
+                            fittingType,
+                          );
 
                           const updatedEntry = {
                             ...entry,
@@ -520,6 +523,12 @@ function FittingFormComponent({
                               fittingType,
                               branchNominalDiameterMm: isReducingTee
                                 ? entry.specs?.branchNominalDiameterMm
+                                : undefined,
+                              teeNominalDiameterMm: isUnequalTee
+                                ? entry.specs?.teeNominalDiameterMm
+                                : undefined,
+                              teeSteelSpecificationId: isUnequalTee
+                                ? entry.specs?.teeSteelSpecificationId
                                 : undefined,
                               stubLocation: isEqualTee ? undefined : entry.specs?.stubLocation,
                               pipeLengthAOverride: isEqualTee
@@ -543,32 +552,45 @@ function FittingFormComponent({
                               )
                               .then((dims) => {
                                 if (dims) {
-                                  const dimA = dims.dimensionAMm ? Number(dims.dimensionAMm) : null;
-                                  const dimB = dims.dimensionBMm ? Number(dims.dimensionBMm) : null;
                                   const pipeUpdates: Record<string, unknown> = {};
+                                  let pipeLengthA: number | null = null;
+                                  let pipeLengthB: number | null = null;
 
-                                  // For gusset tees (equal, unequal, reducing), use B dimension as the standard pipe length
-                                  // B is the gusset tee center-to-face height which should be the default for both A and B
-                                  const isGussetTee = [
-                                    "GUSSET_TEE",
-                                    "UNEQUAL_GUSSET_TEE",
-                                    "GUSSET_REDUCING_TEE",
-                                  ].includes(fittingType);
-                                  const standardLength = isGussetTee ? dimB || dimA : dimA;
+                                  if (effectiveStandard === "SABS62") {
+                                    const centreToFace = dims.centreToFaceCMm
+                                      ? Number(dims.centreToFaceCMm)
+                                      : null;
+                                    if (isEqualTee && centreToFace) {
+                                      pipeLengthA = centreToFace * 2;
+                                      pipeLengthB = centreToFace;
+                                    } else if (centreToFace) {
+                                      pipeLengthA = centreToFace;
+                                      pipeLengthB = centreToFace;
+                                    }
+                                  } else {
+                                    const dimA = dims.dimensionAMm
+                                      ? Number(dims.dimensionAMm)
+                                      : null;
+                                    const dimB = dims.dimensionBMm
+                                      ? Number(dims.dimensionBMm)
+                                      : null;
+                                    pipeLengthA = dimA;
+                                    pipeLengthB = dimB;
+                                  }
 
                                   if (
-                                    standardLength &&
+                                    pipeLengthA &&
                                     (isEqualTee || !entry.specs?.pipeLengthAOverride)
                                   ) {
-                                    pipeUpdates.pipeLengthAMm = standardLength;
-                                    pipeUpdates.pipeLengthAMmAuto = standardLength;
+                                    pipeUpdates.pipeLengthAMm = pipeLengthA;
+                                    pipeUpdates.pipeLengthAMmAuto = pipeLengthA;
                                   }
                                   if (
-                                    standardLength &&
+                                    pipeLengthB &&
                                     (isEqualTee || !entry.specs?.pipeLengthBOverride)
                                   ) {
-                                    pipeUpdates.pipeLengthBMm = standardLength;
-                                    pipeUpdates.pipeLengthBMmAuto = standardLength;
+                                    pipeUpdates.pipeLengthBMm = pipeLengthB;
+                                    pipeUpdates.pipeLengthBMmAuto = pipeLengthB;
                                   }
                                   if (Object.keys(pipeUpdates).length > 0) {
                                     onUpdateEntry(entry.id, { specs: pipeUpdates });
@@ -622,11 +644,6 @@ function FittingFormComponent({
                         Nominal Diameter (mm) *{" "}
                         {isMissingForPreview && (
                           <span className="text-red-600 font-bold">⚠ Required for preview</span>
-                        )}
-                        {!isMissingForPreview && globalSpecs?.steelSpecificationId && (
-                          <span className="text-green-600 dark:text-green-400 text-xs ml-2">
-                            (From Steel Spec)
-                          </span>
                         )}
                       </label>
                       {(() => {
@@ -734,30 +751,44 @@ function FittingFormComponent({
                                   )
                                   .then((dims) => {
                                     if (dims) {
-                                      const dimA = dims.dimensionAMm
-                                        ? Number(dims.dimensionAMm)
-                                        : null;
-                                      const dimB = dims.dimensionBMm
-                                        ? Number(dims.dimensionBMm)
-                                        : null;
                                       const pipeUpdates: Record<string, unknown> = {};
-
-                                      // For gusset tees (equal, unequal, reducing), use B dimension as the standard pipe length
-                                      // B is the gusset tee center-to-face height which should be the default for both A and B
-                                      const isGussetTee = [
+                                      const isEqualTee = [
+                                        "SHORT_TEE",
                                         "GUSSET_TEE",
-                                        "UNEQUAL_GUSSET_TEE",
-                                        "GUSSET_REDUCING_TEE",
+                                        "EQUAL_TEE",
                                       ].includes(fittingType);
-                                      const standardLength = isGussetTee ? dimB || dimA : dimA;
+                                      let pipeLengthA: number | null = null;
+                                      let pipeLengthB: number | null = null;
 
-                                      if (standardLength && !pipeLengthAOverride) {
-                                        pipeUpdates.pipeLengthAMm = standardLength;
-                                        pipeUpdates.pipeLengthAMmAuto = standardLength;
+                                      if (effectiveStandard === "SABS62") {
+                                        const centreToFace = dims.centreToFaceCMm
+                                          ? Number(dims.centreToFaceCMm)
+                                          : null;
+                                        if (isEqualTee && centreToFace) {
+                                          pipeLengthA = centreToFace * 2;
+                                          pipeLengthB = centreToFace;
+                                        } else if (centreToFace) {
+                                          pipeLengthA = centreToFace;
+                                          pipeLengthB = centreToFace;
+                                        }
+                                      } else {
+                                        const dimA = dims.dimensionAMm
+                                          ? Number(dims.dimensionAMm)
+                                          : null;
+                                        const dimB = dims.dimensionBMm
+                                          ? Number(dims.dimensionBMm)
+                                          : null;
+                                        pipeLengthA = dimA;
+                                        pipeLengthB = dimB;
                                       }
-                                      if (standardLength && !pipeLengthBOverride) {
-                                        pipeUpdates.pipeLengthBMm = standardLength;
-                                        pipeUpdates.pipeLengthBMmAuto = standardLength;
+
+                                      if (pipeLengthA && !pipeLengthAOverride) {
+                                        pipeUpdates.pipeLengthAMm = pipeLengthA;
+                                        pipeUpdates.pipeLengthAMmAuto = pipeLengthA;
+                                      }
+                                      if (pipeLengthB && !pipeLengthBOverride) {
+                                        pipeUpdates.pipeLengthBMm = pipeLengthB;
+                                        pipeUpdates.pipeLengthBMmAuto = pipeLengthB;
                                       }
                                       if (Object.keys(pipeUpdates).length > 0) {
                                         onUpdateEntry(entry.id, { specs: pipeUpdates });
@@ -1058,9 +1089,9 @@ function FittingFormComponent({
             </div>
 
             {/* ROW 2: Flange Specifications - Horizontal Layout */}
-            <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-3 mb-3">
+            <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mb-3">
               <div className="mb-2">
-                <h4 className="text-sm font-bold text-green-900 dark:text-green-300 border-b border-green-400 pb-1.5">
+                <h4 className="text-sm font-bold text-amber-900 dark:text-amber-300 border-b border-amber-400 pb-1.5">
                   Flanges
                 </h4>
               </div>
@@ -1137,24 +1168,38 @@ function FittingFormComponent({
                 const isPressureClassUnsuitable = pressureClassValidation.isUnsuitable;
 
                 const globalSelectClass =
-                  "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-lime-400";
+                  "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-green-500 dark:border-green-400";
                 const overrideSelectClass =
-                  "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-yellow-500 dark:border-yellow-400";
+                  "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-orange-500 dark:border-orange-400";
                 const unsuitableSelectClass =
-                  "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400";
+                  "w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-red-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 border-red-500 dark:border-red-400";
                 const defaultSelectClass =
                   "w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800";
 
+                // Get flange configuration for blank flange options
+                const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+                const fittingFlangeConfig = getFittingFlangeConfig(fittingEndConfig);
+                const hasFlangesSelected =
+                  fittingFlangeConfig.hasInlet ||
+                  fittingFlangeConfig.hasOutlet ||
+                  fittingFlangeConfig.hasBranch;
+                const availableBlankPositions = [
+                  { key: "inlet", label: "Inlet", hasFlange: fittingFlangeConfig.hasInlet },
+                  { key: "outlet", label: "Outlet", hasFlange: fittingFlangeConfig.hasOutlet },
+                  { key: "branch", label: "Branch", hasFlange: fittingFlangeConfig.hasBranch },
+                ].filter((p) => p.hasFlange);
+                const currentBlankPositions = entry.specs?.blankFlangePositions || [];
+
                 return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1">
+                      <label className="block text-xs font-semibold text-amber-900 mb-1">
                         Standard
                         {isStandardFromGlobal && (
-                          <span className="ml-1 text-green-600 font-normal">(Global)</span>
+                          <span className="ml-1 text-green-600 font-normal">(From Specs Page)</span>
                         )}
                         {isStandardOverride && (
-                          <span className="ml-1 text-red-600 font-normal">(Override)</span>
+                          <span className="ml-1 text-orange-600 font-normal">(Override)</span>
                         )}
                       </label>
                       <select
@@ -1190,16 +1235,16 @@ function FittingFormComponent({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1">
+                      <label className="block text-xs font-semibold text-amber-900 mb-1">
                         Pressure Class
                         {isPressureClassUnsuitable && (
                           <span className="ml-1 text-red-600 font-bold">(NOT SUITABLE)</span>
                         )}
                         {!isPressureClassUnsuitable && isClassFromGlobal && (
-                          <span className="ml-1 text-green-600 font-normal">(Global)</span>
+                          <span className="ml-1 text-green-600 font-normal">(From Specs Page)</span>
                         )}
                         {!isPressureClassUnsuitable && isClassOverride && (
-                          <span className="ml-1 text-yellow-600 font-normal">(Override)</span>
+                          <span className="ml-1 text-orange-600 font-normal">(Override)</span>
                         )}
                       </label>
                       {hasThreeDropdowns ? (
@@ -1286,13 +1331,13 @@ function FittingFormComponent({
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-green-900 mb-1">
+                      <label className="block text-xs font-semibold text-amber-900 mb-1">
                         Flange Type
                         {isTypeFromGlobal && hasThreeDropdowns && (
-                          <span className="ml-1 text-green-600 font-normal">(Global)</span>
+                          <span className="ml-1 text-green-600 font-normal">(From Specs Page)</span>
                         )}
                         {isTypeOverride && hasThreeDropdowns && (
-                          <span className="ml-1 text-red-600 font-normal">(Override)</span>
+                          <span className="ml-1 text-orange-600 font-normal">(Override)</span>
                         )}
                       </label>
                       {hasThreeDropdowns ? (
@@ -1332,6 +1377,122 @@ function FittingFormComponent({
                         </select>
                       )}
                     </div>
+                    {/* 4th Column: Flange Config & Blank Flanges */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-amber-900">
+                          Flange Config *
+                        </label>
+                        {hasFlangesSelected && availableBlankPositions.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-amber-700">Blanks:</span>
+                            {availableBlankPositions.map((pos) => (
+                              <label
+                                key={pos.key}
+                                className="flex items-center gap-0.5 text-xs text-amber-700 cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={currentBlankPositions.includes(pos.key)}
+                                  onChange={(e) => {
+                                    const newPositions = e.target.checked
+                                      ? [...currentBlankPositions, pos.key]
+                                      : currentBlankPositions.filter((p: string) => p !== pos.key);
+                                    onUpdateEntry(entry.id, {
+                                      specs: {
+                                        ...entry.specs,
+                                        addBlankFlange: newPositions.length > 0,
+                                        blankFlangeCount: newPositions.length,
+                                        blankFlangePositions: newPositions,
+                                      },
+                                    });
+                                  }}
+                                  className="w-3 h-3 text-amber-600 rounded focus:ring-amber-500"
+                                />
+                                {pos.label[0]}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <select
+                        value={entry.specs?.pipeEndConfiguration || "PE"}
+                        onChange={async (e) => {
+                          const newConfig = e.target.value;
+                          let weldDetails = null;
+                          try {
+                            weldDetails = await getPipeEndConfigurationDetails(newConfig);
+                          } catch (error) {
+                            log.warn("Could not get pipe end configuration details:", error);
+                          }
+                          const effectiveFlangeTypeCode =
+                            globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(newConfig);
+                          const flangeStandardIdLocal =
+                            entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                          const flangeStandardLocal = masterData.flangeStandards?.find(
+                            (s: any) => s.id === flangeStandardIdLocal,
+                          );
+                          const flangeCodeLocal = flangeStandardLocal?.code || "";
+                          const workingPressureLocal =
+                            entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
+                          let availableClasses = flangeStandardIdLocal
+                            ? pressureClassesByStandard[flangeStandardIdLocal] || []
+                            : [];
+                          if (availableClasses.length === 0) {
+                            availableClasses =
+                              masterData.pressureClasses?.filter(
+                                (pc: any) =>
+                                  pc.flangeStandardId === flangeStandardIdLocal ||
+                                  pc.standardId === flangeStandardIdLocal,
+                              ) || [];
+                          }
+                          const newPressureClassId =
+                            workingPressureLocal > 0 && availableClasses.length > 0
+                              ? recommendedPressureClassId(
+                                  workingPressureLocal,
+                                  availableClasses,
+                                  flangeCodeLocal,
+                                  effectiveFlangeTypeCode,
+                                )
+                              : entry.specs?.flangePressureClassId ||
+                                globalSpecs?.flangePressureClassId;
+                          const updatedEntry: any = {
+                            specs: {
+                              ...entry.specs,
+                              pipeEndConfiguration: newConfig,
+                              flangeTypeCode: effectiveFlangeTypeCode,
+                              ...(newPressureClassId && {
+                                flangePressureClassId: newPressureClassId,
+                              }),
+                            },
+                            ...(weldDetails && { weldInfo: weldDetails }),
+                          };
+                          updatedEntry.description = generateItemDescription({
+                            ...entry,
+                            ...updatedEntry,
+                          });
+                          onUpdateEntry(entry.id, updatedEntry);
+                          debouncedCalculate();
+                        }}
+                        className={defaultSelectClass}
+                        required
+                      >
+                        {FITTING_END_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      {entry.specs?.pipeEndConfiguration &&
+                        entry.specs.pipeEndConfiguration !== "PE" && (
+                          <p className="mt-0.5 text-xs text-amber-700">
+                            {getWeldCountPerFitting(entry.specs.pipeEndConfiguration)} weld
+                            {getWeldCountPerFitting(entry.specs.pipeEndConfiguration) !== 1
+                              ? "s"
+                              : ""}
+                          </p>
+                        )}
+                    </div>
                   </div>
                 );
               })()}
@@ -1342,7 +1503,9 @@ function FittingFormComponent({
               <h4 className="text-sm font-bold text-blue-900 border-b border-blue-400 pb-1.5 mb-3">
                 Quantity & Dimensions
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              <div
+                className={`grid grid-cols-1 sm:grid-cols-2 ${isUnequalTee ? "md:grid-cols-6" : "md:grid-cols-3"} gap-3`}
+              >
                 {/* Quantity */}
                 <div>
                   <label className="block text-xs font-semibold text-blue-900 mb-1">
@@ -1644,16 +1807,145 @@ function FittingFormComponent({
                     </div>
                   );
                 })()}
+
+                {/* Tee Steel Spec - Inside blue section for Unequal Tees */}
+                {isUnequalTee && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Tee Steel *
+                      <span className="text-blue-600 text-xs ml-1 font-normal">(Branch)</span>
+                    </label>
+                    {(() => {
+                      const mainSteelSpecId =
+                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const teeSteelSpecId =
+                        entry.specs?.teeSteelSpecificationId || mainSteelSpecId;
+                      const isUsingMainSpec = !entry.specs?.teeSteelSpecificationId;
+
+                      return (
+                        <select
+                          value={teeSteelSpecId || ""}
+                          onChange={(e) => {
+                            const newSpecId = parseInt(e.target.value, 10) || undefined;
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                teeSteelSpecificationId: newSpecId,
+                                teeNominalDiameterMm: undefined,
+                              },
+                            });
+                          }}
+                          className={`w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white ${
+                            isUsingMainSpec ? "border-green-500" : "border-orange-500"
+                          }`}
+                        >
+                          <option value="">Select...</option>
+                          {masterData.steelSpecs?.map((spec: any) => (
+                            <option key={spec.id} value={spec.id}>
+                              {spec.steelSpecName}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Tee NB - Inside blue section for Unequal Tees */}
+                {isUnequalTee && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Tee NB (mm) *
+                      <span className="text-blue-600 text-xs ml-1 font-normal">(Branch)</span>
+                    </label>
+                    {(() => {
+                      const mainNB = entry.specs?.nominalDiameterMm || 0;
+                      const mainSteelSpecId =
+                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const teeSteelSpecId =
+                        entry.specs?.teeSteelSpecificationId || mainSteelSpecId;
+                      const isSABS719Tee = teeSteelSpecId === 8;
+                      const availableSizes = isSABS719Tee
+                        ? [...SABS719_FITTING_SIZES]
+                        : [...ALL_FITTING_SIZES];
+                      const sizes = availableSizes.filter((nb) => nb <= mainNB);
+                      const options = sizes.map((nb: number) => ({
+                        value: String(nb),
+                        label: `${nb}mm`,
+                      }));
+
+                      return (
+                        <Select
+                          id={`fitting-tee-nb-blue-${entry.id}`}
+                          value={
+                            entry.specs?.teeNominalDiameterMm
+                              ? String(entry.specs.teeNominalDiameterMm)
+                              : ""
+                          }
+                          onChange={(value) => {
+                            if (!value) return;
+                            const teeDiameter = Number(value);
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                teeNominalDiameterMm: teeDiameter,
+                              },
+                            });
+                            debouncedCalculate();
+                          }}
+                          options={options}
+                          placeholder="Select..."
+                        />
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Location of Tee - Inside blue section for Unequal Tees */}
+                {isUnequalTee && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Location (mm)
+                      <span className="text-blue-600 text-xs ml-1 font-normal">(from left)</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={entry.specs?.stubLocation || ""}
+                      onChange={(e) => {
+                        const value = e.target.value ? Number(e.target.value) : undefined;
+                        onUpdateEntry(entry.id, {
+                          specs: { ...entry.specs, stubLocation: value },
+                        });
+                      }}
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                      placeholder="e.g., 500"
+                      min="0"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* ROW 4: Remaining fields in 3-column grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {/* Column 1 - Additional Specs */}
+            {/* ROW 4: Additional Specs section */}
+            {/* For Unequal Tees: full-width title */}
+            {["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
+              entry.specs?.fittingType || "",
+            ) && (
+              <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5 mb-3">
+                Additional Specs
+              </h4>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Column 1 - Additional Specs fields */}
               <div className="space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                  Additional Specs
-                </h4>
+                {/* Title inside column for non-unequal tees */}
+                {!["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
+                  entry.specs?.fittingType || "",
+                ) && (
+                  <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
+                    Additional Specs
+                  </h4>
+                )}
 
                 {/* Branch Nominal Diameter - For Reducing Tees */}
                 {(entry.specs?.fittingType === "SHORT_REDUCING_TEE" ||
@@ -1800,296 +2092,77 @@ function FittingFormComponent({
                       </div>
                     );
                   })()}
+              </div>
 
-                {/* Tee NB - For Unequal Tees */}
-                {["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
-                  entry.specs?.fittingType || "",
-                ) && (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                      Tee NB (mm) *
-                      <span className="text-blue-600 text-xs ml-2">(Branch Outlet Size)</span>
-                    </label>
-                    {(() => {
-                      const selectId = `fitting-tee-nb-${entry.id}`;
-                      const mainNB = entry.specs?.nominalDiameterMm || 0;
-                      const sizes = [...ALL_FITTING_SIZES].filter((nb) => nb < mainNB);
-                      const options = sizes.map((nb: number) => ({
-                        value: String(nb),
-                        label: `${nb}mm`,
-                      }));
+              {/* Column 2 - Configuration & Ends - Only show if there's content to display */}
+              {(() => {
+                const showLocationField = ![
+                  "SHORT_TEE",
+                  "GUSSET_TEE",
+                  "EQUAL_TEE",
+                  "UNEQUAL_SHORT_TEE",
+                  "UNEQUAL_GUSSET_TEE",
+                ].includes(entry.specs?.fittingType || "");
+                const showClosureLengthField = hasLooseFlange(
+                  entry.specs?.pipeEndConfiguration || "",
+                );
+                const hasConfigContent = showLocationField || showClosureLengthField;
 
-                      return (
-                        <Select
-                          id={selectId}
-                          value={
-                            entry.specs?.teeNominalDiameterMm
-                              ? String(entry.specs.teeNominalDiameterMm)
-                              : ""
-                          }
-                          onChange={(value) => {
-                            if (!value) return;
-                            const teeDiameter = Number(value);
+                if (!hasConfigContent) return null;
+
+                return (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
+                      📐 Configuration
+                    </h4>
+
+                    {/* Location of Tee - Only for Reducing Tees (Unequal tees have this in blue section) */}
+                    {showLocationField && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                          Location of Tee (mm from left flange)
+                        </label>
+                        <input
+                          type="number"
+                          value={entry.specs?.stubLocation || ""}
+                          onChange={(e) => {
+                            const value = e.target.value ? Number(e.target.value) : undefined;
                             onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                teeNominalDiameterMm: teeDiameter,
-                              },
+                              specs: { ...entry.specs, stubLocation: value },
                             });
-                            debouncedCalculate();
                           }}
-                          options={options}
-                          placeholder="Select tee diameter..."
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                          placeholder="e.g., 500"
+                          min="0"
                         />
-                      );
-                    })()}
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Branch/outlet size must be smaller than main pipe (
-                      {entry.specs?.nominalDiameterMm || "--"}mm)
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Column 2 - Configuration & Ends */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                  📐 Configuration
-                </h4>
-
-                {/* Stub/Lateral Location - Only for Unequal and Reducing Tees */}
-                {!["SHORT_TEE", "GUSSET_TEE", "EQUAL_TEE"].includes(
-                  entry.specs?.fittingType || "",
-                ) && (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                      Location of Stub/Lateral (mm from left flange)
-                    </label>
-                    <input
-                      type="number"
-                      value={entry.specs?.stubLocation || ""}
-                      onChange={(e) => {
-                        const value = e.target.value ? Number(e.target.value) : undefined;
-                        onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, stubLocation: value },
-                        });
-                      }}
-                      className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                      placeholder="e.g., 500"
-                      min="0"
-                    />
-                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                      Distance from left flange to center of tee outlet
-                    </p>
-                  </div>
-                )}
-
-                {/* Fitting End Configuration */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                    Fitting End Configuration *
-                    <span
-                      className="ml-1 text-gray-400 font-normal cursor-help"
-                      title="PE = Plain End (butt weld). FOE = Flanged One End. FBE = Flanged Both Ends. 3F = All Three Ends Flanged. L/F = Loose Flange. R/F = Rotating Flange."
-                    >
-                      ?
-                    </span>
-                  </label>
-                  <select
-                    value={entry.specs?.pipeEndConfiguration || "PE"}
-                    onChange={async (e) => {
-                      const newConfig = e.target.value;
-
-                      let weldDetails = null;
-                      try {
-                        weldDetails = await getPipeEndConfigurationDetails(newConfig);
-                      } catch (error) {
-                        log.warn("Could not get pipe end configuration details:", error);
-                      }
-
-                      const effectiveFlangeTypeCode =
-                        globalSpecs?.flangeTypeCode || recommendedFlangeTypeCode(newConfig);
-
-                      const flangeStandardId =
-                        entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-                      const flangeStandard = masterData.flangeStandards?.find(
-                        (s: any) => s.id === flangeStandardId,
-                      );
-                      const flangeCode = flangeStandard?.code || "";
-
-                      const workingPressure =
-                        entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar || 0;
-                      let availableClasses = flangeStandardId
-                        ? pressureClassesByStandard[flangeStandardId] || []
-                        : [];
-                      if (availableClasses.length === 0) {
-                        availableClasses =
-                          masterData.pressureClasses?.filter(
-                            (pc: any) =>
-                              pc.flangeStandardId === flangeStandardId ||
-                              pc.standardId === flangeStandardId,
-                          ) || [];
-                      }
-                      const newPressureClassId =
-                        workingPressure > 0 && availableClasses.length > 0
-                          ? recommendedPressureClassId(
-                              workingPressure,
-                              availableClasses,
-                              flangeCode,
-                              effectiveFlangeTypeCode,
-                            )
-                          : entry.specs?.flangePressureClassId ||
-                            globalSpecs?.flangePressureClassId;
-
-                      const updatedEntry: any = {
-                        specs: {
-                          ...entry.specs,
-                          pipeEndConfiguration: newConfig,
-                          flangeTypeCode: effectiveFlangeTypeCode,
-                          ...(newPressureClassId && { flangePressureClassId: newPressureClassId }),
-                        },
-                        ...(weldDetails && { weldInfo: weldDetails }),
-                      };
-
-                      updatedEntry.description = generateItemDescription({
-                        ...entry,
-                        ...updatedEntry,
-                      });
-
-                      onUpdateEntry(entry.id, updatedEntry);
-                      debouncedCalculate();
-                    }}
-                    className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                    required
-                  >
-                    {FITTING_END_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors[`fitting_${index}_endConfig`] && (
-                    <p role="alert" className="mt-1 text-xs text-red-600">
-                      {errors[`fitting_${index}_endConfig`]}
-                    </p>
-                  )}
-                  <p className="mt-0.5 text-xs text-gray-700">
-                    Select how the fitting ends should be configured
-                    {entry.specs?.pipeEndConfiguration && (
-                      <span className="ml-2 text-blue-600 font-medium">
-                        • {getWeldCountPerFitting(entry.specs.pipeEndConfiguration)} weld
-                        {getWeldCountPerFitting(entry.specs.pipeEndConfiguration) !== 1 ? "s" : ""}{" "}
-                        per fitting
-                      </span>
+                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                          Distance from left flange to center of tee outlet
+                        </p>
+                      </div>
                     )}
-                  </p>
-                </div>
 
-                {/* Closure Length Field - Only shown when L/F configuration is selected */}
-                {hasLooseFlange(entry.specs?.pipeEndConfiguration || "") && (
-                  <div className="mt-3 bg-purple-50 dark:bg-purple-900/30 p-3 rounded-md border border-purple-200 dark:border-purple-700">
-                    <ClosureLengthSelector
-                      nominalBore={entry.specs?.nominalDiameterMm || 100}
-                      currentValue={entry.specs?.closureLengthMm || null}
-                      wallThickness={
-                        entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5
-                      }
-                      onUpdate={(closureLength) =>
-                        onUpdateEntry(entry.id, {
-                          specs: { ...entry.specs, closureLengthMm: closureLength },
-                        })
-                      }
-                      error={errors[`fitting_${index}_closureLength`]}
-                      variant="compact"
-                    />
+                    {/* Closure Length Field - Only shown when L/F configuration is selected */}
+                    {showClosureLengthField && (
+                      <div className="mt-3 bg-purple-50 dark:bg-purple-900/30 p-3 rounded-md border border-purple-200 dark:border-purple-700">
+                        <ClosureLengthSelector
+                          nominalBore={entry.specs?.nominalDiameterMm || 100}
+                          currentValue={entry.specs?.closureLengthMm || null}
+                          wallThickness={
+                            entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5
+                          }
+                          onUpdate={(closureLength) =>
+                            onUpdateEntry(entry.id, {
+                              specs: { ...entry.specs, closureLengthMm: closureLength },
+                            })
+                          }
+                          error={errors[`fitting_${index}_closureLength`]}
+                          variant="compact"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-
-              {/* Column 3 - Flanges */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                  Flanges
-                </h4>
-
-                {/* Blank Flange Option for Fittings - with position selection */}
-                {(() => {
-                  const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
-                  const fittingFlangeConfig = getFittingFlangeConfig(fittingEndConfig);
-                  // Get available flange positions (any type of flange can have a blank)
-                  const availablePositions: { key: string; label: string; hasFlange: boolean }[] = [
-                    {
-                      key: "inlet",
-                      label: "Inlet (Left)",
-                      hasFlange: fittingFlangeConfig.hasInlet,
-                    },
-                    {
-                      key: "outlet",
-                      label: "Outlet (Right)",
-                      hasFlange: fittingFlangeConfig.hasOutlet,
-                    },
-                    {
-                      key: "branch",
-                      label: "Branch (Top)",
-                      hasFlange: fittingFlangeConfig.hasBranch,
-                    },
-                  ].filter((p) => p.hasFlange);
-
-                  if (availablePositions.length === 0) return null;
-
-                  const currentPositions = entry.specs?.blankFlangePositions || [];
-
-                  return (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-semibold text-amber-800">
-                          Add Blank Flange(s)
-                        </span>
-                        <span
-                          className="ml-1 text-gray-400 font-normal cursor-help"
-                          title="Blank flanges for hydrostatic testing, isolation, or future connections. Select all flanged ends when items will be pressure tested before installation."
-                        >
-                          ?
-                        </span>
-                        <span className="text-xs text-amber-600">
-                          ({availablePositions.length} positions available)
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        {availablePositions.map((pos) => (
-                          <label key={pos.key} className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={currentPositions.includes(pos.key)}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                let newPositions: string[];
-                                if (checked) {
-                                  newPositions = [...currentPositions, pos.key];
-                                } else {
-                                  newPositions = currentPositions.filter(
-                                    (p: string) => p !== pos.key,
-                                  );
-                                }
-                                onUpdateEntry(entry.id, {
-                                  specs: {
-                                    ...entry.specs,
-                                    addBlankFlange: newPositions.length > 0,
-                                    blankFlangeCount: newPositions.length,
-                                    blankFlangePositions: newPositions,
-                                  },
-                                });
-                              }}
-                              className="w-3.5 h-3.5 text-amber-600 border-amber-300 rounded focus:ring-amber-500"
-                            />
-                            <span className="text-xs text-amber-800">{pos.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
+                );
+              })()}
             </div>
 
             {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
@@ -2140,9 +2213,14 @@ function FittingFormComponent({
                     const fittingType = entry.specs?.fittingType || "Tee";
                     const nominalBore =
                       entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 0;
+                    const isUnequalTeeCalc = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
+                      fittingType,
+                    );
+                    // For unequal tees, use teeNominalDiameterMm; for reducing tees, use branchNominalDiameterMm
                     const branchNB =
                       entry.specs?.branchNominalDiameterMm ||
                       entry.specs?.branchNominalBoreMm ||
+                      entry.specs?.teeNominalDiameterMm ||
                       nominalBore;
                     const pipeALength = entry.specs?.pipeLengthAMm || 0;
                     const pipeBLength = entry.specs?.pipeLengthBMm || 0;
@@ -2352,7 +2430,11 @@ function FittingFormComponent({
                           </p>
                           <div className="mt-1 space-y-0.5 text-xs text-blue-700">
                             <p>Main: {nominalBore}NB</p>
-                            {branchNB !== nominalBore && <p>Branch: {branchNB}NB</p>}
+                            {branchNB !== nominalBore && (
+                              <p>
+                                {isUnequalTeeCalc ? "Tee" : "Branch"}: {branchNB}NB
+                              </p>
+                            )}
                             {pipeALength > 0 && <p>Pipe A: {pipeALength}mm</p>}
                             {pipeBLength > 0 && <p>Pipe B: {pipeBLength}mm</p>}
                             {teeHeight > 0 && <p>Height: {teeHeight}mm</p>}
@@ -2360,34 +2442,76 @@ function FittingFormComponent({
                         </div>
 
                         {/* Weight Breakdown - Combined total weight with breakdown */}
-                        <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
-                          <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
-                            Weight Breakdown
-                          </p>
-                          <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
-                            {totalWeight.toFixed(2)}kg
-                          </p>
-                          <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
-                            {(entry.calculation.fittingWeight || 0) > 0 && (
-                              <p>Fitting: {entry.calculation.fittingWeight.toFixed(2)}kg</p>
-                            )}
-                            {(entry.calculation.pipeWeight || 0) > 0 && (
-                              <p>Pipe: {entry.calculation.pipeWeight.toFixed(2)}kg</p>
-                            )}
-                            {dynamicTotalFlangeWeight > 0 && (
-                              <p>Flanges: {dynamicTotalFlangeWeight.toFixed(2)}kg</p>
-                            )}
-                            {totalRingWeight > 0 && (
-                              <p>R/F Rings: {totalRingWeight.toFixed(2)}kg</p>
-                            )}
-                            {totalBlankFlangeWeight > 0 && (
-                              <p>Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
-                            )}
-                            {closureTotalWeight > 0 && (
-                              <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
-                            )}
-                          </div>
-                        </div>
+                        {(() => {
+                          const totalPipeWeight = entry.calculation.pipeWeight || 0;
+                          const totalPipeLength = pipeALength + pipeBLength;
+                          const pipeAWeight =
+                            totalPipeLength > 0
+                              ? (totalPipeWeight * pipeALength) / totalPipeLength
+                              : 0;
+                          const pipeBWeight =
+                            totalPipeLength > 0
+                              ? (totalPipeWeight * pipeBLength) / totalPipeLength
+                              : 0;
+                          const inletFlangeWeight = flangeConfig.hasInlet
+                            ? mainFlangeWeightPerUnit
+                            : 0;
+                          const outletFlangeWeight = flangeConfig.hasOutlet
+                            ? mainFlangeWeightPerUnit
+                            : 0;
+                          const teeFlangeWeight = flangeConfig.hasBranch
+                            ? branchFlangeWeightPerUnit
+                            : 0;
+
+                          return (
+                            <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
+                              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                                Weight Breakdown
+                              </p>
+                              <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
+                                {totalWeight.toFixed(2)}kg
+                              </p>
+                              <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
+                                {(entry.calculation.fittingWeight || 0) > 0 && (
+                                  <p>Tee Fitting: {entry.calculation.fittingWeight.toFixed(2)}kg</p>
+                                )}
+                                {pipeAWeight > 0 && (
+                                  <p>
+                                    Pipe A {nominalBore}NB ({pipeALength}mm):{" "}
+                                    {pipeAWeight.toFixed(2)}kg
+                                  </p>
+                                )}
+                                {pipeBWeight > 0 && (
+                                  <p>
+                                    Pipe B {branchNB}NB ({pipeBLength}mm): {pipeBWeight.toFixed(2)}
+                                    kg
+                                  </p>
+                                )}
+                                {inletFlangeWeight > 0 && (
+                                  <p>Inlet Flange: {inletFlangeWeight.toFixed(2)}kg</p>
+                                )}
+                                {outletFlangeWeight > 0 && (
+                                  <p>Outlet Flange: {outletFlangeWeight.toFixed(2)}kg</p>
+                                )}
+                                {teeFlangeWeight > 0 && (
+                                  <p>
+                                    {isUnequalTeeCalc ? "Tee" : "Branch"} Flange:{" "}
+                                    {teeFlangeWeight.toFixed(2)}kg
+                                  </p>
+                                )}
+                                {totalRingWeight > 0 && (
+                                  <p>R/F Rings: {totalRingWeight.toFixed(2)}kg</p>
+                                )}
+                                {totalBlankFlangeWeight > 0 && (
+                                  <p>Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
+                                )}
+                                {closureTotalWeight > 0 && (
+                                  <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Flanges - Amber for flange info */}
                         <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
@@ -2398,7 +2522,11 @@ function FittingFormComponent({
                           <div className="mt-1 text-xs text-amber-700">
                             {flangeConfig.hasInlet && <p>1 x {nominalBore}NB Flange</p>}
                             {flangeConfig.hasOutlet && <p>1 x {nominalBore}NB Flange</p>}
-                            {flangeConfig.hasBranch && <p>1 x {branchNB}NB Flange</p>}
+                            {flangeConfig.hasBranch && (
+                              <p>
+                                1 x {branchNB}NB {isUnequalTeeCalc ? "Tee " : ""}Flange
+                              </p>
+                            )}
                           </div>
                           {pressureClassDesignation && (
                             <p className="text-xs text-amber-600 mt-1 font-medium">
@@ -2458,8 +2586,9 @@ function FittingFormComponent({
                           );
                         })()}
 
-                        {/* Surface Area - Indigo/Cyan */}
-                        {mainOdMm &&
+                        {/* Surface Area - Indigo/Cyan - Only show when Surface Protection is selected */}
+                        {requiredProducts.includes("surface_protection") &&
+                          mainOdMm &&
                           pipeWallThickness &&
                           (() => {
                             const totalLengthMm =
@@ -2630,10 +2759,13 @@ function FittingFormComponent({
                 : flangeStandard?.code?.replace(/_/g, " ") || "";
           const pressureClassDesignation = pressureClass?.designation || "";
 
+          const teeNominalBore = entry.specs?.teeNominalDiameterMm;
+
           return (
             <Tee3DPreview
               nominalBore={nominalBore}
               branchNominalBore={branchNominalBore}
+              teeNominalBore={teeNominalBore}
               outerDiameter={outerDiameter}
               wallThickness={wallThickness}
               teeType={teeType}

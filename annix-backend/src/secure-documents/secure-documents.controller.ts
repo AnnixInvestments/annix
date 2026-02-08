@@ -160,7 +160,10 @@ export class SecureDocumentsController {
   async entityFolderDocuments(
     @Param("entityType") entityType: EntityType,
     @Param("entityId") entityId: string,
-  ): Promise<{ folder: SecureEntityFolder | null; documents: SecureDocument[] }> {
+  ): Promise<{
+    folder: SecureEntityFolder | null;
+    documents: SecureDocument[];
+  }> {
     const id = parseInt(entityId, 10);
     const folder = await this.service.entityFolder(entityType, id);
     const documents = await this.service.listEntityFolderDocuments(entityType, id);

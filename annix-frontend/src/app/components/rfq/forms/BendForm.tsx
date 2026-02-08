@@ -578,7 +578,7 @@ function BendFormComponent({
                               </span>
                             )}
                             {!isSteelUnsuitable && isSteelFromGlobal && (
-                              <span className="text-green-600 text-xs ml-2">(Global)</span>
+                              <span className="text-green-600 text-xs ml-2">(From Specs Page)</span>
                             )}
                             {!isSteelUnsuitable && isSteelOverride && (
                               <span className="text-yellow-600 text-xs ml-2">(Override)</span>
@@ -690,7 +690,7 @@ function BendFormComponent({
                       <span className="text-red-600 text-xs ml-2 font-bold">(NOT SUITABLE)</span>
                     )}
                     {!isSteelUnsuitable2 && isSteelFromGlobal2 && (
-                      <span className="text-green-600 text-xs ml-2">(Global)</span>
+                      <span className="text-green-600 text-xs ml-2">(From Specs Page)</span>
                     )}
                     {!isSteelUnsuitable2 && isSteelOverride2 && (
                       <span className="text-yellow-600 text-xs ml-2">(Override)</span>
@@ -2012,7 +2012,9 @@ function BendFormComponent({
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                               Standard
                               {isStandardFromGlobal && (
-                                <span className="ml-1 text-green-600 font-normal">(Global)</span>
+                                <span className="ml-1 text-green-600 font-normal">
+                                  (From Specs Page)
+                                </span>
                               )}
                               {isStandardOverride && (
                                 <span className="ml-1 text-yellow-600 font-normal">(Override)</span>
@@ -2057,7 +2059,9 @@ function BendFormComponent({
                                 <span className="ml-1 text-red-600 font-bold">(NOT SUITABLE)</span>
                               )}
                               {!isPressureClassUnsuitable && isClassFromGlobal && (
-                                <span className="ml-1 text-green-600 font-normal">(Global)</span>
+                                <span className="ml-1 text-green-600 font-normal">
+                                  (From Specs Page)
+                                </span>
                               )}
                               {!isPressureClassUnsuitable && isClassOverride && (
                                 <span className="ml-1 text-yellow-600 font-normal">(Override)</span>
@@ -2141,7 +2145,9 @@ function BendFormComponent({
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                               Type
                               {isTypeFromGlobal && showFlangeType && (
-                                <span className="ml-1 text-green-600 font-normal">(Global)</span>
+                                <span className="ml-1 text-green-600 font-normal">
+                                  (From Specs Page)
+                                </span>
                               )}
                               {isTypeOverride && showFlangeType && (
                                 <span className="ml-1 text-yellow-600 font-normal">(Override)</span>
@@ -3028,7 +3034,7 @@ function BendFormComponent({
                                 Standard
                                 {isStandardFromGlobal && (
                                   <span className="ml-1 text-green-600 dark:text-lime-400">
-                                    (Global)
+                                    (From Specs Page)
                                   </span>
                                 )}
                                 {isStandardOverride && (
@@ -3075,7 +3081,7 @@ function BendFormComponent({
                                 {stub1IsSabs1123 ? "Class (kPa)" : "Class"}
                                 {isClassFromGlobal && !stub1IsPressureClassUnsuitable && (
                                   <span className="ml-1 text-green-600 dark:text-lime-400">
-                                    (Global)
+                                    (From Specs Page)
                                   </span>
                                 )}
                                 {isClassOverride && !stub1IsPressureClassUnsuitable && (
@@ -3179,7 +3185,7 @@ function BendFormComponent({
                                 Type
                                 {isTypeFromGlobal && showFlangeType && (
                                   <span className="ml-1 text-green-600 dark:text-lime-400">
-                                    (Global)
+                                    (From Specs Page)
                                   </span>
                                 )}
                                 {isTypeOverride && showFlangeType && (
@@ -3740,7 +3746,7 @@ function BendFormComponent({
                                     Standard
                                     {isStandardFromGlobal && (
                                       <span className="ml-1 text-green-600 dark:text-lime-400">
-                                        (Global)
+                                        (From Specs Page)
                                       </span>
                                     )}
                                     {isStandardOverride && (
@@ -3787,7 +3793,7 @@ function BendFormComponent({
                                     {stub2IsSabs1123 ? "Class (kPa)" : "Class"}
                                     {isClassFromGlobal && !stub2IsPressureClassUnsuitable && (
                                       <span className="ml-1 text-green-600 dark:text-lime-400">
-                                        (Global)
+                                        (From Specs Page)
                                       </span>
                                     )}
                                     {isClassOverride && !stub2IsPressureClassUnsuitable && (
@@ -3895,7 +3901,7 @@ function BendFormComponent({
                                     Type
                                     {isTypeFromGlobal && showFlangeType && (
                                       <span className="ml-1 text-green-600 dark:text-lime-400">
-                                        (Global)
+                                        (From Specs Page)
                                       </span>
                                     )}
                                     {isTypeOverride && showFlangeType && (

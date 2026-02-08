@@ -1304,148 +1304,167 @@ export default function ItemUploadStep({
       className="flex gap-2"
       data-nix-target={insertAtStart ? "add-item-section-top" : undefined}
     >
-      <button
-        data-nix-target={insertAtStart ? "add-pipe-button-top" : undefined}
-        onClick={
-          !canAddMoreItems
-            ? showRestrictionPopup("itemLimit")
-            : () => {
-                const existingIds = new Set(
-                  Array.from(document.querySelectorAll('[id^="pipe-nb-"]')).map((el) => el.id),
-                );
+      {requiredProducts.includes("fabricated_steel") && (
+        <>
+          <button
+            data-nix-target={insertAtStart ? "add-pipe-button-top" : undefined}
+            onClick={
+              !canAddMoreItems
+                ? showRestrictionPopup("itemLimit")
+                : () => {
+                    const existingIds = new Set(
+                      Array.from(document.querySelectorAll('[id^="pipe-nb-"]')).map((el) => el.id),
+                    );
 
-                onAddEntry(undefined, insertAtStart);
+                    onAddEntry(undefined, insertAtStart);
 
-                const tryFocus = (attempt: number) => {
-                  if (attempt > 10) return;
-                  setTimeout(
-                    () => {
-                      const allNbSelects = document.querySelectorAll('[id^="pipe-nb-"]');
-                      let newSelect: Element | null = null;
+                    const tryFocus = (attempt: number) => {
+                      if (attempt > 10) return;
+                      setTimeout(
+                        () => {
+                          const allNbSelects = document.querySelectorAll('[id^="pipe-nb-"]');
+                          let newSelect: Element | null = null;
 
-                      for (const select of allNbSelects) {
-                        if (!existingIds.has(select.id)) {
-                          newSelect = select;
-                          break;
-                        }
-                      }
+                          for (const select of allNbSelects) {
+                            if (!existingIds.has(select.id)) {
+                              newSelect = select;
+                              break;
+                            }
+                          }
 
-                      if (newSelect) {
-                        const button = newSelect as HTMLElement;
-                        button.click();
-                        button.scrollIntoView({ behavior: "smooth", block: "center" });
-                      } else {
-                        tryFocus(attempt + 1);
-                      }
-                    },
-                    150 + attempt * 100,
-                  );
-                };
-                tryFocus(0);
-              }
-        }
-        className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-          !canAddMoreItems
-            ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-            : "bg-blue-100 hover:bg-blue-200 border-blue-300"
-        }`}
-      >
-        {!canAddMoreItems && (
-          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-              clipRule="evenodd"
-            />
-          </svg>
-        )}
-        <svg
-          className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-blue-600"}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        <span
-          className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-blue-700"}`}
-        >
-          Pipe
-        </span>
-      </button>
-      <button
-        data-nix-target={insertAtStart ? "add-bend-button-top" : undefined}
-        onClick={
-          !canAddMoreItems
-            ? showRestrictionPopup("itemLimit")
-            : () => onAddBendEntry(undefined, insertAtStart)
-        }
-        className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-          !canAddMoreItems
-            ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-            : "bg-purple-100 hover:bg-purple-200 border-purple-300"
-        }`}
-      >
-        {!canAddMoreItems && (
-          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-              clipRule="evenodd"
-            />
-          </svg>
-        )}
-        <svg
-          className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-purple-600"}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        <span
-          className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-purple-700"}`}
-        >
-          Bend
-        </span>
-      </button>
-      <button
-        data-nix-target={insertAtStart ? "add-fitting-button-top" : undefined}
-        onClick={
-          isUnregisteredCustomer
-            ? showRestrictionPopup("fittings")
-            : () => onAddFittingEntry(undefined, insertAtStart)
-        }
-        onMouseEnter={isUnregisteredCustomer ? showRestrictionPopup("fittings") : undefined}
-        className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-          isUnregisteredCustomer
-            ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-            : "bg-green-100 hover:bg-green-200 border-green-300"
-        }`}
-      >
-        {isUnregisteredCustomer && (
-          <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-              clipRule="evenodd"
-            />
-          </svg>
-        )}
-        <svg
-          className={`w-4 h-4 ${isUnregisteredCustomer ? "text-gray-400" : "text-green-600"}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        <span
-          className={`text-xs font-semibold ${isUnregisteredCustomer ? "text-gray-500" : "text-green-700"}`}
-        >
-          Fitting
-        </span>
-      </button>
+                          if (newSelect) {
+                            const button = newSelect as HTMLElement;
+                            button.click();
+                            button.scrollIntoView({ behavior: "smooth", block: "center" });
+                          } else {
+                            tryFocus(attempt + 1);
+                          }
+                        },
+                        150 + attempt * 100,
+                      );
+                    };
+                    tryFocus(0);
+                  }
+            }
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+              !canAddMoreItems
+                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                : "bg-blue-100 hover:bg-blue-200 border-blue-300"
+            }`}
+          >
+            {!canAddMoreItems && (
+              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+            <svg
+              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-blue-600"}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span
+              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-blue-700"}`}
+            >
+              Pipe
+            </span>
+          </button>
+          <button
+            data-nix-target={insertAtStart ? "add-bend-button-top" : undefined}
+            onClick={
+              !canAddMoreItems
+                ? showRestrictionPopup("itemLimit")
+                : () => onAddBendEntry(undefined, insertAtStart)
+            }
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+              !canAddMoreItems
+                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                : "bg-purple-100 hover:bg-purple-200 border-purple-300"
+            }`}
+          >
+            {!canAddMoreItems && (
+              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+            <svg
+              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-purple-600"}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span
+              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-purple-700"}`}
+            >
+              Bend
+            </span>
+          </button>
+          <button
+            data-nix-target={insertAtStart ? "add-fitting-button-top" : undefined}
+            onClick={
+              isUnregisteredCustomer
+                ? showRestrictionPopup("fittings")
+                : () => onAddFittingEntry(undefined, insertAtStart)
+            }
+            onMouseEnter={isUnregisteredCustomer ? showRestrictionPopup("fittings") : undefined}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+              isUnregisteredCustomer
+                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                : "bg-green-100 hover:bg-green-200 border-green-300"
+            }`}
+          >
+            {isUnregisteredCustomer && (
+              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+            <svg
+              className={`w-4 h-4 ${isUnregisteredCustomer ? "text-gray-400" : "text-green-600"}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span
+              className={`text-xs font-semibold ${isUnregisteredCustomer ? "text-gray-500" : "text-green-700"}`}
+            >
+              Fitting
+            </span>
+          </button>
+        </>
+      )}
       {requiredProducts.includes("pipe_steel_work") && onAddPipeSteelWorkEntry && (
         <button
           onClick={() => onAddPipeSteelWorkEntry(undefined, insertAtStart)}
@@ -1478,7 +1497,7 @@ export default function ItemUploadStep({
           <span className="text-xs font-semibold text-purple-700">Expansion Joint</span>
         </button>
       )}
-      {onAddValveEntry && (
+      {requiredProducts.includes("valves_meters_instruments") && onAddValveEntry && (
         <button
           onClick={
             !canAddMoreItems
@@ -1515,7 +1534,7 @@ export default function ItemUploadStep({
           </span>
         </button>
       )}
-      {onAddInstrumentEntry && (
+      {requiredProducts.includes("valves_meters_instruments") && onAddInstrumentEntry && (
         <button
           onClick={
             !canAddMoreItems
@@ -1552,7 +1571,7 @@ export default function ItemUploadStep({
           </span>
         </button>
       )}
-      {onAddPumpEntry && (
+      {requiredProducts.includes("pumps") && onAddPumpEntry && (
         <button
           onClick={
             !canAddMoreItems
@@ -1598,79 +1617,168 @@ export default function ItemUploadStep({
       {entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Add Your First Item</h2>
-          <p className="text-gray-600 mb-8">
-            Select the type of steel item you want to add to this RFQ
-          </p>
-          <div className="flex gap-6">
-            <button
-              onClick={() => onAddEntry()}
-              className="flex flex-col items-center justify-center w-48 h-40 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl"
-            >
-              <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-              <span className="text-lg font-semibold">Straight Pipe</span>
-              <span className="text-xs text-blue-200 mt-1">Standard pipeline sections</span>
-            </button>
-            <button
-              onClick={() => onAddBendEntry()}
-              className="flex flex-col items-center justify-center w-48 h-40 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl"
-            >
-              <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 10h4l3-7 4 14 3-7h4"
-                />
-              </svg>
-              <span className="text-lg font-semibold">Bend Section</span>
-              <span className="text-xs text-blue-200 mt-1">Elbows and custom bends</span>
-            </button>
-            <button
-              onClick={
-                isUnregisteredCustomer
-                  ? showRestrictionPopup("fittings")
-                  : () => onAddFittingEntry()
-              }
-              onMouseEnter={isUnregisteredCustomer ? showRestrictionPopup("fittings") : undefined}
-              className={`flex flex-col items-center justify-center w-48 h-40 rounded-xl focus:outline-none focus:ring-4 transition-all shadow-lg relative ${
-                isUnregisteredCustomer
-                  ? "bg-gray-400 text-gray-200 cursor-not-allowed focus:ring-gray-300"
-                  : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-xl focus:ring-blue-300"
-              }`}
-            >
-              {isUnregisteredCustomer && (
-                <div className="absolute top-2 right-2">
-                  <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+          <p className="text-gray-600 mb-8">Select the type of item you want to add to this RFQ</p>
+          <div className="flex flex-wrap gap-6 justify-center">
+            {requiredProducts.includes("fabricated_steel") && (
+              <>
+                <button
+                  onClick={() => onAddEntry()}
+                  className="flex flex-col items-center justify-center w-48 h-40 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all shadow-lg hover:shadow-xl"
+                >
+                  <svg
+                    className="w-12 h-12 mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
-                      fillRule="evenodd"
-                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                      clipRule="evenodd"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 12h16M4 18h16"
                     />
                   </svg>
-                </div>
-              )}
-              <svg className="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-              <span className="text-lg font-semibold">Fittings</span>
-              <span
-                className={`text-xs mt-1 ${isUnregisteredCustomer ? "text-gray-300" : "text-blue-200"}`}
+                  <span className="text-lg font-semibold">Straight Pipe</span>
+                  <span className="text-xs text-blue-200 mt-1">Standard pipeline sections</span>
+                </button>
+                <button
+                  onClick={() => onAddBendEntry()}
+                  className="flex flex-col items-center justify-center w-48 h-40 bg-purple-600 text-white rounded-xl hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-300 transition-all shadow-lg hover:shadow-xl"
+                >
+                  <svg
+                    className="w-12 h-12 mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 10h4l3-7 4 14 3-7h4"
+                    />
+                  </svg>
+                  <span className="text-lg font-semibold">Bend Section</span>
+                  <span className="text-xs text-purple-200 mt-1">Elbows and custom bends</span>
+                </button>
+                <button
+                  onClick={
+                    isUnregisteredCustomer
+                      ? showRestrictionPopup("fittings")
+                      : () => onAddFittingEntry()
+                  }
+                  onMouseEnter={
+                    isUnregisteredCustomer ? showRestrictionPopup("fittings") : undefined
+                  }
+                  className={`flex flex-col items-center justify-center w-48 h-40 rounded-xl focus:outline-none focus:ring-4 transition-all shadow-lg relative ${
+                    isUnregisteredCustomer
+                      ? "bg-gray-400 text-gray-200 cursor-not-allowed focus:ring-gray-300"
+                      : "bg-green-600 text-white hover:bg-green-700 hover:shadow-xl focus:ring-green-300"
+                  }`}
+                >
+                  {isUnregisteredCustomer && (
+                    <div className="absolute top-2 right-2">
+                      <svg
+                        className="w-5 h-5 text-gray-300"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                  <svg
+                    className="w-12 h-12 mb-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  <span className="text-lg font-semibold">Fittings</span>
+                  <span
+                    className={`text-xs mt-1 ${isUnregisteredCustomer ? "text-gray-300" : "text-green-200"}`}
+                  >
+                    {isUnregisteredCustomer ? "Coming soon" : "Tees, laterals, and other fittings"}
+                  </span>
+                </button>
+              </>
+            )}
+            {requiredProducts.includes("valves_meters_instruments") && onAddValveEntry && (
+              <button
+                onClick={() => onAddValveEntry()}
+                className="flex flex-col items-center justify-center w-48 h-40 bg-teal-600 text-white rounded-xl hover:bg-teal-700 focus:outline-none focus:ring-4 focus:ring-teal-300 transition-all shadow-lg hover:shadow-xl"
               >
-                {isUnregisteredCustomer ? "Coming soon" : "Tees, laterals, and other fittings"}
-              </span>
-            </button>
+                <svg
+                  className="w-12 h-12 mb-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                  />
+                </svg>
+                <span className="text-lg font-semibold">Valve</span>
+                <span className="text-xs text-teal-200 mt-1">Industrial valves</span>
+              </button>
+            )}
+            {requiredProducts.includes("valves_meters_instruments") && onAddInstrumentEntry && (
+              <button
+                onClick={() => onAddInstrumentEntry()}
+                className="flex flex-col items-center justify-center w-48 h-40 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 focus:outline-none focus:ring-4 focus:ring-cyan-300 transition-all shadow-lg hover:shadow-xl"
+              >
+                <svg
+                  className="w-12 h-12 mb-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                <span className="text-lg font-semibold">Instrument</span>
+                <span className="text-xs text-cyan-200 mt-1">Meters and gauges</span>
+              </button>
+            )}
+            {requiredProducts.includes("pumps") && onAddPumpEntry && (
+              <button
+                onClick={() => onAddPumpEntry()}
+                className="flex flex-col items-center justify-center w-48 h-40 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all shadow-lg hover:shadow-xl"
+              >
+                <svg
+                  className="w-12 h-12 mb-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+                <span className="text-lg font-semibold">Pump</span>
+                <span className="text-xs text-indigo-200 mt-1">Industrial pumps</span>
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -1803,99 +1911,105 @@ export default function ItemUploadStep({
               <span className="text-sm font-medium text-gray-600">
                 Add another item to your quote:
               </span>
-              <div className="flex gap-3">
-                <button
-                  onClick={
-                    !canAddMoreItems ? showRestrictionPopup("itemLimit") : () => onAddEntry()
-                  }
-                  data-nix-target="add-pipe-button"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                    !canAddMoreItems
-                      ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                      : "bg-blue-50 hover:bg-blue-100 border-blue-400 hover:border-blue-500 hover:shadow-md"
-                  }`}
-                >
-                  <svg
-                    className={`w-5 h-5 ${!canAddMoreItems ? "text-gray-400" : "text-blue-600"}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <span
-                    className={`text-sm font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-blue-700"}`}
-                  >
-                    Pipe
-                  </span>
-                </button>
-                <button
-                  onClick={
-                    !canAddMoreItems ? showRestrictionPopup("itemLimit") : () => onAddBendEntry()
-                  }
-                  data-nix-target="add-bend-button"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                    !canAddMoreItems
-                      ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                      : "bg-purple-50 hover:bg-purple-100 border-purple-400 hover:border-purple-500 hover:shadow-md"
-                  }`}
-                >
-                  <svg
-                    className={`w-5 h-5 ${!canAddMoreItems ? "text-gray-400" : "text-purple-600"}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <span
-                    className={`text-sm font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-purple-700"}`}
-                  >
-                    Bend
-                  </span>
-                </button>
-                <button
-                  onClick={
-                    isUnregisteredCustomer
-                      ? showRestrictionPopup("fittings")
-                      : () => onAddFittingEntry()
-                  }
-                  data-nix-target="add-fitting-button"
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                    isUnregisteredCustomer
-                      ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                      : "bg-green-50 hover:bg-green-100 border-green-400 hover:border-green-500 hover:shadow-md"
-                  }`}
-                >
-                  <svg
-                    className={`w-5 h-5 ${isUnregisteredCustomer ? "text-gray-400" : "text-green-600"}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  <span
-                    className={`text-sm font-semibold ${isUnregisteredCustomer ? "text-gray-500" : "text-green-700"}`}
-                  >
-                    Fitting
-                  </span>
-                </button>
+              <div className="flex flex-wrap gap-3 justify-center">
+                {requiredProducts.includes("fabricated_steel") && (
+                  <>
+                    <button
+                      onClick={
+                        !canAddMoreItems ? showRestrictionPopup("itemLimit") : () => onAddEntry()
+                      }
+                      data-nix-target="add-pipe-button"
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                        !canAddMoreItems
+                          ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                          : "bg-blue-50 hover:bg-blue-100 border-blue-400 hover:border-blue-500 hover:shadow-md"
+                      }`}
+                    >
+                      <svg
+                        className={`w-5 h-5 ${!canAddMoreItems ? "text-gray-400" : "text-blue-600"}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      <span
+                        className={`text-sm font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-blue-700"}`}
+                      >
+                        Pipe
+                      </span>
+                    </button>
+                    <button
+                      onClick={
+                        !canAddMoreItems
+                          ? showRestrictionPopup("itemLimit")
+                          : () => onAddBendEntry()
+                      }
+                      data-nix-target="add-bend-button"
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                        !canAddMoreItems
+                          ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                          : "bg-purple-50 hover:bg-purple-100 border-purple-400 hover:border-purple-500 hover:shadow-md"
+                      }`}
+                    >
+                      <svg
+                        className={`w-5 h-5 ${!canAddMoreItems ? "text-gray-400" : "text-purple-600"}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      <span
+                        className={`text-sm font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-purple-700"}`}
+                      >
+                        Bend
+                      </span>
+                    </button>
+                    <button
+                      onClick={
+                        isUnregisteredCustomer
+                          ? showRestrictionPopup("fittings")
+                          : () => onAddFittingEntry()
+                      }
+                      data-nix-target="add-fitting-button"
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                        isUnregisteredCustomer
+                          ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                          : "bg-green-50 hover:bg-green-100 border-green-400 hover:border-green-500 hover:shadow-md"
+                      }`}
+                    >
+                      <svg
+                        className={`w-5 h-5 ${isUnregisteredCustomer ? "text-gray-400" : "text-green-600"}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
+                      </svg>
+                      <span
+                        className={`text-sm font-semibold ${isUnregisteredCustomer ? "text-gray-500" : "text-green-700"}`}
+                      >
+                        Fitting
+                      </span>
+                    </button>
+                  </>
+                )}
                 {requiredProducts.includes("pipe_steel_work") && onAddPipeSteelWorkEntry && (
                   <button
                     onClick={() => onAddPipeSteelWorkEntry()}
@@ -1936,6 +2050,101 @@ export default function ItemUploadStep({
                       />
                     </svg>
                     <span className="text-sm font-semibold text-purple-700">Expansion Joint</span>
+                  </button>
+                )}
+                {requiredProducts.includes("valves_meters_instruments") && onAddValveEntry && (
+                  <button
+                    onClick={
+                      !canAddMoreItems ? showRestrictionPopup("itemLimit") : () => onAddValveEntry()
+                    }
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                      !canAddMoreItems
+                        ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                        : "bg-teal-50 hover:bg-teal-100 border-teal-400 hover:border-teal-500 hover:shadow-md"
+                    }`}
+                  >
+                    <svg
+                      className={`w-5 h-5 ${!canAddMoreItems ? "text-gray-400" : "text-teal-600"}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    <span
+                      className={`text-sm font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-teal-700"}`}
+                    >
+                      Valve
+                    </span>
+                  </button>
+                )}
+                {requiredProducts.includes("valves_meters_instruments") && onAddInstrumentEntry && (
+                  <button
+                    onClick={
+                      !canAddMoreItems
+                        ? showRestrictionPopup("itemLimit")
+                        : () => onAddInstrumentEntry()
+                    }
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                      !canAddMoreItems
+                        ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                        : "bg-cyan-50 hover:bg-cyan-100 border-cyan-400 hover:border-cyan-500 hover:shadow-md"
+                    }`}
+                  >
+                    <svg
+                      className={`w-5 h-5 ${!canAddMoreItems ? "text-gray-400" : "text-cyan-600"}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    <span
+                      className={`text-sm font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-cyan-700"}`}
+                    >
+                      Instrument
+                    </span>
+                  </button>
+                )}
+                {requiredProducts.includes("pumps") && onAddPumpEntry && (
+                  <button
+                    onClick={
+                      !canAddMoreItems ? showRestrictionPopup("itemLimit") : () => onAddPumpEntry()
+                    }
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                      !canAddMoreItems
+                        ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                        : "bg-indigo-50 hover:bg-indigo-100 border-indigo-400 hover:border-indigo-500 hover:shadow-md"
+                    }`}
+                  >
+                    <svg
+                      className={`w-5 h-5 ${!canAddMoreItems ? "text-gray-400" : "text-indigo-600"}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    <span
+                      className={`text-sm font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-indigo-700"}`}
+                    >
+                      Pump
+                    </span>
                   </button>
                 )}
               </div>

@@ -427,7 +427,10 @@ export class UnifiedPumpDto {
   @IsNumber()
   dischargePressure?: number;
 
-  @ApiProperty({ description: "Operating temperature in Celsius", required: false })
+  @ApiProperty({
+    description: "Operating temperature in Celsius",
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   operatingTemp?: number;
@@ -539,7 +542,10 @@ export class UnifiedPumpDto {
   @IsString()
   enclosure?: string;
 
-  @ApiProperty({ description: "Hazardous area classification", required: false })
+  @ApiProperty({
+    description: "Hazardous area classification",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   hazardousArea?: string;
@@ -549,7 +555,10 @@ export class UnifiedPumpDto {
   @IsArray()
   certifications?: string[];
 
-  @ApiProperty({ description: "Spare part category (for spare parts)", required: false })
+  @ApiProperty({
+    description: "Spare part category (for spare parts)",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   sparePartCategory?: string;
@@ -647,7 +656,10 @@ export class UnifiedValveDto {
   @IsNumber()
   airSupply?: number;
 
-  @ApiProperty({ description: "Voltage for electric actuators", required: false })
+  @ApiProperty({
+    description: "Voltage for electric actuators",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   voltage?: string;
@@ -681,12 +693,18 @@ export class UnifiedValveDto {
   @IsNumber()
   operatingPressure?: number;
 
-  @ApiProperty({ description: "Operating temperature in Celsius", required: false })
+  @ApiProperty({
+    description: "Operating temperature in Celsius",
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   operatingTemp?: number;
 
-  @ApiProperty({ description: "Hazardous area classification", required: false })
+  @ApiProperty({
+    description: "Hazardous area classification",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   hazardousArea?: string;
@@ -819,7 +837,10 @@ export class UnifiedInstrumentDto {
   @IsString()
   cableEntry?: string;
 
-  @ApiProperty({ description: "Explosion proof classification", required: false })
+  @ApiProperty({
+    description: "Explosion proof classification",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   explosionProof?: string;
@@ -848,7 +869,10 @@ export class UnifiedInstrumentDto {
   @IsNumber()
   operatingPressure?: number;
 
-  @ApiProperty({ description: "Operating temperature in Celsius", required: false })
+  @ApiProperty({
+    description: "Operating temperature in Celsius",
+    required: false,
+  })
   @IsOptional()
   @IsNumber()
   operatingTemp?: number;

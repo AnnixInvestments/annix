@@ -240,7 +240,9 @@ export class CustomerAdminController {
   }
 
   @Get("documents/:id/preview-images")
-  @ApiOperation({ summary: "Get document preview as images (converts PDF to images)" })
+  @ApiOperation({
+    summary: "Get document preview as images (converts PDF to images)",
+  })
   @ApiParam({ name: "id", description: "Document ID" })
   @ApiResponse({ status: 200, description: "Document preview images" })
   @ApiResponse({ status: 404, description: "Document not found" })

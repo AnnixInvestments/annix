@@ -104,6 +104,8 @@ interface Tee3DPreviewProps {
   teeType: Sabs719TeeType; // 'short' or 'gusset'
   branchNominalBore?: number; // For reducing tees (optional)
   branchOuterDiameter?: number;
+  teeNominalBore?: number; // For unequal tees - branch pipe size
+  teeFlangeSpecs?: FlangeSpecData | null; // For unequal tees - separate flange specs for tee
   runLength?: number; // Total length of run pipe (optional)
   branchPositionMm?: number; // Distance from left flange to center of branch (optional)
   materialName?: string;
@@ -721,9 +723,9 @@ function FlangeComponent({
 function GussetPlate({
   runRadius,
   branchRadius,
-  gussetLength,
-  thickness,
-  side,
+  gussetLength, // Dimension C - the extent/size of the gusset
+  thickness, // Wall thickness of the gusset piece
+  side, // 'left' (-X direction) or 'right' (+X direction) relative to branch
   branchOffsetX,
 }: {
   runRadius: number;
@@ -734,26 +736,48 @@ function GussetPlate({
   branchOffsetX: number;
 }) {
   const geometry = useMemo(() => {
-    const radialSegments = 24;
-    const depthSegments = 12;
+    // Gusset is an oval-shaped concave surface on left/right of the branch
+    // It fills the inside corner between run pipe and branch pipe
+    // The outer edge forms an oval/ellipse shape
+    // The surface is concave (like a scoop) curving inward
+
+    const radialSegments = 24; // Around the oval perimeter
+    const depthSegments = 12; // From outer edge to inner corner
     const vertices: number[] = [];
     const indices: number[] = [];
 
     const xDir = side === "left" ? -1 : 1;
+
+    // The gusset center is at the corner where branch meets run
     const cornerX = branchOffsetX + xDir * branchRadius;
     const cornerY = runRadius;
+
+    // Oval dimensions - the gusset extends outward from the corner
+    // Width along X (into the run pipe direction)
+    // Height along Y (up the branch pipe direction)
     const ovalWidth = gussetLength;
     const ovalHeight = gussetLength;
 
+    // Generate the concave oval surface
     for (let di = 0; di <= depthSegments; di++) {
-      const depth = di / depthSegments;
+      const depth = di / depthSegments; // 0 = outer edge, 1 = inner corner
 
       for (let ri = 0; ri <= radialSegments; ri++) {
-        const angle = (ri / radialSegments) * (Math.PI / 2);
+        const angle = (ri / radialSegments) * (Math.PI / 2); // 0 to 90 degrees (quarter oval)
+
+        // Outer edge follows an oval/ellipse at 45° orientation
+        // The oval is in the plane that bisects the corner
         const ovalX = Math.cos(angle) * ovalWidth * (1 - depth);
         const ovalY = Math.sin(angle) * ovalHeight * (1 - depth);
+
+        // Position relative to corner
         const x = cornerX + xDir * ovalX;
         const y = cornerY + ovalY;
+
+        // Z position creates the concave scoop shape
+        // At the outer edge (depth=0): extends out in Z based on position around oval
+        // At the inner corner (depth=1): Z approaches 0
+        // The Z extent is larger in the middle of the oval (45° position)
         const zExtent = branchRadius * Math.sin(angle) * Math.cos(angle) * 2;
         const z = zExtent * (1 - depth * 0.7);
 
@@ -761,6 +785,7 @@ function GussetPlate({
       }
     }
 
+    // Also generate the back half (mirror in Z)
     const frontVertexCount = vertices.length / 3;
     for (let i = 0; i < frontVertexCount; i++) {
       vertices.push(vertices[i * 3], vertices[i * 3 + 1], -vertices[i * 3 + 2]);
@@ -768,6 +793,7 @@ function GussetPlate({
 
     const vertsPerRow = radialSegments + 1;
 
+    // Generate front surface indices
     for (let di = 0; di < depthSegments; di++) {
       for (let ri = 0; ri < radialSegments; ri++) {
         const a = di * vertsPerRow + ri;
@@ -785,6 +811,7 @@ function GussetPlate({
       }
     }
 
+    // Generate back surface indices (reversed winding)
     const frontIndicesCount = indices.length;
     for (let i = 0; i < frontIndicesCount; i += 3) {
       indices.push(
@@ -794,6 +821,7 @@ function GussetPlate({
       );
     }
 
+    // Connect front and back surfaces at the outer edge (di = 0)
     for (let ri = 0; ri < radialSegments; ri++) {
       const frontA = ri;
       const frontB = ri + 1;
@@ -810,7 +838,7 @@ function GussetPlate({
     geo.computeVertexNormals();
 
     return geo;
-  }, [runRadius, branchRadius, gussetLength, side, branchOffsetX]);
+  }, [runRadius, branchRadius, gussetLength, thickness, side, branchOffsetX]);
 
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
@@ -840,6 +868,8 @@ function GussetWeld({
   const cornerX = branchOffsetX + xDir * branchRadius;
   const cornerY = runRadius;
 
+  // Weld follows the outer oval edge of the gusset
+  // Front half (+Z)
   const frontPoints: THREE.Vector3[] = [];
   for (let i = 0; i <= segments; i++) {
     const angle = (i / segments) * (Math.PI / 2);
@@ -850,6 +880,7 @@ function GussetWeld({
   }
   const frontCurve = new THREE.CatmullRomCurve3(frontPoints);
 
+  // Back half (-Z)
   const backPoints: THREE.Vector3[] = [];
   for (let i = 0; i <= segments; i++) {
     const angle = (i / segments) * (Math.PI / 2);
@@ -862,10 +893,12 @@ function GussetWeld({
 
   return (
     <group>
+      {/* Front edge weld */}
       <mesh>
         <tubeGeometry args={[frontCurve, 16, weldRadius, 6, false]} />
         <meshStandardMaterial {...weldColor} />
       </mesh>
+      {/* Back edge weld */}
       <mesh>
         <tubeGeometry args={[backCurve, 16, weldRadius, 6, false]} />
         <meshStandardMaterial {...weldColor} />
@@ -940,7 +973,7 @@ function SaddleWeld({
   );
 }
 
-// Flange weld component - shows weld beads on inside and outside of pipe-to-flange connection
+// Flange weld component - shows outer and inner weld beads at pipe-to-flange connection
 function FlangeWeldRing({
   position,
   rotation,
@@ -956,70 +989,38 @@ function FlangeWeldRing({
 }) {
   // Outer weld bead - fillet weld on outside of pipe where it meets flange
   const outerWeldGeometry = useMemo(() => {
-    const segments = 48;
-    const points: THREE.Vector3[] = [];
-
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      const x = (pipeOuterRadius + weldThickness * 0.3) * Math.cos(angle);
-      const y = (pipeOuterRadius + weldThickness * 0.3) * Math.sin(angle);
-      points.push(new THREE.Vector3(x, y, 0));
-    }
-
-    const curve = new THREE.CatmullRomCurve3(points, true);
-
-    // Create fillet weld profile (triangular cross-section)
-    const weldProfile = new THREE.Shape();
+    const segments = 64;
     const w = weldThickness;
-    weldProfile.moveTo(0, 0);
-    weldProfile.lineTo(w * 0.8, 0);
-    weldProfile.quadraticCurveTo(w * 0.4, w * 0.5, 0, w * 0.7);
-    weldProfile.lineTo(0, 0);
-
-    return new THREE.ExtrudeGeometry(weldProfile, {
-      steps: segments,
-      bevelEnabled: false,
-      extrudePath: curve,
-    });
+    const torusRadius = pipeOuterRadius + w * 0.4;
+    const tubeRadius = w * 0.5;
+    return new THREE.TorusGeometry(torusRadius, tubeRadius, 16, segments);
   }, [pipeOuterRadius, weldThickness]);
 
   // Inner weld bead - fillet weld on inside of pipe bore where it meets flange
   const innerWeldGeometry = useMemo(() => {
-    const segments = 48;
-    const points: THREE.Vector3[] = [];
-
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      const x = (pipeInnerRadius - weldThickness * 0.3) * Math.cos(angle);
-      const y = (pipeInnerRadius - weldThickness * 0.3) * Math.sin(angle);
-      points.push(new THREE.Vector3(x, y, 0));
-    }
-
-    const curve = new THREE.CatmullRomCurve3(points, true);
-
-    // Inner weld profile (reversed for inside)
-    const weldProfile = new THREE.Shape();
-    const w = weldThickness;
-    weldProfile.moveTo(0, 0);
-    weldProfile.lineTo(-w * 0.8, 0);
-    weldProfile.quadraticCurveTo(-w * 0.4, w * 0.5, 0, w * 0.7);
-    weldProfile.lineTo(0, 0);
-
-    return new THREE.ExtrudeGeometry(weldProfile, {
-      steps: segments,
-      bevelEnabled: false,
-      extrudePath: curve,
-    });
+    const segments = 64;
+    const w = weldThickness * 0.8;
+    const torusRadius = pipeInnerRadius - w * 0.3;
+    const tubeRadius = w * 0.4;
+    return new THREE.TorusGeometry(torusRadius, tubeRadius, 16, segments);
   }, [pipeInnerRadius, weldThickness]);
+
+  // Offset for inner weld - position it inside the pipe, not on the flange face
+  const innerWeldOffset = weldThickness * 0.6;
 
   return (
     <group position={position} rotation={rotation}>
-      {/* Outer weld bead */}
+      {/* Outer weld bead - visible bronze weld ring on outside */}
       <mesh geometry={outerWeldGeometry} castShadow receiveShadow>
         <meshStandardMaterial {...weldColor} />
       </mesh>
-      {/* Inner weld bead */}
-      <mesh geometry={innerWeldGeometry} castShadow receiveShadow>
+      {/* Inner weld bead - positioned inside the pipe bore */}
+      <mesh
+        geometry={innerWeldGeometry}
+        position={[0, 0, innerWeldOffset]}
+        castShadow
+        receiveShadow
+      >
         <meshStandardMaterial {...weldColor} />
       </mesh>
     </group>
@@ -1035,6 +1036,7 @@ function TeeScene(props: Tee3DPreviewProps) {
     teeType,
     branchNominalBore,
     branchOuterDiameter,
+    teeNominalBore,
     runLength,
     branchPositionMm,
     hasInletFlange = false,
@@ -1057,7 +1059,9 @@ function TeeScene(props: Tee3DPreviewProps) {
 
   // Get dimensions from SABS 719 data
   const dims = getSabs719TeeDimensions(nominalBore);
-  const branchDims = branchNominalBore ? getSabs719TeeDimensions(branchNominalBore) : null;
+  // Effective branch NB - either reducing tee (branchNominalBore) or unequal tee (teeNominalBore)
+  const effectiveBranchNB = branchNominalBore || teeNominalBore;
+  const branchDims = effectiveBranchNB ? getSabs719TeeDimensions(effectiveBranchNB) : null;
   const teeHeight = getTeeHeight(nominalBore, teeType);
   const gussetSection = teeType === "gusset" ? getGussetSection(nominalBore) : 0;
 
@@ -1065,11 +1069,11 @@ function TeeScene(props: Tee3DPreviewProps) {
   const od = getOuterDiameter(nominalBore, outerDiameter || dims?.outsideDiameterMm || 0);
   const wt = getWallThickness(nominalBore, wallThickness || 0);
   const id = od - 2 * wt;
-  // For reducing tees, use the branch NB dimensions; otherwise use same as run
-  const branchOD = branchNominalBore
-    ? getOuterDiameter(branchNominalBore, branchOuterDiameter || branchDims?.outsideDiameterMm || 0)
+  // For reducing/unequal tees, use the effective branch NB dimensions; otherwise use same as run
+  const branchOD = effectiveBranchNB
+    ? getOuterDiameter(effectiveBranchNB, branchOuterDiameter || branchDims?.outsideDiameterMm || 0)
     : od; // Same as run for equal tee
-  const branchWT = branchNominalBore ? getWallThickness(branchNominalBore) : wt;
+  const branchWT = effectiveBranchNB ? getWallThickness(effectiveBranchNB) : wt;
   const branchID = branchOD - 2 * branchWT;
 
   // Scale factor for 3D scene (convert mm to scene units)
@@ -1256,10 +1260,30 @@ function TeeScene(props: Tee3DPreviewProps) {
     const radialSegments = 128;
     const halfLength = runLength / 2;
 
-    // Don't cut a hole - let the branch pipe sit on top and the weld covers the junction
-    // This avoids jagged edges from grid-based hole detection
-    const isInBranchHole = (_x: number, _angle: number, _radius: number): boolean => false;
-    const isInBranchInnerHole = (_x: number, _angle: number): boolean => false;
+    // Cut a hole where the branch intersects the run pipe (Steinmetz curve)
+    // For a branch cylinder (Y-axis) intersecting a run cylinder (X-axis):
+    // A point (x, y, z) on the run surface is inside the branch hole if (x - branchOffsetX)² + z² < branchR²
+    const isInBranchHole = (x: number, angle: number, radius: number): boolean => {
+      const z = radius * Math.sin(angle);
+      const zSq = z * z;
+      const branchRSq = branchOuterR * branchOuterR;
+      if (zSq >= branchRSq) return false;
+      const xDist = Math.abs(x - branchOffsetXVal);
+      const holeHalfWidth = Math.sqrt(branchRSq - zSq);
+      const y = radius * Math.cos(angle);
+      return xDist < holeHalfWidth && y > 0;
+    };
+
+    const isInBranchInnerHole = (x: number, angle: number): boolean => {
+      const z = runInnerR * Math.sin(angle);
+      const zSq = z * z;
+      const branchInnerRSq = branchInnerR * branchInnerR;
+      if (zSq >= branchInnerRSq) return false;
+      const xDist = Math.abs(x - branchOffsetXVal);
+      const holeHalfWidth = Math.sqrt(branchInnerRSq - zSq);
+      const y = runInnerR * Math.cos(angle);
+      return xDist < holeHalfWidth && y > 0;
+    };
 
     // Generate outer surface with hole
     const outerVertices: Map<string, number> = new Map();
@@ -1364,8 +1388,8 @@ function TeeScene(props: Tee3DPreviewProps) {
     addEndCap(-halfLength, -1); // Left end
     addEndCap(halfLength, 1); // Right end
 
-    // Skip hole edge surface - the saddle weld covers the junction
-    // The branch pipe's saddle-cut bottom sits directly on the run pipe surface
+    // Hole edge surface is covered by the branch pipe's saddle-cut geometry
+    // The saddle weld visually covers any minor gap at the junction
 
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
@@ -1377,9 +1401,11 @@ function TeeScene(props: Tee3DPreviewProps) {
 
   // Flange specs
   const { specs: runFlangeSpecs } = getFlangeSpecs(nominalBore, props.flangeSpecs);
+  // For branch flange, use teeFlangeSpecs if provided (unequal tees), otherwise use main flangeSpecs
+  const branchFlangeData = props.teeFlangeSpecs || props.flangeSpecs;
   const { specs: branchFlangeSpecs } = getFlangeSpecs(
-    branchNominalBore || nominalBore,
-    props.flangeSpecs,
+    effectiveBranchNB || nominalBore,
+    branchFlangeData,
   );
 
   // Gusset plate thickness (estimated based on size)
@@ -1629,10 +1655,10 @@ function TeeScene(props: Tee3DPreviewProps) {
           ) : (
             <>
               <FlangeComponent
-                position={[-halfRunLength, 0, 0]}
+                position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor, 0, 0]}
                 rotation={[0, Math.PI / 2, 0]}
                 outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-                innerDiameter={(od + 3) / scaleFactor}
+                innerDiameter={od / scaleFactor}
                 thickness={runFlangeSpecs.thickness / scaleFactor}
                 pcd={runFlangeSpecs.pcd / scaleFactor}
                 boltHoles={runFlangeSpecs.boltHoles}
@@ -1812,10 +1838,10 @@ function TeeScene(props: Tee3DPreviewProps) {
           ) : (
             <>
               <FlangeComponent
-                position={[halfRunLength, 0, 0]}
+                position={[halfRunLength + runFlangeSpecs.thickness / scaleFactor, 0, 0]}
                 rotation={[0, -Math.PI / 2, 0]}
                 outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
-                innerDiameter={(od + 3) / scaleFactor}
+                innerDiameter={od / scaleFactor}
                 thickness={runFlangeSpecs.thickness / scaleFactor}
                 pcd={runFlangeSpecs.pcd / scaleFactor}
                 boltHoles={runFlangeSpecs.boltHoles}
@@ -2019,10 +2045,10 @@ function TeeScene(props: Tee3DPreviewProps) {
           ) : (
             <>
               <FlangeComponent
-                position={[branchOffsetX, height, 0]}
+                position={[branchOffsetX, height + branchFlangeSpecs.thickness / scaleFactor, 0]}
                 rotation={[Math.PI / 2, 0, 0]}
                 outerDiameter={branchFlangeSpecs.flangeOD / scaleFactor}
-                innerDiameter={(branchOD + 3) / scaleFactor}
+                innerDiameter={branchOD / scaleFactor}
                 thickness={branchFlangeSpecs.thickness / scaleFactor}
                 pcd={branchFlangeSpecs.pcd / scaleFactor}
                 boltHoles={branchFlangeSpecs.boltHoles}
@@ -2044,7 +2070,7 @@ function TeeScene(props: Tee3DPreviewProps) {
         {hasBlankInlet && (
           <>
             <BlankFlangeComponent
-              position={[-halfRunLength - runFlangeSpecs.thickness / scaleFactor - 0.5, 0, 0]}
+              position={[-halfRunLength - (2 * runFlangeSpecs.thickness) / scaleFactor - 0.5, 0, 0]}
               rotation={[0, Math.PI / 2, 0]}
               outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
               thickness={runFlangeSpecs.thickness / scaleFactor}
@@ -2054,7 +2080,7 @@ function TeeScene(props: Tee3DPreviewProps) {
             />
             <Text
               position={[
-                -halfRunLength - runFlangeSpecs.thickness / scaleFactor - 0.25,
+                -halfRunLength - (2 * runFlangeSpecs.thickness) / scaleFactor - 0.25,
                 -outerRadius - 0.2,
                 0,
               ]}
@@ -2070,7 +2096,7 @@ function TeeScene(props: Tee3DPreviewProps) {
         {hasBlankOutlet && (
           <>
             <BlankFlangeComponent
-              position={[halfRunLength + runFlangeSpecs.thickness / scaleFactor + 0.5, 0, 0]}
+              position={[halfRunLength + (2 * runFlangeSpecs.thickness) / scaleFactor + 0.5, 0, 0]}
               rotation={[0, -Math.PI / 2, 0]}
               outerDiameter={runFlangeSpecs.flangeOD / scaleFactor}
               thickness={runFlangeSpecs.thickness / scaleFactor}
@@ -2080,7 +2106,7 @@ function TeeScene(props: Tee3DPreviewProps) {
             />
             <Text
               position={[
-                halfRunLength + runFlangeSpecs.thickness / scaleFactor + 0.75,
+                halfRunLength + (2 * runFlangeSpecs.thickness) / scaleFactor + 0.75,
                 -outerRadius - 0.2,
                 0,
               ]}
@@ -2098,7 +2124,7 @@ function TeeScene(props: Tee3DPreviewProps) {
             <BlankFlangeComponent
               position={[
                 branchOffsetX,
-                height + branchFlangeSpecs.thickness / scaleFactor + 0.5,
+                height + (2 * branchFlangeSpecs.thickness) / scaleFactor + 0.5,
                 0,
               ]}
               rotation={[-Math.PI / 2, 0, 0]}
@@ -2111,7 +2137,7 @@ function TeeScene(props: Tee3DPreviewProps) {
             <Text
               position={[
                 branchOffsetX - branchOuterRadius - 0.3,
-                height + branchFlangeSpecs.thickness / scaleFactor + 0.5,
+                height + (2 * branchFlangeSpecs.thickness) / scaleFactor + 0.5,
                 0,
               ]}
               fontSize={0.12}
@@ -2384,25 +2410,23 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
 
   // Get dimensions using proper lookup tables
   const dims = getSabs719TeeDimensions(debouncedProps.nominalBore);
-  const branchDims = debouncedProps.branchNominalBore
-    ? getSabs719TeeDimensions(debouncedProps.branchNominalBore)
-    : null;
+  // Effective branch NB - either reducing tee (branchNominalBore) or unequal tee (teeNominalBore)
+  const effectiveBranchNB = debouncedProps.branchNominalBore || debouncedProps.teeNominalBore;
+  const branchDims = effectiveBranchNB ? getSabs719TeeDimensions(effectiveBranchNB) : null;
   const od = getOuterDiameter(
     debouncedProps.nominalBore,
     debouncedProps.outerDiameter || dims?.outsideDiameterMm || 0,
   );
   const wt = getWallThickness(debouncedProps.nominalBore, debouncedProps.wallThickness || 0);
   const id = od - 2 * wt;
-  // Branch dimensions for reducing tees
-  const branchOD = debouncedProps.branchNominalBore
+  // Branch dimensions for reducing/unequal tees
+  const branchOD = effectiveBranchNB
     ? getOuterDiameter(
-        debouncedProps.branchNominalBore,
+        effectiveBranchNB,
         debouncedProps.branchOuterDiameter || branchDims?.outsideDiameterMm || 0,
       )
     : od;
-  const branchWT = debouncedProps.branchNominalBore
-    ? getWallThickness(debouncedProps.branchNominalBore)
-    : wt;
+  const branchWT = effectiveBranchNB ? getWallThickness(effectiveBranchNB) : wt;
   const branchID = branchOD - 2 * branchWT;
   const teeHeight = getTeeHeight(debouncedProps.nominalBore, debouncedProps.teeType);
   const gussetSection =
@@ -2412,9 +2436,11 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
     debouncedProps.nominalBore,
     debouncedProps.flangeSpecs,
   );
+  // For branch/tee flange, use teeFlangeSpecs if provided (unequal tees), otherwise use main flangeSpecs
+  const branchFlangeData = debouncedProps.teeFlangeSpecs || debouncedProps.flangeSpecs;
   const { specs: branchFlangeSpecs, isFromApi: branchIsFromApi } = getFlangeSpecs(
-    debouncedProps.branchNominalBore || debouncedProps.nominalBore,
-    debouncedProps.flangeSpecs,
+    effectiveBranchNB || debouncedProps.nominalBore,
+    branchFlangeData,
   );
   const flangeStandardName = debouncedProps.flangeStandardName || "SABS 1123";
   const isNonSabsStandard =
@@ -2580,88 +2606,140 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
             <div className="text-gray-700">WT: {branchWT.toFixed(1)}mm</div>
           </>
         )}
+        {props.teeNominalBore && (
+          <>
+            <div className="font-bold text-blue-800 mt-1 mb-0.5">
+              TEE PIPE ({props.teeNominalBore}NB)
+            </div>
+            <div className="text-gray-900 font-medium">
+              OD: {branchOD.toFixed(0)}mm | ID: {branchID.toFixed(0)}mm
+            </div>
+            <div className="text-gray-700">WT: {branchWT.toFixed(1)}mm</div>
+          </>
+        )}
         <div className="text-gray-700 mt-1">Height: {teeHeight}mm</div>
         {props.teeType === "gusset" && (
           <div className="text-gray-700">Gusset: {gussetSection}mm</div>
         )}
-        {/* Run Flange details */}
-        {(props.hasInletFlange || props.hasOutletFlange) && (
-          <>
-            <div className="font-bold text-blue-800 mt-1 mb-0.5">RUN FLANGE</div>
-            {showRunFallbackWarning && (
-              <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
-                Data not available for {flangeStandardName} - showing SABS 1123 reference values
-              </div>
-            )}
-            <div className="text-gray-900 font-medium">
-              OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm
-            </div>
-            <div className="text-gray-700">
-              Holes: {runFlangeSpecs.boltHoles} × Ø{runFlangeSpecs.holeID}mm
-            </div>
-            <div className="text-gray-700">
-              Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} ×{" "}
-              {runFlangeSpecs.boltLength}mm
-            </div>
-            <div className="text-gray-700">Thickness: {runFlangeSpecs.thickness}mm</div>
-            <div
-              className={
-                showRunFallbackWarning
-                  ? "text-orange-600 font-medium text-[9px]"
-                  : "text-green-700 font-medium text-[9px]"
-              }
-            >
-              {(() => {
-                const designation = props.pressureClassDesignation || "";
-                const flangeType = props.flangeTypeCode || "";
-                const pressureMatch = designation.match(/^(\d+)/);
-                const pressureValue = pressureMatch
-                  ? pressureMatch[1]
-                  : designation.replace(/\/\d+$/, "");
-                return `${flangeStandardName} T${pressureValue}${flangeType}`;
-              })()}
-            </div>
-          </>
-        )}
-        {/* Branch Flange details */}
-        {props.hasBranchFlange && (
-          <>
-            <div className="font-bold text-blue-800 mt-1 mb-0.5">BRANCH FLANGE</div>
-            {showBranchFallbackWarning && (
-              <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
-                Data not available for {flangeStandardName} - showing SABS 1123 reference values
-              </div>
-            )}
-            <div className="text-gray-900 font-medium">
-              OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm
-            </div>
-            <div className="text-gray-700">
-              Holes: {branchFlangeSpecs.boltHoles} × Ø{branchFlangeSpecs.holeID}mm
-            </div>
-            <div className="text-gray-700">
-              Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} ×{" "}
-              {branchFlangeSpecs.boltLength}mm
-            </div>
-            <div className="text-gray-700">Thickness: {branchFlangeSpecs.thickness}mm</div>
-            <div
-              className={
-                showBranchFallbackWarning
-                  ? "text-orange-600 font-medium text-[9px]"
-                  : "text-green-700 font-medium text-[9px]"
-              }
-            >
-              {(() => {
-                const designation = props.pressureClassDesignation || "";
-                const flangeType = props.flangeTypeCode || "";
-                const pressureMatch = designation.match(/^(\d+)/);
-                const pressureValue = pressureMatch
-                  ? pressureMatch[1]
-                  : designation.replace(/\/\d+$/, "");
-                return `${flangeStandardName} T${pressureValue}${flangeType}`;
-              })()}
-            </div>
-          </>
-        )}
+        {/* Flange details - show once for equal tees, separate for reducing/unequal tees */}
+        {(() => {
+          const hasAnyFlange =
+            props.hasInletFlange || props.hasOutletFlange || props.hasBranchFlange;
+          const isEqualTee = !props.branchNominalBore && !props.teeNominalBore;
+          const flangeDesignation = (() => {
+            const designation = props.pressureClassDesignation || "";
+            const flangeType = props.flangeTypeCode || "";
+            const pressureMatch = designation.match(/^(\d+)/);
+            const pressureValue = pressureMatch
+              ? pressureMatch[1]
+              : designation.replace(/\/\d+$/, "");
+            return `${flangeStandardName} T${pressureValue}${flangeType}`;
+          })();
+
+          if (!hasAnyFlange) return null;
+
+          if (isEqualTee) {
+            return (
+              <>
+                <div className="font-bold text-blue-800 mt-1 mb-0.5">FLANGE (ALL OUTLETS)</div>
+                {showRunFallbackWarning && (
+                  <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                    Data not available for {flangeStandardName} - showing SABS 1123 reference values
+                  </div>
+                )}
+                <div className="text-gray-900 font-medium">
+                  OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm
+                </div>
+                <div className="text-gray-700">
+                  Holes: {runFlangeSpecs.boltHoles} × Ø{runFlangeSpecs.holeID}mm
+                </div>
+                <div className="text-gray-700">
+                  Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} ×{" "}
+                  {runFlangeSpecs.boltLength}mm
+                </div>
+                <div className="text-gray-700">Thickness: {runFlangeSpecs.thickness}mm</div>
+                <div
+                  className={
+                    showRunFallbackWarning
+                      ? "text-orange-600 font-medium text-[9px]"
+                      : "text-green-700 font-medium text-[9px]"
+                  }
+                >
+                  {flangeDesignation}
+                </div>
+              </>
+            );
+          }
+
+          return (
+            <>
+              {(props.hasInletFlange || props.hasOutletFlange) && (
+                <>
+                  <div className="font-bold text-blue-800 mt-1 mb-0.5">RUN FLANGE</div>
+                  {showRunFallbackWarning && (
+                    <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                      Data not available for {flangeStandardName} - showing SABS 1123 reference
+                      values
+                    </div>
+                  )}
+                  <div className="text-gray-900 font-medium">
+                    OD: {runFlangeSpecs.flangeOD}mm | PCD: {runFlangeSpecs.pcd}mm
+                  </div>
+                  <div className="text-gray-700">
+                    Holes: {runFlangeSpecs.boltHoles} × Ø{runFlangeSpecs.holeID}mm
+                  </div>
+                  <div className="text-gray-700">
+                    Bolts: {runFlangeSpecs.boltHoles} × M{runFlangeSpecs.boltSize} ×{" "}
+                    {runFlangeSpecs.boltLength}mm
+                  </div>
+                  <div className="text-gray-700">Thickness: {runFlangeSpecs.thickness}mm</div>
+                  <div
+                    className={
+                      showRunFallbackWarning
+                        ? "text-orange-600 font-medium text-[9px]"
+                        : "text-green-700 font-medium text-[9px]"
+                    }
+                  >
+                    {flangeDesignation}
+                  </div>
+                </>
+              )}
+              {props.hasBranchFlange && (
+                <>
+                  <div className="font-bold text-blue-800 mt-1 mb-0.5">
+                    {props.teeNominalBore ? "TEE FLANGE" : "BRANCH FLANGE"}
+                  </div>
+                  {showBranchFallbackWarning && (
+                    <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
+                      Data not available for {flangeStandardName} - showing SABS 1123 reference
+                      values
+                    </div>
+                  )}
+                  <div className="text-gray-900 font-medium">
+                    OD: {branchFlangeSpecs.flangeOD}mm | PCD: {branchFlangeSpecs.pcd}mm
+                  </div>
+                  <div className="text-gray-700">
+                    Holes: {branchFlangeSpecs.boltHoles} × Ø{branchFlangeSpecs.holeID}mm
+                  </div>
+                  <div className="text-gray-700">
+                    Bolts: {branchFlangeSpecs.boltHoles} × M{branchFlangeSpecs.boltSize} ×{" "}
+                    {branchFlangeSpecs.boltLength}mm
+                  </div>
+                  <div className="text-gray-700">Thickness: {branchFlangeSpecs.thickness}mm</div>
+                  <div
+                    className={
+                      showBranchFallbackWarning
+                        ? "text-orange-600 font-medium text-[9px]"
+                        : "text-green-700 font-medium text-[9px]"
+                    }
+                  >
+                    {flangeDesignation}
+                  </div>
+                </>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Notes Section - bottom left */}
@@ -2944,6 +3022,17 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
                   <div className="text-gray-700">WT: {branchWT.toFixed(1)}mm</div>
                 </>
               )}
+              {props.teeNominalBore && (
+                <>
+                  <div className="font-bold text-blue-800 mt-2 mb-1">
+                    TEE PIPE ({props.teeNominalBore}NB)
+                  </div>
+                  <div className="text-gray-900 font-medium">
+                    OD: {branchOD.toFixed(0)}mm | ID: {branchID.toFixed(0)}mm
+                  </div>
+                  <div className="text-gray-700">WT: {branchWT.toFixed(1)}mm</div>
+                </>
+              )}
               <div className="text-gray-700 mt-2">Height: {teeHeight}mm</div>
               {props.teeType === "gusset" && (
                 <div className="text-gray-700">Gusset: {gussetSection}mm</div>
@@ -2989,7 +3078,9 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
               )}
               {props.hasBranchFlange && (
                 <>
-                  <div className="font-bold text-blue-800 mt-2 mb-1">BRANCH FLANGE</div>
+                  <div className="font-bold text-blue-800 mt-2 mb-1">
+                    {props.teeNominalBore ? "TEE FLANGE" : "BRANCH FLANGE"}
+                  </div>
                   {showBranchFallbackWarning && (
                     <div className="text-orange-600 text-[9px] font-medium bg-orange-50 px-1 py-0.5 rounded mt-0.5">
                       Data not available for {flangeStandardName} - showing SABS 1123 reference

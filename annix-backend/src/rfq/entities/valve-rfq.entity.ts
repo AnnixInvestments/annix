@@ -75,7 +75,12 @@ export class ValveRfq {
   bodyMaterial: string;
 
   @ApiProperty({ description: "Trim material", example: "ss_316" })
-  @Column({ name: "trim_material", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "trim_material",
+    type: "varchar",
+    length: 50,
+    nullable: true,
+  })
   trimMaterial?: string;
 
   @ApiProperty({ description: "Seat/seal material", example: "ptfe" })

@@ -61,6 +61,11 @@ export class SecureEntityFolder {
     description: "Reason for deactivation",
     example: "Account suspended: Non-payment",
   })
-  @Column({ name: "deletion_reason", type: "varchar", length: 255, nullable: true })
+  @Column({
+    name: "deletion_reason",
+    type: "varchar",
+    length: 255,
+    nullable: true,
+  })
   deletionReason: string | null;
 }

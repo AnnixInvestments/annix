@@ -271,7 +271,13 @@ export class AutoApprovalService {
       reason = `Documents require manual review: ${manualReviewDocuments.join(", ")}`;
     }
 
-    return { canAutoApprove, reason, missingDocuments, invalidDocuments, manualReviewDocuments };
+    return {
+      canAutoApprove,
+      reason,
+      missingDocuments,
+      invalidDocuments,
+      manualReviewDocuments,
+    };
   }
 
   private validateSupplierDocuments(documents: SupplierDocument[]): {
@@ -316,7 +322,13 @@ export class AutoApprovalService {
       reason = `Documents require manual review: ${manualReviewDocuments.join(", ")}`;
     }
 
-    return { canAutoApprove, reason, missingDocuments, invalidDocuments, manualReviewDocuments };
+    return {
+      canAutoApprove,
+      reason,
+      missingDocuments,
+      invalidDocuments,
+      manualReviewDocuments,
+    };
   }
 
   private async approveCustomerOnboarding(onboarding: CustomerOnboarding): Promise<void> {

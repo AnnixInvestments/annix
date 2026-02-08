@@ -73,7 +73,7 @@ export class DeviceBindingService {
     };
 
     const binding = repo.create(bindingData as T);
-    return repo.save(binding) as Promise<T>;
+    return repo.save(binding);
   }
 
   async findBinding<T extends ObjectLiteral>(

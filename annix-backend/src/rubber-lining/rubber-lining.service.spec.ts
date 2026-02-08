@@ -43,20 +43,47 @@ describe("RubberLiningService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RubberLiningService,
-        { provide: getRepositoryToken(RubberType), useValue: mockRubberTypeRepo },
-        { provide: getRepositoryToken(RubberSpecification), useValue: mockRubberSpecRepo },
+        {
+          provide: getRepositoryToken(RubberType),
+          useValue: mockRubberTypeRepo,
+        },
+        {
+          provide: getRepositoryToken(RubberSpecification),
+          useValue: mockRubberSpecRepo,
+        },
         {
           provide: getRepositoryToken(RubberApplicationRating),
           useValue: mockApplicationRatingRepo,
         },
-        { provide: getRepositoryToken(RubberThicknessRecommendation), useValue: mockThicknessRepo },
-        { provide: getRepositoryToken(RubberAdhesionRequirement), useValue: mockAdhesionRepo },
-        { provide: getRepositoryToken(RubberProductCoding), useValue: mockProductCodingRepo },
-        { provide: getRepositoryToken(RubberPricingTier), useValue: mockPricingTierRepo },
-        { provide: getRepositoryToken(RubberCompany), useValue: mockCompanyRepo },
-        { provide: getRepositoryToken(RubberProduct), useValue: mockProductRepo },
+        {
+          provide: getRepositoryToken(RubberThicknessRecommendation),
+          useValue: mockThicknessRepo,
+        },
+        {
+          provide: getRepositoryToken(RubberAdhesionRequirement),
+          useValue: mockAdhesionRepo,
+        },
+        {
+          provide: getRepositoryToken(RubberProductCoding),
+          useValue: mockProductCodingRepo,
+        },
+        {
+          provide: getRepositoryToken(RubberPricingTier),
+          useValue: mockPricingTierRepo,
+        },
+        {
+          provide: getRepositoryToken(RubberCompany),
+          useValue: mockCompanyRepo,
+        },
+        {
+          provide: getRepositoryToken(RubberProduct),
+          useValue: mockProductRepo,
+        },
         { provide: getRepositoryToken(RubberOrder), useValue: mockOrderRepo },
-        { provide: getRepositoryToken(RubberOrderItem), useValue: mockOrderItemRepo },
+        {
+          provide: getRepositoryToken(RubberOrderItem),
+          useValue: mockOrderItemRepo,
+        },
       ],
     }).compile();
 
@@ -87,7 +114,10 @@ describe("RubberLiningService", () => {
     });
 
     it("should return null when company not found", async () => {
-      mockProductRepo.findOne.mockResolvedValue({ id: 1, title: "Test Product" });
+      mockProductRepo.findOne.mockResolvedValue({
+        id: 1,
+        title: "Test Product",
+      });
       mockCompanyRepo.findOne.mockResolvedValue(null);
 
       const result = await service.calculatePrice({

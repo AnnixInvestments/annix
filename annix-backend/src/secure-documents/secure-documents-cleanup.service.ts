@@ -70,7 +70,10 @@ export class SecureDocumentsCleanupService {
     await this.folderRepo.remove(folder);
   }
 
-  async runManualCleanup(): Promise<{ deletedFolders: number; deletedDocuments: number }> {
+  async runManualCleanup(): Promise<{
+    deletedFolders: number;
+    deletedDocuments: number;
+  }> {
     this.logger.log("Running manual cleanup of deleted entity folders");
 
     const cutoffDate = now().minus({ days: this.retentionDays }).toJSDate();

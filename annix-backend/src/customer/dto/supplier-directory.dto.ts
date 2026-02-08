@@ -12,7 +12,10 @@ export class DirectoryQueryDto {
   @IsString()
   province?: string;
 
-  @ApiPropertyOptional({ description: "Filter by product categories", type: [String] })
+  @ApiPropertyOptional({
+    description: "Filter by product categories",
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

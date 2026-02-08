@@ -71,7 +71,8 @@ export class CustomerDocumentController {
   @UseInterceptors(FileInterceptor("file"))
   async uploadDocument(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: {
+    @Body()
+    body: {
       documentType: CustomerDocumentType;
       expiryDate?: string;
       verificationResult?: string;

@@ -64,7 +64,10 @@ export class CreateInstrumentRfqDto {
   @IsString()
   cableEntry?: string;
 
-  @ApiProperty({ description: "Explosion proof classification", required: false })
+  @ApiProperty({
+    description: "Explosion proof classification",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   explosionProof?: string;

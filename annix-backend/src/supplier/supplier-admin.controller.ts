@@ -172,7 +172,9 @@ export class SupplierAdminController {
   }
 
   @Get(":id/documents/:docId/preview-images")
-  @ApiOperation({ summary: "Get document preview as images (converts PDF to images)" })
+  @ApiOperation({
+    summary: "Get document preview as images (converts PDF to images)",
+  })
   @ApiResponse({ status: 200, description: "Document preview images" })
   @ApiResponse({ status: 404, description: "Document not found" })
   async getDocumentPreviewImages(

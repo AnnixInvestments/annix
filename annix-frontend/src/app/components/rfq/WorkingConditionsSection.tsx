@@ -87,7 +87,7 @@ export function WorkingConditionsSection({
         <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200">
           Working Conditions
           {!hasOverride && (
-            <span className={`ml-2 text-xs font-normal ${colors.label}`}>(From Global Spec)</span>
+            <span className={`ml-2 text-xs font-normal ${colors.label}`}>(From Specs Page)</span>
           )}
           {hasOverride && (
             <span className={`ml-2 text-xs font-normal ${colors.label}`}>(Override)</span>

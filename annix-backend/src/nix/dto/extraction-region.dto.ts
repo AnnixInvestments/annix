@@ -45,7 +45,9 @@ export class SaveExtractionRegionDto {
   @IsNotEmpty()
   fieldName: string;
 
-  @ApiProperty({ description: "Region coordinates for the value on the document" })
+  @ApiProperty({
+    description: "Region coordinates for the value on the document",
+  })
   @ValidateNested()
   @Type(() => RegionCoordinatesDto)
   regionCoordinates: RegionCoordinatesDto;
@@ -206,7 +208,10 @@ export class SaveCustomFieldValueDto {
   @IsNotEmpty()
   documentCategory: string;
 
-  @ApiProperty({ description: "Document ID the value was extracted from", required: false })
+  @ApiProperty({
+    description: "Document ID the value was extracted from",
+    required: false,
+  })
   @IsNumber()
   @IsOptional()
   extractedFromDocumentId?: number;

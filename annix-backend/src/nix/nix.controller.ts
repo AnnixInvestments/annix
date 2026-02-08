@@ -500,7 +500,9 @@ export class NixController {
   @UseGuards(AdminAuthGuard, RolesGuard)
   @Roles("admin")
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Fetch stored document as page images for training" })
+  @ApiOperation({
+    summary: "Fetch stored document as page images for training",
+  })
   @ApiResponse({
     status: 200,
     description: "PDF pages as base64 images",
@@ -513,7 +515,9 @@ export class NixController {
     const document =
       entityType === "customer"
         ? await this.customerDocumentRepo.findOne({ where: { id: documentId } })
-        : await this.supplierDocumentRepo.findOne({ where: { id: documentId } });
+        : await this.supplierDocumentRepo.findOne({
+            where: { id: documentId },
+          });
 
     if (!document) {
       throw new BadRequestException("Document not found");
@@ -537,7 +541,9 @@ export class NixController {
     const document =
       entityType === "customer"
         ? await this.customerDocumentRepo.findOne({ where: { id: documentId } })
-        : await this.supplierDocumentRepo.findOne({ where: { id: documentId } });
+        : await this.supplierDocumentRepo.findOne({
+            where: { id: documentId },
+          });
 
     if (!document) {
       throw new BadRequestException("Document not found");
@@ -571,7 +577,11 @@ export class NixController {
   @Roles("admin")
   @ApiBearerAuth()
   @ApiOperation({ summary: "List extraction regions for a document category" })
-  @ApiResponse({ status: 200, description: "List of regions", type: [ExtractionRegionResponseDto] })
+  @ApiResponse({
+    status: 200,
+    description: "List of regions",
+    type: [ExtractionRegionResponseDto],
+  })
   async listExtractionRegions(
     @Param("documentCategory") documentCategory: string,
   ): Promise<ExtractionRegionResponseDto[]> {
@@ -699,7 +709,9 @@ export class NixController {
   @UseGuards(AdminAuthGuard, RolesGuard)
   @Roles("admin")
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Get custom field definitions for a document category" })
+  @ApiOperation({
+    summary: "Get custom field definitions for a document category",
+  })
   @ApiResponse({ status: 200, description: "Custom field definitions" })
   async customFieldDefinitionsForCategory(
     @Param("documentCategory") documentCategory: string,
@@ -716,7 +728,9 @@ export class NixController {
   }
 
   @Post("document-pages")
-  @ApiOperation({ summary: "Convert uploaded document to page images for annotation" })
+  @ApiOperation({
+    summary: "Convert uploaded document to page images for annotation",
+  })
   @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {
@@ -752,14 +766,19 @@ export class NixController {
   }
 
   @Post("extract-from-region")
-  @ApiOperation({ summary: "Extract text from a region in an uploaded document" })
+  @ApiOperation({
+    summary: "Extract text from a region in an uploaded document",
+  })
   @ApiConsumes("multipart/form-data")
   @ApiBody({
     schema: {
       type: "object",
       properties: {
         file: { type: "string", format: "binary" },
-        regionCoordinates: { type: "string", description: "JSON string of region coordinates" },
+        regionCoordinates: {
+          type: "string",
+          description: "JSON string of region coordinates",
+        },
         fieldName: { type: "string" },
       },
     },
@@ -789,7 +808,9 @@ export class NixController {
   }
 
   @Post("save-extraction-region")
-  @ApiOperation({ summary: "Save a learned extraction region from portal user" })
+  @ApiOperation({
+    summary: "Save a learned extraction region from portal user",
+  })
   @ApiResponse({ status: 201, description: "Region saved successfully" })
   async saveExtractionRegionFromPortal(
     @Body() dto: SaveExtractionRegionDto,

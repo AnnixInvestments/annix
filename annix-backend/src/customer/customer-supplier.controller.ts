@@ -115,8 +115,16 @@ export class CustomerSupplierController {
 
   @Get("directory")
   @ApiOperation({ summary: "Get supplier directory with status" })
-  @ApiQuery({ name: "search", required: false, description: "Search by company name" })
-  @ApiQuery({ name: "province", required: false, description: "Filter by province" })
+  @ApiQuery({
+    name: "search",
+    required: false,
+    description: "Search by company name",
+  })
+  @ApiQuery({
+    name: "province",
+    required: false,
+    description: "Filter by province",
+  })
   @ApiQuery({
     name: "products",
     required: false,

@@ -438,7 +438,9 @@ export class RubberLiningService {
   }
 
   async productCodingById(id: number): Promise<RubberProductCodingDto | null> {
-    const coding = await this.productCodingRepository.findOne({ where: { id } });
+    const coding = await this.productCodingRepository.findOne({
+      where: { id },
+    });
     return coding ? this.mapProductCodingToDto(coding) : null;
   }
 
@@ -455,7 +457,9 @@ export class RubberLiningService {
     id: number,
     dto: UpdateRubberProductCodingDto,
   ): Promise<RubberProductCodingDto | null> {
-    const coding = await this.productCodingRepository.findOne({ where: { id } });
+    const coding = await this.productCodingRepository.findOne({
+      where: { id },
+    });
     if (!coding) return null;
     Object.assign(coding, dto);
     const saved = await this.productCodingRepository.save(coding);
@@ -596,16 +600,36 @@ export class RubberLiningService {
       field: string;
       expectedType: ProductCodingType;
     }> = [
-      { uid: dto.compoundFirebaseUid, field: "compound", expectedType: ProductCodingType.COMPOUND },
-      { uid: dto.typeFirebaseUid, field: "type", expectedType: ProductCodingType.TYPE },
-      { uid: dto.colourFirebaseUid, field: "colour", expectedType: ProductCodingType.COLOUR },
-      { uid: dto.hardnessFirebaseUid, field: "hardness", expectedType: ProductCodingType.HARDNESS },
+      {
+        uid: dto.compoundFirebaseUid,
+        field: "compound",
+        expectedType: ProductCodingType.COMPOUND,
+      },
+      {
+        uid: dto.typeFirebaseUid,
+        field: "type",
+        expectedType: ProductCodingType.TYPE,
+      },
+      {
+        uid: dto.colourFirebaseUid,
+        field: "colour",
+        expectedType: ProductCodingType.COLOUR,
+      },
+      {
+        uid: dto.hardnessFirebaseUid,
+        field: "hardness",
+        expectedType: ProductCodingType.HARDNESS,
+      },
       {
         uid: dto.curingMethodFirebaseUid,
         field: "curingMethod",
         expectedType: ProductCodingType.CURING_METHOD,
       },
-      { uid: dto.gradeFirebaseUid, field: "grade", expectedType: ProductCodingType.GRADE },
+      {
+        uid: dto.gradeFirebaseUid,
+        field: "grade",
+        expectedType: ProductCodingType.GRADE,
+      },
     ];
 
     const codingUidsToValidate = codingValidations.filter((v) => v.uid).map((v) => v.uid!);

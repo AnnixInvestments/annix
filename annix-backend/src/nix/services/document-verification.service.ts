@@ -361,25 +361,39 @@ export class DocumentVerificationService {
 
     if (entityType === "customer") {
       const documents = await this.customerDocumentRepo.find({
-        where: { customerId: entityId, validationStatus: CustomerDocumentValidationStatus.PENDING },
+        where: {
+          customerId: entityId,
+          validationStatus: CustomerDocumentValidationStatus.PENDING,
+        },
       });
 
       for (const doc of documents) {
         const docType = this.mapCustomerDocumentType(doc.documentType);
         if (docType) {
-          const result = await this.verifyDocument({ entityType, entityId, documentId: doc.id });
+          const result = await this.verifyDocument({
+            entityType,
+            entityId,
+            documentId: doc.id,
+          });
           results.push(result);
         }
       }
     } else {
       const documents = await this.supplierDocumentRepo.find({
-        where: { supplierId: entityId, validationStatus: SupplierDocumentValidationStatus.PENDING },
+        where: {
+          supplierId: entityId,
+          validationStatus: SupplierDocumentValidationStatus.PENDING,
+        },
       });
 
       for (const doc of documents) {
         const docType = this.mapSupplierDocumentType(doc.documentType);
         if (docType) {
-          const result = await this.verifyDocument({ entityType, entityId, documentId: doc.id });
+          const result = await this.verifyDocument({
+            entityType,
+            entityId,
+            documentId: doc.id,
+          });
           results.push(result);
         }
       }

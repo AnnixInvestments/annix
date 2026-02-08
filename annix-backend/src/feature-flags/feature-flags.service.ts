@@ -72,7 +72,11 @@ export class FeatureFlagsService {
   async updateFlag(
     flagKey: string,
     enabled: boolean,
-  ): Promise<{ flagKey: string; enabled: boolean; description: string | null }> {
+  ): Promise<{
+    flagKey: string;
+    enabled: boolean;
+    description: string | null;
+  }> {
     const flag = await this.flagRepo.findOne({ where: { flagKey } });
 
     if (!flag) {

@@ -556,7 +556,7 @@ function StraightPipeFormComponent({
                   Working Conditions
                   {!entry.specs?.workingPressureBar && !entry.specs?.workingTemperatureC && (
                     <span className="ml-2 text-xs font-normal text-blue-600">
-                      (From Global Spec)
+                      (From Specs Page)
                     </span>
                   )}
                   {(entry.specs?.workingPressureBar || entry.specs?.workingTemperatureC) && (
@@ -746,7 +746,7 @@ function StraightPipeFormComponent({
                           Steel Specification *
                           {isSteelFromGlobal && (
                             <span className="text-green-600 text-xs ml-1 font-normal">
-                              (Global)
+                              (From Specs Page)
                             </span>
                           )}
                           {isSteelOverride && (
@@ -1330,7 +1330,9 @@ function StraightPipeFormComponent({
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               Standard
                               {isStandardFromGlobal && (
-                                <span className="ml-1 text-green-600 font-normal">(Global)</span>
+                                <span className="ml-1 text-green-600 font-normal">
+                                  (From Specs Page)
+                                </span>
                               )}
                               {isStandardOverride && (
                                 <span className="ml-1 text-red-600 font-normal">(Override)</span>
@@ -1440,7 +1442,9 @@ function StraightPipeFormComponent({
                                 <span className="ml-1 text-red-600 font-bold">(NOT SUITABLE)</span>
                               )}
                               {!isPressureClassUnsuitable && isClassFromGlobal && (
-                                <span className="ml-1 text-green-600 font-normal">(Global)</span>
+                                <span className="ml-1 text-green-600 font-normal">
+                                  (From Specs Page)
+                                </span>
                               )}
                               {!isPressureClassUnsuitable && isClassOverride && (
                                 <span className="ml-1 text-yellow-600 font-normal">(Override)</span>
@@ -1564,7 +1568,9 @@ function StraightPipeFormComponent({
                             <label className="block text-xs font-semibold text-gray-900 dark:text-gray-900 mb-1">
                               Type
                               {isTypeFromGlobal && showFlangeType && (
-                                <span className="ml-1 text-green-600 font-normal">(Global)</span>
+                                <span className="ml-1 text-green-600 font-normal">
+                                  (From Specs Page)
+                                </span>
                               )}
                               {isTypeOverride && showFlangeType && (
                                 <span className="ml-1 text-red-600 font-normal">(Override)</span>

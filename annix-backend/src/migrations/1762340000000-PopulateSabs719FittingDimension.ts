@@ -288,8 +288,8 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
     }
     console.warn("✅ Inserted Duckfoot dimensions");
 
-    // Unequal tee variants (using gusset CF dimensions)
-    for (const [nb, od, cf] of gussetTeeCfData) {
+    // Unequal Short Tee - uses same dimensions as Short Tee
+    for (const [nb, od, cf] of shortTeeData) {
       const pipeLengthA = cf * 2;
       const pipeLengthB = cf;
       await queryRunner.query(`
@@ -300,12 +300,17 @@ export class PopulateSabs719FittingDimension1762340000000 implements MigrationIn
           'UNEQUAL_SHORT_TEE', ${nb}, ${od}, ${pipeLengthA}, ${pipeLengthB}
         )
       `);
+    }
+    // Unequal Gusset Tee - uses same dimensions as Gusset Tee
+    for (const [nb, od, cf] of gussetTeeCfData) {
+      const pipeLengthA = cf * 2;
+      const pipeLengthB = cf;
       await queryRunner.query(`
         INSERT INTO sabs719_fitting_dimension (
           fitting_type, nominal_diameter_mm, outside_diameter_mm,
           dimension_a_mm, dimension_b_mm
         ) VALUES (
-          'UNEQUAL_GUSSET_TEE', ${nb}, ${od}, ${pipeLengthA * 1.2}, ${pipeLengthB * 1.2}
+          'UNEQUAL_GUSSET_TEE', ${nb}, ${od}, ${pipeLengthA}, ${pipeLengthB}
         )
       `);
     }

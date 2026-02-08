@@ -55,7 +55,10 @@ export class CreateValveRfqDto {
   @IsNumber()
   airSupply?: number;
 
-  @ApiProperty({ description: "Voltage for electric actuators", required: false })
+  @ApiProperty({
+    description: "Voltage for electric actuators",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   voltage?: string;
@@ -101,7 +104,10 @@ export class CreateValveRfqDto {
   @IsNumber()
   operatingTemp?: number;
 
-  @ApiProperty({ description: "Hazardous area classification", required: false })
+  @ApiProperty({
+    description: "Hazardous area classification",
+    required: false,
+  })
   @IsOptional()
   @IsString()
   hazardousArea?: string;
