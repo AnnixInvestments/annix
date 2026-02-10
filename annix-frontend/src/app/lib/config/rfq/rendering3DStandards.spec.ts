@@ -15,9 +15,9 @@ import {
   SABS_719_WALL_THICKNESS,
   SCENE_CONSTANTS,
   STEELWORK_MATERIALS,
-  wallThicknessFromNB,
   WELD_CONSTANTS,
   WELD_MATERIALS,
+  wallThicknessFromNB,
 } from "./rendering3DStandards";
 
 describe("rendering3DStandards", () => {
@@ -258,7 +258,9 @@ describe("rendering3DStandards", () => {
 
     it("should have valid camera distance range", () => {
       expect(SCENE_CONSTANTS.MIN_CAMERA_DISTANCE).toBeGreaterThan(0);
-      expect(SCENE_CONSTANTS.MAX_CAMERA_DISTANCE).toBeGreaterThan(SCENE_CONSTANTS.MIN_CAMERA_DISTANCE);
+      expect(SCENE_CONSTANTS.MAX_CAMERA_DISTANCE).toBeGreaterThan(
+        SCENE_CONSTANTS.MIN_CAMERA_DISTANCE,
+      );
     });
   });
 
@@ -291,7 +293,9 @@ describe("rendering3DStandards", () => {
       expect(LIGHTING_CONFIG.ambient.intensity).toBeGreaterThan(0);
       expect(LIGHTING_CONFIG.keyLight.intensity).toBeGreaterThan(0);
       expect(LIGHTING_CONFIG.fillLight.intensity).toBeGreaterThan(0);
-      expect(LIGHTING_CONFIG.keyLight.intensity).toBeGreaterThan(LIGHTING_CONFIG.fillLight.intensity);
+      expect(LIGHTING_CONFIG.keyLight.intensity).toBeGreaterThan(
+        LIGHTING_CONFIG.fillLight.intensity,
+      );
     });
   });
 

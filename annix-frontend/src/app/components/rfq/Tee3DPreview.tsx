@@ -15,11 +15,11 @@ import {
   FLANGE_MATERIALS,
   GEOMETRY_CONSTANTS,
   LIGHTING_CONFIG,
+  outerDiameterFromNB,
   PIPE_MATERIALS,
   SCENE_CONSTANTS,
   STEELWORK_MATERIALS,
   WELD_MATERIALS,
-  outerDiameterFromNB,
   wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import { log } from "@/app/lib/logger";
@@ -2750,8 +2750,14 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
           intensity={LIGHTING_CONFIG.keyLight.intensity}
           castShadow
         />
-        <directionalLight position={LIGHTING_CONFIG.fillLight.position} intensity={LIGHTING_CONFIG.fillLight.intensity} />
-        <Environment preset={LIGHTING_CONFIG.environment.preset} background={LIGHTING_CONFIG.environment.background} />
+        <directionalLight
+          position={LIGHTING_CONFIG.fillLight.position}
+          intensity={LIGHTING_CONFIG.fillLight.intensity}
+        />
+        <Environment
+          preset={LIGHTING_CONFIG.environment.preset}
+          background={LIGHTING_CONFIG.environment.background}
+        />
         <group scale={PREVIEW_SCALE}>
           <TeeScene {...debouncedProps} />
         </group>
@@ -3181,8 +3187,14 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
                 intensity={LIGHTING_CONFIG.keyLight.intensity}
                 castShadow
               />
-              <directionalLight position={LIGHTING_CONFIG.fillLight.position} intensity={LIGHTING_CONFIG.fillLight.intensity} />
-              <Environment preset={LIGHTING_CONFIG.environment.preset} background={LIGHTING_CONFIG.environment.background} />
+              <directionalLight
+                position={LIGHTING_CONFIG.fillLight.position}
+                intensity={LIGHTING_CONFIG.fillLight.intensity}
+              />
+              <Environment
+                preset={LIGHTING_CONFIG.environment.preset}
+                background={LIGHTING_CONFIG.environment.background}
+              />
               <group scale={PREVIEW_SCALE}>
                 <TeeScene {...debouncedProps} />
               </group>

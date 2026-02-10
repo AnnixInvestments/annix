@@ -1985,9 +1985,15 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
           intensity={LIGHTING_CONFIG.keyLight.intensity}
           castShadow
         />
-        <directionalLight position={LIGHTING_CONFIG.fillLight.position} intensity={LIGHTING_CONFIG.fillLight.intensity} />
+        <directionalLight
+          position={LIGHTING_CONFIG.fillLight.position}
+          intensity={LIGHTING_CONFIG.fillLight.intensity}
+        />
 
-        <Environment preset={LIGHTING_CONFIG.environment.preset} background={LIGHTING_CONFIG.environment.background} />
+        <Environment
+          preset={LIGHTING_CONFIG.environment.preset}
+          background={LIGHTING_CONFIG.environment.background}
+        />
 
         <HollowPipeScene {...debouncedProps} />
 
@@ -2527,8 +2533,14 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
                 intensity={LIGHTING_CONFIG.keyLight.intensity}
                 castShadow
               />
-              <directionalLight position={LIGHTING_CONFIG.fillLight.position} intensity={LIGHTING_CONFIG.fillLight.intensity} />
-              <Environment preset={LIGHTING_CONFIG.environment.preset} background={LIGHTING_CONFIG.environment.background} />
+              <directionalLight
+                position={LIGHTING_CONFIG.fillLight.position}
+                intensity={LIGHTING_CONFIG.fillLight.intensity}
+              />
+              <Environment
+                preset={LIGHTING_CONFIG.environment.preset}
+                background={LIGHTING_CONFIG.environment.background}
+              />
               <HollowPipeScene {...debouncedProps} />
               <ContactShadows
                 position={[0, -0.6, 0]}

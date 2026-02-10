@@ -611,7 +611,12 @@ export const StubPipe = ({
         capStart={false}
         capEnd={!hasFlange}
       />
-      <WeldRing center={baseCenter} normal={dir} radius={outerR * SADDLE_WELD_OVERSIZE} tube={weldTube} />
+      <WeldRing
+        center={baseCenter}
+        normal={dir}
+        radius={outerR * SADDLE_WELD_OVERSIZE}
+        tube={weldTube}
+      />
       {hasFlange && (
         <Flange
           center={endCenter.clone().add(dir.clone().multiplyScalar(flangeOffset))}
@@ -725,9 +730,7 @@ export const RetainingRing = ({ center, normal, pipeR, wallThickness }: Retainin
     <group position={[center.x, center.y, center.z]} rotation={[euler.x, euler.y, euler.z]}>
       <mesh>
         <torusGeometry args={[torusRadius, tubeRadius, 16, 32]} />
-        <meshStandardMaterial
-          {...FLANGE_MATERIALS.bolt}
-        />
+        <meshStandardMaterial {...FLANGE_MATERIALS.bolt} />
       </mesh>
     </group>
   );

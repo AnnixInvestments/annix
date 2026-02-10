@@ -10,6 +10,7 @@ import {
 } from "@/app/lib/config/rfq/rendering3DStandards";
 
 const FLANGE_THICKNESS_RATIO = GEOMETRY_CONSTANTS.FLANGE_THICKNESS_RATIO;
+
 import type { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 
 const SCALE = GEOMETRY_CONSTANTS.SCALE;
