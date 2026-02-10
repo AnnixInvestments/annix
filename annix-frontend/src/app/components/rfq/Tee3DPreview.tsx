@@ -13,9 +13,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   FLANGE_MATERIALS,
+  GEOMETRY_CONSTANTS,
+  LIGHTING_CONFIG,
   PIPE_MATERIALS,
+  SCENE_CONSTANTS,
   STEELWORK_MATERIALS,
   WELD_MATERIALS,
+  outerDiameterFromNB,
+  wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import { log } from "@/app/lib/logger";
 
@@ -74,10 +79,10 @@ const useDebouncedProps = <T extends Record<string, any>>(props: T, delay: numbe
   return debouncedProps;
 };
 
-const SCALE_FACTOR = 100;
-const PREVIEW_SCALE = 1.1;
-const MIN_CAMERA_DISTANCE = 1.2;
-const MAX_CAMERA_DISTANCE = 120;
+const SCALE_FACTOR = GEOMETRY_CONSTANTS.FITTING_SCALE;
+const PREVIEW_SCALE = SCENE_CONSTANTS.PREVIEW_SCALE;
+const MIN_CAMERA_DISTANCE = SCENE_CONSTANTS.MIN_CAMERA_DISTANCE;
+const MAX_CAMERA_DISTANCE = SCENE_CONSTANTS.MAX_CAMERA_DISTANCE;
 
 const pipeOuterMat = PIPE_MATERIALS.outer;
 const pipeInnerMat = PIPE_MATERIALS.inner;
@@ -85,13 +90,8 @@ const pipeEndMat = PIPE_MATERIALS.end;
 const weldColor = WELD_MATERIALS.standard;
 const flangeColor = FLANGE_MATERIALS.standard;
 const blankFlangeColor = FLANGE_MATERIALS.blank;
-const closureColor = { color: "#2a2a2a", metalness: 0.6, roughness: 0.6, envMapIntensity: 0.5 };
-const rotatingFlangeColor = {
-  color: "#4a90d9",
-  metalness: 0.85,
-  roughness: 0.2,
-  envMapIntensity: 1.2,
-};
+const closureColor = WELD_MATERIALS.closure;
+const rotatingFlangeColor = FLANGE_MATERIALS.rotating;
 const gussetColor = STEELWORK_MATERIALS.rib;
 
 // Flange type for rendering
@@ -136,91 +136,8 @@ interface Tee3DPreviewProps {
   flangeTypeCode?: string;
 }
 
-// Standard Pipe OD Lookup Table (NB to OD in mm)
-// Based on ASME B36.10M / ISO 4200 / SABS 719
-const NB_TO_OD: { [key: number]: number } = {
-  15: 21.3,
-  20: 26.7,
-  25: 33.4,
-  32: 42.2,
-  40: 48.3,
-  50: 60.3,
-  65: 73.0,
-  80: 88.9,
-  100: 114.3,
-  125: 139.7,
-  150: 168.3,
-  200: 219.1,
-  250: 273.0,
-  300: 323.9,
-  350: 355.6,
-  400: 406.4,
-  450: 457.2,
-  500: 508.0,
-  550: 559.0,
-  600: 609.6,
-  650: 660.4,
-  700: 711.2,
-  750: 762.0,
-  800: 812.8,
-  850: 863.6,
-  900: 914.4,
-  1000: 1016.0,
-  1050: 1066.8,
-  1200: 1219.2,
-};
-
-// Get pipe OD from NB using lookup table
-const getOuterDiameter = (nb: number, providedOD: number = 0): number => {
-  if (providedOD && providedOD > 0) return providedOD;
-  if (NB_TO_OD[nb]) return NB_TO_OD[nb];
-  const sizes = Object.keys(NB_TO_OD)
-    .map(Number)
-    .sort((a, b) => a - b);
-  let closestSize = sizes[0];
-  for (const size of sizes) {
-    if (size <= nb) closestSize = size;
-    else break;
-  }
-  return NB_TO_OD[closestSize] || nb * 1.05;
-};
-
-// SABS 719 ERW Pipe Wall Thickness Table (Class B - Standard)
-const SABS_719_WALL_THICKNESS: { [key: number]: number } = {
-  200: 5.2,
-  250: 5.2,
-  300: 6.4,
-  350: 6.4,
-  400: 6.4,
-  450: 6.4,
-  500: 6.4,
-  550: 6.4,
-  600: 6.4,
-  650: 8.0,
-  700: 8.0,
-  750: 8.0,
-  800: 8.0,
-  850: 9.5,
-  900: 9.5,
-  1000: 9.5,
-  1050: 9.5,
-  1200: 12.7,
-};
-
-// Get wall thickness for SABS 719 pipes
-const getWallThickness = (nb: number, providedWT: number = 0): number => {
-  if (providedWT && providedWT > 1) return providedWT;
-  if (SABS_719_WALL_THICKNESS[nb]) return SABS_719_WALL_THICKNESS[nb];
-  const sizes = Object.keys(SABS_719_WALL_THICKNESS)
-    .map(Number)
-    .sort((a, b) => a - b);
-  let closestSize = sizes[0];
-  for (const size of sizes) {
-    if (size <= nb) closestSize = size;
-    else break;
-  }
-  return SABS_719_WALL_THICKNESS[closestSize] || 6.4;
-};
+const getOuterDiameter = outerDiameterFromNB;
+const getWallThickness = wallThicknessFromNB;
 
 // Flange lookup table based on nominal bore - SABS 1123 Table 1000/4 (PN16) Slip-on flanges
 // Bolt length calculated for: 2 x flange thickness + gasket (3mm) + nut + washer + thread engagement
@@ -2827,9 +2744,14 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
         style={{ width: "100%", height: "100%" }}
       >
         <CaptureHelper captureRef={captureRef} />
-        <ambientLight intensity={0.7} />
-        <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
-        <Environment preset="sunset" />
+        <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
+        <directionalLight
+          position={LIGHTING_CONFIG.keyLight.position}
+          intensity={LIGHTING_CONFIG.keyLight.intensity}
+          castShadow
+        />
+        <directionalLight position={LIGHTING_CONFIG.fillLight.position} intensity={LIGHTING_CONFIG.fillLight.intensity} />
+        <Environment preset={LIGHTING_CONFIG.environment.preset} background={LIGHTING_CONFIG.environment.background} />
         <group scale={PREVIEW_SCALE}>
           <TeeScene {...debouncedProps} />
         </group>
@@ -3253,9 +3175,14 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
               dpr={[1, 2]}
               camera={{ position: expandedCameraPosition, fov: 45, near: 0.01, far: 50000 }}
             >
-              <ambientLight intensity={0.7} />
-              <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1} />
-              <Environment preset="sunset" />
+              <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
+              <directionalLight
+                position={LIGHTING_CONFIG.keyLight.position}
+                intensity={LIGHTING_CONFIG.keyLight.intensity}
+                castShadow
+              />
+              <directionalLight position={LIGHTING_CONFIG.fillLight.position} intensity={LIGHTING_CONFIG.fillLight.intensity} />
+              <Environment preset={LIGHTING_CONFIG.environment.preset} background={LIGHTING_CONFIG.environment.background} />
               <group scale={PREVIEW_SCALE}>
                 <TeeScene {...debouncedProps} />
               </group>

@@ -14,6 +14,12 @@ exports[`Material Visual Comparison Tests > Material Configuration Snapshots > f
     "metalness": 0.9,
     "roughness": 0.15,
   },
+  "rotating": {
+    "color": "#4a90d9",
+    "envMapIntensity": 1.2,
+    "metalness": 0.85,
+    "roughness": 0.2,
+  },
   "standard": {
     "color": "#888888",
     "envMapIntensity": 1.3,
@@ -114,6 +120,12 @@ exports[`Material Visual Comparison Tests > Material Configuration Snapshots > s
 
 exports[`Material Visual Comparison Tests > Material Configuration Snapshots > weld materials should match expected configuration 1`] = `
 {
+  "closure": {
+    "color": "#2a2a2a",
+    "envMapIntensity": 0.5,
+    "metalness": 0.6,
+    "roughness": 0.6,
+  },
   "highlighted": {
     "color": "#444444",
     "envMapIntensity": 0.6,

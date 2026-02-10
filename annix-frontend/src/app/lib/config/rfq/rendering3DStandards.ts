@@ -16,6 +16,7 @@ export const PIPE_MATERIALS = {
 export const WELD_MATERIALS = {
   standard: { color: "#2a2a2a", metalness: 0.6, roughness: 0.7, envMapIntensity: 0.5 },
   highlighted: { color: "#444444", metalness: 0.5, roughness: 0.6, envMapIntensity: 0.6 },
+  closure: { color: "#2a2a2a", metalness: 0.6, roughness: 0.6, envMapIntensity: 0.5 },
 } as const;
 
 // Flange and bolt materials - polished machined surfaces
@@ -23,6 +24,7 @@ export const FLANGE_MATERIALS = {
   standard: { color: "#888888", metalness: 0.9, roughness: 0.15, envMapIntensity: 1.3 },
   bolt: { color: "#b0b0b0", metalness: 0.9, roughness: 0.15, envMapIntensity: 1.3 },
   blank: { color: "#cc3300", metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 },
+  rotating: { color: "#4a90d9", metalness: 0.85, roughness: 0.2, envMapIntensity: 1.2 },
 } as const;
 
 // Steelwork materials (base plates, gussets, ribs)
@@ -111,8 +113,11 @@ export const WELD_CONSTANTS = {
 // =============================================================================
 
 export const GEOMETRY_CONSTANTS = {
-  // Standard scale factor (mm to scene units)
+  // Standard scale factor (mm to scene units) - used by CSGBend3DPreview / use3DSceneSetup
   SCALE: 200,
+
+  // Fitting preview scale factor (mm to scene units) - used by Tee/Lateral previews
+  FITTING_SCALE: 100,
 
   // Minimum visual wall thickness ratio
   MIN_VISUAL_WALL_RATIO: 0.08,
@@ -125,8 +130,36 @@ export const GEOMETRY_CONSTANTS = {
   ARC_SEGMENTS: 32,
   CURVE_SEGMENTS: 64,
 
-  // Weld tube thickness ratio
+  // Weld tube thickness ratio (outerR * ratio = weld torus tube radius)
   WELD_TUBE_RATIO: 0.06,
+
+  // Weld ring oversizing (weld ring sits slightly outside pipe)
+  WELD_RING_OVERSIZE: 1.02,
+
+  // Saddle weld oversizing (saddle curve sits slightly outside stub)
+  SADDLE_WELD_OVERSIZE: 1.05,
+
+  // Flange thickness ratio (flangeR * ratio = flange disc thickness)
+  FLANGE_THICKNESS_RATIO: 0.18,
+
+  // Flange bore clearance (innerR * ratio = bore hole radius)
+  FLANGE_BORE_CLEARANCE: 1.02,
+
+  // Retaining ring outer radius ratio (pipeR * ratio)
+  RETAINING_RING_RATIO: 1.15,
+
+  // Rotating flange bore clearance
+  ROTATING_FLANGE_BORE_CLEARANCE: 1.05,
+} as const;
+
+// =============================================================================
+// SCENE / CAMERA CONSTANTS
+// =============================================================================
+
+export const SCENE_CONSTANTS = {
+  PREVIEW_SCALE: 1.1,
+  MIN_CAMERA_DISTANCE: 1.2,
+  MAX_CAMERA_DISTANCE: 120,
 } as const;
 
 // =============================================================================
@@ -196,9 +229,63 @@ export const NB_TO_OD_LOOKUP: Record<number, number> = {
   800: 812.8,
   850: 863.6,
   900: 914.4,
+  1000: 1016.0,
+  1050: 1066.8,
+  1200: 1219.2,
 };
 
 export const nbToOd = (nb: number): number => NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+
+const closestLookup = (table: Record<number, number>, nb: number, fallback: number): number => {
+  if (table[nb]) return table[nb];
+  const sizes = Object.keys(table)
+    .map(Number)
+    .sort((a, b) => a - b);
+  let closest = sizes[0];
+  for (const size of sizes) {
+    if (size <= nb) {
+      closest = size;
+    } else {
+      break;
+    }
+  }
+  return table[closest] || fallback;
+};
+
+export const outerDiameterFromNB = (nb: number, providedOD: number = 0): number => {
+  if (providedOD && providedOD > 0) return providedOD;
+  return closestLookup(NB_TO_OD_LOOKUP, nb, nb * 1.05);
+};
+
+// =============================================================================
+// SABS 719 ERW PIPE WALL THICKNESS (Class B - Standard)
+// =============================================================================
+
+export const SABS_719_WALL_THICKNESS: Record<number, number> = {
+  200: 5.2,
+  250: 5.2,
+  300: 6.4,
+  350: 6.4,
+  400: 6.4,
+  450: 6.4,
+  500: 6.4,
+  550: 6.4,
+  600: 6.4,
+  650: 8.0,
+  700: 8.0,
+  750: 8.0,
+  800: 8.0,
+  850: 9.5,
+  900: 9.5,
+  1000: 9.5,
+  1050: 9.5,
+  1200: 12.7,
+};
+
+export const wallThicknessFromNB = (nb: number, providedWT: number = 0): number => {
+  if (providedWT && providedWT > 0) return providedWT;
+  return closestLookup(SABS_719_WALL_THICKNESS, nb, 6.4);
+};
 
 // =============================================================================
 // HELPER FUNCTIONS

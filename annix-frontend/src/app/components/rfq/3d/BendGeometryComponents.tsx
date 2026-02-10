@@ -13,6 +13,13 @@ import {
 } from "@/app/lib/config/rfq/rendering3DStandards";
 
 const SCALE = GEOMETRY_CONSTANTS.SCALE;
+const WELD_TUBE_RATIO = GEOMETRY_CONSTANTS.WELD_TUBE_RATIO;
+const WELD_RING_OVERSIZE = GEOMETRY_CONSTANTS.WELD_RING_OVERSIZE;
+const SADDLE_WELD_OVERSIZE = GEOMETRY_CONSTANTS.SADDLE_WELD_OVERSIZE;
+const FLANGE_THICKNESS_RATIO = GEOMETRY_CONSTANTS.FLANGE_THICKNESS_RATIO;
+const FLANGE_BORE_CLEARANCE = GEOMETRY_CONSTANTS.FLANGE_BORE_CLEARANCE;
+const RETAINING_RING_RATIO = GEOMETRY_CONSTANTS.RETAINING_RING_RATIO;
+const ROTATING_FLANGE_BORE_CLEARANCE = GEOMETRY_CONSTANTS.ROTATING_FLANGE_BORE_CLEARANCE;
 const pipeOuterMat = PIPE_MATERIALS.outer;
 const pipeInnerMat = PIPE_MATERIALS.inner;
 const pipeEndMat = PIPE_MATERIALS.end;
@@ -141,7 +148,7 @@ export const SegmentedBendPipe = ({
   innerR,
   numberOfSegments,
 }: SegmentedBendPipeProps) => {
-  const weldTube = outerR * 0.06;
+  const weldTube = outerR * WELD_TUBE_RATIO;
 
   const segmentsData = useMemo(() => {
     const totalAngle = endAngle - startAngle;
@@ -227,7 +234,7 @@ export const SegmentedBendPipe = ({
                 position={[seg.weldPos.x, seg.weldPos.y, seg.weldPos.z]}
                 quaternion={weldQuaternion}
               >
-                <torusGeometry args={[outerR * 1.02, weldTube, 12, 32]} />
+                <torusGeometry args={[outerR * WELD_RING_OVERSIZE, weldTube, 12, 32]} />
                 <meshStandardMaterial {...weldColor} />
               </mesh>
             )}
@@ -269,7 +276,7 @@ export interface SaddleWeldProps {
 
 export const SaddleWeld = ({ stubRadius, mainPipeRadius, useXAxis, tube }: SaddleWeldProps) => {
   const curve = useMemo(() => {
-    return new SaddleCurve(stubRadius * 1.05, mainPipeRadius, useXAxis);
+    return new SaddleCurve(stubRadius * SADDLE_WELD_OVERSIZE, mainPipeRadius, useXAxis);
   }, [stubRadius, mainPipeRadius, useXAxis]);
 
   return (
@@ -290,12 +297,12 @@ export interface FlangeProps {
 export const Flange = ({ center, normal, pipeR, innerR, nb }: FlangeProps) => {
   const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
   const flangeR = flangeSpecs.flangeOD / 2 / SCALE;
-  const thick = flangeR * 0.18;
+  const thick = flangeR * FLANGE_THICKNESS_RATIO;
   const boltR = flangeSpecs.pcd / 2 / SCALE;
   const holeR = flangeSpecs.holeID / 2 / SCALE;
   const boltCount = flangeSpecs.boltHoles;
-  const boreR = innerR * 1.02;
-  const weldTube = pipeR * 0.06;
+  const boreR = innerR * FLANGE_BORE_CLEARANCE;
+  const weldTube = pipeR * WELD_TUBE_RATIO;
 
   const faceGeometry = useMemo(() => {
     const shape = new THREE.Shape();
@@ -361,11 +368,11 @@ export const Flange = ({ center, normal, pipeR, innerR, nb }: FlangeProps) => {
         <meshStandardMaterial {...flangeColor} side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, -thick / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[pipeR * 1.02, weldTube, 12, 32]} />
+        <torusGeometry args={[pipeR * WELD_RING_OVERSIZE, weldTube, 12, 32]} />
         <meshStandardMaterial {...weldColor} />
       </mesh>
       <mesh position={[0, -thick / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[innerR * 0.98, weldTube, 12, 32]} />
+        <torusGeometry args={[innerR * (2 - WELD_RING_OVERSIZE), weldTube, 12, 32]} />
         <meshStandardMaterial {...weldColor} />
       </mesh>
     </group>
@@ -397,9 +404,9 @@ export const SaddleCutStubPipe = ({
   hasFlange = true,
 }: SaddleCutStubPipeProps) => {
   const dir = direction.clone().normalize();
-  const weldTube = outerR * 0.06;
+  const weldTube = outerR * WELD_TUBE_RATIO;
   const stubFlangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
-  const stubFlangeThick = (stubFlangeSpecs.flangeOD / 2 / SCALE) * 0.18;
+  const stubFlangeThick = (stubFlangeSpecs.flangeOD / 2 / SCALE) * FLANGE_THICKNESS_RATIO;
   const flangeOffset = stubFlangeThick / 2;
 
   const saddleAxis = useMemo(() => {
@@ -589,9 +596,9 @@ export const StubPipe = ({
 
   const dir = direction.clone().normalize();
   const endCenter = baseCenter.clone().add(dir.clone().multiplyScalar(length));
-  const weldTube = outerR * 0.06;
+  const weldTube = outerR * WELD_TUBE_RATIO;
   const stubFlangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
-  const stubFlangeThick = (stubFlangeSpecs.flangeOD / 2 / SCALE) * 0.18;
+  const stubFlangeThick = (stubFlangeSpecs.flangeOD / 2 / SCALE) * FLANGE_THICKNESS_RATIO;
   const flangeOffset = stubFlangeThick / 2;
 
   return (
@@ -604,7 +611,7 @@ export const StubPipe = ({
         capStart={false}
         capEnd={!hasFlange}
       />
-      <WeldRing center={baseCenter} normal={dir} radius={outerR * 1.05} tube={weldTube} />
+      <WeldRing center={baseCenter} normal={dir} radius={outerR * SADDLE_WELD_OVERSIZE} tube={weldTube} />
       {hasFlange && (
         <Flange
           center={endCenter.clone().add(dir.clone().multiplyScalar(flangeOffset))}
@@ -628,7 +635,7 @@ export interface BlankFlangeProps {
 export const BlankFlange = ({ center, normal, pipeR, nb }: BlankFlangeProps) => {
   const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
   const flangeR = flangeSpecs.flangeOD / 2 / SCALE;
-  const thick = flangeR * 0.18;
+  const thick = flangeR * FLANGE_THICKNESS_RATIO;
   const boltR = flangeSpecs.pcd / 2 / SCALE;
   const holeR = flangeSpecs.holeID / 2 / SCALE;
   const boltCount = flangeSpecs.boltHoles;
@@ -701,7 +708,7 @@ export interface RetainingRingProps {
 }
 
 export const RetainingRing = ({ center, normal, pipeR, wallThickness }: RetainingRingProps) => {
-  const ringOuterR = pipeR * 1.15;
+  const ringOuterR = pipeR * RETAINING_RING_RATIO;
   const ringInnerR = pipeR;
   const tubeRadius = (ringOuterR - ringInnerR) / 2;
   const torusRadius = ringInnerR + tubeRadius;
@@ -719,10 +726,7 @@ export const RetainingRing = ({ center, normal, pipeR, wallThickness }: Retainin
       <mesh>
         <torusGeometry args={[torusRadius, tubeRadius, 16, 32]} />
         <meshStandardMaterial
-          color="#b0b0b0"
-          metalness={0.9}
-          roughness={0.15}
-          envMapIntensity={1.3}
+          {...FLANGE_MATERIALS.bolt}
         />
       </mesh>
     </group>
@@ -740,11 +744,11 @@ export interface RotatingFlangeProps {
 export const RotatingFlange = ({ center, normal, pipeR, innerR, nb }: RotatingFlangeProps) => {
   const flangeSpecs = FLANGE_DATA[nb] || FLANGE_DATA[closestFlangeNb(nb)];
   const flangeR = flangeSpecs.flangeOD / 2 / SCALE;
-  const thick = flangeR * 0.18;
+  const thick = flangeR * FLANGE_THICKNESS_RATIO;
   const boltR = flangeSpecs.pcd / 2 / SCALE;
   const holeR = flangeSpecs.holeID / 2 / SCALE;
   const boltCount = flangeSpecs.boltHoles;
-  const boreR = innerR * 1.05;
+  const boreR = innerR * ROTATING_FLANGE_BORE_CLEARANCE;
 
   const faceGeometry = useMemo(() => {
     const shape = new THREE.Shape();

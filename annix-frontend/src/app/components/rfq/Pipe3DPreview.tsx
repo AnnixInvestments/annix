@@ -13,6 +13,7 @@ import * as THREE from "three";
 import { asOrbitControls } from "@/app/lib/3d";
 import {
   FLANGE_MATERIALS,
+  LIGHTING_CONFIG,
   PIPE_MATERIALS,
   WELD_MATERIALS,
 } from "@/app/lib/config/rfq/rendering3DStandards";
@@ -1978,12 +1979,15 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
         style={{ width: "100%", height: "100%" }}
       >
         <CaptureHelper captureRef={captureRef} />
-        <ambientLight intensity={0.8} />
-        <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
-        <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />
-        <pointLight position={[halfLen + 5, 0, 0]} intensity={0.5} />
+        <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
+        <directionalLight
+          position={LIGHTING_CONFIG.keyLight.position}
+          intensity={LIGHTING_CONFIG.keyLight.intensity}
+          castShadow
+        />
+        <directionalLight position={LIGHTING_CONFIG.fillLight.position} intensity={LIGHTING_CONFIG.fillLight.intensity} />
 
-        <Environment preset="sunset" />
+        <Environment preset={LIGHTING_CONFIG.environment.preset} background={LIGHTING_CONFIG.environment.background} />
 
         <HollowPipeScene {...debouncedProps} />
 
@@ -2517,11 +2521,14 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
               camera={{ position: [0, 1.5, 5], fov: 45, near: 0.01, far: 50000 }}
               style={{ width: "100%", height: "100%" }}
             >
-              <ambientLight intensity={0.8} />
-              <spotLight position={[10, 10, 5]} angle={0.5} penumbra={1} intensity={1} />
-              <pointLight position={[-halfLen - 5, 0, 0]} intensity={0.5} />
-              <pointLight position={[halfLen + 5, 0, 0]} intensity={0.5} />
-              <Environment preset="sunset" />
+              <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
+              <directionalLight
+                position={LIGHTING_CONFIG.keyLight.position}
+                intensity={LIGHTING_CONFIG.keyLight.intensity}
+                castShadow
+              />
+              <directionalLight position={LIGHTING_CONFIG.fillLight.position} intensity={LIGHTING_CONFIG.fillLight.intensity} />
+              <Environment preset={LIGHTING_CONFIG.environment.preset} background={LIGHTING_CONFIG.environment.background} />
               <HollowPipeScene {...debouncedProps} />
               <ContactShadows
                 position={[0, -0.6, 0]}

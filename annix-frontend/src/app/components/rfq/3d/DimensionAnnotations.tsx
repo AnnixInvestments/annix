@@ -3,6 +3,7 @@
 import { Text } from "@react-three/drei";
 import { useMemo } from "react";
 import * as THREE from "three";
+import { DIMENSION_STANDARDS } from "@/app/lib/config/rfq/rendering3DStandards";
 
 interface SimpleLineProps {
   points: Array<[number, number, number]>;
@@ -91,15 +92,22 @@ export const DimensionLine = ({
 
   const textRotationY = -Math.atan2(direction.z, direction.x);
 
-  const lineWidths = { thin: 1.5, normal: 2, bold: 3 };
+  const lineWidths = {
+    thin: DIMENSION_STANDARDS.extensionLineWeight,
+    normal: DIMENSION_STANDARDS.dimensionLineWeight,
+    bold: DIMENSION_STANDARDS.boldLineWeight,
+  };
   const dimLineWidth = lineWidths[lineWeight];
   const extLineWidth = Math.max(1, dimLineWidth - 0.5);
 
-  const arrowSize = Math.min(0.1, Math.max(0.04, length * 0.08));
-  const arrowAngle = Math.PI * 0.89;
+  const arrowSize = Math.min(
+    DIMENSION_STANDARDS.arrowMaxLength,
+    Math.max(DIMENSION_STANDARDS.arrowMinLength, length * DIMENSION_STANDARDS.arrowLengthRatio),
+  );
+  const arrowAngle = DIMENSION_STANDARDS.arrowAngle;
 
-  const extensionGap = 0.02;
-  const extensionOvershoot = 0.04;
+  const extensionGap = DIMENSION_STANDARDS.extensionGap;
+  const extensionOvershoot = DIMENSION_STANDARDS.extensionOvershoot;
 
   const extStartGap = useMemo(() => {
     const gapDir = offsetVector.clone().normalize();
@@ -171,7 +179,7 @@ export const DimensionLine = ({
     tip: THREE.Vector3,
     dir: THREE.Vector3,
   ): THREE.BufferGeometry => {
-    const arrowWidth = arrowSize * 0.4;
+    const arrowWidth = arrowSize * DIMENSION_STANDARDS.arrowWidthRatio;
     const perpendicular = new THREE.Vector3(-dir.z, 0, dir.x);
     const base = tip.clone().add(dir.clone().multiplyScalar(arrowSize));
     const corner1 = base.clone().add(perpendicular.clone().multiplyScalar(arrowWidth));
@@ -199,7 +207,7 @@ export const DimensionLine = ({
   const leftTickPoints = createTickPoints(startOffset, perpDir);
   const rightTickPoints = createTickPoints(endOffset, perpDir);
 
-  const textOffset = textAbove ? 0.12 : -0.12;
+  const textOffset = textAbove ? DIMENSION_STANDARDS.textOffset : -DIMENSION_STANDARDS.textOffset;
 
   return (
     <group>
@@ -364,7 +372,7 @@ export const AngularDimension = ({
     if (plane === "xy") perpendicular = new THREE.Vector3(-dir.y, dir.x, 0);
     else if (plane === "xz") perpendicular = new THREE.Vector3(-dir.z, 0, dir.x);
     else perpendicular = new THREE.Vector3(0, -dir.z, dir.y);
-    const width = arrowSize * 0.4;
+    const width = arrowSize * DIMENSION_STANDARDS.arrowWidthRatio;
     const corner1 = base.clone().add(perpendicular.clone().multiplyScalar(width));
     const corner2 = base.clone().sub(perpendicular.clone().multiplyScalar(width));
     const geometry = new THREE.BufferGeometry();
@@ -407,7 +415,7 @@ export const AngularDimension = ({
     if (plane === "xy") perpendicular = new THREE.Vector3(-dir.y, dir.x, 0);
     else if (plane === "xz") perpendicular = new THREE.Vector3(-dir.z, 0, dir.x);
     else perpendicular = new THREE.Vector3(0, -dir.z, dir.y);
-    const width = arrowSize * 0.4;
+    const width = arrowSize * DIMENSION_STANDARDS.arrowWidthRatio;
     const corner1 = base.clone().add(perpendicular.clone().multiplyScalar(width));
     const corner2 = base.clone().sub(perpendicular.clone().multiplyScalar(width));
     const geometry = new THREE.BufferGeometry();
@@ -467,7 +475,7 @@ export const AngularDimension = ({
       startDir = new THREE.Vector3(0, Math.cos(startTangentAngle), Math.sin(startTangentAngle));
       endDir = new THREE.Vector3(0, Math.cos(endTangentAngle), Math.sin(endTangentAngle));
     }
-    const arrowAngle = Math.PI * 0.89;
+    const arrowAngle = DIMENSION_STANDARDS.arrowAngle;
     const createOpenArrow = (
       tip: THREE.Vector3,
       dir: THREE.Vector3,

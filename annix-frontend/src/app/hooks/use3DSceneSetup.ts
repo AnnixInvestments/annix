@@ -8,6 +8,8 @@ import {
   GEOMETRY_CONSTANTS,
   nbToOd,
 } from "@/app/lib/config/rfq/rendering3DStandards";
+
+const FLANGE_THICKNESS_RATIO = GEOMETRY_CONSTANTS.FLANGE_THICKNESS_RATIO;
 import type { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 
 const SCALE = GEOMETRY_CONSTANTS.SCALE;
@@ -165,7 +167,7 @@ export function use3DSceneSetup({
   const config = flangeConfig.toUpperCase();
 
   const { specs: flangeSpecs } = resolveFlangeData(nominalBore, apiFlangeSpecs);
-  const flangeThickScaled = (flangeSpecs.flangeOD / 2 / SCALE) * 0.18;
+  const flangeThickScaled = (flangeSpecs.flangeOD / 2 / SCALE) * FLANGE_THICKNESS_RATIO;
   const flangeOffset = (flangeThickScaled / 2) * 0.8;
   const rotatingFlangeOffset = 80 / SCALE;
   const wtScaled = (wallThickness || 6) / SCALE;

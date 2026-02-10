@@ -7,8 +7,14 @@ import * as THREE from "three";
 import { FLANGE_DATA } from "@/app/lib/3d/flangeData";
 import {
   FLANGE_MATERIALS,
+  GEOMETRY_CONSTANTS,
+  LIGHTING_CONFIG,
   PIPE_MATERIALS,
+  SCENE_CONSTANTS,
   WELD_MATERIALS,
+  nbToOd,
+  outerDiameterFromNB,
+  wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import {
   getAngleRangeFromDegrees,
@@ -16,52 +22,16 @@ import {
   LateralAngleRange,
 } from "@/app/lib/utils/sabs719LateralData";
 
-const SCALE_FACTOR = 100;
-const PREVIEW_SCALE = 1.1;
-const MIN_CAMERA_DISTANCE = 1.2;
-const MAX_CAMERA_DISTANCE = 120;
+const SCALE_FACTOR = GEOMETRY_CONSTANTS.FITTING_SCALE;
+const PREVIEW_SCALE = SCENE_CONSTANTS.PREVIEW_SCALE;
+const MIN_CAMERA_DISTANCE = SCENE_CONSTANTS.MIN_CAMERA_DISTANCE;
+const MAX_CAMERA_DISTANCE = SCENE_CONSTANTS.MAX_CAMERA_DISTANCE;
 
 const pipeOuterMat = PIPE_MATERIALS.outer;
 const pipeInnerMat = PIPE_MATERIALS.inner;
 const pipeEndMat = PIPE_MATERIALS.end;
 const weldColor = WELD_MATERIALS.standard;
 const flangeColor = FLANGE_MATERIALS.standard;
-
-const NB_TO_OD: { [key: number]: number } = {
-  200: 219.1,
-  250: 273.0,
-  300: 323.9,
-  350: 355.6,
-  400: 406.4,
-  450: 457.2,
-  500: 508.0,
-  550: 559.0,
-  600: 609.6,
-  650: 660.4,
-  700: 711.2,
-  750: 762.0,
-  800: 812.8,
-  850: 863.6,
-  900: 914.4,
-};
-
-const SABS_719_WALL_THICKNESS: { [key: number]: number } = {
-  200: 5.2,
-  250: 5.2,
-  300: 6.4,
-  350: 6.4,
-  400: 6.4,
-  450: 6.4,
-  500: 6.4,
-  550: 6.4,
-  600: 6.4,
-  650: 8.0,
-  700: 8.0,
-  750: 8.0,
-  800: 8.0,
-  850: 9.5,
-  900: 9.5,
-};
 
 const STUB_NB_TO_OD: { [key: number]: number } = {
   50: 60.3,
@@ -78,16 +48,6 @@ const STUB_WALL_THICKNESS: { [key: number]: number } = {
 };
 
 const STUB_LENGTH_MM = 80;
-
-const outerDiameterFromNB = (nb: number, providedOD: number = 0): number => {
-  if (providedOD && providedOD > 0) return providedOD;
-  return NB_TO_OD[nb] || nb * 1.05;
-};
-
-const wallThicknessFromNB = (nb: number, providedWT: number = 0): number => {
-  if (providedWT && providedWT > 0) return providedWT;
-  return SABS_719_WALL_THICKNESS[nb] || 6.4;
-};
 
 interface StubConfig {
   outletLocation: "branch" | "mainA" | "mainB";
@@ -885,10 +845,14 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
           dpr={[1, 2]}
           camera={{ position: defaultCameraPosition, fov: 50, near: 0.01, far: 50000 }}
         >
-          <ambientLight intensity={0.5} />
-          <spotLight position={[10, 10, 10]} angle={0.5} penumbra={1} intensity={1.5} castShadow />
-          <directionalLight position={[-5, 8, -5]} intensity={0.8} />
-          <Environment preset="sunset" />
+          <ambientLight intensity={LIGHTING_CONFIG.ambient.intensity} />
+          <directionalLight
+            position={LIGHTING_CONFIG.keyLight.position}
+            intensity={LIGHTING_CONFIG.keyLight.intensity}
+            castShadow
+          />
+          <directionalLight position={LIGHTING_CONFIG.fillLight.position} intensity={LIGHTING_CONFIG.fillLight.intensity} />
+          <Environment preset={LIGHTING_CONFIG.environment.preset} background={LIGHTING_CONFIG.environment.background} />
           <group scale={PREVIEW_SCALE}>
             <LateralScene {...props} />
           </group>
