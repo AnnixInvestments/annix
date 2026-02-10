@@ -307,3 +307,4 @@ The repo includes a `pre-push` hook (`.githooks/pre-push`) that runs `pnpm test:
 - **Log files** – both helper scripts rotate `backend-dev.log` and `frontend-dev.log` on each run. Use `tail -f backend-dev.log` or `Get-Content -Path backend-dev.log -Wait` to inspect past runs.
 
 With the instructions above, everything touched in this assistant session can be committed on a new branch and shared without any additional manual steps.
+
