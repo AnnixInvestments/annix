@@ -979,6 +979,72 @@ class AdminApiClient {
       : "/nix/admin/custom-field-definitions";
     return this.request<{ definitions: CustomFieldDefinition[] }>(path);
   }
+
+  // Reference Data endpoints
+
+  async referenceDataModules(): Promise<ReferenceDataModuleInfo[]> {
+    return this.request<ReferenceDataModuleInfo[]>("/admin/reference-data/modules");
+  }
+
+  async referenceDataSchema(entityName: string): Promise<EntitySchemaResponse> {
+    return this.request<EntitySchemaResponse>(
+      `/admin/reference-data/modules/${encodeURIComponent(entityName)}/schema`,
+    );
+  }
+
+  async referenceDataRecords(
+    entityName: string,
+    query?: ReferenceDataQueryDto,
+  ): Promise<PaginatedReferenceData> {
+    const params = new URLSearchParams();
+    if (query?.page) params.append("page", query.page.toString());
+    if (query?.limit) params.append("limit", query.limit.toString());
+    if (query?.sortBy) params.append("sortBy", query.sortBy);
+    if (query?.sortOrder) params.append("sortOrder", query.sortOrder);
+    if (query?.search) params.append("search", query.search);
+
+    const queryString = params.toString();
+    return this.request<PaginatedReferenceData>(
+      `/admin/reference-data/modules/${encodeURIComponent(entityName)}${queryString ? `?${queryString}` : ""}`,
+    );
+  }
+
+  async referenceDataRecord(entityName: string, id: number): Promise<Record<string, any>> {
+    return this.request<Record<string, any>>(
+      `/admin/reference-data/modules/${encodeURIComponent(entityName)}/${id}`,
+    );
+  }
+
+  async createReferenceDataRecord(
+    entityName: string,
+    data: Record<string, any>,
+  ): Promise<Record<string, any>> {
+    return this.request<Record<string, any>>(
+      `/admin/reference-data/modules/${encodeURIComponent(entityName)}`,
+      { method: "POST", body: JSON.stringify(data) },
+    );
+  }
+
+  async updateReferenceDataRecord(
+    entityName: string,
+    id: number,
+    data: Record<string, any>,
+  ): Promise<Record<string, any>> {
+    return this.request<Record<string, any>>(
+      `/admin/reference-data/modules/${encodeURIComponent(entityName)}/${id}`,
+      { method: "PATCH", body: JSON.stringify(data) },
+    );
+  }
+
+  async deleteReferenceDataRecord(
+    entityName: string,
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(
+      `/admin/reference-data/modules/${encodeURIComponent(entityName)}/${id}`,
+      { method: "DELETE" },
+    );
+  }
 }
 
 export interface NixUploadResponse {
@@ -1072,6 +1138,54 @@ export interface ExtractionRegion {
   sampleValue?: string;
   useCount: number;
   successCount: number;
+}
+
+// Reference Data Types
+
+export interface ReferenceDataModuleInfo {
+  entityName: string;
+  tableName: string;
+  displayName: string;
+  category: string;
+  columnCount: number;
+  recordCount: number;
+}
+
+export interface ColumnSchemaInfo {
+  propertyName: string;
+  databaseName: string;
+  type: string;
+  nullable: boolean;
+  isPrimary: boolean;
+  isGenerated: boolean;
+}
+
+export interface RelationSchemaInfo {
+  propertyName: string;
+  relationType: string;
+  targetEntityName: string;
+  joinColumnName?: string;
+}
+
+export interface EntitySchemaResponse {
+  columns: ColumnSchemaInfo[];
+  relations: RelationSchemaInfo[];
+}
+
+export interface ReferenceDataQueryDto {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: "ASC" | "DESC";
+  search?: string;
+}
+
+export interface PaginatedReferenceData {
+  items: Record<string, any>[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export const adminApiClient = new AdminApiClient();

@@ -1,24 +1,41 @@
 "use client";
 
+import type { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { DataTable } from "@/app/components/ui/DataTable";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAdminSuppliers, useInviteSupplier } from "@/app/lib/query/hooks";
+
+function statusBadgeClass(status: string): string {
+  switch (status) {
+    case "active":
+      return "bg-green-100 text-green-800";
+    case "pending":
+      return "bg-yellow-100 text-yellow-800";
+    case "suspended":
+      return "bg-red-100 text-red-800";
+    case "deactivated":
+      return "bg-gray-100 text-gray-800";
+    default:
+      return "bg-gray-100 text-gray-800";
+  }
+}
 
 export default function AdminSuppliersPage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [page, setPage] = useState(1);
-  const [limit] = useState(20);
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteMessage, setInviteMessage] = useState("");
 
   const suppliersQuery = useAdminSuppliers({
-    page,
-    limit,
+    page: pagination.pageIndex + 1,
+    limit: pagination.pageSize,
     status: statusFilter || undefined,
   });
 
@@ -26,7 +43,6 @@ export default function AdminSuppliersPage() {
 
   const supplierList = suppliersQuery.data?.items ?? suppliersQuery.data?.suppliers ?? [];
   const total = suppliersQuery.data?.total ?? 0;
-  const totalPages = suppliersQuery.data?.totalPages ?? 0;
 
   const stats = {
     total,
@@ -57,25 +73,104 @@ export default function AdminSuppliersPage() {
     );
   };
 
-  const getStatusBadgeClass = (status: string): string => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "suspended":
-        return "bg-red-100 text-red-800";
-      case "deactivated":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const formatDate = (dateString: string): string => {
-    if (!dateString) return "N/A";
-    return formatDateZA(dateString);
-  };
+  const columns = useMemo<ColumnDef<any, any>[]>(
+    () => [
+      {
+        id: "name",
+        accessorKey: "firstName",
+        header: "Supplier",
+        enableSorting: false,
+        cell: ({ row }: { row: any }) => (
+          <div className="flex items-center">
+            <div className="flex-shrink-0 h-10 w-10">
+              <div className="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-semibold">
+                {row.original.firstName?.[0] || "S"}
+                {row.original.lastName?.[0] || "P"}
+              </div>
+            </div>
+            <div className="ml-4">
+              <div className="text-sm font-medium text-gray-900">
+                {row.original.firstName} {row.original.lastName}
+              </div>
+              <div className="text-sm text-gray-500">{row.original.email}</div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "companyName",
+        accessorKey: "companyName",
+        header: "Company",
+        enableSorting: true,
+        cell: ({ getValue }: { getValue: () => any }) => (
+          <div className="text-sm text-gray-900">{getValue() || "N/A"}</div>
+        ),
+      },
+      {
+        id: "accountStatus",
+        accessorKey: "accountStatus",
+        header: "Status",
+        enableSorting: true,
+        cell: ({ getValue }: { getValue: () => any }) => {
+          const status = getValue() as string;
+          return (
+            <span
+              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(status)}`}
+            >
+              {status}
+            </span>
+          );
+        },
+      },
+      {
+        id: "onboardingStatus",
+        accessorKey: "onboardingStatus",
+        header: "Onboarding",
+        enableSorting: false,
+        cell: ({ getValue }: { getValue: () => any }) => {
+          const status = getValue() as string;
+          return (
+            <span
+              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(status)}`}
+            >
+              {status || "N/A"}
+            </span>
+          );
+        },
+      },
+      {
+        id: "createdAt",
+        accessorKey: "createdAt",
+        header: "Registered",
+        enableSorting: true,
+        cell: ({ getValue }: { getValue: () => any }) => (
+          <span className="text-sm text-gray-500">
+            {getValue() ? formatDateZA(getValue() as string) : "N/A"}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "",
+        enableSorting: false,
+        size: 80,
+        cell: ({ row }: { row: any }) => (
+          <div className="text-right">
+            <button
+              onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                router.push(`/admin/portal/suppliers/${row.original.id}`);
+              }}
+              className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+            >
+              View
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [router],
+  );
 
   if (suppliersQuery.error) {
     return (
@@ -138,7 +233,7 @@ export default function AdminSuppliersPage() {
         <button
           onClick={() => {
             setStatusFilter("");
-            setPage(1);
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
           }}
           className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-blue-500 transition-all ${statusFilter === "" ? "ring-2 ring-blue-500" : ""}`}
         >
@@ -170,11 +265,10 @@ export default function AdminSuppliersPage() {
             </div>
           </div>
         </button>
-
         <button
           onClick={() => {
             setStatusFilter("active");
-            setPage(1);
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
           }}
           className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-green-500 transition-all ${statusFilter === "active" ? "ring-2 ring-green-500" : ""}`}
         >
@@ -206,11 +300,10 @@ export default function AdminSuppliersPage() {
             </div>
           </div>
         </button>
-
         <button
           onClick={() => {
             setStatusFilter("pending");
-            setPage(1);
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
           }}
           className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-orange-500 transition-all ${statusFilter === "pending" ? "ring-2 ring-orange-500" : ""}`}
         >
@@ -242,11 +335,10 @@ export default function AdminSuppliersPage() {
             </div>
           </div>
         </button>
-
         <button
           onClick={() => {
             setStatusFilter("suspended");
-            setPage(1);
+            setPagination((prev) => ({ ...prev, pageIndex: 0 }));
           }}
           className={`bg-white overflow-hidden shadow rounded-lg text-left hover:ring-2 hover:ring-red-500 transition-all ${statusFilter === "suspended" ? "ring-2 ring-red-500" : ""}`}
         >
@@ -316,7 +408,7 @@ export default function AdminSuppliersPage() {
               value={statusFilter}
               onChange={(e) => {
                 setStatusFilter(e.target.value);
-                setPage(1);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
               className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
             >
@@ -331,219 +423,26 @@ export default function AdminSuppliersPage() {
       </div>
 
       {/* Supplier Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        {suppliersQuery.isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading suppliers...</p>
-            </div>
-          </div>
-        ) : supplierList.length === 0 ? (
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No suppliers found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {statusFilter
-                ? "Try adjusting your filter"
-                : "Get started by adding your first supplier"}
-            </p>
-          </div>
-        ) : (
-          <>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Supplier
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Company
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Onboarding
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Registered
-                  </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {supplierList.map((supplier: any) => (
-                  <tr
-                    key={supplier.id}
-                    onClick={() => router.push(`/admin/portal/suppliers/${supplier.id}`)}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-semibold">
-                            {supplier.firstName?.charAt(0) || "S"}
-                            {supplier.lastName?.charAt(0) || "P"}
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {supplier.firstName} {supplier.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">{supplier.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{supplier.companyName || "N/A"}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(supplier.accountStatus)}`}
-                      >
-                        {supplier.accountStatus}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(supplier.onboardingStatus)}`}
-                      >
-                        {supplier.onboardingStatus || "N/A"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(supplier.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/admin/portal/suppliers/${supplier.id}`);
-                        }}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                <div className="flex-1 flex justify-between sm:hidden">
-                  <button
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page === 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setPage(Math.min(totalPages, page + 1))}
-                    disabled={page === totalPages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{" "}
-                      <span className="font-medium">{Math.min(page * limit, total)}</span> of{" "}
-                      <span className="font-medium">{total}</span> results
-                    </p>
-                  </div>
-                  <div>
-                    <nav
-                      className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                      aria-label="Pagination"
-                    >
-                      <button
-                        onClick={() => setPage(Math.max(1, page - 1))}
-                        disabled={page === 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        <span className="sr-only">Previous</span>
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                      {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                        const pageNum = i + 1;
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setPage(pageNum)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                              page === pageNum
-                                ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
-                                : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => setPage(Math.min(totalPages, page + 1))}
-                        disabled={page === totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        <span className="sr-only">Next</span>
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    </nav>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      <DataTable
+        columns={columns}
+        data={supplierList}
+        totalRows={total}
+        pagination={pagination}
+        onPaginationChange={(updater) => {
+          setPagination(typeof updater === "function" ? updater(pagination) : updater);
+        }}
+        sorting={sorting}
+        onSortingChange={(updater) => {
+          setSorting(typeof updater === "function" ? updater(sorting) : updater);
+        }}
+        isLoading={suppliersQuery.isLoading}
+        onRowClick={(row: any) => router.push(`/admin/portal/suppliers/${row.id}`)}
+        emptyMessage={
+          statusFilter
+            ? "No suppliers match your filter"
+            : "No suppliers found. Get started by inviting your first supplier."
+        }
+      />
 
       {/* Invite Modal */}
       {showInviteModal && (

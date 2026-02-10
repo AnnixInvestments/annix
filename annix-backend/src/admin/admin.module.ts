@@ -23,6 +23,8 @@ import { AdminAuthService } from "./admin-auth.service";
 import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
 import { AdminMessagingController } from "./admin-messaging.controller";
+import { AdminReferenceDataController } from "./admin-reference-data.controller";
+import { AdminReferenceDataService } from "./admin-reference-data.service";
 import { AdminRfqController } from "./admin-rfq.controller";
 import { AdminRfqService } from "./admin-rfq.service";
 import { AdminSession } from "./entities/admin-session.entity";
@@ -58,10 +60,17 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
     AuditModule,
     MessagingModule,
   ],
-  providers: [AdminAuthService, AdminAuthGuard, AdminDashboardService, AdminRfqService],
+  providers: [
+    AdminAuthService,
+    AdminAuthGuard,
+    AdminDashboardService,
+    AdminReferenceDataService,
+    AdminRfqService,
+  ],
   controllers: [
     AdminAuthController,
     AdminDashboardController,
+    AdminReferenceDataController,
     AdminRfqController,
     AdminMessagingController,
   ],
