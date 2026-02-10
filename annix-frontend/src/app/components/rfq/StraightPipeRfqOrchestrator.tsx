@@ -5,8 +5,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { useToast } from "@/app/components/Toast";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
-import { useDraftManagement } from "@/app/hooks/rfq/useDraftManagement";
-import { useNixAssistant } from "@/app/hooks/rfq/useNixAssistant";
 import { adminApiClient } from "@/app/lib/api/adminApi";
 import {
   anonymousDraftsApi,
@@ -31,7 +29,7 @@ import {
   flangeWeightSync as getFlangeWeight,
   NB_TO_OD_LOOKUP,
 } from "@/app/lib/hooks/useFlangeWeights";
-import { formatLastSaved } from "@/app/lib/hooks/useRfqDraftStorage";
+import { formatLastSaved, useRfqDraftStorage } from "@/app/lib/hooks/useRfqDraftStorage";
 import type {
   BendEntry,
   FittingEntry,
@@ -257,57 +255,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     setPendingTenderDocuments,
     showCloseConfirmation,
     setShowCloseConfirmation,
-  } = useRfqWizardStore();
-
-  const rfqDataRef = useRef(rfqData);
-  rfqDataRef.current = rfqData;
-
-  const { isAuthenticated } = useOptionalCustomerAuth();
-
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-
-  // Draft management hook
-  const {
-    currentDraftId,
-    draftNumber,
-    isSavingDraft,
-    isLoadingDraft,
-    showDraftRestorePrompt,
-    pendingLocalDraft,
-    showSaveProgressDialog,
-    isSavingProgress,
-    saveProgressStep,
-    initialDraftDataRef,
-    localDraftLastSaved,
-    localDraftEmail,
-    setCurrentDraftId,
-    setDraftNumber,
-    setIsSavingDraft,
-    setIsLoadingDraft,
-    handleRestoreLocalDraft,
-    handleDiscardLocalDraft,
-    handleSaveProgressToServer,
-    handleOpenSaveProgressDialog,
-    handleCloseSaveProgressDialog,
-    saveAndSendRecoveryEmailInBackground,
-    saveLocalDraft,
-    loadLocalDraft,
-    clearLocalDraft,
-    hasLocalDraft,
-    hasCheckedLocalDraftRef,
-    hasProcessedRecoveryTokenRef,
-    setShowDraftRestorePrompt,
-    setPendingLocalDraft,
-  } = useDraftManagement({
-    rfqData,
-    currentStep,
-    isAuthenticated,
-    restoreFromDraft,
-    showToast,
-  });
-
-  // Nix AI Assistant hook
-  const {
     showNixPopup,
     isNixProcessing,
     nixProcessingProgress,
@@ -320,24 +267,89 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     showNixClarification,
     nixFormHelperVisible,
     nixFormHelperMinimized,
-    handleShowNixPopup,
-    handleNixYes,
-    handleNixNo,
-    handleStopUsingNix,
-    handleNixFormHelperClose,
-    handleNixFormHelperReactivate,
-    handleProcessDocumentsWithNix,
-    handleClarificationSubmit,
-    handleClarificationSkip,
-    handleCloseClarification,
-    handleItemsPageReady,
-  } = useNixAssistant({
-    pendingDocuments,
-    rfqData,
-    updateRfqField: updateRfqField as (field: string, value: any) => void,
-    setCurrentStep,
+    nixShowPopup,
+    nixAccept,
+    nixDecline,
+    nixStopUsing,
+    nixFormHelperClose,
+    nixFormHelperReactivate,
+    nixCloseClarification,
+    nixProcessDocuments,
+    nixSubmitClarification,
+    nixSkipClarification,
+    nixItemsPageReady,
+    currentDraftId,
+    draftNumber,
+    isSavingDraft,
+    isLoadingDraft,
+    showDraftRestorePrompt,
+    pendingLocalDraft,
+    showSaveProgressDialog,
+    isSavingProgress,
+    saveProgressStep,
+    hasCheckedLocalDraft,
+    hasProcessedRecoveryToken,
+    setCurrentDraftId,
+    setDraftNumber,
+    setIsSavingDraft,
+    setIsLoadingDraft,
+    setShowDraftRestorePrompt,
+    setPendingLocalDraft,
+    setHasCheckedLocalDraft,
+    setHasProcessedRecoveryToken,
+    draftOpenSaveProgressDialog,
+    draftCloseSaveProgressDialog,
+    draftSaveProgressToServer,
+    draftSaveAndSendRecoveryEmail,
+  } = useRfqWizardStore();
+
+  const rfqDataRef = useRef(rfqData);
+  rfqDataRef.current = rfqData;
+
+  const { isAuthenticated } = useOptionalCustomerAuth();
+
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const initialDraftDataRef = useRef<string | null>(null);
+
+  const {
+    loadDraft: loadLocalDraft,
+    saveDraft: saveLocalDraft,
+    clearDraft: clearLocalDraft,
+    hasDraft: hasLocalDraft,
+    lastSaved: localDraftLastSaved,
+    draftEmail: localDraftEmail,
+  } = useRfqDraftStorage();
+
+  const handleRestoreLocalDraft = useCallback(() => {
+    if (!pendingLocalDraft) return;
+
+    log.debug("Restoring localStorage draft:", pendingLocalDraft);
+
+    restoreFromDraft({
+      formData: pendingLocalDraft.rfqData,
+      globalSpecs: pendingLocalDraft.globalSpecs,
+      requiredProducts: pendingLocalDraft.rfqData?.requiredProducts,
+      straightPipeEntries: pendingLocalDraft.entries,
+      currentStep: pendingLocalDraft.currentStep,
+    });
+
+    setShowDraftRestorePrompt(false);
+    setPendingLocalDraft(null);
+    showToast("Draft restored successfully", "success");
+  }, [
+    pendingLocalDraft,
+    restoreFromDraft,
     showToast,
-  });
+    setShowDraftRestorePrompt,
+    setPendingLocalDraft,
+  ]);
+
+  const handleDiscardLocalDraft = useCallback(() => {
+    clearLocalDraft();
+    setShowDraftRestorePrompt(false);
+    setPendingLocalDraft(null);
+    showToast("Starting fresh", "info");
+  }, [clearLocalDraft, showToast, setShowDraftRestorePrompt, setPendingLocalDraft]);
 
   // Get filtered pressure classes for a specific standard (with caching)
   const getFilteredPressureClasses = useCallback(
@@ -560,14 +572,57 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     }
   }, [isLoadingDraft, currentDraftId, rfqData]);
 
+  // Load draft from URL parameter (?draft=ID or ?draftId=ID)
+  useEffect(() => {
+    const draftId = searchParams?.get("draft") || searchParams?.get("draftId");
+    if (!draftId) return;
+
+    log.debug("Draft parameter detected:", draftId);
+
+    const loadDraft = async () => {
+      setIsLoadingDraft(true);
+      try {
+        const draft = await draftsApi.getById(parseInt(draftId, 10));
+        log.debug("Loading draft:", draft);
+
+        restoreFromDraft({
+          formData: draft.formData,
+          globalSpecs: draft.globalSpecs as any,
+          requiredProducts: draft.requiredProducts,
+          straightPipeEntries: draft.straightPipeEntries as any,
+          currentStep: draft.currentStep,
+        });
+
+        setCurrentDraftId(draft.id);
+        setDraftNumber(draft.draftNumber);
+
+        log.debug(`Loaded draft ${draft.draftNumber}`);
+      } catch (error) {
+        log.error("Failed to load draft:", error);
+        showToast("Failed to load the saved draft. Starting with a new form.", "error");
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    };
+
+    loadDraft();
+  }, [
+    searchParams,
+    restoreFromDraft,
+    showToast,
+    setIsLoadingDraft,
+    setCurrentDraftId,
+    setDraftNumber,
+  ]);
+
   // Load anonymous draft from recovery token URL parameter
   // Also compare with localStorage draft and use the newer one
   useEffect(() => {
     const recoveryToken = searchParams?.get("recover");
     if (!recoveryToken) return;
-    if (hasProcessedRecoveryTokenRef.current) return;
+    if (hasProcessedRecoveryToken) return;
 
-    hasProcessedRecoveryTokenRef.current = true;
+    setHasProcessedRecoveryToken(true);
 
     const loadRecoveryDraft = async () => {
       setIsLoadingDraft(true);
@@ -622,7 +677,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           });
         }
 
-        hasCheckedLocalDraftRef.current = true;
+        setHasCheckedLocalDraft(true);
         showToast(`Draft restored from ${draftSource}`, "success");
       } catch (error) {
         log.error("Failed to load draft from recovery token:", error);
@@ -636,7 +691,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             straightPipeEntries: localDraft.entries,
             currentStep: localDraft.currentStep,
           });
-          hasCheckedLocalDraftRef.current = true;
+          setHasCheckedLocalDraft(true);
           showToast("Draft restored from local storage (recovery link expired)", "warning");
         } else {
           showToast("Failed to load draft. The link may have expired.", "error");
@@ -647,11 +702,21 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     };
 
     loadRecoveryDraft();
-  }, [searchParams, restoreFromDraft, clearLocalDraft, loadLocalDraft, showToast]);
+  }, [
+    searchParams,
+    restoreFromDraft,
+    clearLocalDraft,
+    loadLocalDraft,
+    showToast,
+    hasProcessedRecoveryToken,
+    setHasProcessedRecoveryToken,
+    setHasCheckedLocalDraft,
+    setIsLoadingDraft,
+  ]);
 
   // Check for existing localStorage draft on mount (for unregistered users)
   useEffect(() => {
-    if (hasCheckedLocalDraftRef.current) return;
+    if (hasCheckedLocalDraft) return;
     if (isAuthenticated) return;
     if (isLoadingDraft) return;
     if (editRfqId) return;
@@ -662,7 +727,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     const recoveryToken = searchParams?.get("recover");
     if (recoveryToken) return;
 
-    hasCheckedLocalDraftRef.current = true;
+    setHasCheckedLocalDraft(true);
 
     const draft = loadLocalDraft();
     if (draft?.rfqData) {
@@ -670,13 +735,23 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       setPendingLocalDraft(draft);
       setShowDraftRestorePrompt(true);
     }
-  }, [isAuthenticated, isLoadingDraft, editRfqId, searchParams, loadLocalDraft]);
+  }, [
+    isAuthenticated,
+    isLoadingDraft,
+    editRfqId,
+    searchParams,
+    loadLocalDraft,
+    hasCheckedLocalDraft,
+    setHasCheckedLocalDraft,
+    setPendingLocalDraft,
+    setShowDraftRestorePrompt,
+  ]);
 
   // Auto-save to localStorage for unregistered users
   useEffect(() => {
     if (isAuthenticated) return;
     if (isLoadingDraft) return;
-    if (!hasCheckedLocalDraftRef.current) return;
+    if (!hasCheckedLocalDraft) return;
 
     const hasContent =
       rfqData.customerEmail ||
@@ -1702,7 +1777,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     if (Object.keys(errors).length === 0) {
       // For unregistered users on page 1, save draft and send welcome email in background
       if (currentStep === 1) {
-        saveAndSendRecoveryEmailInBackground();
+        draftSaveAndSendRecoveryEmail(isAuthenticated);
       }
       originalNextStep();
       scrollToTop();
@@ -3129,9 +3204,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         case 1:
           return (
             <ProjectDetailsStep
-              onShowNixPopup={handleShowNixPopup}
-              onStopUsingNix={handleStopUsingNix}
-              onProcessWithNix={handleProcessDocumentsWithNix}
+              onShowNixPopup={nixShowPopup}
+              onStopUsingNix={nixStopUsing}
+              onProcessWithNix={() => nixProcessDocuments(showToast)}
               isNixProcessing={isNixProcessing}
             />
           );
@@ -3144,7 +3219,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               onCalculateFitting={handleCalculateFitting}
               fetchAvailableSchedules={fetchAvailableSchedules}
               getFilteredPressureClasses={getFilteredPressureClasses}
-              onReady={rfqData.useNix ? handleItemsPageReady : undefined}
+              onReady={rfqData.useNix ? () => nixItemsPageReady(showToast) : undefined}
             />
           );
         case 3:
@@ -3164,12 +3239,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     } else {
       switch (currentStep) {
         case 1:
-          return (
-            <ProjectDetailsStep
-              onShowNixPopup={handleShowNixPopup}
-              onStopUsingNix={handleStopUsingNix}
-            />
-          );
+          return <ProjectDetailsStep onShowNixPopup={nixShowPopup} onStopUsingNix={nixStopUsing} />;
         case 2:
           return <SpecificationsStep fetchAndSelectPressureClass={fetchAndSelectPressureClass} />;
         case 3:
@@ -3181,7 +3251,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               onCalculateFitting={handleCalculateFitting}
               fetchAvailableSchedules={fetchAvailableSchedules}
               getFilteredPressureClasses={getFilteredPressureClasses}
-              onReady={rfqData.useNix ? handleItemsPageReady : undefined}
+              onReady={rfqData.useNix ? () => nixItemsPageReady(showToast) : undefined}
             />
           );
         case 4:
@@ -3204,18 +3274,18 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col">
       {/* Nix AI Assistant Popup */}
-      <NixAiPopup isVisible={showNixPopup} onYes={handleNixYes} onNo={handleNixNo} />
+      <NixAiPopup isVisible={showNixPopup} onYes={nixAccept} onNo={nixDecline} />
 
       {/* Nix Processing Popup - shows while extracting data */}
       <NixProcessingPopup
         isVisible={isNixProcessing}
         progress={nixProcessingProgress}
         statusMessage={nixProcessingStatus}
-        estimatedTimeRemaining={nixProcessingTimeRemaining}
+        estimatedTimeRemaining={nixProcessingTimeRemaining ?? undefined}
       />
 
       {/* Nix Floating Avatar - shows when Nix is active */}
-      <NixFloatingAvatar isVisible={rfqData.useNix === true} onStopUsingNix={handleStopUsingNix} />
+      <NixFloatingAvatar isVisible={rfqData.useNix === true} onStopUsingNix={nixStopUsing} />
 
       {/* Nix Clarification Popup - shows when Nix needs user input */}
       {showNixClarification && (
@@ -3223,9 +3293,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           clarification={nixClarifications[currentClarificationIndex] || null}
           totalClarifications={nixClarifications.length}
           currentIndex={currentClarificationIndex}
-          onSubmit={handleClarificationSubmit}
-          onSkip={handleClarificationSkip}
-          onClose={handleCloseClarification}
+          onSubmit={(id: number, response: string) =>
+            nixSubmitClarification(id, response, showToast)
+          }
+          onSkip={(id: number) => nixSkipClarification(id, showToast)}
+          onClose={nixCloseClarification}
         />
       )}
 
@@ -3333,14 +3405,14 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 </div>
                 <div className="flex gap-3 p-4 bg-slate-900/50 border-t border-slate-700">
                   <button
-                    onClick={handleCloseSaveProgressDialog}
+                    onClick={draftCloseSaveProgressDialog}
                     className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-300 bg-slate-700 rounded-lg hover:bg-slate-600 transition-colors"
                     disabled={isSavingProgress}
                   >
                     Cancel
                   </button>
                   <button
-                    onClick={handleSaveProgressToServer}
+                    onClick={() => draftSaveProgressToServer(showToast)}
                     disabled={!rfqData.customerEmail || isSavingProgress}
                     className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -3401,7 +3473,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 </div>
                 <div className="flex p-4 bg-slate-900/50 border-t border-slate-700">
                   <button
-                    onClick={handleCloseSaveProgressDialog}
+                    onClick={draftCloseSaveProgressDialog}
                     className="w-full px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-500 transition-colors"
                   >
                     Got it
@@ -3482,7 +3554,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               )}
               {!isAuthenticated && (
                 <button
-                  onClick={handleOpenSaveProgressDialog}
+                  onClick={draftOpenSaveProgressDialog}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200 transition-colors"
                   title="Save progress and get a recovery link via email"
                 >
@@ -3504,7 +3576,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
               )}
               <div className="text-sm text-gray-500">{rfqData?.projectName || "New RFQ"}</div>
               {nixFormHelperMinimized && !rfqData.useNix && currentStep === 3 && (
-                <NixMinimizedButton onClick={handleNixFormHelperReactivate} />
+                <NixMinimizedButton onClick={nixFormHelperReactivate} />
               )}
               <button
                 onClick={() => {
@@ -3612,8 +3684,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       {!rfqData.useNix && currentStep === 3 && (
         <NixFormHelper
           isVisible={nixFormHelperVisible}
-          onClose={handleNixFormHelperClose}
-          onReactivate={handleNixFormHelperReactivate}
+          onClose={nixFormHelperClose}
+          onReactivate={nixFormHelperReactivate}
           isMinimized={nixFormHelperMinimized}
         />
       )}
