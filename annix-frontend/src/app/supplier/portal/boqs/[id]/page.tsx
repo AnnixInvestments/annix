@@ -47,6 +47,9 @@ interface ExtractedSpecs {
     mitreWeld: boolean;
     teeWeld: boolean;
     tackWeld: boolean;
+    gussetTeeWeld: boolean;
+    latWeld45Plus: boolean;
+    latWeldUnder45: boolean;
   };
   flangeTypes: {
     slipOn: boolean;
@@ -64,6 +67,9 @@ interface WeldTotals {
   mitreWeld: number;
   teeWeld: number;
   tackWeld: number;
+  gussetTeeWeld: number;
+  latWeld45Plus: number;
+  latWeldUnder45: number;
 }
 
 const normalizeSteelSpec = (spec: string): string => {
@@ -212,7 +218,15 @@ const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
 
   return {
     steelSpecs: Array.from(steelSpecs).sort(),
-    weldTypes: { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false },
+    weldTypes: {
+      flangeWeld: false,
+      mitreWeld: false,
+      teeWeld: false,
+      tackWeld: false,
+      gussetTeeWeld: false,
+      latWeld45Plus: false,
+      latWeldUnder45: false,
+    },
     flangeTypes,
     bnwGrade: null,
     valveTypes: [],
@@ -356,8 +370,24 @@ const countLooseFlanges = (config: string | undefined, itemType: string): number
 const extractWeldTypesFromRfqItems = (
   items: RfqItemDetail[],
 ): { weldTypes: ExtractedSpecs["weldTypes"]; totals: WeldTotals } => {
-  const weldTypes = { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false };
-  const totals = { flangeWeld: 0, mitreWeld: 0, teeWeld: 0, tackWeld: 0 };
+  const weldTypes = {
+    flangeWeld: false,
+    mitreWeld: false,
+    teeWeld: false,
+    tackWeld: false,
+    gussetTeeWeld: false,
+    latWeld45Plus: false,
+    latWeldUnder45: false,
+  };
+  const totals = {
+    flangeWeld: 0,
+    mitreWeld: 0,
+    teeWeld: 0,
+    tackWeld: 0,
+    gussetTeeWeld: 0,
+    latWeld45Plus: 0,
+    latWeldUnder45: 0,
+  };
 
   items.forEach((item) => {
     const qty = item.quantity || 1;
@@ -506,7 +536,15 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
   const [unitPrices, setUnitPrices] = useState<Record<string, Record<number, number>>>({});
   const [extractedSpecs, setExtractedSpecs] = useState<ExtractedSpecs>({
     steelSpecs: [],
-    weldTypes: { flangeWeld: false, mitreWeld: false, teeWeld: false, tackWeld: false },
+    weldTypes: {
+      flangeWeld: false,
+      mitreWeld: false,
+      teeWeld: false,
+      tackWeld: false,
+      gussetTeeWeld: false,
+      latWeld45Plus: false,
+      latWeldUnder45: false,
+    },
     flangeTypes: { slipOn: false, rotating: false, blank: false },
     bnwGrade: null,
     valveTypes: [],
@@ -518,6 +556,9 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     mitreWeld: 0,
     teeWeld: 0,
     tackWeld: 0,
+    gussetTeeWeld: 0,
+    latWeld45Plus: 0,
+    latWeldUnder45: 0,
   });
   const [pricingInputs, setPricingInputs] = useState<PricingInputs>(() => {
     if (typeof window !== "undefined") {
@@ -622,6 +663,65 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
             section.sectionType,
           ) && section.items.length > 0,
       );
+
+      const sectionWeldTypes = {
+        flangeWeld: false,
+        mitreWeld: false,
+        teeWeld: false,
+        tackWeld: false,
+        gussetTeeWeld: false,
+        latWeld45Plus: false,
+        latWeldUnder45: false,
+      };
+      const sectionWeldTotals = {
+        flangeWeld: 0,
+        mitreWeld: 0,
+        teeWeld: 0,
+        tackWeld: 0,
+        gussetTeeWeld: 0,
+        latWeld45Plus: 0,
+        latWeldUnder45: 0,
+      };
+
+      boqDetail.sections.forEach((section) => {
+        section.items.forEach((item) => {
+          const qty = item.qty || 1;
+          if (item.welds?.flangeWeld && item.welds.flangeWeld > 0) {
+            sectionWeldTypes.flangeWeld = true;
+            sectionWeldTotals.flangeWeld += item.welds.flangeWeld * qty;
+          }
+          if (item.welds?.mitreWeld && item.welds.mitreWeld > 0) {
+            sectionWeldTypes.mitreWeld = true;
+            sectionWeldTotals.mitreWeld += item.welds.mitreWeld * qty;
+          }
+          if (item.welds?.teeWeld && item.welds.teeWeld > 0) {
+            sectionWeldTypes.teeWeld = true;
+            sectionWeldTotals.teeWeld += item.welds.teeWeld * qty;
+          }
+          if (item.welds?.gussetTeeWeld && item.welds.gussetTeeWeld > 0) {
+            sectionWeldTypes.gussetTeeWeld = true;
+            sectionWeldTotals.gussetTeeWeld += item.welds.gussetTeeWeld * qty;
+          }
+          if (item.welds?.latWeld45Plus && item.welds.latWeld45Plus > 0) {
+            sectionWeldTypes.latWeld45Plus = true;
+            sectionWeldTotals.latWeld45Plus += item.welds.latWeld45Plus * qty;
+          }
+          if (item.welds?.latWeldUnder45 && item.welds.latWeldUnder45 > 0) {
+            sectionWeldTypes.latWeldUnder45 = true;
+            sectionWeldTotals.latWeldUnder45 += item.welds.latWeldUnder45 * qty;
+          }
+        });
+      });
+
+      setWeldTotals((prev) => ({
+        flangeWeld: prev.flangeWeld + sectionWeldTotals.flangeWeld,
+        mitreWeld: prev.mitreWeld + sectionWeldTotals.mitreWeld,
+        teeWeld: prev.teeWeld + sectionWeldTotals.teeWeld,
+        tackWeld: prev.tackWeld,
+        gussetTeeWeld: prev.gussetTeeWeld + sectionWeldTotals.gussetTeeWeld,
+        latWeld45Plus: prev.latWeld45Plus + sectionWeldTotals.latWeld45Plus,
+        latWeldUnder45: prev.latWeldUnder45 + sectionWeldTotals.latWeldUnder45,
+      }));
 
       setExtractedSpecs((prev) => {
         let bnwGrade: string | null = null;
@@ -786,6 +886,15 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 
         return {
           ...prev,
+          weldTypes: {
+            flangeWeld: prev.weldTypes.flangeWeld || sectionWeldTypes.flangeWeld,
+            mitreWeld: prev.weldTypes.mitreWeld || sectionWeldTypes.mitreWeld,
+            teeWeld: prev.weldTypes.teeWeld || sectionWeldTypes.teeWeld,
+            tackWeld: prev.weldTypes.tackWeld || sectionWeldTypes.tackWeld,
+            gussetTeeWeld: prev.weldTypes.gussetTeeWeld || sectionWeldTypes.gussetTeeWeld,
+            latWeld45Plus: prev.weldTypes.latWeld45Plus || sectionWeldTypes.latWeld45Plus,
+            latWeldUnder45: prev.weldTypes.latWeldUnder45 || sectionWeldTypes.latWeldUnder45,
+          },
           flangeTypes: hasBlankFlangesSection
             ? { ...prev.flangeTypes, blank: true }
             : prev.flangeTypes,
@@ -1013,7 +1122,13 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
     } else {
       boqDetail.sections.forEach((section) => {
         const hasWelds = section.items.some(
-          (item) => item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld,
+          (item) =>
+            item.welds?.flangeWeld ||
+            item.welds?.mitreWeld ||
+            item.welds?.teeWeld ||
+            item.welds?.gussetTeeWeld ||
+            item.welds?.latWeld45Plus ||
+            item.welds?.latWeldUnder45,
         );
         const hasAreas = section.items.some(
           (item) => item.areas?.intAreaM2 || item.areas?.extAreaM2,
@@ -1021,7 +1136,14 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
 
         const headers = ["#", "Description", "Qty", "Unit"];
         if (hasWelds) {
-          headers.push("Flange Weld (m)", "Mitre Weld (m)", "Tee Weld (m)");
+          headers.push(
+            "Flange Weld (m)",
+            "Mitre Weld (m)",
+            "Tee Weld (m)",
+            "Gusset Tee Weld (m)",
+            "Lat Weld 45+ (m)",
+            "Lat Weld <45 (m)",
+          );
         }
         if (hasAreas) {
           headers.push("Int Area (m²)", "Ext Area (m²)");
@@ -1035,6 +1157,9 @@ export default function SupplierBoqDetailPage({ params }: PageProps) {
               item.welds?.flangeWeld ? Number(item.welds.flangeWeld).toFixed(3) : "-",
               item.welds?.mitreWeld ? Number(item.welds.mitreWeld).toFixed(3) : "-",
               item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : "-",
+              item.welds?.gussetTeeWeld ? Number(item.welds.gussetTeeWeld).toFixed(3) : "-",
+              item.welds?.latWeld45Plus ? Number(item.welds.latWeld45Plus).toFixed(3) : "-",
+              item.welds?.latWeldUnder45 ? Number(item.welds.latWeldUnder45).toFixed(3) : "-",
             );
           }
           if (hasAreas) {
@@ -1545,6 +1670,78 @@ function PricingInputsSection({
                     value={pricingInputs.weldTypes["teeWeld"] || ""}
                     onChange={(e) =>
                       onPricingInputChange("weldTypes", "teeWeld", parseFloat(e.target.value) || 0)
+                    }
+                    placeholder="0.00"
+                    className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-gray-500 ml-1">/Lm</span>
+                </div>
+              </div>
+            )}
+            {extractedSpecs.weldTypes.gussetTeeWeld && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Gusset Tee Weld</label>
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.weldTypes["gussetTeeWeld"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange(
+                        "weldTypes",
+                        "gussetTeeWeld",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                    placeholder="0.00"
+                    className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-gray-500 ml-1">/Lm</span>
+                </div>
+              </div>
+            )}
+            {extractedSpecs.weldTypes.latWeld45Plus && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Lat Weld 45+</label>
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.weldTypes["latWeld45Plus"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange(
+                        "weldTypes",
+                        "latWeld45Plus",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                    placeholder="0.00"
+                    className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-xs text-gray-500 ml-1">/Lm</span>
+                </div>
+              </div>
+            )}
+            {extractedSpecs.weldTypes.latWeldUnder45 && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-600 flex-1">Lat Weld &lt;45</label>
+                <div className="flex items-center">
+                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={pricingInputs.weldTypes["latWeldUnder45"] || ""}
+                    onChange={(e) =>
+                      onPricingInputChange(
+                        "weldTypes",
+                        "latWeldUnder45",
+                        parseFloat(e.target.value) || 0,
+                      )
                     }
                     placeholder="0.00"
                     className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -2339,6 +2536,9 @@ const WELD_TYPE_LABELS: Record<string, string> = {
   flangeWeld: "Flange Weld",
   mitreWeld: "Mitre Weld",
   teeWeld: "Tee Weld",
+  gussetTeeWeld: "Gusset Tee Weld",
+  latWeld45Plus: "Lat Weld 45+",
+  latWeldUnder45: "Lat Weld <45",
   tackWeld: "Tack Weld (Loose Flange)",
 };
 
@@ -2503,7 +2703,13 @@ function SectionTable({
   rfqItems,
 }: SectionTableProps) {
   const hasWelds = section.items.some(
-    (item) => item.welds?.flangeWeld || item.welds?.mitreWeld || item.welds?.teeWeld,
+    (item) =>
+      item.welds?.flangeWeld ||
+      item.welds?.mitreWeld ||
+      item.welds?.teeWeld ||
+      item.welds?.gussetTeeWeld ||
+      item.welds?.latWeld45Plus ||
+      item.welds?.latWeldUnder45,
   );
   const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
 
@@ -2894,6 +3100,9 @@ function SectionTable({
     flangeWeld: section.items.reduce((sum, item) => sum + (item.welds?.flangeWeld || 0), 0),
     mitreWeld: section.items.reduce((sum, item) => sum + (item.welds?.mitreWeld || 0), 0),
     teeWeld: section.items.reduce((sum, item) => sum + (item.welds?.teeWeld || 0), 0),
+    gussetTeeWeld: section.items.reduce((sum, item) => sum + (item.welds?.gussetTeeWeld || 0), 0),
+    latWeld45Plus: section.items.reduce((sum, item) => sum + (item.welds?.latWeld45Plus || 0), 0),
+    latWeldUnder45: section.items.reduce((sum, item) => sum + (item.welds?.latWeldUnder45 || 0), 0),
     intArea: section.items.reduce((sum, item) => sum + (item.areas?.intAreaM2 || 0), 0),
     extArea: section.items.reduce((sum, item) => sum + (item.areas?.extAreaM2 || 0), 0),
     weight: isFlangesSection
@@ -2944,6 +3153,15 @@ function SectionTable({
                   <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
                     Tee Weld (m)
                   </th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Gusset Tee (m)
+                  </th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Lat 45+ (m)
+                  </th>
+                  <th className="w-24 px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                    Lat &lt;45 (m)
+                  </th>
                 </>
               )}
               {hasAreas && (
@@ -2972,7 +3190,10 @@ function SectionTable({
               const totalWeldLm =
                 (item.welds?.flangeWeld || 0) +
                 (item.welds?.mitreWeld || 0) +
-                (item.welds?.teeWeld || 0);
+                (item.welds?.teeWeld || 0) +
+                (item.welds?.gussetTeeWeld || 0) +
+                (item.welds?.latWeld45Plus || 0) +
+                (item.welds?.latWeldUnder45 || 0);
 
               return (
                 <React.Fragment key={idx}>
@@ -3012,6 +3233,21 @@ function SectionTable({
                         <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
                           {item.welds?.teeWeld ? Number(item.welds.teeWeld).toFixed(3) : "-"}
                         </td>
+                        <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                          {item.welds?.gussetTeeWeld
+                            ? Number(item.welds.gussetTeeWeld).toFixed(3)
+                            : "-"}
+                        </td>
+                        <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                          {item.welds?.latWeld45Plus
+                            ? Number(item.welds.latWeld45Plus).toFixed(3)
+                            : "-"}
+                        </td>
+                        <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                          {item.welds?.latWeldUnder45
+                            ? Number(item.welds.latWeldUnder45).toFixed(3)
+                            : "-"}
+                        </td>
                       </>
                     )}
                     {hasAreas && (
@@ -3033,7 +3269,7 @@ function SectionTable({
                       <td className="w-12"></td>
                       <td
                         className="px-3 py-1 text-xs text-blue-700"
-                        colSpan={hasWelds ? 9 : hasAreas ? 7 : 5}
+                        colSpan={hasWelds ? 11 : hasAreas ? 7 : 5}
                       >
                         <span className="font-medium">Total Weld Length:</span>{" "}
                         {totalWeldLm.toFixed(3)} Lm
@@ -3067,6 +3303,15 @@ function SectionTable({
                   </td>
                   <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
                     {Number(totals.teeWeld || 0).toFixed(3)}
+                  </td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                    {Number(totals.gussetTeeWeld || 0).toFixed(3)}
+                  </td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                    {Number(totals.latWeld45Plus || 0).toFixed(3)}
+                  </td>
+                  <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
+                    {Number(totals.latWeldUnder45 || 0).toFixed(3)}
                   </td>
                 </>
               )}

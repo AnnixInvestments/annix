@@ -63,6 +63,22 @@ const SABS_719_WALL_THICKNESS: { [key: number]: number } = {
   900: 9.5,
 };
 
+const STUB_NB_TO_OD: { [key: number]: number } = {
+  50: 60.3,
+  65: 76.1,
+  80: 88.9,
+  100: 114.3,
+};
+
+const STUB_WALL_THICKNESS: { [key: number]: number } = {
+  50: 3.9,
+  65: 3.9,
+  80: 4.0,
+  100: 4.5,
+};
+
+const STUB_LENGTH_MM = 80;
+
 const outerDiameterFromNB = (nb: number, providedOD: number = 0): number => {
   if (providedOD && providedOD > 0) return providedOD;
   return NB_TO_OD[nb] || nb * 1.05;
@@ -73,6 +89,16 @@ const wallThicknessFromNB = (nb: number, providedWT: number = 0): number => {
   return SABS_719_WALL_THICKNESS[nb] || 6.4;
 };
 
+interface StubConfig {
+  outletLocation: "branch" | "mainA" | "mainB";
+  steelSpecId?: number;
+  nominalBoreMm: number;
+  distanceFromOutletMm: number;
+  positionDegrees: number;
+  endConfiguration?: "plain" | "flanged" | "rf";
+  hasBlankFlange?: boolean;
+}
+
 interface Lateral3DPreviewProps {
   nominalBore: number;
   outerDiameter?: number;
@@ -82,6 +108,7 @@ interface Lateral3DPreviewProps {
   hasInletFlange?: boolean;
   hasOutletFlange?: boolean;
   hasBranchFlange?: boolean;
+  stubs?: StubConfig[];
 }
 
 function FlangeComponent({
@@ -133,6 +160,108 @@ function FlangeComponent({
   );
 }
 
+function StubComponent({
+  position,
+  rotation,
+  stubNB,
+  hasFlange = false,
+  hasBlankFlange = false,
+}: {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  stubNB: number;
+  hasFlange?: boolean;
+  hasBlankFlange?: boolean;
+}) {
+  const stubOD = STUB_NB_TO_OD[stubNB] || 60.3;
+  const stubWT = STUB_WALL_THICKNESS[stubNB] || 3.9;
+  const stubID = stubOD - 2 * stubWT;
+  const stubLength = STUB_LENGTH_MM / SCALE_FACTOR;
+
+  const outerRadius = stubOD / SCALE_FACTOR / 2;
+  const innerRadius = stubID / SCALE_FACTOR / 2;
+  const weldRadius = outerRadius * 0.08;
+
+  const flangeOD = stubOD * 1.8;
+  const flangeOuterRadius = flangeOD / SCALE_FACTOR / 2;
+  const flangeThickness = 0.12;
+
+  const pipeGeometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+    const holePath = new THREE.Path();
+    holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
+    shape.holes.push(holePath);
+    return new THREE.ExtrudeGeometry(shape, {
+      depth: stubLength,
+      bevelEnabled: false,
+      curveSegments: 32,
+    });
+  }, [outerRadius, innerRadius, stubLength]);
+
+  const weldGeometry = useMemo(() => {
+    return new THREE.TorusGeometry(outerRadius, weldRadius, 8, 32);
+  }, [outerRadius, weldRadius]);
+
+  const endCapGeometry = useMemo(() => {
+    return new THREE.RingGeometry(innerRadius, outerRadius, 32);
+  }, [innerRadius, outerRadius]);
+
+  const flangeGeometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, flangeOuterRadius, 0, Math.PI * 2, false);
+    const holePath = new THREE.Path();
+    holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
+    shape.holes.push(holePath);
+    return new THREE.ExtrudeGeometry(shape, {
+      depth: flangeThickness,
+      bevelEnabled: false,
+      curveSegments: 32,
+    });
+  }, [flangeOuterRadius, innerRadius, flangeThickness]);
+
+  const blankFlangeGeometry = useMemo(() => {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, flangeOuterRadius, 0, Math.PI * 2, false);
+    return new THREE.ExtrudeGeometry(shape, {
+      depth: flangeThickness * 0.6,
+      bevelEnabled: false,
+      curveSegments: 32,
+    });
+  }, [flangeOuterRadius, flangeThickness]);
+
+  return (
+    <group position={position} rotation={rotation}>
+      <mesh geometry={pipeGeometry} castShadow receiveShadow>
+        <meshStandardMaterial {...pipeOuterMat} />
+      </mesh>
+      <mesh geometry={weldGeometry} castShadow receiveShadow>
+        <meshStandardMaterial {...weldColor} />
+      </mesh>
+      {!hasFlange && (
+        <mesh geometry={endCapGeometry} position={[0, 0, stubLength]} castShadow receiveShadow>
+          <meshStandardMaterial {...pipeEndMat} />
+        </mesh>
+      )}
+      {hasFlange && (
+        <mesh geometry={flangeGeometry} position={[0, 0, stubLength]} castShadow receiveShadow>
+          <meshStandardMaterial {...flangeColor} />
+        </mesh>
+      )}
+      {hasFlange && hasBlankFlange && (
+        <mesh
+          geometry={blankFlangeGeometry}
+          position={[0, 0, stubLength + flangeThickness + 0.02]}
+          castShadow
+          receiveShadow
+        >
+          <meshStandardMaterial {...flangeColor} />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
 function LateralScene({
   nominalBore,
   outerDiameter,
@@ -142,6 +271,7 @@ function LateralScene({
   hasInletFlange = false,
   hasOutletFlange = false,
   hasBranchFlange = false,
+  stubs = [],
 }: Lateral3DPreviewProps) {
   const effectiveAngleRange = angleRange || getAngleRangeFromDegrees(angleDegrees);
   const lateralDims = getLateralDimensionsForAngle(nominalBore, effectiveAngleRange);
@@ -352,7 +482,7 @@ function LateralScene({
     const normals: number[] = [];
 
     const cotAngle = Math.cos(lateralAngle) / Math.sin(lateralAngle);
-    const cutPadding = runOuterR * 0.02;
+    const cutPadding = runOuterR * 0.05;
 
     const saddleBottomZ = (phi: number, radius: number): number => {
       const localX = radius * Math.cos(phi);
@@ -537,6 +667,28 @@ function LateralScene({
               boltCount={boltCount}
             />
           )}
+
+          {stubs
+            .filter((stub) => stub.outletLocation === "branch")
+            .map((stub, idx) => {
+              const stubDistanceScaled = stub.distanceFromOutletMm / SCALE_FACTOR;
+              const positionRad = (stub.positionDegrees * Math.PI) / 180;
+              const yPos = -heightScaled + stubDistanceScaled;
+              const xOffset = outerRadius * Math.sin(positionRad);
+              const zOffset = outerRadius * Math.cos(positionRad);
+              const stubHasFlange =
+                stub.endConfiguration === "flanged" || stub.endConfiguration === "rf";
+              return (
+                <StubComponent
+                  key={`branch-stub-${idx}`}
+                  position={[xOffset, yPos, zOffset]}
+                  rotation={[0, -positionRad, 0]}
+                  stubNB={stub.nominalBoreMm}
+                  hasFlange={stubHasFlange}
+                  hasBlankFlange={stubHasFlange && stub.hasBlankFlange}
+                />
+              );
+            })}
         </group>
 
         {hasInletFlange && (
@@ -564,6 +716,49 @@ function LateralScene({
             boltCount={boltCount}
           />
         )}
+
+        {stubs
+          .filter((stub) => stub.outletLocation !== "branch")
+          .map((stub, idx) => {
+            const stubDistanceScaled = stub.distanceFromOutletMm / SCALE_FACTOR;
+            const positionRad = (stub.positionDegrees * Math.PI) / 180;
+            const stubHasFlange =
+              stub.endConfiguration === "flanged" || stub.endConfiguration === "rf";
+
+            if (stub.outletLocation === "mainA") {
+              const xPos = -halfRunLength + stubDistanceScaled;
+              const yPos = outerRadius * Math.cos(positionRad);
+              const zPos = outerRadius * Math.sin(positionRad);
+              return (
+                <StubComponent
+                  key={`mainA-stub-${idx}`}
+                  position={[xPos, yPos, zPos]}
+                  rotation={[0, -Math.PI / 2, -positionRad]}
+                  stubNB={stub.nominalBoreMm}
+                  hasFlange={stubHasFlange}
+                  hasBlankFlange={stubHasFlange && stub.hasBlankFlange}
+                />
+              );
+            }
+
+            if (stub.outletLocation === "mainB") {
+              const xPos = halfRunLength - stubDistanceScaled;
+              const yPos = outerRadius * Math.cos(positionRad);
+              const zPos = outerRadius * Math.sin(positionRad);
+              return (
+                <StubComponent
+                  key={`mainB-stub-${idx}`}
+                  position={[xPos, yPos, zPos]}
+                  rotation={[0, Math.PI / 2, positionRad]}
+                  stubNB={stub.nominalBoreMm}
+                  hasFlange={stubHasFlange}
+                  hasBlankFlange={stubHasFlange && stub.hasBlankFlange}
+                />
+              );
+            }
+
+            return null;
+          })}
 
         <mesh
           position={[-halfRunLength, 0, 0]}
@@ -599,6 +794,7 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
     hasInletFlange = false,
     hasOutletFlange = false,
     hasBranchFlange = false,
+    stubs = [],
   } = props;
 
   const effectiveAngleRange = angleRange || getAngleRangeFromDegrees(angleDegrees);
@@ -740,6 +936,33 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
               {hasOutletFlange && hasBranchFlange && " | "}
               {hasBranchFlange && "Branch"}
             </div>
+          </>
+        )}
+        {stubs.length > 0 && (
+          <>
+            <div className="font-bold text-orange-700 mt-2 mb-1">STUBS ({stubs.length}x)</div>
+            {stubs.map((stub, idx) => {
+              const locationLabel =
+                stub.outletLocation === "branch"
+                  ? "Branch"
+                  : stub.outletLocation === "mainA"
+                    ? "Main A"
+                    : "Main B";
+              const hasStubFlange =
+                stub.endConfiguration === "flanged" || stub.endConfiguration === "rf";
+              const configLabel = hasStubFlange
+                ? stub.endConfiguration === "rf"
+                  ? "R/F"
+                  : "Flanged"
+                : "Plain";
+              return (
+                <div key={idx} className="text-gray-700 text-[10px]">
+                  {idx + 1}. {stub.nominalBoreMm}NB @ {locationLabel} ({stub.positionDegrees}°,{" "}
+                  {stub.distanceFromOutletMm}mm) - {configLabel}
+                  {stub.hasBlankFlange && " +Blank"}
+                </div>
+              );
+            })}
           </>
         )}
       </div>

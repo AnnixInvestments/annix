@@ -233,6 +233,9 @@ export interface ConsolidatedItem {
     flangeWeld?: number;
     mitreWeld?: number;
     teeWeld?: number;
+    gussetTeeWeld?: number;
+    latWeld45Plus?: number;
+    latWeldUnder45?: number;
   };
   areas?: {
     intAreaM2?: number;

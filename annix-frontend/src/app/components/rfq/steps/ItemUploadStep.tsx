@@ -38,6 +38,10 @@ const Tee3DPreview = dynamic(() => import("@/app/components/rfq/Tee3DPreview"), 
   ssr: false,
   loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
 });
+const Lateral3DPreview = dynamic(() => import("@/app/components/rfq/Lateral3DPreview"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
+});
 
 import {
   BendForm,
@@ -68,6 +72,7 @@ interface ItemWrapperProps {
   Pipe3DPreview: React.ComponentType<any> | null;
   Bend3DPreview: React.ComponentType<any> | null;
   Tee3DPreview: React.ComponentType<any> | null;
+  Lateral3DPreview: React.ComponentType<any> | null;
   availableNominalBores: number[];
   availableSchedulesMap: Record<string, any[]>;
   setAvailableSchedulesMap: (
@@ -105,6 +110,7 @@ const ItemWrapper = memo(function ItemWrapper({
   Pipe3DPreview,
   Bend3DPreview,
   Tee3DPreview,
+  Lateral3DPreview,
   availableNominalBores,
   availableSchedulesMap,
   setAvailableSchedulesMap,
@@ -231,6 +237,7 @@ const ItemWrapper = memo(function ItemWrapper({
           onCalculateFitting={onCalculateFitting}
           generateItemDescription={generateItemDescription}
           Tee3DPreview={Tee3DPreview}
+          Lateral3DPreview={Lateral3DPreview}
           pressureClassesByStandard={pressureClassesByStandard}
           getFilteredPressureClasses={getFilteredPressureClasses}
           requiredProducts={requiredProducts}
@@ -1896,6 +1903,13 @@ export default function ItemUploadStep({
                     : effectiveDrawingsHidden
                       ? null
                       : Tee3DPreview
+                }
+                Lateral3DPreview={
+                  isUnregisteredCustomer
+                    ? Lateral3DPreview
+                    : effectiveDrawingsHidden
+                      ? null
+                      : Lateral3DPreview
                 }
                 availableNominalBores={availableNominalBores}
                 availableSchedulesMap={availableSchedulesMap}

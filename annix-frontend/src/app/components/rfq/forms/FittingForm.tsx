@@ -39,6 +39,7 @@ import { log } from "@/app/lib/logger";
 import {
   calculateComprehensiveSurfaceArea,
   calculateFittingWeldVolume,
+  calculatePipeWeightPerMeter,
   getMinWallThicknessForNB,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
@@ -196,6 +197,7 @@ function FittingFormComponent({
     "GUSSET_REDUCING_TEE",
   ].includes(fittingType || "");
   const isUnequalTee = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(fittingType || "");
+  const isLateral = ["LATERAL", "REDUCING_LATERAL"].includes(fittingType || "");
   const isSABS719ForDims =
     (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
   const effectiveStandardForDims =
@@ -1505,11 +1507,41 @@ function FittingFormComponent({
 
             {/* ROW 3: Quantity & Pipe Lengths - Combined Blue Area */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-              <h4 className="text-sm font-bold text-blue-900 border-b border-blue-400 pb-1.5 mb-3">
-                Quantity & Dimensions
-              </h4>
+              <div className="flex items-center justify-between border-b border-blue-400 pb-1.5 mb-3">
+                <h4 className="text-sm font-bold text-blue-900">Quantity & Dimensions</h4>
+                {isLateral && (
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-blue-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={entry.specs?.hasStubs || false}
+                      onChange={(e) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            hasStubs: e.target.checked,
+                            numberOfStubs: e.target.checked ? 1 : undefined,
+                            stubs: e.target.checked
+                              ? [
+                                  {
+                                    steelSpecId: entry.specs?.steelSpecificationId,
+                                    nominalBoreMm: 50,
+                                    distanceFromOutletMm: 100,
+                                    outletLocation: "branch",
+                                    positionDegrees: 0,
+                                  },
+                                ]
+                              : undefined,
+                          },
+                        });
+                      }}
+                      className="w-4 h-4 text-blue-600 border-blue-300 rounded focus:ring-blue-500"
+                    />
+                    Add Stubs
+                  </label>
+                )}
+              </div>
               <div
-                className={`grid grid-cols-1 sm:grid-cols-2 ${isUnequalTee ? "md:grid-cols-6" : "md:grid-cols-3"} gap-3`}
+                className={`grid grid-cols-1 sm:grid-cols-2 ${isUnequalTee ? "md:grid-cols-6" : isLateral ? "md:grid-cols-5" : "md:grid-cols-3"} gap-3`}
               >
                 {/* Quantity */}
                 <div>
@@ -1813,6 +1845,76 @@ function FittingFormComponent({
                   );
                 })()}
 
+                {/* Pipe Length A - for Laterals in the same row */}
+                {isLateral && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Pipe Length A (mm) *
+                      {entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride && (
+                        <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
+                      )}
+                      {entry.specs?.pipeLengthAOverride && (
+                        <span className="text-orange-600 text-xs ml-1 font-normal">(Override)</span>
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      value={entry.specs?.pipeLengthAMm || ""}
+                      onChange={(e) => {
+                        const newValue = Number(e.target.value);
+                        const isOverride =
+                          entry.specs?.pipeLengthAMmAuto &&
+                          newValue !== entry.specs?.pipeLengthAMmAuto;
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            pipeLengthAMm: newValue,
+                            pipeLengthAOverride: isOverride,
+                          },
+                        });
+                      }}
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                      placeholder="e.g., 915"
+                      min="0"
+                    />
+                  </div>
+                )}
+
+                {/* Pipe Length B - for Laterals in the same row */}
+                {isLateral && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Pipe Length B (mm) *
+                      {entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride && (
+                        <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
+                      )}
+                      {entry.specs?.pipeLengthBOverride && (
+                        <span className="text-orange-600 text-xs ml-1 font-normal">(Override)</span>
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      value={entry.specs?.pipeLengthBMm || ""}
+                      onChange={(e) => {
+                        const newValue = Number(e.target.value);
+                        const isOverride =
+                          entry.specs?.pipeLengthBMmAuto &&
+                          newValue !== entry.specs?.pipeLengthBMmAuto;
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            pipeLengthBMm: newValue,
+                            pipeLengthBOverride: isOverride,
+                          },
+                        });
+                      }}
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                      placeholder="e.g., 1120"
+                      min="0"
+                    />
+                  </div>
+                )}
+
                 {/* Tee Steel Spec - Inside blue section for Unequal Tees */}
                 {isUnequalTee && (
                   <div>
@@ -1931,9 +2033,413 @@ function FittingFormComponent({
               </div>
             </div>
 
+            {/* Stubs Configuration Section - Only for Laterals when hasStubs is checked */}
+            {isLateral && entry.specs?.hasStubs && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-3">
+                <h4 className="text-sm font-bold text-orange-900 border-b border-orange-400 pb-1.5 mb-3">
+                  Stub Configuration
+                </h4>
+                <div className="space-y-4">
+                  {/* Number of Stubs */}
+                  <div className="flex items-start gap-4">
+                    <div className="w-32">
+                      <label className="block text-xs font-semibold text-orange-900 mb-1">
+                        No. of Stubs
+                      </label>
+                      <select
+                        value={entry.specs?.numberOfStubs || 1}
+                        onChange={(e) => {
+                          const count = Number(e.target.value) as 1 | 2 | 3;
+                          const currentStubs = entry.specs?.stubs || [];
+                          const defaultStub = {
+                            steelSpecId: entry.specs?.steelSpecificationId,
+                            nominalBoreMm: 50,
+                            distanceFromOutletMm: 100,
+                            outletLocation: "branch" as const,
+                            positionDegrees: 0,
+                          };
+
+                          let newStubs;
+                          if (count === 1) {
+                            newStubs = [currentStubs[0] || defaultStub];
+                          } else if (count === 2) {
+                            newStubs = [
+                              currentStubs[0] || defaultStub,
+                              currentStubs[1] || {
+                                ...defaultStub,
+                                outletLocation: "inlet" as const,
+                              },
+                            ];
+                          } else {
+                            newStubs = [
+                              currentStubs[0] || {
+                                ...defaultStub,
+                                outletLocation: "inlet" as const,
+                              },
+                              currentStubs[1] || {
+                                ...defaultStub,
+                                outletLocation: "outlet" as const,
+                              },
+                              currentStubs[2] || {
+                                ...defaultStub,
+                                outletLocation: "branch" as const,
+                              },
+                            ];
+                          }
+
+                          onUpdateEntry(entry.id, {
+                            specs: {
+                              ...entry.specs,
+                              numberOfStubs: count,
+                              stubs: newStubs,
+                            },
+                          });
+                        }}
+                        className="w-full px-2 py-1.5 border border-orange-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                      >
+                        <option value={1}>1 Stub</option>
+                        <option value={2}>2 Stubs</option>
+                        <option value={3}>3 Stubs</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Stub Details */}
+                  <div className="space-y-3">
+                    {(entry.specs?.stubs || []).map((stub: any, stubIndex: number) => (
+                      <div
+                        key={stubIndex}
+                        className="bg-white border border-orange-200 rounded-md p-3"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-bold text-orange-800">Stub {stubIndex + 1}</p>
+                          {stub.endConfiguration === "flanged" && (
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={stub.hasBlankFlange || false}
+                                onChange={(e) => {
+                                  const newStubs = [...(entry.specs?.stubs || [])];
+                                  newStubs[stubIndex] = {
+                                    ...newStubs[stubIndex],
+                                    hasBlankFlange: e.target.checked,
+                                  };
+                                  onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, stubs: newStubs },
+                                  });
+                                }}
+                                className="w-3.5 h-3.5 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                              />
+                              <span className="text-xs font-medium text-gray-700">
+                                Include Blank Flange
+                              </span>
+                            </label>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                          {/* Outlet Location */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              Outlet Location
+                            </label>
+                            <select
+                              value={stub.outletLocation || "branch"}
+                              onChange={(e) => {
+                                const newStubs = [...(entry.specs?.stubs || [])];
+                                newStubs[stubIndex] = {
+                                  ...newStubs[stubIndex],
+                                  outletLocation: e.target.value,
+                                };
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: newStubs },
+                                });
+                              }}
+                              disabled={entry.specs?.numberOfStubs === 3}
+                              className={`w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 ${
+                                entry.specs?.numberOfStubs === 3
+                                  ? "bg-gray-100 cursor-not-allowed"
+                                  : "bg-white"
+                              }`}
+                            >
+                              <option value="inlet">Inlet (A)</option>
+                              <option value="outlet">Outlet (B)</option>
+                              <option value="branch">Branch</option>
+                            </select>
+                          </div>
+
+                          {/* Steel Spec */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              Steel Spec
+                            </label>
+                            <select
+                              value={stub.steelSpecId || ""}
+                              onChange={(e) => {
+                                const newStubs = [...(entry.specs?.stubs || [])];
+                                newStubs[stubIndex] = {
+                                  ...newStubs[stubIndex],
+                                  steelSpecId: e.target.value
+                                    ? parseInt(e.target.value, 10)
+                                    : undefined,
+                                };
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: newStubs },
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                            >
+                              <option value="">Select...</option>
+                              {masterData.steelSpecs?.map((spec: any) => (
+                                <option key={spec.id} value={spec.id}>
+                                  {spec.steelSpecName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Nominal Bore */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              NB (mm)
+                            </label>
+                            <select
+                              value={stub.nominalBoreMm || ""}
+                              onChange={(e) => {
+                                const newStubs = [...(entry.specs?.stubs || [])];
+                                newStubs[stubIndex] = {
+                                  ...newStubs[stubIndex],
+                                  nominalBoreMm: e.target.value
+                                    ? parseInt(e.target.value, 10)
+                                    : undefined,
+                                };
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: newStubs },
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                            >
+                              <option value="">Select...</option>
+                              {[15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300].map(
+                                (nb) => (
+                                  <option key={nb} value={nb}>
+                                    {nb}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </div>
+
+                          {/* Distance from Outlet */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              Distance from Flange Face (mm)
+                            </label>
+                            <input
+                              type="number"
+                              value={stub.distanceFromOutletMm || ""}
+                              onChange={(e) => {
+                                const newStubs = [...(entry.specs?.stubs || [])];
+                                newStubs[stubIndex] = {
+                                  ...newStubs[stubIndex],
+                                  distanceFromOutletMm: e.target.value
+                                    ? Number(e.target.value)
+                                    : undefined,
+                                };
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: newStubs },
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                              placeholder="e.g., 100"
+                              min="0"
+                            />
+                          </div>
+
+                          {/* Position (Degrees) */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              Position (°)
+                            </label>
+                            <select
+                              value={stub.positionDegrees ?? 0}
+                              onChange={(e) => {
+                                const newStubs = [...(entry.specs?.stubs || [])];
+                                newStubs[stubIndex] = {
+                                  ...newStubs[stubIndex],
+                                  positionDegrees: Number(e.target.value),
+                                };
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: newStubs },
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                            >
+                              <option value={0}>0° (Top)</option>
+                              <option value={45}>45°</option>
+                              <option value={90}>90° (Right)</option>
+                              <option value={135}>135°</option>
+                              <option value={180}>180° (Bottom)</option>
+                              <option value={225}>225°</option>
+                              <option value={270}>270° (Left)</option>
+                              <option value={315}>315°</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Flange Specifications Row */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-orange-200">
+                          {/* End Configuration */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              End Configuration
+                            </label>
+                            <select
+                              value={stub.endConfiguration || "plain"}
+                              onChange={(e) => {
+                                const newStubs = [...(entry.specs?.stubs || [])];
+                                newStubs[stubIndex] = {
+                                  ...newStubs[stubIndex],
+                                  endConfiguration: e.target.value,
+                                  hasBlankFlange:
+                                    e.target.value === "plain" ? false : stub.hasBlankFlange,
+                                };
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: newStubs },
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                            >
+                              <option value="plain">Plain (No Flange)</option>
+                              <option value="flanged">Flanged</option>
+                              <option value="rf">R/F (Raised Face)</option>
+                            </select>
+                          </div>
+
+                          {/* Flange Standard - Only show if flanged or rf */}
+                          {(stub.endConfiguration === "flanged" ||
+                            stub.endConfiguration === "rf") && (
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                Flange Standard
+                              </label>
+                              <select
+                                value={stub.flangeStandardId || ""}
+                                onChange={(e) => {
+                                  const standardId = parseInt(e.target.value, 10) || undefined;
+                                  const newStubs = [...(entry.specs?.stubs || [])];
+                                  newStubs[stubIndex] = {
+                                    ...newStubs[stubIndex],
+                                    flangeStandardId: standardId,
+                                    flangePressureClassId: undefined,
+                                  };
+                                  onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, stubs: newStubs },
+                                  });
+                                  if (standardId) {
+                                    getFilteredPressureClasses(standardId);
+                                  }
+                                }}
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                              >
+                                <option value="">Select...</option>
+                                {masterData.flangeStandards?.map((standard: any) => (
+                                  <option key={standard.id} value={standard.id}>
+                                    {standard.code}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          {/* Pressure Class - Only show if flanged or rf */}
+                          {(stub.endConfiguration === "flanged" ||
+                            stub.endConfiguration === "rf") && (
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                Pressure Class
+                              </label>
+                              <select
+                                value={stub.flangePressureClassId || ""}
+                                onChange={(e) => {
+                                  const newStubs = [...(entry.specs?.stubs || [])];
+                                  newStubs[stubIndex] = {
+                                    ...newStubs[stubIndex],
+                                    flangePressureClassId:
+                                      parseInt(e.target.value, 10) || undefined,
+                                  };
+                                  onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, stubs: newStubs },
+                                  });
+                                }}
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                              >
+                                <option value="">Select...</option>
+                                {(() => {
+                                  const stdId = stub.flangeStandardId;
+                                  const filtered = stdId
+                                    ? pressureClassesByStandard[stdId] || []
+                                    : masterData.pressureClasses || [];
+                                  const seen = new Set<string>();
+                                  return filtered
+                                    .filter((pc: any) => {
+                                      const label =
+                                        pc.designation?.replace(/\/\d+$/, "") || pc.designation;
+                                      if (seen.has(label)) return false;
+                                      seen.add(label);
+                                      return true;
+                                    })
+                                    .map((pressureClass: any) => (
+                                      <option key={pressureClass.id} value={pressureClass.id}>
+                                        {pressureClass.designation?.replace(/\/\d+$/, "") ||
+                                          pressureClass.designation}
+                                      </option>
+                                    ));
+                                })()}
+                              </select>
+                            </div>
+                          )}
+
+                          {/* Flange Type - Only show if flanged or rf */}
+                          {(stub.endConfiguration === "flanged" ||
+                            stub.endConfiguration === "rf") && (
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                Flange Type
+                              </label>
+                              <select
+                                value={stub.flangeTypeCode || ""}
+                                onChange={(e) => {
+                                  const newStubs = [...(entry.specs?.stubs || [])];
+                                  newStubs[stubIndex] = {
+                                    ...newStubs[stubIndex],
+                                    flangeTypeCode: e.target.value || undefined,
+                                  };
+                                  onUpdateEntry(entry.id, {
+                                    specs: { ...entry.specs, stubs: newStubs },
+                                  });
+                                }}
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                              >
+                                <option value="">Select...</option>
+                                <option value="1">Table D / PN10 (Type 1)</option>
+                                <option value="2">Table E / PN16 (Type 2)</option>
+                                <option value="5">Table F / PN25 (Type 5)</option>
+                                <option value="11">Table H / PN40 (Type 11)</option>
+                                <option value="21">PN64 (Type 21)</option>
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ROW 4: Additional Specs section */}
-            {/* For Unequal Tees: full-width title */}
-            {["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
+            {/* Full-width title for Unequal Tees and Laterals */}
+            {["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE", "LATERAL", "REDUCING_LATERAL"].includes(
               entry.specs?.fittingType || "",
             ) && (
               <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5 mb-3">
@@ -1943,10 +2449,13 @@ function FittingFormComponent({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Column 1 - Additional Specs fields */}
               <div className="space-y-3">
-                {/* Title inside column for non-unequal tees */}
-                {!["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
-                  entry.specs?.fittingType || "",
-                ) && (
+                {/* Title inside column for non-unequal tees and non-laterals */}
+                {![
+                  "UNEQUAL_SHORT_TEE",
+                  "UNEQUAL_GUSSET_TEE",
+                  "LATERAL",
+                  "REDUCING_LATERAL",
+                ].includes(entry.specs?.fittingType || "") && (
                   <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
                     Additional Specs
                   </h4>
@@ -2013,90 +2522,6 @@ function FittingFormComponent({
                     {fittingType?.replace(/_/g, " ")}. Please enter pipe lengths manually.
                   </div>
                 )}
-
-                {/* Pipe Length A (for Laterals - moved from Row 2) */}
-                {entry.specs?.fittingType === "LATERAL" &&
-                  (() => {
-                    const isAutoA =
-                      entry.specs?.pipeLengthAMmAuto && !entry.specs?.pipeLengthAOverride;
-                    return (
-                      <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
-                        <label className="block text-xs font-semibold text-blue-900 mb-1">
-                          Pipe Length A (mm) *
-                          {isAutoA && (
-                            <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
-                          )}
-                          {entry.specs?.pipeLengthAOverride && (
-                            <span className="text-orange-600 text-xs ml-1 font-normal">
-                              (Override)
-                            </span>
-                          )}
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.pipeLengthAMm || ""}
-                          onChange={(e) => {
-                            const newValue = Number(e.target.value);
-                            const isOverride =
-                              entry.specs?.pipeLengthAMmAuto &&
-                              newValue !== entry.specs?.pipeLengthAMmAuto;
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                pipeLengthAMm: newValue,
-                                pipeLengthAOverride: isOverride,
-                              },
-                            });
-                          }}
-                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
-                          placeholder="e.g., 1000"
-                          min="0"
-                        />
-                      </div>
-                    );
-                  })()}
-
-                {/* Pipe Length B (for Laterals - moved from Row 2) */}
-                {entry.specs?.fittingType === "LATERAL" &&
-                  (() => {
-                    const isAutoB =
-                      entry.specs?.pipeLengthBMmAuto && !entry.specs?.pipeLengthBOverride;
-                    return (
-                      <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
-                        <label className="block text-xs font-semibold text-blue-900 mb-1">
-                          Pipe Length B (mm) *
-                          {isAutoB && (
-                            <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
-                          )}
-                          {entry.specs?.pipeLengthBOverride && (
-                            <span className="text-orange-600 text-xs ml-1 font-normal">
-                              (Override)
-                            </span>
-                          )}
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.pipeLengthBMm || ""}
-                          onChange={(e) => {
-                            const newValue = Number(e.target.value);
-                            const isOverride =
-                              entry.specs?.pipeLengthBMmAuto &&
-                              newValue !== entry.specs?.pipeLengthBMmAuto;
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                pipeLengthBMm: newValue,
-                                pipeLengthBOverride: isOverride,
-                              },
-                            });
-                          }}
-                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-blue-50"
-                          placeholder="e.g., 1000"
-                          min="0"
-                        />
-                      </div>
-                    );
-                  })()}
               </div>
 
               {/* Column 2 - Configuration & Ends - Only show if there's content to display */}
@@ -2107,6 +2532,8 @@ function FittingFormComponent({
                   "EQUAL_TEE",
                   "UNEQUAL_SHORT_TEE",
                   "UNEQUAL_GUSSET_TEE",
+                  "LATERAL",
+                  "REDUCING_LATERAL",
                 ].includes(entry.specs?.fittingType || "");
                 const showClosureLengthField = hasLooseFlange(
                   entry.specs?.pipeEndConfiguration || "",
@@ -2427,12 +2854,78 @@ function FittingFormComponent({
                         ? getClosureWeight(nominalBore, closureLengthMm, closureWallThickness)
                         : 0;
 
+                    const stubsData = (entry.specs?.stubs || []).map((stub: any) => {
+                      const stubNB = stub.nominalBoreMm || 50;
+                      const stubOdMm = NB_TO_OD_LOOKUP[stubNB] || stubNB * 1.05;
+                      const stubWallThickness = pipeWallThickness || 5;
+                      const stubLengthMm = stub.distanceFromOutletMm || 100;
+                      const stubLengthM = stubLengthMm / 1000;
+                      const stubPipeWeight =
+                        calculatePipeWeightPerMeter(stubOdMm, stubWallThickness) * stubLengthM;
+                      const stubHasFlange =
+                        stub.endConfiguration === "flanged" || stub.endConfiguration === "rf";
+                      const stubFlangeWeight = stubHasFlange
+                        ? getFlangeWeight(
+                            stubNB,
+                            pressureClassDesignation,
+                            flangeStandardCode,
+                            flangeTypeCode,
+                          )
+                        : 0;
+                      const stubBlankWeight =
+                        stubHasFlange && stub.hasBlankFlange
+                          ? isSans1123
+                            ? sansBlankFlangeWeight(stubNB, pressureClassDesignation)
+                            : getBlankFlangeWeight(stubNB, pressureClassDesignation)
+                          : 0;
+                      const stubCircMm = Math.PI * stubOdMm;
+                      const STEINMETZ_FACTOR = 2.7;
+                      const stubToMainWeldMm = STEINMETZ_FACTOR * stubOdMm;
+                      const stubFlangeWeldMm = stubHasFlange ? 2 * stubCircMm : 0;
+                      return {
+                        stubNB,
+                        stubLengthMm,
+                        stubOdMm,
+                        stubPipeWeight,
+                        stubFlangeWeight,
+                        stubBlankWeight,
+                        stubHasFlange,
+                        hasBlankFlange: stub.hasBlankFlange || false,
+                        stubToMainWeldMm,
+                        stubFlangeWeldMm,
+                        stubCircMm,
+                      };
+                    });
+
+                    const totalStubPipeWeight = stubsData.reduce(
+                      (sum: number, s: any) => sum + s.stubPipeWeight,
+                      0,
+                    );
+                    const totalStubFlangeWeight = stubsData.reduce(
+                      (sum: number, s: any) => sum + s.stubFlangeWeight,
+                      0,
+                    );
+                    const totalStubBlankWeight = stubsData.reduce(
+                      (sum: number, s: any) => sum + s.stubBlankWeight,
+                      0,
+                    );
+                    const stubFlangeCount = stubsData.filter((s: any) => s.stubHasFlange).length;
+                    const stubBlankCount = stubsData.filter(
+                      (s: any) => s.stubHasFlange && s.hasBlankFlange,
+                    ).length;
+                    const totalStubToMainWeldMm = stubsData.reduce(
+                      (sum: number, s: any) => sum + s.stubToMainWeldMm,
+                      0,
+                    );
+                    const totalStubFlangeWeldMm = stubsData.reduce(
+                      (sum: number, s: any) => sum + s.stubFlangeWeldMm,
+                      0,
+                    );
+
                     const baseWeight =
                       (entry.calculation.fittingWeight || 0) +
                       (entry.calculation.pipeWeight || 0) +
                       dynamicTotalFlangeWeight +
-                      (entry.calculation.boltWeight || 0) +
-                      (entry.calculation.nutWeight || 0) +
                       gussetWeight;
 
                     const totalWeight =
@@ -2440,7 +2933,10 @@ function FittingFormComponent({
                       totalRingWeight +
                       totalBlankFlangeWeight +
                       tackWeldTotalWeight +
-                      closureTotalWeight;
+                      closureTotalWeight +
+                      totalStubPipeWeight +
+                      totalStubFlangeWeight +
+                      totalStubBlankWeight;
 
                     return (
                       <div
@@ -2463,6 +2959,11 @@ function FittingFormComponent({
                             {pipeALength > 0 && <p>Pipe A: {pipeALength}mm</p>}
                             {pipeBLength > 0 && <p>Pipe B: {pipeBLength}mm</p>}
                             {teeHeight > 0 && <p>Height: {teeHeight}mm</p>}
+                            {stubsData.map((stub: any, idx: number) => (
+                              <p key={idx} className="text-orange-700">
+                                Stub {idx + 1}: {stub.stubLengthMm}mm @ {stub.stubNB}NB
+                              </p>
+                            ))}
                           </div>
                         </div>
 
@@ -2478,15 +2979,11 @@ function FittingFormComponent({
                             totalPipeLength > 0
                               ? (totalPipeWeight * pipeBLength) / totalPipeLength
                               : 0;
-                          const inletFlangeWeight = flangeConfig.hasInlet
-                            ? mainFlangeWeightPerUnit
-                            : 0;
-                          const outletFlangeWeight = flangeConfig.hasOutlet
-                            ? mainFlangeWeightPerUnit
-                            : 0;
-                          const teeFlangeWeight = flangeConfig.hasBranch
-                            ? branchFlangeWeightPerUnit
-                            : 0;
+
+                          const mainFlangeCount =
+                            (flangeConfig.hasInlet ? 1 : 0) + (flangeConfig.hasOutlet ? 1 : 0);
+                          const branchFlangeCountCalc = flangeConfig.hasBranch ? 1 : 0;
+                          const allSameNB = branchNB === nominalBore;
 
                           return (
                             <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
@@ -2512,23 +3009,37 @@ function FittingFormComponent({
                                     kg
                                   </p>
                                 )}
-                                {inletFlangeWeight > 0 && (
-                                  <p>Inlet Flange: {inletFlangeWeight.toFixed(2)}kg</p>
-                                )}
-                                {outletFlangeWeight > 0 && (
-                                  <p>Outlet Flange: {outletFlangeWeight.toFixed(2)}kg</p>
-                                )}
-                                {teeFlangeWeight > 0 && (
+                                {allSameNB && numFlanges > 0 && mainFlangeWeightPerUnit > 0 && (
                                   <p>
-                                    {isUnequalTeeCalc ? "Tee" : "Branch"} Flange:{" "}
-                                    {teeFlangeWeight.toFixed(2)}kg
+                                    {numFlanges} × {nominalBore}NB Flange @{" "}
+                                    {mainFlangeWeightPerUnit.toFixed(2)}kg
                                   </p>
                                 )}
+                                {!allSameNB &&
+                                  mainFlangeCount > 0 &&
+                                  mainFlangeWeightPerUnit > 0 && (
+                                    <p>
+                                      {mainFlangeCount} × {nominalBore}NB Flange @{" "}
+                                      {mainFlangeWeightPerUnit.toFixed(2)}kg
+                                    </p>
+                                  )}
+                                {!allSameNB &&
+                                  branchFlangeCountCalc > 0 &&
+                                  branchFlangeWeightPerUnit > 0 && (
+                                    <p>
+                                      1 × {branchNB}NB Flange @{" "}
+                                      {branchFlangeWeightPerUnit.toFixed(2)}
+                                      kg
+                                    </p>
+                                  )}
                                 {totalRingWeight > 0 && (
                                   <p>R/F Rings: {totalRingWeight.toFixed(2)}kg</p>
                                 )}
                                 {totalBlankFlangeWeight > 0 && (
                                   <p>Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
+                                )}
+                                {tackWeldTotalWeight > 0 && (
+                                  <p>Tack Welds: {tackWeldTotalWeight.toFixed(2)}kg</p>
                                 )}
                                 {closureTotalWeight > 0 && (
                                   <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
@@ -2544,37 +3055,95 @@ function FittingFormComponent({
                                     </p>
                                   </>
                                 )}
+                                {stubsData
+                                  .filter((s: any) => s.stubPipeWeight > 0)
+                                  .map((stub: any, idx: number) => (
+                                    <p key={`stub-pipe-${idx}`} className="text-orange-600">
+                                      Stub {stub.stubNB}NB Pipe: {stub.stubPipeWeight.toFixed(2)}kg
+                                    </p>
+                                  ))}
+                                {stubsData
+                                  .filter((s: any) => s.stubHasFlange)
+                                  .map((stub: any, idx: number) => (
+                                    <p key={`stub-flange-${idx}`} className="text-orange-600">
+                                      Stub {stub.stubNB}NB Flange:{" "}
+                                      {stub.stubFlangeWeight.toFixed(2)}kg
+                                    </p>
+                                  ))}
+                                {stubsData
+                                  .filter((s: any) => s.stubBlankWeight > 0)
+                                  .map((stub: any, idx: number) => (
+                                    <p key={`stub-blank-${idx}`} className="text-orange-600">
+                                      Stub {stub.stubNB}NB Blank: {stub.stubBlankWeight.toFixed(2)}
+                                      kg
+                                    </p>
+                                  ))}
                               </div>
                             </div>
                           );
                         })()}
 
-                        {/* Flanges - Amber for flange info */}
-                        <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
-                          <p className="text-xs text-amber-800 font-medium">Total Flanges</p>
-                          <p className="text-lg font-bold text-amber-900">
-                            {entry.calculation.numberOfFlanges || numFlanges}
-                          </p>
-                          <div className="mt-1 text-xs text-amber-700">
-                            {flangeConfig.hasInlet && <p>1 x {nominalBore}NB Flange</p>}
-                            {flangeConfig.hasOutlet && <p>1 x {nominalBore}NB Flange</p>}
-                            {flangeConfig.hasBranch && (
-                              <p>
-                                1 x {branchNB}NB {isUnequalTeeCalc ? "Tee " : ""}Flange
+                        {/* Flanges - Amber for flange info - only show if flanges exist */}
+                        {(() => {
+                          const mainFlangeCountDisplay =
+                            (flangeConfig.hasInlet ? 1 : 0) + (flangeConfig.hasOutlet ? 1 : 0);
+                          const branchFlangeCountDisplay = flangeConfig.hasBranch ? 1 : 0;
+                          const allSameNBDisplay = branchNB === nominalBore;
+                          const baseFlangeCount = mainFlangeCountDisplay + branchFlangeCountDisplay;
+                          const totalFlangeCountWithStubs = baseFlangeCount + stubFlangeCount;
+                          const totalFlangeWeightWithStubs =
+                            dynamicTotalFlangeWeight + totalStubFlangeWeight;
+
+                          if (totalFlangeCountWithStubs === 0) return null;
+
+                          const stubFlangesByNB = stubsData
+                            .filter((s: any) => s.stubHasFlange)
+                            .reduce((acc: Record<number, number>, s: any) => {
+                              acc[s.stubNB] = (acc[s.stubNB] || 0) + 1;
+                              return acc;
+                            }, {});
+
+                          return (
+                            <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
+                              <p className="text-xs text-amber-800 font-medium">Total Flanges</p>
+                              <p className="text-lg font-bold text-amber-900">
+                                {totalFlangeCountWithStubs}
                               </p>
-                            )}
-                          </div>
-                          {pressureClassDesignation && (
-                            <p className="text-xs text-amber-600 mt-1 font-medium">
-                              {pressureClassDesignation}
-                            </p>
-                          )}
-                          {dynamicTotalFlangeWeight > 0 && (
-                            <p className="text-xs text-amber-500 mt-1 font-semibold">
-                              {dynamicTotalFlangeWeight.toFixed(2)}kg total
-                            </p>
-                          )}
-                        </div>
+                              <div className="mt-1 text-xs text-amber-700">
+                                {allSameNBDisplay && baseFlangeCount > 0 && (
+                                  <p>
+                                    {baseFlangeCount} × {nominalBore}NB Flange
+                                  </p>
+                                )}
+                                {!allSameNBDisplay && mainFlangeCountDisplay > 0 && (
+                                  <p>
+                                    {mainFlangeCountDisplay} × {nominalBore}NB Flange
+                                  </p>
+                                )}
+                                {!allSameNBDisplay && branchFlangeCountDisplay > 0 && (
+                                  <p>
+                                    1 × {branchNB}NB {isUnequalTeeCalc ? "Tee " : ""}Flange
+                                  </p>
+                                )}
+                                {Object.entries(stubFlangesByNB).map(([nb, count]) => (
+                                  <p key={nb} className="text-orange-700">
+                                    {count as number} × {nb}NB Stub Flange
+                                  </p>
+                                ))}
+                              </div>
+                              {pressureClassDesignation && (
+                                <p className="text-xs text-amber-600 mt-1 font-medium">
+                                  {pressureClassDesignation}
+                                </p>
+                              )}
+                              {totalFlangeWeightWithStubs > 0 && (
+                                <p className="text-xs text-amber-500 mt-1 font-semibold">
+                                  {totalFlangeWeightWithStubs.toFixed(2)}kg total
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {/* Weld Summary with Volume - Combined */}
                         {(() => {
@@ -2596,7 +3165,24 @@ function FittingFormComponent({
                           const teeJunctionWeldMm =
                             !isGussetTee && branchOdMm > 0 ? STEINMETZ_FACTOR * branchOdMm : 0;
                           const totalWeldLinearMm =
-                            teeJunctionWeldMm + totalFlangeWeldMm + gussetWeldLengthMm;
+                            teeJunctionWeldMm +
+                            totalFlangeWeldMm +
+                            gussetWeldLengthMm +
+                            totalStubToMainWeldMm +
+                            totalStubFlangeWeldMm;
+
+                          if (totalWeldLinearMm === 0 && !fittingWeldVolume) return null;
+
+                          const isLateralFitting = ["LATERAL", "REDUCING_LATERAL"].includes(
+                            fittingType,
+                          );
+                          const angleRange = entry.specs?.angleRange as string | undefined;
+                          const isAngle45OrAbove = angleRange === "60-90" || angleRange === "45-59";
+                          const junctionWeldLabel = isLateralFitting
+                            ? isAngle45OrAbove
+                              ? "Lat Weld 45+"
+                              : "Lat Weld <45"
+                            : "Tee Junction";
 
                           return (
                             <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
@@ -2614,9 +3200,9 @@ function FittingFormComponent({
                                 </>
                               )}
                               <div className="mt-1 text-xs text-fuchsia-500 dark:text-fuchsia-400">
-                                {!isGussetTee && (
+                                {!isGussetTee && teeJunctionWeldMm > 0 && (
                                   <p>
-                                    Tee Junction: {teeJunctionWeldMm.toFixed(0)}mm @{" "}
+                                    {junctionWeldLabel}: {teeJunctionWeldMm.toFixed(0)}mm @{" "}
                                     {branchWeldThickness?.toFixed(1)}mm
                                   </p>
                                 )}
@@ -2633,9 +3219,23 @@ function FittingFormComponent({
                                     {fittingWeldThickness?.toFixed(1)}mm
                                   </p>
                                 )}
-                                <p className="font-medium mt-1">
-                                  {(totalWeldLinearMm / 1000).toFixed(2)} l/m total
-                                </p>
+                                {totalStubToMainWeldMm > 0 && (
+                                  <p className="text-orange-600">
+                                    Stub Junction ({stubsData.length}×):{" "}
+                                    {totalStubToMainWeldMm.toFixed(0)}mm
+                                  </p>
+                                )}
+                                {totalStubFlangeWeldMm > 0 && (
+                                  <p className="text-orange-600">
+                                    Stub Flanges ({stubFlangeCount}×2):{" "}
+                                    {totalStubFlangeWeldMm.toFixed(0)}mm
+                                  </p>
+                                )}
+                                {totalWeldLinearMm > 0 && (
+                                  <p className="font-medium mt-1">
+                                    {(totalWeldLinearMm / 1000).toFixed(2)} l/m total
+                                  </p>
+                                )}
                               </div>
                             </div>
                           );
@@ -2834,6 +3434,15 @@ function FittingFormComponent({
               "30-44": 30,
             };
             const angleDegrees = angleRange ? defaultAngles[angleRange] || 60 : 60;
+            const stubsForPreview = (entry.specs?.stubs || []).map((stub: any) => ({
+              outletLocation: stub.outletLocation || "branch",
+              steelSpecId: stub.steelSpecId,
+              nominalBoreMm: stub.nominalBoreMm || 50,
+              distanceFromOutletMm: stub.distanceFromOutletMm || 100,
+              positionDegrees: stub.positionDegrees || 0,
+              endConfiguration: stub.endConfiguration || "plain",
+              hasBlankFlange: stub.hasBlankFlange || false,
+            }));
             return (
               <Lateral3DPreview
                 nominalBore={nominalBore}
@@ -2850,6 +3459,7 @@ function FittingFormComponent({
                 hasBranchFlange={
                   getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasBranch
                 }
+                stubs={stubsForPreview}
               />
             );
           }

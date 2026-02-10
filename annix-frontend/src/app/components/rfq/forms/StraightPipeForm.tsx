@@ -2840,6 +2840,9 @@ function StraightPipeFormComponent({
                           {totalBlankFlangeWeight > 0 && (
                             <p>Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
                           )}
+                          {tackWeldTotalWeight > 0 && (
+                            <p>Tack Welds: {tackWeldTotalWeight.toFixed(2)}kg</p>
+                          )}
                           {closureTotalWeight > 0 && (
                             <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
                           )}

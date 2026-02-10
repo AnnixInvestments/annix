@@ -683,6 +683,9 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
             flangeWeld: item.welds["Flange Weld"],
             mitreWeld: item.welds["Mitre Weld"],
             teeWeld: item.welds["Tee Weld"],
+            gussetTeeWeld: item.welds["Gusset Tee Weld"],
+            latWeld45Plus: item.welds["Lat Weld 45+"],
+            latWeldUnder45: item.welds["Lat Weld <45"],
           }
         : undefined,
       areas:

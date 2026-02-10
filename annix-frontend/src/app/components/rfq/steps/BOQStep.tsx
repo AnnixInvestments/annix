@@ -550,9 +550,31 @@ export default function BOQStep({
       const extAreaM2 = qty * (runExtArea + branchExtArea);
       const intAreaM2 = qty * (runIntArea + branchIntArea);
 
+      // Determine weld type name based on fitting type and angle
+      const isLateral = ["LATERAL", "REDUCING_LATERAL"].includes(fittingType);
+      const isShortTee = ["SHORT_TEE", "UNEQUAL_SHORT_TEE", "SHORT_REDUCING_TEE"].includes(
+        fittingType,
+      );
+      const isGussetTee = ["GUSSET_TEE", "UNEQUAL_GUSSET_TEE", "GUSSET_REDUCING_TEE"].includes(
+        fittingType,
+      );
+      const angleRange = entry.specs?.angleRange as string | undefined;
+      const isAngle45OrAbove = angleRange === "60-90" || angleRange === "45-59";
+
+      let weldTypeName: string;
+      if (isLateral) {
+        weldTypeName = isAngle45OrAbove ? "Lat Weld 45+" : "Lat Weld <45";
+      } else if (isGussetTee) {
+        weldTypeName = "Gusset Tee Weld";
+      } else if (isShortTee) {
+        weldTypeName = "Tee Weld";
+      } else {
+        weldTypeName = "Tee Weld";
+      }
+
       // Build welds object
       const welds: Record<string, number> = {};
-      if (teeWeldLength > 0) welds["Tee Weld"] = teeWeldLength;
+      if (teeWeldLength > 0) welds[weldTypeName] = teeWeldLength;
       if (flangeWeldLength > 0) welds["Flange Weld"] = flangeWeldLength;
 
       if (existing) {
@@ -563,7 +585,7 @@ export default function BOQStep({
         if (teeWeldLength > 0)
           existing.welds = {
             ...existing.welds,
-            "Tee Weld": (existing.welds?.["Tee Weld"] || 0) + teeWeldLength,
+            [weldTypeName]: (existing.welds?.[weldTypeName] || 0) + teeWeldLength,
           };
         if (flangeWeldLength > 0)
           existing.welds = {

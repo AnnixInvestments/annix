@@ -1095,6 +1095,9 @@ class ApiClient {
     totalTeeWeldLength: number;
     outsideDiameterMm: number;
     wallThicknessMm: number;
+    gussetWeight?: number;
+    gussetSectionMm?: number;
+    gussetWeldLength?: number;
   }> {
     return this.request("/fittings/calculate", {
       method: "POST",
@@ -1726,6 +1729,9 @@ export interface ConsolidatedItemDto {
     flangeWeld?: number;
     mitreWeld?: number;
     teeWeld?: number;
+    gussetTeeWeld?: number;
+    latWeld45Plus?: number;
+    latWeldUnder45?: number;
   };
   areas?: {
     intAreaM2?: number;

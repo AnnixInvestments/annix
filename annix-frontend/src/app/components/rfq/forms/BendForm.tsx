@@ -4669,56 +4669,60 @@ function BendFormComponent({
                           </p>
                         )}
                       </div>
-                      <div className="bg-amber-100 dark:bg-amber-900/40 p-2 rounded text-center">
-                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                          Total Flanges
-                        </p>
-                        <p className="text-lg font-bold text-amber-900 dark:text-amber-100">
-                          {totalFlanges}
-                        </p>
-                        <div className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                          {bendFlangeCount > 0 && (
-                            <p>
-                              {bendFlangeCount} x {dn}NB Flange
-                            </p>
-                          )}
-                          {stub1FlangeCount > 0 && (
-                            <p>
-                              {stub1FlangeCount} x {stub1NB}NB Flange
-                            </p>
-                          )}
-                          {stub2FlangeCount > 0 && (
-                            <p>
-                              {stub2FlangeCount} x {stub2NB}NB Flange
-                            </p>
-                          )}
-                        </div>
-                        {pressureClassDesignation && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
-                            {pressureClassDesignation}
+                      {totalFlanges > 0 && (
+                        <div className="bg-amber-100 dark:bg-amber-900/40 p-2 rounded text-center">
+                          <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                            Total Flanges
                           </p>
-                        )}
-                        <p className="text-xs text-amber-500 dark:text-amber-400 mt-1 font-semibold">
-                          {dynamicTotalFlangeWeight.toFixed(2)}kg total
-                        </p>
-                        <div className="text-xs text-amber-500 dark:text-amber-400">
-                          {bendFlangeCount > 0 && (
-                            <p>
-                              {bendFlangeCount} × {mainFlangeWeightPerUnit.toFixed(2)}kg
+                          <p className="text-lg font-bold text-amber-900 dark:text-amber-100">
+                            {totalFlanges}
+                          </p>
+                          <div className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                            {bendFlangeCount > 0 && (
+                              <p>
+                                {bendFlangeCount} x {dn}NB Flange
+                              </p>
+                            )}
+                            {stub1FlangeCount > 0 && (
+                              <p>
+                                {stub1FlangeCount} x {stub1NB}NB Flange
+                              </p>
+                            )}
+                            {stub2FlangeCount > 0 && (
+                              <p>
+                                {stub2FlangeCount} x {stub2NB}NB Flange
+                              </p>
+                            )}
+                          </div>
+                          {pressureClassDesignation && (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                              {pressureClassDesignation}
                             </p>
                           )}
-                          {stub1FlangeCount > 0 && (
-                            <p>
-                              {stub1FlangeCount} × {stub1FlangeWeightPerUnit.toFixed(2)}kg
+                          {dynamicTotalFlangeWeight > 0 && (
+                            <p className="text-xs text-amber-500 dark:text-amber-400 mt-1 font-semibold">
+                              {dynamicTotalFlangeWeight.toFixed(2)}kg total
                             </p>
                           )}
-                          {stub2FlangeCount > 0 && (
-                            <p>
-                              {stub2FlangeCount} × {stub2FlangeWeightPerUnit.toFixed(2)}kg
-                            </p>
-                          )}
+                          <div className="text-xs text-amber-500 dark:text-amber-400">
+                            {bendFlangeCount > 0 && (
+                              <p>
+                                {bendFlangeCount} × {mainFlangeWeightPerUnit.toFixed(2)}kg
+                              </p>
+                            )}
+                            {stub1FlangeCount > 0 && (
+                              <p>
+                                {stub1FlangeCount} × {stub1FlangeWeightPerUnit.toFixed(2)}kg
+                              </p>
+                            )}
+                            {stub2FlangeCount > 0 && (
+                              <p>
+                                {stub2FlangeCount} × {stub2FlangeWeightPerUnit.toFixed(2)}kg
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
                         <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
                           Weight Breakdown
@@ -4727,7 +4731,7 @@ function BendFormComponent({
                           {totalWeight.toFixed(2)}kg
                         </p>
                         <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
-                          <p>Bend: {bendWeightOnly.toFixed(2)}kg</p>
+                          {bendWeightOnly > 0 && <p>Bend: {bendWeightOnly.toFixed(2)}kg</p>}
                           {tangentWeight > 0 && <p>Tangents: {tangentWeight.toFixed(2)}kg</p>}
                           {pipeAWeight > 0 && <p>Pipe A: {pipeAWeight.toFixed(2)}kg</p>}
                           {numSt >= 1 && stub1NB && stub1PipeWeight > 0 && (
@@ -4745,6 +4749,9 @@ function BendFormComponent({
                           )}
                           {totalBlankFlangeWeight > 0 && (
                             <p>Blanks: {totalBlankFlangeWeight.toFixed(2)}kg</p>
+                          )}
+                          {tackWeldTotalWeight > 0 && (
+                            <p>Tack Welds: {tackWeldTotalWeight.toFixed(2)}kg</p>
                           )}
                           {closureTotalWeight > 0 && (
                             <p>Closures: {closureTotalWeight.toFixed(2)}kg</p>
