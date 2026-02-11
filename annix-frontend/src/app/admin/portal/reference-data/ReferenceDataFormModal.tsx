@@ -2,6 +2,12 @@
 
 import { useForm } from "react-hook-form";
 import type { ColumnSchemaInfo, RelationSchemaInfo } from "@/app/lib/api/adminApi";
+import {
+  coerceFormValue,
+  formatDefaultValue,
+  HtmlInputType,
+  htmlInputType,
+} from "@/app/lib/reference-data/columnTypes";
 
 interface ReferenceDataFormModalProps {
   entityDisplayName: string;
@@ -11,39 +17,6 @@ interface ReferenceDataFormModalProps {
   isSaving: boolean;
   onSave: (data: Record<string, any>) => void;
   onCancel: () => void;
-}
-
-function inputTypeForColumn(col: ColumnSchemaInfo): string {
-  const numericTypes = [
-    "number",
-    "int",
-    "integer",
-    "float",
-    "decimal",
-    "double",
-    "bigint",
-    "smallint",
-  ];
-  if (numericTypes.includes(col.type)) return "number";
-  if (col.type === "boolean" || col.type === "bool") return "checkbox";
-  return "text";
-}
-
-function coerceValue(value: any, col: ColumnSchemaInfo): any {
-  if (value === "" || value === null || value === undefined) return null;
-  const numericTypes = [
-    "number",
-    "int",
-    "integer",
-    "float",
-    "decimal",
-    "double",
-    "bigint",
-    "smallint",
-  ];
-  if (numericTypes.includes(col.type)) return Number(value);
-  if (col.type === "boolean" || col.type === "bool") return Boolean(value);
-  return value;
 }
 
 export function ReferenceDataFormModal({
@@ -66,7 +39,7 @@ export function ReferenceDataFormModal({
   const defaultValues: Record<string, any> = {};
   formColumns.forEach((col) => {
     if (isEditing && initialData) {
-      defaultValues[col.propertyName] = initialData[col.propertyName] ?? "";
+      defaultValues[col.propertyName] = formatDefaultValue(initialData[col.propertyName], col.type);
     } else {
       defaultValues[col.propertyName] = "";
     }
@@ -87,7 +60,7 @@ export function ReferenceDataFormModal({
     const payload: Record<string, any> = {};
 
     formColumns.forEach((col) => {
-      payload[col.propertyName] = coerceValue(formData[col.propertyName], col);
+      payload[col.propertyName] = coerceFormValue(formData[col.propertyName], col.type);
     });
 
     relations.forEach((rel) => {
@@ -125,12 +98,12 @@ export function ReferenceDataFormModal({
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {formColumns.map((col) => {
-              const inputType = inputTypeForColumn(col);
-              const isBoolean = inputType === "checkbox";
+              const inputType = htmlInputType(col.type);
+              const isBooleanInput = inputType === HtmlInputType.Checkbox;
 
               return (
                 <div key={col.propertyName}>
-                  {isBoolean ? (
+                  {isBooleanInput ? (
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -149,7 +122,7 @@ export function ReferenceDataFormModal({
                       </label>
                       <input
                         type={inputType}
-                        step={inputType === "number" ? "any" : undefined}
+                        step={inputType === HtmlInputType.Number ? "any" : undefined}
                         {...register(col.propertyName, { required: !col.nullable })}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
                       />

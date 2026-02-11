@@ -25,8 +25,11 @@ export interface DataTableProps<TData> {
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   onRowClick?: (row: TData) => void;
+  onRowDoubleClick?: (row: TData) => void;
+  rowClassName?: (row: TData) => string;
   emptyMessage?: string;
   pageSizeOptions?: number[];
+  fitToScreen?: boolean;
 }
 
 function LoadingSkeleton({ columnCount }: { columnCount: number }) {
@@ -58,8 +61,11 @@ export function DataTable<TData>({
   rowSelection,
   onRowSelectionChange,
   onRowClick,
+  onRowDoubleClick,
+  rowClassName,
   emptyMessage = "No data found",
   pageSizeOptions,
+  fitToScreen = false,
 }: DataTableProps<TData>) {
   const table = useReactTable({
     data,
@@ -82,10 +88,12 @@ export function DataTable<TData>({
   const totalPages = Math.ceil(totalRows / pagination.pageSize);
 
   return (
-    <div className="bg-white shadow rounded-lg overflow-hidden">
-      <div className="overflow-x-auto">
+    <div
+      className={`bg-white shadow rounded-lg overflow-hidden ${fitToScreen ? "h-full flex flex-col" : ""}`}
+    >
+      <div className={`overflow-x-auto ${fitToScreen ? "flex-1 overflow-y-auto" : ""}`}>
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className={`bg-gray-50 ${fitToScreen ? "sticky top-0 z-10" : ""}`}>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
@@ -167,7 +175,8 @@ export function DataTable<TData>({
                 <tr
                   key={row.id}
                   onClick={() => onRowClick?.(row.original)}
-                  className={`${onRowClick ? "hover:bg-gray-50 cursor-pointer" : "hover:bg-gray-50"} transition-colors`}
+                  onDoubleClick={() => onRowDoubleClick?.(row.original)}
+                  className={`${onRowClick || onRowDoubleClick ? "cursor-pointer" : ""} ${rowClassName?.(row.original) || "hover:bg-gray-50"} transition-colors`}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -182,6 +191,7 @@ export function DataTable<TData>({
       </div>
       {totalRows > 0 && (
         <DataTablePagination
+          className={fitToScreen ? "flex-shrink-0" : ""}
           page={pagination.pageIndex + 1}
           totalPages={totalPages}
           total={totalRows}

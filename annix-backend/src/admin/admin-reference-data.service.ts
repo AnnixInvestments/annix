@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Brackets, DataSource } from "typeorm";
 import {
   ColumnSchema,
@@ -297,11 +297,84 @@ export class AdminReferenceDataService {
     return entity;
   }
 
+  private validateAndCoerce(entityName: string, data: Record<string, any>): Record<string, any> {
+    const metadata = this.entityMetadata(entityName);
+    const NUMERIC_TYPES = new Set([
+      "number",
+      "int",
+      "integer",
+      "float",
+      "decimal",
+      "double",
+      "bigint",
+      "smallint",
+    ]);
+    const DATE_TYPES = new Set(["date"]);
+    const TIMESTAMP_TYPES = new Set([
+      "timestamp",
+      "timestamptz",
+      "timestamp with time zone",
+      "timestamp without time zone",
+      "datetime",
+    ]);
+    const BOOLEAN_TYPES = new Set(["boolean", "bool"]);
+
+    const errors: string[] = [];
+    const coerced: Record<string, any> = {};
+
+    Object.entries(data).forEach(([key, value]) => {
+      const col = metadata.columns.find((c) => c.propertyName === key);
+      if (!col) {
+        coerced[key] = value;
+        return;
+      }
+
+      if (value === null || value === undefined) {
+        if (!col.isNullable && !col.isGenerated) {
+          errors.push(`${key} is required`);
+        }
+        coerced[key] = null;
+        return;
+      }
+
+      const colType =
+        typeof col.type === "function" ? col.type.name.toLowerCase() : String(col.type);
+
+      if (NUMERIC_TYPES.has(colType)) {
+        const num = Number(value);
+        if (Number.isNaN(num)) {
+          errors.push(`${key} must be a valid number`);
+        } else {
+          coerced[key] = num;
+        }
+      } else if (DATE_TYPES.has(colType) || TIMESTAMP_TYPES.has(colType)) {
+        const dateStr = String(value);
+        const parsed = new Date(dateStr);
+        if (Number.isNaN(parsed.getTime())) {
+          errors.push(`${key} must be a valid date`);
+        } else {
+          coerced[key] = DATE_TYPES.has(colType) ? dateStr.substring(0, 10) : parsed;
+        }
+      } else if (BOOLEAN_TYPES.has(colType)) {
+        coerced[key] = Boolean(value);
+      } else {
+        coerced[key] = value;
+      }
+    });
+
+    if (errors.length > 0) {
+      throw new BadRequestException(errors.join("; "));
+    }
+
+    return coerced;
+  }
+
   async createRecord(entityName: string, data: Record<string, any>): Promise<Record<string, any>> {
     const metadata = this.entityMetadata(entityName);
     const repo = this.dataSource.getRepository(metadata.target);
 
-    const entity = repo.create(data as any);
+    const validated = this.validateAndCoerce(entityName, data);
+    const entity = repo.create(validated as any);
     return repo.save(entity);
   }
 
@@ -318,7 +391,8 @@ export class AdminReferenceDataService {
       throw new NotFoundException(`Record with id ${id} not found in ${entityName}`);
     }
 
-    const merged = repo.merge(existing as any, data as any);
+    const validated = this.validateAndCoerce(entityName, data);
+    const merged = repo.merge(existing as any, validated as any);
     return repo.save(merged);
   }
 

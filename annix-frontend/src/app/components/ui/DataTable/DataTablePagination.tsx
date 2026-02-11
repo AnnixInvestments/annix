@@ -8,6 +8,7 @@ export interface DataTablePaginationProps {
   onPageChange: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
   pageSizeOptions?: number[];
+  className?: string;
 }
 
 export function DataTablePagination({
@@ -18,6 +19,7 @@ export function DataTablePagination({
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = [10, 25, 50, 100],
+  className = "",
 }: DataTablePaginationProps) {
   if (totalPages <= 1 && !onPageSizeChange) return null;
 
@@ -54,7 +56,9 @@ export function DataTablePagination({
   })();
 
   return (
-    <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+    <div
+      className={`bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 ${className}`}
+    >
       <div className="flex-1 flex justify-between sm:hidden">
         <button
           onClick={() => onPageChange(Math.max(1, page - 1))}
