@@ -1108,6 +1108,147 @@ class ApiClient {
     });
   }
 
+  // Reducer Calculator API
+  async calculateReducerMass(data: {
+    largeDiameterMm: number;
+    smallDiameterMm: number;
+    lengthMm: number;
+    wallThicknessMm: number;
+    densityKgM3?: number;
+    reducerType?: "CONCENTRIC" | "ECCENTRIC";
+    quantity?: number;
+  }): Promise<{
+    largeDiameterMm: number;
+    smallDiameterMm: number;
+    largeInnerDiameterMm: number;
+    smallInnerDiameterMm: number;
+    lengthMm: number;
+    wallThicknessMm: number;
+    densityKgM3: number;
+    outerVolumeM3: number;
+    innerVolumeM3: number;
+    steelVolumeM3: number;
+    massPerUnitKg: number;
+    totalMassKg: number;
+    quantity: number;
+    reducerType: "CONCENTRIC" | "ECCENTRIC";
+  }> {
+    return this.request("/reducer-calculator/mass", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async calculateReducerArea(data: {
+    largeDiameterMm: number;
+    smallDiameterMm: number;
+    lengthMm: number;
+    wallThicknessMm: number;
+    densityKgM3?: number;
+    reducerType?: "CONCENTRIC" | "ECCENTRIC";
+    quantity?: number;
+    extensionLargeMm?: number;
+    extensionSmallMm?: number;
+    extensionLargeWallThicknessMm?: number;
+    extensionSmallWallThicknessMm?: number;
+  }): Promise<{
+    largeDiameterMm: number;
+    smallDiameterMm: number;
+    largeInnerDiameterMm: number;
+    smallInnerDiameterMm: number;
+    lengthMm: number;
+    slantHeightMm: number;
+    coneAngleDegrees: number;
+    reducerExternalAreaM2: number;
+    reducerInternalAreaM2: number;
+    extensionLargeExternalAreaM2: number;
+    extensionLargeInternalAreaM2: number;
+    extensionSmallExternalAreaM2: number;
+    extensionSmallInternalAreaM2: number;
+    totalExternalAreaM2: number;
+    totalInternalAreaM2: number;
+    totalCombinedAreaM2: number;
+    areaPerUnitM2: number;
+    quantity: number;
+    reducerType: "CONCENTRIC" | "ECCENTRIC";
+  }> {
+    return this.request("/reducer-calculator/area", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async calculateReducerFull(data: {
+    largeDiameterMm: number;
+    smallDiameterMm: number;
+    lengthMm: number;
+    wallThicknessMm: number;
+    densityKgM3?: number;
+    reducerType?: "CONCENTRIC" | "ECCENTRIC";
+    quantity?: number;
+    extensionLargeMm?: number;
+    extensionSmallMm?: number;
+    coatingRatePerM2?: number;
+  }): Promise<{
+    mass: {
+      largeDiameterMm: number;
+      smallDiameterMm: number;
+      largeInnerDiameterMm: number;
+      smallInnerDiameterMm: number;
+      lengthMm: number;
+      wallThicknessMm: number;
+      densityKgM3: number;
+      outerVolumeM3: number;
+      innerVolumeM3: number;
+      steelVolumeM3: number;
+      massPerUnitKg: number;
+      totalMassKg: number;
+      quantity: number;
+      reducerType: "CONCENTRIC" | "ECCENTRIC";
+    };
+    area: {
+      largeDiameterMm: number;
+      smallDiameterMm: number;
+      largeInnerDiameterMm: number;
+      smallInnerDiameterMm: number;
+      lengthMm: number;
+      slantHeightMm: number;
+      coneAngleDegrees: number;
+      reducerExternalAreaM2: number;
+      reducerInternalAreaM2: number;
+      totalExternalAreaM2: number;
+      totalInternalAreaM2: number;
+      totalCombinedAreaM2: number;
+      areaPerUnitM2: number;
+      quantity: number;
+      reducerType: "CONCENTRIC" | "ECCENTRIC";
+    };
+    externalCoatingCost?: number;
+    internalCoatingCost?: number;
+    totalCoatingCost?: number;
+  }> {
+    return this.request("/reducer-calculator/full", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getStandardReducerLength(
+    largeNbMm: number,
+    smallNbMm: number,
+  ): Promise<{
+    largeNbMm: number;
+    smallNbMm: number;
+    standardLengthMm: number;
+  }> {
+    return this.request(
+      `/reducer-calculator/standard-length?largeNbMm=${largeNbMm}&smallNbMm=${smallNbMm}`,
+    );
+  }
+
   // Pipe Schedule API - For ASME B31.3 pressure-based schedule recommendation
   async recommendPipeSchedule(params: {
     nbMm: number;
@@ -1433,6 +1574,16 @@ export const masterDataApi = {
     apiClient.getAvailableAngleRanges(fittingType, nominalDiameterMm),
   calculateFitting: (data: Parameters<typeof apiClient.calculateFitting>[0]) =>
     apiClient.calculateFitting(data),
+
+  // Reducer Calculator API
+  calculateReducerMass: (data: Parameters<typeof apiClient.calculateReducerMass>[0]) =>
+    apiClient.calculateReducerMass(data),
+  calculateReducerArea: (data: Parameters<typeof apiClient.calculateReducerArea>[0]) =>
+    apiClient.calculateReducerArea(data),
+  calculateReducerFull: (data: Parameters<typeof apiClient.calculateReducerFull>[0]) =>
+    apiClient.calculateReducerFull(data),
+  getStandardReducerLength: (largeNbMm: number, smallNbMm: number) =>
+    apiClient.getStandardReducerLength(largeNbMm, smallNbMm),
 };
 
 export const authApi = {

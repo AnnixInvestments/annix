@@ -66,6 +66,7 @@ export interface FittingFormProps {
   generateItemDescription: (entry: any) => string;
   Tee3DPreview?: React.ComponentType<any> | null;
   Lateral3DPreview?: React.ComponentType<any> | null;
+  Reducer3DPreview?: React.ComponentType<any> | null;
   pressureClassesByStandard: Record<number, any[]>;
   getFilteredPressureClasses: (standardId: number) => void;
   requiredProducts?: string[];
@@ -92,6 +93,7 @@ function FittingFormComponent({
   generateItemDescription,
   Tee3DPreview,
   Lateral3DPreview,
+  Reducer3DPreview,
   pressureClassesByStandard,
   getFilteredPressureClasses,
   requiredProducts = [],
@@ -202,6 +204,7 @@ function FittingFormComponent({
   ].includes(fittingType || "");
   const isUnequalTee = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(fittingType || "");
   const isLateral = ["LATERAL", "REDUCING_LATERAL"].includes(fittingType || "");
+  const isReducer = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(fittingType || "");
   const isSABS719ForDims =
     (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
   const effectiveStandardForDims =
@@ -2183,6 +2186,111 @@ function FittingFormComponent({
                     />
                   </div>
                 )}
+
+                {/* Small Nominal Bore - For Reducers */}
+                {isReducer && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Small NB (mm) *
+                      <span className="text-blue-600 text-xs ml-1 font-normal">(outlet)</span>
+                    </label>
+                    {(() => {
+                      const mainNB = entry.specs?.nominalDiameterMm || 0;
+                      const mainSteelSpecId =
+                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const isSABS719 = mainSteelSpecId === 8;
+                      const availableSizes = isSABS719
+                        ? [...SABS719_FITTING_SIZES]
+                        : [...ALL_FITTING_SIZES];
+                      const sizes = availableSizes.filter((nb) => nb < mainNB);
+                      const options = sizes.map((nb: number) => ({
+                        value: String(nb),
+                        label: `${nb}mm`,
+                      }));
+
+                      return (
+                        <Select
+                          id={`fitting-small-nb-${entry.id}`}
+                          value={
+                            entry.specs?.smallNominalDiameterMm
+                              ? String(entry.specs.smallNominalDiameterMm)
+                              : ""
+                          }
+                          onChange={async (value) => {
+                            if (!value) return;
+                            const smallDiameter = Number(value);
+                            let reducerLength = entry.specs?.reducerLengthMm;
+
+                            if (mainNB && smallDiameter) {
+                              try {
+                                const result = await masterDataApi.getStandardReducerLength(
+                                  mainNB,
+                                  smallDiameter,
+                                );
+                                if (result?.standardLengthMm) {
+                                  reducerLength = result.standardLengthMm;
+                                }
+                              } catch (err) {
+                                log.debug("Could not fetch standard reducer length:", err);
+                              }
+                            }
+
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                smallNominalDiameterMm: smallDiameter,
+                                reducerLengthMm: reducerLength,
+                                reducerLengthMmAuto: reducerLength,
+                              },
+                            });
+                            debouncedCalculate();
+                          }}
+                          options={options}
+                          placeholder="Select..."
+                        />
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Reducer Length - For Reducers */}
+                {isReducer && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Length (mm)
+                      {entry.specs?.reducerLengthMmAuto && !entry.specs?.reducerLengthOverride && (
+                        <span className="text-green-600 text-xs ml-1 font-normal">(auto)</span>
+                      )}
+                      {entry.specs?.reducerLengthOverride && (
+                        <span className="text-orange-600 text-xs ml-1 font-normal">(override)</span>
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      value={entry.specs?.reducerLengthMm || ""}
+                      onChange={(e) => {
+                        const newValue = e.target.value ? Number(e.target.value) : undefined;
+                        const autoLength = entry.specs?.reducerLengthMmAuto;
+                        const isOverrideNow = autoLength && newValue !== autoLength;
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            reducerLengthMm: newValue,
+                            reducerLengthOverride: isOverrideNow,
+                          },
+                        });
+                        debouncedCalculate();
+                      }}
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                      placeholder={
+                        entry.specs?.reducerLengthMmAuto
+                          ? `e.g., ${entry.specs.reducerLengthMmAuto}`
+                          : "Length"
+                      }
+                      min="0"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -3551,6 +3659,7 @@ function FittingFormComponent({
           ].includes(fittingType);
 
           const isLateralType = ["LATERAL", "REDUCING_LATERAL"].includes(fittingType);
+          const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(fittingType);
 
           if (isTeeType && !Tee3DPreview) {
             return (
@@ -3568,10 +3677,18 @@ function FittingFormComponent({
             );
           }
 
-          if (!isTeeType && !isLateralType) {
+          if (isReducerType && !Reducer3DPreview) {
             return (
               <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
-                3D preview is only available for tee and lateral fittings
+                3D preview hidden. Use the toggle above to show drawings.
+              </div>
+            );
+          }
+
+          if (!isTeeType && !isLateralType && !isReducerType) {
+            return (
+              <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
+                3D preview is only available for tee, lateral, and reducer fittings
               </div>
             );
           }
@@ -3674,6 +3791,22 @@ function FittingFormComponent({
                 hasBlankBranch={blankPositions.includes("branch")}
                 closureLengthMm={entry.specs?.closureLengthMm || 150}
                 stubs={stubsForPreview}
+              />
+            );
+          }
+
+          if (isReducerType && Reducer3DPreview) {
+            const smallNominalBore = entry.specs?.smallNominalDiameterMm || nominalBore / 2;
+            const reducerLength = entry.specs?.reducerLengthMm || 280;
+            const reducerType = fittingType === "CON_REDUCER" ? "CONCENTRIC" : "ECCENTRIC";
+
+            return (
+              <Reducer3DPreview
+                largeNominalBore={nominalBore}
+                smallNominalBore={smallNominalBore}
+                lengthMm={reducerLength}
+                wallThickness={wallThickness}
+                reducerType={reducerType}
               />
             );
           }
