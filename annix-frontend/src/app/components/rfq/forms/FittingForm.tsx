@@ -19,11 +19,13 @@ import {
   tackWeldWeight as getTackWeldWeight,
   weldCountPerFitting as getWeldCountPerFitting,
   hasLooseFlange,
+  REDUCER_END_OPTIONS,
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
   SABS_1123_PRESSURE_CLASSES,
   SABS62_FITTING_SIZES,
   SABS719_FITTING_SIZES,
+  validSmallNbForLargeNb,
 } from "@/app/lib/config/rfq";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
 import {
@@ -507,7 +509,9 @@ function FittingFormComponent({
               <h4 className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
                 Fitting Specifications
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div
+                className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isReducer ? "md:grid-cols-5" : "md:grid-cols-4"}`}
+              >
                 {/* Fitting Type */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
@@ -880,6 +884,82 @@ function FittingFormComponent({
                     </div>
                   );
                 })()}
+
+                {/* Small NB (Outlet) - For Reducers Only */}
+                {isReducer && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                      Small NB (mm) *
+                      <span className="text-gray-500 text-xs ml-1 font-normal">(outlet)</span>
+                    </label>
+                    {(() => {
+                      const mainNB = entry.specs?.nominalDiameterMm || 0;
+                      const mainSteelSpecId =
+                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const steelSpecName = masterData?.steelSpecifications?.find(
+                        (s: { id: number }) => s.id === mainSteelSpecId,
+                      )?.steelSpecName;
+                      const sizes = validSmallNbForLargeNb(mainNB, mainSteelSpecId, steelSpecName);
+                      const options = sizes.map((nb: number) => ({
+                        value: String(nb),
+                        label: `${nb}mm`,
+                      }));
+
+                      return (
+                        <Select
+                          id={`fitting-small-nb-${entry.id}`}
+                          value={
+                            entry.specs?.smallNominalDiameterMm
+                              ? String(entry.specs.smallNominalDiameterMm)
+                              : ""
+                          }
+                          onChange={async (value) => {
+                            if (!value) return;
+                            const smallDiameter = Number(value);
+                            let reducerLength = entry.specs?.reducerLengthMm;
+
+                            if (mainNB && smallDiameter) {
+                              try {
+                                const result = await masterDataApi.getStandardReducerLength(
+                                  mainNB,
+                                  smallDiameter,
+                                );
+                                if (result?.standardLengthMm) {
+                                  reducerLength = result.standardLengthMm;
+                                }
+                              } catch (err) {
+                                log.debug("Could not fetch standard reducer length:", err);
+                              }
+                            }
+
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                smallNominalDiameterMm: smallDiameter,
+                                reducerLengthMm: reducerLength,
+                                reducerLengthMmAuto: reducerLength,
+                              },
+                            });
+                            debouncedCalculate();
+                          }}
+                          options={options}
+                          placeholder="Select..."
+                        />
+                      );
+                    })()}
+                    {entry.specs?.nominalDiameterMm && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {
+                          validSmallNbForLargeNb(
+                            entry.specs?.nominalDiameterMm || 0,
+                            entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId,
+                          ).length
+                        }{" "}
+                        sizes available
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Schedule/Wall Thickness */}
                 {(() => {
@@ -1530,7 +1610,7 @@ function FittingFormComponent({
                         className={defaultSelectClass}
                         required
                       >
-                        {FITTING_END_OPTIONS.map((opt) => (
+                        {(isReducer ? REDUCER_END_OPTIONS : FITTING_END_OPTIONS).map((opt) => (
                           <option key={opt.value} value={opt.value}>
                             {opt.label}
                           </option>
@@ -1626,7 +1706,7 @@ function FittingFormComponent({
                 )}
               </div>
               <div
-                className={`grid grid-cols-1 sm:grid-cols-2 ${isUnequalTee || isLateral ? "md:grid-cols-6" : "md:grid-cols-3"} gap-3`}
+                className={`grid grid-cols-1 sm:grid-cols-2 ${isUnequalTee || isLateral ? "md:grid-cols-6" : isReducer ? "md:grid-cols-3" : "md:grid-cols-3"} gap-3`}
               >
                 {/* Quantity */}
                 <div>
@@ -1662,9 +1742,14 @@ function FittingFormComponent({
                   />
                 </div>
 
-                {/* Pipe Length A - or Angle Range for Laterals/Y-Pieces */}
+                {/* Pipe Length A - or Angle Range for Laterals/Y-Pieces (not for reducers) */}
                 {(() => {
                   const fittingType = entry.specs?.fittingType;
+                  const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
+                    fittingType || "",
+                  );
+                  if (isReducerType) return null;
+
                   const isLateral = fittingType === "LATERAL" || fittingType === "Y_PIECE";
                   const isEqualTee = ["SHORT_TEE", "GUSSET_TEE", "EQUAL_TEE"].includes(
                     fittingType || "",
@@ -1815,9 +1900,14 @@ function FittingFormComponent({
                   );
                 })()}
 
-                {/* Pipe Length B - or Degrees for Laterals */}
+                {/* Pipe Length B - or Degrees for Laterals (not for reducers) */}
                 {(() => {
                   const fittingType = entry.specs?.fittingType;
+                  const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
+                    fittingType || "",
+                  );
+                  if (isReducerType) return null;
+
                   const isLateral = fittingType === "LATERAL";
                   const isYPiece = fittingType === "Y_PIECE";
                   const isEqualTee = ["SHORT_TEE", "GUSSET_TEE", "EQUAL_TEE"].includes(
@@ -2187,72 +2277,6 @@ function FittingFormComponent({
                   </div>
                 )}
 
-                {/* Small Nominal Bore - For Reducers */}
-                {isReducer && (
-                  <div>
-                    <label className="block text-xs font-semibold text-blue-900 mb-1">
-                      Small NB (mm) *
-                      <span className="text-blue-600 text-xs ml-1 font-normal">(outlet)</span>
-                    </label>
-                    {(() => {
-                      const mainNB = entry.specs?.nominalDiameterMm || 0;
-                      const mainSteelSpecId =
-                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                      const isSABS719 = mainSteelSpecId === 8;
-                      const availableSizes = isSABS719
-                        ? [...SABS719_FITTING_SIZES]
-                        : [...ALL_FITTING_SIZES];
-                      const sizes = availableSizes.filter((nb) => nb < mainNB);
-                      const options = sizes.map((nb: number) => ({
-                        value: String(nb),
-                        label: `${nb}mm`,
-                      }));
-
-                      return (
-                        <Select
-                          id={`fitting-small-nb-${entry.id}`}
-                          value={
-                            entry.specs?.smallNominalDiameterMm
-                              ? String(entry.specs.smallNominalDiameterMm)
-                              : ""
-                          }
-                          onChange={async (value) => {
-                            if (!value) return;
-                            const smallDiameter = Number(value);
-                            let reducerLength = entry.specs?.reducerLengthMm;
-
-                            if (mainNB && smallDiameter) {
-                              try {
-                                const result = await masterDataApi.getStandardReducerLength(
-                                  mainNB,
-                                  smallDiameter,
-                                );
-                                if (result?.standardLengthMm) {
-                                  reducerLength = result.standardLengthMm;
-                                }
-                              } catch (err) {
-                                log.debug("Could not fetch standard reducer length:", err);
-                              }
-                            }
-
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                smallNominalDiameterMm: smallDiameter,
-                                reducerLengthMm: reducerLength,
-                                reducerLengthMmAuto: reducerLength,
-                              },
-                            });
-                            debouncedCalculate();
-                          }}
-                          options={options}
-                          placeholder="Select..."
-                        />
-                      );
-                    })()}
-                  </div>
-                )}
-
                 {/* Reducer Length - For Reducers */}
                 {isReducer && (
                   <div>
@@ -2291,7 +2315,133 @@ function FittingFormComponent({
                     />
                   </div>
                 )}
+
+                {/* Reducer Stub - Checkbox only, sub-fields on separate row */}
+                {isReducer && (
+                  <div className="flex items-center h-full pt-5">
+                    <input
+                      type="checkbox"
+                      id={`reducer-stub-${entry.id}`}
+                      checked={entry.specs?.hasReducerStub || false}
+                      onChange={(e) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            hasReducerStub: e.target.checked,
+                            reducerStubNbMm: e.target.checked
+                              ? entry.specs?.reducerStubNbMm || 50
+                              : undefined,
+                          },
+                        });
+                        debouncedCalculate();
+                      }}
+                      className="w-4 h-4 text-blue-600 border-blue-300 rounded focus:ring-blue-500"
+                    />
+                    <label
+                      htmlFor={`reducer-stub-${entry.id}`}
+                      className="ml-2 text-xs font-semibold text-blue-900 cursor-pointer"
+                    >
+                      Add Center Stub
+                    </label>
+                  </div>
+                )}
               </div>
+
+              {/* Reducer Stub Sub-fields - Shown when Add Center Stub is checked */}
+              {isReducer && entry.specs?.hasReducerStub && (
+                <div className="mt-3 pt-3 border-t border-blue-200 grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Stub NB (mm)
+                    </label>
+                    {(() => {
+                      const smallNB = entry.specs?.smallNominalDiameterMm || 0;
+                      const stubSizes = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150].filter(
+                        (nb) => nb < smallNB,
+                      );
+                      return (
+                        <select
+                          value={entry.specs?.reducerStubNbMm || ""}
+                          onChange={(e) => {
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                reducerStubNbMm: Number(e.target.value),
+                              },
+                            });
+                            debouncedCalculate();
+                          }}
+                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                        >
+                          <option value="">Select...</option>
+                          {stubSizes.map((nb) => (
+                            <option key={nb} value={nb}>
+                              {nb}mm
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Stub Steel
+                    </label>
+                    {(() => {
+                      const mainSteelSpecId =
+                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const stubSteelSpecId =
+                        entry.specs?.reducerStubSteelSpecId || mainSteelSpecId;
+                      const isUsingMainSpec = !entry.specs?.reducerStubSteelSpecId;
+                      return (
+                        <select
+                          value={stubSteelSpecId || ""}
+                          onChange={(e) => {
+                            const newSpecId = parseInt(e.target.value, 10) || undefined;
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                reducerStubSteelSpecId: newSpecId,
+                              },
+                            });
+                            debouncedCalculate();
+                          }}
+                          className={`w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white ${
+                            isUsingMainSpec ? "border-green-500" : "border-orange-500"
+                          }`}
+                        >
+                          <option value="">Select...</option>
+                          {masterData.steelSpecs?.map((spec: any) => (
+                            <option key={spec.id} value={spec.id}>
+                              {spec.steelSpecName}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Location (mm)
+                      <span className="text-green-600 text-xs ml-1 font-normal">(center)</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={
+                        entry.specs?.reducerLengthMm
+                          ? Math.round(entry.specs.reducerLengthMm / 2)
+                          : ""
+                      }
+                      disabled
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs bg-gray-100 text-gray-700 cursor-not-allowed"
+                      placeholder="Auto"
+                    />
+                  </div>
+                  <p className="col-span-3 text-xs text-blue-600 mt-1">
+                    Stub flanged same as reducer
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Stubs Configuration Section - Only for Laterals when hasStubs is checked */}
@@ -2741,163 +2891,91 @@ function FittingFormComponent({
             )}
 
             {/* ROW 4: Additional Specs section */}
-            {/* Full-width title for Unequal Tees and Laterals */}
-            {["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE", "LATERAL", "REDUCING_LATERAL"].includes(
-              entry.specs?.fittingType || "",
-            ) && (
-              <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5 mb-3">
-                Additional Specs
-              </h4>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Column 1 - Additional Specs fields */}
-              <div className="space-y-3">
-                {/* Title inside column for non-unequal tees and non-laterals */}
-                {![
-                  "UNEQUAL_SHORT_TEE",
-                  "UNEQUAL_GUSSET_TEE",
-                  "LATERAL",
-                  "REDUCING_LATERAL",
-                ].includes(entry.specs?.fittingType || "") && (
-                  <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                    Additional Specs
-                  </h4>
-                )}
+            <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5 mb-3">
+              Additional Specs
+            </h4>
+            <div className="space-y-3">
+              {/* Branch Nominal Diameter - For Reducing Tees */}
+              {(entry.specs?.fittingType === "SHORT_REDUCING_TEE" ||
+                entry.specs?.fittingType === "GUSSET_REDUCING_TEE") && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                    Branch Nominal Diameter (mm) *
+                    <span className="text-blue-600 text-xs ml-2">(Tee Outlet Size)</span>
+                  </label>
+                  {(() => {
+                    const selectId = `fitting-branch-nb-${entry.id}`;
+                    const mainNB = entry.specs?.nominalDiameterMm || 0;
+                    const sizes = [...SABS719_FITTING_SIZES].filter((nb) => nb < mainNB);
+                    const options = sizes.map((nb: number) => ({
+                      value: String(nb),
+                      label: `${nb}mm`,
+                    }));
 
-                {/* Branch Nominal Diameter - For Reducing Tees */}
-                {(entry.specs?.fittingType === "SHORT_REDUCING_TEE" ||
-                  entry.specs?.fittingType === "GUSSET_REDUCING_TEE") && (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                      Branch Nominal Diameter (mm) *
-                      <span className="text-blue-600 text-xs ml-2">(Tee Outlet Size)</span>
-                    </label>
-                    {(() => {
-                      const selectId = `fitting-branch-nb-${entry.id}`;
-                      const mainNB = entry.specs?.nominalDiameterMm || 0;
-                      const sizes = [...SABS719_FITTING_SIZES].filter((nb) => nb < mainNB);
-                      const options = sizes.map((nb: number) => ({
-                        value: String(nb),
-                        label: `${nb}mm`,
-                      }));
-
-                      return (
-                        <Select
-                          id={selectId}
-                          value={
-                            entry.specs?.branchNominalDiameterMm
-                              ? String(entry.specs.branchNominalDiameterMm)
-                              : ""
-                          }
-                          onChange={(value) => {
-                            if (!value) return;
-                            const branchDiameter = Number(value);
-                            if (branchDiameter >= mainNB) return;
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                branchNominalDiameterMm: branchDiameter,
-                              },
-                            });
-                            debouncedCalculate();
-                          }}
-                          options={options}
-                          placeholder="Select branch diameter..."
-                        />
-                      );
-                    })()}
-                    {errors[`fitting_${index}_branchNb`] && (
-                      <p role="alert" className="mt-1 text-xs text-red-600">
-                        {errors[`fitting_${index}_branchNb`]}
-                      </p>
-                    )}
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Branch/outlet size must be smaller than main pipe (
-                      {entry.specs?.nominalDiameterMm || "--"}mm)
+                    return (
+                      <Select
+                        id={selectId}
+                        value={
+                          entry.specs?.branchNominalDiameterMm
+                            ? String(entry.specs.branchNominalDiameterMm)
+                            : ""
+                        }
+                        onChange={(value) => {
+                          if (!value) return;
+                          const branchDiameter = Number(value);
+                          if (branchDiameter >= mainNB) return;
+                          onUpdateEntry(entry.id, {
+                            specs: {
+                              ...entry.specs,
+                              branchNominalDiameterMm: branchDiameter,
+                            },
+                          });
+                          debouncedCalculate();
+                        }}
+                        options={options}
+                        placeholder="Select branch diameter..."
+                      />
+                    );
+                  })()}
+                  {errors[`fitting_${index}_branchNb`] && (
+                    <p role="alert" className="mt-1 text-xs text-red-600">
+                      {errors[`fitting_${index}_branchNb`]}
                     </p>
-                  </div>
-                )}
+                  )}
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Branch/outlet size must be smaller than main pipe (
+                    {entry.specs?.nominalDiameterMm || "--"}mm)
+                  </p>
+                </div>
+              )}
 
-                {/* Warning when standard dimensions not available */}
-                {dimensionsUnavailable && isTeeType && (
-                  <div className="col-span-full bg-amber-50 border border-amber-300 rounded-md p-2 text-amber-800 text-xs">
-                    <strong>Warning:</strong> Standard dimensions not available for {fittingNb}mm{" "}
-                    {fittingType?.replace(/_/g, " ")}. Please enter pipe lengths manually.
-                  </div>
-                )}
-              </div>
+              {/* Warning when standard dimensions not available */}
+              {dimensionsUnavailable && isTeeType && (
+                <div className="bg-amber-50 border border-amber-300 rounded-md p-2 text-amber-800 text-xs">
+                  <strong>Warning:</strong> Standard dimensions not available for {fittingNb}mm{" "}
+                  {fittingType?.replace(/_/g, " ")}. Please enter pipe lengths manually.
+                </div>
+              )}
 
-              {/* Column 2 - Configuration & Ends - Only show if there's content to display */}
-              {(() => {
-                const showLocationField = ![
-                  "SHORT_TEE",
-                  "GUSSET_TEE",
-                  "EQUAL_TEE",
-                  "UNEQUAL_SHORT_TEE",
-                  "UNEQUAL_GUSSET_TEE",
-                  "LATERAL",
-                  "REDUCING_LATERAL",
-                ].includes(entry.specs?.fittingType || "");
-                const showClosureLengthField = hasLooseFlange(
-                  entry.specs?.pipeEndConfiguration || "",
-                );
-                const hasConfigContent = showLocationField || showClosureLengthField;
-
-                if (!hasConfigContent) return null;
-
-                return (
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-bold text-gray-900 border-b border-green-500 pb-1.5">
-                      📐 Configuration
-                    </h4>
-
-                    {/* Location of Tee - Only for Reducing Tees (Unequal tees have this in blue section) */}
-                    {showLocationField && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                          Location of Tee (mm from left flange)
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.specs?.stubLocation || ""}
-                          onChange={(e) => {
-                            const value = e.target.value ? Number(e.target.value) : undefined;
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, stubLocation: value },
-                            });
-                          }}
-                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-green-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
-                          placeholder="e.g., 500"
-                          min="0"
-                        />
-                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                          Distance from left flange to center of tee outlet
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Closure Length Field - Only shown when L/F configuration is selected */}
-                    {showClosureLengthField && (
-                      <div className="mt-3 bg-purple-50 dark:bg-purple-900/30 p-3 rounded-md border border-purple-200 dark:border-purple-700">
-                        <ClosureLengthSelector
-                          nominalBore={entry.specs?.nominalDiameterMm || 100}
-                          currentValue={entry.specs?.closureLengthMm || null}
-                          wallThickness={
-                            entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5
-                          }
-                          onUpdate={(closureLength) =>
-                            onUpdateEntry(entry.id, {
-                              specs: { ...entry.specs, closureLengthMm: closureLength },
-                            })
-                          }
-                          error={errors[`fitting_${index}_closureLength`]}
-                          variant="compact"
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
+              {/* Closure Length Field - Only shown when L/F configuration is selected */}
+              {hasLooseFlange(entry.specs?.pipeEndConfiguration || "") && (
+                <div className="bg-purple-50 dark:bg-purple-900/30 p-3 rounded-md border border-purple-200 dark:border-purple-700">
+                  <ClosureLengthSelector
+                    nominalBore={entry.specs?.nominalDiameterMm || 100}
+                    currentValue={entry.specs?.closureLengthMm || null}
+                    wallThickness={
+                      entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 5
+                    }
+                    onUpdate={(closureLength) =>
+                      onUpdateEntry(entry.id, {
+                        specs: { ...entry.specs, closureLengthMm: closureLength },
+                      })
+                    }
+                    error={errors[`fitting_${index}_closureLength`]}
+                    variant="compact"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Operating Conditions - Hidden: Uses global specs for working pressure/temp */}
@@ -2948,6 +3026,229 @@ function FittingFormComponent({
                     const fittingType = entry.specs?.fittingType || "Tee";
                     const nominalBore =
                       entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm || 0;
+
+                    const isReducerCalc = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
+                      fittingType,
+                    );
+                    if (isReducerCalc) {
+                      const largeNB = nominalBore;
+                      const smallNB = entry.specs?.smallNominalDiameterMm || largeNB / 2;
+                      const reducerLengthMm = entry.specs?.reducerLengthMm || 280;
+                      const quantity = entry.specs?.quantityValue || 1;
+                      const hasStub = entry.specs?.hasReducerStub || false;
+                      const stubNB = entry.specs?.reducerStubNbMm || 50;
+                      const stubLocationMm = reducerLengthMm / 2;
+
+                      const steelSpecId =
+                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const steelSpec = masterData?.steelSpecs?.find(
+                        (s: any) => s.id === steelSpecId,
+                      );
+                      const steelSpecName = steelSpec?.steelSpecName || "";
+
+                      const flangeStandardId =
+                        entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                      const flangePressureClassId =
+                        entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                      const flangeStandard = masterData.flangeStandards?.find(
+                        (s: any) => s.id === flangeStandardId,
+                      );
+                      const flangeStandardCode = flangeStandard?.code || "";
+                      const pressureClass = masterData.pressureClasses?.find(
+                        (p: any) => p.id === flangePressureClassId,
+                      );
+                      const pressureClassDesignation = pressureClass?.designation || "";
+                      const flangeTypeCode =
+                        entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+
+                      const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      const hasLargeFlange =
+                        endConfig === "FBE" ||
+                        endConfig === "FOE" ||
+                        endConfig === "2X_RF" ||
+                        endConfig === "2X_LF" ||
+                        endConfig === "FOE_RF" ||
+                        endConfig === "FOE_LF" ||
+                        endConfig === "RF_LF";
+                      const hasSmallFlange =
+                        endConfig === "FBE" ||
+                        endConfig === "2X_RF" ||
+                        endConfig === "2X_LF" ||
+                        endConfig === "FOE_RF" ||
+                        endConfig === "FOE_LF" ||
+                        endConfig === "RF_LF";
+
+                      const largeOD = NB_TO_OD_LOOKUP[largeNB] || largeNB * 1.05;
+                      const smallOD = NB_TO_OD_LOOKUP[smallNB] || smallNB * 1.05;
+                      const wallThickness = entry.calculation?.wallThicknessMm || 6;
+
+                      const avgOD = (largeOD + smallOD) / 2;
+                      const reducerLengthM = reducerLengthMm / 1000;
+                      const reducerPipeWeight =
+                        calculatePipeWeightPerMeter(avgOD, wallThickness) * reducerLengthM;
+
+                      const largeFlangeWeight =
+                        hasLargeFlange && pressureClassDesignation
+                          ? getFlangeWeight(
+                              largeNB,
+                              pressureClassDesignation,
+                              flangeStandardCode,
+                              flangeTypeCode,
+                            )
+                          : 0;
+                      const smallFlangeWeight =
+                        hasSmallFlange && pressureClassDesignation
+                          ? getFlangeWeight(
+                              smallNB,
+                              pressureClassDesignation,
+                              flangeStandardCode,
+                              flangeTypeCode,
+                            )
+                          : 0;
+                      const numFlanges = (hasLargeFlange ? 1 : 0) + (hasSmallFlange ? 1 : 0);
+
+                      const stubOD = hasStub ? NB_TO_OD_LOOKUP[stubNB] || stubNB * 1.05 : 0;
+                      const stubWT = hasStub
+                        ? FITTING_CLASS_WALL_THICKNESS["STD"][stubNB] || wallThickness
+                        : 0;
+                      const stubLengthMm = 150;
+                      const stubPipeWeight = hasStub
+                        ? calculatePipeWeightPerMeter(stubOD, stubWT) * (stubLengthMm / 1000)
+                        : 0;
+                      const stubFlangeWeight = hasStub
+                        ? getFlangeWeight(
+                            stubNB,
+                            pressureClassDesignation,
+                            flangeStandardCode,
+                            flangeTypeCode,
+                          )
+                        : 0;
+
+                      const totalWeight =
+                        (reducerPipeWeight +
+                          largeFlangeWeight +
+                          smallFlangeWeight +
+                          stubPipeWeight +
+                          stubFlangeWeight) *
+                        quantity;
+
+                      const largeCircMm = Math.PI * largeOD;
+                      const smallCircMm = Math.PI * smallOD;
+                      const stubCircMm = hasStub ? Math.PI * stubOD : 0;
+                      const STEINMETZ_FACTOR = 2.7;
+
+                      const largeEndWeldMm = hasLargeFlange ? 2 * largeCircMm : largeCircMm;
+                      const smallEndWeldMm = hasSmallFlange ? 2 * smallCircMm : smallCircMm;
+                      const stubJunctionWeldMm = hasStub ? STEINMETZ_FACTOR * stubOD : 0;
+                      const stubFlangeWeldMm = hasStub ? 2 * stubCircMm : 0;
+                      const totalWeldMm =
+                        largeEndWeldMm + smallEndWeldMm + stubJunctionWeldMm + stubFlangeWeldMm;
+
+                      return (
+                        <div
+                          className="grid gap-3"
+                          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}
+                        >
+                          <div className="bg-blue-50 p-2 rounded text-center border border-blue-200">
+                            <p className="text-xs text-blue-800 font-medium">Qty & Dimensions</p>
+                            <p className="text-lg font-bold text-blue-900">
+                              {quantity} ×{" "}
+                              {fittingType === "CON_REDUCER" ? "Concentric" : "Eccentric"}
+                            </p>
+                            <div className="mt-1 space-y-0.5 text-xs text-blue-700">
+                              <p>Large: {largeNB}NB</p>
+                              <p>Small: {smallNB}NB</p>
+                              <p>Length: {reducerLengthMm}mm</p>
+                              {hasStub && (
+                                <p className="text-orange-700">
+                                  Stub: {stubNB}NB @ {stubLocationMm}mm
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                              Weight Breakdown
+                            </p>
+                            <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
+                              {totalWeight.toFixed(2)}kg
+                            </p>
+                            <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
+                              <p>Reducer: {(reducerPipeWeight * quantity).toFixed(2)}kg</p>
+                              {hasLargeFlange && largeFlangeWeight > 0 && (
+                                <p>
+                                  {largeNB}NB Flange: {(largeFlangeWeight * quantity).toFixed(2)}kg
+                                </p>
+                              )}
+                              {hasSmallFlange && smallFlangeWeight > 0 && (
+                                <p>
+                                  {smallNB}NB Flange: {(smallFlangeWeight * quantity).toFixed(2)}kg
+                                </p>
+                              )}
+                              {hasStub && stubPipeWeight > 0 && (
+                                <p className="text-orange-600">
+                                  Stub Pipe: {(stubPipeWeight * quantity).toFixed(2)}kg
+                                </p>
+                              )}
+                              {hasStub && stubFlangeWeight > 0 && (
+                                <p className="text-orange-600">
+                                  Stub Flange: {(stubFlangeWeight * quantity).toFixed(2)}kg
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {numFlanges + (hasStub ? 1 : 0) > 0 && (
+                            <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
+                              <p className="text-xs text-amber-800 font-medium">Total Flanges</p>
+                              <p className="text-lg font-bold text-amber-900">
+                                {numFlanges + (hasStub ? 1 : 0)}
+                              </p>
+                              <div className="mt-1 text-xs text-amber-700">
+                                {hasLargeFlange && <p>1 × {largeNB}NB (Large)</p>}
+                                {hasSmallFlange && <p>1 × {smallNB}NB (Small)</p>}
+                                {hasStub && (
+                                  <p className="text-orange-700">1 × {stubNB}NB (Stub)</p>
+                                )}
+                              </div>
+                              {pressureClassDesignation && (
+                                <p className="text-xs text-amber-600 mt-1 font-medium">
+                                  {pressureClassDesignation}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
+                            <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400 font-medium">
+                              Weld Summary
+                            </p>
+                            <p className="text-lg font-bold text-fuchsia-900 dark:text-fuchsia-100">
+                              {(totalWeldMm / 1000).toFixed(2)}
+                            </p>
+                            <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400">
+                              l/m total
+                            </p>
+                            <div className="mt-1 text-xs text-fuchsia-500 dark:text-fuchsia-400">
+                              <p>Large End: {largeEndWeldMm.toFixed(0)}mm</p>
+                              <p>Small End: {smallEndWeldMm.toFixed(0)}mm</p>
+                              {hasStub && stubJunctionWeldMm > 0 && (
+                                <p className="text-orange-600">
+                                  Stub Junction: {stubJunctionWeldMm.toFixed(0)}mm
+                                </p>
+                              )}
+                              {hasStub && stubFlangeWeldMm > 0 && (
+                                <p className="text-orange-600">
+                                  Stub Flange: {stubFlangeWeldMm.toFixed(0)}mm
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     const isUnequalTeeCalc = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
                       fittingType,
                     );
@@ -3799,6 +4100,38 @@ function FittingFormComponent({
             const smallNominalBore = entry.specs?.smallNominalDiameterMm || nominalBore / 2;
             const reducerLength = entry.specs?.reducerLengthMm || 280;
             const reducerType = fittingType === "CON_REDUCER" ? "CONCENTRIC" : "ECCENTRIC";
+            const hasStub = entry.specs?.hasReducerStub || false;
+            const stubNb = entry.specs?.reducerStubNbMm || 50;
+            const stubLocation = reducerLength ? Math.round(reducerLength / 2) : undefined;
+
+            const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+            const hasLargeFlange =
+              endConfig === "FBE" ||
+              endConfig === "FOE" ||
+              endConfig === "2X_RF" ||
+              endConfig === "2X_LF" ||
+              endConfig === "FOE_RF" ||
+              endConfig === "FOE_LF" ||
+              endConfig === "RF_LF";
+            const hasSmallFlange =
+              endConfig === "FBE" ||
+              endConfig === "2X_RF" ||
+              endConfig === "2X_LF" ||
+              endConfig === "FOE_RF" ||
+              endConfig === "FOE_LF" ||
+              endConfig === "RF_LF";
+            const largeEndFlangeType =
+              endConfig === "2X_RF" || endConfig === "FOE_RF" || endConfig === "RF_LF"
+                ? "rotating"
+                : endConfig === "2X_LF" || endConfig === "FOE_LF"
+                  ? "loose"
+                  : "fixed";
+            const smallEndFlangeType =
+              endConfig === "2X_RF" || endConfig === "FOE_RF"
+                ? "rotating"
+                : endConfig === "2X_LF" || endConfig === "FOE_LF" || endConfig === "RF_LF"
+                  ? "loose"
+                  : "fixed";
 
             return (
               <Reducer3DPreview
@@ -3807,6 +4140,13 @@ function FittingFormComponent({
                 lengthMm={reducerLength}
                 wallThickness={wallThickness}
                 reducerType={reducerType}
+                hasLargeEndFlange={hasLargeFlange}
+                hasSmallEndFlange={hasSmallFlange}
+                largeEndFlangeType={largeEndFlangeType}
+                smallEndFlangeType={smallEndFlangeType}
+                hasCenterStub={hasStub}
+                stubNominalBore={stubNb}
+                stubLocationMm={stubLocation}
               />
             );
           }

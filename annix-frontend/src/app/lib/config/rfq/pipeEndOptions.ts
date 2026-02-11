@@ -108,6 +108,73 @@ export const BEND_END_OPTIONS = [
   },
 ] as const;
 
+export const REDUCER_END_OPTIONS = [
+  {
+    value: "PE",
+    label: "PE - Plain ended (0 welds)",
+    weldCount: 0,
+    flangeWeldCount: 0,
+    tackWeldEnds: 0,
+    flangeCount: 0,
+  },
+  {
+    value: "FOE",
+    label: "FOE - Flanged one end (1 weld)",
+    weldCount: 1,
+    flangeWeldCount: 1,
+    tackWeldEnds: 0,
+    flangeCount: 1,
+  },
+  {
+    value: "FBE",
+    label: "FBE - Flanged both ends (2 welds)",
+    weldCount: 2,
+    flangeWeldCount: 2,
+    tackWeldEnds: 0,
+    flangeCount: 2,
+  },
+  {
+    value: "2X_RF",
+    label: "R/F x 2 - Rotating flanges both ends (2 welds)",
+    weldCount: 2,
+    flangeWeldCount: 2,
+    tackWeldEnds: 0,
+    flangeCount: 2,
+  },
+  {
+    value: "2X_LF",
+    label: "L/F x 2 - Loose flanges both ends (tack welds only)",
+    weldCount: 0,
+    flangeWeldCount: 0,
+    tackWeldEnds: 2,
+    flangeCount: 2,
+  },
+  {
+    value: "FOE_RF",
+    label: "FOE + R/F - Fixed + rotating flange (2 welds)",
+    weldCount: 2,
+    flangeWeldCount: 2,
+    tackWeldEnds: 0,
+    flangeCount: 2,
+  },
+  {
+    value: "FOE_LF",
+    label: "FOE + L/F - Fixed + loose flange (1 weld + tack)",
+    weldCount: 1,
+    flangeWeldCount: 1,
+    tackWeldEnds: 1,
+    flangeCount: 2,
+  },
+  {
+    value: "RF_LF",
+    label: "R/F + L/F - Rotating + loose flange (1 weld + tack)",
+    weldCount: 1,
+    flangeWeldCount: 1,
+    tackWeldEnds: 1,
+    flangeCount: 2,
+  },
+] as const;
+
 export const FITTING_END_OPTIONS = [
   {
     value: "PE",
@@ -242,6 +309,7 @@ export type FlangeType = "fixed" | "loose" | "rotating" | "dynamic" | null;
 export type PipeEndOption = (typeof PIPE_END_OPTIONS)[number];
 export type BendEndOption = (typeof BEND_END_OPTIONS)[number];
 export type FittingEndOption = (typeof FITTING_END_OPTIONS)[number];
+export type ReducerEndOption = (typeof REDUCER_END_OPTIONS)[number];
 
 export const weldCountPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);

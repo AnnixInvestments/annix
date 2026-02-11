@@ -4,7 +4,14 @@ import { Center, ContactShadows, Environment, Html, Line, OrbitControls } from "
 import { Canvas } from "@react-three/fiber";
 import { useMemo, useState } from "react";
 import * as THREE from "three";
-import { BlankFlange, Flange, RetainingRing, RotatingFlange } from "@/app/components/rfq/3d";
+import {
+  BlankFlange,
+  Flange,
+  HollowStraightPipe,
+  RetainingRing,
+  RotatingFlange,
+  WeldRing,
+} from "@/app/components/rfq/3d";
 import { FLANGE_DATA } from "@/app/lib/3d/flangeData";
 import {
   FLANGE_MATERIALS,
@@ -45,6 +52,9 @@ interface Reducer3DPreviewProps {
   smallEndFlangeType?: FlangeType;
   hasBlankLargeEnd?: boolean;
   hasBlankSmallEnd?: boolean;
+  hasCenterStub?: boolean;
+  stubNominalBore?: number;
+  stubLocationMm?: number;
 }
 
 function ConcentricReducerGeometry({
@@ -278,6 +288,9 @@ function ReducerScene({
   smallEndFlangeType = "fixed",
   hasBlankLargeEnd = false,
   hasBlankSmallEnd = false,
+  hasCenterStub = false,
+  stubNominalBore = 50,
+  stubLocationMm,
 }: Reducer3DPreviewProps) {
   const largeOD = largeDiameterMm ?? outerDiameterFromNB(largeNominalBore);
   const smallOD = smallDiameterMm ?? outerDiameterFromNB(smallNominalBore);
@@ -297,6 +310,21 @@ function ReducerScene({
   const smallFlangeThickness = smallFlangeData.thickness / SCALE_FACTOR;
 
   const weldTubeRadius = largeOuterRadius * 0.06;
+
+  const stubLocation = stubLocationMm ?? lengthMm / 2;
+  const stubT = stubLocation / lengthMm;
+  const stubY = -length / 2 + stubT * length;
+  const stubOD = outerDiameterFromNB(stubNominalBore);
+  const stubWT = wallThicknessFromNB(stubNominalBore);
+  const stubOuterR = stubOD / SCALE_FACTOR / 2;
+  const stubInnerR = (stubOD - 2 * stubWT) / SCALE_FACTOR / 2;
+  const stubLength = 150 / SCALE_FACTOR;
+  const stubFlangeData = FLANGE_DATA[stubNominalBore] || FLANGE_DATA[50];
+  const stubFlangeThickness = stubFlangeData.thickness / SCALE_FACTOR;
+
+  const reducerRadiusAtStub = largeOuterRadius + (smallOuterRadius - largeOuterRadius) * stubT;
+  const reducerInnerRadiusAtStub = largeInnerRadius + (smallInnerRadius - largeInnerRadius) * stubT;
+  const stubXOffset = reducerType === "ECCENTRIC" ? stubT * offset : 0;
 
   return (
     <group rotation={[Math.PI / 2, 0, 0]}>
@@ -403,6 +431,34 @@ function ReducerScene({
         <torusGeometry args={[smallOuterRadius * 1.02, weldTubeRadius * 0.8, 8, 64]} />
         <meshStandardMaterial {...weldColor} />
       </mesh>
+
+      {hasCenterStub && (
+        <group position={[-stubXOffset, stubY, 0]}>
+          <HollowStraightPipe
+            start={new THREE.Vector3(0, 0, reducerRadiusAtStub)}
+            end={new THREE.Vector3(0, 0, reducerRadiusAtStub + stubLength)}
+            outerR={stubOuterR}
+            innerR={stubInnerR}
+            capStart={false}
+            capEnd={false}
+          />
+          <WeldRing
+            center={new THREE.Vector3(0, 0, reducerRadiusAtStub)}
+            normal={new THREE.Vector3(0, 0, 1)}
+            radius={stubOuterR * 1.05}
+            tube={weldTubeRadius * 0.7}
+          />
+          <Flange
+            center={
+              new THREE.Vector3(0, 0, reducerRadiusAtStub + stubLength + stubFlangeThickness / 2)
+            }
+            normal={new THREE.Vector3(0, 0, 1)}
+            pipeR={stubOuterR}
+            innerR={stubInnerR}
+            nb={stubNominalBore}
+          />
+        </group>
+      )}
     </group>
   );
 }
@@ -534,6 +590,8 @@ export default function Reducer3DPreview(props: Reducer3DPreviewProps) {
     smallDiameterMm,
     lengthMm,
     reducerType,
+    hasCenterStub,
+    stubNominalBore,
   } = props;
 
   const largeOD = largeDiameterMm ?? outerDiameterFromNB(largeNominalBore);
@@ -541,13 +599,18 @@ export default function Reducer3DPreview(props: Reducer3DPreviewProps) {
 
   return (
     <div className="relative h-full w-full bg-gradient-to-b from-slate-100 to-slate-200 rounded-lg overflow-hidden">
-      <div className="absolute top-2 left-2 z-10 flex gap-2">
+      <div className="absolute top-2 left-2 z-10 flex gap-2 flex-wrap">
         <span className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium text-slate-700">
           {reducerType === "CONCENTRIC" ? "Concentric" : "Eccentric"} Reducer
         </span>
         <span className="bg-blue-500/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium text-white">
           {largeNominalBore}NB → {smallNominalBore}NB
         </span>
+        {hasCenterStub && (
+          <span className="bg-orange-500/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium text-white">
+            Stub {stubNominalBore || 50}NB
+          </span>
+        )}
       </div>
 
       <button

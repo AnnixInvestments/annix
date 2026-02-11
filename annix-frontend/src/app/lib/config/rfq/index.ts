@@ -7,4 +7,5 @@ export * from "./flangeWeights";
 export * from "./materialLimits";
 export * from "./pipeEndOptions";
 export * from "./pipeSchedules";
+export * from "./reducerSizes";
 export * from "./sabs719BendData";
