@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { useToast } from "@/app/components/Toast";
@@ -306,7 +306,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   const rfqDataRef = useRef(rfqData);
   rfqDataRef.current = rfqData;
 
-  const { isAuthenticated } = useOptionalCustomerAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useOptionalCustomerAuth();
+  const router = useRouter();
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const initialDraftDataRef = useRef<string | null>(null);
@@ -573,11 +574,21 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
   }, [isLoadingDraft, currentDraftId, rfqData]);
 
   // Load draft from URL parameter (?draft=ID or ?draftId=ID)
+  // Requires authentication - redirect to login if not authenticated
   useEffect(() => {
     const draftId = searchParams?.get("draft") || searchParams?.get("draftId");
     if (!draftId) return;
+    if (isAuthLoading) return;
 
     log.debug("Draft parameter detected:", draftId);
+
+    if (!isAuthenticated) {
+      log.info("User not authenticated, redirecting to login to access draft");
+      const currentUrl =
+        typeof window !== "undefined" ? window.location.pathname + window.location.search : "/rfq";
+      router.push(`/customer/login?returnUrl=${encodeURIComponent(currentUrl)}`);
+      return;
+    }
 
     const loadDraft = async () => {
       setIsLoadingDraft(true);
@@ -613,6 +624,9 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     setIsLoadingDraft,
     setCurrentDraftId,
     setDraftNumber,
+    isAuthenticated,
+    isAuthLoading,
+    router,
   ]);
 
   // Load anonymous draft from recovery token URL parameter

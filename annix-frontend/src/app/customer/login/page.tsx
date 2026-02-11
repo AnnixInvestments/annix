@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { Suspense, useEffect, useState } from "react";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { customerEmailApi } from "@/app/lib/api/customerApi";
 
-export default function CustomerLoginPage() {
+function CustomerLoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isAuthenticated, isLoading: authLoading } = useCustomerAuth();
   const { fingerprint, browserInfo, isLoading: fingerprintLoading } = useDeviceFingerprint();
+  const returnUrl = searchParams?.get("returnUrl");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,9 +27,9 @@ export default function CustomerLoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push("/customer/portal/dashboard");
+      router.push(returnUrl || "/customer/portal/dashboard");
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, router, returnUrl]);
 
   const handleResendVerification = async () => {
     if (!email) {
@@ -67,7 +69,7 @@ export default function CustomerLoginPage() {
 
     try {
       await login(email, password, fingerprint, browserInfo || undefined);
-      router.push("/customer/portal/dashboard");
+      router.push(returnUrl || "/customer/portal/dashboard");
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Login failed. Please try again.";
 
@@ -411,5 +413,22 @@ export default function CustomerLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CustomerLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
+            <p className="mt-4 text-white">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <CustomerLoginContent />
+    </Suspense>
   );
 }

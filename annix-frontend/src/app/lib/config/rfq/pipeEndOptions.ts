@@ -194,6 +194,34 @@ export const FITTING_END_OPTIONS = [
     branchType: "rotating",
   },
   {
+    value: "3X_LF",
+    label: "3 x L/F - Loose flanges all 3 ends (3 tack welds)",
+    weldCount: 0,
+    flangeWeldCount: 0,
+    tackWeldEnds: 3,
+    flangeCount: 3,
+    hasInlet: true,
+    hasOutlet: true,
+    hasBranch: true,
+    inletType: "loose",
+    outletType: "loose",
+    branchType: "loose",
+  },
+  {
+    value: "2X_LF_FOE",
+    label: "2 x L/F + FOE - 2 loose flanges + 1 fixed (1 weld + 2 tacks)",
+    weldCount: 1,
+    flangeWeldCount: 1,
+    tackWeldEnds: 2,
+    flangeCount: 3,
+    hasInlet: true,
+    hasOutlet: true,
+    hasBranch: true,
+    inletType: "dynamic",
+    outletType: "dynamic",
+    branchType: "dynamic",
+  },
+  {
     value: "2X_RF_FOE",
     label: "2 x R/F + FOE - R/F main pipe, FOE on Tee Section B (3 welds)",
     weldCount: 3,
@@ -209,7 +237,7 @@ export const FITTING_END_OPTIONS = [
   },
 ] as const;
 
-export type FlangeType = "fixed" | "loose" | "rotating" | null;
+export type FlangeType = "fixed" | "loose" | "rotating" | "dynamic" | null;
 
 export type PipeEndOption = (typeof PIPE_END_OPTIONS)[number];
 export type BendEndOption = (typeof BEND_END_OPTIONS)[number];
@@ -272,6 +300,7 @@ export const tackWeldEndsPerPipe = (pipeEndConfig: string): number => {
 
 export const fittingFlangeConfig = (
   fittingEndConfig: string,
+  foePosition?: "inlet" | "outlet" | "branch",
 ): {
   hasInlet: boolean;
   hasOutlet: boolean;
@@ -281,6 +310,18 @@ export const fittingFlangeConfig = (
   branchType: FlangeType;
 } => {
   const config = FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
+
+  if (fittingEndConfig === "2X_LF_FOE" && foePosition) {
+    return {
+      hasInlet: true,
+      hasOutlet: true,
+      hasBranch: true,
+      inletType: foePosition === "inlet" ? "fixed" : "loose",
+      outletType: foePosition === "outlet" ? "fixed" : "loose",
+      branchType: foePosition === "branch" ? "fixed" : "loose",
+    };
+  }
+
   return {
     hasInlet: config?.hasInlet ?? false,
     hasOutlet: config?.hasOutlet ?? false,

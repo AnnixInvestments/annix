@@ -43,6 +43,10 @@ import {
   getMinWallThicknessForNB,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
+import {
+  getLateralDimensionsForAngle,
+  LateralAngleRange,
+} from "@/app/lib/utils/sabs719LateralData";
 import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
@@ -274,6 +278,41 @@ function FittingFormComponent({
     fittingNb,
     isTeeType,
     effectiveStandardForDims,
+    onUpdateEntry,
+  ]);
+
+  // Auto-populate lateral height (A/C/E dimension) when angle range or nominal bore changes
+  useEffect(() => {
+    const isLateralType = fittingType === "LATERAL" || fittingType === "Y_PIECE";
+    const angleRange = entry.specs?.angleRange as LateralAngleRange | undefined;
+    const nominalBore = entry.specs?.nominalDiameterMm;
+
+    if (!isLateralType || !angleRange || !nominalBore) {
+      return;
+    }
+
+    // Skip if user has manually overridden the value
+    if (entry.specs?.lateralHeightOverride) {
+      return;
+    }
+
+    const lateralDims = getLateralDimensionsForAngle(nominalBore, angleRange);
+    if (lateralDims && entry.specs?.lateralHeightMm !== lateralDims.heightMm) {
+      onUpdateEntry(entry.id, {
+        specs: {
+          ...entry.specs,
+          lateralHeightMm: lateralDims.heightMm,
+          lateralHeightMmAuto: lateralDims.heightMm,
+        },
+      });
+    }
+  }, [
+    entry.id,
+    entry.specs?.angleRange,
+    entry.specs?.nominalDiameterMm,
+    entry.specs?.lateralHeightOverride,
+    entry.specs?.lateralHeightMm,
+    fittingType,
     onUpdateEntry,
   ]);
 
@@ -1185,7 +1224,10 @@ function FittingFormComponent({
 
                 // Get flange configuration for blank flange options
                 const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
-                const fittingFlangeConfig = getFittingFlangeConfig(fittingEndConfig);
+                const fittingFlangeConfig = getFittingFlangeConfig(
+                  fittingEndConfig,
+                  entry.specs?.foePosition,
+                );
                 const hasFlangesSelected =
                   fittingFlangeConfig.hasInlet ||
                   fittingFlangeConfig.hasOutlet ||
@@ -1471,6 +1513,7 @@ function FittingFormComponent({
                               ...(newPressureClassId && {
                                 flangePressureClassId: newPressureClassId,
                               }),
+                              foePosition: newConfig === "2X_LF_FOE" ? "inlet" : undefined,
                             },
                             ...(weldDetails && { weldInfo: weldDetails }),
                           };
@@ -1499,6 +1542,45 @@ function FittingFormComponent({
                               : ""}
                           </p>
                         )}
+                      {entry.specs?.pipeEndConfiguration === "2X_LF_FOE" && (
+                        <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                          <p className="text-xs font-semibold text-amber-800 mb-1.5">
+                            Select fixed flange position:
+                          </p>
+                          <div className="flex gap-4">
+                            {(["inlet", "outlet", "branch"] as const).map((position) => (
+                              <label
+                                key={position}
+                                className="flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <input
+                                  type="radio"
+                                  name={`foe-position-${entry.id}`}
+                                  checked={entry.specs?.foePosition === position}
+                                  onChange={() => {
+                                    const updatedEntry: any = {
+                                      specs: {
+                                        ...entry.specs,
+                                        foePosition: position,
+                                      },
+                                    };
+                                    updatedEntry.description = generateItemDescription({
+                                      ...entry,
+                                      ...updatedEntry,
+                                    });
+                                    onUpdateEntry(entry.id, updatedEntry);
+                                    debouncedCalculate();
+                                  }}
+                                  className="w-3.5 h-3.5 text-amber-600 focus:ring-amber-500"
+                                />
+                                <span className="text-xs font-medium text-amber-900 capitalize">
+                                  {position}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1541,7 +1623,7 @@ function FittingFormComponent({
                 )}
               </div>
               <div
-                className={`grid grid-cols-1 sm:grid-cols-2 ${isUnequalTee ? "md:grid-cols-6" : isLateral ? "md:grid-cols-5" : "md:grid-cols-3"} gap-3`}
+                className={`grid grid-cols-1 sm:grid-cols-2 ${isUnequalTee || isLateral ? "md:grid-cols-6" : "md:grid-cols-3"} gap-3`}
               >
                 {/* Quantity */}
                 <div>
@@ -1614,6 +1696,8 @@ function FittingFormComponent({
                             let pipeLengthB = entry.specs?.pipeLengthBMm;
                             let pipeLengthAMmAuto = entry.specs?.pipeLengthAMmAuto;
                             let pipeLengthBMmAuto = entry.specs?.pipeLengthBMmAuto;
+                            let lateralHeightMm = entry.specs?.lateralHeightMm;
+                            let lateralHeightMmAuto = entry.specs?.lateralHeightMmAuto;
 
                             if (
                               entry.specs?.fittingType &&
@@ -1642,6 +1726,16 @@ function FittingFormComponent({
                               } catch (err) {
                                 log.debug("Could not fetch fitting dimensions:", err);
                               }
+
+                              // Auto-populate lateral height (A/C/E dimension) from MPS manual
+                              const lateralDims = getLateralDimensionsForAngle(
+                                entry.specs.nominalDiameterMm,
+                                angleRange as LateralAngleRange,
+                              );
+                              if (lateralDims && !entry.specs?.lateralHeightOverride) {
+                                lateralHeightMm = lateralDims.heightMm;
+                                lateralHeightMmAuto = lateralDims.heightMm;
+                              }
                             }
 
                             onUpdateEntry(entry.id, {
@@ -1652,6 +1746,8 @@ function FittingFormComponent({
                                 pipeLengthBMm: pipeLengthB,
                                 pipeLengthAMmAuto,
                                 pipeLengthBMmAuto,
+                                lateralHeightMm,
+                                lateralHeightMmAuto,
                               },
                             });
                           }}
@@ -1915,6 +2011,63 @@ function FittingFormComponent({
                   </div>
                 )}
 
+                {/* Dimension A/C/E - Height dimension for Laterals based on angle */}
+                {isLateral && (
+                  <div>
+                    {(() => {
+                      const angleRange = entry.specs?.angleRange as LateralAngleRange | undefined;
+                      const nominalBore = entry.specs?.nominalDiameterMm;
+                      const dimensionLabel =
+                        angleRange === "60-90" ? "A" : angleRange === "45-59" ? "C" : "E";
+                      const lateralDims =
+                        nominalBore && angleRange
+                          ? getLateralDimensionsForAngle(nominalBore, angleRange)
+                          : null;
+                      const autoHeight = lateralDims?.heightMm;
+                      const currentHeight = entry.specs?.lateralHeightMm;
+                      const isAuto =
+                        autoHeight &&
+                        currentHeight === autoHeight &&
+                        !entry.specs?.lateralHeightOverride;
+                      const isOverride = entry.specs?.lateralHeightOverride;
+
+                      return (
+                        <>
+                          <label className="block text-xs font-semibold text-blue-900 mb-1">
+                            Dimension {dimensionLabel} (mm)
+                            {isAuto && (
+                              <span className="text-blue-600 text-xs ml-1 font-normal">(Auto)</span>
+                            )}
+                            {isOverride && (
+                              <span className="text-orange-600 text-xs ml-1 font-normal">
+                                (Override)
+                              </span>
+                            )}
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.lateralHeightMm || ""}
+                            onChange={(e) => {
+                              const newValue = Number(e.target.value);
+                              const isOverrideNow = autoHeight && newValue !== autoHeight;
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  lateralHeightMm: newValue,
+                                  lateralHeightOverride: isOverrideNow,
+                                },
+                              });
+                            }}
+                            className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                            placeholder={autoHeight ? `e.g., ${autoHeight}` : "Height"}
+                            min="0"
+                          />
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+
                 {/* Tee Steel Spec - Inside blue section for Unequal Tees */}
                 {isUnequalTee && (
                   <div>
@@ -2055,6 +2208,7 @@ function FittingFormComponent({
                             steelSpecId: entry.specs?.steelSpecificationId,
                             nominalBoreMm: 50,
                             distanceFromOutletMm: 100,
+                            stubLengthMm: 150,
                             outletLocation: "branch" as const,
                             positionDegrees: 0,
                           };
@@ -2072,16 +2226,16 @@ function FittingFormComponent({
                             ];
                           } else {
                             newStubs = [
-                              currentStubs[0] || {
-                                ...defaultStub,
+                              {
+                                ...(currentStubs[0] || defaultStub),
                                 outletLocation: "inlet" as const,
                               },
-                              currentStubs[1] || {
-                                ...defaultStub,
+                              {
+                                ...(currentStubs[1] || defaultStub),
                                 outletLocation: "outlet" as const,
                               },
-                              currentStubs[2] || {
-                                ...defaultStub,
+                              {
+                                ...(currentStubs[2] || defaultStub),
                                 outletLocation: "branch" as const,
                               },
                             ];
@@ -2255,6 +2409,30 @@ function FittingFormComponent({
                             />
                           </div>
 
+                          {/* Stub Length */}
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                              Stub Length (mm)
+                            </label>
+                            <input
+                              type="number"
+                              value={stub.stubLengthMm || ""}
+                              onChange={(e) => {
+                                const newStubs = [...(entry.specs?.stubs || [])];
+                                newStubs[stubIndex] = {
+                                  ...newStubs[stubIndex],
+                                  stubLengthMm: e.target.value ? Number(e.target.value) : undefined,
+                                };
+                                onUpdateEntry(entry.id, {
+                                  specs: { ...entry.specs, stubs: newStubs },
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                              placeholder="e.g., 150"
+                              min="0"
+                            />
+                          </div>
+
                           {/* Position (Degrees) */}
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -2311,7 +2489,7 @@ function FittingFormComponent({
                             >
                               <option value="plain">Plain (No Flange)</option>
                               <option value="flanged">Flanged</option>
-                              <option value="rf">R/F (Raised Face)</option>
+                              <option value="rf">R/F (Rotating Flange)</option>
                             </select>
                           </div>
 
@@ -2401,34 +2579,51 @@ function FittingFormComponent({
 
                           {/* Flange Type - Only show if flanged or rf */}
                           {(stub.endConfiguration === "flanged" ||
-                            stub.endConfiguration === "rf") && (
-                            <div>
-                              <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                Flange Type
-                              </label>
-                              <select
-                                value={stub.flangeTypeCode || ""}
-                                onChange={(e) => {
-                                  const newStubs = [...(entry.specs?.stubs || [])];
-                                  newStubs[stubIndex] = {
-                                    ...newStubs[stubIndex],
-                                    flangeTypeCode: e.target.value || undefined,
-                                  };
-                                  onUpdateEntry(entry.id, {
-                                    specs: { ...entry.specs, stubs: newStubs },
-                                  });
-                                }}
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
-                              >
-                                <option value="">Select...</option>
-                                <option value="1">Table D / PN10 (Type 1)</option>
-                                <option value="2">Table E / PN16 (Type 2)</option>
-                                <option value="5">Table F / PN25 (Type 5)</option>
-                                <option value="11">Table H / PN40 (Type 11)</option>
-                                <option value="21">PN64 (Type 21)</option>
-                              </select>
-                            </div>
-                          )}
+                            stub.endConfiguration === "rf") &&
+                            (() => {
+                              const stubStandard = masterData.flangeStandards?.find(
+                                (fs: any) => fs.id === stub.flangeStandardId,
+                              );
+                              const stubIsSabs1123 =
+                                stubStandard?.code?.toUpperCase().includes("SABS") &&
+                                stubStandard?.code?.includes("1123");
+                              const stubIsBs4504 =
+                                stubStandard?.code?.toUpperCase().includes("BS") &&
+                                stubStandard?.code?.includes("4504");
+                              const stubHasFlangeTypes = stubIsSabs1123 || stubIsBs4504;
+                              const stubFlangeTypes = stubIsSabs1123
+                                ? SABS_1123_FLANGE_TYPES
+                                : BS_4504_FLANGE_TYPES;
+
+                              return stubHasFlangeTypes ? (
+                                <div>
+                                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                    Flange Type
+                                  </label>
+                                  <select
+                                    value={stub.flangeTypeCode || ""}
+                                    onChange={(e) => {
+                                      const newStubs = [...(entry.specs?.stubs || [])];
+                                      newStubs[stubIndex] = {
+                                        ...newStubs[stubIndex],
+                                        flangeTypeCode: e.target.value || undefined,
+                                      };
+                                      onUpdateEntry(entry.id, {
+                                        specs: { ...entry.specs, stubs: newStubs },
+                                      });
+                                    }}
+                                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
+                                  >
+                                    <option value="">Select...</option>
+                                    {stubFlangeTypes.map((ft) => (
+                                      <option key={ft.code} value={ft.code} title={ft.description}>
+                                        {ft.name} ({ft.code})
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              ) : null;
+                            })()}
                         </div>
                       </div>
                     ))}
@@ -2667,6 +2862,7 @@ function FittingFormComponent({
 
                     const flangeConfig = getFittingFlangeConfig(
                       entry.specs?.pipeEndConfiguration || "PE",
+                      entry.specs?.foePosition,
                     );
                     const numFlanges =
                       (flangeConfig.hasInlet ? 1 : 0) +
@@ -2721,6 +2917,7 @@ function FittingFormComponent({
                     const branchOdMm = branchNB ? NB_TO_OD_LOOKUP[branchNB] || branchNB * 1.05 : 0;
                     const flangeConfigCalc = getFittingFlangeConfig(
                       entry.specs?.pipeEndConfiguration || "PE",
+                      entry.specs?.foePosition,
                     );
                     const mainFlangeWeldCount =
                       (flangeConfigCalc.hasInlet && flangeConfigCalc.inletType !== "loose"
@@ -2857,8 +3054,9 @@ function FittingFormComponent({
                     const stubsData = (entry.specs?.stubs || []).map((stub: any) => {
                       const stubNB = stub.nominalBoreMm || 50;
                       const stubOdMm = NB_TO_OD_LOOKUP[stubNB] || stubNB * 1.05;
-                      const stubWallThickness = pipeWallThickness || 5;
-                      const stubLengthMm = stub.distanceFromOutletMm || 100;
+                      const stubWallThickness =
+                        FITTING_CLASS_WALL_THICKNESS["STD"][stubNB] || pipeWallThickness || 5;
+                      const stubLengthMm = stub.stubLengthMm || 150;
                       const stubLengthM = stubLengthMm / 1000;
                       const stubPipeWeight =
                         calculatePipeWeightPerMeter(stubOdMm, stubWallThickness) * stubLengthM;
@@ -3434,15 +3632,30 @@ function FittingFormComponent({
               "30-44": 30,
             };
             const angleDegrees = angleRange ? defaultAngles[angleRange] || 60 : 60;
-            const stubsForPreview = (entry.specs?.stubs || []).map((stub: any) => ({
-              outletLocation: stub.outletLocation || "branch",
-              steelSpecId: stub.steelSpecId,
-              nominalBoreMm: stub.nominalBoreMm || 50,
-              distanceFromOutletMm: stub.distanceFromOutletMm || 100,
-              positionDegrees: stub.positionDegrees || 0,
-              endConfiguration: stub.endConfiguration || "plain",
-              hasBlankFlange: stub.hasBlankFlange || false,
-            }));
+            const stubsForPreview = (entry.specs?.stubs || []).map((stub: any) => {
+              const locationMap: Record<string, "branch" | "mainA" | "mainB"> = {
+                inlet: "mainA",
+                outlet: "mainB",
+                mainA: "mainA",
+                mainB: "mainB",
+                branch: "branch",
+              };
+              return {
+                outletLocation: locationMap[stub.outletLocation] || "branch",
+                steelSpecId: stub.steelSpecId,
+                nominalBoreMm: stub.nominalBoreMm || 50,
+                distanceFromOutletMm: stub.distanceFromOutletMm || 100,
+                stubLengthMm: stub.stubLengthMm || 150,
+                positionDegrees: stub.positionDegrees || 0,
+                endConfiguration: stub.endConfiguration || "plain",
+                hasBlankFlange: stub.hasBlankFlange || false,
+              };
+            });
+            const lateralFlangeConfig = getFittingFlangeConfig(
+              entry.specs?.pipeEndConfiguration || "",
+              entry.specs?.foePosition,
+            );
+            const blankPositions = entry.specs?.blankFlangePositions || [];
             return (
               <Lateral3DPreview
                 nominalBore={nominalBore}
@@ -3450,15 +3663,16 @@ function FittingFormComponent({
                 wallThickness={wallThickness}
                 angleDegrees={angleDegrees}
                 angleRange={angleRange}
-                hasInletFlange={
-                  getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasInlet
-                }
-                hasOutletFlange={
-                  getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasOutlet
-                }
-                hasBranchFlange={
-                  getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasBranch
-                }
+                hasInletFlange={lateralFlangeConfig.hasInlet}
+                hasOutletFlange={lateralFlangeConfig.hasOutlet}
+                hasBranchFlange={lateralFlangeConfig.hasBranch}
+                inletFlangeType={lateralFlangeConfig.inletType}
+                outletFlangeType={lateralFlangeConfig.outletType}
+                branchFlangeType={lateralFlangeConfig.branchType}
+                hasBlankInlet={blankPositions.includes("inlet")}
+                hasBlankOutlet={blankPositions.includes("outlet")}
+                hasBlankBranch={blankPositions.includes("branch")}
+                closureLengthMm={entry.specs?.closureLengthMm || 150}
                 stubs={stubsForPreview}
               />
             );
@@ -3480,22 +3694,40 @@ function FittingFormComponent({
               branchPositionMm={entry.specs?.stubLocation}
               materialName={steelSpec?.steelSpecName}
               hasInletFlange={
-                getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasInlet
+                getFittingFlangeConfig(
+                  entry.specs?.pipeEndConfiguration || "",
+                  entry.specs?.foePosition,
+                ).hasInlet
               }
               hasOutletFlange={
-                getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasOutlet
+                getFittingFlangeConfig(
+                  entry.specs?.pipeEndConfiguration || "",
+                  entry.specs?.foePosition,
+                ).hasOutlet
               }
               hasBranchFlange={
-                getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").hasBranch
+                getFittingFlangeConfig(
+                  entry.specs?.pipeEndConfiguration || "",
+                  entry.specs?.foePosition,
+                ).hasBranch
               }
               inletFlangeType={
-                getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").inletType
+                getFittingFlangeConfig(
+                  entry.specs?.pipeEndConfiguration || "",
+                  entry.specs?.foePosition,
+                ).inletType
               }
               outletFlangeType={
-                getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").outletType
+                getFittingFlangeConfig(
+                  entry.specs?.pipeEndConfiguration || "",
+                  entry.specs?.foePosition,
+                ).outletType
               }
               branchFlangeType={
-                getFittingFlangeConfig(entry.specs?.pipeEndConfiguration || "").branchType
+                getFittingFlangeConfig(
+                  entry.specs?.pipeEndConfiguration || "",
+                  entry.specs?.foePosition,
+                ).branchType
               }
               closureLengthMm={entry.specs?.closureLengthMm || 150}
               addBlankFlange={entry.specs?.addBlankFlange}
