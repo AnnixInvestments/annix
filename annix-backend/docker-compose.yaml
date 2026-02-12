@@ -1,0 +1,9 @@
+
+services:
+  annix-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    container_name: annix_backend

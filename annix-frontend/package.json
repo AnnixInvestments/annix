@@ -1,0 +1,32 @@
+{
+  "name": "annix-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "codegen": "openapi-typescript http://localhost:4000/swagger-yaml -o src/app/lib/api/schema.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "next": "15.5.4",
+    "openapi-fetch": "^0.13.4",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-hook-form": "^7.65.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.8.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "openapi-typescript": "^7.6.1",
+    "swagger-typescript-api": "^13.0.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
