@@ -81,6 +81,12 @@ export function isStringType(type: string): boolean {
   return categoryForColumnType(type) === ColumnTypeCategory.String;
 }
 
+const JSON_TYPES = new Set(["json", "jsonb", "simple-json"]);
+
+export function isJsonType(type: string): boolean {
+  return JSON_TYPES.has(type);
+}
+
 export function formatDefaultValue(value: any, type: string): string {
   if (value === null || value === undefined) return "";
   const category = categoryForColumnType(type);

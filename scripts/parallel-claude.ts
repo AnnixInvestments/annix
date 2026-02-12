@@ -1703,7 +1703,7 @@ async function showSessionsMenu(): Promise<void> {
 
       if (startType === "issue") {
         log.info("\nFetching open GitHub issues...");
-        const issuesJson = exec("gh issue list --state open --limit 20 --json number,title", {
+        const issuesJson = exec("gh issue list --state open --json number,title", {
           silent: true,
         });
 

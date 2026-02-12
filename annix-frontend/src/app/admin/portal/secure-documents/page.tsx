@@ -187,6 +187,7 @@ export default function SecureDocumentsPage() {
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isNavigatingBack = useRef(false);
+  const failedDocSlug = useRef<string | null>(null);
 
   const updateExpandedUrl = (expanded: Set<string>) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -413,7 +414,8 @@ export default function SecureDocumentsPage() {
       !selectedDocument &&
       !selectedLocalDocument &&
       !isLoadingDocument &&
-      !secureDocsQuery.isLoading
+      !secureDocsQuery.isLoading &&
+      failedDocSlug.current !== docSlug
     ) {
       const targetMode = urlMode === "edit" ? "edit" : "view";
       handleViewDocumentBySlug(docSlug, targetMode);
@@ -490,16 +492,19 @@ export default function SecureDocumentsPage() {
           setSelectedLocalDocument(doc);
           setSelectedDocument(null);
           setViewMode("view");
+          failedDocSlug.current = null;
         }
       } else {
         const doc = await adminApiClient.getSecureDocument(slug);
         setSelectedDocument(doc);
         setSelectedLocalDocument(null);
         setViewMode(targetMode);
+        failedDocSlug.current = null;
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load document";
       setActionMessage({ type: "error", text: message });
+      failedDocSlug.current = slug;
     } finally {
       setIsLoadingDocument(false);
     }

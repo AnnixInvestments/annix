@@ -30,6 +30,7 @@ import {
   HtmlInputType,
   htmlInputType,
   isDateLikeType,
+  isJsonType,
   isNumericType,
 } from "@/app/lib/reference-data/columnTypes";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
@@ -106,10 +107,27 @@ function formatCellValue(value: any, col: ColumnSchemaInfo): React.ReactNode {
     );
   }
 
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-gray-400">-</span>;
+    return <span className="text-gray-700">{value.join(", ")}</span>;
+  }
+
   if (isObject(value)) {
     const obj = value as Record<string, any>;
-    const displayField = obj.name ?? obj.code ?? obj.displayName ?? obj.title ?? `#${obj.id}`;
-    return <span className="text-blue-600">{displayField}</span>;
+    const displayField = obj.name ?? obj.code ?? obj.displayName ?? obj.title;
+    if (displayField !== null && displayField !== undefined) {
+      return <span className="text-blue-600">{displayField}</span>;
+    }
+    if (obj.id !== null && obj.id !== undefined) {
+      return <span className="text-blue-600">#{obj.id}</span>;
+    }
+    const entries = keys(obj);
+    if (entries.length === 0) return <span className="text-gray-400">-</span>;
+    return (
+      <span className="text-gray-700" title={JSON.stringify(value)}>
+        {entries.map((k) => `${k}: ${obj[k]}`).join(", ")}
+      </span>
+    );
   }
 
   if (isNumericType(col.type) && isNumber(value)) {
@@ -140,7 +158,10 @@ function buildColumns(
     .filter((col) => !col.isGenerated || col.isPrimary)
     .map((col) => {
       const isEditable =
-        !col.isPrimary && !col.isGenerated && !relationPropertyNames.has(col.propertyName);
+        !col.isPrimary &&
+        !col.isGenerated &&
+        !relationPropertyNames.has(col.propertyName) &&
+        !isJsonType(col.type);
 
       return {
         id: col.propertyName,
@@ -599,7 +620,11 @@ export default function ReferenceDataPage() {
   const editableColumns = useMemo(
     () =>
       schemaColumns.filter(
-        (col) => !col.isPrimary && !col.isGenerated && !relationPropertyNames.has(col.propertyName),
+        (col) =>
+          !col.isPrimary &&
+          !col.isGenerated &&
+          !relationPropertyNames.has(col.propertyName) &&
+          !isJsonType(col.type),
       ),
     [schemaColumns, relationPropertyNames],
   );

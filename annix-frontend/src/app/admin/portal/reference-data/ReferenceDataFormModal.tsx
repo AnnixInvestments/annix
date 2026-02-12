@@ -7,6 +7,7 @@ import {
   formatDefaultValue,
   HtmlInputType,
   htmlInputType,
+  isJsonType,
 } from "@/app/lib/reference-data/columnTypes";
 
 interface ReferenceDataFormModalProps {
@@ -30,7 +31,9 @@ export function ReferenceDataFormModal({
 }: ReferenceDataFormModalProps) {
   const isEditing = initialData !== null;
 
-  const editableColumns = columns.filter((col) => !col.isPrimary && !col.isGenerated);
+  const editableColumns = columns.filter(
+    (col) => !col.isPrimary && !col.isGenerated && !isJsonType(col.type),
+  );
 
   const relationJoinColumns = new Set(relations.map((r) => r.joinColumnName).filter(Boolean));
 
