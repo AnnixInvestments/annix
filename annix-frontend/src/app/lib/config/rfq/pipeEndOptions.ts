@@ -116,6 +116,8 @@ export const REDUCER_END_OPTIONS = [
     flangeWeldCount: 0,
     tackWeldEnds: 0,
     flangeCount: 0,
+    hasLargeEnd: false,
+    hasSmallEnd: false,
   },
   {
     value: "FOE",
@@ -124,6 +126,8 @@ export const REDUCER_END_OPTIONS = [
     flangeWeldCount: 1,
     tackWeldEnds: 0,
     flangeCount: 1,
+    hasLargeEnd: true,
+    hasSmallEnd: false,
   },
   {
     value: "FBE",
@@ -132,6 +136,8 @@ export const REDUCER_END_OPTIONS = [
     flangeWeldCount: 2,
     tackWeldEnds: 0,
     flangeCount: 2,
+    hasLargeEnd: true,
+    hasSmallEnd: true,
   },
   {
     value: "2X_RF",
@@ -140,6 +146,8 @@ export const REDUCER_END_OPTIONS = [
     flangeWeldCount: 2,
     tackWeldEnds: 0,
     flangeCount: 2,
+    hasLargeEnd: true,
+    hasSmallEnd: true,
   },
   {
     value: "2X_LF",
@@ -148,6 +156,8 @@ export const REDUCER_END_OPTIONS = [
     flangeWeldCount: 0,
     tackWeldEnds: 2,
     flangeCount: 2,
+    hasLargeEnd: true,
+    hasSmallEnd: true,
   },
   {
     value: "FOE_RF",
@@ -156,6 +166,8 @@ export const REDUCER_END_OPTIONS = [
     flangeWeldCount: 2,
     tackWeldEnds: 0,
     flangeCount: 2,
+    hasLargeEnd: true,
+    hasSmallEnd: true,
   },
   {
     value: "FOE_LF",
@@ -164,6 +176,8 @@ export const REDUCER_END_OPTIONS = [
     flangeWeldCount: 1,
     tackWeldEnds: 1,
     flangeCount: 2,
+    hasLargeEnd: true,
+    hasSmallEnd: true,
   },
   {
     value: "RF_LF",
@@ -172,6 +186,8 @@ export const REDUCER_END_OPTIONS = [
     flangeWeldCount: 1,
     tackWeldEnds: 1,
     flangeCount: 2,
+    hasLargeEnd: true,
+    hasSmallEnd: true,
   },
 ] as const;
 
@@ -332,22 +348,30 @@ export const tackWeldEndsPerBend = (bendEndConfig: string): number => {
 };
 
 export const weldCountPerFitting = (fittingEndConfig: string): number => {
-  const config = FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
+  const config =
+    FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
+    REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
   return config?.weldCount ?? 0;
 };
 
 export const flangeWeldCountPerFitting = (fittingEndConfig: string): number => {
-  const config = FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
+  const config =
+    FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
+    REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
   return config?.flangeWeldCount ?? 0;
 };
 
 export const flangeCountPerFitting = (fittingEndConfig: string): number => {
-  const config = FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
+  const config =
+    FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
+    REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
   return config?.flangeCount ?? 0;
 };
 
 export const tackWeldEndsPerFitting = (fittingEndConfig: string): number => {
-  const config = FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
+  const config =
+    FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig) ||
+    REDUCER_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
   return config?.tackWeldEnds ?? 0;
 };
 
@@ -397,6 +421,19 @@ export const fittingFlangeConfig = (
     inletType: (config?.inletType as FlangeType) ?? null,
     outletType: (config?.outletType as FlangeType) ?? null,
     branchType: (config?.branchType as FlangeType) ?? null,
+  };
+};
+
+export const reducerFlangeConfig = (
+  reducerEndConfig: string,
+): {
+  hasLargeEnd: boolean;
+  hasSmallEnd: boolean;
+} => {
+  const config = REDUCER_END_OPTIONS.find((opt) => opt.value === reducerEndConfig);
+  return {
+    hasLargeEnd: config?.hasLargeEnd ?? false,
+    hasSmallEnd: config?.hasSmallEnd ?? false,
   };
 };
 

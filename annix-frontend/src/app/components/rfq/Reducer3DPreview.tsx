@@ -55,6 +55,7 @@ interface Reducer3DPreviewProps {
   hasCenterStub?: boolean;
   stubNominalBore?: number;
   stubLocationMm?: number;
+  stubAngleDegrees?: number;
 }
 
 function ConcentricReducerGeometry({
@@ -291,6 +292,7 @@ function ReducerScene({
   hasCenterStub = false,
   stubNominalBore = 50,
   stubLocationMm,
+  stubAngleDegrees = 0,
 }: Reducer3DPreviewProps) {
   const largeOD = largeDiameterMm ?? outerDiameterFromNB(largeNominalBore);
   const smallOD = smallDiameterMm ?? outerDiameterFromNB(smallNominalBore);
@@ -433,7 +435,10 @@ function ReducerScene({
       </mesh>
 
       {hasCenterStub && (
-        <group position={[-stubXOffset, stubY, 0]}>
+        <group
+          position={[-stubXOffset, stubY, 0]}
+          rotation={[0, (stubAngleDegrees * Math.PI) / 180, 0]}
+        >
           <HollowStraightPipe
             start={new THREE.Vector3(0, 0, reducerRadiusAtStub)}
             end={new THREE.Vector3(0, 0, reducerRadiusAtStub + stubLength)}

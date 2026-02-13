@@ -15,6 +15,7 @@ import {
   FITTING_END_OPTIONS,
   closureWeight as getClosureWeight,
   fittingFlangeConfig as getFittingFlangeConfig,
+  reducerFlangeConfig as getReducerFlangeConfig,
   getScheduleListForSpec,
   tackWeldWeight as getTackWeldWeight,
   weldCountPerFitting as getWeldCountPerFitting,
@@ -341,6 +342,8 @@ function FittingFormComponent({
             "GUSSETTED_TEE",
             "LATERAL",
             "REDUCING_LATERAL",
+            "CON_REDUCER",
+            "ECCENTRIC_REDUCER",
           ].includes(entry.specs?.fittingType)
         }
         formContent={
@@ -568,12 +571,45 @@ function FittingFormComponent({
                           const isUnequalTee = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
                             fittingType,
                           );
+                          const isNewReducer = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
+                            fittingType,
+                          );
+                          const wasReducer = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
+                            entry.specs?.fittingType || "",
+                          );
+
+                          const currentEndConfig = entry.specs?.pipeEndConfiguration;
+                          const validReducerConfigs = [
+                            "PE",
+                            "FOE",
+                            "FBE",
+                            "2X_RF",
+                            "2X_LF",
+                            "FOE_RF",
+                            "FOE_LF",
+                            "RF_LF",
+                          ];
+                          const validFittingConfigs = [
+                            "PE",
+                            "FAE",
+                            "F2E",
+                            "F2E_LF",
+                            "F2E_RF",
+                            "3X_RF",
+                            "3X_LF",
+                            "2X_LF_FOE",
+                            "2X_RF_FOE",
+                          ];
+                          const needsEndConfigReset = isNewReducer
+                            ? !validReducerConfigs.includes(currentEndConfig || "")
+                            : wasReducer && !validFittingConfigs.includes(currentEndConfig || "");
 
                           const updatedEntry = {
                             ...entry,
                             specs: {
                               ...entry.specs,
                               fittingType,
+                              pipeEndConfiguration: needsEndConfigReset ? "PE" : currentEndConfig,
                               branchNominalDiameterMm: isReducingTee
                                 ? entry.specs?.branchNominalDiameterMm
                                 : undefined,
@@ -1311,15 +1347,30 @@ function FittingFormComponent({
                   fittingEndConfig,
                   entry.specs?.foePosition,
                 );
-                const hasFlangesSelected =
-                  fittingFlangeConfig.hasInlet ||
-                  fittingFlangeConfig.hasOutlet ||
-                  fittingFlangeConfig.hasBranch;
-                const availableBlankPositions = [
-                  { key: "inlet", label: "Inlet", hasFlange: fittingFlangeConfig.hasInlet },
-                  { key: "outlet", label: "Outlet", hasFlange: fittingFlangeConfig.hasOutlet },
-                  { key: "branch", label: "Branch", hasFlange: fittingFlangeConfig.hasBranch },
-                ].filter((p) => p.hasFlange);
+                const reducerFlangeConfigVal = getReducerFlangeConfig(fittingEndConfig);
+                const hasFlangesSelected = isReducer
+                  ? reducerFlangeConfigVal.hasLargeEnd || reducerFlangeConfigVal.hasSmallEnd
+                  : fittingFlangeConfig.hasInlet ||
+                    fittingFlangeConfig.hasOutlet ||
+                    fittingFlangeConfig.hasBranch;
+                const availableBlankPositions = isReducer
+                  ? [
+                      {
+                        key: "large",
+                        label: "Large",
+                        hasFlange: reducerFlangeConfigVal.hasLargeEnd,
+                      },
+                      {
+                        key: "small",
+                        label: "Small",
+                        hasFlange: reducerFlangeConfigVal.hasSmallEnd,
+                      },
+                    ].filter((p) => p.hasFlange)
+                  : [
+                      { key: "inlet", label: "Inlet", hasFlange: fittingFlangeConfig.hasInlet },
+                      { key: "outlet", label: "Outlet", hasFlange: fittingFlangeConfig.hasOutlet },
+                      { key: "branch", label: "Branch", hasFlange: fittingFlangeConfig.hasBranch },
+                    ].filter((p) => p.hasFlange);
                 const currentBlankPositions = entry.specs?.blankFlangePositions || [];
 
                 return (
@@ -1616,15 +1667,21 @@ function FittingFormComponent({
                           </option>
                         ))}
                       </select>
-                      {entry.specs?.pipeEndConfiguration &&
-                        entry.specs.pipeEndConfiguration !== "PE" && (
+                      {(() => {
+                        const storedConfig = entry.specs?.pipeEndConfiguration;
+                        const validOptions = isReducer ? REDUCER_END_OPTIONS : FITTING_END_OPTIONS;
+                        const isValidConfig = validOptions.some(
+                          (opt) => opt.value === storedConfig,
+                        );
+                        const effectiveConfig = isValidConfig ? storedConfig : "PE";
+                        if (effectiveConfig === "PE") return null;
+                        const weldCount = getWeldCountPerFitting(effectiveConfig);
+                        return (
                           <p className="mt-0.5 text-xs text-amber-700">
-                            {getWeldCountPerFitting(entry.specs.pipeEndConfiguration)} weld
-                            {getWeldCountPerFitting(entry.specs.pipeEndConfiguration) !== 1
-                              ? "s"
-                              : ""}
+                            {weldCount} weld{weldCount !== 1 ? "s" : ""}
                           </p>
-                        )}
+                        );
+                      })()}
                       {entry.specs?.pipeEndConfiguration === "2X_LF_FOE" && (
                         <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
                           <p className="text-xs font-semibold text-amber-800 mb-1.5">
@@ -2349,40 +2406,7 @@ function FittingFormComponent({
 
               {/* Reducer Stub Sub-fields - Shown when Add Center Stub is checked */}
               {isReducer && entry.specs?.hasReducerStub && (
-                <div className="mt-3 pt-3 border-t border-blue-200 grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-blue-900 mb-1">
-                      Stub NB (mm)
-                    </label>
-                    {(() => {
-                      const smallNB = entry.specs?.smallNominalDiameterMm || 0;
-                      const stubSizes = [15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150].filter(
-                        (nb) => nb < smallNB,
-                      );
-                      return (
-                        <select
-                          value={entry.specs?.reducerStubNbMm || ""}
-                          onChange={(e) => {
-                            onUpdateEntry(entry.id, {
-                              specs: {
-                                ...entry.specs,
-                                reducerStubNbMm: Number(e.target.value),
-                              },
-                            });
-                            debouncedCalculate();
-                          }}
-                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
-                        >
-                          <option value="">Select...</option>
-                          {stubSizes.map((nb) => (
-                            <option key={nb} value={nb}>
-                              {nb}mm
-                            </option>
-                          ))}
-                        </select>
-                      );
-                    })()}
-                  </div>
+                <div className="mt-3 pt-3 border-t border-blue-200 grid grid-cols-4 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-blue-900 mb-1">
                       Stub Steel
@@ -2422,6 +2446,54 @@ function FittingFormComponent({
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Stub NB (mm)
+                    </label>
+                    {(() => {
+                      const smallNB = entry.specs?.smallNominalDiameterMm || 0;
+                      const maxStubNB = smallNB - 50;
+                      const stubSteelSpecId =
+                        entry.specs?.reducerStubSteelSpecId ||
+                        entry.specs?.steelSpecificationId ||
+                        globalSpecs?.steelSpecificationId;
+                      const stubSteelSpec = masterData?.steelSpecs?.find(
+                        (s: any) => s.id === stubSteelSpecId,
+                      );
+                      const isSABS719Stub =
+                        stubSteelSpec?.steelSpecName?.includes("SABS 719") ||
+                        stubSteelSpec?.steelSpecName?.includes("SANS 719");
+                      const minStubNB = isSABS719Stub ? 200 : 15;
+                      const allStubSizes = [
+                        15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300,
+                      ];
+                      const stubSizes = allStubSizes.filter(
+                        (nb) => nb >= minStubNB && nb <= maxStubNB,
+                      );
+                      return (
+                        <select
+                          value={entry.specs?.reducerStubNbMm || ""}
+                          onChange={(e) => {
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                reducerStubNbMm: Number(e.target.value),
+                              },
+                            });
+                            debouncedCalculate();
+                          }}
+                          className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                        >
+                          <option value="">Select...</option>
+                          {stubSizes.map((nb) => (
+                            <option key={nb} value={nb}>
+                              {nb}mm
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
                       Location (mm)
                       <span className="text-green-600 text-xs ml-1 font-normal">(center)</span>
                     </label>
@@ -2437,7 +2509,31 @@ function FittingFormComponent({
                       placeholder="Auto"
                     />
                   </div>
-                  <p className="col-span-3 text-xs text-blue-600 mt-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Angle (°)
+                      <span className="text-green-600 text-xs ml-1 font-normal">(0-360)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="360"
+                      value={entry.specs?.reducerStubAngleDegrees ?? 0}
+                      onChange={(e) => {
+                        const angle = Math.min(360, Math.max(0, Number(e.target.value) || 0));
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            reducerStubAngleDegrees: angle,
+                          },
+                        });
+                        debouncedCalculate();
+                      }}
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                      placeholder="0"
+                    />
+                  </div>
+                  <p className="col-span-4 text-xs text-blue-600 mt-1">
                     Stub flanged same as reducer
                   </p>
                 </div>
@@ -4133,8 +4229,10 @@ function FittingFormComponent({
                   ? "loose"
                   : "fixed";
 
+            const blankPositions = entry.specs?.blankFlangePositions || [];
             return (
               <Reducer3DPreview
+                key={`reducer-${entry.id}-${reducerType}`}
                 largeNominalBore={nominalBore}
                 smallNominalBore={smallNominalBore}
                 lengthMm={reducerLength}
@@ -4144,9 +4242,12 @@ function FittingFormComponent({
                 hasSmallEndFlange={hasSmallFlange}
                 largeEndFlangeType={largeEndFlangeType}
                 smallEndFlangeType={smallEndFlangeType}
+                hasBlankLargeEnd={blankPositions.includes("large")}
+                hasBlankSmallEnd={blankPositions.includes("small")}
                 hasCenterStub={hasStub}
                 stubNominalBore={stubNb}
                 stubLocationMm={stubLocation}
+                stubAngleDegrees={entry.specs?.reducerStubAngleDegrees || 0}
               />
             );
           }

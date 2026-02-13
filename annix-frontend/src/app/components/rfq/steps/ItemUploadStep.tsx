@@ -42,6 +42,10 @@ const Lateral3DPreview = dynamic(() => import("@/app/components/rfq/Lateral3DPre
   ssr: false,
   loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
 });
+const Reducer3DPreview = dynamic(() => import("@/app/components/rfq/Reducer3DPreview"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
+});
 
 import {
   BendForm,
@@ -73,6 +77,7 @@ interface ItemWrapperProps {
   Bend3DPreview: React.ComponentType<any> | null;
   Tee3DPreview: React.ComponentType<any> | null;
   Lateral3DPreview: React.ComponentType<any> | null;
+  Reducer3DPreview: React.ComponentType<any> | null;
   availableNominalBores: number[];
   availableSchedulesMap: Record<string, any[]>;
   setAvailableSchedulesMap: (
@@ -111,6 +116,7 @@ const ItemWrapper = memo(function ItemWrapper({
   Bend3DPreview,
   Tee3DPreview,
   Lateral3DPreview,
+  Reducer3DPreview,
   availableNominalBores,
   availableSchedulesMap,
   setAvailableSchedulesMap,
@@ -238,6 +244,7 @@ const ItemWrapper = memo(function ItemWrapper({
           generateItemDescription={generateItemDescription}
           Tee3DPreview={Tee3DPreview}
           Lateral3DPreview={Lateral3DPreview}
+          Reducer3DPreview={Reducer3DPreview}
           pressureClassesByStandard={pressureClassesByStandard}
           getFilteredPressureClasses={getFilteredPressureClasses}
           requiredProducts={requiredProducts}
@@ -1910,6 +1917,13 @@ export default function ItemUploadStep({
                     : effectiveDrawingsHidden
                       ? null
                       : Lateral3DPreview
+                }
+                Reducer3DPreview={
+                  isUnregisteredCustomer
+                    ? Reducer3DPreview
+                    : effectiveDrawingsHidden
+                      ? null
+                      : Reducer3DPreview
                 }
                 availableNominalBores={availableNominalBores}
                 availableSchedulesMap={availableSchedulesMap}
