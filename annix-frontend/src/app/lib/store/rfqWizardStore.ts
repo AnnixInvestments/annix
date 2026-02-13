@@ -21,6 +21,7 @@ import type {
 } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
 import { type NixClarificationDto, type NixExtractedItem, nixApi } from "@/app/lib/nix";
+import type { ItemIssue } from "@/app/lib/utils/itemDiagnostics";
 import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
 
 export interface PendingDocument {
@@ -121,6 +122,10 @@ interface RfqWizardState {
   showNixClarification: boolean;
   nixFormHelperVisible: boolean;
   nixFormHelperMinimized: boolean;
+  nixDiagnosticTargetItemId: string | null;
+  nixDiagnosticIssues: ItemIssue[];
+  nixDiagnosticDismissedIds: string[];
+  nixDiagnosticAutoOffered: boolean;
 
   currentDraftId: number | null;
   draftNumber: string | null;
@@ -209,6 +214,10 @@ interface RfqWizardActions {
   nixStopUsing: () => void;
   nixFormHelperClose: () => void;
   nixFormHelperReactivate: () => void;
+  nixStartDiagnostic: (itemId: string, issues: ItemIssue[]) => void;
+  nixDismissDiagnostic: (itemId: string) => void;
+  nixClearDiagnostic: () => void;
+  nixResetDiagnosticDismissals: () => void;
   nixCloseClarification: () => void;
   nixProcessDocuments: (
     showToast: (msg: string, type: "success" | "error" | "info") => void,
@@ -432,6 +441,10 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         showNixClarification: false,
         nixFormHelperVisible: true,
         nixFormHelperMinimized: false,
+        nixDiagnosticTargetItemId: null,
+        nixDiagnosticIssues: [],
+        nixDiagnosticDismissedIds: [],
+        nixDiagnosticAutoOffered: false,
 
         currentDraftId: null,
         draftNumber: null,
@@ -902,6 +915,10 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               showNixClarification: false,
               nixFormHelperVisible: true,
               nixFormHelperMinimized: false,
+              nixDiagnosticTargetItemId: null,
+              nixDiagnosticIssues: [],
+              nixDiagnosticDismissedIds: [],
+              nixDiagnosticAutoOffered: false,
               currentDraftId: null,
               draftNumber: null,
               isSavingDraft: false,
@@ -1102,6 +1119,38 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             { nixFormHelperVisible: true, nixFormHelperMinimized: false },
             false,
             "nixFormHelperReactivate",
+          ),
+
+        nixStartDiagnostic: (itemId, issues) =>
+          set(
+            { nixDiagnosticTargetItemId: itemId, nixDiagnosticIssues: issues },
+            false,
+            "nixStartDiagnostic",
+          ),
+
+        nixDismissDiagnostic: (itemId) =>
+          set(
+            (state) => ({
+              nixDiagnosticTargetItemId: null,
+              nixDiagnosticIssues: [],
+              nixDiagnosticDismissedIds: [...state.nixDiagnosticDismissedIds, itemId],
+            }),
+            false,
+            "nixDismissDiagnostic",
+          ),
+
+        nixClearDiagnostic: () =>
+          set(
+            { nixDiagnosticTargetItemId: null, nixDiagnosticIssues: [] },
+            false,
+            "nixClearDiagnostic",
+          ),
+
+        nixResetDiagnosticDismissals: () =>
+          set(
+            { nixDiagnosticDismissedIds: [], nixDiagnosticAutoOffered: false },
+            false,
+            "nixResetDiagnosticDismissals",
           ),
 
         nixCloseClarification: () =>

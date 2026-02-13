@@ -273,6 +273,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     nixStopUsing,
     nixFormHelperClose,
     nixFormHelperReactivate,
+    nixDiagnosticTargetItemId,
+    nixDiagnosticIssues,
+    nixDiagnosticDismissedIds,
+    nixStartDiagnostic,
+    nixDismissDiagnostic,
+    nixClearDiagnostic,
     nixCloseClarification,
     nixProcessDocuments,
     nixSubmitClarification,
@@ -2462,6 +2468,13 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     [updateItem, updateStraightPipeEntry],
   );
 
+  const handleApplyDiagnosticFix = useCallback(
+    (itemId: string, field: string, value: string | number) => {
+      handleUpdateEntry(itemId, { specs: { [field]: value } });
+    },
+    [handleUpdateEntry],
+  );
+
   // State for save progress feedback
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
@@ -3701,6 +3714,15 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           onClose={nixFormHelperClose}
           onReactivate={nixFormHelperReactivate}
           isMinimized={nixFormHelperMinimized}
+          items={rfqData.items}
+          globalSpecs={rfqData.globalSpecs}
+          diagnosticTargetItemId={nixDiagnosticTargetItemId}
+          diagnosticIssues={nixDiagnosticIssues}
+          diagnosticDismissedIds={nixDiagnosticDismissedIds}
+          onStartDiagnostic={nixStartDiagnostic}
+          onDismissDiagnostic={nixDismissDiagnostic}
+          onClearDiagnostic={nixClearDiagnostic}
+          onApplyFix={handleApplyDiagnosticFix}
         />
       )}
 
