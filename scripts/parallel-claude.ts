@@ -728,9 +728,24 @@ async function deleteBranch(branch: string): Promise<void> {
   }
 }
 
+enum AppStatus {
+  Stopped = "stopped",
+  Starting = "starting",
+  Running = "running",
+  Error = "error",
+}
+
 let appProcess: ChildProcess | null = null;
-let appStatus: "stopped" | "starting" | "running" | "error" = "stopped";
+let _appStatus: AppStatus = AppStatus.Stopped;
 let appErrorMessage: string | null = null;
+
+function appStatusValue(): AppStatus {
+  return _appStatus;
+}
+
+function setAppStatus(status: AppStatus): void {
+  _appStatus = status;
+}
 
 interface ManagedSession {
   id: string;
@@ -787,7 +802,7 @@ async function startApp(): Promise<void> {
       : "\nStarting development server in background...",
   );
 
-  appStatus = "starting";
+  setAppStatus(AppStatus.Starting);
   appErrorMessage = null;
 
   if (existsSync(APP_LOG_FILE)) {
@@ -831,19 +846,19 @@ async function startApp(): Promise<void> {
   appProcess.unref();
   appProcess.on("exit", (code) => {
     appProcess = null;
-    if (appStatus === "starting" || appStatus === "running") {
+    if (appStatusValue() === AppStatus.Starting || appStatusValue() === AppStatus.Running) {
       if (code !== 0 && code !== null) {
-        appStatus = "error";
+        setAppStatus(AppStatus.Error);
         appErrorMessage = `Process exited with code ${code}`;
         log.error(`App failed: ${appErrorMessage}`);
       } else {
-        appStatus = "stopped";
+        setAppStatus(AppStatus.Stopped);
       }
     }
   });
 
   appProcess.on("error", (err) => {
-    appStatus = "error";
+    setAppStatus(AppStatus.Error);
     appErrorMessage = err.message;
     log.error(`App failed to start: ${err.message}`);
   });
@@ -858,23 +873,23 @@ async function startApp(): Promise<void> {
     const status = appProcessStatus();
 
     if (status.backend && status.frontend) {
-      appStatus = "running";
+      setAppStatus(AppStatus.Running);
       return;
     }
 
-    if (appStatus === "error") {
+    if (appStatusValue() === AppStatus.Error) {
       return;
     }
   }
 
-  appStatus = "error";
+  setAppStatus(AppStatus.Error);
   appErrorMessage = "Timed out waiting for app";
 }
 
 async function stopApp(): Promise<void> {
   log.info("\nStopping development server...");
 
-  appStatus = "stopped";
+  setAppStatus(AppStatus.Stopped);
   appErrorMessage = null;
 
   killExistingProcesses();
@@ -1935,11 +1950,11 @@ async function showStatus(): Promise<void> {
     const frontendRunning = processStatus.frontend;
     const appRunning = appProcess !== null || backendRunning || frontendRunning;
 
-    if (appStatus === "error") {
+    if (appStatusValue() === AppStatus.Error) {
       appStatusText = `Error: ${appErrorMessage ?? "Check logs"} (use [l] to view, [a] to retry)`;
       appStatusColor = chalk.red;
       appStatusIcon = "✗";
-    } else if (!appRunning && appStatus !== "starting") {
+    } else if (!appRunning && appStatusValue() !== AppStatus.Starting) {
       if (appLogsExist()) {
         try {
           const logLines = readAppLogs(50);
@@ -1951,7 +1966,7 @@ async function showStatus(): Promise<void> {
             cleanLog.includes("failed") ||
             cleanLog.includes("Error")
           ) {
-            appStatus = "error";
+            setAppStatus(AppStatus.Error);
             appStatusText = "Error: App crashed (use [l] to view, [a] to retry)";
             appStatusColor = chalk.red;
             appStatusIcon = "✗";
@@ -1971,7 +1986,7 @@ async function showStatus(): Promise<void> {
         appStatusIcon = "○";
       }
     } else if (backendRunning && frontendRunning) {
-      appStatus = "running";
+      setAppStatus(AppStatus.Running);
       appStatusText = "Ready (use [x] to stop)";
       appStatusColor = chalk.green;
       appStatusIcon = "●";

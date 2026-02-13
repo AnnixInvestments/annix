@@ -60,3 +60,6 @@ FLY_DEPLOYMENT_TECHNICAL_DOCS.md
 
 # Dev utility scripts
 annix-backend/query-docs.ts
+
+# Local sync clone
+Annix-sync/

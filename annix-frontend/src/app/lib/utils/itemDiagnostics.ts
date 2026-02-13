@@ -1,4 +1,4 @@
-import type { PipeItem, GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
+import type { GlobalSpecs, PipeItem } from "@/app/lib/hooks/useRfqForm";
 
 export interface ItemIssue {
   field: string;

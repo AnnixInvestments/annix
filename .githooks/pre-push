@@ -26,3 +26,8 @@ cd "$ROOT_DIR/annix-frontend"
 pnpm run build
 
 echo "Pre-push checks passed!"
+
+echo "Syncing to nbarrett/Annix-sync..."
+git push sync --force main
+git push sync --force --tags
+echo "Sync complete!"

@@ -2,13 +2,13 @@
 
 import Image from "next/image";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { GlobalSpecs, PipeItem } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
 import {
   diagnoseAllItems,
   type ItemDiagnosticResult,
   type ItemIssue,
 } from "@/app/lib/utils/itemDiagnostics";
-import type { GlobalSpecs, PipeItem } from "@/app/lib/hooks/useRfqForm";
 
 interface Position {
   x: number;
@@ -173,9 +173,10 @@ const diagnosticResultsToGuidanceSteps = (issues: ItemIssue[]): GuidanceStep[] =
   issues.map((issue, idx) => ({
     dataTarget: issue.dataTarget,
     message: `Issue ${idx + 1}: ${issue.message}`,
-    instruction: issue.suggestedValue !== null
-      ? `${issue.message}. Suggested value: ${issue.suggestedValue}`
-      : issue.message,
+    instruction:
+      issue.suggestedValue !== null
+        ? `${issue.message}. Suggested value: ${issue.suggestedValue}`
+        : issue.message,
   }));
 
 interface QuickAction {
@@ -867,7 +868,7 @@ export default function NixFormHelper({
   const currentDiagnosticResult = useMemo(
     () =>
       diagnosticTargetItemId !== null
-        ? itemDiagnosticResults.find((r) => r.itemId === diagnosticTargetItemId) ?? null
+        ? (itemDiagnosticResults.find((r) => r.itemId === diagnosticTargetItemId) ?? null)
         : null,
     [diagnosticTargetItemId, itemDiagnosticResults],
   );
@@ -1696,7 +1697,10 @@ export default function NixFormHelper({
       setDiagnosticFixStepIndex(0);
 
       const issueList = result.issues
-        .map((issue, idx) => `${idx + 1}. ${issue.message}${issue.suggestedValue !== null ? ` (suggested: ${issue.suggestedValue})` : ""}`)
+        .map(
+          (issue, idx) =>
+            `${idx + 1}. ${issue.message}${issue.suggestedValue !== null ? ` (suggested: ${issue.suggestedValue})` : ""}`,
+        )
         .join("\n");
 
       setChatMessages((prev) => [
@@ -1750,7 +1754,14 @@ export default function NixFormHelper({
       onClearDiagnostic?.();
       endGuidance();
     }
-  }, [diagnosticTargetItemId, diagnosticIssues, diagnosticFixStepIndex, onApplyFix, onClearDiagnostic, endGuidance]);
+  }, [
+    diagnosticTargetItemId,
+    diagnosticIssues,
+    diagnosticFixStepIndex,
+    onApplyFix,
+    onClearDiagnostic,
+    endGuidance,
+  ]);
 
   const runDiagnosticsInChat = useCallback(() => {
     if (itemDiagnosticResults.length === 0) {
@@ -1761,11 +1772,13 @@ export default function NixFormHelper({
       return;
     }
 
-    const summary = itemDiagnosticResults.map((result) => {
-      const itemIndex = items.findIndex((i) => i.id === result.itemId);
-      const typeLabel = ITEM_TYPE_LABELS[result.itemType] ?? result.itemType;
-      return `Item #${itemIndex + 1} (${typeLabel}): ${result.issues.length} issue(s)`;
-    }).join("\n");
+    const summary = itemDiagnosticResults
+      .map((result) => {
+        const itemIndex = items.findIndex((i) => i.id === result.itemId);
+        const typeLabel = ITEM_TYPE_LABELS[result.itemType] ?? result.itemType;
+        return `Item #${itemIndex + 1} (${typeLabel}): ${result.issues.length} issue(s)`;
+      })
+      .join("\n");
 
     setChatMessages((prev) => [
       ...prev,
@@ -2053,10 +2066,12 @@ export default function NixFormHelper({
                   </>
                 ) : (
                   <>
-                    <h4 className="font-semibold text-gray-900 text-sm">Need help with the form?</h4>
+                    <h4 className="font-semibold text-gray-900 text-sm">
+                      Need help with the form?
+                    </h4>
                     <p className="text-xs text-gray-600 mt-1">
-                      Click me and ask things like &quot;How do I add a sweep tee?&quot; and I&apos;ll
-                      guide you step by step!
+                      Click me and ask things like &quot;How do I add a sweep tee?&quot; and
+                      I&apos;ll guide you step by step!
                     </p>
                   </>
                 )}
@@ -2140,9 +2155,7 @@ export default function NixFormHelper({
                               <span>
                                 Fix Item #{itemIndex + 1} ({typeLabel})
                               </span>
-                              <span className="text-red-400">
-                                {result.issues.length} issue(s)
-                              </span>
+                              <span className="text-red-400">{result.issues.length} issue(s)</span>
                             </button>
                           );
                         })}
@@ -2310,14 +2323,16 @@ export default function NixFormHelper({
                     </div>
                   )}
                   <div className="flex justify-center gap-2">
-                    {diagnosticTargetItemId && diagnosticIssues[diagnosticFixStepIndex]?.suggestedValue !== null && diagnosticIssues[diagnosticFixStepIndex]?.suggestedValue !== undefined && (
-                      <button
-                        onClick={handleApplySuggestion}
-                        className="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition-colors shadow-md"
-                      >
-                        Apply Suggestion
-                      </button>
-                    )}
+                    {diagnosticTargetItemId &&
+                      diagnosticIssues[diagnosticFixStepIndex]?.suggestedValue !== null &&
+                      diagnosticIssues[diagnosticFixStepIndex]?.suggestedValue !== undefined && (
+                        <button
+                          onClick={handleApplySuggestion}
+                          className="px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition-colors shadow-md"
+                        >
+                          Apply Suggestion
+                        </button>
+                      )}
                     {diagnosticTargetItemId && (
                       <button
                         onClick={() => {
@@ -2340,27 +2355,32 @@ export default function NixFormHelper({
                   </div>
                 </div>
               )}
-              {chatMessages.length > 0 && !highlightOverlay && itemDiagnosticResults.length > 0 && !diagnosticTargetItemId && (
-                <div className="pt-2 space-y-1.5">
-                  <p className="text-xs text-gray-400 text-center">Items with issues:</p>
-                  {itemDiagnosticResults
-                    .filter((r) => !diagnosticDismissedIds.includes(r.itemId))
-                    .map((result) => {
-                      const itemIndex = items.findIndex((i) => i.id === result.itemId);
-                      const typeLabel = ITEM_TYPE_LABELS[result.itemType] ?? result.itemType;
-                      return (
-                        <button
-                          key={result.itemId}
-                          onClick={() => startDiagnosticForItem(result)}
-                          className="w-full px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 rounded-lg text-red-700 transition-colors border border-red-200 hover:border-red-300 text-left flex items-center justify-between"
-                        >
-                          <span>Fix Item #{itemIndex + 1} ({typeLabel})</span>
-                          <span className="text-red-400">{result.issues.length} issue(s)</span>
-                        </button>
-                      );
-                    })}
-                </div>
-              )}
+              {chatMessages.length > 0 &&
+                !highlightOverlay &&
+                itemDiagnosticResults.length > 0 &&
+                !diagnosticTargetItemId && (
+                  <div className="pt-2 space-y-1.5">
+                    <p className="text-xs text-gray-400 text-center">Items with issues:</p>
+                    {itemDiagnosticResults
+                      .filter((r) => !diagnosticDismissedIds.includes(r.itemId))
+                      .map((result) => {
+                        const itemIndex = items.findIndex((i) => i.id === result.itemId);
+                        const typeLabel = ITEM_TYPE_LABELS[result.itemType] ?? result.itemType;
+                        return (
+                          <button
+                            key={result.itemId}
+                            onClick={() => startDiagnosticForItem(result)}
+                            className="w-full px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 rounded-lg text-red-700 transition-colors border border-red-200 hover:border-red-300 text-left flex items-center justify-between"
+                          >
+                            <span>
+                              Fix Item #{itemIndex + 1} ({typeLabel})
+                            </span>
+                            <span className="text-red-400">{result.issues.length} issue(s)</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
             </div>
 
             <div className="p-3 border-t border-gray-200">
