@@ -2240,6 +2240,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           "UNEQUAL_CROSS",
           "CON_REDUCER",
           "ECCENTRIC_REDUCER",
+          "OFFSET_BEND",
         ];
         const SABS719_FITTING_TYPES = [
           "SHORT_TEE",
@@ -2256,11 +2257,19 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           "SWEEP_ELBOW",
           "CON_REDUCER",
           "ECCENTRIC_REDUCER",
+          "OFFSET_BEND",
         ];
 
         // Validation for required fields
         if (!fittingEntry.specs?.fittingType) {
           log.debug("Fitting calculation skipped: No fitting type selected");
+          return;
+        }
+
+        // Skip API calculation for offset bends - they're calculated client-side
+        if (fittingEntry.specs.fittingType === "OFFSET_BEND") {
+          log.debug("Fitting calculation skipped: Offset bends are calculated client-side");
+          updateItem(entryId, { calculationError: null });
           return;
         }
 

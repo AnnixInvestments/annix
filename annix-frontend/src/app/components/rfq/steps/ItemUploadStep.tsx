@@ -46,6 +46,10 @@ const Reducer3DPreview = dynamic(() => import("@/app/components/rfq/Reducer3DPre
   ssr: false,
   loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
 });
+const OffsetBend3DPreview = dynamic(() => import("@/app/components/rfq/OffsetBend3DPreview"), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
+});
 
 import {
   BendForm,
@@ -78,6 +82,7 @@ interface ItemWrapperProps {
   Tee3DPreview: React.ComponentType<any> | null;
   Lateral3DPreview: React.ComponentType<any> | null;
   Reducer3DPreview: React.ComponentType<any> | null;
+  OffsetBend3DPreview: React.ComponentType<any> | null;
   availableNominalBores: number[];
   availableSchedulesMap: Record<string, any[]>;
   setAvailableSchedulesMap: (
@@ -117,6 +122,7 @@ const ItemWrapper = memo(function ItemWrapper({
   Tee3DPreview,
   Lateral3DPreview,
   Reducer3DPreview,
+  OffsetBend3DPreview,
   availableNominalBores,
   availableSchedulesMap,
   setAvailableSchedulesMap,
@@ -245,6 +251,7 @@ const ItemWrapper = memo(function ItemWrapper({
           Tee3DPreview={Tee3DPreview}
           Lateral3DPreview={Lateral3DPreview}
           Reducer3DPreview={Reducer3DPreview}
+          OffsetBend3DPreview={OffsetBend3DPreview}
           pressureClassesByStandard={pressureClassesByStandard}
           getFilteredPressureClasses={getFilteredPressureClasses}
           requiredProducts={requiredProducts}
@@ -1924,6 +1931,13 @@ export default function ItemUploadStep({
                     : effectiveDrawingsHidden
                       ? null
                       : Reducer3DPreview
+                }
+                OffsetBend3DPreview={
+                  isUnregisteredCustomer
+                    ? OffsetBend3DPreview
+                    : effectiveDrawingsHidden
+                      ? null
+                      : OffsetBend3DPreview
                 }
                 availableNominalBores={availableNominalBores}
                 availableSchedulesMap={availableSchedulesMap}

@@ -26,6 +26,7 @@ import {
   SABS_1123_PRESSURE_CLASSES,
   SABS62_FITTING_SIZES,
   SABS719_FITTING_SIZES,
+  standardReducerLengthForNb,
   validSmallNbForLargeNb,
 } from "@/app/lib/config/rfq";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
@@ -70,6 +71,7 @@ export interface FittingFormProps {
   Tee3DPreview?: React.ComponentType<any> | null;
   Lateral3DPreview?: React.ComponentType<any> | null;
   Reducer3DPreview?: React.ComponentType<any> | null;
+  OffsetBend3DPreview?: React.ComponentType<any> | null;
   pressureClassesByStandard: Record<number, any[]>;
   getFilteredPressureClasses: (standardId: number) => void;
   requiredProducts?: string[];
@@ -97,6 +99,7 @@ function FittingFormComponent({
   Tee3DPreview,
   Lateral3DPreview,
   Reducer3DPreview,
+  OffsetBend3DPreview,
   pressureClassesByStandard,
   getFilteredPressureClasses,
   requiredProducts = [],
@@ -208,6 +211,7 @@ function FittingFormComponent({
   const isUnequalTee = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(fittingType || "");
   const isLateral = ["LATERAL", "REDUCING_LATERAL"].includes(fittingType || "");
   const isReducer = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(fittingType || "");
+  const isOffsetBend = fittingType === "OFFSET_BEND";
   const isSABS719ForDims =
     (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
   const effectiveStandardForDims =
@@ -344,6 +348,7 @@ function FittingFormComponent({
             "REDUCING_LATERAL",
             "CON_REDUCER",
             "ECCENTRIC_REDUCER",
+            "OFFSET_BEND",
           ].includes(entry.specs?.fittingType)
         }
         formContent={
@@ -577,9 +582,13 @@ function FittingFormComponent({
                           const wasReducer = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
                             entry.specs?.fittingType || "",
                           );
+                          const isNewOffsetBend = fittingType === "OFFSET_BEND";
+                          const wasOffsetBend = entry.specs?.fittingType === "OFFSET_BEND";
+                          const isNewTwoEndType = isNewReducer || isNewOffsetBend;
+                          const wasTwoEndType = wasReducer || wasOffsetBend;
 
                           const currentEndConfig = entry.specs?.pipeEndConfiguration;
-                          const validReducerConfigs = [
+                          const validTwoEndConfigs = [
                             "PE",
                             "FOE",
                             "FBE",
@@ -600,9 +609,10 @@ function FittingFormComponent({
                             "2X_LF_FOE",
                             "2X_RF_FOE",
                           ];
-                          const needsEndConfigReset = isNewReducer
-                            ? !validReducerConfigs.includes(currentEndConfig || "")
-                            : wasReducer && !validFittingConfigs.includes(currentEndConfig || "");
+                          const needsEndConfigReset = isNewTwoEndType
+                            ? !validTwoEndConfigs.includes(currentEndConfig || "")
+                            : wasTwoEndType &&
+                              !validFittingConfigs.includes(currentEndConfig || "");
 
                           const updatedEntry = {
                             ...entry,
@@ -812,6 +822,23 @@ function FittingFormComponent({
                                 currentBranchNB &&
                                 currentBranchNB >= nominalDiameter;
 
+                              const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
+                                entry.specs?.fittingType || "",
+                              );
+                              const steelSpecId =
+                                entry.specs?.steelSpecificationId ||
+                                globalSpecs?.steelSpecificationId;
+                              const steelSpecName = masterData?.steelSpecifications?.find(
+                                (s: { id: number }) => s.id === steelSpecId,
+                              )?.steelSpecName;
+                              const reducerLength = isReducerType
+                                ? standardReducerLengthForNb(
+                                    nominalDiameter,
+                                    steelSpecId,
+                                    steelSpecName,
+                                  )
+                                : undefined;
+
                               const newSpecs = {
                                 ...entry.specs,
                                 nominalDiameterMm: nominalDiameter,
@@ -820,6 +847,13 @@ function FittingFormComponent({
                                 branchNominalDiameterMm: shouldClearBranch
                                   ? undefined
                                   : entry.specs?.branchNominalDiameterMm,
+                                ...(isReducerType && reducerLength
+                                  ? {
+                                      reducerLengthMm: reducerLength,
+                                      reducerLengthMmAuto: reducerLength,
+                                      smallNominalDiameterMm: undefined,
+                                    }
+                                  : {}),
                               };
                               const immediateEntry = { ...entry, specs: newSpecs };
                               immediateEntry.description = generateItemDescription(immediateEntry);
@@ -949,24 +983,20 @@ function FittingFormComponent({
                               ? String(entry.specs.smallNominalDiameterMm)
                               : ""
                           }
-                          onChange={async (value) => {
+                          onChange={(value) => {
                             if (!value) return;
                             const smallDiameter = Number(value);
-                            let reducerLength = entry.specs?.reducerLengthMm;
-
-                            if (mainNB && smallDiameter) {
-                              try {
-                                const result = await masterDataApi.getStandardReducerLength(
-                                  mainNB,
-                                  smallDiameter,
-                                );
-                                if (result?.standardLengthMm) {
-                                  reducerLength = result.standardLengthMm;
-                                }
-                              } catch (err) {
-                                log.debug("Could not fetch standard reducer length:", err);
-                              }
-                            }
+                            const steelSpecId =
+                              entry.specs?.steelSpecificationId ||
+                              globalSpecs?.steelSpecificationId;
+                            const steelSpecName = masterData?.steelSpecifications?.find(
+                              (s: { id: number }) => s.id === steelSpecId,
+                            )?.steelSpecName;
+                            const reducerLength = standardReducerLengthForNb(
+                              mainNB,
+                              steelSpecId,
+                              steelSpecName,
+                            );
 
                             onUpdateEntry(entry.id, {
                               specs: {
@@ -1661,7 +1691,10 @@ function FittingFormComponent({
                         className={defaultSelectClass}
                         required
                       >
-                        {(isReducer ? REDUCER_END_OPTIONS : FITTING_END_OPTIONS).map((opt) => (
+                        {(isReducer || isOffsetBend
+                          ? REDUCER_END_OPTIONS
+                          : FITTING_END_OPTIONS
+                        ).map((opt) => (
                           <option key={opt.value} value={opt.value}>
                             {opt.label}
                           </option>
@@ -1669,7 +1702,8 @@ function FittingFormComponent({
                       </select>
                       {(() => {
                         const storedConfig = entry.specs?.pipeEndConfiguration;
-                        const validOptions = isReducer ? REDUCER_END_OPTIONS : FITTING_END_OPTIONS;
+                        const validOptions =
+                          isReducer || isOffsetBend ? REDUCER_END_OPTIONS : FITTING_END_OPTIONS;
                         const isValidConfig = validOptions.some(
                           (opt) => opt.value === storedConfig,
                         );
@@ -1763,7 +1797,7 @@ function FittingFormComponent({
                 )}
               </div>
               <div
-                className={`grid grid-cols-1 sm:grid-cols-2 ${isUnequalTee || isLateral ? "md:grid-cols-6" : isReducer ? "md:grid-cols-3" : "md:grid-cols-3"} gap-3`}
+                className={`grid grid-cols-1 sm:grid-cols-2 ${isUnequalTee || isLateral ? "md:grid-cols-6" : isReducer ? "md:grid-cols-3" : isOffsetBend ? "md:grid-cols-5" : "md:grid-cols-3"} gap-3`}
               >
                 {/* Quantity */}
                 <div>
@@ -1799,13 +1833,14 @@ function FittingFormComponent({
                   />
                 </div>
 
-                {/* Pipe Length A - or Angle Range for Laterals/Y-Pieces (not for reducers) */}
+                {/* Pipe Length A - or Angle Range for Laterals/Y-Pieces (not for reducers or offset bends) */}
                 {(() => {
                   const fittingType = entry.specs?.fittingType;
                   const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
                     fittingType || "",
                   );
-                  if (isReducerType) return null;
+                  const isOffsetBendType = fittingType === "OFFSET_BEND";
+                  if (isReducerType || isOffsetBendType) return null;
 
                   const isLateral = fittingType === "LATERAL" || fittingType === "Y_PIECE";
                   const isEqualTee = ["SHORT_TEE", "GUSSET_TEE", "EQUAL_TEE"].includes(
@@ -1957,13 +1992,14 @@ function FittingFormComponent({
                   );
                 })()}
 
-                {/* Pipe Length B - or Degrees for Laterals (not for reducers) */}
+                {/* Pipe Length B - or Degrees for Laterals (not for reducers or offset bends) */}
                 {(() => {
                   const fittingType = entry.specs?.fittingType;
                   const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(
                     fittingType || "",
                   );
-                  if (isReducerType) return null;
+                  const isOffsetBendType = fittingType === "OFFSET_BEND";
+                  if (isReducerType || isOffsetBendType) return null;
 
                   const isLateral = fittingType === "LATERAL";
                   const isYPiece = fittingType === "Y_PIECE";
@@ -2400,6 +2436,114 @@ function FittingFormComponent({
                     >
                       Add Center Stub
                     </label>
+                  </div>
+                )}
+
+                {/* Offset Bend - Length A */}
+                {isOffsetBend && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Length A (mm)
+                      <span className="text-gray-500 text-xs ml-1 font-normal">(first)</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={entry.specs?.offsetLengthA || ""}
+                      onChange={(e) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            offsetLengthA: e.target.value ? Number(e.target.value) : undefined,
+                          },
+                        });
+                        debouncedCalculate();
+                      }}
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                      placeholder="e.g., 300"
+                      min="0"
+                    />
+                  </div>
+                )}
+
+                {/* Offset Bend - Length B */}
+                {isOffsetBend && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Length B (mm)
+                      <span className="text-gray-500 text-xs ml-1 font-normal">(middle)</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={entry.specs?.offsetLengthB || ""}
+                      onChange={(e) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            offsetLengthB: e.target.value ? Number(e.target.value) : undefined,
+                          },
+                        });
+                        debouncedCalculate();
+                      }}
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                      placeholder="e.g., 200"
+                      min="0"
+                    />
+                  </div>
+                )}
+
+                {/* Offset Bend - Length C */}
+                {isOffsetBend && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Length C (mm)
+                      <span className="text-gray-500 text-xs ml-1 font-normal">(last)</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={entry.specs?.offsetLengthC || ""}
+                      onChange={(e) => {
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            offsetLengthC: e.target.value ? Number(e.target.value) : undefined,
+                          },
+                        });
+                        debouncedCalculate();
+                      }}
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                      placeholder="e.g., 300"
+                      min="0"
+                    />
+                  </div>
+                )}
+
+                {/* Offset Bend - Angle */}
+                {isOffsetBend && (
+                  <div>
+                    <label className="block text-xs font-semibold text-blue-900 mb-1">
+                      Offset Angle (°)
+                    </label>
+                    <select
+                      value={entry.specs?.offsetAngleDegrees || ""}
+                      onChange={(e) => {
+                        const angle = e.target.value ? Number(e.target.value) : undefined;
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            offsetAngleDegrees: angle,
+                          },
+                        });
+                        debouncedCalculate();
+                      }}
+                      className="w-full px-2 py-1.5 border border-blue-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
+                    >
+                      <option value="">Select...</option>
+                      {Array.from({ length: 90 }, (_, i) => i + 1).map((deg) => (
+                        <option key={deg} value={deg}>
+                          {deg}°
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
               </div>
@@ -3345,6 +3489,155 @@ function FittingFormComponent({
                       );
                     }
 
+                    const isOffsetBendCalc = fittingType === "OFFSET_BEND";
+                    if (isOffsetBendCalc) {
+                      const lengthA = entry.specs?.offsetLengthA || 0;
+                      const lengthB = entry.specs?.offsetLengthB || 0;
+                      const lengthC = entry.specs?.offsetLengthC || 0;
+                      const offsetAngle = entry.specs?.offsetAngleDegrees || 45;
+                      const quantity = entry.specs?.quantityValue || 1;
+
+                      const steelSpecId =
+                        entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                      const steelSpec = masterData?.steelSpecs?.find(
+                        (s: any) => s.id === steelSpecId,
+                      );
+                      const steelSpecName = steelSpec?.steelSpecName || "";
+
+                      const flangeStandardId =
+                        entry.specs?.flangeStandardId || globalSpecs?.flangeStandardId;
+                      const flangePressureClassId =
+                        entry.specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+                      const flangeStandard = masterData.flangeStandards?.find(
+                        (s: any) => s.id === flangeStandardId,
+                      );
+                      const flangeStandardCode = flangeStandard?.code || "";
+                      const pressureClass = masterData.pressureClasses?.find(
+                        (p: any) => p.id === flangePressureClassId,
+                      );
+                      const pressureClassDesignation = pressureClass?.designation || "";
+                      const flangeTypeCode =
+                        entry.specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+
+                      const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+                      const hasStartFlange =
+                        endConfig === "FBE" ||
+                        endConfig === "FOE" ||
+                        endConfig === "2X_RF" ||
+                        endConfig === "2X_LF";
+                      const hasEndFlange =
+                        endConfig === "FBE" || endConfig === "2X_RF" || endConfig === "2X_LF";
+
+                      const pipeOD = NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05;
+                      const wallThickness = entry.calculation?.wallThicknessMm || 6;
+
+                      const totalPipeLengthMm = lengthA + lengthB + lengthC;
+                      const totalPipeLengthM = totalPipeLengthMm / 1000;
+                      const pipeWeight =
+                        calculatePipeWeightPerMeter(pipeOD, wallThickness) * totalPipeLengthM;
+
+                      const flangeWeight = pressureClassDesignation
+                        ? getFlangeWeight(
+                            nominalBore,
+                            pressureClassDesignation,
+                            flangeStandardCode,
+                            flangeTypeCode,
+                          )
+                        : 0;
+                      const numFlanges = (hasStartFlange ? 1 : 0) + (hasEndFlange ? 1 : 0);
+                      const totalFlangeWeight = flangeWeight * numFlanges;
+
+                      const totalWeight = (pipeWeight + totalFlangeWeight) * quantity;
+
+                      const pipeCircMm = Math.PI * pipeOD;
+
+                      const numMitreWelds = 2;
+                      const mitreWeldMm = numMitreWelds * pipeCircMm;
+                      const flangeWeldMm = numFlanges * 2 * pipeCircMm;
+                      const totalWeldMm = mitreWeldMm + flangeWeldMm;
+
+                      const angleRad = (offsetAngle * Math.PI) / 180;
+                      const offsetHeight = Math.round(lengthB * Math.sin(angleRad));
+
+                      return (
+                        <div
+                          className="grid gap-3"
+                          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))" }}
+                        >
+                          <div className="bg-blue-50 p-2 rounded text-center border border-blue-200">
+                            <p className="text-xs text-blue-800 font-medium">Qty & Dimensions</p>
+                            <p className="text-lg font-bold text-blue-900">
+                              {quantity} × Offset Bend
+                            </p>
+                            <div className="mt-1 space-y-0.5 text-xs text-blue-700">
+                              <p>NB: {nominalBore}mm</p>
+                              <p>
+                                A: {lengthA}mm | B: {lengthB}mm | C: {lengthC}mm
+                              </p>
+                              <p>Total Length: {totalPipeLengthMm}mm</p>
+                              <p className="text-purple-700">
+                                Angle: {offsetAngle}° | Offset: {offsetHeight}mm
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                              Weight Breakdown
+                            </p>
+                            <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
+                              {totalWeight.toFixed(2)}kg
+                            </p>
+                            <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
+                              <p>Pipe: {(pipeWeight * quantity).toFixed(2)}kg</p>
+                              {numFlanges > 0 && totalFlangeWeight > 0 && (
+                                <p>
+                                  Flanges ({numFlanges}):{" "}
+                                  {(totalFlangeWeight * quantity).toFixed(2)}kg
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {numFlanges > 0 && (
+                            <div className="bg-amber-50 p-2 rounded text-center border border-amber-200">
+                              <p className="text-xs text-amber-800 font-medium">Total Flanges</p>
+                              <p className="text-lg font-bold text-amber-900">{numFlanges}</p>
+                              <div className="mt-1 text-xs text-amber-700">
+                                <p>
+                                  {numFlanges} × {nominalBore}NB
+                                </p>
+                              </div>
+                              {pressureClassDesignation && (
+                                <p className="text-xs text-amber-600 mt-1 font-medium">
+                                  {pressureClassDesignation}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="bg-orange-100 dark:bg-orange-900/40 p-2 rounded text-center">
+                            <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                              Weld Summary
+                            </p>
+                            <p className="text-lg font-bold text-orange-900 dark:text-orange-100">
+                              {(totalWeldMm / 1000).toFixed(2)} l/m
+                            </p>
+                            <div className="text-xs text-orange-500 dark:text-orange-400 mt-1">
+                              <p>
+                                Mitre ({numMitreWelds}): {mitreWeldMm.toFixed(0)}mm
+                              </p>
+                              {numFlanges > 0 && (
+                                <p>
+                                  Flange ({numFlanges * 2}): {flangeWeldMm.toFixed(0)}mm
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     const isUnequalTeeCalc = ["UNEQUAL_SHORT_TEE", "UNEQUAL_GUSSET_TEE"].includes(
                       fittingType,
                     );
@@ -4057,6 +4350,7 @@ function FittingFormComponent({
 
           const isLateralType = ["LATERAL", "REDUCING_LATERAL"].includes(fittingType);
           const isReducerType = ["CON_REDUCER", "ECCENTRIC_REDUCER"].includes(fittingType);
+          const isOffsetBendType = fittingType === "OFFSET_BEND";
 
           if (isTeeType && !Tee3DPreview) {
             return (
@@ -4082,10 +4376,18 @@ function FittingFormComponent({
             );
           }
 
-          if (!isTeeType && !isLateralType && !isReducerType) {
+          if (isOffsetBendType && !OffsetBend3DPreview) {
             return (
               <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
-                3D preview is only available for tee, lateral, and reducer fittings
+                3D preview hidden. Use the toggle above to show drawings.
+              </div>
+            );
+          }
+
+          if (!isTeeType && !isLateralType && !isReducerType && !isOffsetBendType) {
+            return (
+              <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 text-center text-blue-700 text-sm font-medium">
+                3D preview is only available for tee, lateral, reducer, and offset bend fittings
               </div>
             );
           }
@@ -4248,6 +4550,46 @@ function FittingFormComponent({
                 stubNominalBore={stubNb}
                 stubLocationMm={stubLocation}
                 stubAngleDegrees={entry.specs?.reducerStubAngleDegrees || 0}
+                closureLengthMm={entry.specs?.closureLengthMm || 150}
+              />
+            );
+          }
+
+          if (isOffsetBendType && OffsetBend3DPreview) {
+            const lengthA = entry.specs?.offsetLengthA || 300;
+            const lengthB = entry.specs?.offsetLengthB || 200;
+            const lengthC = entry.specs?.offsetLengthC || 300;
+            const offsetAngle = entry.specs?.offsetAngleDegrees || 45;
+
+            const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+            const hasStartFlange =
+              endConfig === "FBE" ||
+              endConfig === "FOE" ||
+              endConfig === "2X_RF" ||
+              endConfig === "2X_LF";
+            const hasEndFlange =
+              endConfig === "FBE" || endConfig === "2X_RF" || endConfig === "2X_LF";
+
+            const offsetStartFlangeType =
+              endConfig === "2X_RF" ? "rotating" : endConfig === "2X_LF" ? "loose" : "fixed";
+            const offsetEndFlangeType =
+              endConfig === "2X_RF" ? "rotating" : endConfig === "2X_LF" ? "loose" : "fixed";
+
+            return (
+              <OffsetBend3DPreview
+                key={`offset-bend-${entry.id}`}
+                nominalBore={nominalBore}
+                outerDiameter={outerDiameter}
+                wallThickness={wallThickness}
+                lengthA={lengthA}
+                lengthB={lengthB}
+                lengthC={lengthC}
+                offsetAngleDegrees={offsetAngle}
+                hasStartFlange={hasStartFlange}
+                hasEndFlange={hasEndFlange}
+                startFlangeType={offsetStartFlangeType}
+                endFlangeType={offsetEndFlangeType}
+                closureLengthMm={entry.specs?.closureLengthMm || 150}
               />
             );
           }

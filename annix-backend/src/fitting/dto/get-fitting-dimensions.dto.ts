@@ -36,6 +36,8 @@ export enum FittingType {
   // Reducers
   CON_REDUCER = "CON_REDUCER",
   ECCENTRIC_REDUCER = "ECCENTRIC_REDUCER",
+  // Offset Bend
+  OFFSET_BEND = "OFFSET_BEND",
 }
 
 export class GetFittingDimensionsDto {
