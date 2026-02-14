@@ -27,7 +27,6 @@ pnpm run build
 
 echo "Pre-push checks passed!"
 
-echo "Syncing to nbarrett/Annix-sync..."
-git push --no-verify sync --force main
-git push --no-verify sync --force --tags
-echo "Sync complete!"
+(sleep 5 && gh workflow run deploy.yml --repo AnnixInvestments/annix --ref main 2>/dev/null) &
+disown
+echo "Deploy workflow will trigger after push completes"

@@ -20,30 +20,25 @@ These rules MUST be followed in EVERY session without exception:
     - Any similar AI tool attribution lines
 - Commits should appear as if written by a human developer
 
-## Deployment (Temporary Cutover Arrangement)
+## Deployment
 
-GitHub Actions is disabled on `AnnixInvestments/annix` because the org owner account (`AnnixApp`) has been deleted and no remaining member has org-owner permissions. A GitHub Support ticket is pending to transfer ownership.
+GitHub Actions push triggers are disabled on `AnnixInvestments/annix` because the org owner account (`AnnixApp`) was deleted. A GitHub Support ticket is pending to transfer ownership.
 
-Until resolved, deployments use a mirror repo:
+Workflows are triggered via the GitHub API instead:
 
 ### Push Flow
 1. All development happens on `AnnixInvestments/annix` (origin)
-2. The `.githooks/pre-push` hook automatically mirrors `main` to `nbarrett/Annix-sync` (remote: `sync`)
-3. GitHub Actions on `nbarrett/Annix-sync` handles Fly.io deployment
+2. The `.githooks/pre-push` hook runs checks (lint, tests, builds, migrations)
+3. After the push completes, a background `gh workflow run` API call triggers the deploy workflow
 
 ### Remotes
-- `origin` — `https://github.com/AnnixInvestments/annix.git` (primary repo)
-- `sync` — `https://github.com/nbarrett/Annix-sync.git` (deployment mirror)
+- `origin` — `https://github.com/AnnixInvestments/annix.git` (only remote)
 
-### What Gets Synced
-- Only `main` branch (force push)
-- Tags (force push)
-- No feature branches
+### Git Hooks
+- Hooks live in `.githooks/` — requires `git config core.hooksPath .githooks`
+- The pre-push hook runs all checks and schedules the deploy trigger
 
-### When This Can Be Removed
+### When This Can Be Simplified
 Once GitHub Support transfers org ownership to an active account:
-1. Enable GitHub Actions on `AnnixInvestments/annix`
-2. Copy workflow files from `nbarrett/Annix-sync` if needed
-3. Remove the sync lines from `.githooks/pre-push`
-4. Remove the `sync` remote: `git remote remove sync`
-5. Archive or delete `nbarrett/Annix-sync`
+1. Enable GitHub Actions push triggers on `AnnixInvestments/annix`
+2. Remove the `gh workflow run` lines from `.githooks/pre-push` (push events will trigger deploys directly)
