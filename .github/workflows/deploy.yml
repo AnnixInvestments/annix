@@ -4,44 +4,39 @@ on:
   push:
     branches:
       - main
-  # schedule:
-  #   - cron: '*/15 * * * *'
   workflow_dispatch:
+    inputs:
+      environments:
+        description: 'Environments to deploy'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - prod
+          - test
 
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
 jobs:
-  check-deploy-needed:
-    name: Check if deploy needed
+  set-environments:
+    name: Set deploy matrix
     runs-on: ubuntu-latest
     outputs:
-      should_deploy: ${{ steps.check.outputs.should_deploy }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: Determine if deploy is needed
-        id: check
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - id: set-matrix
         run: |
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          LAST_SUCCESS=$(gh api "repos/${{ github.repository }}/actions/runs?status=success&branch=main&per_page=1" --jq '.workflow_runs[0].head_sha // ""')
-          CURRENT_SHA=$(gh api "repos/${{ github.repository }}/commits/main" --jq '.sha')
-          if [ "$LAST_SUCCESS" = "$CURRENT_SHA" ]; then
-            echo "No new commits since last successful deploy, skipping"
-            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.environments }}" = "all" ]; then
+            echo 'matrix=["prod","test"]' >> "$GITHUB_OUTPUT"
           else
-            echo "New commits detected ($CURRENT_SHA vs last deployed $LAST_SUCCESS)"
-            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo 'matrix=["${{ inputs.environments }}"]' >> "$GITHUB_OUTPUT"
           fi
 
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    needs: check-deploy-needed
-    if: needs.check-deploy-needed.outputs.should_deploy == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,9 +65,19 @@ jobs:
         run: pnpm --filter annix-frontend type-check
 
   deploy-backend:
-    name: Deploy Backend
+    name: Deploy Backend (${{ matrix.environment }})
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, set-environments]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        environment: ${{ fromJson(needs.set-environments.outputs.matrix) }}
+        include:
+          - environment: prod
+            config: annix-backend/fly.toml
+          - environment: test
+            config: annix-backend/fly.test.toml
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -83,18 +88,28 @@ jobs:
       - name: Copy root lockfile to backend
         run: cp pnpm-lock.yaml annix-backend/
 
-      - name: Deploy Backend to Fly.io
+      - name: Deploy Backend to Fly.io (${{ matrix.environment }})
         run: |
           for i in 1 2 3; do
-            flyctl deploy -c annix-backend/fly.toml && break
+            flyctl deploy -c ${{ matrix.config }} && break
             echo "Deploy attempt $i failed, retrying in 10s..."
             sleep 10
           done
 
   deploy-frontend:
-    name: Deploy Frontend
+    name: Deploy Frontend (${{ matrix.environment }})
     runs-on: ubuntu-latest
-    needs: [test, deploy-backend]
+    needs: [test, set-environments, deploy-backend]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        environment: ${{ fromJson(needs.set-environments.outputs.matrix) }}
+        include:
+          - environment: prod
+            config: annix-frontend/fly.toml
+          - environment: test
+            config: annix-frontend/fly.test.toml
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -105,15 +120,16 @@ jobs:
       - name: Copy root lockfile to frontend
         run: cp pnpm-lock.yaml annix-frontend/
 
-      - name: Deploy Frontend to Fly.io
-        working-directory: ./annix-frontend
+      - name: Deploy Frontend to Fly.io (${{ matrix.environment }})
         run: |
           for i in 1 2 3; do
-            flyctl deploy && break
+            flyctl deploy -c ${{ matrix.config }} && break
             echo "Deploy attempt $i failed, retrying in 10s..."
             sleep 10
           done
 
       - name: Get Frontend Logs on Failure
         if: failure()
-        run: flyctl logs -a annix-frontend --no-tail 2>&1 | tail -100 || echo "Could not fetch logs"
+        run: |
+          APP_NAME=$(grep '^app' ${{ matrix.config }} | head -1 | sed "s/app = '//;s/'//")
+          flyctl logs -a "$APP_NAME" --no-tail 2>&1 | tail -100 || echo "Could not fetch logs"
