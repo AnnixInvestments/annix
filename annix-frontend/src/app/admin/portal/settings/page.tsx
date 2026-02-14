@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { isTestEnvironment } from "@/app/lib/config/environment";
 import { useFeatureFlags, useToggleFeatureFlag } from "@/app/lib/query/hooks";
@@ -41,6 +41,7 @@ export default function SettingsPage() {
   const flagsQuery = useFeatureFlags();
   const toggleMutation = useToggleFeatureFlag();
   const isTestEnv = isTestEnvironment();
+  const [activeTab, setActiveTab] = useState<string>("customer");
 
   const flags = flagsQuery.data?.flags ?? [];
 
@@ -141,35 +142,64 @@ export default function SettingsPage() {
             Try again
           </button>
         </div>
+      ) : flags.length === 0 ? (
+        <div className="bg-white dark:bg-slate-800 shadow rounded-lg px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+          No feature flags configured
+        </div>
       ) : (
-        <div className="space-y-6">
-          {CATEGORY_ORDER.map((category) => {
-            const categoryFlags = groupedFlags[category];
+        <div className="space-y-4">
+          <div className="border-b border-gray-200 dark:border-slate-700">
+            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+              {CATEGORY_ORDER.map((category) => {
+                const categoryFlags = groupedFlags[category];
+                if (!categoryFlags || categoryFlags.length === 0) return null;
+
+                const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.system;
+                const isActive = activeTab === category;
+
+                return (
+                  <button
+                    key={category}
+                    onClick={() => setActiveTab(category)}
+                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      isActive
+                        ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
+                    }`}
+                  >
+                    {config.title}
+                    <span
+                      className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                        isActive
+                          ? "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300"
+                          : "bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-gray-400"
+                      }`}
+                    >
+                      {categoryFlags.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {(() => {
+            const categoryFlags = groupedFlags[activeTab];
             if (!categoryFlags || categoryFlags.length === 0) return null;
 
-            const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.system;
+            const config = CATEGORY_CONFIG[activeTab] || CATEGORY_CONFIG.system;
 
             return (
-              <div
-                key={category}
-                className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden"
-              >
+              <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
                   <div className="flex items-center gap-3">
-                    <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-800 dark:bg-${config.color}-900 dark:text-${config.color}-200`}
-                    >
-                      {config.title}
-                    </span>
-                    {isTestEnv && (category === "customer" || category === "supplier") && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{config.description}</p>
+                    {isTestEnv && (activeTab === "customer" || activeTab === "supplier") && (
                       <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
                         Restricts portal access
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {config.description}
-                  </p>
                 </div>
 
                 <div className="divide-y divide-gray-200 dark:divide-slate-700">
@@ -226,13 +256,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             );
-          })}
-
-          {flags.length === 0 && (
-            <div className="bg-white dark:bg-slate-800 shadow rounded-lg px-6 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-              No feature flags configured
-            </div>
-          )}
+          })()}
         </div>
       )}
     </div>
