@@ -3,6 +3,7 @@
 import { type ChildProcess, execSync, spawn } from "node:child_process";
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   openSync,
   readFileSync,
@@ -80,7 +81,7 @@ const PROJECTS_CONFIG_FILE = join(DEFAULT_ROOT_DIR, ".parallel-claude-projects.j
 const APP_LOG_FILE = join(DEFAULT_ROOT_DIR, ".parallel-claude-app.log");
 
 let currentProject: ProjectConfig = {
-  name: "Annix-sync",
+  name: "annix",
   path: DEFAULT_ROOT_DIR,
   worktreeDir: join(DEFAULT_ROOT_DIR, "..", "annix-worktrees"),
 };
@@ -101,12 +102,12 @@ function loadProjectsConfig(): ProjectsConfig {
     const defaultConfig: ProjectsConfig = {
       projects: [
         {
-          name: "Annix-sync",
+          name: "annix",
           path: DEFAULT_ROOT_DIR,
           worktreeDir: join(DEFAULT_ROOT_DIR, "..", "annix-worktrees"),
         },
       ],
-      defaultProject: "Annix-sync",
+      defaultProject: "annix",
     };
     saveProjectsConfig(defaultConfig);
     return defaultConfig;
@@ -120,7 +121,7 @@ function loadProjectsConfig(): ProjectsConfig {
     return {
       projects: [
         {
-          name: "Annix-sync",
+          name: "annix",
           path: DEFAULT_ROOT_DIR,
         },
       ],
@@ -433,7 +434,14 @@ function killExternalProcess(pid: number, force: boolean = false): boolean {
   try {
     const platform = process.platform;
     if (platform === "win32") {
-      execSync(`taskkill /PID ${pid} /F`, { stdio: "pipe" });
+      try {
+        execSync(`taskkill /PID ${pid} /T /F`, { stdio: "pipe" });
+      } catch {
+        execSync(
+          `powershell -Command "Stop-Process -Id ${pid} -Force -ErrorAction SilentlyContinue"`,
+          { stdio: "pipe" },
+        );
+      }
     } else {
       process.kill(pid, force ? "SIGKILL" : "SIGTERM");
     }
@@ -1170,7 +1178,7 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
     sessionDir = worktreePath;
 
     if (!existsSync(worktreeDir())) {
-      execSync(`mkdir -p "${worktreeDir()}"`, { cwd: rootDir() });
+      mkdirSync(worktreeDir(), { recursive: true });
     }
 
     const existingWorktrees = exec("git worktree list --porcelain", { silent: true });
