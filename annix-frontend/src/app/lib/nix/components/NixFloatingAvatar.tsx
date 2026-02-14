@@ -130,7 +130,7 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
       >
         <div className="relative group">
           <div
-            className={`w-16 h-16 rounded-full overflow-hidden shadow-lg border-3 border-orange-400 hover:border-orange-500 transition-all duration-200 ${
+            className={`relative w-16 h-16 rounded-full overflow-hidden shadow-lg border-3 border-orange-400 hover:border-orange-500 transition-all duration-200 ${
               isDragging ? "scale-110 shadow-xl" : "hover:scale-105"
             }`}
             style={{
@@ -142,9 +142,8 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
             <Image
               src="/nix-avatar.png"
               alt="Nix AI Assistant"
-              width={64}
-              height={64}
-              className="object-cover object-top scale-125"
+              fill
+              className="object-cover"
               draggable={false}
             />
           </div>

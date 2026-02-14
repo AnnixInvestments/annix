@@ -737,7 +737,11 @@ function BendFormComponent({
                             );
                             if (nbValidForNewSpec) {
                               keepNB = true;
-                              const schedules = getScheduleListForSpec(nominalBore, newSpecId);
+                              const schedules = getScheduleListForSpec(
+                                nominalBore,
+                                newSpecId,
+                                newSpecName,
+                              );
                               const pressure = globalSpecs?.workingPressureBar || 0;
 
                               if (pressure > 0 && schedules.length > 0) {
@@ -900,6 +904,7 @@ function BendFormComponent({
                             const schedules = getScheduleListForSpec(
                               nominalBore,
                               nbEffectiveSpecId,
+                              steelSpecName,
                             );
 
                             let matchedSchedule: string | null = null;
@@ -1052,6 +1057,7 @@ function BendFormComponent({
                     const schedules = getScheduleListForSpec(
                       entry.specs?.nominalBoreMm || 0,
                       schedEffectiveSpecId,
+                      steelSpecName,
                     );
                     const options = schedules.map((s: any) => ({
                       value: s.scheduleDesignation,

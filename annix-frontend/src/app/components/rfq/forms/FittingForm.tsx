@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useCallback, useEffect, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClosureLengthSelector } from "@/app/components/rfq/ClosureLengthSelector";
 import { MaterialSuitabilityWarning } from "@/app/components/rfq/MaterialSuitabilityWarning";
 import { formatNotesForDisplay, SmartNotesDropdown } from "@/app/components/rfq/SmartNotesDropdown";
@@ -52,6 +52,7 @@ import {
   LateralAngleRange,
 } from "@/app/lib/utils/sabs719LateralData";
 import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
+import { groupSteelSpecifications } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 
@@ -155,6 +156,11 @@ function FittingFormComponent({
   const hasFlanges = pipeEndConfiguration !== "PE";
 
   const flangeTypesLength = masterData?.flangeTypes?.length ?? 0;
+
+  const groupedSteelOptions = useMemo(
+    () => (masterData?.steelSpecs ? groupSteelSpecifications(masterData.steelSpecs) : []),
+    [masterData?.steelSpecs],
+  );
 
   useEffect(() => {
     log.info(`🔥 FittingForm useEffect[flangeSpecs] FIRED - entry.id: ${entry.id}`);
@@ -406,42 +412,58 @@ function FittingFormComponent({
               extraFields={
                 <div>
                   <label className="block text-xs font-semibold text-green-900 dark:text-green-300 mb-1">
-                    Fitting Standard *{(() => {
-                      const isSABS719 =
-                        (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) ===
-                        8;
-                      const derived = isSABS719 ? "SABS719" : "SABS62";
+                    Steel Specification *{(() => {
                       const hasGlobal = !!globalSpecs?.steelSpecificationId;
-                      const current = entry.specs?.fittingStandard || derived;
-                      if (hasGlobal && current === derived)
+                      const hasOverride = !!entry.specs?.steelSpecificationId;
+                      if (hasGlobal && !hasOverride)
                         return (
                           <span className="text-green-600 dark:text-green-400 text-xs ml-1 font-normal">
-                            (Auto)
+                            (From Specs Page)
                           </span>
                         );
-                      if (hasGlobal && current !== derived)
+                      if (hasOverride)
                         return (
-                          <span className="text-blue-600 text-xs ml-1 font-normal">(Override)</span>
+                          <span className="text-orange-600 text-xs ml-1 font-normal">
+                            (Override)
+                          </span>
                         );
                       return null;
                     })()}
                   </label>
                   {(() => {
-                    const selectId = `fitting-standard-wc-${entry.id}`;
-                    const derivedStandard =
-                      (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8
-                        ? "SABS719"
-                        : "SABS62";
+                    const selectId = `fitting-steel-spec-wc-${entry.id}`;
+                    const effectiveSpecId =
+                      entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                    const isOverride = !!entry.specs?.steelSpecificationId;
+                    const isFromGlobal =
+                      !entry.specs?.steelSpecificationId && !!globalSpecs?.steelSpecificationId;
+
                     return (
                       <Select
                         id={selectId}
-                        value={entry.specs?.fittingStandard || derivedStandard}
-                        onChange={(newStandard) => {
+                        value={String(effectiveSpecId || "")}
+                        className={
+                          isFromGlobal
+                            ? "border-2 border-green-500"
+                            : isOverride
+                              ? "border-2 border-orange-500"
+                              : ""
+                        }
+                        onChange={(value) => {
+                          const newSpecId = value ? parseInt(value, 10) : undefined;
+                          const newSpecName =
+                            masterData.steelSpecs?.find((s: any) => s.id === newSpecId)
+                              ?.steelSpecName || "";
+                          const isSABS719 =
+                            newSpecName.includes("SABS 719") || newSpecName.includes("SANS 719");
+                          const newFittingStandard = isSABS719 ? "SABS719" : "SABS62";
+
                           const updatedEntry = {
                             ...entry,
                             specs: {
                               ...entry.specs,
-                              fittingStandard: newStandard as "SABS62" | "SABS719",
+                              steelSpecificationId: newSpecId,
+                              fittingStandard: newFittingStandard,
                               nominalDiameterMm: undefined,
                               scheduleNumber: undefined,
                             },
@@ -449,10 +471,9 @@ function FittingFormComponent({
                           updatedEntry.description = generateItemDescription(updatedEntry);
                           onUpdateEntry(entry.id, updatedEntry);
                         }}
-                        options={[
-                          { value: "SABS62", label: "SABS62 (Standard)" },
-                          { value: "SABS719", label: "SABS719 (Fabricated)" },
-                        ]}
+                        options={[]}
+                        groupedOptions={groupedSteelOptions}
+                        placeholder="Select steel spec..."
                       />
                     );
                   })()}
@@ -1029,28 +1050,80 @@ function FittingFormComponent({
 
                 {/* Schedule/Wall Thickness */}
                 {(() => {
-                  const isSABS719 =
-                    (entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId) === 8;
-                  const effectiveStandard =
-                    entry.specs?.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
-                  const showSchedule = effectiveStandard === "SABS719";
+                  const effectiveSpecId =
+                    entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                  const steelSpecName =
+                    masterData.steelSpecs?.find((s: any) => s.id === effectiveSpecId)
+                      ?.steelSpecName || "";
+                  const nbValue = entry.specs?.nominalDiameterMm || 0;
 
-                  if (!showSchedule) {
+                  const isSABS719Steel =
+                    steelSpecName.includes("SABS 719") ||
+                    steelSpecName.includes("SANS 719") ||
+                    effectiveSpecId === 8;
+                  const fittingStandard =
+                    entry.specs?.fittingStandard || (isSABS719Steel ? "SABS719" : "SABS62");
+                  const isSABS62Fitting = fittingStandard === "SABS62";
+
+                  if (isSABS62Fitting) {
+                    const selectId = `fitting-sabs62-grade-${entry.id}`;
+                    const currentGrade = entry.specs?.scheduleNumber || "MEDIUM";
+                    const isHeavy = currentGrade === "HEAVY";
+
+                    const mediumSchedules = getScheduleListForSpec(nbValue, 7, "SABS 62 Medium");
+                    const heavySchedules = getScheduleListForSpec(nbValue, 7, "SABS 62 Heavy");
+                    const mediumWT = mediumSchedules[0]?.wallThicknessMm || 0;
+                    const heavyWT = heavySchedules[0]?.wallThicknessMm || 0;
+
+                    const options = [
+                      { value: "MEDIUM", label: `MEDIUM (${mediumWT}mm)` },
+                      { value: "HEAVY", label: `HEAVY (${heavyWT}mm)` },
+                    ];
+
                     return (
-                      <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">
-                          Wall Thickness
+                      <div>
+                        <label
+                          htmlFor={selectId}
+                          className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1"
+                        >
+                          Wall Thickness *
+                          <span className="text-xs text-gray-500 ml-1 font-normal">(SABS62)</span>
                         </label>
-                        <p className="text-sm text-gray-600">N/A (SABS62)</p>
+                        <Select
+                          id={selectId}
+                          value={currentGrade}
+                          onChange={(grade) => {
+                            if (!grade) return;
+                            const schedules = getScheduleListForSpec(
+                              nbValue,
+                              7,
+                              grade === "HEAVY" ? "SABS 62 Heavy" : "SABS 62 Medium",
+                            );
+                            const selectedSchedule = schedules[0];
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                scheduleNumber: grade,
+                                wallThicknessMm: selectedSchedule?.wallThicknessMm || null,
+                              },
+                            });
+                          }}
+                          options={options}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
+                        />
+                        <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                          WT: {isHeavy ? heavyWT : mediumWT}mm
+                        </p>
                       </div>
                     );
                   }
 
                   const selectId = `fitting-schedule-spec-${entry.id}`;
-                  const nbValue = entry.specs?.nominalDiameterMm || 0;
-                  const fitEffectiveSpecId =
-                    entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-                  const allSchedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
+                  const allSchedules = getScheduleListForSpec(
+                    nbValue,
+                    effectiveSpecId,
+                    steelSpecName,
+                  );
 
                   if (globalSpecs?.workingPressureBar && entry.specs?.nominalDiameterMm) {
                     const minWT = getMinWallThicknessForNB(
@@ -1157,7 +1230,11 @@ function FittingFormComponent({
                         value={entry.specs?.scheduleNumber || ""}
                         onChange={(scheduleNumber) => {
                           if (!scheduleNumber) return;
-                          const schedules = getScheduleListForSpec(nbValue, fitEffectiveSpecId);
+                          const schedules = getScheduleListForSpec(
+                            nbValue,
+                            effectiveSpecId,
+                            steelSpecName,
+                          );
                           const matchingSchedule = schedules.find(
                             (s: any) =>
                               (s.scheduleDesignation || s.scheduleNumber?.toString()) ===
@@ -2269,10 +2346,10 @@ function FittingFormComponent({
                       const isUsingMainSpec = !entry.specs?.teeSteelSpecificationId;
 
                       return (
-                        <select
-                          value={teeSteelSpecId || ""}
-                          onChange={(e) => {
-                            const newSpecId = parseInt(e.target.value, 10) || undefined;
+                        <Select
+                          value={String(teeSteelSpecId || "")}
+                          onChange={(value) => {
+                            const newSpecId = value ? parseInt(value, 10) : undefined;
                             onUpdateEntry(entry.id, {
                               specs: {
                                 ...entry.specs,
@@ -2281,17 +2358,15 @@ function FittingFormComponent({
                               },
                             });
                           }}
-                          className={`w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white ${
-                            isUsingMainSpec ? "border-green-500" : "border-orange-500"
-                          }`}
-                        >
-                          <option value="">Select...</option>
-                          {masterData.steelSpecs?.map((spec: any) => (
-                            <option key={spec.id} value={spec.id}>
-                              {spec.steelSpecName}
-                            </option>
-                          ))}
-                        </select>
+                          className={
+                            isUsingMainSpec
+                              ? "border-2 border-green-500"
+                              : "border-2 border-orange-500"
+                          }
+                          options={[]}
+                          groupedOptions={groupedSteelOptions}
+                          placeholder="Select..."
+                        />
                       );
                     })()}
                   </div>
@@ -2562,10 +2637,10 @@ function FittingFormComponent({
                         entry.specs?.reducerStubSteelSpecId || mainSteelSpecId;
                       const isUsingMainSpec = !entry.specs?.reducerStubSteelSpecId;
                       return (
-                        <select
-                          value={stubSteelSpecId || ""}
-                          onChange={(e) => {
-                            const newSpecId = parseInt(e.target.value, 10) || undefined;
+                        <Select
+                          value={String(stubSteelSpecId || "")}
+                          onChange={(value) => {
+                            const newSpecId = value ? parseInt(value, 10) : undefined;
                             onUpdateEntry(entry.id, {
                               specs: {
                                 ...entry.specs,
@@ -2574,17 +2649,15 @@ function FittingFormComponent({
                             });
                             debouncedCalculate();
                           }}
-                          className={`w-full px-2 py-1.5 border-2 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white ${
-                            isUsingMainSpec ? "border-green-500" : "border-orange-500"
-                          }`}
-                        >
-                          <option value="">Select...</option>
-                          {masterData.steelSpecs?.map((spec: any) => (
-                            <option key={spec.id} value={spec.id}>
-                              {spec.steelSpecName}
-                            </option>
-                          ))}
-                        </select>
+                          className={
+                            isUsingMainSpec
+                              ? "border-2 border-green-500"
+                              : "border-2 border-orange-500"
+                          }
+                          options={[]}
+                          groupedOptions={groupedSteelOptions}
+                          placeholder="Select..."
+                        />
                       );
                     })()}
                   </div>
@@ -2824,29 +2897,22 @@ function FittingFormComponent({
                             <label className="block text-xs font-semibold text-gray-700 mb-1">
                               Steel Spec
                             </label>
-                            <select
-                              value={stub.steelSpecId || ""}
-                              onChange={(e) => {
+                            <Select
+                              value={String(stub.steelSpecId || "")}
+                              onChange={(value) => {
                                 const newStubs = [...(entry.specs?.stubs || [])];
                                 newStubs[stubIndex] = {
                                   ...newStubs[stubIndex],
-                                  steelSpecId: e.target.value
-                                    ? parseInt(e.target.value, 10)
-                                    : undefined,
+                                  steelSpecId: value ? parseInt(value, 10) : undefined,
                                 };
                                 onUpdateEntry(entry.id, {
                                   specs: { ...entry.specs, stubs: newStubs },
                                 });
                               }}
-                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 bg-white"
-                            >
-                              <option value="">Select...</option>
-                              {masterData.steelSpecs?.map((spec: any) => (
-                                <option key={spec.id} value={spec.id}>
-                                  {spec.steelSpecName}
-                                </option>
-                              ))}
-                            </select>
+                              options={[]}
+                              groupedOptions={groupedSteelOptions}
+                              placeholder="Select..."
+                            />
                           </div>
 
                           {/* Nominal Bore */}

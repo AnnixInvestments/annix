@@ -557,30 +557,47 @@ export const getValidNBsForSpec = (steelSpecName?: string, steelSpecId?: number)
   return Object.keys(FALLBACK_PIPE_SCHEDULES).map(Number);
 };
 
+// Helper to detect if a steel spec is SABS/SANS 62
+export const isSabs62Spec = (steelSpecName?: string, steelSpecId?: number): boolean => {
+  if (steelSpecName) {
+    return steelSpecName.includes("SABS 62") || steelSpecName.includes("SANS 62");
+  }
+  return steelSpecId === 7;
+};
+
+// Helper to detect if a steel spec is SABS/SANS 719
+export const isSabs719Spec = (steelSpecName?: string, steelSpecId?: number): boolean => {
+  if (steelSpecName) {
+    return steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
+  }
+  return steelSpecId === 8;
+};
+
+// Helper to detect if SABS62 is Heavy grade
+export const isSabs62Heavy = (steelSpecName?: string): boolean => {
+  return steelSpecName?.includes("Heavy") ?? false;
+};
+
 // Helper function to get appropriate schedule list based on steel spec (MODULE SCOPE)
 export const getScheduleListForSpec = (
   nominalDiameter: number,
   steelSpecId: number | undefined,
   steelSpecName?: string,
 ): Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }> => {
-  // Check by name first (more reliable)
-  if (steelSpecName) {
-    if (steelSpecName.includes("SABS 62") && steelSpecName.includes("Medium")) {
-      return SABS62_MEDIUM_SCHEDULES[nominalDiameter] || [];
-    }
-    if (steelSpecName.includes("SABS 62") && steelSpecName.includes("Heavy")) {
+  // Check for SABS 62 (Medium/Heavy)
+  if (isSabs62Spec(steelSpecName, steelSpecId)) {
+    if (isSabs62Heavy(steelSpecName)) {
       return SABS62_HEAVY_SCHEDULES[nominalDiameter] || [];
     }
-    if (steelSpecName.includes("SABS 719")) {
-      return SABS719_PIPE_SCHEDULES[nominalDiameter] || [];
-    }
+    // Default to Medium for SABS 62 when not specified
+    return SABS62_MEDIUM_SCHEDULES[nominalDiameter] || [];
   }
 
-  // Fallback to ID-based lookup
-  if (steelSpecId === 8) {
-    // SABS 719 - use wall thickness format
+  // Check for SABS 719
+  if (isSabs719Spec(steelSpecName, steelSpecId)) {
     return SABS719_PIPE_SCHEDULES[nominalDiameter] || [];
   }
+
   // Default to ASTM schedules
   return FALLBACK_PIPE_SCHEDULES[nominalDiameter] || [];
 };
@@ -623,4 +640,91 @@ export const STEEL_SPEC_NB_FALLBACK: Record<string, number[]> = {
     15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800,
     900, 1000,
   ],
+};
+
+export interface WallThicknessDisplayInfo {
+  hasScheduleSelector: boolean;
+  displayText: string;
+  wallThicknessMm: number | null;
+  scheduleDesignation: string | null;
+  standardLabel: string;
+}
+
+export const wallThicknessDisplayInfo = (
+  nominalDiameter: number,
+  steelSpecId: number | undefined,
+  steelSpecName: string | undefined,
+  selectedSchedule?: string,
+): WallThicknessDisplayInfo => {
+  const schedules = getScheduleListForSpec(nominalDiameter, steelSpecId, steelSpecName);
+  const isHeavy = isSabs62Heavy(steelSpecName);
+
+  // SABS 62: No schedule selector - wall thickness is fixed by spec grade (Medium/Heavy)
+  if (isSabs62Spec(steelSpecName, steelSpecId)) {
+    const schedule = schedules[0];
+    if (schedule) {
+      return {
+        hasScheduleSelector: false,
+        displayText: `${schedule.scheduleDesignation} (${schedule.wallThicknessMm}mm)`,
+        wallThicknessMm: schedule.wallThicknessMm,
+        scheduleDesignation: schedule.scheduleDesignation,
+        standardLabel: isHeavy ? "SABS62 Heavy" : "SABS62 Medium",
+      };
+    }
+    return {
+      hasScheduleSelector: false,
+      displayText: "N/A",
+      wallThicknessMm: null,
+      scheduleDesignation: null,
+      standardLabel: "SABS62",
+    };
+  }
+
+  // SABS 719: Schedule selector with WT options
+  if (isSabs719Spec(steelSpecName, steelSpecId)) {
+    if (selectedSchedule) {
+      const schedule = schedules.find((s) => s.scheduleDesignation === selectedSchedule);
+      if (schedule) {
+        return {
+          hasScheduleSelector: true,
+          displayText: `${schedule.scheduleDesignation} (${schedule.wallThicknessMm}mm)`,
+          wallThicknessMm: schedule.wallThicknessMm,
+          scheduleDesignation: schedule.scheduleDesignation,
+          standardLabel: "SABS719",
+        };
+      }
+    }
+    return {
+      hasScheduleSelector: true,
+      displayText: schedules.length > 0 ? "Select schedule" : "N/A",
+      wallThicknessMm: null,
+      scheduleDesignation: null,
+      standardLabel: "SABS719",
+    };
+  }
+
+  // ASTM and other standards: Schedule selector with Sch options
+  if (selectedSchedule) {
+    const schedule = schedules.find(
+      (s) =>
+        s.scheduleDesignation === selectedSchedule ||
+        s.scheduleDesignation.includes(selectedSchedule),
+    );
+    if (schedule) {
+      return {
+        hasScheduleSelector: true,
+        displayText: `${schedule.scheduleDesignation} (${schedule.wallThicknessMm}mm)`,
+        wallThicknessMm: schedule.wallThicknessMm,
+        scheduleDesignation: schedule.scheduleDesignation,
+        standardLabel: "ASTM",
+      };
+    }
+  }
+  return {
+    hasScheduleSelector: true,
+    displayText: schedules.length > 0 ? "Select schedule" : "N/A",
+    wallThicknessMm: null,
+    scheduleDesignation: null,
+    standardLabel: "ASTM",
+  };
 };

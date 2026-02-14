@@ -21,6 +21,8 @@ import {
   tackWeldWeight as getTackWeldWeight,
   weldCountPerPipe as getWeldCountPerPipe,
   hasLooseFlange,
+  isSabs62Spec,
+  isSabs719Spec,
   PIPE_END_OPTIONS,
   PRESSURE_CALC_CORROSION_ALLOWANCE,
   PRESSURE_CALC_JOINT_EFFICIENCY,
@@ -29,6 +31,8 @@ import {
   recommendedFlangeTypeCode,
   recommendedPressureClassId,
   SABS_1123_PRESSURE_CLASSES,
+  SABS62_FITTING_SIZES,
+  SABS719_FITTING_SIZES,
   STANDARD_PIPE_LENGTHS_M,
   WORKING_PRESSURE_BAR,
   WORKING_TEMPERATURE_CELSIUS,
@@ -282,12 +286,14 @@ function StraightPipeFormComponent({
 
       const steelSpecId =
         entry.specs.steelSpecificationId || globalSpecs?.steelSpecificationId || 2;
+      const steelSpecName =
+        masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || "";
       const pressure = globalSpecs?.workingPressureBar || 0;
       const temperature = globalSpecs?.workingTemperatureC || 20;
 
       const nbEffectiveSpecId =
         entry?.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
-      const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId);
+      const schedules = getScheduleListForSpec(nominalBore, nbEffectiveSpecId, steelSpecName);
 
       if (schedules.length > 0) {
         setAvailableSchedulesMap((prev: Record<string, any[]>) => ({
@@ -371,9 +377,13 @@ function StraightPipeFormComponent({
     (newSchedule: string) => {
       const fallbackEffectiveSpecId =
         entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+      const fallbackSpecName =
+        masterData.steelSpecs?.find((s: any) => s.id === fallbackEffectiveSpecId)?.steelSpecName ||
+        "";
       const fallbackSchedules = getScheduleListForSpec(
         entry.specs?.nominalBoreMm,
         fallbackEffectiveSpecId,
+        fallbackSpecName,
       );
       const mapSchedules = availableSchedulesMap[entry.id] || [];
       const availableSchedules = fallbackSchedules.length > 0 ? fallbackSchedules : mapSchedules;
@@ -648,92 +658,18 @@ function StraightPipeFormComponent({
                     ))}
                   </select>
                 </div>
-                {(() => {
-                  const isMissingForPreview =
-                    entry.specs?.individualPipeLength && !entry.specs?.nominalBoreMm;
-                  return (
-                    <div
-                      data-nix-target="pipe-nb-select"
-                      className={
-                        isMissingForPreview ? "ring-2 ring-red-500 rounded-md p-1 bg-red-50" : ""
-                      }
-                    >
-                      <label
-                        htmlFor={`pipe-nb-pressure-${entry.id}`}
-                        className={`block text-xs font-semibold mb-1 ${isMissingForPreview ? "text-red-700" : "text-gray-900"}`}
-                      >
-                        Nominal Bore (mm) *{" "}
-                        {isMissingForPreview && (
-                          <span className="text-red-600 font-bold">⚠ Required for preview</span>
-                        )}
-                      </label>
-                      <Select
-                        id={`pipe-nb-pressure-${entry.id}`}
-                        value={entry.specs.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ""}
-                        onChange={handleNominalBoreChange}
-                        options={nominalBores.map((nb: number) => ({
-                          value: String(nb),
-                          label: `${nb}NB`,
-                        }))}
-                        placeholder={isLoadingNominalBores ? "Loading..." : "Select NB"}
-                        disabled={isLoadingNominalBores}
-                        aria-required={true}
-                        aria-invalid={!!errors[`pipe_${index}_nb`]}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
-                      />
-                      {errors[`pipe_${index}_nb`] && (
-                        <p role="alert" className="mt-1 text-xs text-red-600">
-                          {errors[`pipe_${index}_nb`]}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-              <MaterialSuitabilityWarning
-                color="blue"
-                steelSpecName={(() => {
-                  const steelSpecId =
-                    entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
-                  return (
-                    masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName ||
-                    ""
-                  );
-                })()}
-                effectivePressure={
-                  entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar
-                }
-                effectiveTemperature={
-                  entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC
-                }
-                allSteelSpecs={masterData.steelSpecs || []}
-                onSelectSpec={(spec) =>
-                  onUpdateEntry(entry.id, {
-                    specs: { ...entry.specs, steelSpecificationId: spec.id },
-                  })
-                }
-              />
-            </div>
-
-            {/* Material & Dimensions */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mt-2">
-              <h4 className="text-xs font-semibold text-gray-800 mb-1">Material & Dimensions</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                {/* Steel Specification */}
+                {/* Steel Specification - moved from Material & Dimensions */}
                 <div>
                   {(() => {
                     const globalSpecId = globalSpecs?.steelSpecificationId;
                     const effectiveSpecId = entry.specs?.steelSpecificationId || globalSpecId;
                     const isSteelFromGlobal = globalSpecId && effectiveSpecId === globalSpecId;
                     const isSteelOverride = globalSpecId && effectiveSpecId !== globalSpecId;
-                    const selectId = `pipe-steel-spec-${entry.id}`;
-                    const groupedOptions = masterData.steelSpecs
-                      ? groupSteelSpecifications(masterData.steelSpecs)
-                      : [];
+                    const selectId = `pipe-steel-spec-wc-${entry.id}`;
                     const globalSelectClass =
                       "w-full px-2 py-1.5 border-2 border-green-500 dark:border-lime-400 rounded text-xs";
                     const overrideSelectClass =
-                      "w-full px-2 py-1.5 border-2 border-red-500 dark:border-red-400 rounded text-xs";
+                      "w-full px-2 py-1.5 border-2 border-orange-500 dark:border-orange-400 rounded text-xs";
                     const defaultSelectClass =
                       "w-full px-2 py-1.5 border border-gray-300 rounded text-xs";
 
@@ -750,7 +686,7 @@ function StraightPipeFormComponent({
                             </span>
                           )}
                           {isSteelOverride && (
-                            <span className="text-red-600 text-xs ml-1 font-normal">
+                            <span className="text-orange-600 text-xs ml-1 font-normal">
                               (Override)
                             </span>
                           )}
@@ -776,12 +712,13 @@ function StraightPipeFormComponent({
                                   steelSpecificationId: specId,
                                 },
                               });
-                              if (specId && !nominalBore) {
-                              }
                               return;
                             }
 
-                            const schedules = getScheduleListForSpec(nominalBore, specId);
+                            const specName =
+                              masterData.steelSpecs?.find((s: any) => s.id === specId)
+                                ?.steelSpecName || "";
+                            const schedules = getScheduleListForSpec(nominalBore, specId, specName);
                             const pressure = globalSpecs?.workingPressureBar || 0;
                             const temperature = globalSpecs?.workingTemperatureC || 20;
 
@@ -852,6 +789,105 @@ function StraightPipeFormComponent({
                     );
                   })()}
                 </div>
+              </div>
+              <MaterialSuitabilityWarning
+                color="blue"
+                steelSpecName={(() => {
+                  const steelSpecId =
+                    entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                  return (
+                    masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName ||
+                    ""
+                  );
+                })()}
+                effectivePressure={
+                  entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar
+                }
+                effectiveTemperature={
+                  entry.specs?.workingTemperatureC || globalSpecs?.workingTemperatureC
+                }
+                allSteelSpecs={masterData.steelSpecs || []}
+                onSelectSpec={(spec) =>
+                  onUpdateEntry(entry.id, {
+                    specs: { ...entry.specs, steelSpecificationId: spec.id },
+                  })
+                }
+              />
+            </div>
+
+            {/* Material & Dimensions */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mt-2">
+              <h4 className="text-xs font-semibold text-gray-800 mb-1">Material & Dimensions</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                {/* Nominal Bore - moved from Working Conditions */}
+                {(() => {
+                  const isMissingForPreview =
+                    entry.specs?.individualPipeLength && !entry.specs?.nominalBoreMm;
+                  const effectiveSpecId =
+                    entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+                  const steelSpecName =
+                    masterData.steelSpecs?.find((s: any) => s.id === effectiveSpecId)
+                      ?.steelSpecName || "";
+                  const hasItemOverride = !!entry.specs?.steelSpecificationId;
+
+                  const allAvailableNBs = hasItemOverride
+                    ? [...SABS62_FITTING_SIZES, ...SABS719_FITTING_SIZES]
+                    : nominalBores;
+
+                  const filteredNominalBores = (() => {
+                    if (isSabs62Spec(steelSpecName, effectiveSpecId)) {
+                      return (SABS62_FITTING_SIZES as readonly number[]).slice();
+                    }
+                    if (isSabs719Spec(steelSpecName, effectiveSpecId)) {
+                      return (SABS719_FITTING_SIZES as readonly number[]).slice();
+                    }
+                    return allAvailableNBs;
+                  })();
+
+                  const sizesAvailableText =
+                    filteredNominalBores.length > 0
+                      ? `${filteredNominalBores.length} sizes available`
+                      : "No sizes available";
+
+                  return (
+                    <div
+                      data-nix-target="pipe-nb-select"
+                      className={
+                        isMissingForPreview ? "ring-2 ring-red-500 rounded-md p-1 bg-red-50" : ""
+                      }
+                    >
+                      <label
+                        htmlFor={`pipe-nb-${entry.id}`}
+                        className={`block text-xs font-semibold mb-1 ${isMissingForPreview ? "text-red-700" : "text-gray-900"}`}
+                      >
+                        Nominal Bore (mm) *{" "}
+                        {isMissingForPreview && (
+                          <span className="text-red-600 font-bold">⚠ Required for preview</span>
+                        )}
+                      </label>
+                      <Select
+                        id={`pipe-nb-${entry.id}`}
+                        value={entry.specs.nominalBoreMm ? String(entry.specs.nominalBoreMm) : ""}
+                        onChange={handleNominalBoreChange}
+                        options={filteredNominalBores.map((nb: number) => ({
+                          value: String(nb),
+                          label: `${nb}NB`,
+                        }))}
+                        placeholder={isLoadingNominalBores ? "Loading..." : "Select NB"}
+                        disabled={isLoadingNominalBores}
+                        aria-required={true}
+                        aria-invalid={!!errors[`pipe_${index}_nb`]}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                      />
+                      <span className="text-xs text-gray-500">{sizesAvailableText}</span>
+                      {errors[`pipe_${index}_nb`] && (
+                        <p role="alert" className="mt-1 text-xs text-red-600">
+                          {errors[`pipe_${index}_nb`]}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Schedule */}
                 <div data-nix-target="pipe-schedule-select">
@@ -883,9 +919,14 @@ function StraightPipeFormComponent({
                         {(() => {
                           const fallbackEffectiveSpecId =
                             entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                          const fallbackSpecName =
+                            masterData.steelSpecs?.find(
+                              (s: any) => s.id === fallbackEffectiveSpecId,
+                            )?.steelSpecName || "";
                           const fallbackSchedules = getScheduleListForSpec(
                             entry.specs?.nominalBoreMm,
                             fallbackEffectiveSpecId,
+                            fallbackSpecName,
                           );
                           const mapSchedules = availableSchedulesMap[entry.id] || [];
                           const allSchedules =
@@ -971,9 +1012,13 @@ function StraightPipeFormComponent({
                     const shortfall = minimumWT - selectedWT;
                     const fallbackEffectiveSpecId =
                       entry.specs?.steelSpecificationId ?? globalSpecs?.steelSpecificationId;
+                    const fallbackSpecName =
+                      masterData.steelSpecs?.find((s: any) => s.id === fallbackEffectiveSpecId)
+                        ?.steelSpecName || "";
                     const allSchedules = getScheduleListForSpec(
                       entry.specs?.nominalBoreMm,
                       fallbackEffectiveSpecId,
+                      fallbackSpecName,
                     );
                     const eligibleSchedules = allSchedules
                       .filter((dim: any) => (dim.wallThicknessMm || 0) >= minimumWT)
