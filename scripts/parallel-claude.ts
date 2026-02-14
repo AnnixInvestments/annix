@@ -384,19 +384,23 @@ function detectClaudeSessions(): Session[] {
         }
       });
     } else if (platform === "win32") {
-      const output = exec(
-        "wmic process where \"name like '%node%' or name like '%claude%'\" get processid,commandline /format:csv",
-        { silent: true },
-      );
+      // Use tasklist instead of wmic (wmic is deprecated in Windows 11)
+      const output = exec("tasklist /v /fo csv", { silent: true });
       const lines = output
         .split("\n")
-        .filter((line) => line.includes("claude") && !line.includes("parallel-claude"));
+        .filter(
+          (line) => line.toLowerCase().includes("claude") && !line.includes("parallel-claude"),
+        );
 
       lines.forEach((line) => {
-        const parts = line.split(",");
-        if (parts.length >= 2) {
-          const pid = parseInt(parts[parts.length - 1], 10);
+        // CSV format: "Image Name","PID","Session Name","Session#","Mem Usage","Status","User Name","CPU Time","Window Title"
+        const match = line.match(/"([^"]+)","(\d+)"/);
+        if (match) {
+          const processName = match[1];
+          const pid = parseInt(match[2], 10);
           if (Number.isNaN(pid) || seenPids.has(pid)) return;
+          // Skip non-claude.exe processes (like node.exe running claude code)
+          if (!processName.toLowerCase().includes("claude")) return;
           seenPids.add(pid);
 
           const hasConsole =
@@ -814,7 +818,7 @@ async function startApp(): Promise<void> {
     const hasWindowsTerminal = exec("where wt", { silent: true }) !== "";
 
     if (hasWindowsTerminal) {
-      const wtCmd = `wt -w 0 new-tab --title "App Dev Server" -d "${rootDir()}" powershell -ExecutionPolicy Bypass -NoProfile -File "${scriptPath}"`;
+      const wtCmd = `wt -w -1 new-tab --title "App Dev Server" -d "${rootDir()}" powershell -ExecutionPolicy Bypass -NoProfile -File "${scriptPath}"`;
       appProcess = spawn(wtCmd, [], {
         cwd: rootDir(),
         stdio: "ignore",
@@ -1234,7 +1238,7 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
     if (hasWindowsTerminal) {
       const claudePath = exec("where claude.cmd", { silent: true }).split("\n")[0].trim();
       const fullWinCmd = winCmd.replace(/^claude/, `"${claudePath}"`);
-      const wtCmd = `wt -w 0 new-tab --title "Claude ${sessionCounter}" -d "${sessionDir}" ${fullWinCmd}`;
+      const wtCmd = `wt -w -1 new-tab --title "Claude ${sessionCounter}" -d "${sessionDir}" ${fullWinCmd}`;
       sessionProcess = spawn(wtCmd, [], {
         cwd: rootDir(),
         detached: true,
