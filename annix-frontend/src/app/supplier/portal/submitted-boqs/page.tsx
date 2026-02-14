@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import { type SupplierBoqListItem } from "@/app/lib/api/supplierApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import { useSupplierBoqs } from "@/app/lib/query/hooks";
@@ -23,6 +24,14 @@ const getDaysUntilDeadline = (dateString?: string): number | null => {
 };
 
 export default function SubmittedBoqsPage() {
+  return (
+    <FeatureGate featureFlag="SUPPLIER_SUBMITTED_BOQS" fallbackPath="/supplier/portal/profile">
+      <SubmittedBoqsContent />
+    </FeatureGate>
+  );
+}
+
+function SubmittedBoqsContent() {
   const boqsQuery = useSupplierBoqs("quoted");
   const boqs = boqsQuery.data ?? [];
   const [searchTerm, setSearchTerm] = useState("");

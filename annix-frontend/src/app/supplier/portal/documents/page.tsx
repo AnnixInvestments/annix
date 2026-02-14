@@ -8,6 +8,7 @@ import {
   initialPreviewState,
   PreviewModalState,
 } from "@/app/components/DocumentPreviewModal";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import {
   type SupplierCompanyDto,
   type SupplierDocumentDto,
@@ -95,6 +96,14 @@ const documentTypes = [
 ];
 
 export default function SupplierDocumentsPage() {
+  return (
+    <FeatureGate featureFlag="SUPPLIER_DOCUMENTS" fallbackPath="/supplier/portal/profile">
+      <SupplierDocumentsContent />
+    </FeatureGate>
+  );
+}
+
+function SupplierDocumentsContent() {
   const router = useRouter();
   const docsQuery = useSupplierDocuments();
   const onboardingQuery = useSupplierOnboardingStatus();

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import { PumpProductBrowser } from "@/app/components/pumps";
 import type { PumpProductCardData } from "@/app/components/pumps/PumpProductCard";
 import { useToast } from "@/app/components/Toast";
@@ -140,6 +141,14 @@ function mapApiProductToCardData(product: PumpProduct): PumpProductCardData {
 }
 
 export default function CustomerPumpsPage() {
+  return (
+    <FeatureGate featureFlag="CUSTOMER_PUMPS" fallbackPath="/customer/portal/rfqs/create">
+      <CustomerPumpsContent />
+    </FeatureGate>
+  );
+}
+
+function CustomerPumpsContent() {
   const router = useRouter();
   const { customer } = useCustomerAuth();
   const { showToast } = useToast();

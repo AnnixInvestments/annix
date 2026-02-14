@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import { type SupplierBoqListItem, type SupplierBoqStatus } from "@/app/lib/api/supplierApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import { useSupplierBoqs } from "@/app/lib/query/hooks";
@@ -34,6 +35,14 @@ const getDaysUntilDeadline = (dateString?: string): number | null => {
 };
 
 export default function SupplierBoqsPage() {
+  return (
+    <FeatureGate featureFlag="SUPPLIER_BOQS" fallbackPath="/supplier/portal/profile">
+      <SupplierBoqsContent />
+    </FeatureGate>
+  );
+}
+
+function SupplierBoqsContent() {
   const [filterStatus, setFilterStatus] = useState<SupplierBoqStatus | "all">("all");
   const [searchTerm, setSearchTerm] = useState("");
 

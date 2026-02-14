@@ -2,12 +2,21 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import { useToast } from "@/app/components/Toast";
 import type { RfqDraftStatus } from "@/app/lib/api/client";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 import { useCustomerDrafts, useCustomerRfqs, useDeleteDraft } from "@/app/lib/query/hooks";
 
 export default function CustomerRfqsPage() {
+  return (
+    <FeatureGate featureFlag="CUSTOMER_RFQS_LIST" fallbackPath="/customer/portal/rfqs/create">
+      <CustomerRfqsContent />
+    </FeatureGate>
+  );
+}
+
+function CustomerRfqsContent() {
   const { showToast } = useToast();
 
   const rfqsQuery = useCustomerRfqs();

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import { useToast } from "@/app/components/Toast";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { type SupplierBoqListItem, type SupplierBoqStatus } from "@/app/lib/api/supplierApi";
@@ -23,6 +24,14 @@ const statusColors: Record<SupplierBoqStatus, { bg: string; text: string; label:
 };
 
 export default function SupplierDashboardPage() {
+  return (
+    <FeatureGate featureFlag="SUPPLIER_DASHBOARD" fallbackPath="/supplier/portal/profile">
+      <SupplierDashboardContent />
+    </FeatureGate>
+  );
+}
+
+function SupplierDashboardContent() {
   const { supplier, dashboard, refreshDashboard } = useSupplierAuth();
   const { showToast } = useToast();
   const onboardingQuery = useSupplierOnboardingStatus();

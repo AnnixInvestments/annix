@@ -2,10 +2,13 @@ import { API_BASE_URL } from "@/lib/api-config";
 
 export type FeatureFlagsResponse = Record<string, boolean>;
 
+export type FeatureFlagCategory = "customer" | "supplier" | "admin" | "system";
+
 export interface FeatureFlagDetail {
   flagKey: string;
   enabled: boolean;
   description: string | null;
+  category: FeatureFlagCategory;
 }
 
 export interface FeatureFlagDetailResponse {

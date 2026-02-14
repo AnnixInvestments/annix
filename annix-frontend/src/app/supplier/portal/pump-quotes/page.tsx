@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import type { SupplierPumpQuoteStatus } from "@/app/lib/api/supplierApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import { useSupplierPumpQuotes } from "@/app/lib/query/hooks";
@@ -15,6 +16,14 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
 };
 
 export default function SupplierPumpQuotesPage() {
+  return (
+    <FeatureGate featureFlag="SUPPLIER_PUMP_QUOTES" fallbackPath="/supplier/portal/profile">
+      <SupplierPumpQuotesContent />
+    </FeatureGate>
+  );
+}
+
+function SupplierPumpQuotesContent() {
   const [statusFilter, setStatusFilter] = useState<SupplierPumpQuoteStatus | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
 

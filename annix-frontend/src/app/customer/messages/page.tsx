@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import {
   BroadcastBanner,
   ConversationList,
@@ -24,6 +25,14 @@ import {
 } from "@/app/lib/query/hooks";
 
 export default function CustomerMessagesPage() {
+  return (
+    <FeatureGate featureFlag="CUSTOMER_MESSAGES" fallbackPath="/customer/portal/rfqs/create">
+      <CustomerMessagesContent />
+    </FeatureGate>
+  );
+}
+
+function CustomerMessagesContent() {
   const router = useRouter();
   const { customer, isLoading: authLoading } = useCustomerAuth();
   const { showToast } = useToast();

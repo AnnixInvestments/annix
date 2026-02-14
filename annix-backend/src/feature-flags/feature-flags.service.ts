@@ -5,6 +5,8 @@ import { Repository } from "typeorm";
 
 import { FeatureFlag } from "./entities/feature-flag.entity";
 import {
+  FEATURE_FLAG_CATEGORIES,
+  FEATURE_FLAG_DEFAULTS,
   FEATURE_FLAG_DESCRIPTIONS,
   FEATURE_FLAGS,
   FeatureFlagKey,
@@ -27,13 +29,16 @@ export class FeatureFlagsService {
     const missing = Object.values(FEATURE_FLAGS).filter((key) => !existingKeys.has(key));
 
     if (missing.length > 0) {
-      const newFlags = missing.map((key) =>
-        this.flagRepo.create({
+      const newFlags = missing.map((key) => {
+        const envValue = this.configService.get(`ENABLE_${key}`);
+        const defaultValue = FEATURE_FLAG_DEFAULTS[key] ?? false;
+        const enabled = envValue !== undefined ? envValue === "true" : defaultValue;
+        return this.flagRepo.create({
           flagKey: key,
-          enabled: this.configService.get(`ENABLE_${key}`) === "true",
+          enabled,
           description: FEATURE_FLAG_DESCRIPTIONS[key] || null,
-        }),
-      );
+        });
+      });
       await this.flagRepo.save(newFlags);
       this.logger.log(`Initialised feature flags: ${missing.join(", ")}`);
     }
@@ -58,7 +63,7 @@ export class FeatureFlagsService {
   }
 
   async allFlagsDetailed(): Promise<
-    Array<{ flagKey: string; enabled: boolean; description: string | null }>
+    Array<{ flagKey: string; enabled: boolean; description: string | null; category: string }>
   > {
     await this.ensureFlags();
     const flags = await this.flagRepo.find({ order: { flagKey: "ASC" } });
@@ -66,6 +71,7 @@ export class FeatureFlagsService {
       flagKey: f.flagKey,
       enabled: f.enabled,
       description: f.description,
+      category: FEATURE_FLAG_CATEGORIES[f.flagKey as FeatureFlagKey] || "system",
     }));
   }
 

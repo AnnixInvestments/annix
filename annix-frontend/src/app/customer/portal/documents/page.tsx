@@ -8,6 +8,7 @@ import {
   initialPreviewState,
   PreviewModalState,
 } from "@/app/components/DocumentPreviewModal";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import {
   type CustomerCompanyDto,
   type CustomerDocument,
@@ -49,6 +50,14 @@ const DOCUMENT_TYPES = [
 ];
 
 export default function CustomerDocumentsPage() {
+  return (
+    <FeatureGate featureFlag="CUSTOMER_DOCUMENTS" fallbackPath="/customer/portal/rfqs/create">
+      <CustomerDocumentsContent />
+    </FeatureGate>
+  );
+}
+
+function CustomerDocumentsContent() {
   const documentsQuery = useCustomerDocuments();
   const onboardingQuery = useCustomerOnboardingStatus();
   const companyQuery = useCustomerCompany();

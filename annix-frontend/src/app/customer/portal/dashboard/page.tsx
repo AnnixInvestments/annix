@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import { useToast } from "@/app/components/Toast";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import type { RfqDraftResponse, RfqDraftStatus } from "@/app/lib/api/client";
@@ -10,6 +11,14 @@ import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 import { useCustomerDashboard, useCustomerDrafts, useDeleteDraft } from "@/app/lib/query/hooks";
 
 export default function CustomerDashboardPage() {
+  return (
+    <FeatureGate featureFlag="CUSTOMER_DASHBOARD" fallbackPath="/customer/portal/rfqs/create">
+      <CustomerDashboardContent />
+    </FeatureGate>
+  );
+}
+
+function CustomerDashboardContent() {
   const router = useRouter();
   const { customer } = useCustomerAuth();
   const { showToast } = useToast();

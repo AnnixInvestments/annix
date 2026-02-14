@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import {
   type DirectoryFilters,
   type DirectorySupplier,
@@ -35,6 +36,14 @@ const SA_PROVINCES = [
 ];
 
 export default function CustomerSuppliersPage() {
+  return (
+    <FeatureGate featureFlag="CUSTOMER_SUPPLIERS" fallbackPath="/customer/portal/rfqs/create">
+      <CustomerSuppliersContent />
+    </FeatureGate>
+  );
+}
+
+function CustomerSuppliersContent() {
   const [activeTab, setActiveTab] = useState<Tab>("suppliers");
   const [error, setError] = useState<string | null>(null);
 

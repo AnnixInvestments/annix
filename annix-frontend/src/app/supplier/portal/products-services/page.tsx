@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { FeatureGate } from "@/app/components/FeatureGate";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { supplierPortalApi } from "@/app/lib/api/supplierApi";
 import { PRODUCTS_AND_SERVICES } from "@/app/lib/config/productsServices";
@@ -9,6 +10,14 @@ import { corpId } from "@/app/lib/corpId";
 import { useSupplierCapabilities } from "@/app/lib/query/hooks";
 
 export default function ProductsServicesPage() {
+  return (
+    <FeatureGate featureFlag="SUPPLIER_PRODUCTS_SERVICES" fallbackPath="/supplier/portal/profile">
+      <ProductsServicesContent />
+    </FeatureGate>
+  );
+}
+
+function ProductsServicesContent() {
   const router = useRouter();
   const { supplier } = useSupplierAuth();
   const capabilitiesQuery = useSupplierCapabilities();
