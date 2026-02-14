@@ -6,9 +6,15 @@ import { AppModule } from "./app.module";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for frontend communication
+  const corsOrigins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    ...(process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()) ?? []),
+    process.env.FRONTEND_URL,
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: ["http://localhost:3000", "http://localhost:3001", "https://annix-frontend.fly.dev"],
+    origin: corsOrigins,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "x-device-fingerprint"],
     exposedHeaders: ["Content-Disposition"],
