@@ -3,7 +3,6 @@ primary_region = 'jnb'
 
 [build]
   dockerfile = 'Dockerfile'
-  context = '.'
   [build.args]
     NEXT_PUBLIC_API_URL = 'https://annix-backend-test.fly.dev'
 
