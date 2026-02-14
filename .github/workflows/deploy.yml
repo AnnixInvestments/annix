@@ -91,10 +91,14 @@ jobs:
       - name: Deploy Backend to Fly.io (${{ matrix.environment }})
         run: |
           for i in 1 2 3; do
-            flyctl deploy -c ${{ matrix.config }} && break
+            if flyctl deploy -c ${{ matrix.config }}; then
+              exit 0
+            fi
             echo "Deploy attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "All deploy attempts failed"
+          exit 1
 
   deploy-frontend:
     name: Deploy Frontend (${{ matrix.environment }})
@@ -123,10 +127,14 @@ jobs:
       - name: Deploy Frontend to Fly.io (${{ matrix.environment }})
         run: |
           for i in 1 2 3; do
-            flyctl deploy -c ${{ matrix.config }} && break
+            if flyctl deploy -c ${{ matrix.config }}; then
+              exit 0
+            fi
             echo "Deploy attempt $i failed, retrying in 10s..."
             sleep 10
           done
+          echo "All deploy attempts failed"
+          exit 1
 
       - name: Get Frontend Logs on Failure
         if: failure()
