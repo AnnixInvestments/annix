@@ -37,12 +37,6 @@ export class SubmitFeedbackResponseDto {
   @ApiProperty({ description: "Feedback record ID" })
   id: number;
 
-  @ApiProperty({ description: "GitHub issue number" })
-  githubIssueNumber: number;
-
-  @ApiProperty({ description: "GitHub issue URL" })
-  githubIssueUrl: string;
-
   @ApiProperty({ description: "Success message" })
   message: string;
 }

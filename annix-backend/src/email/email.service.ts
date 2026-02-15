@@ -1315,4 +1315,99 @@ Powered by Annix FieldFlow
       text,
     });
   }
+
+  async sendCustomerFeedbackNotificationEmail(
+    recipientEmail: string,
+    customerInfo: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      companyName: string;
+    },
+    feedbackContent: string,
+    source: "text" | "voice",
+    pageUrl: string | null,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const messageBoardLink = `${frontendUrl}/admin/messages/broadcasts`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Customer Feedback Received - Annix</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #2563eb;">Customer Feedback Received</h1>
+          <p>A customer has submitted feedback on the test site.</p>
+
+          <div style="background-color: #f3f4f6; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <strong>Customer Details:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Name:</strong> ${customerInfo.firstName} ${customerInfo.lastName}<br/>
+              <strong>Company:</strong> ${customerInfo.companyName}<br/>
+              <strong>Email:</strong> ${customerInfo.email}
+            </p>
+          </div>
+
+          <div style="background-color: #f0f9ff; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0;">
+            <strong>Feedback:</strong>
+            <p style="margin: 10px 0 0 0; white-space: pre-line;">${feedbackContent}</p>
+          </div>
+
+          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+            <strong>Submission Details:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Source:</strong> ${source === "voice" ? "Voice recording" : "Text input"}<br/>
+              <strong>Page:</strong> ${pageUrl || "Unknown page"}
+            </p>
+          </div>
+
+          <p style="margin: 30px 0;">
+            <a href="${messageBoardLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View in Admin Message Board
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated notification from the Annix test site.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Customer Feedback Received
+
+A customer has submitted feedback on the test site.
+
+Customer Details:
+- Name: ${customerInfo.firstName} ${customerInfo.lastName}
+- Company: ${customerInfo.companyName}
+- Email: ${customerInfo.email}
+
+Feedback:
+${feedbackContent}
+
+Submission Details:
+- Source: ${source === "voice" ? "Voice recording" : "Text input"}
+- Page: ${pageUrl || "Unknown page"}
+
+View in Admin Message Board: ${messageBoardLink}
+
+This is an automated notification from the Annix test site.
+    `;
+
+    return this.sendEmail({
+      to: recipientEmail,
+      subject: `Customer Feedback - ${customerInfo.companyName} - Annix Test Site`,
+      html,
+      text,
+    });
+  }
 }

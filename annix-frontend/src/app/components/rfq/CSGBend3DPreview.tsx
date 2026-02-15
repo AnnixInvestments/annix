@@ -392,6 +392,7 @@ const Scene = (props: Props) => {
           nb: s.nominalBoreMm!,
           orientation: s.orientation || "outside",
           angleDegrees: s.angleDegrees ?? 0,
+          tangent: s.tangent ?? 1,
         };
       });
   }, [stubs, wtMm]);
@@ -1632,7 +1633,7 @@ const Scene = (props: Props) => {
         {!isDuckfoot &&
           !isSweepTee &&
           stubsData.map((stub, i) => {
-            const isOutletStub = i === 1;
+            const isOutletStub = stub.tangent === 2;
             const tangentLength = isOutletStub ? t2 : t1;
 
             if (tangentLength <= 0) return null;

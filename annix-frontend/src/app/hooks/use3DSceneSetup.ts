@@ -24,6 +24,7 @@ export interface StubData {
   hasFlange?: boolean;
   orientation?: StubOrientation;
   angleDegrees?: number;
+  tangent?: number;
 }
 
 export interface Use3DSceneSetupProps {

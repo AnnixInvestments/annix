@@ -1,11 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
+import { EmailService } from "../email/email.service";
 import { formatDateTime, now } from "../lib/datetime";
+import { BroadcastService } from "../messaging/broadcast.service";
+import { BroadcastPriority, BroadcastTarget } from "../messaging/entities";
+import { User } from "../user/entities/user.entity";
+import { UserRole } from "../user-roles/entities/user-role.entity";
 import { SubmitFeedbackDto, SubmitFeedbackResponseDto } from "./dto";
 import { CustomerFeedback } from "./entities/customer-feedback.entity";
-import { GithubIssueService } from "./github-issue.service";
 
 interface CustomerInfo {
   firstName: string;
@@ -13,6 +18,8 @@ interface CustomerInfo {
   email: string;
   companyName: string;
 }
+
+const TEST_SITE_URL = "https://annix-frontend-test.fly.dev";
 
 @Injectable()
 export class FeedbackService {
@@ -23,7 +30,13 @@ export class FeedbackService {
     private readonly feedbackRepository: Repository<CustomerFeedback>,
     @InjectRepository(CustomerProfile)
     private readonly customerProfileRepository: Repository<CustomerProfile>,
-    private readonly githubIssueService: GithubIssueService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(UserRole)
+    private readonly userRoleRepository: Repository<UserRole>,
+    private readonly broadcastService: BroadcastService,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async submitFeedback(
@@ -46,29 +59,8 @@ export class FeedbackService {
       companyName: profile.company.legalName,
     };
 
-    let issueNumber = profile.githubFeedbackIssueNumber;
-    let issueUrl: string;
-
-    if (issueNumber) {
-      const commentBody = this.formatCommentBody(dto, customerInfo);
-      const result = await this.githubIssueService.addComment(issueNumber, commentBody);
-      issueUrl = result.url.split("#")[0];
-    } else {
-      const title = `Customer Feedback - ${customerInfo.companyName}`;
-      const body = this.formatIssueBody(dto, customerInfo);
-      const result = await this.githubIssueService.createIssue(title, body);
-      issueNumber = result.issueNumber;
-      issueUrl = result.url;
-
-      await this.customerProfileRepository.update(
-        { id: customerId },
-        { githubFeedbackIssueNumber: issueNumber },
-      );
-    }
-
     const feedback = this.feedbackRepository.create({
       customerProfileId: customerId,
-      githubIssueNumber: issueNumber,
       content: dto.content,
       source: dto.source,
       pageUrl: dto.pageUrl || null,
@@ -76,17 +68,65 @@ export class FeedbackService {
 
     await this.feedbackRepository.save(feedback);
 
-    this.logger.log(`Feedback submitted by customer ${customerId} to GitHub issue #${issueNumber}`);
+    if (this.isTestSite()) {
+      await this.notifyAdmins(dto, customerInfo);
+    }
+
+    this.logger.log(`Feedback submitted by customer ${customerId}`);
 
     return {
       id: feedback.id,
-      githubIssueNumber: issueNumber,
-      githubIssueUrl: issueUrl,
       message: "Feedback submitted successfully",
     };
   }
 
-  private formatIssueBody(dto: SubmitFeedbackDto, customer: CustomerInfo): string {
+  private isTestSite(): boolean {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL");
+    return frontendUrl === TEST_SITE_URL;
+  }
+
+  private async adminUserIds(): Promise<number[]> {
+    const adminRole = await this.userRoleRepository.findOne({
+      where: { name: "admin" },
+      relations: ["users"],
+    });
+    return adminRole?.users.map((u) => u.id) ?? [];
+  }
+
+  private async notifyAdmins(dto: SubmitFeedbackDto, customerInfo: CustomerInfo): Promise<void> {
+    const adminIds = await this.adminUserIds();
+
+    if (adminIds.length === 0) {
+      this.logger.warn("No admin users found to notify about customer feedback");
+      return;
+    }
+
+    const broadcastContent = this.formatBroadcastContent(dto, customerInfo);
+
+    await this.broadcastService.createBroadcast(adminIds[0], {
+      title: `Customer Feedback - ${customerInfo.companyName}`,
+      content: broadcastContent,
+      targetAudience: BroadcastTarget.SPECIFIC,
+      specificUserIds: adminIds,
+      priority: BroadcastPriority.NORMAL,
+      sendEmail: false,
+    });
+
+    const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "info@annix.co.za";
+    await this.emailService.sendCustomerFeedbackNotificationEmail(
+      supportEmail,
+      customerInfo,
+      dto.content,
+      dto.source,
+      dto.pageUrl || null,
+    );
+
+    this.logger.log(
+      `Admin notification sent for customer feedback from ${customerInfo.companyName}`,
+    );
+  }
+
+  private formatBroadcastContent(dto: SubmitFeedbackDto, customer: CustomerInfo): string {
     const timestamp = formatDateTime(now().toJSDate());
 
     return `**Customer:** ${customer.firstName} ${customer.lastName}
@@ -95,16 +135,6 @@ export class FeedbackService {
 
 ---
 ## Feedback
-${dto.content}
-
-*Submitted via: ${dto.source} from ${dto.pageUrl || "unknown page"}*
-*Date: ${timestamp}*`;
-  }
-
-  private formatCommentBody(dto: SubmitFeedbackDto, _customer: CustomerInfo): string {
-    const timestamp = formatDateTime(now().toJSDate());
-
-    return `## Feedback
 ${dto.content}
 
 *Submitted via: ${dto.source} from ${dto.pageUrl || "unknown page"}*
