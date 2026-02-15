@@ -8,7 +8,6 @@ import { formatDateTime, now } from "../lib/datetime";
 import { BroadcastService } from "../messaging/broadcast.service";
 import { BroadcastPriority, BroadcastTarget } from "../messaging/entities";
 import { User } from "../user/entities/user.entity";
-import { UserRole } from "../user-roles/entities/user-role.entity";
 import { SubmitFeedbackDto, SubmitFeedbackResponseDto } from "./dto";
 import { CustomerFeedback } from "./entities/customer-feedback.entity";
 
@@ -32,8 +31,6 @@ export class FeedbackService {
     private readonly customerProfileRepository: Repository<CustomerProfile>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(UserRole)
-    private readonly userRoleRepository: Repository<UserRole>,
     private readonly broadcastService: BroadcastService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
@@ -86,15 +83,19 @@ export class FeedbackService {
   }
 
   private async adminUserIds(): Promise<number[]> {
-    const adminRole = await this.userRoleRepository.findOne({
-      where: { name: "admin" },
-      relations: ["users"],
-    });
-    return adminRole?.users.map((u) => u.id) ?? [];
+    const adminUsers = await this.userRepository
+      .createQueryBuilder("user")
+      .innerJoin("user.roles", "role", "role.name = :roleName", { roleName: "admin" })
+      .select("user.id")
+      .getMany();
+
+    return adminUsers.map((u) => u.id);
   }
 
   private async notifyAdmins(dto: SubmitFeedbackDto, customerInfo: CustomerInfo): Promise<void> {
     const adminIds = await this.adminUserIds();
+
+    this.logger.log(`Found ${adminIds.length} admin users for feedback notification`);
 
     if (adminIds.length === 0) {
       this.logger.warn("No admin users found to notify about customer feedback");
@@ -103,14 +104,19 @@ export class FeedbackService {
 
     const broadcastContent = this.formatBroadcastContent(dto, customerInfo);
 
-    await this.broadcastService.createBroadcast(adminIds[0], {
-      title: `Customer Feedback - ${customerInfo.companyName}`,
-      content: broadcastContent,
-      targetAudience: BroadcastTarget.SPECIFIC,
-      specificUserIds: adminIds,
-      priority: BroadcastPriority.NORMAL,
-      sendEmail: false,
-    });
+    try {
+      await this.broadcastService.createBroadcast(adminIds[0], {
+        title: `Customer Feedback - ${customerInfo.companyName}`,
+        content: broadcastContent,
+        targetAudience: BroadcastTarget.SPECIFIC,
+        specificUserIds: adminIds,
+        priority: BroadcastPriority.NORMAL,
+        sendEmail: false,
+      });
+      this.logger.log(`Broadcast created for ${adminIds.length} admin users`);
+    } catch (error) {
+      this.logger.error(`Failed to create broadcast for customer feedback: ${error.message}`);
+    }
 
     const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "info@annix.co.za";
     await this.emailService.sendCustomerFeedbackNotificationEmail(
