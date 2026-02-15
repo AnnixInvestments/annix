@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useFeatureGate } from "@/app/hooks/useFeatureGate";
 import { useVoiceDictation } from "@/app/hooks/useVoiceDictation";
 import { useSubmitFeedback } from "@/app/lib/query/hooks";
 
@@ -9,6 +10,7 @@ type FeedbackSource = "text" | "voice";
 
 export function FeedbackWidget() {
   const pathname = usePathname();
+  const { isFeatureEnabled, isLoading: flagsLoading } = useFeatureGate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [content, setContent] = useState("");
   const [feedbackSource, setFeedbackSource] = useState<FeedbackSource>("text");
@@ -87,6 +89,10 @@ export function FeedbackWidget() {
   };
 
   const displayContent = isListening ? content + interimTranscript : content;
+
+  if (flagsLoading || !isFeatureEnabled("FEEDBACK_WIDGET")) {
+    return null;
+  }
 
   if (!isExpanded) {
     return (

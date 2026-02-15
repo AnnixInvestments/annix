@@ -7,13 +7,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { CalendarConnection, CalendarProvider } from "./calendar-connection.entity";
+import { CalendarEventStatus, CalendarProvider } from "./calendar.enums";
+import { CalendarConnection } from "./calendar-connection.entity";
 
-export enum CalendarEventStatus {
-  CONFIRMED = "confirmed",
-  TENTATIVE = "tentative",
-  CANCELLED = "cancelled",
-}
+export { CalendarEventStatus };
 
 @Entity("fieldflow_calendar_events")
 export class CalendarEvent {

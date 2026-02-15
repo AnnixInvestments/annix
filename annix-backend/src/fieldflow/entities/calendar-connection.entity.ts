@@ -9,21 +9,10 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "../../user/entities/user.entity";
+import { CalendarProvider, CalendarSyncStatus } from "./calendar.enums";
 import { CalendarEvent } from "./calendar-event.entity";
 
-export enum CalendarProvider {
-  GOOGLE = "google",
-  OUTLOOK = "outlook",
-  APPLE = "apple",
-  CALDAV = "caldav",
-}
-
-export enum CalendarSyncStatus {
-  ACTIVE = "active",
-  PAUSED = "paused",
-  ERROR = "error",
-  EXPIRED = "expired",
-}
+export { CalendarProvider, CalendarSyncStatus };
 
 @Entity("fieldflow_calendar_connections")
 export class CalendarConnection {
