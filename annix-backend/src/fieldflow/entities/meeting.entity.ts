@@ -85,7 +85,7 @@ export class Meeting {
   @Column({ name: "actual_end", type: "timestamp", nullable: true })
   actualEnd: Date | null;
 
-  @Column({ length: 500, nullable: true })
+  @Column({ type: "varchar", length: 500, nullable: true })
   location: string | null;
 
   @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
@@ -115,10 +115,10 @@ export class Meeting {
   @Column({ name: "summary_sent_at", type: "timestamp", nullable: true })
   summarySentAt: Date | null;
 
-  @Column({ name: "crm_external_id", length: 255, nullable: true })
+  @Column({ name: "crm_external_id", type: "varchar", length: 255, nullable: true })
   crmExternalId: string | null;
 
-  @Column({ name: "crm_sync_status", length: 50, nullable: true })
+  @Column({ name: "crm_sync_status", type: "varchar", length: 50, nullable: true })
   crmSyncStatus: string | null;
 
   @Column({ name: "crm_last_synced_at", type: "timestamp", nullable: true })

@@ -83,7 +83,7 @@ export class Visit {
   @Column({ type: "text", nullable: true })
   notes: string | null;
 
-  @Column({ name: "contact_met", length: 255, nullable: true })
+  @Column({ name: "contact_met", type: "varchar", length: 255, nullable: true })
   contactMet: string | null;
 
   @Column({ name: "next_steps", type: "text", nullable: true })

@@ -14,14 +14,15 @@ import RfqDocumentUpload from "@/app/components/rfq/RfqDocumentUpload";
 import { useToast } from "@/app/components/Toast";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
+import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { minesApi, SaMine } from "@/app/lib/api/client";
 import {
   isProductAvailableForUnregistered,
+  isProductComingSoon,
   isProjectTypeAvailableForUnregistered,
   PRODUCTS_AND_SERVICES,
   PROJECT_TYPES,
 } from "@/app/lib/config/productsServices";
-import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { generateUniqueId } from "@/app/lib/datetime";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
@@ -1571,7 +1572,8 @@ export default function ProjectDetailsStep({
 
   // Unregistered customer restrictions - when not authenticated as customer or admin, limit available options
   const restrictUnregistered = !featureFlags || featureFlags["RFQ_RESTRICT_UNREGISTERED"] !== false;
-  const isUnregisteredCustomer = restrictUnregistered && !isCustomerAuthenticated && !isAdminAuthenticated;
+  const isUnregisteredCustomer =
+    restrictUnregistered && !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state for unregistered customers
   const [restrictionPopup, setRestrictionPopup] = useState<RestrictionPopupPosition | null>(null);
@@ -1844,7 +1846,9 @@ export default function ProjectDetailsStep({
           <div
             className={`grid grid-cols-4 gap-2 ${projectTypeConfirmed ? "pointer-events-none" : ""}`}
           >
-            {PROJECT_TYPES.filter((type) => !featureFlags || featureFlags[type.flagKey] !== false).map((type) => {
+            {PROJECT_TYPES.filter(
+              (type) => !featureFlags || featureFlags[type.flagKey] !== false,
+            ).map((type) => {
               const isDisabledForUnregistered =
                 isUnregisteredCustomer && !isProjectTypeAvailableForUnregistered(type.value);
               const isDisabled = projectTypeConfirmed || isDisabledForUnregistered;
@@ -1952,11 +1956,15 @@ export default function ProjectDetailsStep({
             <div
               className={`grid grid-cols-4 gap-2 ${projectTypeConfirmed ? "pointer-events-none" : ""}`}
             >
-              {PRODUCTS_AND_SERVICES.filter((product) => !featureFlags || featureFlags[product.flagKey] !== false).map((product) => {
+              {PRODUCTS_AND_SERVICES.filter(
+                (product) => !featureFlags || featureFlags[product.flagKey] !== false,
+              ).map((product) => {
                 const isSelected = rfqData.requiredProducts?.includes(product.value);
                 const isDisabledForUnregistered =
                   isUnregisteredCustomer && !isProductAvailableForUnregistered(product.value);
-                const isDisabled = projectTypeConfirmed || isDisabledForUnregistered;
+                const isComingSoon = isProductComingSoon(product.value);
+                const isDisabled =
+                  projectTypeConfirmed || isDisabledForUnregistered || isComingSoon;
 
                 return (
                   <label
@@ -1978,21 +1986,21 @@ export default function ProjectDetailsStep({
                         ? hideRestrictionTooltip
                         : undefined
                     }
-                    onClick={isDisabledForUnregistered ? showRestrictionPopup : undefined}
-                    onMouseEnter={isDisabledForUnregistered ? showRestrictionPopup : undefined}
                     className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-all text-xs h-10 ${
-                      isDisabledForUnregistered
-                        ? "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
-                        : isSelected
-                          ? "border-blue-600 bg-blue-50 cursor-pointer"
-                          : "border-gray-200 hover:border-blue-300 cursor-pointer"
+                      isComingSoon
+                        ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                        : isDisabledForUnregistered
+                          ? "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
+                          : isSelected
+                            ? "border-blue-600 bg-blue-50 cursor-pointer"
+                            : "border-gray-200 hover:border-blue-300 cursor-pointer"
                     }`}
                   >
                     <input
                       type="checkbox"
-                      checked={isSelected && !isDisabledForUnregistered}
+                      checked={isSelected && !isDisabledForUnregistered && !isComingSoon}
                       onChange={(e) => {
-                        if (isDisabledForUnregistered) return;
+                        if (isDisabledForUnregistered || isComingSoon) return;
                         const currentProducts = rfqData.requiredProducts || [];
                         let newProducts: string[];
                         if (e.target.checked) {
@@ -2008,14 +2016,14 @@ export default function ProjectDetailsStep({
                     />
                     <div
                       className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
-                        isDisabledForUnregistered
+                        isComingSoon || isDisabledForUnregistered
                           ? "border-gray-300 bg-gray-200"
                           : isSelected
                             ? "border-blue-600 bg-blue-600"
                             : "border-gray-300"
                       }`}
                     >
-                      {isSelected && !isDisabledForUnregistered && (
+                      {isSelected && !isDisabledForUnregistered && !isComingSoon && (
                         <svg
                           className="w-2.5 h-2.5 text-white"
                           fill="currentColor"
@@ -2029,15 +2037,20 @@ export default function ProjectDetailsStep({
                         </svg>
                       )}
                     </div>
-                    <span className={isDisabledForUnregistered ? "grayscale" : ""}>
+                    <span className={isComingSoon || isDisabledForUnregistered ? "grayscale" : ""}>
                       {product.icon}
                     </span>
                     <span
-                      className={`font-medium ${isDisabledForUnregistered ? "text-gray-400" : "text-gray-900"}`}
+                      className={`font-medium ${isComingSoon || isDisabledForUnregistered ? "text-gray-400" : "text-gray-900"}`}
                     >
                       {product.label}
                     </span>
-                    {isDisabledForUnregistered && (
+                    {isComingSoon && (
+                      <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0 italic">
+                        Soon
+                      </span>
+                    )}
+                    {isDisabledForUnregistered && !isComingSoon && (
                       <svg
                         className="w-3 h-3 text-gray-400 ml-auto flex-shrink-0"
                         fill="none"

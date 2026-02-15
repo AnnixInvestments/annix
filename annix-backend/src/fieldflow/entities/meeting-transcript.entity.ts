@@ -61,7 +61,7 @@ export class MeetingTranscript {
   @Column({ type: "text", nullable: true })
   summary: string | null;
 
-  @Column({ name: "whisper_model", length: 50, nullable: true })
+  @Column({ name: "whisper_model", type: "varchar", length: 50, nullable: true })
   whisperModel: string | null;
 
   @Column({ length: 10, default: "en" })

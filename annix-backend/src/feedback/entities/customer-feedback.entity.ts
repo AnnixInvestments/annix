@@ -31,7 +31,7 @@ export class CustomerFeedback {
   @Column({ length: 10, default: "text" })
   source: FeedbackSource;
 
-  @Column({ name: "page_url", length: 500, nullable: true })
+  @Column({ name: "page_url", type: "varchar", length: 500, nullable: true })
   pageUrl: string | null;
 
   @CreateDateColumn({ name: "created_at" })

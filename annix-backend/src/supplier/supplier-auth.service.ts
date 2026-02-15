@@ -740,7 +740,9 @@ export class SupplierAuthService {
       );
     }
 
-    const requireVerification = await this.featureFlagsService.isEnabled("REQUIRE_SUPPLIER_EMAIL_VERIFICATION");
+    const requireVerification = await this.featureFlagsService.isEnabled(
+      "REQUIRE_SUPPLIER_EMAIL_VERIFICATION",
+    );
     const disabledByEnv = this.authConfigService.isEmailVerificationDisabled();
     if (!disabledByEnv && requireVerification && !profile.emailVerified) {
       await this.logLoginAttempt(

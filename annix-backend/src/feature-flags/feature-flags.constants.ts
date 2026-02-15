@@ -141,7 +141,13 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   RFQ_RESTRICT_UNREGISTERED: true,
 };
 
-export type FeatureFlagCategory = "customer" | "supplier" | "admin" | "system" | "registration" | "rfq";
+export type FeatureFlagCategory =
+  | "customer"
+  | "supplier"
+  | "admin"
+  | "system"
+  | "registration"
+  | "rfq";
 
 export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory> = {
   REMOTE_ACCESS: "system",

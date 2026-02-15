@@ -46,7 +46,9 @@ const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
 
 const CATEGORY_ORDER = ["customer", "supplier", "admin", "system", "registration", "rfq"];
 
-const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<Record<string, { label: string; icon: React.ReactNode }>>((acc, product) => {
+const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<
+  Record<string, { label: string; icon: React.ReactNode }>
+>((acc, product) => {
   acc[product.flagKey] = { label: product.label, icon: product.icon };
   return acc;
 }, {});
@@ -79,8 +81,7 @@ function RfqFlagGrid({
             {typeFlags.map((flag) => {
               const meta = RFQ_TYPE_FLAG_MAP[flag.flagKey];
               const isUpdating =
-                toggleMutation.isPending &&
-                toggleMutation.variables?.flagKey === flag.flagKey;
+                toggleMutation.isPending && toggleMutation.variables?.flagKey === flag.flagKey;
 
               return (
                 <button
@@ -101,9 +102,7 @@ function RfqFlagGrid({
                         : "border-gray-300 dark:border-slate-500"
                     }`}
                   >
-                    {flag.enabled && (
-                      <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                    )}
+                    {flag.enabled && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                   </div>
                   <span
                     className={`font-medium ${
@@ -130,8 +129,7 @@ function RfqFlagGrid({
             {productFlags.map((flag) => {
               const meta = RFQ_PRODUCT_FLAG_MAP[flag.flagKey];
               const isUpdating =
-                toggleMutation.isPending &&
-                toggleMutation.variables?.flagKey === flag.flagKey;
+                toggleMutation.isPending && toggleMutation.variables?.flagKey === flag.flagKey;
 
               return (
                 <button
@@ -153,7 +151,11 @@ function RfqFlagGrid({
                     }`}
                   >
                     {flag.enabled && (
-                      <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <svg
+                        className="w-2.5 h-2.5 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
                         <path
                           fillRule="evenodd"
                           d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -162,9 +164,7 @@ function RfqFlagGrid({
                       </svg>
                     )}
                   </div>
-                  <span className={flag.enabled ? "" : "grayscale"}>
-                    {meta?.icon}
-                  </span>
+                  <span className={flag.enabled ? "" : "grayscale"}>{meta?.icon}</span>
                   <span
                     className={`font-medium ${
                       flag.enabled

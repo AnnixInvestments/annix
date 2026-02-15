@@ -54,7 +54,7 @@ export class CreateFieldFlowTables1772000000000 implements MigrationInterface {
       ALTER TABLE "fieldflow_prospects"
       ADD CONSTRAINT "FK_fieldflow_prospects_owner"
       FOREIGN KEY ("owner_id")
-      REFERENCES "users"("id")
+      REFERENCES "user"("id")
       ON DELETE CASCADE
     `);
 
@@ -117,7 +117,7 @@ export class CreateFieldFlowTables1772000000000 implements MigrationInterface {
       ALTER TABLE "fieldflow_visits"
       ADD CONSTRAINT "FK_fieldflow_visits_sales_rep"
       FOREIGN KEY ("sales_rep_id")
-      REFERENCES "users"("id")
+      REFERENCES "user"("id")
     `);
 
     await queryRunner.query(`
@@ -171,7 +171,7 @@ export class CreateFieldFlowTables1772000000000 implements MigrationInterface {
       ALTER TABLE "fieldflow_calendar_connections"
       ADD CONSTRAINT "FK_fieldflow_calendar_connections_user"
       FOREIGN KEY ("user_id")
-      REFERENCES "users"("id")
+      REFERENCES "user"("id")
       ON DELETE CASCADE
     `);
 
@@ -269,6 +269,9 @@ export class CreateFieldFlowTables1772000000000 implements MigrationInterface {
         "action_items" jsonb NULL,
         "summary_sent" boolean NOT NULL DEFAULT false,
         "summary_sent_at" TIMESTAMP NULL,
+        "crm_external_id" character varying(255) NULL,
+        "crm_sync_status" character varying(50) NULL,
+        "crm_last_synced_at" TIMESTAMP NULL,
         "created_at" TIMESTAMP NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "PK_fieldflow_meetings" PRIMARY KEY ("id")
@@ -287,7 +290,7 @@ export class CreateFieldFlowTables1772000000000 implements MigrationInterface {
       ALTER TABLE "fieldflow_meetings"
       ADD CONSTRAINT "FK_fieldflow_meetings_sales_rep"
       FOREIGN KEY ("sales_rep_id")
-      REFERENCES "users"("id")
+      REFERENCES "user"("id")
     `);
 
     await queryRunner.query(`
@@ -418,7 +421,7 @@ export class CreateFieldFlowTables1772000000000 implements MigrationInterface {
       ALTER TABLE "fieldflow_crm_configs"
       ADD CONSTRAINT "FK_fieldflow_crm_configs_user"
       FOREIGN KEY ("user_id")
-      REFERENCES "users"("id")
+      REFERENCES "user"("id")
       ON DELETE CASCADE
     `);
 

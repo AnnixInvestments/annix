@@ -40,28 +40,28 @@ export class Prospect {
   @Column({ name: "company_name", length: 255 })
   companyName: string;
 
-  @Column({ name: "contact_name", length: 255, nullable: true })
+  @Column({ name: "contact_name", type: "varchar", length: 255, nullable: true })
   contactName: string | null;
 
-  @Column({ name: "contact_email", length: 255, nullable: true })
+  @Column({ name: "contact_email", type: "varchar", length: 255, nullable: true })
   contactEmail: string | null;
 
-  @Column({ name: "contact_phone", length: 50, nullable: true })
+  @Column({ name: "contact_phone", type: "varchar", length: 50, nullable: true })
   contactPhone: string | null;
 
-  @Column({ name: "contact_title", length: 100, nullable: true })
+  @Column({ name: "contact_title", type: "varchar", length: 100, nullable: true })
   contactTitle: string | null;
 
-  @Column({ name: "street_address", length: 500, nullable: true })
+  @Column({ name: "street_address", type: "varchar", length: 500, nullable: true })
   streetAddress: string | null;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: "varchar", length: 100, nullable: true })
   city: string | null;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: "varchar", length: 100, nullable: true })
   province: string | null;
 
-  @Column({ name: "postal_code", length: 20, nullable: true })
+  @Column({ name: "postal_code", type: "varchar", length: 20, nullable: true })
   postalCode: string | null;
 
   @Column({ length: 100, default: "South Africa" })
@@ -73,7 +73,7 @@ export class Prospect {
   @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
   longitude: number | null;
 
-  @Column({ name: "google_place_id", length: 255, nullable: true })
+  @Column({ name: "google_place_id", type: "varchar", length: 255, nullable: true })
   googlePlaceId: string | null;
 
   @Column({
@@ -99,10 +99,10 @@ export class Prospect {
   @Column({ name: "estimated_value", type: "decimal", precision: 15, scale: 2, nullable: true })
   estimatedValue: number | null;
 
-  @Column({ name: "crm_external_id", length: 255, nullable: true })
+  @Column({ name: "crm_external_id", type: "varchar", length: 255, nullable: true })
   crmExternalId: string | null;
 
-  @Column({ name: "crm_sync_status", length: 50, nullable: true })
+  @Column({ name: "crm_sync_status", type: "varchar", length: 50, nullable: true })
   crmSyncStatus: string | null;
 
   @Column({ name: "crm_last_synced_at", type: "timestamp", nullable: true })

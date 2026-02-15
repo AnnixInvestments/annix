@@ -43,7 +43,7 @@ export class MeetingRecording {
   @Column({ name: "storage_bucket", length: 100 })
   storageBucket: string;
 
-  @Column({ name: "original_filename", length: 255, nullable: true })
+  @Column({ name: "original_filename", type: "varchar", length: 255, nullable: true })
   originalFilename: string | null;
 
   @Column({ name: "mime_type", length: 100 })

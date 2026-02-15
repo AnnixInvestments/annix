@@ -66,7 +66,7 @@ export class CrmConfig {
   @Column({ name: "api_secret_encrypted", type: "text", nullable: true })
   apiSecretEncrypted: string | null;
 
-  @Column({ name: "instance_url", length: 500, nullable: true })
+  @Column({ name: "instance_url", type: "varchar", length: 500, nullable: true })
   instanceUrl: string | null;
 
   @Column({ name: "prospect_field_mappings", type: "json", nullable: true })

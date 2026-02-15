@@ -46,7 +46,7 @@ export class CalendarConnection {
   @Column({ name: "account_email", length: 255 })
   accountEmail: string;
 
-  @Column({ name: "account_name", length: 255, nullable: true })
+  @Column({ name: "account_name", type: "varchar", length: 255, nullable: true })
   accountName: string | null;
 
   @Column({ name: "access_token_encrypted", type: "text" })
@@ -58,7 +58,7 @@ export class CalendarConnection {
   @Column({ name: "token_expires_at", type: "timestamp", nullable: true })
   tokenExpiresAt: Date | null;
 
-  @Column({ name: "caldav_url", length: 500, nullable: true })
+  @Column({ name: "caldav_url", type: "varchar", length: 500, nullable: true })
   caldavUrl: string | null;
 
   @Column({
@@ -75,7 +75,7 @@ export class CalendarConnection {
   @Column({ name: "last_sync_error", type: "text", nullable: true })
   lastSyncError: string | null;
 
-  @Column({ name: "sync_token", length: 500, nullable: true })
+  @Column({ name: "sync_token", type: "varchar", length: 500, nullable: true })
   syncToken: string | null;
 
   @Column({ name: "selected_calendars", type: "simple-array", nullable: true })
