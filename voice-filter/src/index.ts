@@ -77,6 +77,7 @@ export class VoiceFilter extends EventEmitter {
     });
     await this.vad.initialize();
 
+    console.log(`[INIT] speakerId=${this.speakerId}`);
     if (this.speakerId) {
       this.verifier = new SpeakerVerifier({
         speakerId: this.speakerId,
@@ -85,12 +86,15 @@ export class VoiceFilter extends EventEmitter {
       });
 
       const initialized = await this.verifier.initialize();
+      console.log(`[INIT] verifier initialized=${initialized}`);
       if (!initialized) {
         this.emit(
           "warning",
           `No enrollment found for speaker: ${this.speakerId}. Running in passthrough mode.`,
         );
         this.verifier = null;
+      } else {
+        console.log(`[INIT] Verifier ready for speaker: ${this.speakerId}`);
       }
 
       if (this.verifier) {
@@ -125,11 +129,25 @@ export class VoiceFilter extends EventEmitter {
       frameSize: 512,
     });
 
+    let frameCount = 0;
+    let lastLogTime = 0;
     this.capture.on("audio", async (samples: Float32Array, buffer: Buffer) => {
       const probability = await this.vad!.process(samples);
       const isSpeech = this.vad!.isSpeech();
       const previousState = this.currentSpeechState;
       this.currentSpeechState = this.vad!.state();
+
+      frameCount++;
+      const now = Date.now();
+      if (isSpeech && now - lastLogTime > 200) {
+        lastLogTime = now;
+        const muted = this.output?.isMuted() ?? false;
+        const status = muted ? "BLOCKED" : "PASSING";
+        const bar = muted
+          ? "█".repeat(Math.floor(probability * 20))
+          : "▓".repeat(Math.floor(probability * 20));
+        console.log(`[${status}] ${bar.padEnd(20)} vol=${(probability * 100).toFixed(0)}%`);
+      }
 
       if (previousState !== this.currentSpeechState) {
         this.emit("speechStateChange", this.currentSpeechState);
@@ -144,6 +162,8 @@ export class VoiceFilter extends EventEmitter {
       if (this.verifier) {
         await this.verifier.processAudio(buffer, isSpeech);
         this.updateMuteState();
+      } else if (frameCount === 1) {
+        console.log("[WARN] No verifier - running without speaker verification");
       }
 
       this.output!.writeBuffer(buffer);

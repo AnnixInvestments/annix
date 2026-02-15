@@ -52,8 +52,12 @@ export class AudioOutput extends EventEmitter {
       outOptions: outputOptions,
     }) as unknown as AudioOutputStream;
 
-    this.stream.on("error", (err: Error) => {
-      this.emit("error", err);
+    this.stream.on("error", (err: Error | string) => {
+      const message = typeof err === "string" ? err : err.message;
+      if (message.includes("underflow") || message.includes("overflow")) {
+        return;
+      }
+      this.emit("error", typeof err === "string" ? new Error(err) : err);
     });
 
     this.stream.start();

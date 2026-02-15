@@ -63,4 +63,4 @@ program
     console.log("");
   });
 
-program.parse();
+program.parse(process.argv);

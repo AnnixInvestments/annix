@@ -203,7 +203,8 @@ async function startVoiceFilter(): Promise<void> {
     inputDeviceId: detectedDevice?.id,
     outputDeviceId: vbCableId,
     speakerId: settings.speakerId ?? undefined,
-    failOpen: true,
+    failOpen: false,
+    verificationThreshold: 0.6,
   });
 
   voiceFilter.on("started", (status: VoiceFilterStatus) => {
