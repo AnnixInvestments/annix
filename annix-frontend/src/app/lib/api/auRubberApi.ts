@@ -96,6 +96,10 @@ class AuRubberApiClient {
   }
 
   isAuthenticated(): boolean {
+    if (!this.accessToken && typeof window !== "undefined") {
+      this.accessToken = localStorage.getItem(TOKEN_KEYS.accessToken);
+      this.refreshToken = localStorage.getItem(TOKEN_KEYS.refreshToken);
+    }
     return !!this.accessToken;
   }
 

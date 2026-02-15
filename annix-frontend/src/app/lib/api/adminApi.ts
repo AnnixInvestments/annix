@@ -410,6 +410,10 @@ class AdminApiClient {
   }
 
   isAuthenticated(): boolean {
+    if (!this.accessToken && typeof window !== "undefined") {
+      this.accessToken = localStorage.getItem("adminAccessToken");
+      this.refreshToken = localStorage.getItem("adminRefreshToken");
+    }
     return !!this.accessToken;
   }
 

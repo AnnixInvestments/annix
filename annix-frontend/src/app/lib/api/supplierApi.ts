@@ -428,6 +428,20 @@ class SupplierApiClient {
   }
 
   isAuthenticated(): boolean {
+    if (!this.accessToken && typeof window !== "undefined") {
+      const localAccessToken = localStorage.getItem("supplierAccessToken");
+      const sessionAccessToken = sessionStorage.getItem("supplierAccessToken");
+
+      if (localAccessToken) {
+        this.accessToken = localAccessToken;
+        this.refreshToken = localStorage.getItem("supplierRefreshToken");
+        this.rememberMe = true;
+      } else if (sessionAccessToken) {
+        this.accessToken = sessionAccessToken;
+        this.refreshToken = sessionStorage.getItem("supplierRefreshToken");
+        this.rememberMe = false;
+      }
+    }
     return !!this.accessToken;
   }
 
