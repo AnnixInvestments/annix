@@ -8,6 +8,8 @@ ignoredBuiltDependencies:
   - '@openapitools/openapi-generator-cli'
   - '@scarf/scarf'
   - bcrypt
+  - naudiodon
+  - segfault-handler
   - sharp
   - tesseract.js
   - unrs-resolver

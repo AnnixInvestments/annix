@@ -9,7 +9,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "node dist/cli/index.js start",
+    "start": "tsx src/cli/background.ts",
+    "dashboard": "tsx src/gui/launch.ts",
     "dev": "tsx src/cli/index.ts",
     "enroll": "tsx src/cli/index.ts enroll",
     "enroll:gui": "tsx src/gui/launch.ts",
@@ -19,10 +20,13 @@
   "dependencies": {
     "@aws-sdk/client-voice-id": "^3.700.0",
     "commander": "^12.1.0",
-    "naudiodon": "^2.3.6",
     "open": "^10.2.0",
     "ora": "^8.1.1",
     "ws": "^8.19.0"
+  },
+  "optionalDependencies": {
+    "naudiodon": "^2.3.6",
+    "systray2": "^2.1.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
