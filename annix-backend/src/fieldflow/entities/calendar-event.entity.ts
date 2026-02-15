@@ -10,7 +10,7 @@ import {
 import { CalendarEventStatus, CalendarProvider } from "./calendar.enums";
 import { CalendarConnection } from "./calendar-connection.entity";
 
-export { CalendarEventStatus };
+export { CalendarEventStatus, CalendarProvider };
 
 @Entity("fieldflow_calendar_events")
 export class CalendarEvent {
