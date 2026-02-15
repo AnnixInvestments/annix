@@ -17,10 +17,11 @@ import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { minesApi, SaMine } from "@/app/lib/api/client";
 import {
   isProductAvailableForUnregistered,
-  isProductComingSoon,
   isProjectTypeAvailableForUnregistered,
   PRODUCTS_AND_SERVICES,
+  PROJECT_TYPES,
 } from "@/app/lib/config/productsServices";
+import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { generateUniqueId } from "@/app/lib/datetime";
 import { useEnvironmentalIntelligence } from "@/app/lib/hooks/useEnvironmentalIntelligence";
 import { log } from "@/app/lib/logger";
@@ -100,6 +101,7 @@ export default function ProjectDetailsStep({
   const storeAddDocument = useRfqWizardStore((s) => s.addDocument);
   const onRemoveDocument = useRfqWizardStore((s) => s.removeDocument);
   const storeAddTenderDocument = useRfqWizardStore((s) => s.addTenderDocument);
+  const { flags: featureFlags } = useFeatureFlags();
   const onRemoveTenderDocument = useRfqWizardStore((s) => s.removeTenderDocument);
   const globalSpecs = rfqData.globalSpecs;
   const useNix = rfqData.useNix;
@@ -1568,7 +1570,8 @@ export default function ProjectDetailsStep({
   const { isAuthenticated: isAdminAuthenticated } = useOptionalAdminAuth();
 
   // Unregistered customer restrictions - when not authenticated as customer or admin, limit available options
-  const isUnregisteredCustomer = !isCustomerAuthenticated && !isAdminAuthenticated;
+  const restrictUnregistered = !featureFlags || featureFlags["RFQ_RESTRICT_UNREGISTERED"] !== false;
+  const isUnregisteredCustomer = restrictUnregistered && !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state for unregistered customers
   const [restrictionPopup, setRestrictionPopup] = useState<RestrictionPopupPosition | null>(null);
@@ -1841,12 +1844,7 @@ export default function ProjectDetailsStep({
           <div
             className={`grid grid-cols-4 gap-2 ${projectTypeConfirmed ? "pointer-events-none" : ""}`}
           >
-            {[
-              { value: "standard", label: "Standard RFQ" },
-              { value: "phase1", label: "Phase 1 Tender" },
-              { value: "retender", label: "Re-Tender" },
-              { value: "feasibility", label: "Feasibility" },
-            ].map((type) => {
+            {PROJECT_TYPES.filter((type) => !featureFlags || featureFlags[type.flagKey] !== false).map((type) => {
               const isDisabledForUnregistered =
                 isUnregisteredCustomer && !isProjectTypeAvailableForUnregistered(type.value);
               const isDisabled = projectTypeConfirmed || isDisabledForUnregistered;
@@ -1954,13 +1952,11 @@ export default function ProjectDetailsStep({
             <div
               className={`grid grid-cols-4 gap-2 ${projectTypeConfirmed ? "pointer-events-none" : ""}`}
             >
-              {PRODUCTS_AND_SERVICES.map((product) => {
+              {PRODUCTS_AND_SERVICES.filter((product) => !featureFlags || featureFlags[product.flagKey] !== false).map((product) => {
                 const isSelected = rfqData.requiredProducts?.includes(product.value);
                 const isDisabledForUnregistered =
                   isUnregisteredCustomer && !isProductAvailableForUnregistered(product.value);
-                const isComingSoon = isProductComingSoon(product.value);
-                const isDisabled =
-                  projectTypeConfirmed || isDisabledForUnregistered || isComingSoon;
+                const isDisabled = projectTypeConfirmed || isDisabledForUnregistered;
 
                 return (
                   <label
@@ -1982,21 +1978,21 @@ export default function ProjectDetailsStep({
                         ? hideRestrictionTooltip
                         : undefined
                     }
+                    onClick={isDisabledForUnregistered ? showRestrictionPopup : undefined}
+                    onMouseEnter={isDisabledForUnregistered ? showRestrictionPopup : undefined}
                     className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-all text-xs h-10 ${
-                      isComingSoon
-                        ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
-                        : isDisabledForUnregistered
-                          ? "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
-                          : isSelected
-                            ? "border-blue-600 bg-blue-50 cursor-pointer"
-                            : "border-gray-200 hover:border-blue-300 cursor-pointer"
+                      isDisabledForUnregistered
+                        ? "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
+                        : isSelected
+                          ? "border-blue-600 bg-blue-50 cursor-pointer"
+                          : "border-gray-200 hover:border-blue-300 cursor-pointer"
                     }`}
                   >
                     <input
                       type="checkbox"
-                      checked={isSelected && !isDisabledForUnregistered && !isComingSoon}
+                      checked={isSelected && !isDisabledForUnregistered}
                       onChange={(e) => {
-                        if (isDisabledForUnregistered || isComingSoon) return;
+                        if (isDisabledForUnregistered) return;
                         const currentProducts = rfqData.requiredProducts || [];
                         let newProducts: string[];
                         if (e.target.checked) {
@@ -2012,14 +2008,14 @@ export default function ProjectDetailsStep({
                     />
                     <div
                       className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
-                        isComingSoon || isDisabledForUnregistered
+                        isDisabledForUnregistered
                           ? "border-gray-300 bg-gray-200"
                           : isSelected
                             ? "border-blue-600 bg-blue-600"
                             : "border-gray-300"
                       }`}
                     >
-                      {isSelected && !isDisabledForUnregistered && !isComingSoon && (
+                      {isSelected && !isDisabledForUnregistered && (
                         <svg
                           className="w-2.5 h-2.5 text-white"
                           fill="currentColor"
@@ -2033,20 +2029,15 @@ export default function ProjectDetailsStep({
                         </svg>
                       )}
                     </div>
-                    <span className={isComingSoon || isDisabledForUnregistered ? "grayscale" : ""}>
+                    <span className={isDisabledForUnregistered ? "grayscale" : ""}>
                       {product.icon}
                     </span>
                     <span
-                      className={`font-medium ${isComingSoon || isDisabledForUnregistered ? "text-gray-400" : "text-gray-900"}`}
+                      className={`font-medium ${isDisabledForUnregistered ? "text-gray-400" : "text-gray-900"}`}
                     >
                       {product.label}
                     </span>
-                    {isComingSoon && (
-                      <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0 italic">
-                        Soon
-                      </span>
-                    )}
-                    {isDisabledForUnregistered && !isComingSoon && (
+                    {isDisabledForUnregistered && (
                       <svg
                         className="w-3 h-3 text-gray-400 ml-auto flex-shrink-0"
                         fill="none"

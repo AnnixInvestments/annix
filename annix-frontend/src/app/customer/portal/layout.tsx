@@ -6,7 +6,7 @@ import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
-import { useFeatureGate } from "@/app/hooks/useFeatureGate";
+import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 
 const navItems = [
   {
@@ -45,14 +45,12 @@ const navItems = [
 function CustomerNavigation() {
   const router = useRouter();
   const { customer, logout } = useCustomerAuth();
-  const { flags, isTestEnv } = useFeatureGate();
+  const { flags } = useFeatureFlags();
 
   const handleLogout = async () => {
     await logout();
     window.location.href = "/";
   };
-
-  const featureFlags = isTestEnv ? flags : null;
 
   return (
     <PortalToolbar
@@ -69,7 +67,7 @@ function CustomerNavigation() {
           : null
       }
       onLogout={handleLogout}
-      featureFlags={featureFlags}
+      featureFlags={flags}
     />
   );
 }

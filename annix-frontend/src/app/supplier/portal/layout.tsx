@@ -5,7 +5,7 @@ import React, { useEffect } from "react";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
-import { useFeatureGate } from "@/app/hooks/useFeatureGate";
+import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 
 const navItems = [
   {
@@ -42,8 +42,7 @@ function SupplierNavigation({
   supplier: { firstName?: string; lastName?: string; email?: string; companyName?: string } | null;
   onLogout: () => void;
 }) {
-  const { flags, isTestEnv } = useFeatureGate();
-  const featureFlags = isTestEnv ? flags : null;
+  const { flags } = useFeatureFlags();
 
   return (
     <PortalToolbar
@@ -60,7 +59,7 @@ function SupplierNavigation({
           : null
       }
       onLogout={onLogout}
-      featureFlags={featureFlags}
+      featureFlags={flags}
     />
   );
 }

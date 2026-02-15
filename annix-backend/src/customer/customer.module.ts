@@ -5,6 +5,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { AuditModule } from "../audit/audit.module";
 import { EmailModule } from "../email/email.module";
+import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { MessagingModule } from "../messaging/messaging.module";
 import { NixModule } from "../nix/nix.module";
 import { Rfq } from "../rfq/entities/rfq.entity";
@@ -90,6 +91,7 @@ import { CertificateExpiryService } from "./services/certificate-expiry.service"
     forwardRef(() => NixModule),
     MessagingModule,
     forwardRef(() => SecureDocumentsModule),
+    FeatureFlagsModule,
   ],
   controllers: [
     CustomerAuthController,

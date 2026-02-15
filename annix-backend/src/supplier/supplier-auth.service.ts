@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
+import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { now } from "../lib/datetime";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
@@ -81,6 +82,7 @@ export class SupplierAuthService {
     private readonly authConfigService: AuthConfigService,
     private readonly documentVerificationService: DocumentVerificationService,
     private readonly secureDocumentsService: SecureDocumentsService,
+    private readonly featureFlagsService: FeatureFlagsService,
   ) {
     this.uploadDir = this.authConfigService.uploadDir();
   }
@@ -738,7 +740,9 @@ export class SupplierAuthService {
       );
     }
 
-    if (!this.authConfigService.isEmailVerificationDisabled() && !profile.emailVerified) {
+    const requireVerification = await this.featureFlagsService.isEnabled("REQUIRE_SUPPLIER_EMAIL_VERIFICATION");
+    const disabledByEnv = this.authConfigService.isEmailVerificationDisabled();
+    if (!disabledByEnv && requireVerification && !profile.emailVerified) {
       await this.logLoginAttempt(
         profile.id,
         dto.email,

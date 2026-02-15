@@ -7,6 +7,7 @@ import { AuditModule } from "../audit/audit.module";
 import { BoqModule } from "../boq/boq.module";
 import { CustomerPreferredSupplier, SupplierInvitation } from "../customer/entities";
 import { EmailModule } from "../email/email.module";
+import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { MessagingModule } from "../messaging/messaging.module";
 import { NixModule } from "../nix/nix.module";
 import { PumpRfq } from "../rfq/entities/pump-rfq.entity";
@@ -81,6 +82,7 @@ import { SupplierPumpQuoteController } from "./supplier-pump-quote.controller";
     StorageModule,
     MessagingModule,
     forwardRef(() => SecureDocumentsModule),
+    FeatureFlagsModule,
   ],
   controllers: [
     SupplierAuthController,

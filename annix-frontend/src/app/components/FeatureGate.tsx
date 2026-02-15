@@ -12,15 +12,15 @@ interface FeatureGateProps {
 
 export function FeatureGate({ featureFlag, fallbackPath, children }: FeatureGateProps) {
   const router = useRouter();
-  const { isFeatureEnabled, isLoading, isTestEnv } = useFeatureGate();
+  const { isFeatureEnabled, isLoading } = useFeatureGate();
 
   const isEnabled = isFeatureEnabled(featureFlag);
 
   useEffect(() => {
-    if (!isLoading && isTestEnv && !isEnabled) {
+    if (!isLoading && !isEnabled) {
       router.replace(fallbackPath);
     }
-  }, [isLoading, isTestEnv, isEnabled, fallbackPath, router]);
+  }, [isLoading, isEnabled, fallbackPath, router]);
 
   if (isLoading) {
     return (
@@ -30,7 +30,7 @@ export function FeatureGate({ featureFlag, fallbackPath, children }: FeatureGate
     );
   }
 
-  if (isTestEnv && !isEnabled) {
+  if (!isEnabled) {
     return null;
   }
 
