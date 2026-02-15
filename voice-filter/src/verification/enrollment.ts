@@ -49,7 +49,7 @@ export class EnrollmentSession extends EventEmitter {
   async start(): Promise<void> {
     this.vad = new VoiceActivityDetector({
       sampleRate: this.sampleRate,
-      threshold: 0.5,
+      threshold: 0.005,
     });
     await this.vad.initialize();
 
@@ -76,7 +76,7 @@ export class EnrollmentSession extends EventEmitter {
       this.audioBuffers.push(Buffer.from(buffer));
 
       const probability = await this.vad!.process(samples);
-      const isSpeech = probability >= 0.5;
+      const isSpeech = probability >= 0.1;
 
       if (isSpeech) {
         const frameDurationMs = (samples.length / this.sampleRate) * 1000;

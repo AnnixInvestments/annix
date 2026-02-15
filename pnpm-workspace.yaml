@@ -1,6 +1,8 @@
 packages:
   - annix-backend
   - annix-frontend
+  - voice-filter
+
 ignoredBuiltDependencies:
   - '@nestjs/core'
   - '@openapitools/openapi-generator-cli'

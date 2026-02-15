@@ -247,6 +247,110 @@
       display: none;
     }
 
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .dashboard-card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+      text-align: center;
+    }
+
+    .dashboard-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(79, 172, 254, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .dashboard-card.active {
+      border-color: #4facfe;
+      background: rgba(79, 172, 254, 0.1);
+    }
+
+    .dashboard-card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 24px;
+    }
+
+    .dashboard-card-icon.blue {
+      background: linear-gradient(135deg, rgba(79, 172, 254, 0.2) 0%, rgba(0, 242, 254, 0.2) 100%);
+    }
+
+    .dashboard-card-icon.green {
+      background: linear-gradient(135deg, rgba(0, 242, 107, 0.2) 0%, rgba(0, 200, 83, 0.2) 100%);
+    }
+
+    .dashboard-card-icon.purple {
+      background: linear-gradient(135deg, rgba(167, 119, 227, 0.2) 0%, rgba(131, 58, 180, 0.2) 100%);
+    }
+
+    .dashboard-card-icon.orange {
+      background: linear-gradient(135deg, rgba(255, 154, 0, 0.2) 0%, rgba(255, 107, 107, 0.2) 100%);
+    }
+
+    .dashboard-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .dashboard-card p {
+      font-size: 11px;
+      color: #8892b0;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .status-badge.active {
+      background: rgba(0, 242, 107, 0.15);
+      color: #00f26b;
+    }
+
+    .status-badge.inactive {
+      background: rgba(136, 146, 176, 0.15);
+      color: #8892b0;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-badge.active .status-dot {
+      animation: pulse 1.5s infinite;
+    }
+
+    .dashboard-footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
     .error-message {
       background: rgba(255, 107, 107, 0.1);
       border: 1px solid rgba(255, 107, 107, 0.3);
@@ -264,7 +368,7 @@
     <div class="subtitle">Speaker Verification Setup</div>
 
     <div class="card">
-      <div class="step-indicator">
+      <div class="step-indicator" id="setup-steps">
         <div class="step active" id="step1"></div>
         <div class="step" id="step2"></div>
         <div class="step" id="step3"></div>
@@ -329,7 +433,47 @@
         <div class="success-icon">✓</div>
         <h2>Setup Complete!</h2>
         <p class="description">Your voice profile has been created successfully. The voice filter is now ready to use.</p>
-        <button class="btn btn-primary" id="btn-close">Close</button>
+        <button class="btn btn-primary" id="btn-dashboard">Go to Dashboard</button>
+      </div>
+
+      <!-- Dashboard -->
+      <div id="screen-dashboard" class="hidden">
+        <h2>Voice Filter Dashboard</h2>
+
+        <div class="status-badge inactive" id="filter-status">
+          <div class="status-dot"></div>
+          <span id="filter-status-text">Filter Inactive</span>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dashboard-card" id="btn-start-filter">
+            <div class="dashboard-card-icon blue">🎙️</div>
+            <h3>Start Filter</h3>
+            <p>Enable voice filtering</p>
+          </div>
+
+          <div class="dashboard-card" id="btn-start-meeting">
+            <div class="dashboard-card-icon green">📞</div>
+            <h3>Join Meeting</h3>
+            <p>Start with filter active</p>
+          </div>
+
+          <div class="dashboard-card" id="btn-record">
+            <div class="dashboard-card-icon purple">⏺️</div>
+            <h3>Record Audio</h3>
+            <p>Capture filtered audio</p>
+          </div>
+
+          <div class="dashboard-card" id="btn-re-enroll">
+            <div class="dashboard-card-icon orange">🔄</div>
+            <h3>Re-Enroll</h3>
+            <p>Update voice profile</p>
+          </div>
+        </div>
+
+        <div class="dashboard-footer">
+          <button class="btn btn-secondary" id="btn-exit">Exit Application</button>
+        </div>
       </div>
 
       <!-- Error Screen -->
@@ -354,15 +498,26 @@
     const deviceName = document.getElementById('device-name');
     const btnContinue = document.getElementById('btn-continue');
     const btnCancel = document.getElementById('btn-cancel');
-    const btnClose = document.getElementById('btn-close');
+    const btnDashboard = document.getElementById('btn-dashboard');
     const btnRetry = document.getElementById('btn-retry');
+    const btnStartFilter = document.getElementById('btn-start-filter');
+    const btnStartMeeting = document.getElementById('btn-start-meeting');
+    const btnRecord = document.getElementById('btn-record');
+    const btnReEnroll = document.getElementById('btn-re-enroll');
+    const btnExit = document.getElementById('btn-exit');
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
+    const filterStatus = document.getElementById('filter-status');
+    const filterStatusText = document.getElementById('filter-status-text');
+    const setupSteps = document.getElementById('setup-steps');
 
     const screenMicTest = document.getElementById('screen-mic-test');
     const screenEnrollment = document.getElementById('screen-enrollment');
     const screenSuccess = document.getElementById('screen-success');
     const screenError = document.getElementById('screen-error');
+    const screenDashboard = document.getElementById('screen-dashboard');
+
+    let isFilterActive = false;
 
     const step1 = document.getElementById('step1');
     const step2 = document.getElementById('step2');
@@ -422,6 +577,43 @@
       } else if (type === 'enrollment-error') {
         document.getElementById('error-message').textContent = data.message;
         showScreen('error');
+      } else if (type === 'has-profile') {
+        showScreen('dashboard');
+      } else if (type === 'filter-started') {
+        isFilterActive = true;
+        filterStatus.classList.remove('inactive');
+        filterStatus.classList.add('active');
+        filterStatusText.textContent = 'Filter Active';
+        btnStartFilter.querySelector('h3').textContent = 'Stop Filter';
+        btnStartFilter.querySelector('p').textContent = 'Disable voice filtering';
+        btnStartFilter.classList.add('active');
+      } else if (type === 'filter-stopped') {
+        isFilterActive = false;
+        filterStatus.classList.remove('active');
+        filterStatus.classList.add('inactive');
+        filterStatusText.textContent = 'Filter Inactive';
+        btnStartFilter.querySelector('h3').textContent = 'Start Filter';
+        btnStartFilter.querySelector('p').textContent = 'Enable voice filtering';
+        btnStartFilter.classList.remove('active');
+      } else if (type === 'filter-error') {
+        alert(`Filter Error: ${data.message}`);
+        isFilterActive = false;
+        filterStatus.classList.remove('active');
+        filterStatus.classList.add('inactive');
+        filterStatusText.textContent = 'Filter Inactive';
+        btnStartFilter.querySelector('h3').textContent = 'Start Filter';
+        btnStartFilter.querySelector('p').textContent = 'Enable voice filtering';
+        btnStartFilter.classList.remove('active');
+      } else if (type === 'filter-verification') {
+        if (data.decision === 'authorized') {
+          filterStatusText.textContent = 'Verified - Filter Active';
+        } else if (data.decision === 'unauthorized') {
+          filterStatusText.textContent = 'Unauthorized - Muted';
+        }
+      } else if (type === 'filter-muted') {
+        filterStatusText.textContent = 'Muted - Unauthorized Speaker';
+      } else if (type === 'filter-unmuted') {
+        filterStatusText.textContent = 'Verified - Filter Active';
       }
     };
 
@@ -430,25 +622,33 @@
       screenEnrollment.classList.add('hidden');
       screenSuccess.classList.add('hidden');
       screenError.classList.add('hidden');
+      screenDashboard.classList.add('hidden');
 
       step1.classList.remove('active', 'completed');
       step2.classList.remove('active', 'completed');
       step3.classList.remove('active', 'completed');
 
       if (screen === 'mic-test') {
+        setupSteps.classList.remove('hidden');
         screenMicTest.classList.remove('hidden');
         step1.classList.add('active');
       } else if (screen === 'enrollment') {
+        setupSteps.classList.remove('hidden');
         screenEnrollment.classList.remove('hidden');
         step1.classList.add('completed');
         step2.classList.add('active');
       } else if (screen === 'success') {
+        setupSteps.classList.remove('hidden');
         screenSuccess.classList.remove('hidden');
         step1.classList.add('completed');
         step2.classList.add('completed');
         step3.classList.add('active');
       } else if (screen === 'error') {
+        setupSteps.classList.remove('hidden');
         screenError.classList.remove('hidden');
+      } else if (screen === 'dashboard') {
+        setupSteps.classList.add('hidden');
+        screenDashboard.classList.remove('hidden');
       }
     }
 
@@ -462,9 +662,8 @@
       showScreen('mic-test');
     });
 
-    btnClose.addEventListener('click', () => {
-      send('close-window');
-      window.close();
+    btnDashboard.addEventListener('click', () => {
+      showScreen('dashboard');
     });
 
     btnRetry.addEventListener('click', () => {
@@ -474,6 +673,53 @@
       micStatusText.textContent = 'Waiting for audio...';
       showScreen('mic-test');
       send('restart-mic-test');
+    });
+
+    btnStartFilter.addEventListener('click', () => {
+      if (isFilterActive) {
+        send('stop-filter');
+        isFilterActive = false;
+        filterStatus.classList.remove('active');
+        filterStatus.classList.add('inactive');
+        filterStatusText.textContent = 'Filter Inactive';
+        btnStartFilter.querySelector('h3').textContent = 'Start Filter';
+        btnStartFilter.querySelector('p').textContent = 'Enable voice filtering';
+        btnStartFilter.classList.remove('active');
+      } else {
+        send('start-filter');
+        isFilterActive = true;
+        filterStatus.classList.remove('inactive');
+        filterStatus.classList.add('active');
+        filterStatusText.textContent = 'Filter Active';
+        btnStartFilter.querySelector('h3').textContent = 'Stop Filter';
+        btnStartFilter.querySelector('p').textContent = 'Disable voice filtering';
+        btnStartFilter.classList.add('active');
+      }
+    });
+
+    btnStartMeeting.addEventListener('click', () => {
+      send('start-meeting');
+      if (!isFilterActive) {
+        btnStartFilter.click();
+      }
+    });
+
+    btnRecord.addEventListener('click', () => {
+      send('start-recording');
+    });
+
+    btnReEnroll.addEventListener('click', () => {
+      maxLevel = 0;
+      btnContinue.disabled = true;
+      micIcon.classList.remove('active');
+      micStatusText.textContent = 'Waiting for audio...';
+      showScreen('mic-test');
+      send('restart-mic-test');
+    });
+
+    btnExit.addEventListener('click', () => {
+      send('close-window');
+      window.close();
     });
   </script>
 </body>

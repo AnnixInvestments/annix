@@ -352,6 +352,9 @@ importers:
       ora:
         specifier: ^8.1.1
         version: 8.2.0
+      systray2:
+        specifier: ^2.1.4
+        version: 2.1.4
       ws:
         specifier: ^8.19.0
         version: 8.19.0
@@ -6750,6 +6753,10 @@ packages:
   synckit@0.11.12:
     resolution: {integrity: sha512-Bh7QjT8/SuKUIfObSXNHNSK6WHo6J1tHCqJsuaFDP7gP0fkzSfTxI8y85JrppZ0h8l0maIgc2tfuZQ6/t3GtnQ==}
     engines: {node: ^14.18.0 || >=16.0.0}
+
+  systray2@2.1.4:
+    resolution: {integrity: sha512-ncviZ7m2fecb2tAAx7pl4nlbnwvSyL4GIKnRUvfiJXTsHysh3chSlxVxNk7Yj8jlfF2TsBn2CjLwCfhJQkR7/w==}
+    engines: {node: '>=4.0.0'}
 
   tailwindcss@4.1.18:
     resolution: {integrity: sha512-4+Z+0yiYyEtUVCScyfHCxOYP06L5Ne+JiHhY2IjR2KWMIWhJOYZKLSGZaP5HkZ8+bY0cxfzwDE5uOmzFXyIwxw==}
@@ -15379,6 +15386,13 @@ snapshots:
   synckit@0.11.12:
     dependencies:
       '@pkgr/core': 0.2.9
+
+  systray2@2.1.4:
+    dependencies:
+      debug: 4.4.3(supports-color@10.2.2)
+      fs-extra: 10.1.0
+    transitivePeerDependencies:
+      - supports-color
 
   tailwindcss@4.1.18: {}
 
