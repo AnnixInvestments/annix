@@ -130,7 +130,8 @@ jobs:
       - name: Deploy Frontend to Fly.io (${{ matrix.environment }})
         run: |
           for i in 1 2 3; do
-            if flyctl deploy -c ${{ matrix.config }}; then
+            if flyctl deploy -c ${{ matrix.config }} \
+              --build-arg NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}"; then
               exit 0
             fi
             echo "Deploy attempt $i failed, retrying in 10s..."
@@ -138,6 +139,8 @@ jobs:
           done
           echo "All deploy attempts failed"
           exit 1
+        env:
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
 
       - name: Get Frontend Logs on Failure
         if: failure()
