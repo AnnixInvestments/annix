@@ -172,4 +172,7 @@ export class CustomerProfile {
     (document) => document.customer,
   )
   documents: CustomerDocument[];
+
+  @Column({ name: "github_feedback_issue_number", type: "int", nullable: true })
+  githubFeedbackIssueNumber: number | null;
 }

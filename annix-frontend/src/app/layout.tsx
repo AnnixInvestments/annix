@@ -25,6 +25,22 @@ const greatVibes = Great_Vibes({
 export const metadata: Metadata = {
   title: "Annix App - RFQ System",
   description: "Annix App Request for Quotation Management System",
+  manifest: "/manifest.json",
+  themeColor: "#3b82f6",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "FieldFlow",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({

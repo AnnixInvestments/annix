@@ -16,6 +16,7 @@ export interface ProductService {
   icon: string | React.ReactNode;
   category: "product" | "service";
   hidden?: boolean;
+  comingSoon?: boolean;
 }
 
 // Master list of all products and services
@@ -43,6 +44,7 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     description: "Coating, painting, galvanizing, and surface treatment services",
     icon: React.createElement(SurfaceProtectionIcon, { size: 20 }),
     category: "service",
+    comingSoon: true,
   },
   {
     value: "hdpe",
@@ -50,6 +52,7 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     description: "High-density polyethylene pipes and fittings",
     icon: React.createElement(HdpePipeIcon, { size: 20 }),
     category: "product",
+    comingSoon: true,
   },
   {
     value: "pvc",
@@ -57,6 +60,7 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     description: "PVC pipes, fittings, and accessories",
     icon: React.createElement(PvcPipeIcon, { size: 20 }),
     category: "product",
+    comingSoon: true,
   },
   {
     value: "structural_steel",
@@ -65,6 +69,7 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: React.createElement(StructuralSteelIcon, { size: 20 }),
     category: "product",
     hidden: true,
+    comingSoon: true,
   },
   {
     value: "pumps",
@@ -72,6 +77,7 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     description: "Industrial pumps, spare parts, seals, impellers, and pump accessories",
     icon: React.createElement(IndustrialPumpIcon, { size: 20 }),
     category: "product",
+    comingSoon: true,
   },
   {
     value: "valves_meters_instruments",
@@ -79,6 +85,7 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     description: "Industrial valves, flow meters, pressure gauges, and instrumentation",
     icon: React.createElement(IndustrialValveIcon, { size: 20 }),
     category: "product",
+    comingSoon: true,
   },
   {
     value: "transport_install",
@@ -86,6 +93,7 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     description: "Transportation, delivery, and installation services",
     icon: "🚚",
     category: "service",
+    comingSoon: true,
   },
   {
     value: "pipe_steel_work",
@@ -93,6 +101,7 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     description: "Pipe supports, brackets, compensation plates, and reinforcement pads",
     icon: "🔧",
     category: "product",
+    comingSoon: true,
   },
 ];
 
@@ -134,3 +143,9 @@ export const isProductAvailableForUnregistered = (value: string): boolean =>
 // Check if a project type is available to unregistered customers
 export const isProjectTypeAvailableForUnregistered = (value: string): boolean =>
   UNREGISTERED_ALLOWED_PROJECT_TYPES.includes(value);
+
+// Check if a product/service is coming soon (not yet available)
+export const isProductComingSoon = (value: string): boolean => {
+  const product = PRODUCTS_AND_SERVICES.find((item) => item.value === value);
+  return product?.comingSoon === true;
+};

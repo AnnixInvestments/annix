@@ -72,6 +72,7 @@ export class EnrollmentSession extends EventEmitter {
         return;
       }
 
+      this.emit("audio", samples);
       this.audioBuffers.push(Buffer.from(buffer));
 
       const probability = await this.vad!.process(samples);

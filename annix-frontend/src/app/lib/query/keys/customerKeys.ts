@@ -43,4 +43,7 @@ export const customerKeys = {
       [...customerKeys.messaging.all, "conversation", id] as const,
     broadcasts: () => [...customerKeys.messaging.all, "broadcasts"] as const,
   },
+  feedback: {
+    all: ["customer", "feedback"] as const,
+  },
 } as const;

@@ -17,6 +17,7 @@ import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { minesApi, SaMine } from "@/app/lib/api/client";
 import {
   isProductAvailableForUnregistered,
+  isProductComingSoon,
   isProjectTypeAvailableForUnregistered,
   PRODUCTS_AND_SERVICES,
 } from "@/app/lib/config/productsServices";
@@ -2000,31 +2001,41 @@ export default function ProjectDetailsStep({
                 const isSelected = rfqData.requiredProducts?.includes(product.value);
                 const isDisabledForUnregistered =
                   isUnregisteredCustomer && !isProductAvailableForUnregistered(product.value);
-                const isDisabled = projectTypeConfirmed || isDisabledForUnregistered;
+                const isComingSoon = isProductComingSoon(product.value);
+                const isDisabled =
+                  projectTypeConfirmed || isDisabledForUnregistered || isComingSoon;
 
                 return (
                   <label
                     key={product.value}
                     title={
-                      isDisabledForUnregistered
-                        ? "Register or login to access this product/service"
-                        : product.description
+                      isComingSoon
+                        ? "Coming soon - this product/service is not yet available"
+                        : isDisabledForUnregistered
+                          ? "Register or login to access this product/service"
+                          : product.description
                     }
-                    onClick={isDisabledForUnregistered ? showRestrictionPopup : undefined}
-                    onMouseEnter={isDisabledForUnregistered ? showRestrictionPopup : undefined}
+                    onClick={
+                      isDisabledForUnregistered && !isComingSoon ? showRestrictionPopup : undefined
+                    }
+                    onMouseEnter={
+                      isDisabledForUnregistered && !isComingSoon ? showRestrictionPopup : undefined
+                    }
                     className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-all text-xs h-10 ${
-                      isDisabledForUnregistered
-                        ? "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
-                        : isSelected
-                          ? "border-blue-600 bg-blue-50 cursor-pointer"
-                          : "border-gray-200 hover:border-blue-300 cursor-pointer"
+                      isComingSoon
+                        ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                        : isDisabledForUnregistered
+                          ? "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
+                          : isSelected
+                            ? "border-blue-600 bg-blue-50 cursor-pointer"
+                            : "border-gray-200 hover:border-blue-300 cursor-pointer"
                     }`}
                   >
                     <input
                       type="checkbox"
-                      checked={isSelected && !isDisabledForUnregistered}
+                      checked={isSelected && !isDisabledForUnregistered && !isComingSoon}
                       onChange={(e) => {
-                        if (isDisabledForUnregistered) return;
+                        if (isDisabledForUnregistered || isComingSoon) return;
                         const currentProducts = rfqData.requiredProducts || [];
                         let newProducts: string[];
                         if (e.target.checked) {
@@ -2040,14 +2051,14 @@ export default function ProjectDetailsStep({
                     />
                     <div
                       className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
-                        isDisabledForUnregistered
+                        isComingSoon || isDisabledForUnregistered
                           ? "border-gray-300 bg-gray-200"
                           : isSelected
                             ? "border-blue-600 bg-blue-600"
                             : "border-gray-300"
                       }`}
                     >
-                      {isSelected && !isDisabledForUnregistered && (
+                      {isSelected && !isDisabledForUnregistered && !isComingSoon && (
                         <svg
                           className="w-2.5 h-2.5 text-white"
                           fill="currentColor"
@@ -2061,15 +2072,20 @@ export default function ProjectDetailsStep({
                         </svg>
                       )}
                     </div>
-                    <span className={isDisabledForUnregistered ? "grayscale" : ""}>
+                    <span className={isComingSoon || isDisabledForUnregistered ? "grayscale" : ""}>
                       {product.icon}
                     </span>
                     <span
-                      className={`font-medium ${isDisabledForUnregistered ? "text-gray-400" : "text-gray-900"}`}
+                      className={`font-medium ${isComingSoon || isDisabledForUnregistered ? "text-gray-400" : "text-gray-900"}`}
                     >
                       {product.label}
                     </span>
-                    {isDisabledForUnregistered && (
+                    {isComingSoon && (
+                      <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0 italic">
+                        Soon
+                      </span>
+                    )}
+                    {isDisabledForUnregistered && !isComingSoon && (
                       <svg
                         className="w-3 h-3 text-gray-400 ml-auto flex-shrink-0"
                         fill="none"

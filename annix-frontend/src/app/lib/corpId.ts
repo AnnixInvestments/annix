@@ -70,6 +70,13 @@ export const corpId = {
         sidebarHover: "#f3f4f6",
         sidebarActive: "#FFD700",
       },
+      fieldflow: {
+        background: "#323288",
+        text: "#FFFFFF",
+        accent: "#FFA500",
+        hover: "#4a4da3",
+        active: "#252560",
+      },
     },
   },
 
@@ -99,7 +106,7 @@ export const corpId = {
   },
 } as const;
 
-export type PortalType = "admin" | "customer" | "supplier" | "auRubber";
+export type PortalType = "admin" | "customer" | "supplier" | "auRubber" | "fieldflow";
 
 export const portalConfig = {
   admin: {
@@ -121,6 +128,11 @@ export const portalConfig = {
     title: "AU Rubber App",
     homeHref: "/au-rubber/portal/dashboard",
     loginHref: "/au-rubber/login",
+  },
+  fieldflow: {
+    title: "FieldFlow",
+    homeHref: "/fieldflow",
+    loginHref: "/admin/login",
   },
 } as const;
 

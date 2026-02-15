@@ -14,10 +14,20 @@ function CustomerLoginContent() {
   const { fingerprint, browserInfo, isLoading: fingerprintLoading } = useDeviceFingerprint();
   const returnUrl = searchParams?.get("returnUrl");
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("customerRememberedEmail") || "";
+    }
+    return "";
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("customerRememberMe") === "true";
+    }
+    return false;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEmailNotVerified, setIsEmailNotVerified] = useState(false);
@@ -69,6 +79,15 @@ function CustomerLoginContent() {
 
     try {
       await login(email, password, fingerprint, browserInfo || undefined);
+
+      if (rememberMe) {
+        localStorage.setItem("customerRememberedEmail", email);
+        localStorage.setItem("customerRememberMe", "true");
+      } else {
+        localStorage.removeItem("customerRememberedEmail");
+        localStorage.removeItem("customerRememberMe");
+      }
+
       router.push(returnUrl || "/customer/portal/dashboard");
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Login failed. Please try again.";

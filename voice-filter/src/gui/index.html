@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Annix Voice Filter</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: #8892b0;
+      font-size: 14px;
+      margin-bottom: 40px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 32px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .step-indicator {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .step {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .step.active {
+      background: #4facfe;
+      box-shadow: 0 0 10px #4facfe;
+    }
+
+    .step.completed {
+      background: #00f2fe;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .description {
+      color: #8892b0;
+      font-size: 14px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .volume-container {
+      margin: 24px 0;
+    }
+
+    .volume-label {
+      font-size: 12px;
+      color: #8892b0;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+
+    .volume-bar-bg {
+      height: 24px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .volume-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+      border-radius: 12px;
+      transition: width 0.05s ease-out;
+    }
+
+    .volume-bar.low {
+      background: linear-gradient(90deg, #ff6b6b 0%, #ffa500 100%);
+    }
+
+    .volume-bar.good {
+      background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+    }
+
+    .mic-status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    .mic-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ff6b6b;
+      animation: pulse 1.5s infinite;
+    }
+
+    .mic-icon.active {
+      background: #00f2fe;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .progress-container {
+      margin: 24px 0;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #8892b0;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-bg {
+      height: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+      border-radius: 4px;
+      transition: width 0.3s ease-out;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 16px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+      color: #1a1a2e;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(79, 172, 254, 0.4);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #8892b0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary:hover {
+      border-color: #4facfe;
+      color: #4facfe;
+    }
+
+    .device-info {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #8892b0;
+    }
+
+    .device-info strong {
+      color: #ffffff;
+    }
+
+    .success-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 32px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error-message {
+      background: rgba(255, 107, 107, 0.1);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 16px;
+      color: #ff6b6b;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Annix Voice Filter</div>
+    <div class="subtitle">Speaker Verification Setup</div>
+
+    <div class="card">
+      <div class="step-indicator">
+        <div class="step active" id="step1"></div>
+        <div class="step" id="step2"></div>
+        <div class="step" id="step3"></div>
+      </div>
+
+      <!-- Step 1: Mic Test -->
+      <div id="screen-mic-test">
+        <h2>Test Your Microphone</h2>
+        <p class="description">Speak into your microphone to verify it's working. You should see the bar move as you speak.</p>
+
+        <div class="device-info">
+          <strong>Detected:</strong> <span id="device-name">Loading...</span>
+        </div>
+
+        <div class="volume-container">
+          <div class="volume-label">Volume Level</div>
+          <div class="volume-bar-bg">
+            <div class="volume-bar" id="volume-bar"></div>
+          </div>
+        </div>
+
+        <div class="mic-status">
+          <div class="mic-icon" id="mic-icon"></div>
+          <span id="mic-status-text">Waiting for audio...</span>
+        </div>
+
+        <button class="btn btn-primary" id="btn-continue" disabled>Continue</button>
+      </div>
+
+      <!-- Step 2: Enrollment -->
+      <div id="screen-enrollment" class="hidden">
+        <h2>Record Your Voice</h2>
+        <p class="description">Speak clearly and continuously for 10 seconds. Read something aloud, count numbers, or describe your day.</p>
+
+        <div class="volume-container">
+          <div class="volume-label">Volume Level</div>
+          <div class="volume-bar-bg">
+            <div class="volume-bar" id="volume-bar-enroll"></div>
+          </div>
+        </div>
+
+        <div class="progress-container">
+          <div class="progress-label">
+            <span>Recording Progress</span>
+            <span id="progress-text">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar" id="progress-bar"></div>
+          </div>
+        </div>
+
+        <div class="mic-status">
+          <div class="mic-icon active" id="mic-icon-enroll"></div>
+          <span id="enroll-status-text">Recording...</span>
+        </div>
+
+        <button class="btn btn-secondary" id="btn-cancel">Cancel</button>
+      </div>
+
+      <!-- Step 3: Success -->
+      <div id="screen-success" class="hidden">
+        <div class="success-icon">✓</div>
+        <h2>Setup Complete!</h2>
+        <p class="description">Your voice profile has been created successfully. The voice filter is now ready to use.</p>
+        <button class="btn btn-primary" id="btn-close">Close</button>
+      </div>
+
+      <!-- Error Screen -->
+      <div id="screen-error" class="hidden">
+        <h2>Setup Failed</h2>
+        <p class="description" id="error-description">An error occurred during setup.</p>
+        <div class="error-message" id="error-message"></div>
+        <button class="btn btn-primary" id="btn-retry">Try Again</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ws = new WebSocket(`ws://${window.location.host}`);
+
+    const volumeBar = document.getElementById('volume-bar');
+    const volumeBarEnroll = document.getElementById('volume-bar-enroll');
+    const micIcon = document.getElementById('mic-icon');
+    const micIconEnroll = document.getElementById('mic-icon-enroll');
+    const micStatusText = document.getElementById('mic-status-text');
+    const enrollStatusText = document.getElementById('enroll-status-text');
+    const deviceName = document.getElementById('device-name');
+    const btnContinue = document.getElementById('btn-continue');
+    const btnCancel = document.getElementById('btn-cancel');
+    const btnClose = document.getElementById('btn-close');
+    const btnRetry = document.getElementById('btn-retry');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+
+    const screenMicTest = document.getElementById('screen-mic-test');
+    const screenEnrollment = document.getElementById('screen-enrollment');
+    const screenSuccess = document.getElementById('screen-success');
+    const screenError = document.getElementById('screen-error');
+
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+
+    let maxLevel = 0;
+
+    function send(type, data = {}) {
+      ws.send(JSON.stringify({ type, data }));
+    }
+
+    ws.onopen = () => {
+      send('ready');
+    };
+
+    ws.onmessage = (event) => {
+      const { type, data } = JSON.parse(event.data);
+
+      if (type === 'device-info') {
+        deviceName.textContent = data.name;
+      } else if (type === 'volume-level') {
+        const level = data;
+        const percentage = Math.round(level * 100);
+        volumeBar.style.width = `${percentage}%`;
+        volumeBarEnroll.style.width = `${percentage}%`;
+
+        if (level > maxLevel) {
+          maxLevel = level;
+        }
+
+        if (level > 0.1) {
+          micIcon.classList.add('active');
+          micStatusText.textContent = 'Microphone detected!';
+          btnContinue.disabled = false;
+          volumeBar.classList.remove('low');
+          volumeBar.classList.add('good');
+        } else if (level > 0.02) {
+          micStatusText.textContent = 'Low volume - speak louder';
+          volumeBar.classList.add('low');
+          volumeBar.classList.remove('good');
+        }
+      } else if (type === 'enrollment-progress') {
+        const progress = data;
+        const percent = Math.round(progress.percentComplete);
+        progressBar.style.width = `${percent}%`;
+        progressText.textContent = `${percent}%`;
+
+        if (progress.isSpeech) {
+          micIconEnroll.classList.add('active');
+          enrollStatusText.textContent = 'Recording your voice...';
+        } else {
+          micIconEnroll.classList.remove('active');
+          enrollStatusText.textContent = 'Waiting for speech...';
+        }
+      } else if (type === 'enrollment-complete') {
+        showScreen('success');
+      } else if (type === 'enrollment-error') {
+        document.getElementById('error-message').textContent = data.message;
+        showScreen('error');
+      }
+    };
+
+    function showScreen(screen) {
+      screenMicTest.classList.add('hidden');
+      screenEnrollment.classList.add('hidden');
+      screenSuccess.classList.add('hidden');
+      screenError.classList.add('hidden');
+
+      step1.classList.remove('active', 'completed');
+      step2.classList.remove('active', 'completed');
+      step3.classList.remove('active', 'completed');
+
+      if (screen === 'mic-test') {
+        screenMicTest.classList.remove('hidden');
+        step1.classList.add('active');
+      } else if (screen === 'enrollment') {
+        screenEnrollment.classList.remove('hidden');
+        step1.classList.add('completed');
+        step2.classList.add('active');
+      } else if (screen === 'success') {
+        screenSuccess.classList.remove('hidden');
+        step1.classList.add('completed');
+        step2.classList.add('completed');
+        step3.classList.add('active');
+      } else if (screen === 'error') {
+        screenError.classList.remove('hidden');
+      }
+    }
+
+    btnContinue.addEventListener('click', () => {
+      showScreen('enrollment');
+      send('start-enrollment');
+    });
+
+    btnCancel.addEventListener('click', () => {
+      send('cancel-enrollment');
+      showScreen('mic-test');
+    });
+
+    btnClose.addEventListener('click', () => {
+      send('close-window');
+      window.close();
+    });
+
+    btnRetry.addEventListener('click', () => {
+      maxLevel = 0;
+      btnContinue.disabled = true;
+      micIcon.classList.remove('active');
+      micStatusText.textContent = 'Waiting for audio...';
+      showScreen('mic-test');
+      send('restart-mic-test');
+    });
+  </script>
+</body>
+</html>

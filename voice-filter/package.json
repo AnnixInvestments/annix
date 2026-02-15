@@ -12,16 +12,21 @@
     "start": "node dist/cli/index.js start",
     "dev": "tsx src/cli/index.ts",
     "enroll": "tsx src/cli/index.ts enroll",
-    "devices": "tsx src/cli/index.ts devices"
+    "enroll:gui": "tsx src/gui/launch.ts",
+    "devices": "tsx src/cli/index.ts devices",
+    "test-mic": "tsx src/cli/index.ts test-mic"
   },
   "dependencies": {
     "@aws-sdk/client-voice-id": "^3.700.0",
     "commander": "^12.1.0",
     "naudiodon": "^2.3.6",
-    "ora": "^8.1.1"
+    "open": "^10.2.0",
+    "ora": "^8.1.1",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/ws": "^8.18.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   },

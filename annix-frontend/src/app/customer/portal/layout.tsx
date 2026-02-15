@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
+import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
@@ -105,6 +106,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
       <main className="py-6">
         <div className="w-full px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
+      <FeedbackWidget />
     </div>
   );
 }

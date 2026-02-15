@@ -3,15 +3,22 @@ import { MoreThanOrEqual, ObjectLiteral, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { AUTH_CONSTANTS } from "./auth.constants";
 import { LogLoginAttemptData } from "./auth.interfaces";
+import { AuthConfigService } from "./auth-config.service";
 
 @Injectable()
 export class RateLimitingService {
   private readonly logger = new Logger(RateLimitingService.name);
 
+  constructor(private readonly authConfigService: AuthConfigService) {}
+
   async checkLoginAttempts<T extends ObjectLiteral>(
     repo: Repository<T>,
     email: string,
   ): Promise<void> {
+    if (this.authConfigService.isRateLimitingDisabled()) {
+      return;
+    }
+
     try {
       const lockoutTime = now().minus({ minutes: AUTH_CONSTANTS.LOGIN_LOCKOUT_MINUTES }).toJSDate();
 

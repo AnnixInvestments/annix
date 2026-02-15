@@ -1,0 +1,199 @@
+import { join } from "node:path";
+import { app, BrowserWindow, ipcMain } from "electron";
+import { AudioCapture, findRealMicrophone } from "../audio/capture.js";
+import { loadSettings, updateSettings } from "../config/settings.js";
+import { EnrollmentSession } from "../verification/enrollment.js";
+
+let mainWindow: BrowserWindow | null = null;
+let audioCapture: AudioCapture | null = null;
+let enrollmentSession: EnrollmentSession | null = null;
+let detectedDevice: { id: number; name: string } | null = null;
+
+function createWindow(): void {
+  mainWindow = new BrowserWindow({
+    width: 580,
+    height: 680,
+    resizable: false,
+    frame: false,
+    transparent: false,
+    backgroundColor: "#1a1a2e",
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+    icon: join(__dirname, "../../assets/icon.png"),
+  });
+
+  mainWindow.loadFile(join(__dirname, "../../src/gui/index.html"));
+
+  mainWindow.on("closed", () => {
+    stopAudioCapture();
+    mainWindow = null;
+  });
+}
+
+function stopAudioCapture(): void {
+  if (audioCapture) {
+    audioCapture.stop();
+    audioCapture = null;
+  }
+}
+
+function startMicTest(): void {
+  const settings = loadSettings();
+
+  let deviceId: number;
+  if (settings.inputDeviceId !== null) {
+    deviceId = settings.inputDeviceId;
+    const devices = require("../audio/capture.js").listInputDevices();
+    const device = devices.find((d: { id: number }) => d.id === deviceId);
+    detectedDevice = device ? { id: device.id, name: device.name } : null;
+  } else {
+    const realMic = findRealMicrophone();
+    if (realMic) {
+      deviceId = realMic.id;
+      detectedDevice = { id: realMic.id, name: realMic.name };
+    } else {
+      deviceId = 0;
+      detectedDevice = { id: 0, name: "Default Input Device" };
+    }
+  }
+
+  if (detectedDevice && mainWindow) {
+    mainWindow.webContents.send("device-info", detectedDevice);
+  }
+
+  stopAudioCapture();
+
+  audioCapture = new AudioCapture({ deviceId, sampleRate: 16000, channels: 1 });
+
+  audioCapture.on("audio", (samples: Float32Array) => {
+    let sum = 0;
+    for (let i = 0; i < samples.length; i++) {
+      sum += Math.abs(samples[i]);
+    }
+    const avg = sum / samples.length;
+    const level = Math.min(1, avg * 10);
+
+    if (mainWindow) {
+      mainWindow.webContents.send("volume-level", level);
+    }
+  });
+
+  audioCapture.on("error", (err: Error) => {
+    if (mainWindow) {
+      mainWindow.webContents.send("enrollment-error", { message: err.message });
+    }
+  });
+
+  audioCapture.start();
+}
+
+function startEnrollment(): void {
+  if (!detectedDevice) {
+    return;
+  }
+
+  stopAudioCapture();
+
+  const settings = loadSettings();
+  const domainId = settings.awsVoiceIdDomainId ?? "local";
+  const speakerId = "default";
+
+  enrollmentSession = new EnrollmentSession({
+    speakerId,
+    domainId,
+    minSpeechDuration: 10000,
+    inputDeviceId: detectedDevice.id,
+    sampleRate: 16000,
+  });
+
+  enrollmentSession.on("audio", (samples: Float32Array) => {
+    let sum = 0;
+    for (let i = 0; i < samples.length; i++) {
+      sum += Math.abs(samples[i]);
+    }
+    const avg = sum / samples.length;
+    const level = Math.min(1, avg * 10);
+
+    if (mainWindow) {
+      mainWindow.webContents.send("volume-level", level);
+    }
+  });
+
+  enrollmentSession.on(
+    "progress",
+    (progress: {
+      speechDurationMs: number;
+      requiredMs: number;
+      percentComplete: number;
+      isSpeech: boolean;
+    }) => {
+      if (mainWindow) {
+        mainWindow.webContents.send("enrollment-progress", progress);
+      }
+    },
+  );
+
+  enrollmentSession.on("completed", (result) => {
+    updateSettings({
+      speakerId: result.speakerId,
+      inputDeviceId: detectedDevice!.id,
+    });
+
+    if (mainWindow) {
+      mainWindow.webContents.send("enrollment-complete", result);
+    }
+  });
+
+  enrollmentSession.on("error", (error: Error) => {
+    if (mainWindow) {
+      mainWindow.webContents.send("enrollment-error", { message: error.message });
+    }
+  });
+
+  enrollmentSession.start();
+}
+
+function cancelEnrollment(): void {
+  if (enrollmentSession) {
+    enrollmentSession.cancel();
+    enrollmentSession = null;
+  }
+  startMicTest();
+}
+
+ipcMain.on("ready", () => {
+  startMicTest();
+});
+
+ipcMain.on("start-enrollment", () => {
+  startEnrollment();
+});
+
+ipcMain.on("cancel-enrollment", () => {
+  cancelEnrollment();
+});
+
+ipcMain.on("restart-mic-test", () => {
+  startMicTest();
+});
+
+ipcMain.on("close-window", () => {
+  if (mainWindow) {
+    mainWindow.close();
+  }
+});
+
+app.whenReady().then(createWindow);
+
+app.on("window-all-closed", () => {
+  stopAudioCapture();
+  app.quit();
+});
+
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});

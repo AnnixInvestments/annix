@@ -54,6 +54,28 @@ export function defaultInputDevice(): AudioDevice | null {
   return devices.length > 0 ? devices[0] : null;
 }
 
+const VIRTUAL_DEVICE_PATTERNS = ["cable", "vb-audio", "virtual", "voicemeeter", "stereo mix"];
+
+function isVirtualDevice(device: AudioDevice): boolean {
+  const nameLower = device.name.toLowerCase();
+  return VIRTUAL_DEVICE_PATTERNS.some((pattern) => nameLower.includes(pattern));
+}
+
+export function findRealMicrophone(): AudioDevice | null {
+  const devices = listInputDevices();
+  const realMics = devices.filter((d) => !isVirtualDevice(d));
+
+  if (realMics.length === 0) {
+    return devices.length > 0 ? devices[0] : null;
+  }
+
+  const preferredMic = realMics.find(
+    (d) => d.name.toLowerCase().includes("microphone") || d.name.toLowerCase().includes("mic"),
+  );
+
+  return preferredMic ?? realMics[0];
+}
+
 export function defaultOutputDevice(): AudioDevice | null {
   const devices = listOutputDevices();
   return devices.length > 0 ? devices[0] : null;

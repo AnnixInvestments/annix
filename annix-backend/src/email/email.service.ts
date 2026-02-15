@@ -1078,4 +1078,241 @@ Annix Team
       text,
     });
   }
+
+  async sendMeetingSummaryEmail(
+    recipientEmail: string,
+    recipientName: string,
+    meetingDetails: {
+      title: string;
+      date: string;
+      duration: string;
+      attendees: string[];
+      companyName?: string;
+    },
+    summary: {
+      overview: string;
+      keyPoints: string[];
+      actionItems: Array<{
+        task: string;
+        assignee: string | null;
+        dueDate: string | null;
+      }>;
+      nextSteps: string[];
+      topics: string[];
+      sentiment?: string;
+    },
+    transcriptUrl?: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+
+    const attendeesList =
+      meetingDetails.attendees.length > 0
+        ? meetingDetails.attendees.map((a) => `<li>${a}</li>`).join("")
+        : "<li>Not specified</li>";
+
+    const keyPointsList =
+      summary.keyPoints.length > 0
+        ? summary.keyPoints.map((p) => `<li>${p}</li>`).join("")
+        : "<li>No key points identified</li>";
+
+    const actionItemsList =
+      summary.actionItems.length > 0
+        ? summary.actionItems
+            .map(
+              (item) =>
+                `<li>
+                <strong>${item.task}</strong>
+                ${item.assignee ? `<br/><span style="color: #6b7280; font-size: 13px;">Assigned to: ${item.assignee}</span>` : ""}
+                ${item.dueDate ? `<br/><span style="color: #6b7280; font-size: 13px;">Due: ${item.dueDate}</span>` : ""}
+              </li>`,
+            )
+            .join("")
+        : "<li>No action items identified</li>";
+
+    const nextStepsList =
+      summary.nextSteps.length > 0
+        ? summary.nextSteps.map((s) => `<li>${s}</li>`).join("")
+        : "<li>No specific next steps identified</li>";
+
+    const topicsTags =
+      summary.topics.length > 0
+        ? summary.topics
+            .map(
+              (t) =>
+                `<span style="display: inline-block; background-color: #e0e7ff; color: #3730a3; padding: 4px 10px; border-radius: 12px; font-size: 13px; margin: 2px 4px 2px 0;">${t}</span>`,
+            )
+            .join("")
+        : "<span style='color: #6b7280;'>No topics identified</span>";
+
+    const sentimentBadge = summary.sentiment
+      ? (() => {
+          const colors: Record<string, { bg: string; text: string }> = {
+            positive: { bg: "#dcfce7", text: "#166534" },
+            neutral: { bg: "#f3f4f6", text: "#374151" },
+            negative: { bg: "#fee2e2", text: "#991b1b" },
+          };
+          const color = colors[summary.sentiment] || colors.neutral;
+          return `<span style="display: inline-block; background-color: ${color.bg}; color: ${color.text}; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 500;">${summary.sentiment.charAt(0).toUpperCase() + summary.sentiment.slice(1)} Meeting</span>`;
+        })()
+      : "";
+
+    const transcriptSection = transcriptUrl
+      ? `
+        <p style="margin: 20px 0;">
+          <a href="${transcriptUrl}"
+             style="background-color: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; display: inline-block; font-size: 14px;">
+            View Full Transcript
+          </a>
+        </p>
+      `
+      : "";
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Meeting Summary - ${meetingDetails.title}</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9fafb;">
+        <div style="max-width: 650px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); color: white; padding: 30px;">
+              <h1 style="margin: 0 0 10px 0; font-size: 24px;">Meeting Summary</h1>
+              <p style="margin: 0; font-size: 18px; opacity: 0.95;">${meetingDetails.title}</p>
+              ${meetingDetails.companyName ? `<p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.85;">${meetingDetails.companyName}</p>` : ""}
+            </div>
+
+            <!-- Meeting Info -->
+            <div style="padding: 25px; border-bottom: 1px solid #e5e7eb;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; width: 100px;">Date:</td>
+                  <td style="padding: 8px 0; font-weight: 500;">${meetingDetails.date}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280;">Duration:</td>
+                  <td style="padding: 8px 0; font-weight: 500;">${meetingDetails.duration}</td>
+                </tr>
+              </table>
+              <div style="margin-top: 15px;">
+                <span style="color: #6b7280;">Attendees:</span>
+                <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                  ${attendeesList}
+                </ul>
+              </div>
+              ${sentimentBadge ? `<div style="margin-top: 15px;">${sentimentBadge}</div>` : ""}
+            </div>
+
+            <!-- Overview -->
+            <div style="padding: 25px; border-bottom: 1px solid #e5e7eb;">
+              <h2 style="color: #1f2937; font-size: 18px; margin: 0 0 15px 0; display: flex; align-items: center;">
+                <span style="display: inline-block; width: 4px; height: 20px; background-color: #2563eb; border-radius: 2px; margin-right: 10px;"></span>
+                Overview
+              </h2>
+              <p style="margin: 0; color: #374151; line-height: 1.7;">${summary.overview}</p>
+            </div>
+
+            <!-- Topics -->
+            <div style="padding: 25px; border-bottom: 1px solid #e5e7eb;">
+              <h2 style="color: #1f2937; font-size: 18px; margin: 0 0 15px 0; display: flex; align-items: center;">
+                <span style="display: inline-block; width: 4px; height: 20px; background-color: #8b5cf6; border-radius: 2px; margin-right: 10px;"></span>
+                Topics Discussed
+              </h2>
+              <div>${topicsTags}</div>
+            </div>
+
+            <!-- Key Points -->
+            <div style="padding: 25px; border-bottom: 1px solid #e5e7eb;">
+              <h2 style="color: #1f2937; font-size: 18px; margin: 0 0 15px 0; display: flex; align-items: center;">
+                <span style="display: inline-block; width: 4px; height: 20px; background-color: #10b981; border-radius: 2px; margin-right: 10px;"></span>
+                Key Points
+              </h2>
+              <ul style="margin: 0; padding-left: 20px; color: #374151;">
+                ${keyPointsList}
+              </ul>
+            </div>
+
+            <!-- Action Items -->
+            <div style="padding: 25px; border-bottom: 1px solid #e5e7eb; background-color: #fffbeb;">
+              <h2 style="color: #92400e; font-size: 18px; margin: 0 0 15px 0; display: flex; align-items: center;">
+                <span style="display: inline-block; width: 4px; height: 20px; background-color: #f59e0b; border-radius: 2px; margin-right: 10px;"></span>
+                Action Items
+              </h2>
+              <ul style="margin: 0; padding-left: 20px; color: #374151;">
+                ${actionItemsList}
+              </ul>
+            </div>
+
+            <!-- Next Steps -->
+            <div style="padding: 25px;">
+              <h2 style="color: #1f2937; font-size: 18px; margin: 0 0 15px 0; display: flex; align-items: center;">
+                <span style="display: inline-block; width: 4px; height: 20px; background-color: #06b6d4; border-radius: 2px; margin-right: 10px;"></span>
+                Next Steps
+              </h2>
+              <ul style="margin: 0; padding-left: 20px; color: #374151;">
+                ${nextStepsList}
+              </ul>
+              ${transcriptSection}
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+            <p style="margin: 0;">This summary was automatically generated from meeting transcript.</p>
+            <p style="margin: 5px 0 0 0;">Powered by Annix FieldFlow</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const textActionItems = summary.actionItems
+      .map((item) => `  - ${item.task}${item.assignee ? ` (Assigned to: ${item.assignee})` : ""}`)
+      .join("\n");
+
+    const text = `
+MEETING SUMMARY
+===============
+
+${meetingDetails.title}
+${meetingDetails.companyName ? `Company: ${meetingDetails.companyName}` : ""}
+
+Date: ${meetingDetails.date}
+Duration: ${meetingDetails.duration}
+Attendees: ${meetingDetails.attendees.join(", ") || "Not specified"}
+
+OVERVIEW
+--------
+${summary.overview}
+
+TOPICS DISCUSSED
+----------------
+${summary.topics.join(", ") || "None identified"}
+
+KEY POINTS
+----------
+${summary.keyPoints.map((p) => `- ${p}`).join("\n") || "None identified"}
+
+ACTION ITEMS
+------------
+${textActionItems || "None identified"}
+
+NEXT STEPS
+----------
+${summary.nextSteps.map((s) => `- ${s}`).join("\n") || "None identified"}
+
+---
+This summary was automatically generated from meeting transcript.
+Powered by Annix FieldFlow
+    `;
+
+    return this.sendEmail({
+      to: recipientEmail,
+      subject: `Meeting Summary: ${meetingDetails.title} - ${meetingDetails.date}`,
+      html,
+      text,
+    });
+  }
 }

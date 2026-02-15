@@ -94,6 +94,7 @@ export {
   useCustomerDrafts,
 } from "./customer/useCustomerDashboard";
 export { useCustomerDocuments } from "./customer/useCustomerDocuments";
+export { useSubmitFeedback } from "./customer/useCustomerFeedback";
 export {
   useArchiveCustomerConversation,
   useCreateCustomerConversation,
@@ -140,6 +141,85 @@ export {
   useUploadDrawing,
   useUploadDrawingVersion,
 } from "./drawing/useDrawings";
+export {
+  useAvailableCalendars,
+  useCalendarConnection,
+  useCalendarConnections,
+  useCalendarEvents,
+  useCalendarOAuthUrl,
+  useConnectCalendar,
+  useDisconnectCalendar,
+  useSyncCalendar,
+  useUpdateCalendarConnection,
+} from "./fieldflow/useCalendar";
+export {
+  useCreateCrmConfig,
+  useCrmConfig,
+  useCrmConfigs,
+  useCrmSyncStatus,
+  useDeleteCrmConfig,
+  useExportMeetingsCsv,
+  useExportProspectsCsv,
+  useSyncAllProspectsToCrm,
+  useSyncMeetingToCrm,
+  useSyncProspectToCrm,
+  useTestCrmConnection,
+  useUpdateCrmConfig,
+} from "./fieldflow/useCrm";
+export {
+  useCancelMeeting,
+  useCheckIn,
+  useCheckOut,
+  useCreateMeeting,
+  useCreateProspect,
+  useCreateVisit,
+  useDeleteProspect,
+  useEndMeeting,
+  useFieldFlowDashboard,
+  useFollowUpsDue,
+  useMarkContacted,
+  useMeeting,
+  useMeetings,
+  useNearbyProspects,
+  useProspect,
+  useProspectStats,
+  useProspects,
+  useProspectsByStatus,
+  useProspectVisits,
+  useStartMeeting,
+  useTodaysMeetings,
+  useTodaysVisits,
+  useUpcomingMeetings,
+  useUpdateProspect,
+  useUpdateProspectStatus,
+  useVisits,
+} from "./fieldflow/useFieldFlow";
+export {
+  useCompleteRecordingUpload,
+  useDeleteRecording,
+  useInitiateRecordingUpload,
+  useMeetingRecording,
+  useRecording,
+  useUpdateSpeakerLabels,
+  useUploadRecordingChunk,
+} from "./fieldflow/useRecording";
+export {
+  useColdCallSuggestions,
+  useOptimizeRoute,
+  usePlanDayRoute,
+  useScheduleGaps,
+} from "./fieldflow/useRoutes";
+export {
+  useSendSummary,
+  useSummaryPreview,
+} from "./fieldflow/useSummary";
+export {
+  useDeleteTranscript,
+  useMeetingTranscript,
+  useRetranscribeRecording,
+  useTranscribeRecording,
+  useTranscript,
+} from "./fieldflow/useTranscript";
 export type { PublicStats, UpcomingRfq } from "./public/usePublicStats";
 export { usePublicStats } from "./public/usePublicStats";
 export type { PaginatedReviewResult, ReviewWorkflow } from "./review/useReviews";

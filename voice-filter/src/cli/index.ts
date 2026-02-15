@@ -4,6 +4,7 @@ import { Command } from "commander";
 import { devicesCommand } from "./devices.js";
 import { enrollCommand } from "./enroll.js";
 import { runCommand } from "./run.js";
+import { testMicCommand } from "./test-mic.js";
 
 const program = new Command();
 
@@ -18,11 +19,19 @@ program
   .action(devicesCommand);
 
 program
+  .command("test-mic")
+  .description("Test your microphone with a live volume meter")
+  .option("-d, --device-id <id>", "Input device ID", parseInt)
+  .option("-a, --auto", "Auto-detect microphone")
+  .action(testMicCommand);
+
+program
   .command("enroll")
   .description("Enroll your voice for speaker verification")
   .option("-d, --device-id <id>", "Input device ID", parseInt)
   .option("-s, --speaker-id <id>", "Speaker identifier")
   .option("-t, --duration <ms>", "Required speech duration in milliseconds", parseInt)
+  .option("-a, --auto", "Auto-detect microphone and use defaults (no prompts)")
   .action(enrollCommand);
 
 program

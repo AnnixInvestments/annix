@@ -25,6 +25,10 @@ export class AuthConfigService {
     return this.configService.get("DISABLE_IP_MISMATCH_CHECK") === "true";
   }
 
+  isRateLimitingDisabled(): boolean {
+    return this.configService.get("DISABLE_RATE_LIMITING") === "true";
+  }
+
   jwtSecret(): string {
     return this.configService.get<string>("JWT_SECRET") || "";
   }

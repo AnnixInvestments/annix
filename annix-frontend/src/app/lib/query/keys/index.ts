@@ -6,6 +6,7 @@ export { customerKeys } from "./customerKeys";
 export type { DrawingQueryParams } from "./drawingKeys";
 export { drawingKeys } from "./drawingKeys";
 export { featureFlagKeys } from "./featureFlagKeys";
+export { fieldflowKeys } from "./fieldflowKeys";
 export { messagingKeys } from "./messagingKeys";
 export { publicKeys } from "./publicKeys";
 export { referenceDataKeys } from "./referenceDataKeys";

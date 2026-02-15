@@ -23,6 +23,8 @@ import { DataValidationModule } from "./data-validation/data-validation.module";
 import { DrawingsModule } from "./drawings/drawings.module";
 import { EmailModule } from "./email/email.module";
 import { FeatureFlagsModule } from "./feature-flags/feature-flags.module";
+import { FeedbackModule } from "./feedback/feedback.module";
+import { FieldFlowModule } from "./fieldflow/fieldflow.module";
 import { FittingModule } from "./fitting/fitting.module";
 import { FittingBoreModule } from "./fitting-bore/fitting-bore.module";
 import { FittingDimensionModule } from "./fitting-dimension/fitting-dimension.module";
@@ -147,6 +149,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     UnifiedApiModule,
     RemoteAccessModule,
     FeatureFlagsModule,
+    FeedbackModule,
     FlangeTypeWeightModule,
     BnwSetWeightModule,
     RetainingRingWeightModule,
@@ -155,6 +158,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     PumpProductModule,
     PumpOrderModule,
     ReducerCalculatorModule,
+    FieldFlowModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

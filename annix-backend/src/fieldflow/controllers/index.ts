@@ -1,0 +1,9 @@
+export { CalendarController } from "./calendar.controller";
+export { CrmController } from "./crm.controller";
+export { MeetingController } from "./meeting.controller";
+export { ProspectController } from "./prospect.controller";
+export { RecordingController } from "./recording.controller";
+export { RouteController } from "./route.controller";
+export { SummaryController } from "./summary.controller";
+export { TranscriptController } from "./transcript.controller";
+export { VisitController } from "./visit.controller";

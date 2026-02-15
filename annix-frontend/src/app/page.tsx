@@ -94,6 +94,34 @@ const RubberIcon = () => (
   </svg>
 );
 
+const VoiceFilterIcon = () => (
+  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
+    />
+  </svg>
+);
+
+const FieldFlowIcon = () => (
+  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+    />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+    />
+  </svg>
+);
+
 export default function HomePage() {
   const { data: stats, isLoading: loading } = usePublicStats();
 
@@ -331,6 +359,69 @@ export default function HomePage() {
                 </p>
                 <span className="inline-flex items-center text-yellow-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Login
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          {/* Voice Filter Card */}
+          <Link href="/voice-filter" className="group">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 h-full">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-100 rounded-2xl text-cyan-600 mb-6 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
+                  <VoiceFilterIcon />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Voice Filter</h3>
+                <p className="text-gray-600 mb-6">
+                  Speaker verification filter that only passes through your authorized voice.
+                </p>
+                <span className="inline-flex items-center text-cyan-600 font-semibold group-hover:translate-x-1 transition-transform">
+                  Learn More
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          {/* FieldFlow Card */}
+          <Link href="/fieldflow" className="group">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-emerald-400 hover:shadow-xl transition-all duration-300 h-full">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 rounded-2xl text-emerald-600 mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                  <FieldFlowIcon />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">FieldFlow</h3>
+                <p className="text-gray-600 mb-6">
+                  Mobile sales field assistant with smart prospecting, route planning, and meeting
+                  AI.
+                </p>
+                <span className="inline-flex items-center text-emerald-600 font-semibold group-hover:translate-x-1 transition-transform">
+                  Open App
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"

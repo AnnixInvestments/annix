@@ -42,3 +42,55 @@ Workflows are triggered via the GitHub API instead:
 Once GitHub Support transfers org ownership to an active account:
 1. Enable GitHub Actions push triggers on `AnnixInvestments/annix`
 2. Remove the `gh workflow run` lines from `.githooks/pre-push` (push events will trigger deploys directly)
+
+## Dev Scripts
+
+Run all commands from the repository root.
+
+### Starting the Apps
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start both backend and frontend concurrently |
+| `pnpm dev:backend` | Start backend only (NestJS on port 4001) |
+| `pnpm dev:frontend` | Start frontend only (Next.js on port 3000) |
+
+### Building
+
+| Command | Description |
+|---------|-------------|
+| `pnpm build` | Build both backend and frontend |
+| `pnpm build:backend` | Build backend only |
+| `pnpm build:frontend` | Build frontend only |
+
+### Testing
+
+| Command | Description |
+|---------|-------------|
+| `pnpm test:all` | Run backend tests + frontend type-check |
+| `pnpm test:backend` | Run backend Jest tests |
+| `pnpm test:frontend` | Run frontend type-check |
+| `pnpm test:watch` | Run backend tests in watch mode |
+| `pnpm test:coverage` | Run backend tests with coverage |
+
+### Database
+
+| Command | Description |
+|---------|-------------|
+| `cd annix-backend && pnpm migration:run` | Run pending migrations |
+| `cd annix-backend && pnpm migration:revert` | Revert last migration |
+| `cd annix-backend && pnpm migration:create ./src/migrations/MigrationName` | Create new migration |
+
+### Linting & Formatting
+
+| Command | Description |
+|---------|-------------|
+| `pnpm format` | Format all files with Biome |
+| `pnpm format:check` | Check formatting without fixing |
+| `pnpm type-check` | Run TypeScript type-check on frontend |
+
+### API Schema
+
+| Command | Description |
+|---------|-------------|
+| `cd annix-frontend && pnpm codegen` | Regenerate OpenAPI types (backend must be running) |
