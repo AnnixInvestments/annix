@@ -38,8 +38,9 @@ const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     color: "green",
   },
   rfq: {
-    title: "RFQ Options",
-    description: "Available project types and products/services for RFQ creation",
+    title: "RFQ Configuration",
+    description:
+      "Control which project types and products/services are available to users when creating RFQs",
     color: "teal",
   },
 };
@@ -85,14 +86,17 @@ function RfqFlagGrid({
     <div className="p-6 space-y-6">
       {typeFlags.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <label className="block text-xs font-semibold text-gray-900 dark:text-white">
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white">
               Project Types
             </label>
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {enabledTypes} of {typeFlags.length} enabled
             </span>
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Select which project types users can choose when creating an RFQ
+          </p>
           <div className="grid grid-cols-4 gap-2">
             {typeFlags.map((flag) => {
               const meta = RFQ_TYPE_FLAG_MAP[flag.flagKey];
@@ -138,14 +142,17 @@ function RfqFlagGrid({
 
       {productFlags.length > 0 && (
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <label className="block text-xs font-semibold text-gray-900 dark:text-white">
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-semibold text-gray-900 dark:text-white">
               Products & Services
             </label>
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {enabledProducts} of {productFlags.length} enabled
             </span>
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            Select which products and services users can request quotes for
+          </p>
           <div className="grid grid-cols-2 gap-3">
             {productFlags.map((flag) => {
               const meta = RFQ_PRODUCT_FLAG_MAP[flag.flagKey];
