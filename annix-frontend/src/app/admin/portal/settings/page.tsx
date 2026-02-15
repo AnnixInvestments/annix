@@ -47,9 +47,17 @@ const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
 const CATEGORY_ORDER = ["customer", "supplier", "admin", "system", "registration", "rfq"];
 
 const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<
-  Record<string, { label: string; icon: React.ReactNode }>
+  Record<
+    string,
+    { label: string; icon: React.ReactNode; description: string; comingSoon?: boolean }
+  >
 >((acc, product) => {
-  acc[product.flagKey] = { label: product.label, icon: product.icon };
+  acc[product.flagKey] = {
+    label: product.label,
+    icon: product.icon,
+    description: product.description,
+    comingSoon: product.comingSoon,
+  };
   return acc;
 }, {});
 
@@ -70,13 +78,21 @@ function RfqFlagGrid({
   const typeFlags = categoryFlags.filter((f) => f.flagKey.startsWith("RFQ_TYPE_"));
   const productFlags = categoryFlags.filter((f) => f.flagKey.startsWith("RFQ_PRODUCT_"));
 
+  const enabledTypes = typeFlags.filter((f) => f.enabled).length;
+  const enabledProducts = productFlags.filter((f) => f.enabled).length;
+
   return (
     <div className="p-6 space-y-6">
       {typeFlags.length > 0 && (
         <div>
-          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-2">
-            Project Types
-          </label>
+          <div className="flex items-center justify-between mb-3">
+            <label className="block text-xs font-semibold text-gray-900 dark:text-white">
+              Project Types
+            </label>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {enabledTypes} of {typeFlags.length} enabled
+            </span>
+          </div>
           <div className="grid grid-cols-4 gap-2">
             {typeFlags.map((flag) => {
               const meta = RFQ_TYPE_FLAG_MAP[flag.flagKey];
@@ -122,10 +138,15 @@ function RfqFlagGrid({
 
       {productFlags.length > 0 && (
         <div>
-          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-2">
-            Products & Services
-          </label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="flex items-center justify-between mb-3">
+            <label className="block text-xs font-semibold text-gray-900 dark:text-white">
+              Products & Services
+            </label>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {enabledProducts} of {productFlags.length} enabled
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             {productFlags.map((flag) => {
               const meta = RFQ_PRODUCT_FLAG_MAP[flag.flagKey];
               const isUpdating =
@@ -137,25 +158,21 @@ function RfqFlagGrid({
                   type="button"
                   onClick={() => onToggle(flag.flagKey, flag.enabled)}
                   disabled={isUpdating}
-                  className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-all text-xs h-10 ${
+                  className={`flex items-start gap-3 px-4 py-3 border-2 rounded-lg transition-all text-left ${
                     flag.enabled
                       ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 cursor-pointer"
                       : "border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 cursor-pointer opacity-60"
                   } ${isUpdating ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   <div
-                    className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
+                    className={`w-5 h-5 border-2 rounded flex items-center justify-center flex-shrink-0 mt-0.5 ${
                       flag.enabled
                         ? "border-blue-600 bg-blue-600"
                         : "border-gray-300 dark:border-slate-500"
                     }`}
                   >
                     {flag.enabled && (
-                      <svg
-                        className="w-2.5 h-2.5 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path
                           fillRule="evenodd"
                           d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -164,16 +181,36 @@ function RfqFlagGrid({
                       </svg>
                     )}
                   </div>
-                  <span className={flag.enabled ? "" : "grayscale"}>{meta?.icon}</span>
-                  <span
-                    className={`font-medium ${
-                      flag.enabled
-                        ? "text-gray-900 dark:text-white"
-                        : "text-gray-400 dark:text-gray-500"
-                    }`}
-                  >
-                    {meta?.label || flag.flagKey}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={flag.enabled ? "" : "grayscale"}>{meta?.icon}</span>
+                      <span
+                        className={`font-medium text-sm ${
+                          flag.enabled
+                            ? "text-gray-900 dark:text-white"
+                            : "text-gray-400 dark:text-gray-500"
+                        }`}
+                      >
+                        {meta?.label || flag.flagKey}
+                      </span>
+                      {meta?.comingSoon && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                          Coming Soon
+                        </span>
+                      )}
+                    </div>
+                    {meta?.description && (
+                      <p
+                        className={`text-xs mt-1 ${
+                          flag.enabled
+                            ? "text-gray-500 dark:text-gray-400"
+                            : "text-gray-400 dark:text-gray-500"
+                        }`}
+                      >
+                        {meta.description}
+                      </p>
+                    )}
+                  </div>
                 </button>
               );
             })}
