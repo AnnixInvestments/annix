@@ -17,7 +17,10 @@ import { SupplierOnboarding } from "../supplier/entities/supplier-onboarding.ent
 import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
 import { SupplierModule } from "../supplier/supplier.module";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
+import { NixChatController } from "./controllers/nix-chat.controller";
 import { CustomFieldValue } from "./entities/custom-field-value.entity";
+import { NixChatMessage } from "./entities/nix-chat-message.entity";
+import { NixChatSession } from "./entities/nix-chat-session.entity";
 import { NixClarification } from "./entities/nix-clarification.entity";
 import { NixExtraction } from "./entities/nix-extraction.entity";
 import { NixExtractionRegion } from "./entities/nix-extraction-region.entity";
@@ -30,6 +33,9 @@ import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
 import { DocumentVerificationService } from "./services/document-verification.service";
 import { ExcelExtractorService } from "./services/excel-extractor.service";
+import { NixChatService } from "./services/nix-chat.service";
+import { NixItemParserService } from "./services/nix-item-parser.service";
+import { NixValidationService } from "./services/nix-validation.service";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
 import { RegistrationDocumentVerifierService } from "./services/registration-document-verifier.service";
 import { WordExtractorService } from "./services/word-extractor.service";
@@ -42,6 +48,8 @@ import { WordExtractorService } from "./services/word-extractor.service";
       NixUserPreference,
       NixClarification,
       NixExtractionRegion,
+      NixChatSession,
+      NixChatMessage,
       CustomFieldValue,
       CustomerDocument,
       CustomerProfile,
@@ -64,11 +72,14 @@ import { WordExtractorService } from "./services/word-extractor.service";
     EmailModule,
     AuditModule,
   ],
-  controllers: [NixController],
+  controllers: [NixController, NixChatController],
   providers: [
     DocumentAnnotationService,
     CustomFieldService,
     NixService,
+    NixChatService,
+    NixItemParserService,
+    NixValidationService,
     ExcelExtractorService,
     PdfExtractorService,
     WordExtractorService,
@@ -80,6 +91,8 @@ import { WordExtractorService } from "./services/word-extractor.service";
   ],
   exports: [
     NixService,
+    NixChatService,
+    NixValidationService,
     AiExtractionService,
     RegistrationDocumentVerifierService,
     DocumentVerificationService,

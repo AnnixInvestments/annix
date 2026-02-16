@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 interface NixFloatingAvatarProps {
   isVisible: boolean;
   onStopUsingNix?: () => void;
+  onOpenChat?: () => void;
 }
 
 interface Position {
@@ -13,7 +14,7 @@ interface Position {
   y: number;
 }
 
-export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloatingAvatarProps) {
+export default function NixFloatingAvatar({ isVisible, onStopUsingNix, onOpenChat }: NixFloatingAvatarProps) {
   const [position, setPosition] = useState<Position | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -171,6 +172,18 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix }: NixFloa
             <p className="text-sm font-semibold text-gray-900">Nix AI Assistant</p>
             <p className="text-xs text-gray-500">Helping with your RFQ</p>
           </div>
+
+          {onOpenChat && (
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                onOpenChat();
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 transition-colors"
+            >
+              Chat with Nix
+            </button>
+          )}
 
           {onStopUsingNix && (
             <button

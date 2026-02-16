@@ -127,6 +127,9 @@ interface RfqWizardState {
   nixDiagnosticDismissedIds: string[];
   nixDiagnosticAutoOffered: boolean;
 
+  nixChatSessionId: number | null;
+  nixChatPanelVisible: boolean;
+
   currentDraftId: number | null;
   draftNumber: string | null;
   isSavingDraft: boolean;
@@ -218,6 +221,10 @@ interface RfqWizardActions {
   nixDismissDiagnostic: (itemId: string) => void;
   nixClearDiagnostic: () => void;
   nixResetDiagnosticDismissals: () => void;
+
+  nixOpenChatPanel: () => void;
+  nixCloseChatPanel: () => void;
+  nixSetChatSessionId: (sessionId: number | null) => void;
   nixCloseClarification: () => void;
   nixProcessDocuments: (
     showToast: (msg: string, type: "success" | "error" | "info") => void,
@@ -445,6 +452,9 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         nixDiagnosticIssues: [],
         nixDiagnosticDismissedIds: [],
         nixDiagnosticAutoOffered: false,
+
+        nixChatSessionId: null,
+        nixChatPanelVisible: false,
 
         currentDraftId: null,
         draftNumber: null,
@@ -919,6 +929,8 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               nixDiagnosticIssues: [],
               nixDiagnosticDismissedIds: [],
               nixDiagnosticAutoOffered: false,
+              nixChatSessionId: null,
+              nixChatPanelVisible: false,
               currentDraftId: null,
               draftNumber: null,
               isSavingDraft: false,
@@ -1152,6 +1164,15 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             false,
             "nixResetDiagnosticDismissals",
           ),
+
+        nixOpenChatPanel: () =>
+          set({ nixChatPanelVisible: true }, false, "nixOpenChatPanel"),
+
+        nixCloseChatPanel: () =>
+          set({ nixChatPanelVisible: false }, false, "nixCloseChatPanel"),
+
+        nixSetChatSessionId: (sessionId: number | null) =>
+          set({ nixChatSessionId: sessionId }, false, "nixSetChatSessionId"),
 
         nixCloseClarification: () =>
           set({ showNixClarification: false }, false, "nixCloseClarification"),
