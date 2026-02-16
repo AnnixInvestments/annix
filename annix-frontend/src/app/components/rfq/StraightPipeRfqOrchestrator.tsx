@@ -39,12 +39,12 @@ import type {
 import { log } from "@/app/lib/logger";
 import {
   NixAiPopup,
+  NixChatPanel,
   NixClarificationPopup,
   NixFloatingAvatar,
   NixProcessingPopup,
   nixApi,
 } from "@/app/lib/nix";
-import { NixChatPanel } from "@/app/lib/nix/components/NixChatPanel";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { consolidateBoqData } from "@/app/lib/utils/boqConsolidation";
 import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
@@ -287,9 +287,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     nixItemsPageReady,
     nixChatSessionId,
     nixChatPanelVisible,
+    nixChatPanelGeometry,
     nixOpenChatPanel,
     nixCloseChatPanel,
     nixSetChatSessionId,
+    nixSetChatPanelGeometry,
     currentDraftId,
     draftNumber,
     isSavingDraft,
@@ -3328,8 +3330,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
 
       {/* Nix Floating Avatar - shows when Nix is active */}
       <NixFloatingAvatar
-        isVisible={rfqData.useNix === true}
-        onStopUsingNix={nixStopUsing}
+        isVisible={rfqData.useNix === true && !nixChatPanelVisible}
         onOpenChat={nixOpenChatPanel}
       />
 
@@ -3347,17 +3348,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         />
       )}
 
-      {/* Nix Chat Panel - conversational AI assistant */}
       {nixChatPanelVisible && rfqData.useNix && (
-        <div className="fixed right-0 top-0 h-full z-40 shadow-2xl">
-          <NixChatPanel
-            sessionId={nixChatSessionId}
-            rfqId={currentDraftId ?? undefined}
-            currentRfqItems={rfqData.items}
-            onClose={nixCloseChatPanel}
-            onSessionCreated={nixSetChatSessionId}
-          />
-        </div>
+        <NixChatPanel
+          sessionId={nixChatSessionId}
+          rfqId={currentDraftId ?? undefined}
+          currentRfqItems={rfqData.items}
+          onClose={nixCloseChatPanel}
+          onSessionCreated={nixSetChatSessionId}
+          savedGeometry={nixChatPanelGeometry}
+          onGeometryChange={nixSetChatPanelGeometry}
+        />
       )}
 
       {/* LocalStorage Draft Restoration Prompt */}

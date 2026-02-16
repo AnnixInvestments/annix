@@ -5,7 +5,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface NixFloatingAvatarProps {
   isVisible: boolean;
-  onStopUsingNix?: () => void;
   onOpenChat?: () => void;
 }
 
@@ -14,10 +13,10 @@ interface Position {
   y: number;
 }
 
-export default function NixFloatingAvatar({ isVisible, onStopUsingNix, onOpenChat }: NixFloatingAvatarProps) {
+export default function NixFloatingAvatar({ isVisible, onOpenChat }: NixFloatingAvatarProps) {
   const [position, setPosition] = useState<Position | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false);
   const avatarRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef<Position>({ x: 0, y: 0 });
 
@@ -31,13 +30,14 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix, onOpenCha
     };
     setPosition({ x: rect.left, y: rect.top });
     setIsDragging(true);
-    setShowMenu(false);
+    setHasDragged(false);
   }, []);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!isDragging) return;
 
+      setHasDragged(true);
       const newX = Math.max(0, Math.min(window.innerWidth - 80, e.clientX - dragOffset.current.x));
       const newY = Math.max(0, Math.min(window.innerHeight - 80, e.clientY - dragOffset.current.y));
 
@@ -61,13 +61,14 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix, onOpenCha
     };
     setPosition({ x: rect.left, y: rect.top });
     setIsDragging(true);
-    setShowMenu(false);
+    setHasDragged(false);
   }, []);
 
   const handleTouchMove = useCallback(
     (e: TouchEvent) => {
       if (!isDragging) return;
 
+      setHasDragged(true);
       const touch = e.touches[0];
       const newX = Math.max(
         0,
@@ -104,109 +105,59 @@ export default function NixFloatingAvatar({ isVisible, onStopUsingNix, onOpenCha
   }, [isDragging, handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
   const handleClick = useCallback(() => {
-    if (!isDragging) {
-      setShowMenu((prev) => !prev);
+    if (!hasDragged && onOpenChat) {
+      onOpenChat();
     }
-  }, [isDragging]);
+  }, [hasDragged, onOpenChat]);
 
   if (!isVisible) return null;
 
   return (
-    <>
-      <div
-        ref={avatarRef}
-        className={`fixed z-[9998] cursor-grab select-none ${isDragging ? "cursor-grabbing" : ""} ${position === null ? "right-6 top-1/3" : ""}`}
-        style={
-          position !== null
-            ? {
-                left: position.x,
-                top: position.y,
-                transition: isDragging ? "none" : "box-shadow 0.2s ease",
-              }
-            : undefined
-        }
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-        onClick={handleClick}
-      >
-        <div className="relative group">
-          <div
-            className={`relative w-16 h-16 rounded-full overflow-hidden shadow-lg border-3 border-orange-400 hover:border-orange-500 transition-all duration-200 ${
-              isDragging ? "scale-110 shadow-xl" : "hover:scale-105"
-            }`}
-            style={{
-              boxShadow: isDragging
-                ? "0 20px 40px rgba(0, 0, 0, 0.3)"
-                : "0 8px 24px rgba(0, 0, 0, 0.2)",
-            }}
-          >
-            <Image
-              src="/nix-avatar.png"
-              alt="Nix AI Assistant"
-              fill
-              className="object-cover"
-              draggable={false}
-            />
-          </div>
-
-          <div
-            className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full animate-pulse"
-            style={{ backgroundColor: "#FFA500" }}
-          />
-
-          <div className="absolute -top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none">
-            Nix AI Active
-          </div>
-        </div>
-      </div>
-
-      {showMenu && position !== null && (
+    <div
+      ref={avatarRef}
+      className={`fixed z-[9998] cursor-pointer select-none ${isDragging ? "cursor-grabbing" : ""} ${position === null ? "right-6 top-1/3" : ""}`}
+      style={
+        position !== null
+          ? {
+              left: position.x,
+              top: position.y,
+              transition: isDragging ? "none" : "box-shadow 0.2s ease",
+            }
+          : undefined
+      }
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
+      onClick={handleClick}
+    >
+      <div className="relative group">
         <div
-          className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[160px]"
+          className={`relative w-16 h-16 rounded-full overflow-hidden shadow-lg border-3 border-orange-400 hover:border-orange-500 transition-all duration-200 ${
+            isDragging ? "scale-110 shadow-xl" : "hover:scale-105"
+          }`}
           style={{
-            left: Math.min(position.x, window.innerWidth - 180),
-            top: position.y - 100,
+            boxShadow: isDragging
+              ? "0 20px 40px rgba(0, 0, 0, 0.3)"
+              : "0 8px 24px rgba(0, 0, 0, 0.2)",
           }}
         >
-          <div className="px-4 py-2 border-b border-gray-100">
-            <p className="text-sm font-semibold text-gray-900">Nix AI Assistant</p>
-            <p className="text-xs text-gray-500">Helping with your RFQ</p>
-          </div>
-
-          {onOpenChat && (
-            <button
-              onClick={() => {
-                setShowMenu(false);
-                onOpenChat();
-              }}
-              className="w-full text-left px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 transition-colors"
-            >
-              Chat with Nix
-            </button>
-          )}
-
-          {onStopUsingNix && (
-            <button
-              onClick={() => {
-                setShowMenu(false);
-                onStopUsingNix();
-              }}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
-              Stop using Nix
-            </button>
-          )}
-
-          <button
-            onClick={() => setShowMenu(false)}
-            className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-          >
-            Close menu
-          </button>
+          <Image
+            src="/nix-avatar.png"
+            alt="Nix AI Assistant"
+            fill
+            className="object-cover"
+            draggable={false}
+          />
         </div>
-      )}
 
-      {showMenu && <div className="fixed inset-0 z-[9997]" onClick={() => setShowMenu(false)} />}
-    </>
+        <div
+          className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full animate-pulse"
+          style={{ backgroundColor: "#FFA500" }}
+        />
+
+        <div className="absolute -top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none">
+          Chat with Nix
+        </div>
+      </div>
+    </div>
   );
 }

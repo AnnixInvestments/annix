@@ -1,4 +1,16 @@
-import { browserBaseUrl, getAuthHeaders } from '../api';
+import { browserBaseUrl } from "@/lib/api-config";
+
+const chatAuthHeaders = (): Record<string, string> => {
+  if (typeof window === "undefined") return {};
+  const token =
+    localStorage.getItem("adminAccessToken") ||
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("token");
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+};
 
 export interface ChatSession {
   sessionId: number;
@@ -10,7 +22,7 @@ export interface ChatSession {
     preferredSchedules?: string[];
     preferredStandards?: string[];
     commonFlangeRatings?: string[];
-    unitPreference?: 'metric' | 'imperial';
+    unitPreference?: "metric" | "imperial";
     learningEnabled?: boolean;
   };
   lastInteractionAt: string;
@@ -19,7 +31,7 @@ export interface ChatSession {
 
 export interface ChatMessage {
   id: number;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   content: string;
   metadata?: {
     intent?: string;
@@ -34,7 +46,7 @@ export interface ChatMessage {
 }
 
 export interface StreamChunk {
-  type: 'content_delta' | 'message_start' | 'message_stop' | 'error';
+  type: "content_delta" | "message_start" | "message_stop" | "error";
   delta?: string;
   error?: string;
   metadata?: {
@@ -47,7 +59,7 @@ export interface StreamChunk {
 }
 
 export interface ValidationIssue {
-  severity: 'error' | 'warning' | 'info';
+  severity: "error" | "warning" | "info";
   field: string;
   message: string;
   suggestion?: string;
@@ -56,11 +68,11 @@ export interface ValidationIssue {
 
 export const nixChatApi = {
   async createSession(rfqId?: number): Promise<{ sessionId: number }> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/session`, {
-      method: 'POST',
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session`, {
+      method: "POST",
       headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
+        ...chatAuthHeaders(),
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ rfqId }),
     });
@@ -73,8 +85,8 @@ export const nixChatApi = {
   },
 
   async session(sessionId: number): Promise<ChatSession> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/session/${sessionId}`, {
-      headers: getAuthHeaders(),
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}`, {
+      headers: chatAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -85,8 +97,8 @@ export const nixChatApi = {
   },
 
   async history(sessionId: number): Promise<{ sessionId: number; messages: ChatMessage[] }> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/session/${sessionId}/history`, {
-      headers: getAuthHeaders(),
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/history`, {
+      headers: chatAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -109,17 +121,19 @@ export const nixChatApi = {
     content: string;
     metadata?: any;
   }> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/session/${sessionId}/message`, {
-      method: 'POST',
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/message`, {
+      method: "POST",
       headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
+        ...chatAuthHeaders(),
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ message, context }),
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to send message: ${response.statusText}`);
+      const body = await response.json().catch(() => null);
+      const message = body?.error || `Failed to send message: ${response.statusText}`;
+      throw new Error(message);
     }
 
     return response.json();
@@ -133,11 +147,11 @@ export const nixChatApi = {
       lastValidationIssues?: any[];
     },
   ): AsyncGenerator<StreamChunk> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/session/${sessionId}/stream`, {
-      method: 'POST',
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/stream`, {
+      method: "POST",
       headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
+        ...chatAuthHeaders(),
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ message, context }),
     });
@@ -148,11 +162,11 @@ export const nixChatApi = {
 
     const reader = response.body?.getReader();
     if (!reader) {
-      throw new Error('No response body');
+      throw new Error("No response body");
     }
 
     const decoder = new TextDecoder();
-    let buffer = '';
+    let buffer = "";
 
     try {
       while (true) {
@@ -160,20 +174,20 @@ export const nixChatApi = {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (!line.trim() || !line.startsWith('data: ')) continue;
+          if (!line.trim() || !line.startsWith("data: ")) continue;
 
           const data = line.slice(6);
-          if (data === '[DONE]') continue;
+          if (data === "[DONE]") continue;
 
           try {
             const chunk = JSON.parse(data) as StreamChunk;
             yield chunk;
           } catch (error) {
-            console.warn('Failed to parse SSE chunk:', error);
+            console.warn("Failed to parse SSE chunk:", error);
           }
         }
       }
@@ -184,13 +198,13 @@ export const nixChatApi = {
 
   async updatePreferences(
     sessionId: number,
-    preferences: Partial<ChatSession['userPreferences']>,
+    preferences: Partial<ChatSession["userPreferences"]>,
   ): Promise<{ success: boolean }> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/session/${sessionId}/preferences`, {
-      method: 'POST',
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/preferences`, {
+      method: "POST",
       headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
+        ...chatAuthHeaders(),
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(preferences),
     });
@@ -210,11 +224,11 @@ export const nixChatApi = {
       fieldType: string;
     },
   ): Promise<{ success: boolean }> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/session/${sessionId}/correction`, {
-      method: 'POST',
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/correction`, {
+      method: "POST",
       headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
+        ...chatAuthHeaders(),
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(correction),
     });
@@ -227,9 +241,9 @@ export const nixChatApi = {
   },
 
   async endSession(sessionId: number): Promise<{ success: boolean }> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/session/${sessionId}/end`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/end`, {
+      method: "POST",
+      headers: chatAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -246,11 +260,11 @@ export const nixChatApi = {
     valid: boolean;
     issues: ValidationIssue[];
   }> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/validate/item`, {
-      method: 'POST',
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/validate/item`, {
+      method: "POST",
       headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
+        ...chatAuthHeaders(),
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ item, context }),
     });
@@ -271,11 +285,11 @@ export const nixChatApi = {
       info: number;
     };
   }> {
-    const response = await fetch(`${browserBaseUrl}/nix/chat/validate/rfq`, {
-      method: 'POST',
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/validate/rfq`, {
+      method: "POST",
       headers: {
-        ...getAuthHeaders(),
-        'Content-Type': 'application/json',
+        ...chatAuthHeaders(),
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ items }),
     });

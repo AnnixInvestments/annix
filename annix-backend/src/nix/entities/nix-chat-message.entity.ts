@@ -1,34 +1,34 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  ManyToOne,
-  JoinColumn,
+  Entity,
   Index,
-} from 'typeorm';
-import { NixChatSession } from './nix-chat-session.entity';
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
+import { NixChatSession } from "./nix-chat-session.entity";
 
-@Entity('nix_chat_messages')
-@Index(['sessionId', 'createdAt'])
+@Entity("nix_chat_messages")
+@Index(["sessionId", "createdAt"])
 export class NixChatMessage {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'session_id' })
+  @Column({ name: "session_id" })
   sessionId: number;
 
   @ManyToOne(() => NixChatSession)
-  @JoinColumn({ name: 'session_id' })
+  @JoinColumn({ name: "session_id" })
   session: NixChatSession;
 
-  @Column({ type: 'enum', enum: ['user', 'assistant', 'system'] })
-  role: 'user' | 'assistant' | 'system';
+  @Column({ type: "enum", enum: ["user", "assistant", "system"] })
+  role: "user" | "assistant" | "system";
 
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   content: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: "jsonb", nullable: true })
   metadata: {
     intent?: string;
     itemsCreated?: number;
@@ -39,9 +39,9 @@ export class NixChatMessage {
     model?: string;
   };
 
-  @Column({ name: 'parent_message_id', nullable: true })
+  @Column({ name: "parent_message_id", nullable: true })
   parentMessageId: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

@@ -303,9 +303,6 @@ export default function SettingsPage() {
     toggleMutation.mutate(
       { flagKey, enabled: !currentEnabled },
       {
-        onSuccess: (updated) => {
-          showToast(`${flagKey} ${updated.enabled ? "enabled" : "disabled"}`, "success");
-        },
         onError: (err) => {
           const message = err instanceof Error ? err.message : "Failed to update flag";
           showToast(message, "error");

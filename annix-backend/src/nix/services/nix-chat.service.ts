@@ -1,11 +1,15 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NixChatSession } from '../entities/nix-chat-session.entity';
-import { NixChatMessage } from '../entities/nix-chat-message.entity';
-import { ClaudeChatProvider, ChatMessage, StreamChunk } from '../ai-providers/claude-chat.provider';
-import { PIPING_DOMAIN_KNOWLEDGE } from '../prompts/piping-domain.prompt';
-import { NixItemParserService } from './nix-item-parser.service';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { IsNull, Repository } from "typeorm";
+import { NixChatMessage } from "../entities/nix-chat-message.entity";
+import { NixChatSession } from "../entities/nix-chat-session.entity";
+import { PIPING_DOMAIN_KNOWLEDGE } from "../prompts/piping-domain.prompt";
+import { NixItemParserService } from "./nix-item-parser.service";
+
+interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
 
 export interface CreateSessionDto {
   userId: number;
@@ -36,7 +40,9 @@ export interface ChatResponseDto {
 @Injectable()
 export class NixChatService {
   private readonly logger = new Logger(NixChatService.name);
-  private readonly chatProvider: ClaudeChatProvider;
+  private readonly geminiApiKey: string;
+  private readonly geminiModel: string;
+  private readonly geminiBaseUrl = "https://generativelanguage.googleapis.com/v1beta";
   private readonly maxHistoryLength = 50;
   private readonly contextWindow = 20;
 
@@ -47,14 +53,15 @@ export class NixChatService {
     private readonly messageRepository: Repository<NixChatMessage>,
     private readonly itemParserService: NixItemParserService,
   ) {
-    this.chatProvider = new ClaudeChatProvider();
+    this.geminiApiKey = process.env.GEMINI_API_KEY || "";
+    this.geminiModel = process.env.GEMINI_CHAT_MODEL || "gemini-2.0-flash";
   }
 
   async createSession(dto: CreateSessionDto): Promise<NixChatSession> {
     const existingActiveSession = await this.sessionRepository.findOne({
       where: {
         userId: dto.userId,
-        rfqId: dto.rfqId || null,
+        rfqId: dto.rfqId ?? IsNull(),
         isActive: true,
       },
     });
@@ -87,7 +94,11 @@ export class NixChatService {
     return session;
   }
 
-  async *streamMessage(dto: SendMessageDto): AsyncGenerator<StreamChunk> {
+  async sendMessage(dto: SendMessageDto): Promise<ChatResponseDto> {
+    if (!this.geminiApiKey) {
+      throw new Error("Gemini API key not configured");
+    }
+
     const session = await this.session(dto.sessionId);
 
     if (dto.context?.currentRfqItems) {
@@ -97,118 +108,89 @@ export class NixChatService {
       session.sessionContext.lastValidationIssues = dto.context.lastValidationIssues;
     }
 
-    const userMessage: ChatMessage = {
-      role: 'user',
-      content: dto.message,
-    };
-
+    const userMessage: ChatMessage = { role: "user", content: dto.message };
     const conversationHistory = this.buildConversationHistory(session, userMessage);
-
     const systemPrompt = this.buildSystemPrompt(session);
 
     const startTime = Date.now();
-    const responseChunks: string[] = [];
-    let inputTokens = 0;
-    let outputTokens = 0;
 
-    try {
-      for await (const chunk of this.chatProvider.streamChat(conversationHistory, systemPrompt)) {
-        if (chunk.type === 'content_delta' && chunk.delta) {
-          responseChunks.push(chunk.delta);
-        } else if (chunk.type === 'message_stop' && chunk.metadata?.usage) {
-          inputTokens = chunk.metadata.usage.inputTokens;
-          outputTokens = chunk.metadata.usage.outputTokens;
-        }
+    const geminiContents = conversationHistory.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    }));
 
-        yield chunk;
+    const response = await fetch(
+      `${this.geminiBaseUrl}/models/${this.geminiModel}:generateContent?key=${this.geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: geminiContents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 4096,
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`Gemini chat error: ${response.status} - ${errorText}`);
+      if (response.status === 429) {
+        throw new Error(
+          "Nix is temporarily unavailable due to API rate limits. Please try again in a moment.",
+        );
       }
-
-      const responseContent = responseChunks.join('');
-      const processingTimeMs = Date.now() - startTime;
-
-      await this.saveMessage(dto.sessionId, 'user', dto.message);
-
-      const assistantMessage = await this.saveMessage(
-        dto.sessionId,
-        'assistant',
-        responseContent,
-        {
-          tokensUsed: inputTokens + outputTokens,
-          processingTimeMs,
-          model: 'claude-3-5-sonnet-20241022',
-        },
-      );
-
-      session.conversationHistory.push({
-        role: 'user',
-        content: dto.message,
-        timestamp: new Date().toISOString(),
-      });
-
-      session.conversationHistory.push({
-        role: 'assistant',
-        content: responseContent,
-        timestamp: new Date().toISOString(),
-      });
-
-      if (session.conversationHistory.length > this.maxHistoryLength) {
-        session.conversationHistory = session.conversationHistory.slice(-this.maxHistoryLength);
-      }
-
-      session.lastInteractionAt = new Date();
-
-      await this.sessionRepository.save(session);
-
-      this.logger.log(
-        `Chat response generated for session ${dto.sessionId} in ${processingTimeMs}ms (${inputTokens + outputTokens} tokens)`,
-      );
-    } catch (error) {
-      this.logger.error(`Chat streaming failed: ${error.message}`);
-      yield {
-        type: 'error',
-        error: error.message,
-      };
-    }
-  }
-
-  async sendMessage(dto: SendMessageDto): Promise<ChatResponseDto> {
-    const chunks: string[] = [];
-    let metadata = {};
-
-    for await (const chunk of this.streamMessage(dto)) {
-      if (chunk.type === 'content_delta' && chunk.delta) {
-        chunks.push(chunk.delta);
-      } else if (chunk.type === 'message_stop' && chunk.metadata) {
-        metadata = chunk.metadata;
-      } else if (chunk.type === 'error') {
-        throw new Error(chunk.error);
-      }
+      throw new Error(`AI service error (${response.status}). Please try again.`);
     }
 
-    const lastMessage = await this.messageRepository.findOne({
-      where: { sessionId: dto.sessionId, role: 'assistant' },
-      order: { createdAt: 'DESC' },
+    const data = await response.json();
+    const responseContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const tokensUsed = data.usageMetadata?.totalTokenCount || 0;
+    const processingTimeMs = Date.now() - startTime;
+
+    await this.saveMessage(dto.sessionId, "user", dto.message);
+
+    const assistantMsg = await this.saveMessage(dto.sessionId, "assistant", responseContent, {
+      tokensUsed,
+      processingTimeMs,
+      model: this.geminiModel,
     });
+
+    session.conversationHistory = [
+      ...session.conversationHistory,
+      { role: "user" as const, content: dto.message, timestamp: new Date().toISOString() },
+      { role: "assistant" as const, content: responseContent, timestamp: new Date().toISOString() },
+    ].slice(-this.maxHistoryLength);
+
+    session.lastInteractionAt = new Date();
+    await this.sessionRepository.save(session);
+
+    this.logger.log(
+      `Chat response generated for session ${dto.sessionId} in ${processingTimeMs}ms (${tokensUsed} tokens)`,
+    );
 
     return {
       sessionId: dto.sessionId,
-      messageId: lastMessage?.id || 0,
-      content: chunks.join(''),
-      metadata,
+      messageId: assistantMsg.id,
+      content: responseContent,
+      metadata: { tokensUsed, processingTimeMs },
     };
   }
 
   async conversationHistory(sessionId: number, limit: number = 50): Promise<NixChatMessage[]> {
     return this.messageRepository.find({
       where: { sessionId },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
       take: limit,
     });
   }
 
   async updateUserPreferences(
     sessionId: number,
-    preferences: Partial<NixChatSession['userPreferences']>,
+    preferences: Partial<NixChatSession["userPreferences"]>,
   ): Promise<void> {
     const session = await this.session(sessionId);
     session.userPreferences = {
@@ -235,7 +217,8 @@ export class NixChatService {
     session.sessionContext.recentCorrections.push(correction);
 
     if (session.sessionContext.recentCorrections.length > 20) {
-      session.sessionContext.recentCorrections = session.sessionContext.recentCorrections.slice(-20);
+      session.sessionContext.recentCorrections =
+        session.sessionContext.recentCorrections.slice(-20);
     }
 
     await this.sessionRepository.save(session);
@@ -255,12 +238,10 @@ export class NixChatService {
     session: NixChatSession,
     newMessage: ChatMessage,
   ): ChatMessage[] {
-    const recentHistory = session.conversationHistory
-      .slice(-this.contextWindow)
-      .map(h => ({
-        role: h.role as 'user' | 'assistant' | 'system',
-        content: h.content,
-      }));
+    const recentHistory = session.conversationHistory.slice(-this.contextWindow).map((h) => ({
+      role: h.role as "user" | "assistant" | "system",
+      content: h.content,
+    }));
 
     return [...recentHistory, newMessage];
   }
@@ -269,23 +250,23 @@ export class NixChatService {
     let prompt = PIPING_DOMAIN_KNOWLEDGE;
 
     if (session.userPreferences.preferredMaterials?.length) {
-      prompt += `\n\n## User Preferences\n\nPreferred materials: ${session.userPreferences.preferredMaterials.join(', ')}`;
+      prompt += `\n\n## User Preferences\n\nPreferred materials: ${session.userPreferences.preferredMaterials.join(", ")}`;
     }
 
     if (session.userPreferences.preferredSchedules?.length) {
-      prompt += `\nPreferred schedules: ${session.userPreferences.preferredSchedules.join(', ')}`;
+      prompt += `\nPreferred schedules: ${session.userPreferences.preferredSchedules.join(", ")}`;
     }
 
     if (session.userPreferences.preferredStandards?.length) {
-      prompt += `\nPreferred standards: ${session.userPreferences.preferredStandards.join(', ')}`;
+      prompt += `\nPreferred standards: ${session.userPreferences.preferredStandards.join(", ")}`;
     }
 
     if (session.sessionContext.recentCorrections?.length) {
-      prompt += `\n\n## Recent Learning\n\nThe user has made these corrections recently:`;
-      session.sessionContext.recentCorrections.forEach(correction => {
+      prompt += "\n\n## Recent Learning\n\nThe user has made these corrections recently:";
+      session.sessionContext.recentCorrections.forEach((correction) => {
         prompt += `\n- ${correction.fieldType}: "${correction.extractedValue}" → "${correction.correctedValue}"`;
       });
-      prompt += '\n\nApply these patterns to future suggestions.';
+      prompt += "\n\nApply these patterns to future suggestions.";
     }
 
     if (session.sessionContext.currentRfqItems?.length) {
@@ -300,8 +281,8 @@ export class NixChatService {
     }
 
     if (session.sessionContext.lastValidationIssues?.length) {
-      prompt += `\n\n## Recent Validation Issues\n\n`;
-      session.sessionContext.lastValidationIssues.forEach(issue => {
+      prompt += "\n\n## Recent Validation Issues\n\n";
+      session.sessionContext.lastValidationIssues.forEach((issue) => {
         prompt += `- ${issue.message}\n`;
       });
     }
@@ -311,7 +292,7 @@ export class NixChatService {
 
   private async saveMessage(
     sessionId: number,
-    role: 'user' | 'assistant' | 'system',
+    role: "user" | "assistant" | "system",
     content: string,
     metadata?: any,
   ): Promise<NixChatMessage> {

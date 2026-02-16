@@ -1,9 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ClaudeChatProvider, ChatMessage } from '../ai-providers/claude-chat.provider';
+import { Injectable, Logger } from "@nestjs/common";
+import { ChatMessage, ClaudeChatProvider } from "../ai-providers/claude-chat.provider";
 
 export interface ParsedItemIntent {
-  action: 'create_item' | 'update_item' | 'delete_item' | 'question' | 'validation' | 'unknown';
-  itemType?: 'pipe' | 'bend' | 'reducer' | 'tee' | 'flange' | 'expansion_joint' | 'valve' | 'instrument' | 'pump';
+  action: "create_item" | "update_item" | "delete_item" | "question" | "validation" | "unknown";
+  itemType?:
+    | "pipe"
+    | "bend"
+    | "reducer"
+    | "tee"
+    | "flange"
+    | "expansion_joint"
+    | "valve"
+    | "instrument"
+    | "pump";
   specifications?: {
     diameter?: number;
     secondaryDiameter?: number;
@@ -33,15 +42,18 @@ export class NixItemParserService {
     });
   }
 
-  async parseUserIntent(userMessage: string, context?: {
-    currentItems?: any[];
-    recentMessages?: string[];
-  }): Promise<ParsedItemIntent> {
+  async parseUserIntent(
+    userMessage: string,
+    context?: {
+      currentItems?: any[];
+      recentMessages?: string[];
+    },
+  ): Promise<ParsedItemIntent> {
     const systemPrompt = this.buildParserSystemPrompt(context);
 
     const messages: ChatMessage[] = [
       {
-        role: 'user',
+        role: "user",
         content: `Parse this user message and extract the intent and specifications:\n\n"${userMessage}"\n\nRespond with JSON only, no additional text.`,
       },
     ];
@@ -51,18 +63,18 @@ export class NixItemParserService {
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        this.logger.warn('No JSON found in parser response');
+        this.logger.warn("No JSON found in parser response");
         return this.unknownIntent(userMessage);
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
 
       return {
-        action: parsed.action || 'unknown',
+        action: parsed.action || "unknown",
         itemType: parsed.itemType,
         specifications: parsed.specifications || {},
         confidence: parsed.confidence || 0.5,
-        explanation: parsed.explanation || 'Parsed user intent',
+        explanation: parsed.explanation || "Parsed user intent",
       };
     } catch (error) {
       this.logger.error(`Failed to parse user intent: ${error.message}`);
@@ -70,7 +82,10 @@ export class NixItemParserService {
     }
   }
 
-  private buildParserSystemPrompt(context?: { currentItems?: any[]; recentMessages?: string[] }): string {
+  private buildParserSystemPrompt(context?: {
+    currentItems?: any[];
+    recentMessages?: string[];
+  }): string {
     let prompt = `You are a natural language parser for piping RFQ item creation. Extract structured data from user messages.
 
 ## Output Format
@@ -100,7 +115,7 @@ Return ONLY a JSON object with this structure:
 
 1. **Nominal Bore (NB) / Diameter**:
    - "200NB" → diameter: 200
-   - "8 inch" or "8\"" → diameter: 200 (convert to mm: 8" × 25.4 ≈ 200mm)
+   - "8 inch" or "8"" → diameter: 200 (convert to mm: 8" × 25.4 ≈ 200mm)
    - "300mm" → diameter: 300
 
 2. **Item Types**:
@@ -218,7 +233,7 @@ User: "Add 4 more of those but at 300NB"
 
   private unknownIntent(message: string): ParsedItemIntent {
     return {
-      action: 'unknown',
+      action: "unknown",
       confidence: 0.0,
       explanation: `Could not parse: "${message}"`,
     };

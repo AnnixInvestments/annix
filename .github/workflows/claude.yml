@@ -42,6 +42,17 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Fetch issue details
         if: github.event_name == 'workflow_dispatch'
         id: issue
@@ -81,6 +92,11 @@ jobs:
             You are operating autonomously. Do NOT ask questions or request clarification. Make all implementation decisions yourself based on the codebase, existing patterns, and the issue description. If something is ambiguous, pick the most reasonable approach and proceed.
 
             Read the CLAUDE.md and agents.md files for project conventions. Follow all existing patterns.
+
+            CRITICAL: Before committing, you MUST run these checks and fix any failures:
+            1. `pnpm format:check` (Biome lint/format)
+            2. `pnpm test:all` (backend tests + frontend type-check)
+            Do NOT commit or push code that fails these checks.
 
             Your task: implement the following GitHub issue. Create a feature branch, implement all changes, commit, push, and open a PR referencing issue #${{ inputs.issue_number }}.
 

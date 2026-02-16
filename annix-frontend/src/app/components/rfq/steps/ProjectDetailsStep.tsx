@@ -847,21 +847,12 @@ export default function ProjectDetailsStep({
 
   useEffect(() => {
     const nixProjectTypes = ["phase1", "retender", "feasibility"];
-    log.debug("🤖 Nix popup check:", {
-      projectType: rfqData.projectType,
-      isNixType: nixProjectTypes.includes(rfqData.projectType as string),
-      hasCallback: !!onShowNixPopup,
-      nixPopupShown: rfqData.nixPopupShown,
-    });
-    if (
-      nixProjectTypes.includes(rfqData.projectType as string) &&
-      onShowNixPopup &&
-      !rfqData.nixPopupShown
-    ) {
-      log.debug("🤖 Triggering Nix popup!");
+    const isNixType = nixProjectTypes.includes(rfqData.projectType as string);
+
+    if (isNixType && onShowNixPopup && !rfqData.useNix) {
       onShowNixPopup();
     }
-  }, [rfqData.projectType, rfqData.nixPopupShown, onShowNixPopup]);
+  }, [rfqData.projectType, rfqData.useNix, onShowNixPopup]);
 
   // Fallback slurry profiles by commodity when API is unavailable
   const fallbackSlurryProfiles: Record<string, any> = {

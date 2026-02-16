@@ -129,6 +129,7 @@ interface RfqWizardState {
 
   nixChatSessionId: number | null;
   nixChatPanelVisible: boolean;
+  nixChatPanelGeometry: { x: number; y: number; width: number; height: number } | null;
 
   currentDraftId: number | null;
   draftNumber: string | null;
@@ -225,6 +226,12 @@ interface RfqWizardActions {
   nixOpenChatPanel: () => void;
   nixCloseChatPanel: () => void;
   nixSetChatSessionId: (sessionId: number | null) => void;
+  nixSetChatPanelGeometry: (geometry: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => void;
   nixCloseClarification: () => void;
   nixProcessDocuments: (
     showToast: (msg: string, type: "success" | "error" | "info") => void,
@@ -455,6 +462,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
         nixChatSessionId: null,
         nixChatPanelVisible: false,
+        nixChatPanelGeometry: null,
 
         currentDraftId: null,
         draftNumber: null,
@@ -931,6 +939,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               nixDiagnosticAutoOffered: false,
               nixChatSessionId: null,
               nixChatPanelVisible: false,
+              nixChatPanelGeometry: null,
               currentDraftId: null,
               draftNumber: null,
               isSavingDraft: false,
@@ -1090,26 +1099,19 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           set({ showCloseConfirmation: show }, false, "setShowCloseConfirmation"),
 
         nixShowPopup: () => {
-          const { rfqData } = get();
-          log.debug("nixShowPopup called, nixPopupShown:", rfqData.nixPopupShown);
-          if (!rfqData.nixPopupShown) {
-            log.debug("Setting showNixPopup to true");
-            set({ showNixPopup: true }, false, "nixShowPopup");
-          }
+          set({ showNixPopup: true }, false, "nixShowPopup");
         },
 
         nixAccept: () => {
           const { updateRfqField } = get();
           updateRfqField("useNix", true);
-          updateRfqField("nixPopupShown", true);
           updateRfqField("requiredProducts", ["fabricated_steel"]);
-          set({ showNixPopup: false }, false, "nixAccept");
+          set({ showNixPopup: false, nixChatPanelVisible: true }, false, "nixAccept");
         },
 
         nixDecline: () => {
           const { updateRfqField } = get();
           updateRfqField("useNix", false);
-          updateRfqField("nixPopupShown", true);
           set({ showNixPopup: false }, false, "nixDecline");
         },
 
@@ -1165,14 +1167,19 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             "nixResetDiagnosticDismissals",
           ),
 
-        nixOpenChatPanel: () =>
-          set({ nixChatPanelVisible: true }, false, "nixOpenChatPanel"),
+        nixOpenChatPanel: () => set({ nixChatPanelVisible: true }, false, "nixOpenChatPanel"),
 
-        nixCloseChatPanel: () =>
-          set({ nixChatPanelVisible: false }, false, "nixCloseChatPanel"),
+        nixCloseChatPanel: () => set({ nixChatPanelVisible: false }, false, "nixCloseChatPanel"),
 
         nixSetChatSessionId: (sessionId: number | null) =>
           set({ nixChatSessionId: sessionId }, false, "nixSetChatSessionId"),
+
+        nixSetChatPanelGeometry: (geometry: {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        }) => set({ nixChatPanelGeometry: geometry }, false, "nixSetChatPanelGeometry"),
 
         nixCloseClarification: () =>
           set({ showNixClarification: false }, false, "nixCloseClarification"),

@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 
 export interface ValidationIssue {
-  severity: 'error' | 'warning' | 'info';
+  severity: "error" | "warning" | "info";
   field: string;
   message: string;
   suggestion?: string;
@@ -27,7 +27,10 @@ export interface RfqItem {
 export class NixValidationService {
   private readonly logger = new Logger(NixValidationService.name);
 
-  validateItem(item: RfqItem, context?: { allItems?: RfqItem[]; itemIndex?: number }): ValidationIssue[] {
+  validateItem(
+    item: RfqItem,
+    context?: { allItems?: RfqItem[]; itemIndex?: number },
+  ): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
     issues.push(...this.validateImpossibleCombinations(item, context?.itemIndex));
@@ -56,51 +59,51 @@ export class NixValidationService {
   private validateImpossibleCombinations(item: RfqItem, itemIndex?: number): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
-    if (item.schedule === 'Sch 10' && item.diameter && item.diameter >= 600) {
+    if (item.schedule === "Sch 10" && item.diameter && item.diameter >= 600) {
       issues.push({
-        severity: 'error',
-        field: 'schedule',
+        severity: "error",
+        field: "schedule",
         message: `${item.diameter}NB pipe at Schedule 10 is structurally unsound for this diameter`,
-        suggestion: 'Use Schedule 40 or Schedule 80 for pipes 600NB and larger',
+        suggestion: "Use Schedule 40 or Schedule 80 for pipes 600NB and larger",
         itemIndex,
       });
     }
 
     if (
-      item.material?.toLowerCase().includes('stainless') &&
+      item.material?.toLowerCase().includes("stainless") &&
       item.flangeConfig &&
-      item.flangeConfig !== 'none'
+      item.flangeConfig !== "none"
     ) {
       issues.push({
-        severity: 'warning',
-        field: 'material',
-        message: 'Ensure flange material matches pipe material to avoid galvanic corrosion',
-        suggestion: 'Stainless steel pipes should have stainless steel flanges',
+        severity: "warning",
+        field: "material",
+        message: "Ensure flange material matches pipe material to avoid galvanic corrosion",
+        suggestion: "Stainless steel pipes should have stainless steel flanges",
         itemIndex,
       });
     }
 
-    if (item.itemType === 'reducer' && item.diameter && item.secondaryDiameter) {
+    if (item.itemType === "reducer" && item.diameter && item.secondaryDiameter) {
       const ratio = item.diameter / item.secondaryDiameter;
       if (ratio > 2 || ratio < 0.5) {
         issues.push({
-          severity: 'warning',
-          field: 'secondaryDiameter',
+          severity: "warning",
+          field: "secondaryDiameter",
           message: `Large reduction from ${item.diameter}NB to ${item.secondaryDiameter}NB (${ratio.toFixed(1)}:1 ratio)`,
-          suggestion: 'Consider using multiple reducers for gradual reduction',
+          suggestion: "Consider using multiple reducers for gradual reduction",
           itemIndex,
         });
       }
     }
 
-    if (item.itemType === 'bend' && item.angle) {
+    if (item.itemType === "bend" && item.angle) {
       const standardAngles = [15, 30, 45, 60, 90];
       if (!standardAngles.includes(item.angle)) {
         issues.push({
-          severity: 'info',
-          field: 'angle',
+          severity: "info",
+          field: "angle",
           message: `Non-standard bend angle: ${item.angle}°`,
-          suggestion: `Standard angles are ${standardAngles.join('°, ')}°`,
+          suggestion: `Standard angles are ${standardAngles.join("°, ")}°`,
           itemIndex,
         });
       }
@@ -112,12 +115,12 @@ export class NixValidationService {
   private validateUnusualPatterns(item: RfqItem, itemIndex?: number): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
-    if (item.flangeConfig && item.flangeConfig !== 'none' && !item.flangeRating) {
+    if (item.flangeConfig && item.flangeConfig !== "none" && !item.flangeRating) {
       issues.push({
-        severity: 'warning',
-        field: 'flangeRating',
-        message: 'Flanged ends specified but no flange rating provided',
-        suggestion: 'Common ratings: PN16, PN25, Class 150, Class 300',
+        severity: "warning",
+        field: "flangeRating",
+        message: "Flanged ends specified but no flange rating provided",
+        suggestion: "Common ratings: PN16, PN25, Class 150, Class 300",
         itemIndex,
       });
     }
@@ -126,8 +129,8 @@ export class NixValidationService {
       const expectedThickness = this.scheduleToWallThickness(item.schedule, item.diameter);
       if (expectedThickness && Math.abs(expectedThickness - item.wallThickness) > 0.5) {
         issues.push({
-          severity: 'warning',
-          field: 'wallThickness',
+          severity: "warning",
+          field: "wallThickness",
           message: `Wall thickness ${item.wallThickness}mm doesn't match ${item.schedule} (expected ~${expectedThickness}mm)`,
           suggestion: `Verify wall thickness for ${item.schedule} at ${item.diameter}NB`,
           itemIndex,
@@ -135,12 +138,12 @@ export class NixValidationService {
       }
     }
 
-    if (item.itemType === 'pipe' && item.length && item.length > 12) {
+    if (item.itemType === "pipe" && item.length && item.length > 12) {
       issues.push({
-        severity: 'info',
-        field: 'length',
+        severity: "info",
+        field: "length",
         message: `Pipe length ${item.length}m exceeds standard 12m stock length`,
-        suggestion: 'May require multiple joints or special order',
+        suggestion: "May require multiple joints or special order",
         itemIndex,
       });
     }
@@ -148,15 +151,23 @@ export class NixValidationService {
     return issues;
   }
 
-  private validateCrossReferences(item: RfqItem, allItems: RfqItem[], itemIndex: number): ValidationIssue[] {
+  private validateCrossReferences(
+    item: RfqItem,
+    allItems: RfqItem[],
+    itemIndex: number,
+  ): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
-    if (item.itemType === 'reducer' && itemIndex + 1 < allItems.length) {
+    if (item.itemType === "reducer" && itemIndex + 1 < allItems.length) {
       const nextItem = allItems[itemIndex + 1];
-      if (nextItem.diameter && item.secondaryDiameter && nextItem.diameter !== item.secondaryDiameter) {
+      if (
+        nextItem.diameter &&
+        item.secondaryDiameter &&
+        nextItem.diameter !== item.secondaryDiameter
+      ) {
         issues.push({
-          severity: 'warning',
-          field: 'secondaryDiameter',
+          severity: "warning",
+          field: "secondaryDiameter",
           message: `Reducer goes to ${item.secondaryDiameter}NB but next item is ${nextItem.diameter}NB`,
           suggestion: `Should the reducer go to ${nextItem.diameter}NB instead?`,
           itemIndex,
@@ -166,10 +177,14 @@ export class NixValidationService {
 
     if (itemIndex > 0) {
       const prevItem = allItems[itemIndex - 1];
-      if (prevItem.itemType === 'reducer' && item.diameter && prevItem.secondaryDiameter !== item.diameter) {
+      if (
+        prevItem.itemType === "reducer" &&
+        item.diameter &&
+        prevItem.secondaryDiameter !== item.diameter
+      ) {
         issues.push({
-          severity: 'warning',
-          field: 'diameter',
+          severity: "warning",
+          field: "diameter",
           message: `Previous reducer goes to ${prevItem.secondaryDiameter}NB but this item is ${item.diameter}NB`,
           suggestion: `Should this item be ${prevItem.secondaryDiameter}NB?`,
           itemIndex,
@@ -183,9 +198,7 @@ export class NixValidationService {
   private validateConsistency(items: RfqItem[]): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
 
-    const materialGrades = items
-      .map(item => item.materialGrade)
-      .filter(Boolean);
+    const materialGrades = items.map((item) => item.materialGrade).filter(Boolean);
     const uniqueGrades = [...new Set(materialGrades)];
 
     if (uniqueGrades.length > 1 && items.length > 3) {
@@ -196,8 +209,8 @@ export class NixValidationService {
 
       outliers.forEach(({ index }) => {
         issues.push({
-          severity: 'info',
-          field: 'materialGrade',
+          severity: "info",
+          field: "materialGrade",
           message: `Item has different material grade than majority of items (${mostCommon})`,
           suggestion: `Most items use ${mostCommon} - is this intentional?`,
           itemIndex: index,
@@ -205,17 +218,15 @@ export class NixValidationService {
       });
     }
 
-    const schedules = items
-      .map(item => item.schedule)
-      .filter(Boolean);
+    const schedules = items.map((item) => item.schedule).filter(Boolean);
     const uniqueSchedules = [...new Set(schedules)];
 
     if (uniqueSchedules.length > 2 && items.length > 5) {
       issues.push({
-        severity: 'info',
-        field: 'schedule',
-        message: `Multiple different schedules used: ${uniqueSchedules.join(', ')}`,
-        suggestion: 'Verify that mixed schedules are intentional',
+        severity: "info",
+        field: "schedule",
+        message: `Multiple different schedules used: ${uniqueSchedules.join(", ")}`,
+        suggestion: "Verify that mixed schedules are intentional",
       });
     }
 
@@ -226,7 +237,7 @@ export class NixValidationService {
     if (!diameter) return null;
 
     const scheduleMap: Record<string, Record<number, number>> = {
-      'Sch 10': {
+      "Sch 10": {
         50: 2.4,
         80: 2.8,
         100: 3.2,
@@ -235,7 +246,7 @@ export class NixValidationService {
         250: 4.2,
         300: 4.6,
       },
-      'Sch 40': {
+      "Sch 40": {
         50: 3.7,
         80: 4.5,
         100: 5.5,
@@ -244,7 +255,7 @@ export class NixValidationService {
         250: 9.3,
         300: 10.3,
       },
-      'Sch 80': {
+      "Sch 80": {
         50: 5.1,
         80: 6.0,
         100: 8.1,
@@ -270,8 +281,8 @@ export class NixValidationService {
     );
 
     const maxCount = Math.max(...Object.values(counts));
-    const mostCommon = Object.keys(counts).find(key => counts[key] === maxCount);
+    const mostCommon = Object.keys(counts).find((key) => counts[key] === maxCount);
 
-    return values.find(v => String(v) === mostCommon);
+    return values.find((v) => String(v) === mostCommon);
   }
 }
