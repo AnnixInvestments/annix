@@ -7,6 +7,7 @@ import { AuditLog } from "../audit/entities/audit-log.entity";
 import { CustomerOnboarding } from "../customer/entities/customer-onboarding.entity";
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { CustomerSession } from "../customer/entities/customer-session.entity";
+import { FeedbackModule } from "../feedback/feedback.module";
 import { MessagingModule } from "../messaging/messaging.module";
 import { AnonymousDraft } from "../rfq/entities/anonymous-draft.entity";
 import { Rfq } from "../rfq/entities/rfq.entity";
@@ -22,6 +23,7 @@ import { AdminAuthController } from "./admin-auth.controller";
 import { AdminAuthService } from "./admin-auth.service";
 import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
+import { AdminFeedbackController } from "./admin-feedback.controller";
 import { AdminMessagingController } from "./admin-messaging.controller";
 import { AdminReferenceDataController } from "./admin-reference-data.controller";
 import { AdminReferenceDataService } from "./admin-reference-data.service";
@@ -58,6 +60,7 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
       inject: [ConfigService],
     }),
     AuditModule,
+    FeedbackModule,
     MessagingModule,
   ],
   providers: [
@@ -70,6 +73,7 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
   controllers: [
     AdminAuthController,
     AdminDashboardController,
+    AdminFeedbackController,
     AdminReferenceDataController,
     AdminRfqController,
     AdminMessagingController,

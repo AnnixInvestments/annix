@@ -74,6 +74,39 @@ export interface SupplierStats {
   pendingReview: number;
 }
 
+// Feedback Types
+
+export type FeedbackSource = "text" | "voice";
+
+export interface FeedbackItem {
+  id: number;
+  customerProfileId: number;
+  conversationId: number | null;
+  assignedToId: number | null;
+  content: string;
+  source: FeedbackSource;
+  pageUrl: string | null;
+  createdAt: string;
+  customerProfile?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    company?: { legalName: string };
+  };
+  assignedTo?: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  } | null;
+}
+
+export interface FeedbackDetail extends FeedbackItem {
+  conversation?: {
+    id: number;
+    subject: string;
+  } | null;
+}
+
 // Customer Management Types
 
 export type CustomerAccountStatus = "pending" | "active" | "suspended" | "deactivated";
@@ -1053,6 +1086,31 @@ class AdminApiClient {
       `/admin/reference-data/modules/${encodeURIComponent(entityName)}/${id}`,
       { method: "DELETE" },
     );
+  }
+
+  async listFeedback(): Promise<FeedbackItem[]> {
+    return this.request<FeedbackItem[]>("/admin/feedback");
+  }
+
+  async feedbackById(id: number): Promise<FeedbackDetail | null> {
+    return this.request<FeedbackDetail | null>(`/admin/feedback/${id}`);
+  }
+
+  async feedbackByConversationId(conversationId: number): Promise<FeedbackDetail | null> {
+    const allFeedback = await this.listFeedback();
+    return allFeedback.find((f) => f.conversationId === conversationId) ?? null;
+  }
+
+  async assignFeedback(feedbackId: number): Promise<FeedbackDetail> {
+    return this.request<FeedbackDetail>(`/admin/feedback/${feedbackId}/assign`, {
+      method: "POST",
+    });
+  }
+
+  async unassignFeedback(feedbackId: number): Promise<FeedbackDetail> {
+    return this.request<FeedbackDetail>(`/admin/feedback/${feedbackId}/unassign`, {
+      method: "POST",
+    });
   }
 }
 
