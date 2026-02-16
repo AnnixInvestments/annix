@@ -46,7 +46,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         id: issue
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
         run: |
           ISSUE_JSON=$(gh issue view ${{ inputs.issue_number }} --repo ${{ github.repository }} --json title,body)
           TITLE=$(echo "$ISSUE_JSON" | jq -r '.title')
@@ -65,24 +65,16 @@ jobs:
         id: claude-event
         uses: anthropics/claude-code-action@v1
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          additional_permissions: |
-            contents: write
-            pull-requests: write
-            issues: write
-            actions: read
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.PROJECT_TOKEN }}
 
       - name: Run Claude Code (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
         id: claude-dispatch
         uses: anthropics/claude-code-action@v1
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          additional_permissions: |
-            contents: write
-            pull-requests: write
-            issues: write
-            actions: read
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.PROJECT_TOKEN }}
           prompt: |
             You are operating autonomously. Do NOT ask questions or request clarification. Make all implementation decisions yourself based on the codebase, existing patterns, and the issue description. If something is ambiguous, pick the most reasonable approach and proceed.
 
