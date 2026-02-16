@@ -9,10 +9,22 @@ on:
     types: [opened, assigned]
   pull_request_review:
     types: [submitted]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to implement"
+        required: true
+        type: string
+      prompt:
+        description: "Instructions for Claude (default: implement the issue)"
+        required: false
+        type: string
+        default: ""
 
 jobs:
   claude:
     if: |
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
@@ -23,28 +35,51 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Run Claude Code
-        id: claude
+      - name: Fetch issue details
+        if: github.event_name == 'workflow_dispatch'
+        id: issue
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          ISSUE_JSON=$(gh issue view ${{ inputs.issue_number }} --repo ${{ github.repository }} --json title,body)
+          TITLE=$(echo "$ISSUE_JSON" | jq -r '.title')
+          BODY=$(echo "$ISSUE_JSON" | jq -r '.body')
+          {
+            echo "title<<ISSUE_EOF"
+            echo "$TITLE"
+            echo "ISSUE_EOF"
+            echo "body<<BODY_EOF"
+            echo "$BODY"
+            echo "BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude Code (event triggered)
+        if: github.event_name != 'workflow_dispatch'
+        id: claude-event
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
+      - name: Run Claude Code (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        id: claude-dispatch
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
+          prompt: |
+            ${{ inputs.prompt != '' && inputs.prompt || format('Implement the following GitHub issue. Create a branch, make the changes, and open a PR referencing issue #{0}.', inputs.issue_number) }}
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr:*)'
+            ## Issue #${{ inputs.issue_number }}: ${{ steps.issue.outputs.title }}
 
+            ${{ steps.issue.outputs.body }}
