@@ -1,0 +1,77 @@
+name: Manage Project Board
+
+on:
+  issues:
+    types: [opened, closed, reopened]
+
+jobs:
+  add-to-project:
+    name: Add new issues to project board
+    if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: https://github.com/orgs/AnnixInvestments/projects/1
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+
+  set-todo-status:
+    name: Set new issues to Todo
+    needs: add-to-project
+    if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+    steps:
+      - name: Set status to Todo
+        run: |
+          ITEM_ID=$(gh project item-list 1 --owner AnnixInvestments --limit 200 --format json \
+            | jq -r --argjson num "${{ github.event.issue.number }}" '.items[] | select(.content.number == $num) | .id')
+
+          if [ -n "$ITEM_ID" ]; then
+            gh project item-edit \
+              --project-id PVT_kwDODy388s4BPD9X \
+              --id "$ITEM_ID" \
+              --field-id PVTSSF_lADODy388s4BPD9Xzg9lN9o \
+              --single-select-option-id 7d2c83f6
+          fi
+
+  set-done-status:
+    name: Move closed issues to Done
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+    steps:
+      - name: Set status to Done
+        run: |
+          ITEM_ID=$(gh project item-list 1 --owner AnnixInvestments --limit 200 --format json \
+            | jq -r --argjson num "${{ github.event.issue.number }}" '.items[] | select(.content.number == $num) | .id')
+
+          if [ -n "$ITEM_ID" ]; then
+            gh project item-edit \
+              --project-id PVT_kwDODy388s4BPD9X \
+              --id "$ITEM_ID" \
+              --field-id PVTSSF_lADODy388s4BPD9Xzg9lN9o \
+              --single-select-option-id 1b216abb
+          fi
+
+  set-todo-on-reopen:
+    name: Move reopened issues back to Todo
+    if: github.event.action == 'reopened'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+    steps:
+      - name: Set status to Todo
+        run: |
+          ITEM_ID=$(gh project item-list 1 --owner AnnixInvestments --limit 200 --format json \
+            | jq -r --argjson num "${{ github.event.issue.number }}" '.items[] | select(.content.number == $num) | .id')
+
+          if [ -n "$ITEM_ID" ]; then
+            gh project item-edit \
+              --project-id PVT_kwDODy388s4BPD9X \
+              --id "$ITEM_ID" \
+              --field-id PVTSSF_lADODy388s4BPD9Xzg9lN9o \
+              --single-select-option-id 7d2c83f6
+          fi
