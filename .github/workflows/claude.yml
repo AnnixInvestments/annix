@@ -67,6 +67,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.PROJECT_TOKEN }}
+          allowed_tools: "Bash,Read,Edit,MultiEdit,Write,Glob,Grep,LS,WebFetch,WebSearch,TodoRead,TodoWrite,Task"
 
       - name: Run Claude Code (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -75,7 +76,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.PROJECT_TOKEN }}
-          show_full_output: true
+          allowed_tools: "Bash,Read,Edit,MultiEdit,Write,Glob,Grep,LS,WebFetch,WebSearch,TodoRead,TodoWrite,Task"
           prompt: |
             You are operating autonomously. Do NOT ask questions or request clarification. Make all implementation decisions yourself based on the codebase, existing patterns, and the issue description. If something is ambiguous, pick the most reasonable approach and proceed.
 
