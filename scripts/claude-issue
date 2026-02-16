@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO="AnnixInvestments/annix"
+WORKFLOW="claude.yml"
+
+if [ $# -lt 1 ]; then
+  echo "Usage: claude-issue <issue-number> [prompt]"
+  echo ""
+  echo "Examples:"
+  echo "  claude-issue 69"
+  echo "  claude-issue 69 \"Focus on the RFQ page first\""
+  exit 1
+fi
+
+ISSUE_NUMBER="$1"
+PROMPT="${2:-}"
+
+if [ -n "$PROMPT" ]; then
+  gh workflow run "$WORKFLOW" --repo "$REPO" -f issue_number="$ISSUE_NUMBER" -f prompt="$PROMPT"
+else
+  gh workflow run "$WORKFLOW" --repo "$REPO" -f issue_number="$ISSUE_NUMBER"
+fi
+
+echo "Triggered Claude on issue #$ISSUE_NUMBER"
+echo "Watch progress: https://github.com/$REPO/actions"

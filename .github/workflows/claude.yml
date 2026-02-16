@@ -31,9 +31,9 @@ jobs:
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
       id-token: write
       actions: read
     steps:
@@ -67,6 +67,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           additional_permissions: |
+            contents: write
+            pull-requests: write
+            issues: write
             actions: read
 
       - name: Run Claude Code (manual dispatch)
@@ -76,9 +79,18 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           additional_permissions: |
+            contents: write
+            pull-requests: write
+            issues: write
             actions: read
           prompt: |
-            ${{ inputs.prompt != '' && inputs.prompt || format('Implement the following GitHub issue. Create a branch, make the changes, and open a PR referencing issue #{0}.', inputs.issue_number) }}
+            You are operating autonomously. Do NOT ask questions or request clarification. Make all implementation decisions yourself based on the codebase, existing patterns, and the issue description. If something is ambiguous, pick the most reasonable approach and proceed.
+
+            Read the CLAUDE.md and agents.md files for project conventions. Follow all existing patterns.
+
+            Your task: implement the following GitHub issue. Create a feature branch, implement all changes, commit, push, and open a PR referencing issue #${{ inputs.issue_number }}.
+
+            ${{ inputs.prompt }}
 
             ## Issue #${{ inputs.issue_number }}: ${{ steps.issue.outputs.title }}
 
