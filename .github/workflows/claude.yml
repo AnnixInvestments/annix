@@ -46,7 +46,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         id: issue
         env:
-          GH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           ISSUE_JSON=$(gh issue view ${{ inputs.issue_number }} --repo ${{ github.repository }} --json title,body)
           TITLE=$(echo "$ISSUE_JSON" | jq -r '.title')
