@@ -8,6 +8,7 @@ export enum RelatedEntityType {
   RFQ = "RFQ",
   BOQ = "BOQ",
   GENERAL = "GENERAL",
+  FEEDBACK = "FEEDBACK",
 }
 
 export enum ParticipantRole {

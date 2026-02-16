@@ -7,6 +7,8 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 import { CustomerProfile } from "../../customer/entities/customer-profile.entity";
+import { Conversation } from "../../messaging/entities/conversation.entity";
+import { User } from "../../user/entities/user.entity";
 
 export type FeedbackSource = "text" | "voice";
 
@@ -22,8 +24,19 @@ export class CustomerFeedback {
   @Column({ name: "customer_profile_id" })
   customerProfileId: number;
 
-  @Column({ name: "github_issue_number", type: "int", nullable: true })
-  githubIssueNumber: number | null;
+  @ManyToOne(() => Conversation, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "conversation_id" })
+  conversation: Conversation | null;
+
+  @Column({ name: "conversation_id", nullable: true })
+  conversationId: number | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "assigned_to_id" })
+  assignedTo: User | null;
+
+  @Column({ name: "assigned_to_id", nullable: true })
+  assignedToId: number | null;
 
   @Column({ type: "text" })
   content: string;

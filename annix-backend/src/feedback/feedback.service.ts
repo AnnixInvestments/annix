@@ -5,8 +5,8 @@ import { Repository } from "typeorm";
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { EmailService } from "../email/email.service";
 import { formatDateTime, now } from "../lib/datetime";
-import { BroadcastService } from "../messaging/broadcast.service";
-import { BroadcastPriority, BroadcastTarget } from "../messaging/entities";
+import { ConversationType, RelatedEntityType } from "../messaging/entities";
+import { MessagingService } from "../messaging/messaging.service";
 import { User } from "../user/entities/user.entity";
 import { SubmitFeedbackDto, SubmitFeedbackResponseDto } from "./dto";
 import { CustomerFeedback } from "./entities/customer-feedback.entity";
@@ -16,9 +16,8 @@ interface CustomerInfo {
   lastName: string;
   email: string;
   companyName: string;
+  userId: number;
 }
-
-const TEST_SITE_URL = "https://annix-frontend-test.fly.dev";
 
 @Injectable()
 export class FeedbackService {
@@ -31,7 +30,7 @@ export class FeedbackService {
     private readonly customerProfileRepository: Repository<CustomerProfile>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly broadcastService: BroadcastService,
+    private readonly messagingService: MessagingService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
   ) {}
@@ -54,6 +53,7 @@ export class FeedbackService {
       lastName: profile.lastName,
       email: profile.user.email,
       companyName: profile.company.legalName,
+      userId: profile.userId,
     };
 
     const feedback = this.feedbackRepository.create({
@@ -63,23 +63,126 @@ export class FeedbackService {
       pageUrl: dto.pageUrl || null,
     });
 
-    await this.feedbackRepository.save(feedback);
+    const savedFeedback = await this.feedbackRepository.save(feedback);
 
-    if (this.isTestSite()) {
-      await this.notifyAdmins(dto, customerInfo);
+    const conversationId = await this.createFeedbackConversation(savedFeedback, dto, customerInfo);
+
+    if (conversationId) {
+      savedFeedback.conversationId = conversationId;
+      await this.feedbackRepository.save(savedFeedback);
     }
 
-    this.logger.log(`Feedback submitted by customer ${customerId}`);
+    await this.sendEmailNotification(dto, customerInfo);
+
+    this.logger.log(
+      `Feedback submitted by customer ${customerId}, conversation #${conversationId}`,
+    );
 
     return {
-      id: feedback.id,
+      id: savedFeedback.id,
       message: "Feedback submitted successfully",
     };
   }
 
-  private isTestSite(): boolean {
-    const frontendUrl = this.configService.get<string>("FRONTEND_URL");
-    return frontendUrl === TEST_SITE_URL;
+  async assignFeedback(feedbackId: number, adminUserId: number): Promise<CustomerFeedback> {
+    const feedback = await this.feedbackRepository.findOne({
+      where: { id: feedbackId },
+      relations: ["conversation"],
+    });
+
+    if (!feedback) {
+      throw new Error("Feedback not found");
+    }
+
+    feedback.assignedToId = adminUserId;
+    await this.feedbackRepository.save(feedback);
+
+    if (feedback.conversationId) {
+      const admin = await this.userRepository.findOne({ where: { id: adminUserId } });
+      const adminName = admin ? `${admin.firstName} ${admin.lastName}`.trim() : "An admin";
+
+      await this.messagingService.sendMessage(feedback.conversationId, adminUserId, {
+        content: `*${adminName} is now handling this feedback request.*`,
+      });
+    }
+
+    this.logger.log(`Feedback #${feedbackId} assigned to admin user #${adminUserId}`);
+
+    return feedback;
+  }
+
+  async unassignFeedback(feedbackId: number, adminUserId: number): Promise<CustomerFeedback> {
+    const feedback = await this.feedbackRepository.findOne({
+      where: { id: feedbackId },
+    });
+
+    if (!feedback) {
+      throw new Error("Feedback not found");
+    }
+
+    feedback.assignedToId = null;
+    await this.feedbackRepository.save(feedback);
+
+    if (feedback.conversationId) {
+      const admin = await this.userRepository.findOne({ where: { id: adminUserId } });
+      const adminName = admin ? `${admin.firstName} ${admin.lastName}`.trim() : "An admin";
+
+      await this.messagingService.sendMessage(feedback.conversationId, adminUserId, {
+        content: `*${adminName} has unassigned from this feedback request.*`,
+      });
+    }
+
+    this.logger.log(`Feedback #${feedbackId} unassigned by admin user #${adminUserId}`);
+
+    return feedback;
+  }
+
+  async feedbackById(feedbackId: number): Promise<CustomerFeedback | null> {
+    return this.feedbackRepository.findOne({
+      where: { id: feedbackId },
+      relations: ["customerProfile", "customerProfile.company", "assignedTo", "conversation"],
+    });
+  }
+
+  async allFeedback(): Promise<CustomerFeedback[]> {
+    return this.feedbackRepository.find({
+      relations: ["customerProfile", "customerProfile.company", "assignedTo"],
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  private async createFeedbackConversation(
+    feedback: CustomerFeedback,
+    dto: SubmitFeedbackDto,
+    customerInfo: CustomerInfo,
+  ): Promise<number | null> {
+    const adminIds = await this.adminUserIds();
+
+    if (adminIds.length === 0) {
+      this.logger.warn("No admin users found to create feedback conversation");
+      return null;
+    }
+
+    const participantIds = [...adminIds, customerInfo.userId];
+    const uniqueParticipantIds = [...new Set(participantIds)];
+
+    const timestamp = formatDateTime(now().toJSDate());
+    const initialMessage = this.formatInitialMessage(dto, customerInfo, timestamp);
+
+    const conversation = await this.messagingService.createConversation(customerInfo.userId, {
+      subject: `Feedback: ${customerInfo.companyName} - ${customerInfo.firstName} ${customerInfo.lastName}`,
+      conversationType: ConversationType.SUPPORT,
+      relatedEntityType: RelatedEntityType.FEEDBACK,
+      relatedEntityId: feedback.id,
+      participantIds: uniqueParticipantIds,
+      initialMessage,
+    });
+
+    this.logger.log(
+      `Created feedback conversation #${conversation.id} with ${uniqueParticipantIds.length} participants`,
+    );
+
+    return conversation.id;
   }
 
   private async adminUserIds(): Promise<number[]> {
@@ -92,33 +195,12 @@ export class FeedbackService {
     return adminUsers.map((u) => u.id);
   }
 
-  private async notifyAdmins(dto: SubmitFeedbackDto, customerInfo: CustomerInfo): Promise<void> {
-    const adminIds = await this.adminUserIds();
-
-    this.logger.log(`Found ${adminIds.length} admin users for feedback notification`);
-
-    if (adminIds.length === 0) {
-      this.logger.warn("No admin users found to notify about customer feedback");
-      return;
-    }
-
-    const broadcastContent = this.formatBroadcastContent(dto, customerInfo);
-
-    try {
-      await this.broadcastService.createBroadcast(adminIds[0], {
-        title: `Customer Feedback - ${customerInfo.companyName}`,
-        content: broadcastContent,
-        targetAudience: BroadcastTarget.SPECIFIC,
-        specificUserIds: adminIds,
-        priority: BroadcastPriority.NORMAL,
-        sendEmail: false,
-      });
-      this.logger.log(`Broadcast created for ${adminIds.length} admin users`);
-    } catch (error) {
-      this.logger.error(`Failed to create broadcast for customer feedback: ${error.message}`);
-    }
-
+  private async sendEmailNotification(
+    dto: SubmitFeedbackDto,
+    customerInfo: CustomerInfo,
+  ): Promise<void> {
     const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "info@annix.co.za";
+
     await this.emailService.sendCustomerFeedbackNotificationEmail(
       supportEmail,
       customerInfo,
@@ -126,24 +208,25 @@ export class FeedbackService {
       dto.source,
       dto.pageUrl || null,
     );
-
-    this.logger.log(
-      `Admin notification sent for customer feedback from ${customerInfo.companyName}`,
-    );
   }
 
-  private formatBroadcastContent(dto: SubmitFeedbackDto, customer: CustomerInfo): string {
-    const timestamp = formatDateTime(now().toJSDate());
+  private formatInitialMessage(
+    dto: SubmitFeedbackDto,
+    customer: CustomerInfo,
+    timestamp: string,
+  ): string {
+    return `**Customer Feedback**
 
-    return `**Customer:** ${customer.firstName} ${customer.lastName}
+**From:** ${customer.firstName} ${customer.lastName}
 **Company:** ${customer.companyName}
 **Email:** ${customer.email}
 
 ---
-## Feedback
+
 ${dto.content}
 
-*Submitted via: ${dto.source} from ${dto.pageUrl || "unknown page"}*
+---
+*Submitted via ${dto.source === "voice" ? "voice recording" : "text"} from ${dto.pageUrl || "unknown page"}*
 *Date: ${timestamp}*`;
   }
 }
