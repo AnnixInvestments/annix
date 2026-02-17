@@ -63,3 +63,10 @@ annix-backend/query-docs.ts
 
 # Local sync clone
 annix/
+
+# Voice filter artifacts
+voice-filter/crash.log
+voice-filter/start-filter.vbs
+
+# Windows nul files (created accidentally on Windows)
+nul

@@ -83,12 +83,12 @@ export default function SettingsPage() {
           </div>
           <div className="flex justify-between">
             <dt className="text-gray-500 dark:text-gray-400">Features</dt>
-            <dd className="text-gray-900 dark:text-white">Prospects, Meetings, Visits</dd>
+            <dd className="text-gray-900 dark:text-white">Prospects, Meetings, Calendar, CRM</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-gray-500 dark:text-gray-400">Coming Soon</dt>
+            <dt className="text-gray-500 dark:text-gray-400">AI Features</dt>
             <dd className="text-gray-900 dark:text-white">
-              Calendar Sync, AI Transcription, CRM Integration
+              Transcription, Meeting Summaries, Route Planning
             </dd>
           </div>
         </dl>

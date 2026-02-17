@@ -2,8 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
-import type { MeetingAnalysis, Sentiment, TranscriptSegment } from "@/app/lib/api/fieldflowApi";
+import { useRef, useState } from "react";
+import type {
+  ActionItem,
+  MeetingAnalysis,
+  Sentiment,
+  Transcript,
+  TranscriptSegment,
+} from "@/app/lib/api/fieldflowApi";
 import {
   useMeeting,
   useMeetingRecording,
@@ -267,6 +273,181 @@ function TranscriptSegmentView({ segment }: { segment: TranscriptSegment }) {
   );
 }
 
+function formatTranscriptAsTxt(transcript: Transcript, meetingTitle: string): string {
+  const lines: string[] = [];
+
+  lines.push(`MEETING TRANSCRIPT: ${meetingTitle}`);
+  lines.push(`${"=".repeat(50)}`);
+  lines.push(`Language: ${transcript.language.toUpperCase()}`);
+  lines.push(`Words: ${transcript.wordCount}`);
+  lines.push(`Segments: ${transcript.segments.length}`);
+  if (transcript.analysis?.sentiment) {
+    lines.push(`Sentiment: ${transcript.analysis.sentiment}`);
+  }
+  lines.push("");
+  lines.push("TRANSCRIPT");
+  lines.push(`${"-".repeat(50)}`);
+  lines.push("");
+
+  transcript.segments.forEach((segment: TranscriptSegment) => {
+    const timeRange = `[${formatTime(segment.startTime)} - ${formatTime(segment.endTime)}]`;
+    lines.push(`${segment.speakerLabel} ${timeRange}`);
+    lines.push(segment.text);
+    lines.push("");
+  });
+
+  if (transcript.analysis) {
+    lines.push("");
+    lines.push("ANALYSIS");
+    lines.push(`${"-".repeat(50)}`);
+
+    if (transcript.analysis.topics.length > 0) {
+      lines.push("");
+      lines.push("Topics:");
+      transcript.analysis.topics.forEach((topic: string) => lines.push(`  - ${topic}`));
+    }
+
+    if (transcript.analysis.keyPoints.length > 0) {
+      lines.push("");
+      lines.push("Key Points:");
+      transcript.analysis.keyPoints.forEach((point: string) => lines.push(`  - ${point}`));
+    }
+
+    if (transcript.analysis.actionItems.length > 0) {
+      lines.push("");
+      lines.push("Action Items:");
+      transcript.analysis.actionItems.forEach((item: ActionItem) => {
+        const assignee = item.assignee ? ` (${item.assignee})` : "";
+        lines.push(`  - ${item.task}${assignee}`);
+      });
+    }
+
+    if (transcript.analysis.questions.length > 0) {
+      lines.push("");
+      lines.push("Questions:");
+      transcript.analysis.questions.forEach((q: string) => lines.push(`  ? ${q}`));
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function ExportDropdown({
+  transcript,
+  meetingTitle,
+}: {
+  transcript: Transcript;
+  meetingTitle: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleExportTxt = () => {
+    const content = formatTranscriptAsTxt(transcript, meetingTitle);
+    const safeName = meetingTitle.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
+    downloadFile(content, `transcript_${safeName}.txt`, "text/plain");
+    setIsOpen(false);
+  };
+
+  const handleExportJson = () => {
+    const content = JSON.stringify(transcript, null, 2);
+    const safeName = meetingTitle.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
+    downloadFile(content, `transcript_${safeName}.json`, "application/json");
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700"
+      >
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+          />
+        </svg>
+        Export
+        <svg
+          className={`w-3 h-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-800 rounded-md shadow-lg border border-gray-200 dark:border-slate-700 z-20">
+            <button
+              onClick={handleExportTxt}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                />
+              </svg>
+              Text (.txt)
+            </button>
+            <button
+              onClick={handleExportJson}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"
+                />
+              </svg>
+              JSON (.json)
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function TranscriptPage() {
   const params = useParams();
   const meetingId = Number(params.id);
@@ -490,26 +671,29 @@ export default function TranscriptPage() {
                 {transcript.analysis &&
                   sentimentBadge(transcript.analysis.sentiment, transcript.analysis.sentimentScore)}
               </div>
-              <button
-                onClick={handleRetranscribe}
-                disabled={retranscribe.isPending}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
+              <div className="flex items-center gap-3">
+                <ExportDropdown transcript={transcript} meetingTitle={meeting.title} />
+                <button
+                  onClick={handleRetranscribe}
+                  disabled={retranscribe.isPending}
+                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
-                  />
-                </svg>
-                Re-transcribe
-              </button>
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                    />
+                  </svg>
+                  Re-transcribe
+                </button>
+              </div>
             </div>
           </div>
 
