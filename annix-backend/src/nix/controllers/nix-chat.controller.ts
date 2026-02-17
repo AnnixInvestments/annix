@@ -14,6 +14,13 @@ import {
 } from "@nestjs/common";
 import { Response } from "express";
 import { AnyUserAuthGuard } from "../../auth/guards/any-user-auth.guard";
+import {
+  CreateItemsFromChatDto,
+  CreateItemsResponseDto,
+  ParseItemsRequestDto,
+  ParseItemsResponseDto,
+} from "../dto/chat-item.dto";
+import { NixChatItemService } from "../services/nix-chat-item.service";
 import { CreateSessionDto, NixChatService, SendMessageDto } from "../services/nix-chat.service";
 import { NixValidationService } from "../services/nix-validation.service";
 
@@ -25,6 +32,7 @@ export class NixChatController {
   constructor(
     private readonly chatService: NixChatService,
     private readonly validationService: NixValidationService,
+    private readonly chatItemService: NixChatItemService,
   ) {}
 
   @Post("session")
@@ -157,6 +165,45 @@ export class NixChatController {
     await this.chatService.endSession(sessionId);
 
     return { success: true };
+  }
+
+  @Post("session/:sessionId/parse-items")
+  async parseItems(
+    @Param("sessionId", ParseIntPipe) sessionId: number,
+    @Body() dto: ParseItemsRequestDto,
+  ): Promise<ParseItemsResponseDto> {
+    const session = await this.chatService.session(sessionId);
+
+    try {
+      return await this.chatItemService.parseItemsFromMessage(session, dto);
+    } catch (error) {
+      this.logger.error(`Failed to parse items for session ${sessionId}: ${error.message}`);
+      throw new HttpException({ error: error.message }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post("session/:sessionId/create-items")
+  async createItems(
+    @Param("sessionId", ParseIntPipe) sessionId: number,
+    @Body() dto: CreateItemsFromChatDto,
+    @Request() req,
+  ): Promise<CreateItemsResponseDto> {
+    const session = await this.chatService.session(sessionId);
+    const userId = req.authUser.userId;
+
+    try {
+      const result = await this.chatItemService.createItemsFromChat(session, dto, userId);
+
+      if (result.success) {
+        session.sessionContext.lastCreatedRfqId = result.rfqId;
+        session.sessionContext.lastCreatedRfqNumber = result.rfqNumber;
+      }
+
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to create items for session ${sessionId}: ${error.message}`);
+      throw new HttpException({ error: error.message }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
   }
 
   @Post("validate/item")

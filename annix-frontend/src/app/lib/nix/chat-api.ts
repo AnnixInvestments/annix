@@ -69,6 +69,75 @@ export interface ValidationIssue {
   itemIndex?: number;
 }
 
+export interface ParsedItemSpecifications {
+  diameter?: number;
+  secondaryDiameter?: number;
+  length?: number;
+  schedule?: string;
+  material?: string;
+  materialGrade?: string;
+  angle?: number;
+  flangeConfig?: string;
+  flangeRating?: string;
+  quantity?: number;
+  description?: string;
+}
+
+export interface ParsedItem {
+  action: "create_item" | "update_item" | "delete_item" | "question" | "validation" | "unknown";
+  itemType?:
+    | "pipe"
+    | "bend"
+    | "reducer"
+    | "tee"
+    | "flange"
+    | "expansion_joint"
+    | "valve"
+    | "instrument"
+    | "pump";
+  specifications?: ParsedItemSpecifications;
+  confidence: number;
+  explanation: string;
+  originalText?: string;
+}
+
+export interface ParseItemsResponse {
+  sessionId: number;
+  parsedItems: ParsedItem[];
+  requiresConfirmation: boolean;
+  validationIssues?: Array<{
+    itemIndex: number;
+    severity: "error" | "warning" | "info";
+    field: string;
+    message: string;
+    suggestion?: string;
+  }>;
+}
+
+export interface ItemConfirmation {
+  index: number;
+  confirmed: boolean;
+  modifiedSpecs?: ParsedItemSpecifications;
+}
+
+export interface CreateItemsResponse {
+  success: boolean;
+  rfqId: number;
+  rfqNumber: string;
+  itemsCreated: number;
+  items: Array<{
+    lineNumber: number;
+    itemType: string;
+    description: string;
+    quantity: number;
+    originalIndex: number;
+  }>;
+  failedItems?: Array<{
+    index: number;
+    reason: string;
+  }>;
+}
+
 export const nixChatApi = {
   async createSession(rfqId?: number): Promise<{ sessionId: number }> {
     const response = await fetch(`${browserBaseUrl()}/nix/chat/session`, {
@@ -299,6 +368,64 @@ export const nixChatApi = {
 
     if (!response.ok) {
       throw new Error(`Failed to validate RFQ: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  async parseItems(
+    sessionId: number,
+    message: string,
+    context?: {
+      currentItems?: any[];
+      recentMessages?: string[];
+    },
+  ): Promise<ParseItemsResponse> {
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/parse-items`, {
+      method: "POST",
+      headers: {
+        ...chatAuthHeaders(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message, context }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      const errorMessage = body?.error || `Failed to parse items: ${response.statusText}`;
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  async createItemsFromChat(
+    sessionId: number,
+    items: ParsedItem[],
+    options?: {
+      confirmations?: ItemConfirmation[];
+      rfqId?: number;
+      rfqTitle?: string;
+    },
+  ): Promise<CreateItemsResponse> {
+    const response = await fetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}/create-items`, {
+      method: "POST",
+      headers: {
+        ...chatAuthHeaders(),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        items,
+        confirmations: options?.confirmations,
+        rfqId: options?.rfqId,
+        rfqTitle: options?.rfqTitle,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      const errorMessage = body?.error || `Failed to create items: ${response.statusText}`;
+      throw new Error(errorMessage);
     }
 
     return response.json();

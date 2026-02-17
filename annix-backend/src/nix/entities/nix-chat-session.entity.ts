@@ -44,6 +44,8 @@ export class NixChatSession {
       correctedValue: string;
       fieldType: string;
     }>;
+    lastCreatedRfqId?: number;
+    lastCreatedRfqNumber?: string;
   };
 
   @Column({ name: "is_active", default: true })

@@ -1,26 +1,26 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { ClaudeChatProvider } from "../ai-providers/claude-chat.provider";
+import { AiChatService } from "../ai-providers/ai-chat.service";
 import { NixItemParserService } from "./nix-item-parser.service";
-
-jest.mock("../ai-providers/claude-chat.provider");
 
 describe("NixItemParserService", () => {
   let service: NixItemParserService;
-  let mockChatProvider: jest.Mocked<ClaudeChatProvider>;
+  let mockAiChatService: jest.Mocked<AiChatService>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    mockChatProvider = {
+    mockAiChatService = {
       chat: jest.fn(),
-    } as unknown as jest.Mocked<ClaudeChatProvider>;
-
-    (ClaudeChatProvider as jest.MockedClass<typeof ClaudeChatProvider>).mockImplementation(
-      () => mockChatProvider,
-    );
+      streamChat: jest.fn(),
+      isAvailable: jest.fn().mockResolvedValue(true),
+      availableProviders: jest.fn().mockResolvedValue(["gemini"]),
+    } as unknown as jest.Mocked<AiChatService>;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [NixItemParserService],
+      providers: [
+        NixItemParserService,
+        { provide: AiChatService, useValue: mockAiChatService },
+      ],
     }).compile();
 
     service = module.get<NixItemParserService>(NixItemParserService);
@@ -33,8 +33,8 @@ describe("NixItemParserService", () => {
   describe("parseUserIntent", () => {
     describe("create_item intents", () => {
       it("should parse a simple pipe creation request", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "create_item",
             itemType: "pipe",
             specifications: {
@@ -46,7 +46,8 @@ describe("NixItemParserService", () => {
             confidence: 0.95,
             explanation: "Creating a 200NB pipe, 6m long, Sch 40",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent(
           "Add a 200NB pipe, 6 meters long, schedule 40",
@@ -61,8 +62,8 @@ describe("NixItemParserService", () => {
       });
 
       it("should parse a bend creation request with angle and flanges", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "create_item",
             itemType: "bend",
             specifications: {
@@ -75,7 +76,8 @@ describe("NixItemParserService", () => {
             confidence: 0.9,
             explanation: "Creating a 200NB bend at 45deg with flanges both ends",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent(
           "Add a 200NB bend at 45 degrees with flanges both ends, PN16",
@@ -90,8 +92,8 @@ describe("NixItemParserService", () => {
       });
 
       it("should parse a reducer creation request", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "create_item",
             itemType: "reducer",
             specifications: {
@@ -102,7 +104,8 @@ describe("NixItemParserService", () => {
             confidence: 0.9,
             explanation: "Creating a reducer from 300NB to 200NB",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent("Add a reducer from 300NB to 200NB");
 
@@ -113,8 +116,8 @@ describe("NixItemParserService", () => {
       });
 
       it("should parse quantity from user message", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "create_item",
             itemType: "pipe",
             specifications: {
@@ -124,7 +127,8 @@ describe("NixItemParserService", () => {
             confidence: 0.95,
             explanation: "Creating 12 pipes at 200NB",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent("I need 12 pipes at 200NB");
 
@@ -132,8 +136,8 @@ describe("NixItemParserService", () => {
       });
 
       it("should parse material and grade", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "create_item",
             itemType: "pipe",
             specifications: {
@@ -145,7 +149,8 @@ describe("NixItemParserService", () => {
             confidence: 0.95,
             explanation: "Creating a 200NB carbon steel pipe, A106 Grade B",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent("Add a 200NB carbon steel pipe, A106 Grade B");
 
@@ -156,13 +161,14 @@ describe("NixItemParserService", () => {
 
     describe("question intents", () => {
       it("should identify validation question intent", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "question",
             confidence: 1.0,
             explanation: "User is asking about validation issues",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent("What validation issues do I have?");
 
@@ -171,13 +177,14 @@ describe("NixItemParserService", () => {
       });
 
       it("should identify general piping question intent", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "question",
             confidence: 0.95,
             explanation: "User is asking about flange ratings",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent("What are the different flange ratings?");
 
@@ -187,8 +194,8 @@ describe("NixItemParserService", () => {
 
     describe("context-aware parsing", () => {
       it("should include context in the prompt when items exist", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "create_item",
             itemType: "bend",
             specifications: {
@@ -198,7 +205,8 @@ describe("NixItemParserService", () => {
             confidence: 0.6,
             explanation: "Creating 4 similar items at 300NB",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const context = {
           currentItems: [{ diameter: 200, itemType: "pipe", description: "200NB pipe" }],
@@ -206,17 +214,18 @@ describe("NixItemParserService", () => {
 
         const result = await service.parseUserIntent("Add 4 more of those but at 300NB", context);
 
-        expect(mockChatProvider.chat).toHaveBeenCalled();
-        const callArgs = mockChatProvider.chat.mock.calls[0];
+        expect(mockAiChatService.chat).toHaveBeenCalled();
+        const callArgs = mockAiChatService.chat.mock.calls[0];
         expect(callArgs[1]).toContain("Current RFQ Context");
       });
     });
 
     describe("error handling", () => {
       it("should return unknown intent when no JSON in response", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          "I'm not sure what you mean. Could you please clarify?",
-        );
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: "I'm not sure what you mean. Could you please clarify?",
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent("asdfghjkl");
 
@@ -225,7 +234,7 @@ describe("NixItemParserService", () => {
       });
 
       it("should return unknown intent when chat fails", async () => {
-        mockChatProvider.chat.mockRejectedValueOnce(new Error("API error"));
+        mockAiChatService.chat.mockRejectedValueOnce(new Error("API error"));
 
         const result = await service.parseUserIntent("Add a pipe");
 
@@ -234,7 +243,10 @@ describe("NixItemParserService", () => {
       });
 
       it("should handle malformed JSON gracefully", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce("{invalid json here}");
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: "{invalid json here}",
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent("Add a pipe");
 
@@ -244,12 +256,13 @@ describe("NixItemParserService", () => {
 
     describe("response structure", () => {
       it("should always return required fields", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "create_item",
             itemType: "pipe",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent("Add a pipe");
 
@@ -259,11 +272,12 @@ describe("NixItemParserService", () => {
       });
 
       it("should provide default values for missing fields", async () => {
-        mockChatProvider.chat.mockResolvedValueOnce(
-          JSON.stringify({
+        mockAiChatService.chat.mockResolvedValueOnce({
+          content: JSON.stringify({
             action: "create_item",
           }),
-        );
+          providerUsed: "gemini",
+        });
 
         const result = await service.parseUserIntent("Add something");
 
@@ -271,6 +285,110 @@ describe("NixItemParserService", () => {
         expect(result.explanation).toBe("Parsed user intent");
         expect(result.specifications).toEqual({});
       });
+    });
+  });
+
+  describe("parseMultipleItems", () => {
+    it("should parse multiple items from a single message", async () => {
+      mockAiChatService.chat.mockResolvedValueOnce({
+        content: JSON.stringify({
+          items: [
+            {
+              action: "create_item",
+              itemType: "pipe",
+              specifications: { diameter: 200, quantity: 5 },
+              confidence: 0.95,
+              explanation: "5x 200NB pipes",
+              originalText: "200NB pipes x 5",
+            },
+            {
+              action: "create_item",
+              itemType: "bend",
+              specifications: { diameter: 200, angle: 90, quantity: 1 },
+              confidence: 0.95,
+              explanation: "90° bend at 200NB",
+              originalText: "90 degree bend at 200NB",
+            },
+          ],
+        }),
+        providerUsed: "gemini",
+      });
+
+      const result = await service.parseMultipleItems(
+        "I need 200NB pipes x 5 and a 90 degree bend at 200NB",
+      );
+
+      expect(result.items).toHaveLength(2);
+      expect(result.hasMultipleItems).toBe(true);
+      expect(result.items[0].itemType).toBe("pipe");
+      expect(result.items[0].specifications?.quantity).toBe(5);
+      expect(result.items[1].itemType).toBe("bend");
+      expect(result.items[1].specifications?.angle).toBe(90);
+    });
+
+    it("should calculate average confidence for multiple items", async () => {
+      mockAiChatService.chat.mockResolvedValueOnce({
+        content: JSON.stringify({
+          items: [
+            { action: "create_item", itemType: "pipe", confidence: 0.9, specifications: {} },
+            { action: "create_item", itemType: "bend", confidence: 0.8, specifications: {} },
+          ],
+        }),
+        providerUsed: "gemini",
+      });
+
+      const result = await service.parseMultipleItems("Add a pipe and a bend");
+
+      expect(result.totalConfidence).toBeCloseTo(0.85, 2);
+    });
+
+    it("should handle single item response wrapped in items array", async () => {
+      mockAiChatService.chat.mockResolvedValueOnce({
+        content: JSON.stringify({
+          items: [
+            {
+              action: "create_item",
+              itemType: "pipe",
+              specifications: { diameter: 200 },
+              confidence: 0.95,
+            },
+          ],
+        }),
+        providerUsed: "gemini",
+      });
+
+      const result = await service.parseMultipleItems("Add a 200NB pipe");
+
+      expect(result.items).toHaveLength(1);
+      expect(result.hasMultipleItems).toBe(false);
+    });
+
+    it("should handle flat response without items array", async () => {
+      mockAiChatService.chat.mockResolvedValueOnce({
+        content: JSON.stringify({
+          action: "create_item",
+          itemType: "pipe",
+          specifications: { diameter: 200 },
+          confidence: 0.95,
+        }),
+        providerUsed: "gemini",
+      });
+
+      const result = await service.parseMultipleItems("Add a 200NB pipe");
+
+      expect(result.items).toHaveLength(1);
+      expect(result.hasMultipleItems).toBe(false);
+      expect(result.items[0].itemType).toBe("pipe");
+    });
+
+    it("should return unknown intent on parse failure", async () => {
+      mockAiChatService.chat.mockRejectedValueOnce(new Error("API error"));
+
+      const result = await service.parseMultipleItems("Add some items");
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0].action).toBe("unknown");
+      expect(result.totalConfidence).toBe(0);
     });
   });
 });

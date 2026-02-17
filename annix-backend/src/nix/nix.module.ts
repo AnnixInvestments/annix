@@ -10,6 +10,7 @@ import { CustomerDocument } from "../customer/entities/customer-document.entity"
 import { CustomerOnboarding } from "../customer/entities/customer-onboarding.entity";
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { EmailModule } from "../email/email.module";
+import { RfqModule } from "../rfq/rfq.module";
 import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
 import { StorageModule } from "../storage/storage.module";
 import { SupplierDocument } from "../supplier/entities/supplier-document.entity";
@@ -30,6 +31,7 @@ import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { NixController } from "./nix.controller";
 import { NixService } from "./nix.service";
 import { AutoApprovalService } from "./services/auto-approval.service";
+import { NixChatItemService } from "./services/nix-chat-item.service";
 import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
 import { DocumentVerificationService } from "./services/document-verification.service";
@@ -72,6 +74,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     StorageModule,
     EmailModule,
     AuditModule,
+    forwardRef(() => RfqModule),
   ],
   controllers: [NixController, NixChatController],
   providers: [
@@ -79,6 +82,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     CustomFieldService,
     NixService,
     NixChatService,
+    NixChatItemService,
     NixItemParserService,
     NixValidationService,
     ExcelExtractorService,

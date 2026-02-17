@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ChatMessage, ClaudeChatProvider } from "../ai-providers/claude-chat.provider";
+import { AiChatService } from "../ai-providers/ai-chat.service";
+import { ChatMessage } from "../ai-providers/claude-chat.provider";
 
 export interface ParsedItemIntent {
   action: "create_item" | "update_item" | "delete_item" | "question" | "validation" | "unknown";
@@ -28,19 +29,20 @@ export interface ParsedItemIntent {
   };
   confidence: number;
   explanation: string;
+  originalText?: string;
+}
+
+export interface MultiItemParseResult {
+  items: ParsedItemIntent[];
+  hasMultipleItems: boolean;
+  totalConfidence: number;
 }
 
 @Injectable()
 export class NixItemParserService {
   private readonly logger = new Logger(NixItemParserService.name);
-  private readonly chatProvider: ClaudeChatProvider;
 
-  constructor() {
-    this.chatProvider = new ClaudeChatProvider({
-      temperature: 0.3,
-      maxTokens: 1024,
-    });
-  }
+  constructor(private readonly aiChatService: AiChatService) {}
 
   async parseUserIntent(
     userMessage: string,
@@ -59,7 +61,7 @@ export class NixItemParserService {
     ];
 
     try {
-      const response = await this.chatProvider.chat(messages, systemPrompt);
+      const { content: response } = await this.aiChatService.chat(messages, systemPrompt);
 
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -75,10 +77,72 @@ export class NixItemParserService {
         specifications: parsed.specifications || {},
         confidence: parsed.confidence || 0.5,
         explanation: parsed.explanation || "Parsed user intent",
+        originalText: userMessage,
       };
     } catch (error) {
       this.logger.error(`Failed to parse user intent: ${error.message}`);
       return this.unknownIntent(userMessage);
+    }
+  }
+
+  async parseMultipleItems(
+    userMessage: string,
+    context?: {
+      currentItems?: any[];
+      recentMessages?: string[];
+    },
+  ): Promise<MultiItemParseResult> {
+    const systemPrompt = this.buildMultiItemParserPrompt(context);
+
+    const messages: ChatMessage[] = [
+      {
+        role: "user",
+        content: `Parse this user message and extract ALL items mentioned. The message may contain multiple items separated by commas, "and", semicolons, or listed on separate lines.\n\n"${userMessage}"\n\nRespond with JSON only, no additional text.`,
+      },
+    ];
+
+    try {
+      const { content: response } = await this.aiChatService.chat(messages, systemPrompt);
+
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        this.logger.warn("No JSON found in multi-item parser response");
+        return {
+          items: [this.unknownIntent(userMessage)],
+          hasMultipleItems: false,
+          totalConfidence: 0,
+        };
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      const items: ParsedItemIntent[] = (parsed.items || [parsed]).map(
+        (item: any, index: number) => ({
+          action: item.action || "create_item",
+          itemType: item.itemType,
+          specifications: item.specifications || {},
+          confidence: item.confidence || 0.5,
+          explanation: item.explanation || `Item ${index + 1}`,
+          originalText: item.originalText || userMessage,
+        }),
+      );
+
+      const totalConfidence =
+        items.length > 0
+          ? items.reduce((sum, item) => sum + item.confidence, 0) / items.length
+          : 0;
+
+      return {
+        items,
+        hasMultipleItems: items.length > 1,
+        totalConfidence,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to parse multiple items: ${error.message}`);
+      return {
+        items: [this.unknownIntent(userMessage)],
+        hasMultipleItems: false,
+        totalConfidence: 0,
+      };
     }
   }
 
@@ -226,6 +290,143 @@ User: "Add 4 more of those but at 300NB"
       prompt += `\n\n## Current RFQ Context\n\nThe user is working on an RFQ with ${context.currentItems.length} items. The most recent item is:\n`;
       const lastItem = context.currentItems[context.currentItems.length - 1];
       prompt += `- ${lastItem.description || `${lastItem.diameter}NB ${lastItem.itemType}`}\n`;
+    }
+
+    return prompt;
+  }
+
+  private buildMultiItemParserPrompt(context?: {
+    currentItems?: any[];
+    recentMessages?: string[];
+  }): string {
+    let prompt = `You are a natural language parser for piping RFQ item creation. Extract ALL items from user messages - messages often contain multiple items.
+
+## Output Format
+
+Return ONLY a JSON object with this structure:
+{
+  "items": [
+    {
+      "action": "create_item",
+      "itemType": "pipe" | "bend" | "reducer" | "tee" | "flange" | "expansion_joint" | "valve" | "instrument" | "pump",
+      "specifications": {
+        "diameter": number (in mm),
+        "secondaryDiameter": number (for reducers),
+        "length": number (in meters),
+        "schedule": string,
+        "material": string,
+        "materialGrade": string,
+        "angle": number (for bends),
+        "flangeConfig": "none" | "one_end" | "both_ends",
+        "flangeRating": string,
+        "quantity": number,
+        "description": string
+      },
+      "confidence": number (0.0-1.0),
+      "explanation": string,
+      "originalText": string (the portion of user text for this item)
+    }
+  ]
+}
+
+## Multi-Item Detection Rules
+
+1. **Comma/And Separation**: "200NB pipe and 300NB bend" → 2 items
+2. **List Format**: "1. 200NB pipe\\n2. 300NB bend" → 2 items
+3. **Semicolon Separation**: "200NB pipe; 300NB bend" → 2 items
+4. **Implicit Multiple**: "3 pipes and 2 bends" → 2 items (pipe qty 3, bend qty 2)
+5. **Range Specifications**: "200NB to 300NB reducer" → 1 reducer item with both diameters
+6. **Mixed List**: "pipes at 200NB, 300NB, and 400NB" → 3 separate pipe items
+
+## Parsing Rules (apply to each item)
+
+1. **Nominal Bore (NB) / Diameter**:
+   - "200NB" → diameter: 200
+   - "8 inch" or "8"" → diameter: 200 (convert: 8" × 25.4 ≈ 200mm)
+
+2. **Item Types**:
+   - "pipe", "straight pipe" → itemType: "pipe"
+   - "bend", "elbow" → itemType: "bend"
+   - "reducer" → itemType: "reducer"
+   - "tee" → itemType: "tee"
+
+3. **Shared Specifications**: If schedule/material specified once for multiple items, apply to all
+   - "200NB pipe and 300NB bend, both Sch 40" → both get schedule: "Sch 40"
+
+4. **Default Values**:
+   - quantity: 1 (if not specified)
+   - material: inherit from context if available
+
+## Examples
+
+User: "I need 200NB straight pipes x 5, a 90 degree bend at 200NB, and a reducer from 200NB to 150NB"
+{
+  "items": [
+    {
+      "action": "create_item",
+      "itemType": "pipe",
+      "specifications": { "diameter": 200, "quantity": 5 },
+      "confidence": 0.95,
+      "explanation": "5x 200NB straight pipes",
+      "originalText": "200NB straight pipes x 5"
+    },
+    {
+      "action": "create_item",
+      "itemType": "bend",
+      "specifications": { "diameter": 200, "angle": 90, "quantity": 1 },
+      "confidence": 0.95,
+      "explanation": "90° bend at 200NB",
+      "originalText": "a 90 degree bend at 200NB"
+    },
+    {
+      "action": "create_item",
+      "itemType": "reducer",
+      "specifications": { "diameter": 200, "secondaryDiameter": 150, "quantity": 1 },
+      "confidence": 0.95,
+      "explanation": "Reducer from 200NB to 150NB",
+      "originalText": "a reducer from 200NB to 150NB"
+    }
+  ]
+}
+
+User: "Add pipes at 100NB, 150NB, and 200NB - all 6m long, Sch 40"
+{
+  "items": [
+    {
+      "action": "create_item",
+      "itemType": "pipe",
+      "specifications": { "diameter": 100, "length": 6, "schedule": "Sch 40", "quantity": 1 },
+      "confidence": 0.9,
+      "explanation": "100NB pipe, 6m, Sch 40",
+      "originalText": "100NB"
+    },
+    {
+      "action": "create_item",
+      "itemType": "pipe",
+      "specifications": { "diameter": 150, "length": 6, "schedule": "Sch 40", "quantity": 1 },
+      "confidence": 0.9,
+      "explanation": "150NB pipe, 6m, Sch 40",
+      "originalText": "150NB"
+    },
+    {
+      "action": "create_item",
+      "itemType": "pipe",
+      "specifications": { "diameter": 200, "length": 6, "schedule": "Sch 40", "quantity": 1 },
+      "confidence": 0.9,
+      "explanation": "200NB pipe, 6m, Sch 40",
+      "originalText": "200NB"
+    }
+  ]
+}
+`;
+
+    if (context?.currentItems && context.currentItems.length > 0) {
+      prompt += `\n\n## Current RFQ Context\n\nThe user is working on an RFQ with ${context.currentItems.length} items. Recent items:\n`;
+      const recentItems = context.currentItems.slice(-3);
+      recentItems.forEach((item, index) => {
+        prompt += `- ${item.description || `${item.diameter}NB ${item.itemType}`}\n`;
+      });
+      prompt += "\nInherit material/schedule from context if not specified in new items.";
     }
 
     return prompt;
