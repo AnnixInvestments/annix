@@ -69,3 +69,4 @@ voice-filter/start-filter.vbs
 
 # Windows nul files (created accidentally on Windows)
 nul
+.parallel-claude-projects.json
