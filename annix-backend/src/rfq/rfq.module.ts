@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
@@ -35,7 +35,7 @@ import { RfqService } from "./rfq.service";
 
 @Module({
   imports: [
-    CustomerModule,
+    forwardRef(() => CustomerModule),
     EmailModule,
     TypeOrmModule.forFeature([
       Rfq,

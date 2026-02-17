@@ -12,6 +12,7 @@ primary_region = 'jnb'
 [env]
   NODE_ENV = 'production'
   PORT = '4000'
+  FRONTEND_URL = 'https://annix-frontend-test.fly.dev'
 
 [http_service]
   internal_port = 4000
