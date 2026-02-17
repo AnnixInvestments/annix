@@ -97,7 +97,7 @@ export const SABS_1123_PRESSURE_KPA = [600, 1000, 1600, 2500, 4000] as const;
 
 export const BS_4504_PRESSURE_PN = [6, 10, 16, 25, 40, 64, 100, 160] as const;
 
-export const ANSI_PRESSURE_CLASSES = [150, 300, 600, 900, 1500, 2500] as const;
+export const ANSI_PRESSURE_CLASSES = [150, 300, 400, 600, 900, 1500, 2500] as const;
 
 export const PRESSURE_CALCULATION_CONSTANTS = {
   BAR_TO_MPA: 0.1,
