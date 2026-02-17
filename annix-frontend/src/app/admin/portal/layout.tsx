@@ -6,6 +6,7 @@ import PortalToolbar from "@/app/components/PortalToolbar";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { LayoutProvider } from "@/app/context/LayoutContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
+import { NixAssistant } from "@/app/lib/nix";
 
 const navItems = [
   {
@@ -110,6 +111,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <main className="py-6">
         <div className="w-full px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
+      <NixAssistant context="admin" />
     </div>
   );
 }

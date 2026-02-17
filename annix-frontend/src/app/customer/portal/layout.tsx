@@ -7,6 +7,7 @@ import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
+import { NixAssistant } from "@/app/lib/nix";
 
 const navItems = [
   {
@@ -105,6 +106,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
         <div className="w-full px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
       <FeedbackWidget />
+      <NixAssistant context="customer" />
     </div>
   );
 }

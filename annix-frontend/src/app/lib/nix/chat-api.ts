@@ -4,6 +4,9 @@ const chatAuthHeaders = (): Record<string, string> => {
   if (typeof window === "undefined") return {};
   const token =
     localStorage.getItem("adminAccessToken") ||
+    localStorage.getItem("customerAccessToken") ||
+    localStorage.getItem("supplierAccessToken") ||
+    localStorage.getItem("fieldflowAccessToken") ||
     localStorage.getItem("authToken") ||
     localStorage.getItem("token");
   if (token) {

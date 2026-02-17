@@ -9,14 +9,16 @@ import {
   ParseIntPipe,
   Post,
   Request,
+  Res,
   UseGuards,
 } from "@nestjs/common";
-import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { Response } from "express";
+import { AnyUserAuthGuard } from "../../auth/guards/any-user-auth.guard";
 import { CreateSessionDto, NixChatService, SendMessageDto } from "../services/nix-chat.service";
 import { NixValidationService } from "../services/nix-validation.service";
 
 @Controller("nix/chat")
-@UseGuards(AdminAuthGuard)
+@UseGuards(AnyUserAuthGuard)
 export class NixChatController {
   private readonly logger = new Logger(NixChatController.name);
 
@@ -28,7 +30,7 @@ export class NixChatController {
   @Post("session")
   async createSession(@Request() req, @Body() body: { rfqId?: number }) {
     const dto: CreateSessionDto = {
-      userId: req.user.id,
+      userId: req.authUser.userId,
       rfqId: body.rfqId,
     };
 
@@ -92,6 +94,36 @@ export class NixChatController {
       const status = isRateLimit ? HttpStatus.TOO_MANY_REQUESTS : HttpStatus.SERVICE_UNAVAILABLE;
 
       throw new HttpException({ error: error.message }, status);
+    }
+  }
+
+  @Post("session/:sessionId/stream")
+  async streamMessage(
+    @Param("sessionId", ParseIntPipe) sessionId: number,
+    @Body() body: { message: string; context?: any },
+    @Res() res: Response,
+  ) {
+    const dto: SendMessageDto = {
+      sessionId,
+      message: body.message,
+      context: body.context,
+    };
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+
+    try {
+      for await (const chunk of this.chatService.streamMessage(dto)) {
+        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      }
+      res.write("data: [DONE]\n\n");
+      res.end();
+    } catch (error) {
+      this.logger.error(`Stream failed for session ${sessionId}: ${error.message}`);
+      res.write(`data: ${JSON.stringify({ type: "error", error: error.message })}\n\n`);
+      res.end();
     }
   }
 

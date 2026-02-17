@@ -87,6 +87,108 @@ const XIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const DownloadIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+
+const SparklesIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
+  </svg>
+);
+
+type PortalContext = "customer" | "supplier" | "admin" | "general";
+
+interface ContextConfig {
+  title: string;
+  subtitle: string;
+  welcomeMessage: string;
+  quickActions: Array<{ label: string; prompt: string }>;
+}
+
+const CONTEXT_CONFIGS: Record<PortalContext, ContextConfig> = {
+  customer: {
+    title: "Chat with Nix",
+    subtitle: "Your RFQ assistant",
+    welcomeMessage:
+      "I can help you create RFQs, understand piping specifications, and answer questions about your quotes.",
+    quickActions: [
+      { label: "Create a new RFQ item", prompt: "Help me add a new item to my RFQ" },
+      {
+        label: "Explain pipe specifications",
+        prompt: "What do the different pipe end options mean?",
+      },
+      { label: "Check my RFQ status", prompt: "What's the status of my current RFQs?" },
+    ],
+  },
+  supplier: {
+    title: "Chat with Nix",
+    subtitle: "Your BOQ assistant",
+    welcomeMessage:
+      "I can help you understand BOQ requirements, calculate pricing, and answer technical questions.",
+    quickActions: [
+      {
+        label: "Explain BOQ item",
+        prompt: "Can you explain the specifications for this BOQ item?",
+      },
+      {
+        label: "Calculate weld meters",
+        prompt: "How do I calculate weld linear meters for a fabricated pipe?",
+      },
+      {
+        label: "Pricing guidance",
+        prompt: "What factors should I consider when pricing fabricated items?",
+      },
+    ],
+  },
+  admin: {
+    title: "Chat with Nix",
+    subtitle: "Admin assistant",
+    welcomeMessage: "I can help with RFQ management, customer inquiries, and system operations.",
+    quickActions: [
+      { label: "RFQ overview", prompt: "Give me an overview of pending RFQs" },
+      { label: "Customer support", prompt: "How can I help a customer with their RFQ?" },
+      { label: "System status", prompt: "What's the current system status?" },
+    ],
+  },
+  general: {
+    title: "Chat with Nix",
+    subtitle: "Your AI piping assistant",
+    welcomeMessage:
+      "Ask me anything about piping specifications, or tell me to create items for your RFQ.",
+    quickActions: [
+      { label: "Add a bend", prompt: "Add a 200NB bend at 45 degrees with flanges both ends" },
+      { label: "Validation issues", prompt: "What validation issues do I have?" },
+      {
+        label: "Learn about flanges",
+        prompt: "What are the different types of flange connections?",
+      },
+    ],
+  },
+};
+
 interface PanelGeometry {
   x: number;
   y: number;
@@ -103,6 +205,7 @@ interface NixChatPanelProps {
   savedGeometry?: PanelGeometry | null;
   onGeometryChange?: (geometry: PanelGeometry) => void;
   className?: string;
+  portalContext?: PortalContext;
 }
 
 const MIN_WIDTH = 320;
@@ -115,10 +218,13 @@ const GEOMETRY_STORAGE_KEY = "nix-chat-panel-geometry";
 
 type ResizeEdge = "n" | "e" | "w" | "s" | "nw" | "ne" | "sw" | "se" | null;
 
-const defaultPosition = (): { x: number; y: number } => ({
-  x: window.innerWidth - DEFAULT_WIDTH - EDGE_PADDING,
-  y: window.innerHeight - DEFAULT_HEIGHT - BOTTOM_PADDING,
-});
+const defaultPosition = (): { x: number; y: number } => {
+  if (typeof window === "undefined") return { x: 0, y: 0 };
+  return {
+    x: window.innerWidth - DEFAULT_WIDTH - EDGE_PADDING,
+    y: window.innerHeight - DEFAULT_HEIGHT - BOTTOM_PADDING,
+  };
+};
 
 const loadSavedGeometry = (saved?: PanelGeometry | null): PanelGeometry | null => {
   if (saved) return saved;
@@ -141,6 +247,7 @@ export function NixChatPanel({
   savedGeometry,
   onGeometryChange,
   className = "",
+  portalContext = "general",
 }: NixChatPanelProps) {
   const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -149,9 +256,12 @@ export function NixChatPanel({
   const [streamingContent, setStreamingContent] = useState("");
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [initError, setInitError] = useState<string | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const contextConfig = CONTEXT_CONFIGS[portalContext];
 
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
     const geo = loadSavedGeometry(savedGeometry);
@@ -399,6 +509,107 @@ export function NixChatPanel({
     validateCurrentItems();
   }, [currentRfqItems]);
 
+  const exportChatAsText = useCallback(() => {
+    const lines = messages.map((msg) => {
+      const role = msg.role === "user" ? "You" : "Nix";
+      const timestamp = new Date(msg.createdAt).toLocaleString();
+      return `[${timestamp}] ${role}:\n${msg.content}\n`;
+    });
+    const content = `Nix Chat Export\nExported: ${new Date().toLocaleString()}\n${"=".repeat(50)}\n\n${lines.join("\n")}`;
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nix-chat-${new Date().toISOString().split("T")[0]}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  }, [messages]);
+
+  const exportChatAsJson = useCallback(() => {
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      sessionId,
+      portalContext,
+      messages: messages.map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.createdAt,
+        metadata: msg.metadata,
+      })),
+    };
+    const content = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([content], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `nix-chat-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  }, [messages, sessionId, portalContext]);
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handleClickOutside = () => setShowExportMenu(false);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [showExportMenu]);
+
+  const requestSummary = useCallback(async () => {
+    if (!sessionId || isStreaming || messages.length < 2) return;
+
+    setIsStreaming(true);
+    setStreamingContent("");
+
+    const summaryPrompt =
+      "Please provide a brief summary of our conversation so far, highlighting the key topics discussed and any important decisions or items mentioned.";
+
+    const tempUserMessage: ChatMessage = {
+      id: Date.now(),
+      role: "user",
+      content: summaryPrompt,
+      createdAt: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, tempUserMessage]);
+
+    try {
+      setStreamingContent("Generating summary...");
+
+      const result = await nixChatApi.sendMessage(sessionId, summaryPrompt, {
+        currentRfqItems,
+        lastValidationIssues: validationIssues,
+      });
+
+      const assistantMessage: ChatMessage = {
+        id: result.messageId,
+        role: "assistant",
+        content: result.content,
+        metadata: result.metadata,
+        createdAt: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+      setStreamingContent("");
+    } catch (error) {
+      console.error("Failed to generate summary:", error);
+      setStreamingContent("");
+
+      const errorMessage: ChatMessage = {
+        id: Date.now() + 1,
+        role: "assistant",
+        content: "Sorry, I couldn't generate a summary. Please try again.",
+        metadata: { intent: "error" },
+        createdAt: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [sessionId, isStreaming, messages, currentRfqItems, validationIssues]);
+
   const issueIcon = (severity: ValidationIssue["severity"]) => {
     if (severity === "error") return <AlertCircleIcon className="h-4 w-4 text-red-500" />;
     if (severity === "warning") return <AlertCircleIcon className="h-4 w-4 text-yellow-500" />;
@@ -463,19 +674,71 @@ export function NixChatPanel({
             <MessageCircleIcon className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">Chat with Nix</h3>
-            <p className="text-xs text-gray-600">Your AI piping assistant</p>
+            <h3 className="font-semibold text-gray-900">{contextConfig.title}</h3>
+            <p className="text-xs text-gray-600">{contextConfig.subtitle}</p>
           </div>
         </div>
-        {onClose ? (
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-orange-100 rounded transition-colors"
-            aria-label="Close chat"
-          >
-            <XIcon className="h-5 w-5 text-gray-600" />
-          </button>
-        ) : null}
+        <div className="flex items-center gap-1">
+          {messages.length >= 2 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                requestSummary();
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              disabled={isStreaming}
+              className="p-1 hover:bg-orange-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Summarize conversation"
+              title="Get conversation summary"
+            >
+              <SparklesIcon className="h-5 w-5 text-gray-600" />
+            </button>
+          )}
+          {messages.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowExportMenu(!showExportMenu);
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="p-1 hover:bg-orange-100 rounded transition-colors"
+                aria-label="Export chat"
+              >
+                <DownloadIcon className="h-5 w-5 text-gray-600" />
+              </button>
+              {showExportMenu && (
+                <div
+                  className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[140px]"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={exportChatAsText}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Export as TXT
+                  </button>
+                  <button
+                    onClick={exportChatAsJson}
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Export as JSON
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          {onClose ? (
+            <button
+              onClick={onClose}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="p-1 hover:bg-orange-100 rounded transition-colors"
+              aria-label="Close chat"
+            >
+              <XIcon className="h-5 w-5 text-gray-600" />
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {validationIssues.length > 0 ? (
@@ -506,23 +769,17 @@ export function NixChatPanel({
         ) : messages.length === 0 && !streamingContent ? (
           <div className="text-center text-gray-500 mt-8">
             <MessageCircleIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm">Ask me anything about piping specifications,</p>
-            <p className="text-sm">or tell me to create items for your RFQ</p>
+            <p className="text-sm px-4">{contextConfig.welcomeMessage}</p>
             <div className="mt-4 space-y-2">
-              <button
-                onClick={() =>
-                  setInputValue("Add a 200NB bend at 45 degrees with flanges both ends")
-                }
-                className="text-xs text-orange-600 hover:text-orange-700 block mx-auto"
-              >
-                Try: "Add a 200NB bend at 45 degrees..."
-              </button>
-              <button
-                onClick={() => setInputValue("What validation issues do I have?")}
-                className="text-xs text-orange-600 hover:text-orange-700 block mx-auto"
-              >
-                Try: "What validation issues do I have?"
-              </button>
+              {contextConfig.quickActions.map((action, index) => (
+                <button
+                  key={index}
+                  onClick={() => setInputValue(action.prompt)}
+                  className="text-xs text-orange-600 hover:text-orange-700 block mx-auto px-2"
+                >
+                  Try: "{action.label}"
+                </button>
+              ))}
             </div>
           </div>
         ) : null}

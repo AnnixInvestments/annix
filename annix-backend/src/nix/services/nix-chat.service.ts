@@ -180,6 +180,115 @@ export class NixChatService {
     };
   }
 
+  async *streamMessage(
+    dto: SendMessageDto,
+  ): AsyncGenerator<{ type: string; delta?: string; error?: string; metadata?: any }> {
+    if (!this.geminiApiKey) {
+      yield { type: "error", error: "Gemini API key not configured" };
+      return;
+    }
+
+    const session = await this.session(dto.sessionId);
+
+    if (dto.context?.currentRfqItems) {
+      session.sessionContext.currentRfqItems = dto.context.currentRfqItems;
+    }
+    if (dto.context?.lastValidationIssues) {
+      session.sessionContext.lastValidationIssues = dto.context.lastValidationIssues;
+    }
+
+    const userMessage: ChatMessage = { role: "user", content: dto.message };
+    const conversationHistory = this.buildConversationHistory(session, userMessage);
+    const systemPrompt = this.buildSystemPrompt(session);
+
+    const startTime = Date.now();
+
+    const geminiContents = conversationHistory.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    }));
+
+    const response = await fetch(
+      `${this.geminiBaseUrl}/models/${this.geminiModel}:streamGenerateContent?key=${this.geminiApiKey}&alt=sse`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: geminiContents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 4096,
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`Gemini stream error: ${response.status} - ${errorText}`);
+      yield { type: "error", error: `AI service error (${response.status})` };
+      return;
+    }
+
+    yield { type: "message_start" };
+
+    let fullContent = "";
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (reader) {
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr && jsonStr !== "[DONE]") {
+              try {
+                const data = JSON.parse(jsonStr);
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                if (text) {
+                  fullContent += text;
+                  yield { type: "content_delta", delta: text };
+                }
+              } catch {
+                /* ignored */
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const processingTimeMs = Date.now() - startTime;
+
+    await this.saveMessage(dto.sessionId, "user", dto.message);
+    await this.saveMessage(dto.sessionId, "assistant", fullContent, {
+      processingTimeMs,
+      model: this.geminiModel,
+      streamed: true,
+    });
+
+    session.conversationHistory = [
+      ...session.conversationHistory,
+      { role: "user" as const, content: dto.message, timestamp: new Date().toISOString() },
+      { role: "assistant" as const, content: fullContent, timestamp: new Date().toISOString() },
+    ].slice(-this.maxHistoryLength);
+
+    session.lastInteractionAt = new Date();
+    await this.sessionRepository.save(session);
+
+    yield { type: "message_stop", metadata: { processingTimeMs, model: this.geminiModel } };
+  }
+
   async conversationHistory(sessionId: number, limit: number = 50): Promise<NixChatMessage[]> {
     return this.messageRepository.find({
       where: { sessionId },
