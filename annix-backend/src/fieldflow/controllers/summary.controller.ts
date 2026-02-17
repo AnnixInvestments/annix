@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, UseGuards } from "@nestjs/common";
-import { AuthGuard } from "@nestjs/passport";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { FieldFlowAuthGuard } from "../auth";
 import { MeetingSummaryDto, SendSummaryDto, SendSummaryResultDto, SummaryPreviewDto } from "../dto";
 import { MeetingSummaryService } from "../services/meeting-summary.service";
 
 @ApiTags("FieldFlow Meeting Summaries")
 @ApiBearerAuth()
-@UseGuards(AuthGuard("jwt"))
+@UseGuards(FieldFlowAuthGuard)
 @Controller("fieldflow/summaries")
 export class SummaryController {
   constructor(private readonly summaryService: MeetingSummaryService) {}

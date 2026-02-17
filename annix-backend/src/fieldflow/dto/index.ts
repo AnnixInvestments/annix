@@ -1,4 +1,11 @@
 export {
+  CreateRepProfileDto,
+  RepProfileResponseDto,
+  RepProfileStatusDto,
+  TargetCustomerProfileDto,
+  UpdateRepProfileDto,
+} from "../rep-profile";
+export {
   CalendarConnectionResponseDto,
   CalendarEventResponseDto,
   CalendarListResponseDto,
@@ -14,7 +21,6 @@ export {
   TestCrmConnectionDto,
   UpdateCrmConfigDto,
 } from "./crm.dto";
-
 export {
   CreateMeetingDto,
   EndMeetingDto,

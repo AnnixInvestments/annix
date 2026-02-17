@@ -23,9 +23,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
-import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
-import { Roles } from "../../auth/roles.decorator";
-import { RolesGuard } from "../../auth/roles.guard";
+import { FieldFlowAuthGuard } from "../auth";
 import {
   CompleteUploadDto,
   InitiateUploadDto,
@@ -36,17 +34,17 @@ import {
 } from "../dto";
 import { RecordingService } from "../services/recording.service";
 
-interface AuthenticatedRequest extends Request {
-  user: {
-    id: number;
+interface FieldFlowRequest extends Request {
+  fieldflowUser: {
+    userId: number;
+    email: string;
     sessionToken: string;
   };
 }
 
 @ApiTags("FieldFlow - Recordings")
 @Controller("fieldflow/recordings")
-@UseGuards(AdminAuthGuard, RolesGuard)
-@Roles("admin", "employee")
+@UseGuards(FieldFlowAuthGuard)
 @ApiBearerAuth()
 export class RecordingController {
   constructor(private readonly recordingService: RecordingService) {}
@@ -56,8 +54,8 @@ export class RecordingController {
   @ApiResponse({ status: 201, description: "Upload initiated", type: InitiateUploadResponseDto })
   @ApiResponse({ status: 404, description: "Meeting not found" })
   @ApiResponse({ status: 400, description: "Recording already exists" })
-  initiateUpload(@Req() req: AuthenticatedRequest, @Body() dto: InitiateUploadDto) {
-    return this.recordingService.initiateUpload(req.user.id, dto);
+  initiateUpload(@Req() req: FieldFlowRequest, @Body() dto: InitiateUploadDto) {
+    return this.recordingService.initiateUpload(req.fieldflowUser.userId, dto);
   }
 
   @Post(":id/chunk")
@@ -68,12 +66,12 @@ export class RecordingController {
   @ApiBody({ description: "Raw audio chunk data" })
   @ApiResponse({ status: 200, description: "Chunk uploaded" })
   async uploadChunk(
-    @Req() req: RawBodyRequest<AuthenticatedRequest>,
+    @Req() req: RawBodyRequest<FieldFlowRequest>,
     @Param("id", ParseIntPipe) id: number,
     @Query("index", ParseIntPipe) chunkIndex: number,
   ) {
     const body = req.body as Buffer;
-    return this.recordingService.uploadChunk(req.user.id, id, chunkIndex, body);
+    return this.recordingService.uploadChunk(req.fieldflowUser.userId, id, chunkIndex, body);
   }
 
   @Post(":id/complete")
@@ -82,11 +80,11 @@ export class RecordingController {
   @ApiResponse({ status: 200, description: "Upload completed", type: RecordingResponseDto })
   @ApiResponse({ status: 404, description: "Recording not found" })
   completeUpload(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: CompleteUploadDto,
   ) {
-    return this.recordingService.completeUpload(req.user.id, id, dto);
+    return this.recordingService.completeUpload(req.fieldflowUser.userId, id, dto);
   }
 
   @Get(":id")
@@ -94,8 +92,8 @@ export class RecordingController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Recording details", type: RecordingWithSegmentsDto })
   @ApiResponse({ status: 404, description: "Recording not found" })
-  recording(@Req() req: AuthenticatedRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.recordingService.recording(req.user.id, id);
+  recording(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.recordingService.recording(req.fieldflowUser.userId, id);
   }
 
   @Get("meeting/:meetingId")
@@ -107,10 +105,10 @@ export class RecordingController {
     type: RecordingWithSegmentsDto,
   })
   recordingByMeeting(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Param("meetingId", ParseIntPipe) meetingId: number,
   ) {
-    return this.recordingService.recordingByMeeting(req.user.id, meetingId);
+    return this.recordingService.recordingByMeeting(req.fieldflowUser.userId, meetingId);
   }
 
   @Patch(":id/speaker-labels")
@@ -119,11 +117,11 @@ export class RecordingController {
   @ApiResponse({ status: 200, description: "Labels updated", type: RecordingResponseDto })
   @ApiResponse({ status: 404, description: "Recording not found" })
   updateSpeakerLabels(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateSpeakerLabelsDto,
   ) {
-    return this.recordingService.updateSpeakerLabels(req.user.id, id, dto);
+    return this.recordingService.updateSpeakerLabels(req.fieldflowUser.userId, id, dto);
   }
 
   @Delete(":id")
@@ -131,7 +129,7 @@ export class RecordingController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Recording deleted" })
   @ApiResponse({ status: 404, description: "Recording not found" })
-  deleteRecording(@Req() req: AuthenticatedRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.recordingService.deleteRecording(req.user.id, id);
+  deleteRecording(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.recordingService.deleteRecording(req.fieldflowUser.userId, id);
   }
 }

@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ScheduleModule } from "@nestjs/schedule";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
+import { FieldFlowAuthModule } from "./auth";
 import {
   CalendarController,
   CrmController,
@@ -28,6 +29,7 @@ import {
   GoogleCalendarProvider,
   OutlookCalendarProvider,
 } from "./providers";
+import { RepProfileModule } from "./rep-profile";
 import {
   CalendarService,
   CalendarSyncService,
@@ -56,6 +58,8 @@ import {
     ]),
     ScheduleModule.forRoot(),
     AdminModule,
+    RepProfileModule,
+    FieldFlowAuthModule,
   ],
   controllers: [
     ProspectController,
@@ -93,6 +97,8 @@ import {
     TranscriptionService,
     MeetingSummaryService,
     CrmService,
+    RepProfileModule,
+    FieldFlowAuthModule,
   ],
 })
 export class FieldFlowModule {}

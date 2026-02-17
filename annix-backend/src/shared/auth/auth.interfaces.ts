@@ -37,10 +37,11 @@ export interface DeviceBindingEntity {
 export interface JwtTokenPayload {
   sub: number;
   email: string;
-  type: "customer" | "supplier" | "admin";
+  type: "customer" | "supplier" | "admin" | "fieldflow";
   sessionToken: string;
   customerId?: number;
   supplierId?: number;
+  fieldflowUserId?: number;
   roles?: string[];
 }
 

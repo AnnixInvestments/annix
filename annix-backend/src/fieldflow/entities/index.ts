@@ -1,3 +1,4 @@
+export { RepProfile, type TargetCustomerProfile } from "../rep-profile";
 export {
   CalendarConnection,
   CalendarProvider,

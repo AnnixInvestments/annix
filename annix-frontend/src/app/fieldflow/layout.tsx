@@ -1,14 +1,17 @@
 "use client";
 
-import React from "react";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect } from "react";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import {
   OfflineIndicator,
   PwaInstallPrompt,
   ServiceWorkerRegistration,
 } from "@/app/components/pwa";
+import { FieldFlowAuthProvider, useFieldFlowAuth } from "@/app/context/FieldFlowAuthContext";
 import { LayoutProvider } from "@/app/context/LayoutContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
+import { useRepProfileStatus } from "@/app/lib/query/hooks";
 
 const navItems = [
   {
@@ -41,26 +44,128 @@ const navItems = [
 
 function AnnixRepNavigation() {
   const { flags } = useFeatureFlags();
+  const { user, logout } = useFieldFlowAuth();
+
+  const toolbarUser = user
+    ? {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      }
+    : null;
 
   return (
     <PortalToolbar
       portalType="fieldflow"
       navItems={navItems}
-      user={null}
-      onLogout={() => {
-        window.location.href = "/";
+      user={toolbarUser}
+      onLogout={async () => {
+        await logout();
+        window.location.href = "/fieldflow/setup";
       }}
       featureFlags={flags}
     />
   );
 }
 
+function SetupGate({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const { isAuthenticated, isLoading: authLoading } = useFieldFlowAuth();
+  const {
+    data: profileStatus,
+    isLoading: profileLoading,
+    isSuccess,
+    isError,
+  } = useRepProfileStatus();
+
+  const isSetupPage = pathname === "/fieldflow/setup";
+  const isSettingsPage = pathname?.startsWith("/fieldflow/settings");
+  const isOAuthCallback = pathname === "/fieldflow/oauth/callback";
+  const isExcludedPage = isSetupPage || isSettingsPage || isOAuthCallback;
+
+  const isLoading = authLoading || (isAuthenticated && profileLoading);
+  const needsSetup = isSuccess && (!profileStatus || !profileStatus.setupCompleted);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!isAuthenticated && !isSetupPage) {
+      router.replace("/fieldflow/setup");
+      return;
+    }
+
+    if (isExcludedPage) {
+      return;
+    }
+
+    if (!profileLoading && needsSetup) {
+      router.replace("/fieldflow/setup");
+    }
+  }, [
+    isAuthenticated,
+    needsSetup,
+    authLoading,
+    profileLoading,
+    isExcludedPage,
+    isSetupPage,
+    router,
+  ]);
+
+  if (isSetupPage) {
+    return <>{children}</>;
+  }
+
+  if (isExcludedPage && isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return <>{children}</>;
+  }
+
+  if (needsSetup) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function LayoutContent({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useFieldFlowAuth();
+  const pathname = usePathname();
+  const isSetupPage = pathname === "/fieldflow/setup";
+  const showNavigation = isAuthenticated && !isSetupPage && !isLoading;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      <AnnixRepNavigation />
+      {showNavigation && <AnnixRepNavigation />}
       <main className="py-6">
-        <div className="w-full px-4 sm:px-6 lg:px-8">{children}</div>
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <SetupGate>{children}</SetupGate>
+        </div>
       </main>
       <ServiceWorkerRegistration />
       <PwaInstallPrompt />
@@ -72,7 +177,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 export default function FieldFlowLayout({ children }: { children: React.ReactNode }) {
   return (
     <LayoutProvider>
-      <LayoutContent>{children}</LayoutContent>
+      <FieldFlowAuthProvider>
+        <LayoutContent>{children}</LayoutContent>
+      </FieldFlowAuthProvider>
     </LayoutProvider>
   );
 }

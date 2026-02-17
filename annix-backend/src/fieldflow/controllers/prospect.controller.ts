@@ -20,9 +20,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
-import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
-import { Roles } from "../../auth/roles.decorator";
-import { RolesGuard } from "../../auth/roles.guard";
+import { FieldFlowAuthGuard } from "../auth";
 import {
   CreateProspectDto,
   NearbyProspectsQueryDto,
@@ -32,17 +30,17 @@ import {
 import { ProspectStatus } from "../entities";
 import { ProspectService } from "../services";
 
-interface AuthenticatedRequest extends Request {
-  user: {
-    id: number;
+interface FieldFlowRequest extends Request {
+  fieldflowUser: {
+    userId: number;
+    email: string;
     sessionToken: string;
   };
 }
 
 @ApiTags("FieldFlow - Prospects")
 @Controller("fieldflow/prospects")
-@UseGuards(AdminAuthGuard, RolesGuard)
-@Roles("admin", "employee")
+@UseGuards(FieldFlowAuthGuard)
 @ApiBearerAuth()
 export class ProspectController {
   constructor(private readonly prospectService: ProspectService) {}
@@ -50,23 +48,23 @@ export class ProspectController {
   @Post()
   @ApiOperation({ summary: "Create a new prospect" })
   @ApiResponse({ status: 201, description: "Prospect created", type: ProspectResponseDto })
-  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateProspectDto) {
-    return this.prospectService.create(req.user.id, dto);
+  create(@Req() req: FieldFlowRequest, @Body() dto: CreateProspectDto) {
+    return this.prospectService.create(req.fieldflowUser.userId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: "Get all prospects for current user" })
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
-  findAll(@Req() req: AuthenticatedRequest) {
-    return this.prospectService.findAll(req.user.id);
+  findAll(@Req() req: FieldFlowRequest) {
+    return this.prospectService.findAll(req.fieldflowUser.userId);
   }
 
   @Get("status/:status")
   @ApiOperation({ summary: "Get prospects by status" })
   @ApiParam({ name: "status", enum: ProspectStatus })
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
-  findByStatus(@Req() req: AuthenticatedRequest, @Param("status") status: ProspectStatus) {
-    return this.prospectService.findByStatus(req.user.id, status);
+  findByStatus(@Req() req: FieldFlowRequest, @Param("status") status: ProspectStatus) {
+    return this.prospectService.findByStatus(req.fieldflowUser.userId, status);
   }
 
   @Get("nearby")
@@ -81,7 +79,7 @@ export class ProspectController {
     type: [ProspectResponseDto],
   })
   findNearby(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Query("latitude") latitude: string,
     @Query("longitude") longitude: string,
     @Query("radiusKm") radiusKm?: string,
@@ -93,21 +91,21 @@ export class ProspectController {
       radiusKm: radiusKm ? parseFloat(radiusKm) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     };
-    return this.prospectService.findNearby(req.user.id, query);
+    return this.prospectService.findNearby(req.fieldflowUser.userId, query);
   }
 
   @Get("stats")
   @ApiOperation({ summary: "Get prospect counts by status" })
   @ApiResponse({ status: 200, description: "Counts by status" })
-  countByStatus(@Req() req: AuthenticatedRequest) {
-    return this.prospectService.countByStatus(req.user.id);
+  countByStatus(@Req() req: FieldFlowRequest) {
+    return this.prospectService.countByStatus(req.fieldflowUser.userId);
   }
 
   @Get("follow-ups")
   @ApiOperation({ summary: "Get prospects with due follow-ups" })
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
-  followUpsDue(@Req() req: AuthenticatedRequest) {
-    return this.prospectService.followUpsDue(req.user.id);
+  followUpsDue(@Req() req: FieldFlowRequest) {
+    return this.prospectService.followUpsDue(req.fieldflowUser.userId);
   }
 
   @Get(":id")
@@ -115,8 +113,8 @@ export class ProspectController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Prospect details", type: ProspectResponseDto })
   @ApiResponse({ status: 404, description: "Prospect not found" })
-  findOne(@Req() req: AuthenticatedRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.findOne(req.user.id, id);
+  findOne(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.prospectService.findOne(req.fieldflowUser.userId, id);
   }
 
   @Patch(":id")
@@ -125,11 +123,11 @@ export class ProspectController {
   @ApiResponse({ status: 200, description: "Prospect updated", type: ProspectResponseDto })
   @ApiResponse({ status: 404, description: "Prospect not found" })
   update(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateProspectDto,
   ) {
-    return this.prospectService.update(req.user.id, id, dto);
+    return this.prospectService.update(req.fieldflowUser.userId, id, dto);
   }
 
   @Patch(":id/status/:status")
@@ -138,19 +136,19 @@ export class ProspectController {
   @ApiParam({ name: "status", enum: ProspectStatus })
   @ApiResponse({ status: 200, description: "Status updated", type: ProspectResponseDto })
   updateStatus(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Param("id", ParseIntPipe) id: number,
     @Param("status") status: ProspectStatus,
   ) {
-    return this.prospectService.updateStatus(req.user.id, id, status);
+    return this.prospectService.updateStatus(req.fieldflowUser.userId, id, status);
   }
 
   @Post(":id/contacted")
   @ApiOperation({ summary: "Mark prospect as contacted" })
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Marked as contacted", type: ProspectResponseDto })
-  markContacted(@Req() req: AuthenticatedRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.markContacted(req.user.id, id);
+  markContacted(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.prospectService.markContacted(req.fieldflowUser.userId, id);
   }
 
   @Delete(":id")
@@ -158,7 +156,7 @@ export class ProspectController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Prospect deleted" })
   @ApiResponse({ status: 404, description: "Prospect not found" })
-  remove(@Req() req: AuthenticatedRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.remove(req.user.id, id);
+  remove(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.prospectService.remove(req.fieldflowUser.userId, id);
   }
 }

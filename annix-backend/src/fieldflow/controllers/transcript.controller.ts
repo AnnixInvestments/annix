@@ -8,14 +8,14 @@ import {
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { AuthGuard } from "@nestjs/passport";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { FieldFlowAuthGuard } from "../auth";
 import { TranscriptWithSegmentsDto } from "../dto";
 import { TranscriptionService } from "../services/transcription.service";
 
 @ApiTags("FieldFlow Transcripts")
 @ApiBearerAuth()
-@UseGuards(AuthGuard("jwt"))
+@UseGuards(FieldFlowAuthGuard)
 @Controller("fieldflow/transcripts")
 export class TranscriptController {
   constructor(private readonly transcriptionService: TranscriptionService) {}

@@ -33,12 +33,12 @@ export const resolveBaseUrl = (originHint?: string | null) => {
   return trimmed;
 };
 
-export const browserBaseUrl = () => {
+export function browserBaseUrl(): string {
   if (typeof window !== "undefined") {
     return resolveBaseUrl(window.location.origin);
   }
   return resolveBaseUrl();
-};
+}
 
 export const API_BASE_URL = resolveBaseUrl();
 
@@ -49,6 +49,18 @@ export const apiConfig = {
 export const getAuthHeaders = (): Record<string, string> => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("auth_token");
+    if (token) {
+      return {
+        Authorization: `Bearer ${token}`,
+      };
+    }
+  }
+  return {};
+};
+
+export const fieldflowAuthHeaders = (): Record<string, string> => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("fieldflowAccessToken");
     if (token) {
       return {
         Authorization: `Bearer ${token}`,

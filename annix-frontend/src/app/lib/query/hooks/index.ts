@@ -195,6 +195,12 @@ export {
   useVisits,
 } from "./fieldflow/useFieldFlow";
 export {
+  useFieldFlowCheckEmail,
+  useFieldFlowLogin,
+  useFieldFlowLogout,
+  useFieldFlowRegister,
+} from "./fieldflow/useFieldFlowAuth";
+export {
   useCompleteRecordingUpload,
   useDeleteRecording,
   useInitiateRecordingUpload,
@@ -203,6 +209,14 @@ export {
   useUpdateSpeakerLabels,
   useUploadRecordingChunk,
 } from "./fieldflow/useRecording";
+export {
+  useCompleteRepSetup,
+  useCreateRepProfile,
+  useRepProfile,
+  useRepProfileStatus,
+  useRepSearchTerms,
+  useUpdateRepProfile,
+} from "./fieldflow/useRepProfile";
 export {
   useColdCallSuggestions,
   useOptimizeRoute,

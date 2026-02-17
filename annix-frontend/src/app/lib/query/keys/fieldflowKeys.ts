@@ -1,6 +1,7 @@
 import type { ProspectStatus } from "@/app/lib/api/fieldflowApi";
 
 export const fieldflowKeys = {
+  all: ["fieldflow"] as const,
   dashboard: {
     all: ["fieldflow", "dashboard"] as const,
     data: () => [...fieldflowKeys.dashboard.all, "data"] as const,
@@ -70,5 +71,11 @@ export const fieldflowKeys = {
       [...fieldflowKeys.routes.all, "coldCallSuggestions", date, lat, lng] as const,
     planDay: (date: string, includeColdCalls?: boolean, lat?: number, lng?: number) =>
       [...fieldflowKeys.routes.all, "planDay", date, includeColdCalls, lat, lng] as const,
+  },
+  repProfile: {
+    all: ["fieldflow", "repProfile"] as const,
+    status: () => [...fieldflowKeys.repProfile.all, "status"] as const,
+    profile: () => [...fieldflowKeys.repProfile.all, "profile"] as const,
+    searchTerms: () => [...fieldflowKeys.repProfile.all, "searchTerms"] as const,
   },
 } as const;

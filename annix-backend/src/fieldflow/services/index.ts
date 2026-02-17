@@ -1,3 +1,4 @@
+export { RepProfileService } from "../rep-profile";
 export { CalendarService } from "./calendar.service";
 export { CalendarSyncService } from "./calendar-sync.service";
 export { CrmService } from "./crm.service";

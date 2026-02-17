@@ -1,4 +1,60 @@
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { fieldflowAuthHeaders } from "@/lib/api-config";
+
+const getApiUrl = () => {
+  if (typeof window !== "undefined") {
+    return "http://localhost:4001";
+  }
+  return "http://localhost:4001";
+};
+
+export interface TargetCustomerProfile {
+  businessTypes?: string[];
+  companySizes?: string[];
+  decisionMakerTitles?: string[];
+}
+
+export interface RepProfile {
+  id: number;
+  userId: number;
+  industry: string;
+  subIndustries: string[];
+  productCategories: string[];
+  companyName: string | null;
+  jobTitle: string | null;
+  territoryDescription: string | null;
+  defaultSearchLatitude: number | null;
+  defaultSearchLongitude: number | null;
+  defaultSearchRadiusKm: number;
+  targetCustomerProfile: TargetCustomerProfile | null;
+  customSearchTerms: string[] | null;
+  setupCompleted: boolean;
+  setupCompletedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateRepProfileDto {
+  industry: string;
+  subIndustries: string[];
+  productCategories: string[];
+  companyName?: string;
+  jobTitle?: string;
+  territoryDescription?: string;
+  defaultSearchLatitude?: number;
+  defaultSearchLongitude?: number;
+  defaultSearchRadiusKm?: number;
+  targetCustomerProfile?: TargetCustomerProfile;
+  customSearchTerms?: string[];
+}
+
+export interface UpdateRepProfileDto extends Partial<CreateRepProfileDto> {
+  setupCompleted?: boolean;
+}
+
+export interface RepProfileStatus {
+  setupCompleted: boolean;
+  profile: RepProfile | null;
+}
 
 export type CalendarProvider = "google" | "outlook" | "apple" | "caldav";
 export type CalendarSyncStatus = "active" | "paused" | "error" | "expired";
@@ -455,14 +511,14 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export const fieldflowApi = {
   dashboard: async (): Promise<FieldFlowDashboard> => {
     const [prospectsRes, meetingsRes, followUpsRes] = await Promise.all([
-      fetch(`${browserBaseUrl}/fieldflow/prospects`, {
-        headers: getAuthHeaders(),
+      fetch(`${getApiUrl()}/fieldflow/prospects`, {
+        headers: fieldflowAuthHeaders(),
       }),
-      fetch(`${browserBaseUrl}/fieldflow/meetings/today`, {
-        headers: getAuthHeaders(),
+      fetch(`${getApiUrl()}/fieldflow/meetings/today`, {
+        headers: fieldflowAuthHeaders(),
       }),
-      fetch(`${browserBaseUrl}/fieldflow/prospects/follow-ups`, {
-        headers: getAuthHeaders(),
+      fetch(`${getApiUrl()}/fieldflow/prospects/follow-ups`, {
+        headers: fieldflowAuthHeaders(),
       }),
     ]);
 
@@ -495,31 +551,31 @@ export const fieldflowApi = {
 
   prospects: {
     list: async (): Promise<Prospect[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
 
     listByStatus: async (status: ProspectStatus): Promise<Prospect[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects/status/${status}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/status/${status}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
 
     detail: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects/${id}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Prospect>(response);
     },
 
     create: async (dto: CreateProspectDto): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -528,10 +584,10 @@ export const fieldflowApi = {
     },
 
     update: async (id: number, dto: Partial<CreateProspectDto>): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects/${id}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}`, {
         method: "PATCH",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -540,25 +596,25 @@ export const fieldflowApi = {
     },
 
     updateStatus: async (id: number, status: ProspectStatus): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects/${id}/status/${status}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}/status/${status}`, {
         method: "PATCH",
-        headers: getAuthHeaders(),
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Prospect>(response);
     },
 
     markContacted: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects/${id}/contacted`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}/contacted`, {
         method: "POST",
-        headers: getAuthHeaders(),
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Prospect>(response);
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects/${id}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}`, {
         method: "DELETE",
-        headers: getAuthHeaders(),
+        headers: fieldflowAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -579,22 +635,22 @@ export const fieldflowApi = {
       if (radiusKm) params.set("radiusKm", radiusKm.toString());
       if (limit) params.set("limit", limit.toString());
 
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects/nearby?${params}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/nearby?${params}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
 
     stats: async (): Promise<Record<ProspectStatus, number>> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects/stats`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/stats`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Record<ProspectStatus, number>>(response);
     },
 
     followUpsDue: async (): Promise<Prospect[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/prospects/follow-ups`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/follow-ups`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
@@ -602,39 +658,39 @@ export const fieldflowApi = {
 
   meetings: {
     list: async (): Promise<Meeting[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Meeting[]>(response);
     },
 
     today: async (): Promise<Meeting[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings/today`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/today`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Meeting[]>(response);
     },
 
     upcoming: async (days?: number): Promise<Meeting[]> => {
       const params = days ? `?days=${days}` : "";
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings/upcoming${params}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/upcoming${params}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Meeting[]>(response);
     },
 
     detail: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings/${id}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Meeting>(response);
     },
 
     create: async (dto: CreateMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -643,10 +699,10 @@ export const fieldflowApi = {
     },
 
     update: async (id: number, dto: Partial<CreateMeetingDto>): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings/${id}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}`, {
         method: "PATCH",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -655,10 +711,10 @@ export const fieldflowApi = {
     },
 
     start: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings/${id}/start`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}/start`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({}),
@@ -667,10 +723,10 @@ export const fieldflowApi = {
     },
 
     end: async (id: number, notes?: string, outcomes?: string): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings/${id}/end`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}/end`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ notes, outcomes }),
@@ -679,17 +735,17 @@ export const fieldflowApi = {
     },
 
     cancel: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings/${id}/cancel`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}/cancel`, {
         method: "POST",
-        headers: getAuthHeaders(),
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Meeting>(response);
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/meetings/${id}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}`, {
         method: "DELETE",
-        headers: getAuthHeaders(),
+        headers: fieldflowAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -700,31 +756,31 @@ export const fieldflowApi = {
 
   visits: {
     list: async (): Promise<Visit[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/visits`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/visits`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Visit[]>(response);
     },
 
     today: async (): Promise<Visit[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/visits/today`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/visits/today`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Visit[]>(response);
     },
 
     byProspect: async (prospectId: number): Promise<Visit[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/visits/prospect/${prospectId}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/visits/prospect/${prospectId}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Visit[]>(response);
     },
 
     create: async (dto: CreateVisitDto): Promise<Visit> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/visits`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/visits`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -733,10 +789,10 @@ export const fieldflowApi = {
     },
 
     checkIn: async (id: number, latitude: number, longitude: number): Promise<Visit> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/visits/${id}/check-in`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/visits/${id}/check-in`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ latitude, longitude }),
@@ -751,10 +807,10 @@ export const fieldflowApi = {
       outcome?: VisitOutcome,
       notes?: string,
     ): Promise<Visit> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/visits/${id}/check-out`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/visits/${id}/check-out`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ latitude, longitude, outcome, notes }),
@@ -767,17 +823,17 @@ export const fieldflowApi = {
     oauthUrl: async (provider: CalendarProvider, redirectUri: string): Promise<{ url: string }> => {
       const params = new URLSearchParams({ redirectUri });
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/calendars/oauth-url/${provider}?${params}`,
-        { headers: getAuthHeaders() },
+        `${getApiUrl()}/fieldflow/calendars/oauth-url/${provider}?${params}`,
+        { headers: fieldflowAuthHeaders() },
       );
       return handleResponse<{ url: string }>(response);
     },
 
     connect: async (dto: ConnectCalendarDto): Promise<CalendarConnection> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/calendars/connect`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connect`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -786,24 +842,24 @@ export const fieldflowApi = {
     },
 
     connections: async (): Promise<CalendarConnection[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/calendars/connections`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connections`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<CalendarConnection[]>(response);
     },
 
     connection: async (id: number): Promise<CalendarConnection> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/calendars/connections/${id}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connections/${id}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<CalendarConnection>(response);
     },
 
     update: async (id: number, dto: UpdateCalendarConnectionDto): Promise<CalendarConnection> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/calendars/connections/${id}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connections/${id}`, {
         method: "PATCH",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -812,9 +868,9 @@ export const fieldflowApi = {
     },
 
     disconnect: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/calendars/connections/${id}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connections/${id}`, {
         method: "DELETE",
-        headers: getAuthHeaders(),
+        headers: fieldflowAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Disconnect failed" }));
@@ -824,19 +880,19 @@ export const fieldflowApi = {
 
     availableCalendars: async (connectionId: number): Promise<CalendarListItem[]> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/calendars/connections/${connectionId}/calendars`,
-        { headers: getAuthHeaders() },
+        `${getApiUrl()}/fieldflow/calendars/connections/${connectionId}/calendars`,
+        { headers: fieldflowAuthHeaders() },
       );
       return handleResponse<CalendarListItem[]>(response);
     },
 
     sync: async (connectionId: number, fullSync?: boolean): Promise<SyncResult> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/calendars/connections/${connectionId}/sync`,
+        `${getApiUrl()}/fieldflow/calendars/connections/${connectionId}/sync`,
         {
           method: "POST",
           headers: {
-            ...getAuthHeaders(),
+            ...fieldflowAuthHeaders(),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ fullSync: fullSync ?? false }),
@@ -847,8 +903,8 @@ export const fieldflowApi = {
 
     events: async (startDate: string, endDate: string): Promise<CalendarEvent[]> => {
       const params = new URLSearchParams({ startDate, endDate });
-      const response = await fetch(`${browserBaseUrl}/fieldflow/calendars/events?${params}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/events?${params}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<CalendarEvent[]>(response);
     },
@@ -856,10 +912,10 @@ export const fieldflowApi = {
 
   recordings: {
     initiate: async (dto: InitiateUploadDto): Promise<InitiateUploadResponse> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/recordings/initiate`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/initiate`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -873,11 +929,11 @@ export const fieldflowApi = {
       data: Blob,
     ): Promise<{ chunkIndex: number; bytesReceived: number }> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/recordings/${recordingId}/chunk?index=${chunkIndex}`,
+        `${getApiUrl()}/fieldflow/recordings/${recordingId}/chunk?index=${chunkIndex}`,
         {
           method: "POST",
           headers: {
-            ...getAuthHeaders(),
+            ...fieldflowAuthHeaders(),
             "Content-Type": "application/octet-stream",
           },
           body: data,
@@ -887,30 +943,27 @@ export const fieldflowApi = {
     },
 
     complete: async (recordingId: number, dto: CompleteUploadDto): Promise<Recording> => {
-      const response = await fetch(
-        `${browserBaseUrl}/fieldflow/recordings/${recordingId}/complete`,
-        {
-          method: "POST",
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(dto),
+      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/${recordingId}/complete`, {
+        method: "POST",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify(dto),
+      });
       return handleResponse<Recording>(response);
     },
 
     detail: async (recordingId: number): Promise<Recording> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/recordings/${recordingId}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/${recordingId}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Recording>(response);
     },
 
     byMeeting: async (meetingId: number): Promise<Recording | null> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/recordings/meeting/${meetingId}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/meeting/${meetingId}`, {
+        headers: fieldflowAuthHeaders(),
       });
       if (response.status === 404) return null;
       return handleResponse<Recording>(response);
@@ -921,11 +974,11 @@ export const fieldflowApi = {
       speakerLabels: Record<string, string>,
     ): Promise<Recording> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/recordings/${recordingId}/speaker-labels`,
+        `${getApiUrl()}/fieldflow/recordings/${recordingId}/speaker-labels`,
         {
           method: "PATCH",
           headers: {
-            ...getAuthHeaders(),
+            ...fieldflowAuthHeaders(),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ speakerLabels }),
@@ -935,9 +988,9 @@ export const fieldflowApi = {
     },
 
     delete: async (recordingId: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/recordings/${recordingId}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/${recordingId}`, {
         method: "DELETE",
-        headers: getAuthHeaders(),
+        headers: fieldflowAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -949,9 +1002,9 @@ export const fieldflowApi = {
   transcripts: {
     byRecording: async (recordingId: number): Promise<Transcript | null> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/transcripts/recording/${recordingId}`,
+        `${getApiUrl()}/fieldflow/transcripts/recording/${recordingId}`,
         {
-          headers: getAuthHeaders(),
+          headers: fieldflowAuthHeaders(),
         },
       );
       if (response.status === 404) return null;
@@ -959,8 +1012,8 @@ export const fieldflowApi = {
     },
 
     byMeeting: async (meetingId: number): Promise<Transcript | null> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/transcripts/meeting/${meetingId}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/transcripts/meeting/${meetingId}`, {
+        headers: fieldflowAuthHeaders(),
       });
       if (response.status === 404) return null;
       return handleResponse<Transcript>(response);
@@ -968,10 +1021,10 @@ export const fieldflowApi = {
 
     transcribe: async (recordingId: number): Promise<Transcript> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/transcripts/recording/${recordingId}/transcribe`,
+        `${getApiUrl()}/fieldflow/transcripts/recording/${recordingId}/transcribe`,
         {
           method: "POST",
-          headers: getAuthHeaders(),
+          headers: fieldflowAuthHeaders(),
         },
       );
       return handleResponse<Transcript>(response);
@@ -979,10 +1032,10 @@ export const fieldflowApi = {
 
     retranscribe: async (recordingId: number): Promise<Transcript> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/transcripts/recording/${recordingId}/retranscribe`,
+        `${getApiUrl()}/fieldflow/transcripts/recording/${recordingId}/retranscribe`,
         {
           method: "POST",
-          headers: getAuthHeaders(),
+          headers: fieldflowAuthHeaders(),
         },
       );
       return handleResponse<Transcript>(response);
@@ -990,10 +1043,10 @@ export const fieldflowApi = {
 
     delete: async (recordingId: number): Promise<void> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/transcripts/recording/${recordingId}`,
+        `${getApiUrl()}/fieldflow/transcripts/recording/${recordingId}`,
         {
           method: "DELETE",
-          headers: getAuthHeaders(),
+          headers: fieldflowAuthHeaders(),
         },
       );
       if (!response.ok) {
@@ -1006,57 +1059,54 @@ export const fieldflowApi = {
   summaries: {
     preview: async (meetingId: number): Promise<SummaryPreview> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/summaries/meeting/${meetingId}/preview`,
+        `${getApiUrl()}/fieldflow/summaries/meeting/${meetingId}/preview`,
         {
-          headers: getAuthHeaders(),
+          headers: fieldflowAuthHeaders(),
         },
       );
       return handleResponse<SummaryPreview>(response);
     },
 
     generate: async (meetingId: number): Promise<MeetingSummary> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/summaries/meeting/${meetingId}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/summaries/meeting/${meetingId}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<MeetingSummary>(response);
     },
 
     send: async (meetingId: number, dto: SendSummaryDto): Promise<SendSummaryResult> => {
-      const response = await fetch(
-        `${browserBaseUrl}/fieldflow/summaries/meeting/${meetingId}/send`,
-        {
-          method: "POST",
-          headers: {
-            ...getAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(dto),
+      const response = await fetch(`${getApiUrl()}/fieldflow/summaries/meeting/${meetingId}/send`, {
+        method: "POST",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify(dto),
+      });
       return handleResponse<SendSummaryResult>(response);
     },
   },
 
   crm: {
     configs: async (): Promise<CrmConfig[]> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/crm/configs`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<CrmConfig[]>(response);
     },
 
     config: async (id: number): Promise<CrmConfig> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/crm/configs/${id}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${id}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<CrmConfig>(response);
     },
 
     create: async (dto: CreateCrmConfigDto): Promise<CrmConfig> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/crm/configs`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1065,10 +1115,10 @@ export const fieldflowApi = {
     },
 
     update: async (id: number, dto: UpdateCrmConfigDto): Promise<CrmConfig> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/crm/configs/${id}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${id}`, {
         method: "PATCH",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1077,9 +1127,9 @@ export const fieldflowApi = {
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/crm/configs/${id}`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${id}`, {
         method: "DELETE",
-        headers: getAuthHeaders(),
+        headers: fieldflowAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -1088,19 +1138,19 @@ export const fieldflowApi = {
     },
 
     testConnection: async (id: number): Promise<{ success: boolean; message: string }> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/crm/configs/${id}/test`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${id}/test`, {
         method: "POST",
-        headers: getAuthHeaders(),
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<{ success: boolean; message: string }>(response);
     },
 
     syncProspect: async (configId: number, prospectId: number): Promise<CrmSyncResult> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/crm/configs/${configId}/sync/prospect/${prospectId}`,
+        `${getApiUrl()}/fieldflow/crm/configs/${configId}/sync/prospect/${prospectId}`,
         {
           method: "POST",
-          headers: getAuthHeaders(),
+          headers: fieldflowAuthHeaders(),
         },
       );
       return handleResponse<CrmSyncResult>(response);
@@ -1108,10 +1158,10 @@ export const fieldflowApi = {
 
     syncMeeting: async (configId: number, meetingId: number): Promise<CrmSyncResult> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/crm/configs/${configId}/sync/meeting/${meetingId}`,
+        `${getApiUrl()}/fieldflow/crm/configs/${configId}/sync/meeting/${meetingId}`,
         {
           method: "POST",
-          headers: getAuthHeaders(),
+          headers: fieldflowAuthHeaders(),
         },
       );
       return handleResponse<CrmSyncResult>(response);
@@ -1119,26 +1169,26 @@ export const fieldflowApi = {
 
     syncAllProspects: async (configId: number): Promise<{ synced: number; failed: number }> => {
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/crm/configs/${configId}/sync/all-prospects`,
+        `${getApiUrl()}/fieldflow/crm/configs/${configId}/sync/all-prospects`,
         {
           method: "POST",
-          headers: getAuthHeaders(),
+          headers: fieldflowAuthHeaders(),
         },
       );
       return handleResponse<{ synced: number; failed: number }>(response);
     },
 
     syncStatus: async (configId: number): Promise<CrmSyncStatus> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/crm/configs/${configId}/status`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${configId}/status`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<CrmSyncStatus>(response);
     },
 
     exportProspectsCsv: async (configId?: number): Promise<Blob> => {
       const params = configId ? `?configId=${configId}` : "";
-      const response = await fetch(`${browserBaseUrl}/fieldflow/crm/export/prospects${params}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/crm/export/prospects${params}`, {
+        headers: fieldflowAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Export failed" }));
@@ -1149,8 +1199,8 @@ export const fieldflowApi = {
 
     exportMeetingsCsv: async (configId?: number): Promise<Blob> => {
       const params = configId ? `?configId=${configId}` : "";
-      const response = await fetch(`${browserBaseUrl}/fieldflow/crm/export/meetings${params}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/crm/export/meetings${params}`, {
+        headers: fieldflowAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Export failed" }));
@@ -1164,8 +1214,8 @@ export const fieldflowApi = {
     scheduleGaps: async (date: string, minGapMinutes?: number): Promise<ScheduleGap[]> => {
       const params = new URLSearchParams({ date });
       if (minGapMinutes) params.set("minGapMinutes", minGapMinutes.toString());
-      const response = await fetch(`${browserBaseUrl}/fieldflow/routes/gaps?${params}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/routes/gaps?${params}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<ScheduleGap[]>(response);
     },
@@ -1181,9 +1231,9 @@ export const fieldflowApi = {
       if (currentLng !== undefined) params.set("currentLng", currentLng.toString());
       if (maxSuggestions) params.set("maxSuggestions", maxSuggestions.toString());
       const response = await fetch(
-        `${browserBaseUrl}/fieldflow/routes/cold-call-suggestions?${params}`,
+        `${getApiUrl()}/fieldflow/routes/cold-call-suggestions?${params}`,
         {
-          headers: getAuthHeaders(),
+          headers: fieldflowAuthHeaders(),
         },
       );
       return handleResponse<ColdCallSuggestion[]>(response);
@@ -1195,10 +1245,10 @@ export const fieldflowApi = {
       stops: Array<{ id: number; type: "prospect" | "meeting" }>,
       returnToStart?: boolean,
     ): Promise<OptimizedRoute> => {
-      const response = await fetch(`${browserBaseUrl}/fieldflow/routes/optimize`, {
+      const response = await fetch(`${getApiUrl()}/fieldflow/routes/optimize`, {
         method: "POST",
         headers: {
-          ...getAuthHeaders(),
+          ...fieldflowAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ startLat, startLng, stops, returnToStart }),
@@ -1217,10 +1267,66 @@ export const fieldflowApi = {
         params.set("includeColdCalls", includeColdCalls.toString());
       if (currentLat !== undefined) params.set("currentLat", currentLat.toString());
       if (currentLng !== undefined) params.set("currentLng", currentLng.toString());
-      const response = await fetch(`${browserBaseUrl}/fieldflow/routes/plan-day?${params}`, {
-        headers: getAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/fieldflow/routes/plan-day?${params}`, {
+        headers: fieldflowAuthHeaders(),
       });
       return handleResponse<OptimizedRoute>(response);
+    },
+  },
+
+  repProfile: {
+    status: async (): Promise<RepProfileStatus> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile/status`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<RepProfileStatus>(response);
+    },
+
+    profile: async (): Promise<RepProfile | null> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      if (response.status === 404) return null;
+      return handleResponse<RepProfile>(response);
+    },
+
+    create: async (dto: CreateRepProfileDto): Promise<RepProfile> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile`, {
+        method: "POST",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<RepProfile>(response);
+    },
+
+    update: async (dto: UpdateRepProfileDto): Promise<RepProfile> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile`, {
+        method: "PATCH",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<RepProfile>(response);
+    },
+
+    completeSetup: async (): Promise<RepProfile> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile/complete-setup`, {
+        method: "POST",
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<RepProfile>(response);
+    },
+
+    searchTerms: async (): Promise<string[]> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile/search-terms`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<string[]>(response);
     },
   },
 };

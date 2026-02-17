@@ -20,23 +20,21 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
-import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
-import { Roles } from "../../auth/roles.decorator";
-import { RolesGuard } from "../../auth/roles.guard";
+import { FieldFlowAuthGuard } from "../auth";
 import { CheckInDto, CheckOutDto, CreateVisitDto, UpdateVisitDto, VisitResponseDto } from "../dto";
 import { VisitService } from "../services";
 
-interface AuthenticatedRequest extends Request {
-  user: {
-    id: number;
+interface FieldFlowRequest extends Request {
+  fieldflowUser: {
+    userId: number;
+    email: string;
     sessionToken: string;
   };
 }
 
 @ApiTags("FieldFlow - Visits")
 @Controller("fieldflow/visits")
-@UseGuards(AdminAuthGuard, RolesGuard)
-@Roles("admin", "employee")
+@UseGuards(FieldFlowAuthGuard)
 @ApiBearerAuth()
 export class VisitController {
   constructor(private readonly visitService: VisitService) {}
@@ -44,29 +42,29 @@ export class VisitController {
   @Post()
   @ApiOperation({ summary: "Create a new visit" })
   @ApiResponse({ status: 201, description: "Visit created", type: VisitResponseDto })
-  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateVisitDto) {
-    return this.visitService.create(req.user.id, dto);
+  create(@Req() req: FieldFlowRequest, @Body() dto: CreateVisitDto) {
+    return this.visitService.create(req.fieldflowUser.userId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: "Get all visits for current user" })
   @ApiResponse({ status: 200, description: "List of visits", type: [VisitResponseDto] })
-  findAll(@Req() req: AuthenticatedRequest) {
-    return this.visitService.findAll(req.user.id);
+  findAll(@Req() req: FieldFlowRequest) {
+    return this.visitService.findAll(req.fieldflowUser.userId);
   }
 
   @Get("today")
   @ApiOperation({ summary: "Get today's scheduled visits" })
   @ApiResponse({ status: 200, description: "Today's visits", type: [VisitResponseDto] })
-  todaysSchedule(@Req() req: AuthenticatedRequest) {
-    return this.visitService.todaysSchedule(req.user.id);
+  todaysSchedule(@Req() req: FieldFlowRequest) {
+    return this.visitService.todaysSchedule(req.fieldflowUser.userId);
   }
 
   @Get("active")
   @ApiOperation({ summary: "Get currently active visit" })
   @ApiResponse({ status: 200, description: "Active visit or null", type: VisitResponseDto })
-  activeVisit(@Req() req: AuthenticatedRequest) {
-    return this.visitService.activeVisit(req.user.id);
+  activeVisit(@Req() req: FieldFlowRequest) {
+    return this.visitService.activeVisit(req.fieldflowUser.userId);
   }
 
   @Get("prospect/:prospectId")
@@ -83,11 +81,15 @@ export class VisitController {
   @ApiQuery({ name: "endDate", type: String, required: true })
   @ApiResponse({ status: 200, description: "List of visits", type: [VisitResponseDto] })
   findByDateRange(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Query("startDate") startDate: string,
     @Query("endDate") endDate: string,
   ) {
-    return this.visitService.findByDateRange(req.user.id, new Date(startDate), new Date(endDate));
+    return this.visitService.findByDateRange(
+      req.fieldflowUser.userId,
+      new Date(startDate),
+      new Date(endDate),
+    );
   }
 
   @Get(":id")
@@ -95,8 +97,8 @@ export class VisitController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Visit details", type: VisitResponseDto })
   @ApiResponse({ status: 404, description: "Visit not found" })
-  findOne(@Req() req: AuthenticatedRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.visitService.findOne(req.user.id, id);
+  findOne(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.visitService.findOne(req.fieldflowUser.userId, id);
   }
 
   @Patch(":id")
@@ -105,11 +107,11 @@ export class VisitController {
   @ApiResponse({ status: 200, description: "Visit updated", type: VisitResponseDto })
   @ApiResponse({ status: 404, description: "Visit not found" })
   update(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateVisitDto,
   ) {
-    return this.visitService.update(req.user.id, id, dto);
+    return this.visitService.update(req.fieldflowUser.userId, id, dto);
   }
 
   @Post(":id/check-in")
@@ -118,11 +120,11 @@ export class VisitController {
   @ApiResponse({ status: 200, description: "Checked in", type: VisitResponseDto })
   @ApiResponse({ status: 400, description: "Already checked in" })
   checkIn(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: CheckInDto,
   ) {
-    return this.visitService.checkIn(req.user.id, id, dto);
+    return this.visitService.checkIn(req.fieldflowUser.userId, id, dto);
   }
 
   @Post(":id/check-out")
@@ -131,11 +133,11 @@ export class VisitController {
   @ApiResponse({ status: 200, description: "Checked out", type: VisitResponseDto })
   @ApiResponse({ status: 400, description: "Not checked in or already checked out" })
   checkOut(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: CheckOutDto,
   ) {
-    return this.visitService.checkOut(req.user.id, id, dto);
+    return this.visitService.checkOut(req.fieldflowUser.userId, id, dto);
   }
 
   @Post("cold-call")
@@ -145,13 +147,13 @@ export class VisitController {
   @ApiQuery({ name: "longitude", type: Number, required: true })
   @ApiResponse({ status: 201, description: "Cold call visit started", type: VisitResponseDto })
   startColdCall(
-    @Req() req: AuthenticatedRequest,
+    @Req() req: FieldFlowRequest,
     @Query("prospectId", ParseIntPipe) prospectId: number,
     @Query("latitude") latitude: string,
     @Query("longitude") longitude: string,
   ) {
     return this.visitService.startColdCall(
-      req.user.id,
+      req.fieldflowUser.userId,
       prospectId,
       parseFloat(latitude),
       parseFloat(longitude),
@@ -163,7 +165,7 @@ export class VisitController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Visit deleted" })
   @ApiResponse({ status: 404, description: "Visit not found" })
-  remove(@Req() req: AuthenticatedRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.visitService.remove(req.user.id, id);
+  remove(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.visitService.remove(req.fieldflowUser.userId, id);
   }
 }
