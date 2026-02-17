@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       environments:
@@ -28,7 +32,9 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.environments }}" = "all" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo 'matrix=["prod"]' >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.environments }}" = "all" ]; then
             echo 'matrix=["prod","test"]' >> "$GITHUB_OUTPUT"
           else
             echo 'matrix=["${{ inputs.environments }}"]' >> "$GITHUB_OUTPUT"

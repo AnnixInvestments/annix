@@ -79,6 +79,13 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.PROJECT_TOKEN }}
           claude_args: "--allowedTools Bash,Read,Edit,MultiEdit,Write,Glob,Grep,LS,WebFetch,WebSearch,TodoRead,TodoWrite,Task"
+          prompt: |
+            Read the CLAUDE.md and agents.md files for project conventions. Follow all existing patterns.
+
+            CRITICAL: Before committing, you MUST run these checks and fix any failures:
+            1. `pnpm format:check` (Biome lint/format)
+            2. `pnpm test:all` (backend tests + frontend type-check)
+            Do NOT commit or push code that fails these checks.
 
       - name: Run Claude Code (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
