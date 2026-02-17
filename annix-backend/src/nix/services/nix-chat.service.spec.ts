@@ -2,13 +2,11 @@ import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
+import { AiChatService } from "../ai-providers/ai-chat.service";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession } from "../entities/nix-chat-session.entity";
 import { NixChatService } from "./nix-chat.service";
 import { NixItemParserService } from "./nix-item-parser.service";
-
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
 
 describe("NixChatService", () => {
   let service: NixChatService;
@@ -60,12 +58,20 @@ describe("NixChatService", () => {
       parseUserIntent: jest.fn(),
     };
 
+    const mockAiChatService = {
+      isAvailable: jest.fn().mockResolvedValue(true),
+      chat: jest.fn().mockResolvedValue({ content: "AI response", providerUsed: "gemini" }),
+      streamChat: jest.fn(),
+      availableProviders: jest.fn().mockResolvedValue(["gemini"]),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NixChatService,
         { provide: getRepositoryToken(NixChatSession), useValue: mockSessionRepo },
         { provide: getRepositoryToken(NixChatMessage), useValue: mockMessageRepo },
         { provide: NixItemParserService, useValue: mockItemParserService },
+        { provide: AiChatService, useValue: mockAiChatService },
       ],
     }).compile();
 
@@ -158,37 +164,36 @@ describe("NixChatService", () => {
   });
 
   describe("sendMessage", () => {
-    const mockGeminiResponse = {
-      ok: true,
-      json: jest.fn().mockResolvedValue({
-        candidates: [{ content: { parts: [{ text: "Hello! How can I help?" }] } }],
-        usageMetadata: { totalTokenCount: 150 },
-      }),
-    };
+    let aiChatService: jest.Mocked<AiChatService>;
 
     beforeEach(() => {
       sessionRepository.findOne.mockResolvedValue({ ...mockSession });
       messageRepository.create.mockReturnValue(mockMessage);
       messageRepository.save.mockResolvedValue(mockMessage);
       sessionRepository.save.mockResolvedValue(mockSession);
+      aiChatService = (service as any).aiChatService;
     });
 
-    it("should throw error when API key not configured", async () => {
-      delete process.env.GEMINI_API_KEY;
-      const serviceWithoutKey = new NixChatService(
+    it("should throw error when no AI provider is available", async () => {
+      const mockAiChatServiceUnavailable = {
+        isAvailable: jest.fn().mockResolvedValue(false),
+        chat: jest.fn(),
+        streamChat: jest.fn(),
+      };
+
+      const serviceWithoutProvider = new NixChatService(
         sessionRepository as any,
         messageRepository as any,
         {} as any,
+        mockAiChatServiceUnavailable as any,
       );
 
       await expect(
-        serviceWithoutKey.sendMessage({ sessionId: 1, message: "Hello" }),
-      ).rejects.toThrow("Gemini API key not configured");
+        serviceWithoutProvider.sendMessage({ sessionId: 1, message: "Hello" }),
+      ).rejects.toThrow("No AI chat provider available");
     });
 
     it("should send message and return response", async () => {
-      mockFetch.mockResolvedValue(mockGeminiResponse);
-
       const result = await service.sendMessage({
         sessionId: 1,
         message: "What is a pipe schedule?",
@@ -196,25 +201,14 @@ describe("NixChatService", () => {
 
       expect(result).toMatchObject({
         sessionId: 1,
-        content: "Hello! How can I help?",
+        content: "AI response",
         metadata: expect.objectContaining({
-          tokensUsed: 150,
           processingTimeMs: expect.any(Number),
         }),
       });
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("gemini-2.0-flash:generateContent"),
-        expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
     });
 
     it("should save user and assistant messages", async () => {
-      mockFetch.mockResolvedValue(mockGeminiResponse);
-
       await service.sendMessage({ sessionId: 1, message: "Hello" });
 
       expect(messageRepository.create).toHaveBeenCalledTimes(2);
@@ -222,22 +216,19 @@ describe("NixChatService", () => {
     });
 
     it("should update session conversation history", async () => {
-      mockFetch.mockResolvedValue(mockGeminiResponse);
-
       await service.sendMessage({ sessionId: 1, message: "Test message" });
 
       expect(sessionRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           conversationHistory: expect.arrayContaining([
             expect.objectContaining({ role: "user", content: "Test message" }),
-            expect.objectContaining({ role: "assistant", content: "Hello! How can I help?" }),
+            expect.objectContaining({ role: "assistant", content: "AI response" }),
           ]),
         }),
       );
     });
 
     it("should handle context with RFQ items", async () => {
-      mockFetch.mockResolvedValue(mockGeminiResponse);
       const rfqItems = [{ diameter: 200, itemType: "pipe" }];
 
       await service.sendMessage({
@@ -255,76 +246,58 @@ describe("NixChatService", () => {
       );
     });
 
-    it("should handle rate limit errors", async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 429,
-        text: jest.fn().mockResolvedValue("Rate limited"),
-      });
+    it("should propagate chat service errors", async () => {
+      aiChatService.chat = jest.fn().mockRejectedValue(new Error("All AI providers failed"));
 
       await expect(service.sendMessage({ sessionId: 1, message: "Hello" })).rejects.toThrow(
-        "Nix is temporarily unavailable due to API rate limits",
-      );
-    });
-
-    it("should handle other API errors", async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500,
-        text: jest.fn().mockResolvedValue("Internal error"),
-      });
-
-      await expect(service.sendMessage({ sessionId: 1, message: "Hello" })).rejects.toThrow(
-        "AI service error (500)",
+        "All AI providers failed",
       );
     });
   });
 
   describe("streamMessage", () => {
+    let aiChatService: jest.Mocked<AiChatService>;
+
     beforeEach(() => {
       sessionRepository.findOne.mockResolvedValue({ ...mockSession });
       messageRepository.create.mockReturnValue(mockMessage);
       messageRepository.save.mockResolvedValue(mockMessage);
       sessionRepository.save.mockResolvedValue(mockSession);
+      aiChatService = (service as any).aiChatService;
     });
 
-    it("should yield error when API key not configured", async () => {
-      delete process.env.GEMINI_API_KEY;
-      const serviceWithoutKey = new NixChatService(
+    it("should yield error when no AI provider is available", async () => {
+      const mockAiChatServiceUnavailable = {
+        isAvailable: jest.fn().mockResolvedValue(false),
+        chat: jest.fn(),
+        streamChat: jest.fn(),
+      };
+
+      const serviceWithoutProvider = new NixChatService(
         sessionRepository as any,
         messageRepository as any,
         {} as any,
+        mockAiChatServiceUnavailable as any,
       );
 
-      const generator = serviceWithoutKey.streamMessage({ sessionId: 1, message: "Hello" });
+      const generator = serviceWithoutProvider.streamMessage({ sessionId: 1, message: "Hello" });
       const result = await generator.next();
 
-      expect(result.value).toEqual({ type: "error", error: "Gemini API key not configured" });
+      expect(result.value).toEqual({
+        type: "error",
+        error: "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
+      });
     });
 
     it("should yield message_start, content deltas, and message_stop", async () => {
-      const mockReader = {
-        read: jest
-          .fn()
-          .mockResolvedValueOnce({
-            done: false,
-            value: new TextEncoder().encode(
-              'data: {"candidates":[{"content":{"parts":[{"text":"Hello"}]}}]}\n',
-            ),
-          })
-          .mockResolvedValueOnce({
-            done: false,
-            value: new TextEncoder().encode(
-              'data: {"candidates":[{"content":{"parts":[{"text":" world"}]}}]}\n',
-            ),
-          })
-          .mockResolvedValueOnce({ done: true }),
-      };
+      async function* mockStreamChat() {
+        yield { type: "message_start", providerUsed: "gemini" };
+        yield { type: "content_delta", delta: "Hello" };
+        yield { type: "content_delta", delta: " world" };
+        yield { type: "message_stop" };
+      }
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        body: { getReader: () => mockReader },
-      });
+      aiChatService.streamChat = jest.fn().mockReturnValue(mockStreamChat());
 
       const generator = service.streamMessage({ sessionId: 1, message: "Hi" });
       const results: any[] = [];
@@ -338,16 +311,16 @@ describe("NixChatService", () => {
       expect(results).toContainEqual({ type: "content_delta", delta: " world" });
       expect(results[results.length - 1]).toMatchObject({
         type: "message_stop",
-        metadata: expect.objectContaining({ model: "gemini-2.0-flash" }),
+        metadata: expect.objectContaining({ provider: "gemini" }),
       });
     });
 
-    it("should yield error on API failure", async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 503,
-        text: jest.fn().mockResolvedValue("Service unavailable"),
-      });
+    it("should yield error on streaming failure", async () => {
+      async function* mockStreamChatError() {
+        yield { type: "error", error: "API service error (503)" };
+      }
+
+      aiChatService.streamChat = jest.fn().mockReturnValue(mockStreamChatError());
 
       const generator = service.streamMessage({ sessionId: 1, message: "Hello" });
       const results: any[] = [];
@@ -356,26 +329,17 @@ describe("NixChatService", () => {
         results.push(chunk);
       }
 
-      expect(results).toContainEqual({ type: "error", error: "AI service error (503)" });
+      expect(results).toContainEqual({ type: "error", error: "API service error (503)" });
     });
 
     it("should save messages after streaming completes", async () => {
-      const mockReader = {
-        read: jest
-          .fn()
-          .mockResolvedValueOnce({
-            done: false,
-            value: new TextEncoder().encode(
-              'data: {"candidates":[{"content":{"parts":[{"text":"Response"}]}}]}\n',
-            ),
-          })
-          .mockResolvedValueOnce({ done: true }),
-      };
+      async function* mockStreamChatSuccess() {
+        yield { type: "message_start", providerUsed: "gemini" };
+        yield { type: "content_delta", delta: "Response" };
+        yield { type: "message_stop" };
+      }
 
-      mockFetch.mockResolvedValue({
-        ok: true,
-        body: { getReader: () => mockReader },
-      });
+      aiChatService.streamChat = jest.fn().mockReturnValue(mockStreamChatSuccess());
 
       const generator = service.streamMessage({ sessionId: 1, message: "Test" });
 

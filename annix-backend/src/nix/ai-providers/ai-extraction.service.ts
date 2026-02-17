@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { ExtractedItem, SpecificationCellData } from "../services/excel-extractor.service";
 import { AiExtractedItem, AiExtractionRequest, AiProvider } from "./ai-provider.interface";
 import { ClaudeProvider } from "./claude.provider";
@@ -7,14 +7,47 @@ import { GeminiProvider } from "./gemini.provider";
 export type AiProviderType = "gemini" | "claude" | "auto";
 
 @Injectable()
-export class AiExtractionService {
+export class AiExtractionService implements OnModuleInit {
   private readonly logger = new Logger(AiExtractionService.name);
   private readonly providers: Map<string, AiProvider> = new Map();
-  private preferredProvider: AiProviderType = "auto";
+  private preferredProvider: AiProviderType;
 
   constructor() {
     this.providers.set("gemini", new GeminiProvider());
     this.providers.set("claude", new ClaudeProvider());
+
+    const envProvider = process.env.AI_EXTRACTION_PROVIDER?.toLowerCase();
+    if (envProvider === "claude" || envProvider === "gemini" || envProvider === "auto") {
+      this.preferredProvider = envProvider;
+    } else {
+      this.preferredProvider = "auto";
+    }
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.validateProviders();
+  }
+
+  private async validateProviders(): Promise<void> {
+    const available = await this.getAvailableProviders();
+
+    if (available.length === 0) {
+      this.logger.warn(
+        "⚠️  No AI extraction providers available. Set GEMINI_API_KEY or ANTHROPIC_API_KEY to enable AI extraction.",
+      );
+    } else {
+      this.logger.log(`✓ AI Extraction providers available: ${available.join(", ")}`);
+      this.logger.log(`  Preferred provider: ${this.preferredProvider}`);
+    }
+
+    if (this.preferredProvider !== "auto") {
+      const preferred = this.providers.get(this.preferredProvider);
+      if (preferred && !(await preferred.isAvailable())) {
+        this.logger.warn(
+          `⚠️  Preferred extraction provider "${this.preferredProvider}" is not available (missing API key)`,
+        );
+      }
+    }
   }
 
   setPreferredProvider(provider: AiProviderType): void {

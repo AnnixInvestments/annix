@@ -16,6 +16,7 @@ import { SupplierDocument } from "../supplier/entities/supplier-document.entity"
 import { SupplierOnboarding } from "../supplier/entities/supplier-onboarding.entity";
 import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
 import { SupplierModule } from "../supplier/supplier.module";
+import { AiChatService } from "./ai-providers/ai-chat.service";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
 import { NixChatController } from "./controllers/nix-chat.controller";
 import { CustomFieldValue } from "./entities/custom-field-value.entity";
@@ -83,6 +84,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     ExcelExtractorService,
     PdfExtractorService,
     WordExtractorService,
+    AiChatService,
     AiExtractionService,
     RegistrationDocumentVerifierService,
     DocumentVerificationService,
@@ -93,6 +95,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     NixService,
     NixChatService,
     NixValidationService,
+    AiChatService,
     AiExtractionService,
     RegistrationDocumentVerifierService,
     DocumentVerificationService,
