@@ -43,6 +43,27 @@ const log = {
   },
 };
 
+interface AppAdapter {
+  readonly name: string;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  kill(): Promise<void>;
+  isRunning(): Promise<boolean>;
+}
+
+interface AppAdapterConfig {
+  name: string;
+  start: string;
+  stop: string;
+  kill: string;
+  readyPattern?: string;
+}
+
+interface ParallelClaudeConfig {
+  branchPrefix?: string;
+  apps?: AppAdapterConfig[];
+}
+
 interface Branch {
   name: string;
   isLocal: boolean;
@@ -76,14 +97,14 @@ interface Session {
 }
 
 const DEFAULT_ROOT_DIR = join(__dirname, "..");
-const CLAUDE_BRANCH_PREFIX = "claude/";
 const PROJECTS_CONFIG_FILE = join(DEFAULT_ROOT_DIR, ".parallel-claude-projects.json");
 const APP_LOG_FILE = join(DEFAULT_ROOT_DIR, ".parallel-claude-app.log");
+const PARALLEL_CLAUDE_CONFIG_FILE = join(DEFAULT_ROOT_DIR, ".parallel-claude.json");
 
 let currentProject: ProjectConfig = {
-  name: "annix",
+  name: "project",
   path: DEFAULT_ROOT_DIR,
-  worktreeDir: join(DEFAULT_ROOT_DIR, "..", "annix-worktrees"),
+  worktreeDir: join(DEFAULT_ROOT_DIR, "..", "project-worktrees"),
 };
 
 function rootDir(): string {
@@ -97,17 +118,37 @@ function worktreeDir(): string {
   );
 }
 
+function loadParallelClaudeConfig(): ParallelClaudeConfig {
+  if (!existsSync(PARALLEL_CLAUDE_CONFIG_FILE)) {
+    return {};
+  }
+
+  try {
+    const content = readFileSync(PARALLEL_CLAUDE_CONFIG_FILE, "utf-8");
+    return JSON.parse(content) as ParallelClaudeConfig;
+  } catch {
+    log.error("Failed to load .parallel-claude.json, using defaults");
+    return {};
+  }
+}
+
+function claudeBranchPrefix(): string {
+  const config = loadParallelClaudeConfig();
+  return config.branchPrefix ?? "claude/";
+}
+
 function loadProjectsConfig(): ProjectsConfig {
   if (!existsSync(PROJECTS_CONFIG_FILE)) {
+    const projectName = DEFAULT_ROOT_DIR.split("/").pop() ?? "project";
     const defaultConfig: ProjectsConfig = {
       projects: [
         {
-          name: "annix",
+          name: projectName,
           path: DEFAULT_ROOT_DIR,
-          worktreeDir: join(DEFAULT_ROOT_DIR, "..", "annix-worktrees"),
+          worktreeDir: join(DEFAULT_ROOT_DIR, "..", `${projectName.toLowerCase()}-worktrees`),
         },
       ],
-      defaultProject: "annix",
+      defaultProject: projectName,
     };
     saveProjectsConfig(defaultConfig);
     return defaultConfig;
@@ -121,7 +162,7 @@ function loadProjectsConfig(): ProjectsConfig {
     return {
       projects: [
         {
-          name: "annix",
+          name: DEFAULT_ROOT_DIR.split("/").pop() ?? "project",
           path: DEFAULT_ROOT_DIR,
         },
       ],
@@ -230,7 +271,163 @@ function exec(cmd: string, options: { cwd?: string; silent?: boolean } = {}): st
   }
 }
 
-function appProcessStatus(): { backend: boolean; frontend: boolean } {
+class NullAdapter implements AppAdapter {
+  readonly name = "null";
+
+  async start(): Promise<void> {}
+  async stop(): Promise<void> {}
+  async kill(): Promise<void> {}
+  async isRunning(): Promise<boolean> {
+    return false;
+  }
+}
+
+class NestAdapter implements AppAdapter {
+  readonly name = "nest";
+
+  async start(): Promise<void> {
+    exec("nest start --watch", { silent: false });
+  }
+
+  async stop(): Promise<void> {
+    exec('pkill -f "nest.*start" 2>/dev/null || true', { silent: true });
+  }
+
+  async kill(): Promise<void> {
+    exec('pkill -9 -f "nest.*start" 2>/dev/null || true', { silent: true });
+  }
+
+  async isRunning(): Promise<boolean> {
+    return exec('pgrep -f "nest.* start" 2>/dev/null', { silent: true }) !== "";
+  }
+}
+
+class NextAdapter implements AppAdapter {
+  readonly name = "next";
+
+  async start(): Promise<void> {
+    exec("next dev", { silent: false });
+  }
+
+  async stop(): Promise<void> {
+    exec('pkill -f "next dev" 2>/dev/null || true', { silent: true });
+  }
+
+  async kill(): Promise<void> {
+    exec('pkill -9 -f "next dev" 2>/dev/null || true', { silent: true });
+  }
+
+  async isRunning(): Promise<boolean> {
+    return exec('pgrep -f "next dev" 2>/dev/null', { silent: true }) !== "";
+  }
+}
+
+class ViteAdapter implements AppAdapter {
+  readonly name = "vite";
+
+  async start(): Promise<void> {
+    exec("vite", { silent: false });
+  }
+
+  async stop(): Promise<void> {
+    exec('pkill -f "vite" 2>/dev/null || true', { silent: true });
+  }
+
+  async kill(): Promise<void> {
+    exec('pkill -9 -f "vite" 2>/dev/null || true', { silent: true });
+  }
+
+  async isRunning(): Promise<boolean> {
+    return exec('pgrep -f "vite" 2>/dev/null', { silent: true }) !== "";
+  }
+}
+
+class CommandAdapter implements AppAdapter {
+  readonly name: string;
+  private startCmd: string;
+  private stopCmd: string;
+  private killCmd: string;
+  private readyPattern: string | null;
+
+  constructor(config: AppAdapterConfig) {
+    this.name = config.name;
+    this.startCmd = config.start;
+    this.stopCmd = config.stop;
+    this.killCmd = config.kill;
+    this.readyPattern = config.readyPattern ?? null;
+  }
+
+  async start(): Promise<void> {
+    exec(this.startCmd, { silent: false });
+  }
+
+  async stop(): Promise<void> {
+    if (this.stopCmd.startsWith("signal:")) {
+      const signal = this.stopCmd.replace("signal:", "");
+      exec(`pkill -${signal} -f "${this.startCmd}" 2>/dev/null || true`, { silent: true });
+    } else {
+      exec(this.stopCmd, { silent: true });
+    }
+  }
+
+  async kill(): Promise<void> {
+    if (this.killCmd.startsWith("signal:")) {
+      const signal = this.killCmd.replace("signal:", "");
+      exec(`pkill -${signal} -f "${this.startCmd}" 2>/dev/null || true`, { silent: true });
+    } else {
+      exec(this.killCmd, { silent: true });
+    }
+  }
+
+  async isRunning(): Promise<boolean> {
+    if (this.readyPattern) {
+      const output = exec(`pgrep -af "${this.startCmd}" 2>/dev/null`, { silent: true });
+      return output !== "";
+    }
+    return exec(`pgrep -f "${this.startCmd}" 2>/dev/null`, { silent: true }) !== "";
+  }
+}
+
+function buildAdapters(): AppAdapter[] {
+  const config = loadParallelClaudeConfig();
+
+  if (config.apps && config.apps.length > 0) {
+    return config.apps.map((appConfig) => new CommandAdapter(appConfig));
+  }
+
+  const hasRunDevSh = existsSync(join(rootDir(), "run-dev.sh"));
+  const hasRunDevPs1 = existsSync(join(rootDir(), "run-dev.ps1"));
+
+  if (hasRunDevSh || hasRunDevPs1) {
+    return [new ScriptAdapter()];
+  }
+
+  return [new NullAdapter()];
+}
+
+let appProcess: ChildProcess | null = null;
+
+class ScriptAdapter implements AppAdapter {
+  readonly name = "script";
+
+  async start(): Promise<void> {
+    await startAppFromScript();
+  }
+
+  async stop(): Promise<void> {
+    await stopAppFromScript();
+  }
+
+  async kill(): Promise<void> {
+    await stopAppFromScript();
+  }
+
+  async isRunning(): Promise<boolean> {
+    return legacyAppProcessStatus().backend || legacyAppProcessStatus().frontend;
+  }
+}
+
+function legacyAppProcessStatus(): { backend: boolean; frontend: boolean } {
   const isWindows = process.platform === "win32";
 
   if (isWindows) {
@@ -246,8 +443,8 @@ function appProcessStatus(): { backend: boolean; frontend: boolean } {
   }
 }
 
-function isAppProcessRunning(): boolean {
-  const status = appProcessStatus();
+function isAnyAdapterRunning(): boolean {
+  const status = legacyAppProcessStatus();
   return status.backend || status.frontend;
 }
 
@@ -256,22 +453,21 @@ function currentBranch(): string {
 }
 
 function claudeBranches(): Branch[] {
-  const branches: Branch[] = [];
-
+  const prefix = claudeBranchPrefix();
   const localOutput = exec(
     'git branch --format="%(refname:short)|%(committerdate:relative)|%(subject)"',
   );
   const localBranches = localOutput.split("\n").filter((line) => line.trim());
 
-  localBranches
-    .filter((line) => line.startsWith(CLAUDE_BRANCH_PREFIX))
-    .forEach((line) => {
+  return localBranches
+    .filter((line) => line.startsWith(prefix))
+    .map((line) => {
       const [name, time, subject] = line.split("|");
 
       const aheadCount = exec(`git rev-list --count main..${name}`, { silent: true });
       const behindCount = exec(`git rev-list --count ${name}..main`, { silent: true });
 
-      branches.push({
+      return {
         name,
         isLocal: true,
         isRemote: false,
@@ -279,25 +475,13 @@ function claudeBranches(): Branch[] {
         behind: parseInt(behindCount, 10) || 0,
         lastCommit: subject || "",
         lastCommitTime: time || "",
-      });
+      };
     });
-
-  return branches;
 }
 
 function allBranches(): string[] {
   const output = exec('git branch --format="%(refname:short)"');
   return output.split("\n").filter((line) => line.trim());
-}
-
-function branchStatus(branch: string): { ahead: number; behind: number } {
-  const output = exec(`git rev-list --left-right --count origin/main...${branch}`, {
-    silent: true,
-  });
-  if (!output) return { ahead: 0, behind: 0 };
-
-  const [behind, ahead] = output.split("\t").map((n) => parseInt(n, 10) || 0);
-  return { ahead, behind };
 }
 
 function formatBranchDisplay(branch: Branch, current: string): string {
@@ -322,7 +506,6 @@ function formatBranchDisplay(branch: Branch, current: string): string {
 }
 
 function detectClaudeSessions(): Session[] {
-  const sessions: Session[] = [];
   const seenPids = new Set<number>();
 
   try {
@@ -335,44 +518,47 @@ function detectClaudeSessions(): Session[] {
       );
       const lines = output.split("\n").filter((line) => line.trim());
 
-      lines.forEach((line) => {
+      return lines.reduce<Session[]>((sessions, line) => {
         const match = line.trim().match(/^(\d+)\s+(\S+)\s+(.*)$/);
-        if (match) {
-          const pid = parseInt(match[1], 10);
-          const tty = match[2];
-          const command = match[3];
+        if (!match) return sessions;
 
-          if (seenPids.has(pid)) return;
-          if (!command.includes("claude")) return;
-          seenPids.add(pid);
+        const pid = parseInt(match[1], 10);
+        const tty = match[2];
+        const command = match[3];
 
-          const isOrphaned = tty === "??" || tty === "?";
+        if (seenPids.has(pid)) return sessions;
+        if (!command.includes("claude")) return sessions;
+        seenPids.add(pid);
 
-          let branch = "unknown";
-          let cwd = "";
-          let project = "unknown";
+        const isOrphaned = tty === "??" || tty === "?";
 
-          const lsofOutput = exec(`lsof -p ${pid} 2>/dev/null | grep cwd | head -1`, {
+        let branch = "unknown";
+        let cwd = "";
+        let project = "unknown";
+
+        const lsofOutput = exec(`lsof -p ${pid} 2>/dev/null | grep cwd | head -1`, {
+          silent: true,
+        });
+        const cwdMatch = lsofOutput.match(/\s(\/\S+)$/);
+        if (cwdMatch) {
+          cwd = cwdMatch[1];
+          const branchOutput = exec(`git -C "${cwd}" branch --show-current 2>/dev/null`, {
             silent: true,
           });
-          const cwdMatch = lsofOutput.match(/\s(\/\S+)$/);
-          if (cwdMatch) {
-            cwd = cwdMatch[1];
-            const branchOutput = exec(`git -C "${cwd}" branch --show-current 2>/dev/null`, {
-              silent: true,
-            });
-            if (branchOutput) {
-              branch = branchOutput;
-            }
-            const repoRoot = exec(`git -C "${cwd}" rev-parse --show-toplevel 2>/dev/null`, {
-              silent: true,
-            });
-            if (repoRoot) {
-              project = repoRoot.split("/").pop() || "unknown";
-            }
+          if (branchOutput) {
+            branch = branchOutput;
           }
+          const repoRoot = exec(`git -C "${cwd}" rev-parse --show-toplevel 2>/dev/null`, {
+            silent: true,
+          });
+          if (repoRoot) {
+            project = repoRoot.split("/").pop() || "unknown";
+          }
+        }
 
-          sessions.push({
+        return [
+          ...sessions,
+          {
             pid,
             name: cwd ? cwd.split("/").pop() || "unknown" : `PID ${pid}`,
             branch,
@@ -381,11 +567,10 @@ function detectClaudeSessions(): Session[] {
             lastActivity: "active",
             tty: isOrphaned ? null : tty,
             isOrphaned,
-          });
-        }
-      });
+          },
+        ];
+      }, []);
     } else if (platform === "win32") {
-      // Use tasklist instead of wmic (wmic is deprecated in Windows 11)
       const output = exec("tasklist /v /fo csv", { silent: true });
       const lines = output
         .split("\n")
@@ -393,24 +578,25 @@ function detectClaudeSessions(): Session[] {
           (line) => line.toLowerCase().includes("claude") && !line.includes("parallel-claude"),
         );
 
-      lines.forEach((line) => {
-        // CSV format: "Image Name","PID","Session Name","Session#","Mem Usage","Status","User Name","CPU Time","Window Title"
+      return lines.reduce<Session[]>((sessions, line) => {
         const match = line.match(/"([^"]+)","(\d+)"/);
-        if (match) {
-          const processName = match[1];
-          const pid = parseInt(match[2], 10);
-          if (Number.isNaN(pid) || seenPids.has(pid)) return;
-          // Skip non-claude.exe processes (like node.exe running claude code)
-          if (!processName.toLowerCase().includes("claude")) return;
-          seenPids.add(pid);
+        if (!match) return sessions;
 
-          const hasConsole =
-            exec(
-              `powershell -Command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).MainWindowHandle -ne 0"`,
-              { silent: true },
-            ).trim() === "True";
+        const processName = match[1];
+        const pid = parseInt(match[2], 10);
+        if (Number.isNaN(pid) || seenPids.has(pid)) return sessions;
+        if (!processName.toLowerCase().includes("claude")) return sessions;
+        seenPids.add(pid);
 
-          sessions.push({
+        const hasConsole =
+          exec(
+            `powershell -Command "(Get-Process -Id ${pid} -ErrorAction SilentlyContinue).MainWindowHandle -ne 0"`,
+            { silent: true },
+          ).trim() === "True";
+
+        return [
+          ...sessions,
+          {
             pid,
             name: `PID ${pid}`,
             branch: "unknown",
@@ -419,15 +605,15 @@ function detectClaudeSessions(): Session[] {
             lastActivity: "active",
             tty: hasConsole ? "console" : null,
             isOrphaned: !hasConsole,
-          });
-        }
-      });
+          },
+        ];
+      }, []);
     }
   } catch {
-    // Session detection failed silently
+    log.error("Session detection failed");
   }
 
-  return sessions;
+  return [];
 }
 
 function killExternalProcess(pid: number, force: boolean = false): boolean {
@@ -455,18 +641,15 @@ function killMultipleProcesses(
   pids: number[],
   force: boolean = false,
 ): { killed: number[]; failed: number[] } {
-  const killed: number[] = [];
-  const failed: number[] = [];
-
-  pids.forEach((pid) => {
-    if (killExternalProcess(pid, force)) {
-      killed.push(pid);
-    } else {
-      failed.push(pid);
-    }
-  });
-
-  return { killed, failed };
+  return pids.reduce<{ killed: number[]; failed: number[] }>(
+    (result, pid) => {
+      if (killExternalProcess(pid, force)) {
+        return { ...result, killed: [...result.killed, pid] };
+      }
+      return { ...result, failed: [...result.failed, pid] };
+    },
+    { killed: [], failed: [] },
+  );
 }
 
 const terminalWidth = () => process.stdout.columns || 80;
@@ -580,8 +763,9 @@ async function mergeBranch(branch: string): Promise<boolean> {
 
 async function pullChanges(): Promise<void> {
   const branch = currentBranch();
-
-  const appWasRunning = appProcess !== null || isAppProcessRunning();
+  const adapters = buildAdapters();
+  const appWasRunning =
+    appProcess !== null || (await Promise.all(adapters.map((a) => a.isRunning()))).some(Boolean);
 
   const headBefore = exec("git rev-parse HEAD", { silent: true });
 
@@ -648,19 +832,8 @@ async function pullChanges(): Promise<void> {
     }
   }
 
-  const migrationsChanged = changedFiles.split("\n").some((f) => f.includes("migrations/"));
-  if (migrationsChanged) {
-    log.warn("New migrations detected. Running migrations...");
-    try {
-      execSync("pnpm --filter annix-backend migration:run", { cwd: rootDir(), stdio: "inherit" });
-      log.info("✓ Migrations applied");
-    } catch {
-      log.error("✗ Failed to run migrations");
-    }
-  }
-
   if (appWasRunning) {
-    const appStillRunning = isAppProcessRunning();
+    const appStillRunning = (await Promise.all(adapters.map((a) => a.isRunning()))).some(Boolean);
 
     if (!appStillRunning) {
       log.warn("App stopped after pull.");
@@ -747,7 +920,6 @@ enum AppStatus {
   Error = "error",
 }
 
-let appProcess: ChildProcess | null = null;
 let _appStatus: AppStatus = AppStatus.Stopped;
 let appErrorMessage: string | null = null;
 
@@ -794,17 +966,18 @@ function killExistingProcesses(): void {
 }
 
 function projectHasAppScripts(): boolean {
+  const config = loadParallelClaudeConfig();
+
+  if (config.apps && config.apps.length > 0) {
+    return true;
+  }
+
   const isWindows = process.platform === "win32";
   const script = isWindows ? "run-dev.ps1" : "run-dev.sh";
   return existsSync(join(rootDir(), script));
 }
 
-async function startApp(): Promise<void> {
-  if (!projectHasAppScripts()) {
-    log.warn("This project does not have app scripts (run-dev.sh).");
-    return;
-  }
-
+async function startAppFromScript(): Promise<void> {
   killExistingProcesses();
 
   const isWindows = process.platform === "win32";
@@ -882,7 +1055,7 @@ async function startApp(): Promise<void> {
   while (Date.now() - startTime < maxWaitMs) {
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
 
-    const status = appProcessStatus();
+    const status = legacyAppProcessStatus();
 
     if (status.backend && status.frontend) {
       setAppStatus(AppStatus.Running);
@@ -898,13 +1071,120 @@ async function startApp(): Promise<void> {
   appErrorMessage = "Timed out waiting for app";
 }
 
-async function stopApp(): Promise<void> {
+async function startAppWithAdapters(): Promise<void> {
+  const config = loadParallelClaudeConfig();
+  if (!config.apps || config.apps.length === 0) {
+    await startAppFromScript();
+    return;
+  }
+
+  setAppStatus(AppStatus.Starting);
+  appErrorMessage = null;
+
+  const adapters = config.apps.map((appConfig) => new CommandAdapter(appConfig));
+
+  if (existsSync(APP_LOG_FILE)) {
+    unlinkSync(APP_LOG_FILE);
+  }
+
+  const logFd = openSync(APP_LOG_FILE, "w");
+
+  const adapterProcesses = adapters.map((adapter) => {
+    const proc = spawn("sh", ["-c", (adapter as CommandAdapter)["startCmd"]], {
+      cwd: rootDir(),
+      stdio: ["ignore", logFd, logFd],
+      detached: true,
+    });
+
+    proc.on("exit", (code) => {
+      if (appStatusValue() === AppStatus.Starting || appStatusValue() === AppStatus.Running) {
+        if (code !== 0 && code !== null) {
+          setAppStatus(AppStatus.Error);
+          appErrorMessage = `${adapter.name} exited with code ${code}`;
+          log.error(`App failed: ${appErrorMessage}`);
+        } else {
+          setAppStatus(AppStatus.Stopped);
+        }
+      }
+    });
+
+    proc.on("error", (err) => {
+      setAppStatus(AppStatus.Error);
+      appErrorMessage = err.message;
+      log.error(`${adapter.name} failed to start: ${err.message}`);
+    });
+
+    proc.unref();
+    return proc;
+  });
+
+  appProcess = adapterProcesses[0] ?? null;
+
+  const maxWaitMs = 120000;
+  const pollIntervalMs = 2000;
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxWaitMs) {
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+
+    const runningStates = await Promise.all(adapters.map((a) => a.isRunning()));
+    if (runningStates.every(Boolean)) {
+      setAppStatus(AppStatus.Running);
+      return;
+    }
+
+    if (appStatusValue() === AppStatus.Error) {
+      return;
+    }
+  }
+
+  setAppStatus(AppStatus.Error);
+  appErrorMessage = "Timed out waiting for app";
+}
+
+async function startApp(): Promise<void> {
+  if (!projectHasAppScripts()) {
+    log.warn("This project does not have app scripts or adapter config.");
+    return;
+  }
+
+  const config = loadParallelClaudeConfig();
+  if (config.apps && config.apps.length > 0) {
+    await startAppWithAdapters();
+  } else {
+    await startAppFromScript();
+  }
+}
+
+async function stopAppFromScript(): Promise<void> {
   log.info("\nStopping development server...");
 
   setAppStatus(AppStatus.Stopped);
   appErrorMessage = null;
 
   killExistingProcesses();
+
+  if (appProcess) {
+    appProcess.kill("SIGTERM");
+    appProcess = null;
+  }
+
+  log.info("✓ App stopped.");
+}
+
+async function stopApp(): Promise<void> {
+  log.info("\nStopping development server...");
+
+  setAppStatus(AppStatus.Stopped);
+  appErrorMessage = null;
+
+  const config = loadParallelClaudeConfig();
+  if (config.apps && config.apps.length > 0) {
+    const adapters = config.apps.map((appConfig) => new CommandAdapter(appConfig));
+    await Promise.all(adapters.map((a) => a.stop()));
+  } else {
+    killExistingProcesses();
+  }
 
   if (appProcess) {
     appProcess.kill("SIGTERM");
@@ -948,7 +1228,7 @@ async function showAppLogs(): Promise<void> {
 
     process.stdout.write("\x1b[2J\x1b[H");
 
-    const title = "  📄 App Logs (live)";
+    const title = "  App Logs (live)";
     log.print(chalk.bold.cyan(`┌${"─".repeat(contentWidth)}┐`));
     log.print(
       chalk.bold.cyan("│") +
@@ -1016,15 +1296,16 @@ async function showAppLogs(): Promise<void> {
 async function showBranchMenu(): Promise<void> {
   const branches = claudeBranches();
   const current = currentBranch();
+  const prefix = claudeBranchPrefix();
 
   if (branches.length === 0) {
-    log.warn("\nNo claude/* branches found.");
+    log.warn(`\nNo ${prefix}* branches found.`);
     log.info("Claude branches are used for parallel development work.\n");
 
     const action = await select({
       message: "What would you like to do?",
       choices: [
-        { name: "➕ Create a new claude/* branch", value: "create" },
+        { name: `➕ Create a new ${prefix}* branch`, value: "create" },
         { name: chalk.dim("← Back"), value: "back" },
       ],
       pageSize: 20,
@@ -1032,11 +1313,11 @@ async function showBranchMenu(): Promise<void> {
 
     if (action === "create") {
       const branchName = await input({
-        message: "Branch name (will be prefixed with claude/):",
+        message: `Branch name (will be prefixed with ${prefix}):`,
         validate: (val) => (val.trim() ? true : "Branch name required"),
       });
 
-      const fullBranchName = `claude/${branchName.trim()}`;
+      const fullBranchName = `${prefix}${branchName.trim()}`;
       exec(`git checkout -b ${fullBranchName}`);
       log.info(`✓ Created and switched to ${fullBranchName}`);
     }
@@ -1049,7 +1330,7 @@ async function showBranchMenu(): Promise<void> {
   }));
 
   choices.push(
-    { name: "➕ Create new claude/* branch", value: "create" },
+    { name: `➕ Create new ${prefix}* branch`, value: "create" },
     { name: chalk.dim("← Back"), value: "back" },
   );
 
@@ -1063,11 +1344,11 @@ async function showBranchMenu(): Promise<void> {
 
   if (selected === "create") {
     const branchName = await input({
-      message: "Branch name (will be prefixed with claude/):",
+      message: `Branch name (will be prefixed with ${prefix}):`,
       validate: (val) => (val.trim() ? true : "Branch name required"),
     });
 
-    const fullBranchName = `claude/${branchName.trim()}`;
+    const fullBranchName = `${prefix}${branchName.trim()}`;
     exec(`git checkout -b ${fullBranchName}`);
     log.info(`✓ Created and switched to ${fullBranchName}`);
     return;
@@ -1106,6 +1387,8 @@ async function branchActions(branch: string): Promise<void> {
       break;
     case "delete":
       await deleteBranch(branch);
+      break;
+    default:
       break;
   }
 }
@@ -1173,7 +1456,8 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
   let sessionDir = rootDir();
 
   if (useWorktree) {
-    const worktreeName = branch.replace(CLAUDE_BRANCH_PREFIX, "").replace(/[^a-z0-9-]/gi, "-");
+    const prefix = claudeBranchPrefix();
+    const worktreeName = branch.replace(prefix, "").replace(/[^a-z0-9-]/gi, "-");
     worktreePath = join(worktreeDir(), worktreeName);
     sessionDir = worktreePath;
 
@@ -1216,17 +1500,14 @@ async function spawnClaudeSession(options: SpawnOptions = {}): Promise<void> {
   }
 
   let claudeCmd = "claude";
-  let usePipe = false;
   if (headless) {
     if (taskFile) {
       claudeCmd = `cat '${taskFile}' | claude --dangerously-skip-permissions`;
-      usePipe = true;
     } else {
       claudeCmd = "claude --dangerously-skip-permissions";
     }
   } else if (taskFile) {
     claudeCmd = `cat '${taskFile}' | claude`;
-    usePipe = true;
   }
 
   let sessionProcess: ChildProcess;
@@ -1423,8 +1704,8 @@ async function pullChangesFromBranch(branch: string): Promise<void> {
   const pullChoice = await selectWithEscape(
     "What would you like to do?",
     [
-      { name: "🍒 Cherry-pick all commits to main (for testing)", value: "cherry-pick-all" },
-      { name: "🍒 Cherry-pick latest commit only", value: "cherry-pick-latest" },
+      { name: "Cherry-pick all commits to main (for testing)", value: "cherry-pick-all" },
+      { name: "Cherry-pick latest commit only", value: "cherry-pick-latest" },
       { name: chalk.dim("← Cancel"), value: "cancel" },
     ],
     "cancel",
@@ -1445,8 +1726,8 @@ async function pullChangesFromBranch(branch: string): Promise<void> {
       const abortChoice = await selectWithEscape(
         "What would you like to do?",
         [
-          { name: "🔙 Abort and return to menu", value: "abort" },
-          { name: "🛠️  Leave as-is for manual resolution", value: "manual" },
+          { name: "Abort and return to menu", value: "abort" },
+          { name: "Leave as-is for manual resolution", value: "manual" },
         ],
         "abort",
       );
@@ -1456,7 +1737,7 @@ async function pullChangesFromBranch(branch: string): Promise<void> {
           execSync("git cherry-pick --abort", { cwd: rootDir(), stdio: "pipe" });
           log.info("Cherry-pick aborted.");
         } catch {
-          // Already aborted
+          log.warn("Cherry-pick already aborted or no cherry-pick in progress.");
         }
       } else {
         log.info('Resolve conflicts manually, then run "git cherry-pick --continue".');
@@ -1560,22 +1841,22 @@ async function showSessionsMenu(): Promise<void> {
     const choices = [{ name: "➕ Start new session", value: "new" }];
 
     if (branchesWithCommits.length > 0) {
-      choices.push({ name: "🍒 Pull changes for testing", value: "pull-changes" });
+      choices.push({ name: "Pull changes for testing", value: "pull-changes" });
     }
 
     if (orphanedSessions.length > 0) {
       choices.push({
-        name: `🧹 Kill all orphaned sessions (${orphanedSessions.length})`,
+        name: `Kill all orphaned sessions (${orphanedSessions.length})`,
         value: "kill-orphaned",
       });
     }
 
     if (detectedSessions.length > 0) {
-      choices.push({ name: "🗑️  Select sessions to kill", value: "kill-select" });
+      choices.push({ name: "Select sessions to kill", value: "kill-select" });
     }
 
     if (managed.length > 0) {
-      choices.push({ name: "🛑 Terminate a managed session", value: "terminate" });
+      choices.push({ name: "Terminate a managed session", value: "terminate" });
     }
 
     choices.push({ name: chalk.dim("← Back"), value: "back" });
@@ -1588,8 +1869,8 @@ async function showSessionsMenu(): Promise<void> {
       const killMethod = await selectWithEscape(
         "How to kill orphaned sessions?",
         [
-          { name: "🔪 Graceful (SIGTERM) - allows cleanup", value: "graceful" },
-          { name: "💀 Force (SIGKILL) - immediate termination", value: "force" },
+          { name: "Graceful (SIGTERM) - allows cleanup", value: "graceful" },
+          { name: "Force (SIGKILL) - immediate termination", value: "force" },
           { name: chalk.dim("← Cancel"), value: "cancel" },
         ],
         "cancel",
@@ -1653,8 +1934,8 @@ async function showSessionsMenu(): Promise<void> {
       const killMethod = await selectWithEscape(
         "How to kill selected sessions?",
         [
-          { name: "🔪 Graceful (SIGTERM) - allows cleanup", value: "graceful" },
-          { name: "💀 Force (SIGKILL) - immediate termination", value: "force" },
+          { name: "Graceful (SIGTERM) - allows cleanup", value: "graceful" },
+          { name: "Force (SIGKILL) - immediate termination", value: "force" },
           { name: chalk.dim("← Cancel"), value: "cancel" },
         ],
         "cancel",
@@ -1711,12 +1992,14 @@ async function showSessionsMenu(): Promise<void> {
       setCurrentProject(selectedProject);
       log.info(`Working in: ${selectedProject.name}`);
 
+      const prefix = claudeBranchPrefix();
+
       const startType = await selectWithEscape(
         "How would you like to start?",
         [
-          { name: "🚀 Quick start on main (Recommended)", value: "main" },
-          { name: "🎫 Start with GitHub issue", value: "issue" },
-          { name: "🌿 Start on specific branch", value: "branch" },
+          { name: "Quick start on main (Recommended)", value: "main" },
+          { name: "Start with GitHub issue", value: "issue" },
+          { name: "Start on specific branch", value: "branch" },
           { name: chalk.dim("← Cancel"), value: "cancel" },
         ],
         "cancel",
@@ -1776,12 +2059,12 @@ async function showSessionsMenu(): Promise<void> {
 
         const existingBranches = claudeBranches();
         const branchChoiceOptions = [
-          { name: "📍 Main directory (no isolation)", value: "main" },
-          { name: "🌿 New worktree (isolated directory with new branch)", value: "create" },
+          { name: "Main directory (no isolation)", value: "main" },
+          { name: "New worktree (isolated directory with new branch)", value: "create" },
         ];
 
         if (existingBranches.length > 0) {
-          branchChoiceOptions.push({ name: "📂 Existing worktree/branch", value: "existing" });
+          branchChoiceOptions.push({ name: "Existing worktree/branch", value: "existing" });
         }
 
         branchChoiceOptions.push({ name: chalk.dim("← Cancel"), value: "cancel" });
@@ -1803,12 +2086,12 @@ async function showSessionsMenu(): Promise<void> {
             .slice(0, 40);
 
           const branchName = await input({
-            message: "Branch name (will be prefixed with claude/):",
+            message: `Branch name (will be prefixed with ${prefix}):`,
             default: suggestedName,
             validate: (val) => (val.trim() ? true : "Branch name required"),
           });
 
-          selectedBranch = `claude/${branchName.trim()}`;
+          selectedBranch = `${prefix}${branchName.trim()}`;
           createNewBranch = true;
         } else if (branchChoice === "existing") {
           const existingBranchChoices = [
@@ -1834,7 +2117,7 @@ async function showSessionsMenu(): Promise<void> {
           { name: chalk.green("+ Create new worktree with new branch"), value: "create-new" },
           ...branches.map((b) => ({ name: `${b.name} (claude branch)`, value: b.name })),
           ...allBranchesList
-            .filter((b) => !b.startsWith(CLAUDE_BRANCH_PREFIX) && b !== "main")
+            .filter((b) => !b.startsWith(prefix) && b !== "main")
             .map((b) => ({ name: b, value: b })),
           { name: chalk.dim("← Cancel"), value: "cancel" },
         ];
@@ -1849,10 +2132,10 @@ async function showSessionsMenu(): Promise<void> {
 
         if (selectedBranch === "create-new") {
           const branchName = await input({
-            message: "Branch name (will be prefixed with claude/):",
+            message: `Branch name (will be prefixed with ${prefix}):`,
             validate: (val) => (val.trim() ? true : "Branch name required"),
           });
-          selectedBranch = `claude/${branchName.trim()}`;
+          selectedBranch = `${prefix}${branchName.trim()}`;
           createNewBranch = true;
         }
 
@@ -1869,8 +2152,8 @@ async function showSessionsMenu(): Promise<void> {
       const mode = await selectWithEscape(
         "Session mode:",
         [
-          { name: "🛡️  Interactive - prompts for confirmation (Recommended)", value: "interactive" },
-          { name: "⚡ Headless - auto-accepts all actions", value: "headless" },
+          { name: "Interactive - prompts for confirmation (Recommended)", value: "interactive" },
+          { name: "Headless - auto-accepts all actions", value: "headless" },
           { name: chalk.dim("← Cancel"), value: "cancel" },
         ],
         "cancel",
@@ -1926,7 +2209,8 @@ async function showStatus(): Promise<void> {
 
   printSection("Claude branches");
   if (branches.length === 0) {
-    printBoxLine(chalk.dim("No claude/* branches"));
+    const prefix = claudeBranchPrefix();
+    printBoxLine(chalk.dim(`No ${prefix}* branches`));
   } else {
     branches.forEach((branch) => {
       const display = formatBranchDisplay(branch, current);
@@ -1957,7 +2241,7 @@ async function showStatus(): Promise<void> {
     let appStatusColor = chalk.dim;
     let appStatusIcon = "○";
 
-    const processStatus = appProcessStatus();
+    const processStatus = legacyAppProcessStatus();
     const backendRunning = processStatus.backend;
     const frontendRunning = processStatus.frontend;
     const appRunning = appProcess !== null || backendRunning || frontendRunning;
@@ -2022,7 +2306,7 @@ async function showStatus(): Promise<void> {
             state = "Compiling...";
           }
         } catch {
-          // ignore
+          log.warn("Could not read app logs.");
         }
       }
       appStatusText = `${state} (use [x] to stop)`;
@@ -2175,54 +2459,62 @@ async function mainMenu(): Promise<void> {
 
     const choices: MenuChoice[] = [
       {
-        name: `📋 ${padLabel("Manage branches", 28)}${chalk.cyan("[b]")}`,
+        name: `${padLabel("Manage branches", 28)}${chalk.cyan("[b]")}`,
         value: "branches",
         key: "b",
       },
       {
-        name: `🖥️ ${padLabel(`Manage sessions${sessionInfo}`, 28)}${chalk.cyan("[s]")}`,
+        name: `${padLabel(`Manage sessions${sessionInfo}`, 28)}${chalk.cyan("[s]")}`,
         value: "sessions",
         key: "s",
       },
-      { name: `📥 ${padLabel("Pull changes", 28)}${chalk.cyan("[p]")}`, value: "pull", key: "p" },
+      {
+        name: `${padLabel("Pull changes", 28)}${chalk.cyan("[p]")}`,
+        value: "pull",
+        key: "p",
+      },
     ];
 
     if (hasAppScripts) {
       const isWindows = process.platform === "win32";
       choices.push({
-        name: `🚀 ${padLabel("Start app", 28)}${chalk.cyan("[a]")}`,
+        name: `${padLabel("Start app", 28)}${chalk.cyan("[a]")}`,
         value: "start",
         key: "a",
       });
       if (!isWindows) {
         choices.push({
-          name: `📄 ${padLabel("View app logs", 28)}${chalk.cyan("[l]")}`,
+          name: `${padLabel("View app logs", 28)}${chalk.cyan("[l]")}`,
           value: "logs",
           key: "l",
         });
       }
       choices.push({
-        name: `🛑 ${padLabel("Stop app", 28)}${chalk.cyan("[x]")}`,
+        name: `${padLabel("Stop app", 28)}${chalk.cyan("[x]")}`,
         value: "stop",
         key: "x",
       });
     }
 
     choices.push({
-      name: `🔄 ${padLabel("Refresh", 28)}${chalk.cyan("[r]")}`,
+      name: `${padLabel("Refresh", 28)}${chalk.cyan("[r]")}`,
       value: "refresh",
       key: "r",
     });
 
     if (process.platform === "win32") {
       choices.push({
-        name: `🖥️ ${padLabel("Create desktop shortcut", 28)}${chalk.cyan("[d]")}`,
+        name: `${padLabel("Create desktop shortcut", 28)}${chalk.cyan("[d]")}`,
         value: "shortcut",
         key: "d",
       });
     }
 
-    choices.push({ name: chalk.dim(`❌ ${padLabel("Quit", 28)}[q]`), value: "quit", key: "q" });
+    choices.push({
+      name: chalk.dim(`${padLabel("Quit", 28)}[q]`),
+      value: "quit",
+      key: "q",
+    });
 
     const action = await selectWithShortcuts("What would you like to do?", choices, 5000);
 
@@ -2251,13 +2543,12 @@ async function mainMenu(): Promise<void> {
         await stopApp();
         break;
       case "refresh":
-        // Just loop again
         break;
       case "shortcut":
         await createDesktopShortcut();
         break;
       case "quit":
-        if (appProcess || isAppProcessRunning()) {
+        if (appProcess || isAnyAdapterRunning()) {
           const confirmQuit = await confirm({
             message: "App is still running. Stop it before quitting?",
             default: true,
@@ -2268,12 +2559,11 @@ async function mainMenu(): Promise<void> {
         }
         log.debug("\nGoodbye!");
         process.exit(0);
+        break;
+      default:
+        break;
     }
   }
-}
-
-function ensureNamedWindow(): boolean {
-  return true;
 }
 
 async function createDesktopShortcut(): Promise<void> {
@@ -2316,16 +2606,27 @@ npx ts-node --transpile-only scripts/parallel-claude.ts
 }
 
 async function main(): Promise<void> {
-  if (!ensureNamedWindow()) {
-    process.exit(0);
-  }
-
   log.info("\n  Parallel Claude\n");
 
   const isGitRepo = existsSync(join(DEFAULT_ROOT_DIR, ".git"));
   if (!isGitRepo) {
     log.error("Error: Not a git repository.");
     process.exit(1);
+  }
+
+  const projectsConfig = loadProjectsConfig();
+  if (projectsConfig.defaultProject) {
+    const defaultProject = projectsConfig.projects.find(
+      (p) => p.name === projectsConfig.defaultProject,
+    );
+    if (defaultProject) {
+      setCurrentProject(defaultProject);
+    }
+  } else if (projectsConfig.projects.length > 0) {
+    const firstProject = projectsConfig.projects[0];
+    if (firstProject) {
+      setCurrentProject(firstProject);
+    }
   }
 
   await mainMenu();
