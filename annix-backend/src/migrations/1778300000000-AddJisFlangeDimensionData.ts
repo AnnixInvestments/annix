@@ -14,7 +14,10 @@ export class AddJisFlangeDimensionData1778300000000 implements MigrationInterfac
       return result[0]?.id ?? null;
     };
 
-    const pressureClassId = async (standardId: number, designation: string): Promise<number | null> => {
+    const pressureClassId = async (
+      standardId: number,
+      designation: string,
+    ): Promise<number | null> => {
       const result = await queryRunner.query(
         `SELECT id FROM flange_pressure_classes WHERE designation = $1 AND "standardId" = $2`,
         [designation, standardId],
@@ -24,17 +27,15 @@ export class AddJisFlangeDimensionData1778300000000 implements MigrationInterfac
 
     const boltId = async (designation: string): Promise<number | null> => {
       if (!designation) return null;
-      const result = await queryRunner.query(
-        "SELECT id FROM bolts WHERE designation = $1",
-        [designation],
-      );
+      const result = await queryRunner.query("SELECT id FROM bolts WHERE designation = $1", [
+        designation,
+      ]);
       return result[0]?.id ?? null;
     };
 
-    const jisStandard = await queryRunner.query(
-      "SELECT id FROM flange_standards WHERE code = $1",
-      ["JIS B 2220"],
-    );
+    const jisStandard = await queryRunner.query("SELECT id FROM flange_standards WHERE code = $1", [
+      "JIS B 2220",
+    ]);
 
     if (jisStandard.length === 0) {
       console.warn("  JIS B 2220 standard not found — skipping dimension data");
@@ -44,7 +45,20 @@ export class AddJisFlangeDimensionData1778300000000 implements MigrationInterfac
     const jisId = jisStandard[0].id;
 
     const jisData: Array<
-      [number, string, number, number, number, number, number, number, string, number, number, number]
+      [
+        number,
+        string,
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+        string,
+        number,
+        number,
+        number,
+      ]
     > = [
       // [nb, pressureClass, D, b, d4, f, num_holes, d1, boltDesignation, pcd, mass_kg, bolt_length_mm]
       // d4 = raised face outer diameter (mm), f = raised face height (mm)
@@ -117,7 +131,20 @@ export class AddJisFlangeDimensionData1778300000000 implements MigrationInterfac
     ];
 
     for (const row of jisData) {
-      const [nb, pressureClass, D, b, d4, f, num_holes, d1, boltDesignation, pcd, mass_kg, bolt_length_mm] = row;
+      const [
+        nb,
+        pressureClass,
+        D,
+        b,
+        d4,
+        f,
+        num_holes,
+        d1,
+        boltDesignation,
+        pcd,
+        mass_kg,
+        bolt_length_mm,
+      ] = row;
       const nId = await nominalId(nb);
       const pcId = await pressureClassId(jisId, pressureClass);
       const bId = await boltId(boltDesignation);
@@ -138,20 +165,18 @@ export class AddJisFlangeDimensionData1778300000000 implements MigrationInterfac
       );
     }
 
-    console.warn(`  Added JIS B 2220 flange dimension records (d4/f values require update from JIS B 2220 standard)`);
+    console.warn(
+      "  Added JIS B 2220 flange dimension records (d4/f values require update from JIS B 2220 standard)",
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    const jisStandard = await queryRunner.query(
-      "SELECT id FROM flange_standards WHERE code = $1",
-      ["JIS B 2220"],
-    );
+    const jisStandard = await queryRunner.query("SELECT id FROM flange_standards WHERE code = $1", [
+      "JIS B 2220",
+    ]);
     if (jisStandard.length === 0) return;
 
     const jisId = jisStandard[0].id;
-    await queryRunner.query(
-      `DELETE FROM flange_dimensions WHERE "standardId" = $1`,
-      [jisId],
-    );
+    await queryRunner.query(`DELETE FROM flange_dimensions WHERE "standardId" = $1`, [jisId]);
   }
 }
