@@ -404,4 +404,35 @@ export class RecordingService {
       speakerSegments: recording.speakerSegments,
     };
   }
+
+  async audioStream(
+    userId: number,
+    recordingId: number,
+  ): Promise<{ filePath: string; mimeType: string; fileSize: number } | null> {
+    const recording = await this.recordingRepo.findOne({
+      where: { id: recordingId },
+      relations: ["meeting"],
+    });
+
+    if (!recording) {
+      return null;
+    }
+
+    if (recording.meeting.salesRepId !== userId) {
+      return null;
+    }
+
+    const fullPath = path.join(this.uploadDir, recording.storagePath);
+    if (!fs.existsSync(fullPath)) {
+      return null;
+    }
+
+    const stats = fs.statSync(fullPath);
+
+    return {
+      filePath: fullPath,
+      mimeType: recording.mimeType,
+      fileSize: stats.size,
+    };
+  }
 }

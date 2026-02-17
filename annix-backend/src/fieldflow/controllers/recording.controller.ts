@@ -1,8 +1,11 @@
+import * as fs from "node:fs";
 import {
   Body,
   Controller,
   Delete,
   Get,
+  Headers,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -10,6 +13,7 @@ import {
   Query,
   RawBodyRequest,
   Req,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -22,6 +26,7 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import type { Response } from "express";
 import { Request } from "express";
 import { FieldFlowAuthGuard } from "../auth";
 import {
@@ -131,5 +136,54 @@ export class RecordingController {
   @ApiResponse({ status: 404, description: "Recording not found" })
   deleteRecording(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
     return this.recordingService.deleteRecording(req.fieldflowUser.userId, id);
+  }
+
+  @Get(":id/stream")
+  @ApiOperation({ summary: "Stream audio file with Range support for seeking" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiResponse({ status: 200, description: "Audio stream" })
+  @ApiResponse({ status: 206, description: "Partial content (range request)" })
+  @ApiResponse({ status: 404, description: "Recording not found" })
+  async streamAudio(
+    @Req() req: FieldFlowRequest,
+    @Res() res: Response,
+    @Param("id", ParseIntPipe) id: number,
+    @Headers("range") range?: string,
+  ) {
+    const streamInfo = await this.recordingService.audioStream(req.fieldflowUser.userId, id);
+
+    if (!streamInfo) {
+      throw new NotFoundException("Recording not found");
+    }
+
+    const { filePath, mimeType, fileSize } = streamInfo;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+      if (start >= fileSize) {
+        res.status(416).header("Content-Range", `bytes */${fileSize}`).send();
+        return;
+      }
+
+      const chunkSize = end - start + 1;
+      const stream = fs.createReadStream(filePath, { start, end });
+
+      res.status(206);
+      res.header("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+      res.header("Accept-Ranges", "bytes");
+      res.header("Content-Length", chunkSize.toString());
+      res.header("Content-Type", mimeType);
+
+      stream.pipe(res);
+    } else {
+      res.header("Content-Length", fileSize.toString());
+      res.header("Content-Type", mimeType);
+      res.header("Accept-Ranges", "bytes");
+
+      fs.createReadStream(filePath).pipe(res);
+    }
   }
 }

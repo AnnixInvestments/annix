@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, MaxLength } from "class-validator";
+import { Type } from "class-transformer";
+import {
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from "class-validator";
 import type { SpeakerSegment } from "../entities";
 
 export class InitiateUploadDto {
@@ -167,4 +177,29 @@ export class TranscriptWithSegmentsDto extends TranscriptResponseDto {
     speakerLabel: string;
     confidence: number | null;
   }>;
+}
+
+export class UpdateTranscriptSegmentDto {
+  @ApiProperty({ description: "Index of segment to update" })
+  @IsNumber()
+  @IsNotEmpty()
+  index: number;
+
+  @ApiPropertyOptional({ description: "Updated speaker label" })
+  @IsString()
+  @IsOptional()
+  speakerLabel?: string;
+
+  @ApiPropertyOptional({ description: "Updated segment text" })
+  @IsString()
+  @IsOptional()
+  text?: string;
+}
+
+export class UpdateTranscriptDto {
+  @ApiProperty({ description: "Array of segment updates", type: [UpdateTranscriptSegmentDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateTranscriptSegmentDto)
+  segments: UpdateTranscriptSegmentDto[];
 }

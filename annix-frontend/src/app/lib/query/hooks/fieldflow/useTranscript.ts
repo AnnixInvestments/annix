@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { UpdateTranscriptDto } from "@/app/lib/api/fieldflowApi";
 import { fieldflowApi } from "@/app/lib/api/fieldflowApi";
 import { fieldflowKeys } from "@/app/lib/query/keys/fieldflowKeys";
 
@@ -60,6 +61,24 @@ export function useDeleteTranscript() {
     onSuccess: (_, recordingId) => {
       queryClient.invalidateQueries({
         queryKey: fieldflowKeys.transcripts.byRecording(recordingId),
+      });
+    },
+  });
+}
+
+export function useUpdateTranscript() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ transcriptId, dto }: { transcriptId: number; dto: UpdateTranscriptDto }) =>
+      fieldflowApi.transcripts.update(transcriptId, dto),
+    onSuccess: (transcript) => {
+      queryClient.setQueryData(
+        fieldflowKeys.transcripts.byRecording(transcript.recordingId),
+        transcript,
+      );
+      queryClient.invalidateQueries({
+        queryKey: fieldflowKeys.transcripts.all,
       });
     },
   });

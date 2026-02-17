@@ -1,11 +1,11 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import FormData from "form-data";
 import { Repository } from "typeorm";
-import { TranscriptResponseDto, TranscriptWithSegmentsDto } from "../dto";
+import { TranscriptResponseDto, TranscriptWithSegmentsDto, UpdateTranscriptDto } from "../dto";
 import {
   type ActionItem,
   type MeetingAnalysis,
@@ -521,6 +521,55 @@ export class TranscriptionService {
   async retranscribe(recordingId: number): Promise<MeetingTranscript> {
     await this.deleteTranscript(recordingId);
     return this.transcribeRecording(recordingId);
+  }
+
+  async updateSegments(
+    userId: number,
+    transcriptId: number,
+    dto: UpdateTranscriptDto,
+  ): Promise<TranscriptWithSegmentsDto> {
+    const transcript = await this.transcriptRepo.findOne({
+      where: { id: transcriptId },
+      relations: ["recording", "recording.meeting"],
+    });
+
+    if (!transcript) {
+      throw new NotFoundException("Transcript not found");
+    }
+
+    if (transcript.recording.meeting.salesRepId !== userId) {
+      throw new NotFoundException("Transcript not found");
+    }
+
+    const updatedSegments = transcript.segments.map((segment, index) => {
+      const update = dto.segments.find((u) => u.index === index);
+      if (!update) {
+        return segment;
+      }
+      return {
+        ...segment,
+        speakerLabel: update.speakerLabel ?? segment.speakerLabel,
+        text: update.text ?? segment.text,
+      };
+    });
+
+    const invalidIndices = dto.segments
+      .filter((u) => u.index < 0 || u.index >= transcript.segments.length)
+      .map((u) => u.index);
+
+    if (invalidIndices.length > 0) {
+      throw new BadRequestException(`Invalid segment indices: ${invalidIndices.join(", ")}`);
+    }
+
+    transcript.segments = updatedSegments;
+    transcript.fullText = updatedSegments.map((s) => s.text).join(" ");
+    transcript.wordCount = transcript.fullText.split(/\s+/).filter((w) => w.length > 0).length;
+
+    const saved = await this.transcriptRepo.save(transcript);
+
+    this.logger.log(`Transcript ${transcriptId} updated: ${dto.segments.length} segments modified`);
+
+    return this.toTranscriptWithSegments(saved);
   }
 
   private toTranscriptResponse(transcript: MeetingTranscript): TranscriptResponseDto {

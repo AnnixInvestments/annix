@@ -48,6 +48,8 @@ export {
   TranscriptResponseDto,
   TranscriptWithSegmentsDto,
   UpdateSpeakerLabelsDto,
+  UpdateTranscriptDto,
+  UpdateTranscriptSegmentDto,
 } from "./recording.dto";
 export {
   ColdCallSuggestionsQueryDto,

@@ -233,6 +233,7 @@ export {
   useRetranscribeRecording,
   useTranscribeRecording,
   useTranscript,
+  useUpdateTranscript,
 } from "./fieldflow/useTranscript";
 export type { PublicStats, UpcomingRfq } from "./public/usePublicStats";
 export { usePublicStats } from "./public/usePublicStats";

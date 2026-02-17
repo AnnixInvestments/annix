@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ActionItem,
   MeetingAnalysis,
@@ -10,12 +10,14 @@ import type {
   Transcript,
   TranscriptSegment,
 } from "@/app/lib/api/fieldflowApi";
+import { fieldflowApi } from "@/app/lib/api/fieldflowApi";
 import {
   useMeeting,
   useMeetingRecording,
   useMeetingTranscript,
   useRetranscribeRecording,
   useTranscribeRecording,
+  useUpdateTranscript,
 } from "@/app/lib/query/hooks";
 
 const speakerColors: Record<string, string> = {
@@ -257,18 +259,134 @@ function AnalysisSection({ analysis }: { analysis: MeetingAnalysis }) {
   );
 }
 
-function TranscriptSegmentView({ segment }: { segment: TranscriptSegment }) {
+interface EditingState {
+  index: number;
+  field: "speaker" | "text";
+}
+
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query.trim()) return text;
+
+  const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+  const parts = text.split(regex);
+
+  return parts.map((part, i) =>
+    regex.test(part) ? (
+      <mark key={i} className="bg-yellow-300 dark:bg-yellow-600 rounded px-0.5">
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  );
+}
+
+function TranscriptSegmentView({
+  segment,
+  index,
+  isPlaying,
+  searchQuery,
+  isMatch,
+  editing,
+  onSeek,
+  onEditStart,
+  onEditSave,
+  onEditCancel,
+}: {
+  segment: TranscriptSegment;
+  index: number;
+  isPlaying: boolean;
+  searchQuery: string;
+  isMatch: boolean;
+  editing: EditingState | null;
+  onSeek: (time: number) => void;
+  onEditStart: (index: number, field: "speaker" | "text") => void;
+  onEditSave: (index: number, field: "speaker" | "text", value: string) => void;
+  onEditCancel: () => void;
+}) {
+  const [editValue, setEditValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isEditingSpeaker = editing?.index === index && editing?.field === "speaker";
+  const isEditingText = editing?.index === index && editing?.field === "text";
+
+  useEffect(() => {
+    if (isEditingSpeaker) {
+      setEditValue(segment.speakerLabel);
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    } else if (isEditingText) {
+      setEditValue(segment.text);
+      textareaRef.current?.focus();
+      textareaRef.current?.select();
+    }
+  }, [isEditingSpeaker, isEditingText, segment.speakerLabel, segment.text]);
+
+  const handleKeyDown = (e: React.KeyboardEvent, field: "speaker" | "text") => {
+    if (e.key === "Escape") {
+      onEditCancel();
+    } else if (e.key === "Enter" && (field === "speaker" || !e.shiftKey)) {
+      e.preventDefault();
+      onEditSave(index, field, editValue);
+    }
+  };
+
+  const playingClass = isPlaying ? "ring-2 ring-blue-500 dark:ring-blue-400" : "";
+  const matchClass = isMatch && searchQuery ? "ring-2 ring-yellow-400" : "";
+
   return (
-    <div className={`p-3 rounded-lg border ${speakerColor(segment.speakerLabel)}`}>
+    <div
+      className={`p-3 rounded-lg border ${speakerColor(segment.speakerLabel)} ${playingClass} ${matchClass} transition-all`}
+      data-segment-index={index}
+    >
       <div className="flex items-center justify-between mb-1">
-        <span className={`text-sm font-medium ${speakerTextColor(segment.speakerLabel)}`}>
-          {segment.speakerLabel}
-        </span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
+        {isEditingSpeaker ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={() => onEditSave(index, "speaker", editValue)}
+            onKeyDown={(e) => handleKeyDown(e, "speaker")}
+            className="text-sm font-medium px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        ) : (
+          <button
+            onClick={() => onEditStart(index, "speaker")}
+            className={`text-sm font-medium ${speakerTextColor(segment.speakerLabel)} hover:underline cursor-pointer`}
+            title="Click to edit speaker"
+          >
+            {segment.speakerLabel}
+          </button>
+        )}
+        <button
+          onClick={() => onSeek(segment.startTime)}
+          className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline cursor-pointer"
+          title="Click to jump to this timestamp"
+        >
           {formatTime(segment.startTime)} - {formatTime(segment.endTime)}
-        </span>
+        </button>
       </div>
-      <p className="text-sm text-gray-700 dark:text-gray-300">{segment.text}</p>
+      {isEditingText ? (
+        <textarea
+          ref={textareaRef}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={() => onEditSave(index, "text", editValue)}
+          onKeyDown={(e) => handleKeyDown(e, "text")}
+          className="w-full text-sm px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          rows={3}
+        />
+      ) : (
+        <p
+          onClick={() => onEditStart(index, "text")}
+          className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded px-1 -mx-1"
+          title="Click to edit text"
+        >
+          {highlightText(segment.text, searchQuery)}
+        </p>
+      )}
     </div>
   );
 }
@@ -448,10 +566,111 @@ function ExportDropdown({
   );
 }
 
+function SearchBar({
+  value,
+  onChange,
+  matchCount,
+  currentMatch,
+  onPrevious,
+  onNext,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  matchCount: number;
+  currentMatch: number;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700/50 rounded-lg px-3 py-2">
+      <svg
+        className="w-4 h-4 text-gray-400"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth={1.5}
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+        />
+      </svg>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search transcript..."
+        className="flex-1 bg-transparent border-none focus:outline-none text-sm text-gray-700 dark:text-gray-300 placeholder-gray-400"
+      />
+      {value && (
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {matchCount > 0 ? `${currentMatch + 1}/${matchCount}` : "0 matches"}
+          </span>
+          <button
+            onClick={onPrevious}
+            disabled={matchCount === 0}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50"
+            title="Previous match"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+            </svg>
+          </button>
+          <button
+            onClick={onNext}
+            disabled={matchCount === 0}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50"
+            title="Next match"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          <button
+            onClick={() => onChange("")}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-slate-600"
+            title="Clear search"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TranscriptPage() {
   const params = useParams();
   const meetingId = Number(params.id);
   const [activeTab, setActiveTab] = useState<"transcript" | "analysis">("transcript");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [editing, setEditing] = useState<EditingState | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const segmentContainerRef = useRef<HTMLDivElement>(null);
 
   const { data: meeting, isLoading: meetingLoading } = useMeeting(meetingId);
   const { data: recording, isLoading: recordingLoading } = useMeetingRecording(meetingId);
@@ -462,6 +681,112 @@ export default function TranscriptPage() {
   } = useMeetingTranscript(meetingId);
   const transcribe = useTranscribeRecording();
   const retranscribe = useRetranscribeRecording();
+  const updateTranscript = useUpdateTranscript();
+
+  const audioUrl = useMemo(() => {
+    if (!recording) return null;
+    return fieldflowApi.recordings.streamUrl(recording.id);
+  }, [recording]);
+
+  const matchingIndices = useMemo(() => {
+    if (!searchQuery.trim() || !transcript) return [];
+    const query = searchQuery.toLowerCase();
+    return transcript.segments
+      .map((segment, index) => (segment.text.toLowerCase().includes(query) ? index : -1))
+      .filter((index) => index !== -1);
+  }, [searchQuery, transcript]);
+
+  const currentPlayingIndex = useMemo(() => {
+    if (!transcript) return -1;
+    return transcript.segments.findIndex(
+      (segment) => currentTime >= segment.startTime && currentTime < segment.endTime,
+    );
+  }, [transcript, currentTime]);
+
+  const handleTimeUpdate = useCallback(() => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  }, []);
+
+  const handleSeek = useCallback((time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      audioRef.current.play();
+    }
+  }, []);
+
+  const scrollToSegment = useCallback((index: number) => {
+    const container = segmentContainerRef.current;
+    if (!container) return;
+    const element = container.querySelector(`[data-segment-index="${index}"]`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, []);
+
+  const handlePreviousMatch = useCallback(() => {
+    if (matchingIndices.length === 0) return;
+    const newIndex = currentMatchIndex === 0 ? matchingIndices.length - 1 : currentMatchIndex - 1;
+    setCurrentMatchIndex(newIndex);
+    scrollToSegment(matchingIndices[newIndex]);
+  }, [matchingIndices, currentMatchIndex, scrollToSegment]);
+
+  const handleNextMatch = useCallback(() => {
+    if (matchingIndices.length === 0) return;
+    const newIndex = (currentMatchIndex + 1) % matchingIndices.length;
+    setCurrentMatchIndex(newIndex);
+    scrollToSegment(matchingIndices[newIndex]);
+  }, [matchingIndices, currentMatchIndex, scrollToSegment]);
+
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+    if (matchingIndices.length > 0) {
+      scrollToSegment(matchingIndices[0]);
+    }
+  }, [searchQuery, matchingIndices, scrollToSegment]);
+
+  const handleEditStart = useCallback((index: number, field: "speaker" | "text") => {
+    setEditing({ index, field });
+  }, []);
+
+  const handleEditSave = useCallback(
+    async (index: number, field: "speaker" | "text", value: string) => {
+      if (!transcript) return;
+
+      const original =
+        field === "speaker"
+          ? transcript.segments[index].speakerLabel
+          : transcript.segments[index].text;
+      if (value === original) {
+        setEditing(null);
+        return;
+      }
+
+      try {
+        await updateTranscript.mutateAsync({
+          transcriptId: transcript.id,
+          dto: {
+            segments: [
+              {
+                index,
+                ...(field === "speaker" ? { speakerLabel: value } : { text: value }),
+              },
+            ],
+          },
+        });
+        refetchTranscript();
+      } catch {
+        // Error handled by mutation
+      }
+      setEditing(null);
+    },
+    [transcript, updateTranscript, refetchTranscript],
+  );
+
+  const handleEditCancel = useCallback(() => {
+    setEditing(null);
+  }, []);
 
   const isLoading = meetingLoading || recordingLoading || transcriptLoading;
 
@@ -647,6 +972,21 @@ export default function TranscriptPage() {
         </div>
       ) : (
         <div className="space-y-6">
+          {audioUrl && (
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+              <audio
+                ref={audioRef}
+                src={audioUrl}
+                controls
+                onTimeUpdate={handleTimeUpdate}
+                className="w-full h-10"
+                style={{
+                  filter: "invert(0)",
+                }}
+              />
+            </div>
+          )}
+
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-4">
@@ -730,10 +1070,35 @@ export default function TranscriptPage() {
 
             <div className="p-6">
               {activeTab === "transcript" ? (
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {transcript.segments.map((segment, i) => (
-                    <TranscriptSegmentView key={i} segment={segment} />
-                  ))}
+                <div className="space-y-4">
+                  <SearchBar
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    matchCount={matchingIndices.length}
+                    currentMatch={currentMatchIndex}
+                    onPrevious={handlePreviousMatch}
+                    onNext={handleNextMatch}
+                  />
+                  <div
+                    ref={segmentContainerRef}
+                    className="space-y-3 max-h-[600px] overflow-y-auto"
+                  >
+                    {transcript.segments.map((segment, i) => (
+                      <TranscriptSegmentView
+                        key={i}
+                        segment={segment}
+                        index={i}
+                        isPlaying={currentPlayingIndex === i}
+                        searchQuery={searchQuery}
+                        isMatch={matchingIndices.includes(i)}
+                        editing={editing}
+                        onSeek={handleSeek}
+                        onEditStart={handleEditStart}
+                        onEditSave={handleEditSave}
+                        onEditCancel={handleEditCancel}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : transcript.analysis ? (
                 <AnalysisSection analysis={transcript.analysis} />

@@ -1,17 +1,29 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   NotFoundException,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
+  Req,
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
+import type { Request } from "express";
 import { FieldFlowAuthGuard } from "../auth";
-import { TranscriptWithSegmentsDto } from "../dto";
+import { TranscriptWithSegmentsDto, UpdateTranscriptDto } from "../dto";
 import { TranscriptionService } from "../services/transcription.service";
+
+interface FieldFlowRequest extends Request {
+  fieldflowUser: {
+    userId: number;
+    email: string;
+    sessionToken: string;
+  };
+}
 
 @ApiTags("FieldFlow Transcripts")
 @ApiBearerAuth()
@@ -92,6 +104,18 @@ export class TranscriptController {
       createdAt: transcript.createdAt,
       segments: transcript.segments,
     };
+  }
+
+  @Patch(":id")
+  @ApiOperation({ summary: "Update transcript segments (speaker labels and text)" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiResponse({ status: 200, type: TranscriptWithSegmentsDto })
+  async updateTranscript(
+    @Req() req: FieldFlowRequest,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateTranscriptDto,
+  ): Promise<TranscriptWithSegmentsDto> {
+    return this.transcriptionService.updateSegments(req.fieldflowUser.userId, id, dto);
   }
 
   @Delete("recording/:recordingId")

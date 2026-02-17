@@ -354,6 +354,16 @@ export interface TranscriptSegment {
   confidence: number | null;
 }
 
+export interface UpdateTranscriptSegmentDto {
+  index: number;
+  speakerLabel?: string;
+  text?: string;
+}
+
+export interface UpdateTranscriptDto {
+  segments: UpdateTranscriptSegmentDto[];
+}
+
 export interface ActionItem {
   task: string;
   assignee: string | null;
@@ -997,6 +1007,13 @@ export const fieldflowApi = {
         throw new Error(error.message);
       }
     },
+
+    streamUrl: (recordingId: number): string | null => {
+      if (typeof window === "undefined") return null;
+      const token = localStorage.getItem("fieldflowAccessToken");
+      if (!token) return null;
+      return `${getApiUrl()}/fieldflow/recordings/${recordingId}/stream?token=${encodeURIComponent(token)}`;
+    },
   },
 
   transcripts: {
@@ -1038,6 +1055,18 @@ export const fieldflowApi = {
           headers: fieldflowAuthHeaders(),
         },
       );
+      return handleResponse<Transcript>(response);
+    },
+
+    update: async (transcriptId: number, dto: UpdateTranscriptDto): Promise<Transcript> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/transcripts/${transcriptId}`, {
+        method: "PATCH",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
       return handleResponse<Transcript>(response);
     },
 
