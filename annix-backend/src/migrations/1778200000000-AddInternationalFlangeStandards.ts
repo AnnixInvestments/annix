@@ -82,7 +82,7 @@ export class AddInternationalFlangeStandards1778200000000 implements MigrationIn
     console.warn("Adding JIS B 2220 flange dimension data...");
 
     const jisData: Array<
-      [number, string, number, number, number, number, number, string, number, number]
+      [number, string, number, number, number, number, string, number, number, number]
     > = [
       [10, "5K", 75, 12, 4, 12, "M10", 55, 0.3, 30],
       [10, "10K", 90, 12, 4, 15, "M12", 65, 0.5, 35],

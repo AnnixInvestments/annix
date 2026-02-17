@@ -12,7 +12,7 @@ import {
   PumpServiceType,
 } from "../src/rfq/entities/pump-rfq.entity";
 import { Rfq, RfqStatus } from "../src/rfq/entities/rfq.entity";
-import { RfqItem } from "../src/rfq/entities/rfq-item.entity";
+import { RfqItem, RfqItemType } from "../src/rfq/entities/rfq-item.entity";
 import { RfqModule } from "../src/rfq/rfq.module";
 
 describe("RfqController - Pump RFQ Endpoints (e2e)", () => {
@@ -57,7 +57,7 @@ describe("RfqController - Pump RFQ Endpoints (e2e)", () => {
   const mockRfqItem: Partial<RfqItem> = {
     id: 1,
     lineNumber: 1,
-    itemType: "pump",
+    itemType: RfqItemType.PUMP,
     description: "Centrifugal End Suction Pump - 100 m³/h @ 50m TDH",
     quantity: 2,
     totalWeightKg: 170,
