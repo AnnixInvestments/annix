@@ -4,6 +4,7 @@ export * from "./constants";
 export * from "./expansionJointOptions";
 export * from "./fittingWallThickness";
 export * from "./flangeWeights";
+export * from "./materialGroupMapping";
 export * from "./materialLimits";
 export * from "./pipeEndOptions";
 export * from "./pipeSchedules";

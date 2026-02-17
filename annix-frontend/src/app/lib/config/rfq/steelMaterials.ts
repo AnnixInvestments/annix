@@ -75,7 +75,8 @@ export const STEEL_MATERIALS: SteelMaterial[] = [
     id: "ar400",
     name: "Abrasion-Resistant Steel (AR400)",
     code: "AR-400",
-    description: "High-hardness steel for handling abrasive mining materials",
+    description:
+      "High-hardness steel (360-440 BHN) for wear liner applications. NOT FOR PRESSURE SERVICE - requires engineering analysis for pressure containment.",
     densityKgM3: 7850,
     defaultCostPerKg: 65,
     category: "wear-resistant",
@@ -85,7 +86,8 @@ export const STEEL_MATERIALS: SteelMaterial[] = [
     id: "ar450",
     name: "Abrasion-Resistant Steel (AR450)",
     code: "AR-450",
-    description: "Extra-hard steel for extreme abrasion resistance",
+    description:
+      "Extra-hard steel (430-480 BHN) for extreme abrasion resistance. NOT FOR PRESSURE SERVICE - requires engineering analysis for pressure containment.",
     densityKgM3: 7850,
     defaultCostPerKg: 75,
     category: "wear-resistant",
@@ -95,7 +97,8 @@ export const STEEL_MATERIALS: SteelMaterial[] = [
     id: "ar500",
     name: "Abrasion-Resistant Steel (AR500)",
     code: "AR-500",
-    description: "Maximum hardness for the most demanding abrasive applications",
+    description:
+      "Maximum hardness (460-544 BHN) for demanding abrasive applications. NOT FOR PRESSURE SERVICE - more brittle, requires engineering analysis.",
     densityKgM3: 7850,
     defaultCostPerKg: 85,
     category: "wear-resistant",

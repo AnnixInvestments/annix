@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { ArSteelWarningBanner } from "@/app/components/rfq/ArSteelWarningBanner";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { materialValidationApi, type ValidPressureClassInfo } from "@/app/lib/api/client";
 import {
   checkMaterialSuitability,
   materialLimits as getMaterialLimits,
+  isWearResistantSteel,
   type MaterialLimits,
 } from "@/app/lib/config/rfq";
 import {
@@ -360,9 +362,21 @@ export function MaterialSpecificationsSection({
     return null;
   })();
 
+  const selectedSteelSpec = masterData.steelSpecs?.find(
+    (s) => s.id === globalSpecs?.steelSpecificationId,
+  );
+  const selectedSteelSpecName = selectedSteelSpec?.steelSpecName;
+  const isArSteelSelected = selectedSteelSpecName
+    ? isWearResistantSteel(selectedSteelSpecName)
+    : false;
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3">
       <h3 className="text-xs font-semibold text-gray-800 mb-2">Material Specifications</h3>
+
+      {isArSteelSelected && (
+        <ArSteelWarningBanner steelSpecName={selectedSteelSpecName} className="mb-3" />
+      )}
 
       <div className="grid grid-cols-4 gap-3">
         <div ref={steelSpecDropdownRef} className="relative">
