@@ -15,10 +15,10 @@ foreach ($port in $ports) {
     }
 }
 
-# Kill any node processes with command lines referencing annix backend/frontend (but NOT parallel-claude)
+# Kill any node processes with command lines referencing annix backend/frontend (but NOT claude-swarm)
 Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue | ForEach-Object {
     $cmd = $_.CommandLine
-    $isParallelClaude = $cmd -like "*parallel-claude*"
+    $isParallelClaude = $cmd -like "*claude-swarm*"
     $isDevProcess = ($cmd -like "*annix-backend*") -or ($cmd -like "*annix-frontend*") -or ($cmd -like "*nest*start*") -or ($cmd -like "*next*dev*")
 
     if ($isDevProcess -and -not $isParallelClaude) {

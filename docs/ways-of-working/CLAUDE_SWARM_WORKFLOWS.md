@@ -1,4 +1,4 @@
-# Parallel Claude Workflows
+# Claude Swarm Workflows
 
 Options for speeding up development using Claude in parallel. Organised by cost.
 
@@ -39,7 +39,7 @@ Each Claude session works on its own branch, then rebases to main when done.
 
 ---
 
-## Parallel Claude Tool
+## Claude Swarm Tool
 
 A simple menu-driven tool for running multiple Claude sessions at once. No git knowledge needed - just follow the menus.
 
@@ -47,17 +47,17 @@ A simple menu-driven tool for running multiple Claude sessions at once. No git k
 
 **On Mac:**
 ```bash
-./parallel-claude.sh
+./claude-swarm.sh
 ```
 
 **On Windows:**
 ```
-parallel-claude.bat
+claude-swarm.bat
 ```
 
 Or from any terminal in the project folder:
 ```bash
-pnpm parallel-claude
+pnpm claude-swarm
 ```
 
 ### What You'll See
@@ -137,7 +137,7 @@ Think of a worktree as a separate workspace:
 
 **When you're done with a worktree:**
 1. Claude commits the changes
-2. Go back to Parallel Claude and terminate the session
+2. Go back to Claude Swarm and terminate the session
 3. It asks if you want to clean up the folder
 4. Use "Manage branches" to merge the work back to main
 

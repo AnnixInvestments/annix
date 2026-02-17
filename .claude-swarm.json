@@ -1,0 +1,19 @@
+{
+  "branchPrefix": "claude/",
+  "apps": [
+    {
+      "name": "backend",
+      "start": "pnpm dev:backend",
+      "stop": "lsof -ti:4001 | xargs kill -15 2>/dev/null; true",
+      "kill": "lsof -ti:4001 | xargs kill -9 2>/dev/null; true",
+      "readyPattern": "Nest application successfully started"
+    },
+    {
+      "name": "frontend",
+      "start": "pnpm dev:frontend",
+      "stop": "lsof -ti:3000 | xargs kill -15 2>/dev/null; true",
+      "kill": "lsof -ti:3000 | xargs kill -9 2>/dev/null; true",
+      "readyPattern": "Ready in"
+    }
+  ]
+}

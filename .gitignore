@@ -17,7 +17,7 @@ annix-backend-latest.tar.gz
 # Log files
 backend-dev.log
 frontend-dev.log
-.parallel-claude-app.log
+.claude-swarm-*.log
 .pcm-app.log
 
 # OS files
@@ -56,7 +56,6 @@ FLY_DEPLOYMENT_TECHNICAL_DOCS.md
 
 # Secret patterns file - contains actual secrets for detection
 .secret-patterns
-.parallel-claude-projects.json
 
 # Dev utility scripts
 annix-backend/query-docs.ts

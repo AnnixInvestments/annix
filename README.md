@@ -12,6 +12,46 @@ This repository houses the NestJS API (`annix-backend`) and the Next.js applicat
 
 ---
 
+## ⚠️ Repo Reorganisation — Action Required
+
+The repository structure has changed. If you cloned this repo before February 2026, or if `pnpm claude-swarm` fails, complete these one-time steps:
+
+### 1. Re-clone or update your local path
+
+The monorepo now lives at:
+```
+/Users/<you>/dev/git-personal/au-projects/AnnixInvestments/annix
+```
+If your checkout is at a different path, update it or re-clone into this location so that sibling paths (worktrees, claude-swarm) resolve correctly.
+
+### 2. Activate git hooks
+
+```bash
+git -C /Users/<you>/dev/git-personal/au-projects/AnnixInvestments/annix config core.hooksPath .githooks
+```
+
+### 4. Script renames
+
+| Old | New |
+|-----|-----|
+| `pnpm parallel-claude` | `pnpm claude-swarm` |
+| `./parallel-claude.sh` | `./claude-swarm.sh` |
+| `.\parallel-claude.ps1` | `.\claude-swarm.ps1` |
+
+### 5. Projects config has moved
+
+The claude-swarm projects registry moved from `.parallel-claude-projects.json` in the repo root to:
+```
+~/.config/claude-swarm/projects.json
+```
+If you have a `.parallel-claude-projects.json` in your annix checkout, move it:
+```bash
+mkdir -p ~/.config/claude-swarm
+mv .parallel-claude-projects.json ~/.config/claude-swarm/projects.json
+```
+
+---
+
 ## 🎨 3D Pipe Visualization
 
 The application includes interactive **3D visualization** for pipes and bends in the RFQ form:
