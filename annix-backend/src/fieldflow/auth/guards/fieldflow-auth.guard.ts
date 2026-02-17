@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
-import { isString } from "es-toolkit/compat";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { isString } from "es-toolkit/compat";
 import { Request } from "express";
 import { FieldFlowAuthService, FieldFlowJwtPayload } from "../fieldflow-auth.service";
 

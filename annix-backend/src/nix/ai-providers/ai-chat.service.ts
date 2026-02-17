@@ -88,7 +88,9 @@ export class AiChatService implements OnModuleInit {
     const { provider, usedFallback } = await this.selectProviderWithFallback(providerToUse);
 
     if (!provider) {
-      throw new Error("No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.");
+      throw new Error(
+        "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
+      );
     }
 
     if (usedFallback) {

@@ -88,7 +88,9 @@ export class NixChatService {
 
   async sendMessage(dto: SendMessageDto): Promise<ChatResponseDto> {
     if (!(await this.aiChatService.isAvailable())) {
-      throw new Error("No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.");
+      throw new Error(
+        "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
+      );
     }
 
     const session = await this.session(dto.sessionId);
@@ -145,7 +147,10 @@ export class NixChatService {
     dto: SendMessageDto,
   ): AsyncGenerator<{ type: string; delta?: string; error?: string; metadata?: any }> {
     if (!(await this.aiChatService.isAvailable())) {
-      yield { type: "error", error: "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY." };
+      yield {
+        type: "error",
+        error: "No AI chat provider available. Configure GEMINI_API_KEY or ANTHROPIC_API_KEY.",
+      };
       return;
     }
 

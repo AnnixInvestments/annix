@@ -69,7 +69,17 @@ export class ParsedItemDto {
 
   @ApiProperty({
     description: "Item type",
-    enum: ["pipe", "bend", "reducer", "tee", "flange", "expansion_joint", "valve", "instrument", "pump"],
+    enum: [
+      "pipe",
+      "bend",
+      "reducer",
+      "tee",
+      "flange",
+      "expansion_joint",
+      "valve",
+      "instrument",
+      "pump",
+    ],
     required: false,
   })
   @IsOptional()

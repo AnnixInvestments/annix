@@ -127,9 +127,7 @@ export class NixItemParserService {
       );
 
       const totalConfidence =
-        items.length > 0
-          ? items.reduce((sum, item) => sum + item.confidence, 0) / items.length
-          : 0;
+        items.length > 0 ? items.reduce((sum, item) => sum + item.confidence, 0) / items.length : 0;
 
       return {
         items,

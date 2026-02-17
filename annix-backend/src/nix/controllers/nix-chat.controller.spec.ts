@@ -4,8 +4,8 @@ import { Response } from "express";
 import { AnyUserAuthGuard } from "../../auth/guards/any-user-auth.guard";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession } from "../entities/nix-chat-session.entity";
-import { NixChatItemService } from "../services/nix-chat-item.service";
 import { NixChatService } from "../services/nix-chat.service";
+import { NixChatItemService } from "../services/nix-chat-item.service";
 import { NixValidationService, ValidationIssue } from "../services/nix-validation.service";
 import { NixChatController } from "./nix-chat.controller";
 

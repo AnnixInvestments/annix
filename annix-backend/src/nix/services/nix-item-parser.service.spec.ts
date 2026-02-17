@@ -17,10 +17,7 @@ describe("NixItemParserService", () => {
     } as unknown as jest.Mocked<AiChatService>;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        NixItemParserService,
-        { provide: AiChatService, useValue: mockAiChatService },
-      ],
+      providers: [NixItemParserService, { provide: AiChatService, useValue: mockAiChatService }],
     }).compile();
 
     service = module.get<NixItemParserService>(NixItemParserService);

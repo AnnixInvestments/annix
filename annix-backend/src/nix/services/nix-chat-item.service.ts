@@ -53,15 +53,14 @@ export class NixChatItemService {
     const validationIssues = this.validateParsedItems(parsedItems);
     const hasLowConfidence = parsedItems.some((item) => item.confidence < 0.7);
     const hasMissingFields = parsedItems.some(
-      (item) =>
-        item.action === "create_item" &&
-        (!item.specifications?.diameter || !item.itemType),
+      (item) => item.action === "create_item" && (!item.specifications?.diameter || !item.itemType),
     );
 
     return {
       sessionId: session.id,
       parsedItems,
-      requiresConfirmation: hasLowConfidence || hasMissingFields || (validationIssues?.length ?? 0) > 0,
+      requiresConfirmation:
+        hasLowConfidence || hasMissingFields || (validationIssues?.length ?? 0) > 0,
       validationIssues,
     };
   }
@@ -104,7 +103,7 @@ export class NixChatItemService {
     const rfqDto: CreateUnifiedRfqDto = {
       rfq: {
         projectName: dto.rfqTitle || `RFQ from Chat Session ${session.id}`,
-        description: `Created via Nix chat assistant`,
+        description: "Created via Nix chat assistant",
         status: RfqStatus.DRAFT,
       },
       items: unifiedItems,
@@ -163,8 +162,7 @@ export class NixChatItemService {
   private convertToUnifiedItem(item: ParsedItemDto, index: number): UnifiedRfqItemDto | null {
     const specs = item.specifications || {};
     const baseDescription =
-      specs.description ||
-      `${specs.diameter || "?"}NB ${item.itemType || "item"} (from chat)`;
+      specs.description || `${specs.diameter || "?"}NB ${item.itemType || "item"} (from chat)`;
 
     switch (item.itemType) {
       case "pipe":
@@ -282,9 +280,7 @@ export class NixChatItemService {
     return 1;
   }
 
-  private validateParsedItems(
-    items: ParsedItemDto[],
-  ): ParseItemsResponseDto["validationIssues"] {
+  private validateParsedItems(items: ParsedItemDto[]): ParseItemsResponseDto["validationIssues"] {
     const issues: NonNullable<ParseItemsResponseDto["validationIssues"]> = [];
 
     items.forEach((item, index) => {

@@ -128,9 +128,7 @@ export function ParsedItemsConfirmation({
         })}
       </div>
 
-      {error && (
-        <div className="bg-red-900/50 text-red-200 p-3 rounded text-sm">{error}</div>
-      )}
+      {error && <div className="bg-red-900/50 text-red-200 p-3 rounded text-sm">{error}</div>}
 
       <div className="flex justify-end gap-3 pt-2">
         <button
@@ -145,7 +143,9 @@ export function ParsedItemsConfirmation({
           disabled={isCreating || confirmedCount === 0}
           className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isCreating ? "Creating..." : `Create ${confirmedCount} Item${confirmedCount !== 1 ? "s" : ""}`}
+          {isCreating
+            ? "Creating..."
+            : `Create ${confirmedCount} Item${confirmedCount !== 1 ? "s" : ""}`}
         </button>
       </div>
     </div>
@@ -209,9 +209,7 @@ function ParsedItemCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-medium text-white">{itemTypeLabel}</span>
-            {specs?.diameter && (
-              <span className="text-gray-300">{specs.diameter}NB</span>
-            )}
+            {specs?.diameter && <span className="text-gray-300">{specs.diameter}NB</span>}
             <span className={`text-xs ${confidenceColor}`}>
               {Math.round(item.confidence * 100)}% confidence
             </span>
@@ -317,7 +315,7 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
           <input
             type="number"
             value={editedSpecs.diameter || ""}
-            onChange={(e) => handleChange("diameter", parseInt(e.target.value) || 0)}
+            onChange={(e) => handleChange("diameter", parseInt(e.target.value, 10) || 0)}
             className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
           />
         </label>
@@ -339,7 +337,7 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
             <input
               type="number"
               value={editedSpecs.angle || ""}
-              onChange={(e) => handleChange("angle", parseInt(e.target.value) || 0)}
+              onChange={(e) => handleChange("angle", parseInt(e.target.value, 10) || 0)}
               className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
             />
           </label>
@@ -351,7 +349,7 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
             <input
               type="number"
               value={editedSpecs.secondaryDiameter || ""}
-              onChange={(e) => handleChange("secondaryDiameter", parseInt(e.target.value) || 0)}
+              onChange={(e) => handleChange("secondaryDiameter", parseInt(e.target.value, 10) || 0)}
               className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
             />
           </label>
@@ -375,17 +373,14 @@ function ItemSpecsEditor({ specs, itemType, onSave, onCancel }: ItemSpecsEditorP
           <input
             type="number"
             value={editedSpecs.quantity || 1}
-            onChange={(e) => handleChange("quantity", parseInt(e.target.value) || 1)}
+            onChange={(e) => handleChange("quantity", parseInt(e.target.value, 10) || 1)}
             className="w-full mt-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-sm text-white"
           />
         </label>
       </div>
 
       <div className="flex justify-end gap-2">
-        <button
-          onClick={onCancel}
-          className="px-2 py-1 text-xs text-gray-400 hover:text-white"
-        >
+        <button onClick={onCancel} className="px-2 py-1 text-xs text-gray-400 hover:text-white">
           Cancel
         </button>
         <button

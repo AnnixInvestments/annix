@@ -20,8 +20,8 @@ import {
   ParseItemsRequestDto,
   ParseItemsResponseDto,
 } from "../dto/chat-item.dto";
-import { NixChatItemService } from "../services/nix-chat-item.service";
 import { CreateSessionDto, NixChatService, SendMessageDto } from "../services/nix-chat.service";
+import { NixChatItemService } from "../services/nix-chat-item.service";
 import { NixValidationService } from "../services/nix-validation.service";
 
 @Controller("nix/chat")
