@@ -3357,6 +3357,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           onSessionCreated={nixSetChatSessionId}
           savedGeometry={nixChatPanelGeometry}
           onGeometryChange={nixSetChatPanelGeometry}
+          portalContext="customer"
+          pageContext={{
+            currentPage: "RFQ Creation - Steel Pipes",
+            rfqType: "Standard RFQ - Steel Pipes",
+            portalContext: "customer",
+          }}
         />
       )}
 

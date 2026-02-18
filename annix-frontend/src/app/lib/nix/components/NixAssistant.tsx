@@ -7,11 +7,18 @@ import NixFloatingAvatar from "./NixFloatingAvatar";
 
 type PortalContext = "customer" | "supplier" | "admin" | "general";
 
-interface NixAssistantProps {
-  context?: PortalContext;
+interface PageContext {
+  currentPage: string;
+  rfqType?: string;
+  portalContext: PortalContext;
 }
 
-export function NixAssistant({ context = "general" }: NixAssistantProps) {
+interface NixAssistantProps {
+  context?: PortalContext;
+  pageContext?: PageContext;
+}
+
+export function NixAssistant({ context = "general", pageContext }: NixAssistantProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [errorKey, setErrorKey] = useState(0);
@@ -43,6 +50,7 @@ export function NixAssistant({ context = "general" }: NixAssistantProps) {
             onClose={handleCloseChat}
             onSessionCreated={handleSessionCreated}
             portalContext={context}
+            pageContext={pageContext ?? { currentPage: "General Portal", portalContext: context }}
           />
         </NixErrorBoundary>
       )}

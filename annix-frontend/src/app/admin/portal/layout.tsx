@@ -111,7 +111,13 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <main className="py-6">
         <div className="w-full px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
-      <NixAssistant context="admin" />
+      <NixAssistant
+        context="admin"
+        pageContext={{
+          currentPage: "Admin Portal",
+          portalContext: "admin",
+        }}
+      />
     </div>
   );
 }

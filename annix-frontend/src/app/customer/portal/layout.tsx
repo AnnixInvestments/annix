@@ -106,7 +106,13 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
         <div className="w-full px-4 sm:px-6 lg:px-8">{children}</div>
       </main>
       <FeedbackWidget />
-      <NixAssistant context="customer" />
+      <NixAssistant
+        context="customer"
+        pageContext={{
+          currentPage: "Customer Portal",
+          portalContext: "customer",
+        }}
+      />
     </div>
   );
 }

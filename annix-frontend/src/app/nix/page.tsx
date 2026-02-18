@@ -189,6 +189,10 @@ export default function NixPage() {
                     onSessionCreated={handleSessionCreated}
                     onClose={handleClose}
                     portalContext="general"
+                    pageContext={{
+                      currentPage: "Nix AI Assistant Page",
+                      portalContext: "general",
+                    }}
                     className="!fixed !inset-0 !rounded-none !shadow-none !border-0 !z-0 relative !w-full !h-full"
                   />
                 </div>

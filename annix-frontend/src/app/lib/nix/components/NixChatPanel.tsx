@@ -204,6 +204,12 @@ interface PanelGeometry {
   height: number;
 }
 
+interface PageContext {
+  currentPage: string;
+  rfqType?: string;
+  portalContext: PortalContext;
+}
+
 interface NixChatPanelProps {
   sessionId: number | null;
   rfqId?: number;
@@ -214,6 +220,7 @@ interface NixChatPanelProps {
   onGeometryChange?: (geometry: PanelGeometry) => void;
   className?: string;
   portalContext?: PortalContext;
+  pageContext?: PageContext;
 }
 
 const MIN_WIDTH = 320;
@@ -283,6 +290,7 @@ export function NixChatPanel({
   onGeometryChange,
   className = "",
   portalContext = "general",
+  pageContext,
 }: NixChatPanelProps) {
   const [sessionId, setSessionId] = useState<number | null>(() => {
     return initialSessionId ?? loadPersistedSessionId();
@@ -491,6 +499,7 @@ export function NixChatPanel({
         context: {
           currentRfqItems,
           lastValidationIssues: validationIssues,
+          pageContext: pageContext ?? { currentPage: "unknown", portalContext },
         },
       },
       {
@@ -623,6 +632,7 @@ export function NixChatPanel({
         context: {
           currentRfqItems,
           lastValidationIssues: validationIssues,
+          pageContext: pageContext ?? { currentPage: "unknown", portalContext },
         },
       },
       {
@@ -655,7 +665,16 @@ export function NixChatPanel({
         },
       },
     );
-  }, [sessionId, isStreaming, messages, currentRfqItems, validationIssues, sendMessageMutation]);
+  }, [
+    sessionId,
+    isStreaming,
+    messages,
+    currentRfqItems,
+    validationIssues,
+    sendMessageMutation,
+    pageContext,
+    portalContext,
+  ]);
 
   const issueIcon = (severity: ValidationIssue["severity"]) => {
     if (severity === "error") return <AlertCircleIcon className="h-4 w-4 text-red-500" />;
@@ -668,7 +687,7 @@ export function NixChatPanel({
   return (
     <div
       ref={panelRef}
-      className={`fixed z-50 flex flex-col bg-white border border-gray-200 rounded-xl shadow-2xl ${className}`}
+      className={`fixed z-50 flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl ${className}`}
       style={{
         left: position.x,
         top: position.y,
@@ -713,7 +732,7 @@ export function NixChatPanel({
       />
 
       <div
-        className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-orange-50 rounded-t-xl cursor-grab active:cursor-grabbing select-none"
+        className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-orange-50 dark:bg-gray-700 rounded-t-xl cursor-grab active:cursor-grabbing select-none"
         onMouseDown={handleDragStart}
       >
         <div className="flex items-center gap-2">
@@ -721,8 +740,10 @@ export function NixChatPanel({
             <MessageCircleIcon className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">{contextConfig.title}</h3>
-            <p className="text-xs text-gray-600">{contextConfig.subtitle}</p>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+              {contextConfig.title}
+            </h3>
+            <p className="text-xs text-gray-600 dark:text-gray-400">{contextConfig.subtitle}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -734,11 +755,11 @@ export function NixChatPanel({
               }}
               onMouseDown={(e) => e.stopPropagation()}
               disabled={isStreaming}
-              className="p-1 hover:bg-orange-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-1 hover:bg-orange-100 dark:hover:bg-gray-600 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Summarize conversation"
               title="Get conversation summary"
             >
-              <SparklesIcon className="h-5 w-5 text-gray-600" />
+              <SparklesIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             </button>
           )}
           {messages.length > 0 && (
@@ -749,25 +770,25 @@ export function NixChatPanel({
                   setShowExportMenu(!showExportMenu);
                 }}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="p-1 hover:bg-orange-100 rounded transition-colors"
+                className="p-1 hover:bg-orange-100 dark:hover:bg-gray-600 rounded transition-colors"
                 aria-label="Export chat"
               >
-                <DownloadIcon className="h-5 w-5 text-gray-600" />
+                <DownloadIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
               </button>
               {showExportMenu && (
                 <div
-                  className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50 min-w-[140px]"
+                  className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-50 min-w-[140px]"
                   onMouseDown={(e) => e.stopPropagation()}
                 >
                   <button
                     onClick={exportChatAsText}
-                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     Export as TXT
                   </button>
                   <button
                     onClick={exportChatAsJson}
-                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     Export as JSON
                   </button>
@@ -779,25 +800,25 @@ export function NixChatPanel({
             <button
               onClick={onClose}
               onMouseDown={(e) => e.stopPropagation()}
-              className="p-1 hover:bg-orange-100 rounded transition-colors"
+              className="p-1 hover:bg-orange-100 dark:hover:bg-gray-600 rounded transition-colors"
               aria-label="Close chat"
             >
-              <XIcon className="h-5 w-5 text-gray-600" />
+              <XIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             </button>
           ) : null}
         </div>
       </div>
 
       {validationIssues.length > 0 ? (
-        <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-200">
+        <div className="px-4 py-2 bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800">
           <div className="flex items-center gap-2 mb-1">
-            <AlertCircleIcon className="h-4 w-4 text-yellow-600" />
-            <span className="text-sm font-medium text-yellow-800">
+            <AlertCircleIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+            <span className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
               {validationIssues.filter((i) => i.severity === "error").length} errors,{" "}
               {validationIssues.filter((i) => i.severity === "warning").length} warnings
             </span>
           </div>
-          <p className="text-xs text-yellow-700">Ask Nix about these issues</p>
+          <p className="text-xs text-yellow-700 dark:text-yellow-400">Ask Nix about these issues</p>
         </div>
       ) : null}
 
@@ -805,24 +826,24 @@ export function NixChatPanel({
         {initError ? (
           <div className="text-center mt-8">
             <AlertCircleIcon className="h-10 w-10 mx-auto mb-3 text-red-400" />
-            <p className="text-sm text-red-600 mb-3">{initError}</p>
+            <p className="text-sm text-red-600 dark:text-red-400 mb-3">{initError}</p>
             <button
               onClick={initializeSession}
-              className="text-sm text-orange-600 hover:text-orange-700 underline"
+              className="text-sm text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 underline"
             >
               Retry connection
             </button>
           </div>
         ) : messages.length === 0 && !streamingContent ? (
-          <div className="text-center text-gray-500 mt-8">
-            <MessageCircleIcon className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
+            <MessageCircleIcon className="h-12 w-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
             <p className="text-sm px-4">{contextConfig.welcomeMessage}</p>
             <div className="mt-4 space-y-2">
               {contextConfig.quickActions.map((action, index) => (
                 <button
                   key={index}
                   onClick={() => setInputValue(action.prompt)}
-                  className="text-xs text-orange-600 hover:text-orange-700 block mx-auto px-2"
+                  className="text-xs text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 block mx-auto px-2"
                 >
                   Try: "{action.label}"
                 </button>
@@ -837,8 +858,8 @@ export function NixChatPanel({
             message.role === "user"
               ? "bg-orange-500 text-white"
               : isError
-                ? "bg-red-50 text-red-700 border border-red-200"
-                : "bg-gray-100 text-gray-900";
+                ? "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
+                : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100";
 
           const widthClass = message.role === "user" ? "max-w-[85%]" : "";
 
@@ -854,7 +875,7 @@ export function NixChatPanel({
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
                 ) : message.role === "assistant" ? (
-                  <div className="text-sm prose prose-sm prose-gray max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_table]:border-collapse [&_th]:bg-gray-200 [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_td]:border [&_th]:border-gray-300 [&_td]:border-gray-300 overflow-x-auto">
+                  <div className="text-sm prose prose-sm prose-gray dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_table]:border-collapse [&_th]:bg-gray-200 dark:[&_th]:bg-gray-600 [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_td]:border [&_th]:border-gray-300 dark:[&_th]:border-gray-500 [&_td]:border-gray-300 dark:[&_td]:border-gray-500 overflow-x-auto">
                     <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
                   </div>
                 ) : (
@@ -875,8 +896,8 @@ export function NixChatPanel({
 
         {streamingContent ? (
           <div className="flex justify-start">
-            <div className="rounded-lg px-3 py-2 bg-gray-100 text-gray-900">
-              <div className="text-sm prose prose-sm prose-gray max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+            <div className="rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+              <div className="text-sm prose prose-sm prose-gray dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
                 <Markdown remarkPlugins={[remarkGfm]}>{streamingContent}</Markdown>
               </div>
               <div className="flex items-center gap-1 mt-1">
@@ -897,7 +918,7 @@ export function NixChatPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="px-4 py-3 border-t border-gray-200">
+      <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
@@ -905,20 +926,22 @@ export function NixChatPanel({
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask Nix anything..."
-            className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm"
+            className="flex-1 min-w-0 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
             rows={2}
             disabled={isStreaming || !sessionId}
           />
           <button
             onClick={handleSend}
             disabled={!inputValue.trim() || isStreaming || !sessionId}
-            className="shrink-0 p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
             aria-label="Send message"
           >
             <SendIcon className="h-5 w-5" />
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">Press Enter to send, Shift+Enter for new line</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+          Press Enter to send, Shift+Enter for new line
+        </p>
       </div>
     </div>
   );

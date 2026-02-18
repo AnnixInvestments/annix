@@ -100,7 +100,13 @@ export default function SupplierPortalLayout({ children }: { children: React.Rea
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <main className="w-full">{children}</main>
       </div>
-      <NixAssistant context="supplier" />
+      <NixAssistant
+        context="supplier"
+        pageContext={{
+          currentPage: "Supplier Portal",
+          portalContext: "supplier",
+        }}
+      />
     </div>
   );
 }

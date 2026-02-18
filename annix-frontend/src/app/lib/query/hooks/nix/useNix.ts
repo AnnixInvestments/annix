@@ -211,6 +211,11 @@ export function useSendNixMessage() {
       context?: {
         currentRfqItems?: unknown[];
         lastValidationIssues?: unknown[];
+        pageContext?: {
+          currentPage: string;
+          rfqType?: string;
+          portalContext: "customer" | "supplier" | "admin" | "general";
+        };
       };
     }): Promise<{
       sessionId: number;

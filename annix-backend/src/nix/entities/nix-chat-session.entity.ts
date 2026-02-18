@@ -46,6 +46,11 @@ export class NixChatSession {
     }>;
     lastCreatedRfqId?: number;
     lastCreatedRfqNumber?: string;
+    pageContext?: {
+      currentPage: string;
+      rfqType?: string;
+      portalContext: "customer" | "supplier" | "admin" | "general";
+    };
   };
 
   @Column({ name: "is_active", default: true })

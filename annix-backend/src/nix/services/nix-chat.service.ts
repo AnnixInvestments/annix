@@ -19,6 +19,11 @@ export interface SendMessageDto {
   context?: {
     currentRfqItems?: any[];
     lastValidationIssues?: any[];
+    pageContext?: {
+      currentPage: string;
+      rfqType?: string;
+      portalContext: "customer" | "supplier" | "admin" | "general";
+    };
   };
 }
 
@@ -101,6 +106,9 @@ export class NixChatService {
     if (dto.context?.lastValidationIssues) {
       session.sessionContext.lastValidationIssues = dto.context.lastValidationIssues;
     }
+    if (dto.context?.pageContext) {
+      session.sessionContext.pageContext = dto.context.pageContext;
+    }
 
     const userMessage: ChatMessage = { role: "user", content: dto.message };
     const conversationHistory = this.buildConversationHistory(session, userMessage);
@@ -161,6 +169,9 @@ export class NixChatService {
     }
     if (dto.context?.lastValidationIssues) {
       session.sessionContext.lastValidationIssues = dto.context.lastValidationIssues;
+    }
+    if (dto.context?.pageContext) {
+      session.sessionContext.pageContext = dto.context.pageContext;
     }
 
     const userMessage: ChatMessage = { role: "user", content: dto.message };
@@ -314,6 +325,23 @@ export class NixChatService {
       session.sessionContext.lastValidationIssues.forEach((issue) => {
         prompt += `- ${issue.message}\n`;
       });
+    }
+
+    if (session.sessionContext.pageContext) {
+      const { currentPage, rfqType, portalContext } = session.sessionContext.pageContext;
+      prompt += "\n\n## Current Page Context\n\n";
+      prompt += `The user is currently on: **${currentPage}**\n`;
+      prompt += `Portal type: **${portalContext}**\n`;
+      if (rfqType) {
+        prompt += `RFQ type: **${rfqType}**\n`;
+      }
+      prompt += `\n**IMPORTANT**: Since you know the page context, do NOT ask the user:
+- What kind of document they are creating (it's an RFQ)
+- What industry this is for (it's industrial piping/fabrication)
+- What portal they are using (you already know it's ${portalContext})
+${rfqType ? `- What type of RFQ they want (it's ${rfqType})` : ""}
+
+Instead, directly help them with their request based on this context.`;
     }
 
     return prompt;
