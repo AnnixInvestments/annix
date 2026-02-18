@@ -5,9 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import type { JSX } from "react";
 import { useState } from "react";
 import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
-import type { CreateProspectDto, ProspectStatus } from "@/app/lib/api/fieldflowApi";
+import type {
+  CreateProspectDto,
+  FollowUpRecurrence,
+  ProspectStatus,
+} from "@/app/lib/api/fieldflowApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 import {
+  useCompleteFollowUp,
   useDeleteProspect,
   useMarkContacted,
   useProspect,
@@ -50,6 +55,14 @@ const qualificationColors = {
   warm: "text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30",
   cold: "text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30",
   unqualified: "text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-700",
+};
+
+const recurrenceLabels: Record<FollowUpRecurrence, string> = {
+  none: "No repeat",
+  daily: "Daily",
+  weekly: "Weekly",
+  biweekly: "Every 2 weeks",
+  monthly: "Monthly",
 };
 
 const activityIcons: Record<string, JSX.Element> = {
@@ -157,6 +170,7 @@ export default function ProspectDetailPage() {
   const updateStatus = useUpdateProspectStatus();
   const markContacted = useMarkContacted();
   const deleteProspect = useDeleteProspect();
+  const completeFollowUp = useCompleteFollowUp();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<CreateProspectDto>>({});
@@ -813,8 +827,53 @@ export default function ProspectDetailPage() {
                 <p className="text-sm text-blue-700 dark:text-blue-300">
                   Scheduled: {formatDateZA(prospect.nextFollowUpAt.toString())}
                 </p>
+                {prospect.followUpRecurrence !== "none" && (
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    Repeats: {recurrenceLabels[prospect.followUpRecurrence]}
+                  </p>
+                )}
               </div>
             )}
+            {prospect.nextFollowUpAt && (
+              <button
+                onClick={() => completeFollowUp.mutate(id)}
+                disabled={completeFollowUp.isPending}
+                className="w-full mb-3 px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                {completeFollowUp.isPending ? "Completing..." : "Complete Follow-up"}
+              </button>
+            )}
+            <div className="mb-3">
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                Recurrence
+              </label>
+              <select
+                value={prospect.followUpRecurrence}
+                onChange={(e) =>
+                  updateProspect.mutate({
+                    id,
+                    dto: { followUpRecurrence: e.target.value as FollowUpRecurrence },
+                  })
+                }
+                disabled={updateProspect.isPending}
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {(Object.keys(recurrenceLabels) as FollowUpRecurrence[]).map((rec) => (
+                  <option key={rec} value={rec}>
+                    {recurrenceLabels[rec]}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => handleScheduleFollowUp(1)}

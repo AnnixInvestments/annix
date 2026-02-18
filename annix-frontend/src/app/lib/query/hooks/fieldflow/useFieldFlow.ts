@@ -119,6 +119,20 @@ export function useMarkContacted() {
   });
 }
 
+export function useCompleteFollowUp() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => fieldflowApi.prospects.completeFollowUp(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.prospects.detail(id) });
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.prospects.list() });
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.prospects.followUps() });
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.dashboard.all });
+    },
+  });
+}
+
 export function useDeleteProspect() {
   const queryClient = useQueryClient();
 

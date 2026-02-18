@@ -205,6 +205,20 @@ export class ProspectController {
     return this.prospectService.markContacted(req.fieldflowUser.userId, id);
   }
 
+  @Post(":id/complete-followup")
+  @ApiOperation({
+    summary: "Complete follow-up and auto-schedule next based on recurrence",
+  })
+  @ApiParam({ name: "id", type: Number })
+  @ApiResponse({
+    status: 200,
+    description: "Follow-up completed, next scheduled if recurring",
+    type: ProspectResponseDto,
+  })
+  completeFollowUp(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.prospectService.completeFollowUp(req.fieldflowUser.userId, id);
+  }
+
   @Delete(":id")
   @ApiOperation({ summary: "Delete a prospect" })
   @ApiParam({ name: "id", type: Number })

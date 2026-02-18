@@ -172,6 +172,7 @@ export {
   useCancelMeeting,
   useCheckIn,
   useCheckOut,
+  useCompleteFollowUp,
   useCreateMeeting,
   useCreateProspect,
   useCreateVisit,

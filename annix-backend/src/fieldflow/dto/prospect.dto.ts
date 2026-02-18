@@ -10,7 +10,7 @@ import {
   IsString,
   MaxLength,
 } from "class-validator";
-import { ProspectPriority, ProspectStatus } from "../entities";
+import { FollowUpRecurrence, ProspectPriority, ProspectStatus } from "../entities";
 
 export class CreateProspectDto {
   @ApiProperty({ description: "Company name", example: "Acme Industries" })
@@ -127,6 +127,15 @@ export class CreateProspectDto {
   @IsOptional()
   nextFollowUpAt?: string;
 
+  @ApiPropertyOptional({
+    description: "Follow-up recurrence pattern",
+    enum: FollowUpRecurrence,
+    default: FollowUpRecurrence.NONE,
+  })
+  @IsEnum(FollowUpRecurrence)
+  @IsOptional()
+  followUpRecurrence?: FollowUpRecurrence;
+
   @ApiPropertyOptional({ description: "Custom fields for additional data" })
   @IsObject()
   @IsOptional()
@@ -198,6 +207,9 @@ export class ProspectResponseDto {
 
   @ApiPropertyOptional()
   nextFollowUpAt: Date | null;
+
+  @ApiProperty({ enum: FollowUpRecurrence })
+  followUpRecurrence: FollowUpRecurrence;
 
   @ApiProperty()
   createdAt: Date;

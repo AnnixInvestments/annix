@@ -11,7 +11,7 @@ import {
   NearbyProspectsQueryDto,
   UpdateProspectDto,
 } from "../dto";
-import { Prospect, ProspectPriority, ProspectStatus } from "../entities";
+import { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "../entities";
 
 @Injectable()
 export class ProspectService {
@@ -44,6 +44,7 @@ export class ProspectService {
       tags: dto.tags ?? null,
       estimatedValue: dto.estimatedValue ?? null,
       nextFollowUpAt: dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : null,
+      followUpRecurrence: dto.followUpRecurrence ?? FollowUpRecurrence.NONE,
       customFields: dto.customFields ?? null,
     });
 
@@ -103,6 +104,9 @@ export class ProspectService {
     if (dto.estimatedValue !== undefined) updateData.estimatedValue = dto.estimatedValue ?? null;
     if (dto.nextFollowUpAt !== undefined) {
       updateData.nextFollowUpAt = dto.nextFollowUpAt ? new Date(dto.nextFollowUpAt) : null;
+    }
+    if (dto.followUpRecurrence !== undefined) {
+      updateData.followUpRecurrence = dto.followUpRecurrence;
     }
     if (dto.customFields !== undefined) updateData.customFields = dto.customFields ?? null;
 
@@ -197,6 +201,31 @@ export class ProspectService {
       })
       .orderBy("prospect.next_follow_up_at", "ASC")
       .getMany();
+  }
+
+  async completeFollowUp(ownerId: number, id: number): Promise<Prospect> {
+    const prospect = await this.findOne(ownerId, id);
+    prospect.lastContactedAt = now().toJSDate();
+
+    if (prospect.followUpRecurrence !== FollowUpRecurrence.NONE) {
+      const nextDate = now();
+      const recurrenceDays: Record<FollowUpRecurrence, number> = {
+        [FollowUpRecurrence.NONE]: 0,
+        [FollowUpRecurrence.DAILY]: 1,
+        [FollowUpRecurrence.WEEKLY]: 7,
+        [FollowUpRecurrence.BIWEEKLY]: 14,
+        [FollowUpRecurrence.MONTHLY]: 30,
+      };
+      const daysToAdd = recurrenceDays[prospect.followUpRecurrence];
+      prospect.nextFollowUpAt = nextDate.plus({ days: daysToAdd }).toJSDate();
+      this.logger.log(
+        `Auto-scheduled next follow-up for prospect ${id}: ${prospect.nextFollowUpAt.toISOString()}`,
+      );
+    } else {
+      prospect.nextFollowUpAt = null;
+    }
+
+    return this.prospectRepo.save(prospect);
   }
 
   async bulkUpdateStatus(

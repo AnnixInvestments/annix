@@ -62,6 +62,7 @@ export type CalendarEventStatus = "confirmed" | "tentative" | "cancelled";
 
 export type ProspectStatus = "new" | "contacted" | "qualified" | "proposal" | "won" | "lost";
 export type ProspectPriority = "low" | "medium" | "high" | "urgent";
+export type FollowUpRecurrence = "none" | "daily" | "weekly" | "biweekly" | "monthly";
 export type MeetingType = "in_person" | "phone" | "video";
 export type MeetingStatus = "scheduled" | "in_progress" | "completed" | "cancelled" | "no_show";
 export type VisitType = "cold_call" | "scheduled" | "follow_up" | "drop_in";
@@ -96,6 +97,7 @@ export interface Prospect {
   estimatedValue: number | null;
   lastContactedAt: Date | null;
   nextFollowUpAt: Date | null;
+  followUpRecurrence: FollowUpRecurrence;
   customFields: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
@@ -121,6 +123,7 @@ export interface CreateProspectDto {
   tags?: string[];
   estimatedValue?: number;
   nextFollowUpAt?: string;
+  followUpRecurrence?: FollowUpRecurrence;
   customFields?: Record<string, unknown>;
 }
 
@@ -658,6 +661,14 @@ export const fieldflowApi = {
 
     markContacted: async (id: number): Promise<Prospect> => {
       const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}/contacted`, {
+        method: "POST",
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<Prospect>(response);
+    },
+
+    completeFollowUp: async (id: number): Promise<Prospect> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}/complete-followup`, {
         method: "POST",
         headers: fieldflowAuthHeaders(),
       });

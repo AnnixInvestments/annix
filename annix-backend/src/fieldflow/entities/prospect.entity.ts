@@ -25,6 +25,14 @@ export enum ProspectPriority {
   URGENT = "urgent",
 }
 
+export enum FollowUpRecurrence {
+  NONE = "none",
+  DAILY = "daily",
+  WEEKLY = "weekly",
+  BIWEEKLY = "biweekly",
+  MONTHLY = "monthly",
+}
+
 @Entity("fieldflow_prospects")
 export class Prospect {
   @PrimaryGeneratedColumn()
@@ -113,6 +121,14 @@ export class Prospect {
 
   @Column({ name: "next_follow_up_at", type: "timestamp", nullable: true })
   nextFollowUpAt: Date | null;
+
+  @Column({
+    name: "follow_up_recurrence",
+    type: "enum",
+    enum: FollowUpRecurrence,
+    default: FollowUpRecurrence.NONE,
+  })
+  followUpRecurrence: FollowUpRecurrence;
 
   @Column({ name: "custom_fields", type: "json", nullable: true })
   customFields: Record<string, unknown> | null;

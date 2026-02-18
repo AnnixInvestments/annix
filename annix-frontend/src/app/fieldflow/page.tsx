@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { formatDateZA } from "@/app/lib/datetime";
+import { useFollowUpsDue } from "@/app/lib/query/hooks";
 
 interface SectionCardProps {
   title: string;
@@ -70,6 +72,8 @@ function SectionCard({ title, description, href, icon, color, featureCount }: Se
 }
 
 export default function AnnixRepDashboard() {
+  const { data: followUpsDue } = useFollowUpsDue();
+
   return (
     <div className="space-y-8">
       <div className="text-center max-w-2xl mx-auto">
@@ -78,6 +82,61 @@ export default function AnnixRepDashboard() {
           Mobile sales field assistant for prospecting, meetings, and route planning
         </p>
       </div>
+
+      {followUpsDue && followUpsDue.length > 0 && (
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                <svg
+                  className="w-5 h-5 text-amber-600 dark:text-amber-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-800 dark:text-amber-300 mb-2">
+                  Follow-ups Due ({followUpsDue.length})
+                </h3>
+                <div className="space-y-2">
+                  {followUpsDue.slice(0, 5).map((prospect) => (
+                    <Link
+                      key={prospect.id}
+                      href={`/fieldflow/prospects/${prospect.id}`}
+                      className="flex items-center justify-between p-2 bg-white dark:bg-slate-800 rounded-lg hover:bg-amber-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {prospect.companyName}
+                      </span>
+                      <span className="text-sm text-amber-600 dark:text-amber-400">
+                        {prospect.nextFollowUpAt
+                          ? formatDateZA(prospect.nextFollowUpAt.toString())
+                          : "Overdue"}
+                      </span>
+                    </Link>
+                  ))}
+                  {followUpsDue.length > 5 && (
+                    <Link
+                      href="/fieldflow/prospects"
+                      className="block text-center text-sm text-amber-700 dark:text-amber-300 hover:underline py-1"
+                    >
+                      View all {followUpsDue.length} follow-ups
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
         <SectionCard
