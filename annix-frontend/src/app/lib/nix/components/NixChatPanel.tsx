@@ -458,17 +458,20 @@ export function NixChatPanel({
 
   const initializeSession = () => {
     setInitError(null);
-    createSessionMutation.mutate(rfqId, {
-      onSuccess: (data) => {
-        setSessionId(data.sessionId);
-        persistSessionId(data.sessionId);
-        onSessionCreated?.(data.sessionId);
+    createSessionMutation.mutate(
+      { rfqId, portalContext },
+      {
+        onSuccess: (data) => {
+          setSessionId(data.sessionId);
+          persistSessionId(data.sessionId);
+          onSessionCreated?.(data.sessionId);
+        },
+        onError: (error) => {
+          console.error("Failed to create chat session:", error);
+          setInitError("Could not connect to Nix. Is the backend running?");
+        },
       },
-      onError: (error) => {
-        console.error("Failed to create chat session:", error);
-        setInitError("Could not connect to Nix. Is the backend running?");
-      },
-    });
+    );
   };
 
   const scrollToBottom = () => {
@@ -501,6 +504,7 @@ export function NixChatPanel({
           lastValidationIssues: validationIssues,
           pageContext: pageContext ?? { currentPage: "unknown", portalContext },
         },
+        portalContext,
       },
       {
         onSuccess: (result) => {
@@ -634,6 +638,7 @@ export function NixChatPanel({
           lastValidationIssues: validationIssues,
           pageContext: pageContext ?? { currentPage: "unknown", portalContext },
         },
+        portalContext,
       },
       {
         onSuccess: (result) => {

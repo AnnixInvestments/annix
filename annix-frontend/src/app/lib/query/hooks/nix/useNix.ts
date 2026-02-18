@@ -3,15 +3,42 @@ import { browserBaseUrl } from "@/lib/api-config";
 import { nixKeys } from "../../keys/nixKeys";
 import { retryableFetch } from "../../retry";
 
-const nixAuthHeaders = (): Record<string, string> => {
+type PortalContext = "admin" | "customer" | "supplier" | "annix-rep" | "general";
+
+const TOKEN_KEY_MAP: Record<PortalContext, string> = {
+  admin: "adminAccessToken",
+  customer: "customerAccessToken",
+  supplier: "supplierAccessToken",
+  "annix-rep": "annixRepAccessToken",
+  general: "adminAccessToken",
+};
+
+const TOKEN_FALLBACK_ORDER: string[] = [
+  "customerAccessToken",
+  "supplierAccessToken",
+  "adminAccessToken",
+  "annixRepAccessToken",
+  "authToken",
+  "token",
+];
+
+const nixAuthHeaders = (portalContext?: PortalContext): Record<string, string> => {
   if (typeof window === "undefined") return {};
-  const token =
-    localStorage.getItem("adminAccessToken") ||
-    localStorage.getItem("customerAccessToken") ||
-    localStorage.getItem("supplierAccessToken") ||
-    localStorage.getItem("annixRepAccessToken") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("token");
+
+  let token: string | null = null;
+
+  if (portalContext && portalContext !== "general") {
+    const preferredKey = TOKEN_KEY_MAP[portalContext];
+    token = localStorage.getItem(preferredKey);
+  }
+
+  if (!token) {
+    for (const key of TOKEN_FALLBACK_ORDER) {
+      token = localStorage.getItem(key);
+      if (token) break;
+    }
+  }
+
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
@@ -174,11 +201,17 @@ export function useCreateNixSession() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (rfqId?: number): Promise<{ sessionId: number }> => {
+    mutationFn: async ({
+      rfqId,
+      portalContext,
+    }: {
+      rfqId?: number;
+      portalContext?: PortalContext;
+    }): Promise<{ sessionId: number }> => {
       const response = await retryableFetch(`${browserBaseUrl()}/nix/chat/session`, {
         method: "POST",
         headers: {
-          ...nixAuthHeaders(),
+          ...nixAuthHeaders(portalContext),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ rfqId }),
@@ -205,6 +238,7 @@ export function useSendNixMessage() {
       sessionId,
       message,
       context,
+      portalContext,
     }: {
       sessionId: number;
       message: string;
@@ -217,18 +251,21 @@ export function useSendNixMessage() {
           portalContext: "customer" | "supplier" | "admin" | "general";
         };
       };
+      portalContext?: PortalContext;
     }): Promise<{
       sessionId: number;
       messageId: number;
       content: string;
       metadata?: unknown;
     }> => {
+      const effectivePortalContext =
+        portalContext ?? (context?.pageContext?.portalContext as PortalContext) ?? undefined;
       const response = await retryableFetch(
         `${browserBaseUrl()}/nix/chat/session/${sessionId}/message`,
         {
           method: "POST",
           headers: {
-            ...nixAuthHeaders(),
+            ...nixAuthHeaders(effectivePortalContext),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ message, context }),
