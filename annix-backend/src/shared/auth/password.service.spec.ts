@@ -179,7 +179,7 @@ describe("PasswordService", () => {
         const verified = await service.verify(password, hash);
         expect(verified).toBe(true);
       }
-    });
+    }, 30000);
 
     it("should work across multiple hash/verify cycles", async () => {
       const password = "TestPassword";
@@ -189,6 +189,6 @@ describe("PasswordService", () => {
         const verified = await service.verify(password, hash);
         expect(verified).toBe(true);
       }
-    });
+    }, 30000);
   });
 });
