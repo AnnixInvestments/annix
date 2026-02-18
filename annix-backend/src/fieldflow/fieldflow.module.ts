@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { ScheduleModule } from "@nestjs/schedule";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
+import { EmailModule } from "../email/email.module";
+import { User } from "../user/entities/user.entity";
 import { AnnixRepAuthModule } from "./auth";
 import {
   AnalyticsController,
@@ -21,6 +23,7 @@ import {
   CalendarConnection,
   CalendarEvent,
   CrmConfig,
+  CrmSyncLog,
   CustomFieldDefinition,
   Meeting,
   MeetingRecording,
@@ -33,7 +36,10 @@ import {
 import {
   CaldavCalendarProvider,
   GoogleCalendarProvider,
+  HubSpotOAuthProvider,
   OutlookCalendarProvider,
+  PipedriveOAuthProvider,
+  SalesforceOAuthProvider,
 } from "./providers";
 import { RepProfileModule } from "./rep-profile";
 import {
@@ -41,7 +47,9 @@ import {
   CalendarService,
   CalendarSyncService,
   CrmService,
+  CrmSyncService,
   CustomFieldService,
+  FollowUpReminderService,
   GoalsService,
   MeetingService,
   MeetingSummaryService,
@@ -67,10 +75,13 @@ import {
       CalendarConnection,
       CalendarEvent,
       CrmConfig,
+      CrmSyncLog,
       SalesGoal,
+      User,
     ]),
     ScheduleModule.forRoot(),
     AdminModule,
+    EmailModule,
     RepProfileModule,
     AnnixRepAuthModule,
   ],
@@ -90,6 +101,7 @@ import {
   ],
   providers: [
     AnalyticsService,
+    FollowUpReminderService,
     GoalsService,
     ProspectActivityService,
     ProspectService,
@@ -103,10 +115,14 @@ import {
     TranscriptionService,
     MeetingSummaryService,
     CrmService,
+    CrmSyncService,
     RoutePlanningService,
     GoogleCalendarProvider,
     OutlookCalendarProvider,
     CaldavCalendarProvider,
+    SalesforceOAuthProvider,
+    HubSpotOAuthProvider,
+    PipedriveOAuthProvider,
   ],
   exports: [
     ProspectService,

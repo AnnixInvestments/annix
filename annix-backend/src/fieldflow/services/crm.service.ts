@@ -3,12 +3,15 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Not, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { encrypt } from "../../secure-documents/crypto.util";
+import { decrypt, encrypt } from "../../secure-documents/crypto.util";
 import {
   type CrmAdapterConfig,
   type CrmSyncResult,
   CsvExportAdapter,
+  HubSpotAdapter,
   type ICrmAdapter,
+  PipedriveAdapter,
+  SalesforceAdapter,
   WebhookCrmAdapter,
 } from "../adapters";
 import { CreateCrmConfigDto, UpdateCrmConfigDto } from "../dto";
@@ -20,6 +23,12 @@ import {
   MeetingTranscript,
   Prospect,
 } from "../entities";
+import {
+  type CrmOAuthTokenResponse,
+  HubSpotOAuthProvider,
+  PipedriveOAuthProvider,
+  SalesforceOAuthProvider,
+} from "../providers";
 
 @Injectable()
 export class CrmService {
@@ -38,12 +47,165 @@ export class CrmService {
     @InjectRepository(MeetingTranscript)
     private readonly transcriptRepo: Repository<MeetingTranscript>,
     private readonly configService: ConfigService,
+    private readonly salesforceProvider: SalesforceOAuthProvider,
+    private readonly hubspotProvider: HubSpotOAuthProvider,
+    private readonly pipedriveProvider: PipedriveOAuthProvider,
   ) {
     this.encryptionKey = this.configService.get<string>("TOKEN_ENCRYPTION_KEY") ?? "";
   }
 
   private encryptValue(value: string): string {
     return encrypt(value, this.encryptionKey).toString("base64");
+  }
+
+  private decryptValue(encryptedValue: string): string {
+    return decrypt(Buffer.from(encryptedValue, "base64"), this.encryptionKey).toString();
+  }
+
+  oauthUrl(provider: CrmType, redirectUri: string, state: string): string {
+    switch (provider) {
+      case CrmType.SALESFORCE:
+        return this.salesforceProvider.oauthUrl(redirectUri, state);
+      case CrmType.HUBSPOT:
+        return this.hubspotProvider.oauthUrl(redirectUri, state);
+      case CrmType.PIPEDRIVE:
+        return this.pipedriveProvider.oauthUrl(redirectUri, state);
+      default:
+        throw new Error(`OAuth not supported for ${provider}`);
+    }
+  }
+
+  async handleOAuthCallback(
+    userId: number,
+    provider: CrmType,
+    code: string,
+    redirectUri: string,
+  ): Promise<CrmConfig> {
+    let tokenResponse: CrmOAuthTokenResponse;
+
+    switch (provider) {
+      case CrmType.SALESFORCE:
+        tokenResponse = await this.salesforceProvider.exchangeCode(code, redirectUri);
+        break;
+      case CrmType.HUBSPOT:
+        tokenResponse = await this.hubspotProvider.exchangeCode(code, redirectUri);
+        break;
+      case CrmType.PIPEDRIVE:
+        tokenResponse = await this.pipedriveProvider.exchangeCode(code, redirectUri);
+        break;
+      default:
+        throw new Error(`OAuth not supported for ${provider}`);
+    }
+
+    const userInfo = await this.oauthUserInfo(provider, tokenResponse);
+
+    const existingConfig = await this.crmConfigRepo.findOne({
+      where: { userId, crmType: provider },
+    });
+
+    if (existingConfig) {
+      existingConfig.apiKeyEncrypted = this.encryptValue(tokenResponse.accessToken);
+      existingConfig.refreshTokenEncrypted = tokenResponse.refreshToken
+        ? this.encryptValue(tokenResponse.refreshToken)
+        : null;
+      existingConfig.instanceUrl = tokenResponse.instanceUrl;
+      existingConfig.tokenExpiresAt = now().plus({ seconds: tokenResponse.expiresIn }).toJSDate();
+      existingConfig.crmUserId = userInfo.id;
+      existingConfig.crmOrganizationId = userInfo.organizationId;
+      existingConfig.isActive = true;
+
+      return this.crmConfigRepo.save(existingConfig);
+    }
+
+    const config = this.crmConfigRepo.create({
+      userId,
+      name: this.defaultConfigName(provider),
+      crmType: provider,
+      apiKeyEncrypted: this.encryptValue(tokenResponse.accessToken),
+      refreshTokenEncrypted: tokenResponse.refreshToken
+        ? this.encryptValue(tokenResponse.refreshToken)
+        : null,
+      instanceUrl: tokenResponse.instanceUrl,
+      tokenExpiresAt: now().plus({ seconds: tokenResponse.expiresIn }).toJSDate(),
+      crmUserId: userInfo.id,
+      crmOrganizationId: userInfo.organizationId,
+      isActive: true,
+      syncProspects: true,
+      syncMeetings: true,
+      syncOnCreate: true,
+      syncOnUpdate: true,
+    });
+
+    return this.crmConfigRepo.save(config);
+  }
+
+  async disconnectOAuth(userId: number, configId: number): Promise<void> {
+    const config = await this.configById(userId, configId);
+
+    if (config.apiKeyEncrypted) {
+      const accessToken = this.decryptValue(config.apiKeyEncrypted);
+
+      try {
+        switch (config.crmType) {
+          case CrmType.SALESFORCE:
+            await this.salesforceProvider.revokeToken(accessToken);
+            break;
+          case CrmType.HUBSPOT:
+            await this.hubspotProvider.revokeToken(accessToken);
+            break;
+          case CrmType.PIPEDRIVE:
+            await this.pipedriveProvider.revokeToken(accessToken);
+            break;
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to revoke token for config ${configId}: ${error}`);
+      }
+    }
+
+    config.apiKeyEncrypted = null;
+    config.refreshTokenEncrypted = null;
+    config.tokenExpiresAt = null;
+    config.isActive = false;
+
+    await this.crmConfigRepo.save(config);
+    this.logger.log(`Disconnected OAuth for config ${configId}`);
+  }
+
+  private async oauthUserInfo(
+    provider: CrmType,
+    tokenResponse: CrmOAuthTokenResponse,
+  ): Promise<{ id: string; organizationId: string | null }> {
+    const oauthConfig = {
+      accessToken: tokenResponse.accessToken,
+      refreshToken: tokenResponse.refreshToken,
+      instanceUrl: tokenResponse.instanceUrl,
+    };
+
+    switch (provider) {
+      case CrmType.SALESFORCE: {
+        const info = await this.salesforceProvider.userInfo(oauthConfig);
+        return { id: info.id, organizationId: info.organizationId };
+      }
+      case CrmType.HUBSPOT: {
+        const info = await this.hubspotProvider.userInfo(oauthConfig);
+        return { id: info.id, organizationId: info.organizationId };
+      }
+      case CrmType.PIPEDRIVE: {
+        const info = await this.pipedriveProvider.userInfo(oauthConfig);
+        return { id: info.id, organizationId: info.organizationId };
+      }
+      default:
+        return { id: "unknown", organizationId: null };
+    }
+  }
+
+  private defaultConfigName(provider: CrmType): string {
+    const names: Record<string, string> = {
+      [CrmType.SALESFORCE]: "Salesforce",
+      [CrmType.HUBSPOT]: "HubSpot",
+      [CrmType.PIPEDRIVE]: "Pipedrive",
+    };
+    return names[provider] ?? "CRM Integration";
   }
 
   async listConfigs(userId: number): Promise<CrmConfig[]> {
@@ -404,6 +566,10 @@ export class CrmService {
       autoSync: config.syncOnCreate || config.syncOnUpdate,
     };
 
+    if ([CrmType.SALESFORCE, CrmType.HUBSPOT, CrmType.PIPEDRIVE].includes(config.crmType)) {
+      return this.oauthAdapterForConfig(config, adapterConfig);
+    }
+
     if (config.crmType === CrmType.WEBHOOK) {
       const adapter = new WebhookCrmAdapter();
       adapter.configure(adapterConfig);
@@ -413,6 +579,39 @@ export class CrmService {
     const adapter = new CsvExportAdapter();
     adapter.configure({ ...adapterConfig, type: "csv" });
     return adapter;
+  }
+
+  private oauthAdapterForConfig(config: CrmConfig, adapterConfig: CrmAdapterConfig): ICrmAdapter {
+    if (!config.apiKeyEncrypted) {
+      throw new Error(`No access token configured for ${config.name}`);
+    }
+
+    const accessToken = this.decryptValue(config.apiKeyEncrypted);
+    const oauthConfig = {
+      accessToken,
+      refreshToken: null,
+      instanceUrl: config.instanceUrl,
+    };
+
+    switch (config.crmType) {
+      case CrmType.SALESFORCE: {
+        const adapter = new SalesforceAdapter();
+        adapter.configureOAuth(oauthConfig, adapterConfig);
+        return adapter;
+      }
+      case CrmType.HUBSPOT: {
+        const adapter = new HubSpotAdapter();
+        adapter.configureOAuth(oauthConfig, adapterConfig);
+        return adapter;
+      }
+      case CrmType.PIPEDRIVE: {
+        const adapter = new PipedriveAdapter();
+        adapter.configureOAuth(oauthConfig, adapterConfig);
+        return adapter;
+      }
+      default:
+        throw new Error(`Unsupported OAuth CRM type: ${config.crmType}`);
+    }
   }
 
   private async updateSyncStatus(config: CrmConfig, result: CrmSyncResult): Promise<void> {

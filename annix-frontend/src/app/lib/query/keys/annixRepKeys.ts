@@ -71,6 +71,8 @@ export const annixRepKeys = {
     configs: () => [...annixRepKeys.crm.all, "configs"] as const,
     config: (id: number) => [...annixRepKeys.crm.all, "config", id] as const,
     status: (configId: number) => [...annixRepKeys.crm.all, "status", configId] as const,
+    syncLogs: (configId: number, limit?: number, offset?: number) =>
+      [...annixRepKeys.crm.all, "syncLogs", configId, limit, offset] as const,
   },
   routes: {
     all: ["annixRep", "routes"] as const,

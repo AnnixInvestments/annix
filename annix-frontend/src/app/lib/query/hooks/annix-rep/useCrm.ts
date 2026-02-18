@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixRepApi,
   type CreateCrmConfigDto,
+  type CrmProvider,
   type UpdateCrmConfigDto,
 } from "@/app/lib/api/annixRepApi";
 import { annixRepKeys } from "@/app/lib/query/keys/annixRepKeys";
@@ -134,6 +135,90 @@ export function useExportMeetingsCsv() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+    },
+  });
+}
+
+export function useCrmOAuthUrl(provider: CrmProvider, redirectUri: string) {
+  return useQuery({
+    queryKey: ["annixRep", "crm", "oauth", provider, redirectUri],
+    queryFn: () => annixRepApi.crm.oauthUrl(provider, redirectUri),
+    enabled: Boolean(provider && redirectUri),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCrmOAuthCallback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      provider,
+      code,
+      redirectUri,
+    }: {
+      provider: CrmProvider;
+      code: string;
+      redirectUri: string;
+    }) => annixRepApi.crm.oauthCallback(provider, code, redirectUri),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.crm.configs() });
+    },
+  });
+}
+
+export function useCrmDisconnect() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (configId: number) => annixRepApi.crm.disconnect(configId),
+    onSuccess: (_, configId) => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.crm.config(configId) });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.crm.configs() });
+    },
+  });
+}
+
+export function useSyncNow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (configId: number) => annixRepApi.crm.syncNow(configId),
+    onSuccess: (_, configId) => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.crm.status(configId) });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.crm.syncLogs(configId) });
+    },
+  });
+}
+
+export function usePullAll() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (configId: number) => annixRepApi.crm.pullAll(configId),
+    onSuccess: (_, configId) => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.crm.status(configId) });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.crm.syncLogs(configId) });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
+    },
+  });
+}
+
+export function useCrmSyncLogs(configId: number, limit?: number, offset?: number) {
+  return useQuery({
+    queryKey: annixRepKeys.crm.syncLogs(configId, limit, offset),
+    queryFn: () => annixRepApi.crm.syncLogs(configId, limit, offset),
+    enabled: configId > 0,
+  });
+}
+
+export function useRefreshCrmToken() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (configId: number) => annixRepApi.crm.refreshToken(configId),
+    onSuccess: (_, configId) => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.crm.config(configId) });
     },
   });
 }

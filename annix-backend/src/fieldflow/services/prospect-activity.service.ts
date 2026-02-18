@@ -174,4 +174,19 @@ export class ProspectActivityService {
       description: `Merged ${mergedIds.length} duplicate prospect(s) into this record`,
     });
   }
+
+  async logFollowUpSnoozed(
+    prospectId: number,
+    userId: number,
+    days: number,
+    newFollowUpAt: Date,
+  ): Promise<void> {
+    await this.logActivity({
+      prospectId,
+      userId,
+      activityType: ProspectActivityType.FOLLOW_UP_SNOOZED,
+      newValues: { days, newFollowUpAt: newFollowUpAt.toISOString() },
+      description: `Snoozed follow-up by ${days} day${days === 1 ? "" : "s"}`,
+    });
+  }
 }

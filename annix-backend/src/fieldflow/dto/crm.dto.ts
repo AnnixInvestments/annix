@@ -102,11 +102,23 @@ export class CrmConfigResponseDto {
   @ApiProperty()
   isActive: boolean;
 
+  @ApiProperty({ description: "Whether OAuth is connected" })
+  isConnected: boolean;
+
   @ApiPropertyOptional()
   webhookConfig: Omit<WebhookConfig, "authValue"> | null;
 
   @ApiPropertyOptional()
   instanceUrl: string | null;
+
+  @ApiPropertyOptional({ description: "CRM user ID from OAuth" })
+  crmUserId: string | null;
+
+  @ApiPropertyOptional({ description: "CRM organization ID from OAuth" })
+  crmOrganizationId: string | null;
+
+  @ApiPropertyOptional({ description: "OAuth token expiration time" })
+  tokenExpiresAt: Date | null;
 
   @ApiPropertyOptional()
   prospectFieldMappings: FieldMapping[] | null;
@@ -178,4 +190,50 @@ export class CrmSyncStatusDto {
 
   @ApiProperty()
   failedSync: number;
+}
+
+export class SyncErrorDetailDto {
+  @ApiProperty()
+  recordId: string | number;
+
+  @ApiProperty()
+  recordType: string;
+
+  @ApiProperty()
+  error: string;
+
+  @ApiProperty()
+  timestamp: string;
+}
+
+export class CrmSyncLogResponseDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  configId: number;
+
+  @ApiProperty({ enum: ["push", "pull"] })
+  direction: "push" | "pull";
+
+  @ApiProperty({ enum: ["in_progress", "completed", "failed", "partial"] })
+  status: "in_progress" | "completed" | "failed" | "partial";
+
+  @ApiProperty()
+  recordsProcessed: number;
+
+  @ApiProperty()
+  recordsSucceeded: number;
+
+  @ApiProperty()
+  recordsFailed: number;
+
+  @ApiPropertyOptional({ type: [SyncErrorDetailDto] })
+  errorDetails: SyncErrorDetailDto[] | null;
+
+  @ApiProperty()
+  startedAt: Date;
+
+  @ApiPropertyOptional()
+  completedAt: Date | null;
 }

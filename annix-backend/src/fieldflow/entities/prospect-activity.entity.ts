@@ -14,6 +14,7 @@ export enum ProspectActivityType {
   STATUS_CHANGE = "status_change",
   NOTE_ADDED = "note_added",
   FOLLOW_UP_COMPLETED = "follow_up_completed",
+  FOLLOW_UP_SNOOZED = "follow_up_snoozed",
   FIELD_UPDATED = "field_updated",
   TAG_ADDED = "tag_added",
   TAG_REMOVED = "tag_removed",

@@ -6,7 +6,9 @@ export {
 } from "./calendar-connection.entity";
 export { CalendarEvent, CalendarEventStatus } from "./calendar-event.entity";
 export type { FieldMapping, WebhookConfig } from "./crm-config.entity";
-export { CrmConfig, CrmType } from "./crm-config.entity";
+export { ConflictResolutionStrategy, CrmConfig, CrmType } from "./crm-config.entity";
+export type { SyncErrorDetail } from "./crm-sync-log.entity";
+export { CrmSyncLog, SyncDirection, SyncStatus } from "./crm-sync-log.entity";
 export { CustomFieldDefinition, CustomFieldType } from "./custom-field-definition.entity";
 export {
   Meeting,

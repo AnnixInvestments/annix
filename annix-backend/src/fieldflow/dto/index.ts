@@ -16,7 +16,9 @@ export {
 export {
   CreateCrmConfigDto,
   CrmConfigResponseDto,
+  CrmSyncLogResponseDto,
   CrmSyncStatusDto,
+  SyncErrorDetailDto,
   SyncResultDto,
   TestCrmConnectionDto,
   UpdateCrmConfigDto,

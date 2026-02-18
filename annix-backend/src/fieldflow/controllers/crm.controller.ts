@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -13,17 +14,27 @@ import {
   Res,
   UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { AnnixRepAuthGuard } from "../auth";
 import {
   CreateCrmConfigDto,
   CrmConfigResponseDto,
+  CrmSyncLogResponseDto,
   CrmSyncStatusDto,
   SyncResultDto,
   UpdateCrmConfigDto,
 } from "../dto";
+import { CrmType } from "../entities";
 import { CrmService } from "../services/crm.service";
+import { CrmSyncService } from "../services/crm-sync.service";
 
 interface AnnixRepRequest extends Request {
   annixRepUser: {
@@ -38,7 +49,10 @@ interface AnnixRepRequest extends Request {
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()
 export class CrmController {
-  constructor(private readonly crmService: CrmService) {}
+  constructor(
+    private readonly crmService: CrmService,
+    private readonly crmSyncService: CrmSyncService,
+  ) {}
 
   @Get("configs")
   @ApiOperation({ summary: "List all CRM configurations" })
@@ -190,12 +204,168 @@ export class CrmController {
     res?.send(csv);
   }
 
+  @Get("oauth/:provider/url")
+  @ApiOperation({ summary: "Get OAuth authorization URL for a CRM provider" })
+  @ApiParam({ name: "provider", enum: ["salesforce", "hubspot", "pipedrive"] })
+  @ApiQuery({ name: "redirectUri", required: true })
+  @ApiResponse({ status: 200 })
+  async oauthUrl(
+    @Param("provider") provider: string,
+    @Query("redirectUri") redirectUri: string,
+    @Req() req: AnnixRepRequest,
+  ): Promise<{ url: string }> {
+    const crmType = this.parseCrmProvider(provider);
+    const state = Buffer.from(
+      JSON.stringify({ userId: req.annixRepUser.userId, provider }),
+    ).toString("base64");
+    const url = this.crmService.oauthUrl(crmType, redirectUri, state);
+    return { url };
+  }
+
+  @Post("oauth/:provider/callback")
+  @ApiOperation({ summary: "Handle OAuth callback and exchange code for tokens" })
+  @ApiParam({ name: "provider", enum: ["salesforce", "hubspot", "pipedrive"] })
+  @ApiResponse({ status: 201, type: CrmConfigResponseDto })
+  async oauthCallback(
+    @Param("provider") provider: string,
+    @Query("code") code: string,
+    @Query("redirectUri") redirectUri: string,
+    @Req() req: AnnixRepRequest,
+  ): Promise<CrmConfigResponseDto> {
+    if (!code) {
+      throw new BadRequestException("Authorization code is required");
+    }
+    const crmType = this.parseCrmProvider(provider);
+    const config = await this.crmService.handleOAuthCallback(
+      req.annixRepUser.userId,
+      crmType,
+      code,
+      redirectUri,
+    );
+    return this.toConfigResponse(config);
+  }
+
+  @Post("configs/:id/disconnect")
+  @ApiOperation({ summary: "Disconnect OAuth integration and revoke tokens" })
+  @ApiResponse({ status: 200 })
+  async disconnect(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<{ success: boolean }> {
+    await this.crmService.disconnectOAuth(req.annixRepUser.userId, id);
+    return { success: true };
+  }
+
+  @Post("configs/:id/sync-now")
+  @ApiOperation({ summary: "Trigger immediate sync for a CRM config" })
+  @ApiResponse({ status: 200, type: CrmSyncLogResponseDto })
+  async syncNow(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<CrmSyncLogResponseDto> {
+    await this.crmService.configById(req.annixRepUser.userId, id);
+    const syncLog = await this.crmSyncService.syncIncrementally(id);
+    return this.toSyncLogResponse(syncLog);
+  }
+
+  @Post("configs/:id/pull-all")
+  @ApiOperation({ summary: "Pull all contacts from CRM (full sync)" })
+  @ApiResponse({ status: 200, type: CrmSyncLogResponseDto })
+  async pullAll(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<CrmSyncLogResponseDto> {
+    await this.crmService.configById(req.annixRepUser.userId, id);
+    const syncLog = await this.crmSyncService.pullAllContacts(id);
+    return this.toSyncLogResponse(syncLog);
+  }
+
+  @Get("configs/:id/sync-logs")
+  @ApiOperation({ summary: "Get sync history for a CRM config" })
+  @ApiQuery({ name: "limit", required: false })
+  @ApiQuery({ name: "offset", required: false })
+  @ApiResponse({ status: 200 })
+  async syncLogs(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ): Promise<{ logs: CrmSyncLogResponseDto[]; total: number }> {
+    await this.crmService.configById(req.annixRepUser.userId, id);
+    const result = await this.crmSyncService.syncLogs(
+      id,
+      limit ? parseInt(limit, 10) : 20,
+      offset ? parseInt(offset, 10) : 0,
+    );
+    return {
+      logs: result.logs.map((log) => this.toSyncLogResponse(log)),
+      total: result.total,
+    };
+  }
+
+  @Post("configs/:id/refresh-token")
+  @ApiOperation({ summary: "Manually refresh OAuth token" })
+  @ApiResponse({ status: 200 })
+  async refreshToken(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<{ success: boolean }> {
+    await this.crmService.configById(req.annixRepUser.userId, id);
+    await this.crmSyncService.refreshTokenIfNeeded(id);
+    return { success: true };
+  }
+
+  private parseCrmProvider(provider: string): CrmType {
+    const providerMap: Record<string, CrmType> = {
+      salesforce: CrmType.SALESFORCE,
+      hubspot: CrmType.HUBSPOT,
+      pipedrive: CrmType.PIPEDRIVE,
+    };
+    const crmType = providerMap[provider.toLowerCase()];
+    if (!crmType) {
+      throw new BadRequestException(`Unknown CRM provider: ${provider}`);
+    }
+    return crmType;
+  }
+
+  private toSyncLogResponse(log: {
+    id: number;
+    configId: number;
+    direction: string;
+    status: string;
+    recordsProcessed: number;
+    recordsSucceeded: number;
+    recordsFailed: number;
+    errorDetails: Array<{
+      recordId: string | number;
+      recordType: string;
+      error: string;
+      timestamp: string;
+    }> | null;
+    startedAt: Date;
+    completedAt: Date | null;
+  }): CrmSyncLogResponseDto {
+    return {
+      id: log.id,
+      configId: log.configId,
+      direction: log.direction as "push" | "pull",
+      status: log.status as "in_progress" | "completed" | "failed" | "partial",
+      recordsProcessed: log.recordsProcessed,
+      recordsSucceeded: log.recordsSucceeded,
+      recordsFailed: log.recordsFailed,
+      errorDetails: log.errorDetails,
+      startedAt: log.startedAt,
+      completedAt: log.completedAt,
+    };
+  }
+
   private toConfigResponse(config: {
     id: number;
     userId: number;
     name: string;
     crmType: string;
     isActive: boolean;
+    apiKeyEncrypted?: string | null;
     webhookConfig: {
       url: string;
       method: string;
@@ -203,6 +373,9 @@ export class CrmController {
       authValue?: string | null;
     } | null;
     instanceUrl: string | null;
+    crmUserId?: string | null;
+    crmOrganizationId?: string | null;
+    tokenExpiresAt?: Date | null;
     prospectFieldMappings: Array<{
       sourceField: string;
       targetField: string;
@@ -227,6 +400,7 @@ export class CrmController {
       name: config.name,
       crmType: config.crmType as CrmConfigResponseDto["crmType"],
       isActive: config.isActive,
+      isConnected: Boolean(config.apiKeyEncrypted),
       webhookConfig: config.webhookConfig
         ? {
             url: config.webhookConfig.url,
@@ -236,6 +410,9 @@ export class CrmController {
           }
         : null,
       instanceUrl: config.instanceUrl,
+      crmUserId: config.crmUserId ?? null,
+      crmOrganizationId: config.crmOrganizationId ?? null,
+      tokenExpiresAt: config.tokenExpiresAt ?? null,
       prospectFieldMappings: config.prospectFieldMappings,
       meetingFieldMappings: config.meetingFieldMappings,
       syncProspects: config.syncProspects,

@@ -296,6 +296,18 @@ export class ProspectService {
     return saved;
   }
 
+  async snoozeFollowUp(ownerId: number, id: number, days: number): Promise<Prospect> {
+    const prospect = await this.findOne(ownerId, id);
+    const newFollowUpAt = now().plus({ days }).toJSDate();
+    prospect.nextFollowUpAt = newFollowUpAt;
+    const saved = await this.prospectRepo.save(prospect);
+
+    await this.activityService.logFollowUpSnoozed(id, ownerId, days, newFollowUpAt);
+    this.logger.log(`Snoozed follow-up for prospect ${id} by ${days} days`);
+
+    return saved;
+  }
+
   async bulkUpdateStatus(
     ownerId: number,
     ids: number[],

@@ -32,6 +32,13 @@ export interface FieldMapping {
   transform: string | null;
 }
 
+export enum ConflictResolutionStrategy {
+  LOCAL_WINS = "local_wins",
+  REMOTE_WINS = "remote_wins",
+  NEWEST_WINS = "newest_wins",
+  MANUAL = "manual",
+}
+
 @Entity("annix_rep_crm_configs")
 export class CrmConfig {
   @PrimaryGeneratedColumn()
@@ -69,6 +76,18 @@ export class CrmConfig {
   @Column({ name: "instance_url", type: "varchar", length: 500, nullable: true })
   instanceUrl: string | null;
 
+  @Column({ name: "refresh_token_encrypted", type: "text", nullable: true })
+  refreshTokenEncrypted: string | null;
+
+  @Column({ name: "token_expires_at", type: "timestamp", nullable: true })
+  tokenExpiresAt: Date | null;
+
+  @Column({ name: "crm_user_id", type: "varchar", length: 255, nullable: true })
+  crmUserId: string | null;
+
+  @Column({ name: "crm_organization_id", type: "varchar", length: 255, nullable: true })
+  crmOrganizationId: string | null;
+
   @Column({ name: "prospect_field_mappings", type: "json", nullable: true })
   prospectFieldMappings: FieldMapping[] | null;
 
@@ -86,6 +105,17 @@ export class CrmConfig {
 
   @Column({ name: "sync_on_update", default: true })
   syncOnUpdate: boolean;
+
+  @Column({
+    name: "conflict_resolution",
+    type: "enum",
+    enum: ConflictResolutionStrategy,
+    default: ConflictResolutionStrategy.MANUAL,
+  })
+  conflictResolution: ConflictResolutionStrategy;
+
+  @Column({ name: "last_pull_sync_token", type: "text", nullable: true })
+  lastPullSyncToken: string | null;
 
   @Column({ name: "last_sync_at", type: "timestamp", nullable: true })
   lastSyncAt: Date | null;

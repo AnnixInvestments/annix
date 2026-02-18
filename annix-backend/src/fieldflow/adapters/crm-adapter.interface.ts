@@ -53,7 +53,7 @@ export interface CrmFieldMapping {
 }
 
 export interface CrmAdapterConfig {
-  type: "webhook" | "csv";
+  type: "webhook" | "csv" | "salesforce" | "hubspot" | "pipedrive";
   name: string;
   enabled: boolean;
   webhookUrl?: string;

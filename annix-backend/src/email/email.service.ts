@@ -1316,6 +1316,99 @@ Powered by Annix Rep
     });
   }
 
+  async sendFollowUpReminderEmail(
+    email: string,
+    recipientName: string,
+    prospects: Array<{ id: number; companyName: string; nextFollowUpAt: Date | null }>,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const prospectsLink = `${frontendUrl}/annix-rep/prospects`;
+
+    const prospectsList = prospects
+      .map(
+        (p) => `
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+            <a href="${frontendUrl}/annix-rep/prospects/${p.id}" style="color: #2563eb; text-decoration: none; font-weight: 500;">
+              ${p.companyName}
+            </a>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #dc2626;">
+            ${p.nextFollowUpAt ? new Date(p.nextFollowUpAt).toLocaleDateString("en-ZA") : "Not set"}
+          </td>
+        </tr>
+      `,
+      )
+      .join("");
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Follow-Up Reminder - Annix Rep</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px;">
+            <h1 style="color: #b45309; margin: 0 0 10px 0; font-size: 20px;">Follow-Up Reminder</h1>
+            <p style="margin: 0; color: #92400e;">You have ${prospects.length} overdue follow-up${prospects.length === 1 ? "" : "s"}</p>
+          </div>
+
+          <p>Hello ${recipientName},</p>
+
+          <p>The following prospects have overdue follow-ups that need your attention:</p>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #f9fafb; border-radius: 8px; overflow: hidden;">
+            <thead>
+              <tr style="background-color: #f3f4f6;">
+                <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb;">Company</th>
+                <th style="padding: 12px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb;">Due Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${prospectsList}
+            </tbody>
+          </table>
+
+          <p style="margin: 30px 0;">
+            <a href="${prospectsLink}"
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              View All Prospects
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated daily reminder from Annix Rep.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+Follow-Up Reminder
+
+Hello ${recipientName},
+
+You have ${prospects.length} overdue follow-up${prospects.length === 1 ? "" : "s"}:
+
+${prospects.map((p) => `- ${p.companyName} (Due: ${p.nextFollowUpAt ? new Date(p.nextFollowUpAt).toLocaleDateString("en-ZA") : "Not set"})`).join("\n")}
+
+View your prospects: ${prospectsLink}
+
+This is an automated daily reminder from Annix Rep.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Follow-Up Reminder: ${prospects.length} overdue prospect${prospects.length === 1 ? "" : "s"} - Annix Rep`,
+      html,
+      text,
+    });
+  }
+
   async sendCustomerFeedbackNotificationEmail(
     recipientEmail: string,
     customerInfo: {

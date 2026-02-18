@@ -111,6 +111,7 @@ export type ProspectActivityType =
   | "status_change"
   | "note_added"
   | "follow_up_completed"
+  | "follow_up_snoozed"
   | "field_updated"
   | "tag_added"
   | "tag_removed"
@@ -415,8 +416,12 @@ export interface CrmConfig {
   name: string;
   crmType: CrmType;
   isActive: boolean;
+  isConnected: boolean;
   webhookConfig: WebhookConfig | null;
   instanceUrl: string | null;
+  crmUserId: string | null;
+  crmOrganizationId: string | null;
+  tokenExpiresAt: Date | null;
   prospectFieldMappings: FieldMapping[] | null;
   meetingFieldMappings: FieldMapping[] | null;
   syncProspects: boolean;
@@ -426,6 +431,31 @@ export interface CrmConfig {
   lastSyncAt: Date | null;
   lastSyncError: string | null;
   createdAt: Date;
+}
+
+export type CrmProvider = "salesforce" | "hubspot" | "pipedrive";
+
+export type SyncDirection = "push" | "pull";
+export type SyncLogStatus = "in_progress" | "completed" | "failed" | "partial";
+
+export interface SyncErrorDetail {
+  recordId: string | number;
+  recordType: string;
+  error: string;
+  timestamp: string;
+}
+
+export interface CrmSyncLog {
+  id: number;
+  configId: number;
+  direction: SyncDirection;
+  status: SyncLogStatus;
+  recordsProcessed: number;
+  recordsSucceeded: number;
+  recordsFailed: number;
+  errorDetails: SyncErrorDetail[] | null;
+  startedAt: Date;
+  completedAt: Date | null;
 }
 
 export interface CreateCrmConfigDto {
@@ -847,6 +877,18 @@ export const annixRepApi = {
       const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/complete-followup`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<Prospect>(response);
+    },
+
+    snoozeFollowUp: async (id: number, days: number): Promise<Prospect> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/snooze-followup`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ days }),
       });
       return handleResponse<Prospect>(response);
     },
@@ -1645,6 +1687,81 @@ export const annixRepApi = {
         throw new Error(error.message);
       }
       return response.blob();
+    },
+
+    oauthUrl: async (provider: CrmProvider, redirectUri: string): Promise<{ url: string }> => {
+      const params = new URLSearchParams({ redirectUri });
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/oauth/${provider}/url?${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<{ url: string }>(response);
+    },
+
+    oauthCallback: async (
+      provider: CrmProvider,
+      code: string,
+      redirectUri: string,
+    ): Promise<CrmConfig> => {
+      const params = new URLSearchParams({ code, redirectUri });
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/crm/oauth/${provider}/callback?${params}`,
+        {
+          method: "POST",
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      return handleResponse<CrmConfig>(response);
+    },
+
+    disconnect: async (configId: number): Promise<{ success: boolean }> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${configId}/disconnect`, {
+        method: "POST",
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<{ success: boolean }>(response);
+    },
+
+    syncNow: async (configId: number): Promise<CrmSyncLog> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${configId}/sync-now`, {
+        method: "POST",
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<CrmSyncLog>(response);
+    },
+
+    pullAll: async (configId: number): Promise<CrmSyncLog> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${configId}/pull-all`, {
+        method: "POST",
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<CrmSyncLog>(response);
+    },
+
+    syncLogs: async (
+      configId: number,
+      limit?: number,
+      offset?: number,
+    ): Promise<{ logs: CrmSyncLog[]; total: number }> => {
+      const params = new URLSearchParams();
+      if (limit) params.set("limit", limit.toString());
+      if (offset) params.set("offset", offset.toString());
+      const query = params.toString() ? `?${params}` : "";
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/crm/configs/${configId}/sync-logs${query}`,
+        { headers: annixRepAuthHeaders() },
+      );
+      return handleResponse<{ logs: CrmSyncLog[]; total: number }>(response);
+    },
+
+    refreshToken: async (configId: number): Promise<{ success: boolean }> => {
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/crm/configs/${configId}/refresh-token`,
+        {
+          method: "POST",
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      return handleResponse<{ success: boolean }>(response);
     },
   },
 

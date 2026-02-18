@@ -301,6 +301,22 @@ export class ProspectController {
     return this.prospectService.completeFollowUp(req.annixRepUser.userId, id);
   }
 
+  @Post(":id/snooze-followup")
+  @ApiOperation({ summary: "Snooze follow-up by a number of days" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiResponse({
+    status: 200,
+    description: "Follow-up snoozed",
+    type: ProspectResponseDto,
+  })
+  snoozeFollowUp(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: { days: number },
+  ) {
+    return this.prospectService.snoozeFollowUp(req.annixRepUser.userId, id, dto.days);
+  }
+
   @Delete(":id")
   @ApiOperation({ summary: "Delete a prospect" })
   @ApiParam({ name: "id", type: Number })
