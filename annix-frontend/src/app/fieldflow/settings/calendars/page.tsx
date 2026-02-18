@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { CalendarConnection, CalendarProvider } from "@/app/lib/api/fieldflowApi";
+import type { CalendarConnection, CalendarProvider } from "@/app/lib/api/annixRepApi";
 import { formatRelative } from "@/app/lib/datetime";
 import {
   useCalendarConnections,
@@ -283,7 +283,7 @@ export default function CalendarsSettingsPage() {
   }, []);
 
   const handleOAuthConnect = async (provider: CalendarProvider) => {
-    const redirectUri = `${window.location.origin}/fieldflow/oauth/callback`;
+    const redirectUri = `${window.location.origin}/annix-rep/oauth/callback`;
 
     const result = await oauthUrl.mutateAsync({ provider, redirectUri });
 
@@ -329,7 +329,7 @@ export default function CalendarsSettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/fieldflow/settings"
+          href="/annix-rep/settings"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg

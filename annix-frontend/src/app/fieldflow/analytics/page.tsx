@@ -12,7 +12,7 @@ import type {
   RevenuePipeline,
   TopProspect,
   WinLossRateTrend,
-} from "@/app/lib/api/fieldflowApi";
+} from "@/app/lib/api/annixRepApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
 function formatCurrency(value: number): string {
@@ -376,7 +376,7 @@ function TopProspectsList({ data }: { data: TopProspect[] }) {
           {data.map((prospect, index) => (
             <Link
               key={prospect.id}
-              href={`/fieldflow/prospects/${prospect.id}`}
+              href={`/annix-rep/prospects/${prospect.id}`}
               className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
             >
               <div className="w-6 h-6 rounded-full bg-gray-200 dark:bg-slate-600 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -516,7 +516,7 @@ function GoalProgressCard({
         <div className="text-center py-8">
           <p className="text-gray-500 dark:text-gray-400">No goals set for this period</p>
           <Link
-            href="/fieldflow/goals"
+            href="/annix-rep/goals"
             className="mt-2 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
           >
             Set up goals
@@ -586,7 +586,7 @@ export default function AnalyticsDashboard() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/fieldflow"
+          href="/annix-rep"
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
         >
           <svg

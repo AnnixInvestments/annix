@@ -32,7 +32,7 @@ export interface FieldMapping {
   transform: string | null;
 }
 
-@Entity("fieldflow_crm_configs")
+@Entity("annix_rep_crm_configs")
 export class CrmConfig {
   @PrimaryGeneratedColumn()
   id: number;

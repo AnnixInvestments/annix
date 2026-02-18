@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { UpdateTranscriptDto } from "@/app/lib/api/fieldflowApi";
-import { fieldflowApi } from "@/app/lib/api/fieldflowApi";
-import { fieldflowKeys } from "@/app/lib/query/keys/fieldflowKeys";
+import type { UpdateTranscriptDto } from "@/app/lib/api/annixRepApi";
+import { annixRepApi } from "@/app/lib/api/annixRepApi";
+import { annixRepKeys } from "@/app/lib/query/keys/annixRepKeys";
 
 export function useTranscript(recordingId: number) {
   return useQuery({
-    queryKey: fieldflowKeys.transcripts.byRecording(recordingId),
-    queryFn: () => fieldflowApi.transcripts.byRecording(recordingId),
+    queryKey: annixRepKeys.transcripts.byRecording(recordingId),
+    queryFn: () => annixRepApi.transcripts.byRecording(recordingId),
     enabled: recordingId > 0,
   });
 }
 
 export function useMeetingTranscript(meetingId: number) {
   return useQuery({
-    queryKey: fieldflowKeys.transcripts.byMeeting(meetingId),
-    queryFn: () => fieldflowApi.transcripts.byMeeting(meetingId),
+    queryKey: annixRepKeys.transcripts.byMeeting(meetingId),
+    queryFn: () => annixRepApi.transcripts.byMeeting(meetingId),
     enabled: meetingId > 0,
   });
 }
@@ -23,14 +23,14 @@ export function useTranscribeRecording() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (recordingId: number) => fieldflowApi.transcripts.transcribe(recordingId),
+    mutationFn: (recordingId: number) => annixRepApi.transcripts.transcribe(recordingId),
     onSuccess: (transcript) => {
       queryClient.setQueryData(
-        fieldflowKeys.transcripts.byRecording(transcript.recordingId),
+        annixRepKeys.transcripts.byRecording(transcript.recordingId),
         transcript,
       );
       queryClient.invalidateQueries({
-        queryKey: fieldflowKeys.recordings.detail(transcript.recordingId),
+        queryKey: annixRepKeys.recordings.detail(transcript.recordingId),
       });
     },
   });
@@ -40,14 +40,14 @@ export function useRetranscribeRecording() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (recordingId: number) => fieldflowApi.transcripts.retranscribe(recordingId),
+    mutationFn: (recordingId: number) => annixRepApi.transcripts.retranscribe(recordingId),
     onSuccess: (transcript) => {
       queryClient.setQueryData(
-        fieldflowKeys.transcripts.byRecording(transcript.recordingId),
+        annixRepKeys.transcripts.byRecording(transcript.recordingId),
         transcript,
       );
       queryClient.invalidateQueries({
-        queryKey: fieldflowKeys.recordings.detail(transcript.recordingId),
+        queryKey: annixRepKeys.recordings.detail(transcript.recordingId),
       });
     },
   });
@@ -57,10 +57,10 @@ export function useDeleteTranscript() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (recordingId: number) => fieldflowApi.transcripts.delete(recordingId),
+    mutationFn: (recordingId: number) => annixRepApi.transcripts.delete(recordingId),
     onSuccess: (_, recordingId) => {
       queryClient.invalidateQueries({
-        queryKey: fieldflowKeys.transcripts.byRecording(recordingId),
+        queryKey: annixRepKeys.transcripts.byRecording(recordingId),
       });
     },
   });
@@ -71,14 +71,14 @@ export function useUpdateTranscript() {
 
   return useMutation({
     mutationFn: ({ transcriptId, dto }: { transcriptId: number; dto: UpdateTranscriptDto }) =>
-      fieldflowApi.transcripts.update(transcriptId, dto),
+      annixRepApi.transcripts.update(transcriptId, dto),
     onSuccess: (transcript) => {
       queryClient.setQueryData(
-        fieldflowKeys.transcripts.byRecording(transcript.recordingId),
+        annixRepKeys.transcripts.byRecording(transcript.recordingId),
         transcript,
       );
       queryClient.invalidateQueries({
-        queryKey: fieldflowKeys.transcripts.all,
+        queryKey: annixRepKeys.transcripts.all,
       });
     },
   });

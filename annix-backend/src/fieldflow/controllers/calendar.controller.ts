@@ -20,7 +20,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
-import { FieldFlowAuthGuard } from "../auth";
+import { AnnixRepAuthGuard } from "../auth";
 import {
   CalendarConnectionResponseDto,
   CalendarEventResponseDto,
@@ -32,8 +32,8 @@ import {
 import { CalendarProvider } from "../entities";
 import { CalendarService } from "../services/calendar.service";
 
-interface FieldFlowRequest extends Request {
-  fieldflowUser: {
+interface AnnixRepRequest extends Request {
+  annixRepUser: {
     userId: number;
     email: string;
     sessionToken: string;
@@ -50,9 +50,9 @@ interface SyncResponse {
   errors: string[];
 }
 
-@ApiTags("FieldFlow - Calendars")
-@Controller("fieldflow/calendars")
-@UseGuards(FieldFlowAuthGuard)
+@ApiTags("Annix Rep - Calendars")
+@Controller("annix-rep/calendars")
+@UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()
 export class CalendarController {
   constructor(private readonly calendarService: CalendarService) {}
@@ -77,8 +77,8 @@ export class CalendarController {
     description: "Calendar connected",
     type: CalendarConnectionResponseDto,
   })
-  connect(@Req() req: FieldFlowRequest, @Body() dto: ConnectCalendarDto) {
-    return this.calendarService.connectCalendar(req.fieldflowUser.userId, dto);
+  connect(@Req() req: AnnixRepRequest, @Body() dto: ConnectCalendarDto) {
+    return this.calendarService.connectCalendar(req.annixRepUser.userId, dto);
   }
 
   @Get("connections")
@@ -88,8 +88,8 @@ export class CalendarController {
     description: "List of connections",
     type: [CalendarConnectionResponseDto],
   })
-  listConnections(@Req() req: FieldFlowRequest) {
-    return this.calendarService.listConnections(req.fieldflowUser.userId);
+  listConnections(@Req() req: AnnixRepRequest) {
+    return this.calendarService.listConnections(req.annixRepUser.userId);
   }
 
   @Get("connections/:id")
@@ -101,8 +101,8 @@ export class CalendarController {
     type: CalendarConnectionResponseDto,
   })
   @ApiResponse({ status: 404, description: "Connection not found" })
-  connection(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.calendarService.connection(req.fieldflowUser.userId, id);
+  connection(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.calendarService.connection(req.annixRepUser.userId, id);
   }
 
   @Patch("connections/:id")
@@ -115,11 +115,11 @@ export class CalendarController {
   })
   @ApiResponse({ status: 404, description: "Connection not found" })
   updateConnection(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateCalendarConnectionDto,
   ) {
-    return this.calendarService.updateConnection(req.fieldflowUser.userId, id, dto);
+    return this.calendarService.updateConnection(req.annixRepUser.userId, id, dto);
   }
 
   @Delete("connections/:id")
@@ -127,8 +127,8 @@ export class CalendarController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Calendar disconnected" })
   @ApiResponse({ status: 404, description: "Connection not found" })
-  disconnect(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.calendarService.disconnectCalendar(req.fieldflowUser.userId, id);
+  disconnect(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.calendarService.disconnectCalendar(req.annixRepUser.userId, id);
   }
 
   @Get("connections/:id/calendars")
@@ -136,8 +136,8 @@ export class CalendarController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "List of calendars", type: [CalendarListResponseDto] })
   @ApiResponse({ status: 404, description: "Connection not found" })
-  listAvailableCalendars(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.calendarService.listAvailableCalendars(req.fieldflowUser.userId, id);
+  listAvailableCalendars(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.calendarService.listAvailableCalendars(req.annixRepUser.userId, id);
   }
 
   @Post("connections/:id/sync")
@@ -146,11 +146,11 @@ export class CalendarController {
   @ApiResponse({ status: 200, description: "Sync completed" })
   @ApiResponse({ status: 404, description: "Connection not found" })
   sync(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: SyncCalendarDto,
   ): Promise<SyncResponse> {
-    return this.calendarService.syncConnection(req.fieldflowUser.userId, id, dto);
+    return this.calendarService.syncConnection(req.annixRepUser.userId, id, dto);
   }
 
   @Get("events")
@@ -159,12 +159,12 @@ export class CalendarController {
   @ApiQuery({ name: "endDate", type: String, required: true })
   @ApiResponse({ status: 200, description: "List of events", type: [CalendarEventResponseDto] })
   events(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Query("startDate") startDate: string,
     @Query("endDate") endDate: string,
   ) {
     return this.calendarService.eventsInRange(
-      req.fieldflowUser.userId,
+      req.annixRepUser.userId,
       new Date(startDate),
       new Date(endDate),
     );

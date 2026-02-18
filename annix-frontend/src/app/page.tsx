@@ -105,7 +105,7 @@ const VoiceFilterIcon = () => (
   </svg>
 );
 
-const FieldFlowIcon = () => (
+const AnnixRepIcon = () => (
   <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
       strokeLinecap="round"
@@ -409,11 +409,11 @@ export default function HomePage() {
           </Link>
 
           {/* Annix Rep Card */}
-          <Link href="/fieldflow/setup" className="group">
+          <Link href="/annix-rep/setup" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-emerald-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 rounded-2xl text-emerald-600 mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                  <FieldFlowIcon />
+                  <AnnixRepIcon />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">Annix Rep</h3>
                 <p className="text-gray-600 mb-6">

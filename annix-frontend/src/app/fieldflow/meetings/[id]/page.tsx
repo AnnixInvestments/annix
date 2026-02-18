@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { MeetingStatus, RecordingProcessingStatus } from "@/app/lib/api/fieldflowApi";
+import type { MeetingStatus, RecordingProcessingStatus } from "@/app/lib/api/annixRepApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 import {
   useCancelMeeting,
@@ -82,7 +82,7 @@ export default function MeetingDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 dark:text-gray-400">Meeting not found</p>
-        <Link href="/fieldflow/meetings" className="mt-4 text-blue-600 hover:underline">
+        <Link href="/annix-rep/meetings" className="mt-4 text-blue-600 hover:underline">
           Back to meetings
         </Link>
       </div>
@@ -120,7 +120,7 @@ export default function MeetingDetailPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/fieldflow/meetings"
+          href="/annix-rep/meetings"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg
@@ -294,7 +294,7 @@ export default function MeetingDetailPage() {
 
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700 flex flex-wrap gap-3">
                 <Link
-                  href={`/fieldflow/meetings/${meetingId}/transcript`}
+                  href={`/annix-rep/meetings/${meetingId}/transcript`}
                   className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md flex items-center gap-1"
                 >
                   <svg
@@ -313,7 +313,7 @@ export default function MeetingDetailPage() {
                   View Transcript
                 </Link>
                 <Link
-                  href={`/fieldflow/meetings/${meetingId}/summary`}
+                  href={`/annix-rep/meetings/${meetingId}/summary`}
                   className="px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md flex items-center gap-1"
                 >
                   <svg
@@ -394,7 +394,7 @@ export default function MeetingDetailPage() {
 
               {canRecord && !recording && (
                 <Link
-                  href={`/fieldflow/meetings/${meetingId}/record`}
+                  href={`/annix-rep/meetings/${meetingId}/record`}
                   className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 flex items-center justify-center gap-2"
                 >
                   <svg

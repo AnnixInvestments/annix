@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { CalendarEvent, Meeting, Visit } from "@/app/lib/api/fieldflowApi";
+import type { CalendarEvent, Meeting, Visit } from "@/app/lib/api/annixRepApi";
 import { formatDateZA, now, nowISO } from "@/app/lib/datetime";
 import {
   useCalendarEvents,
@@ -42,7 +42,7 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
   const colors = statusColors[meeting.status] || statusColors.scheduled;
 
   return (
-    <Link href={`/fieldflow/meetings/${meeting.id}`}>
+    <Link href={`/annix-rep/meetings/${meeting.id}`}>
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-gray-100 dark:bg-slate-700 rounded-lg">
@@ -348,7 +348,7 @@ export default function SchedulePage() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href="/fieldflow/schedule/route-planner"
+            href="/annix-rep/schedule/route-planner"
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
           >
             <svg
@@ -367,7 +367,7 @@ export default function SchedulePage() {
             Plan Route
           </Link>
           <Link
-            href="/fieldflow/settings/calendars"
+            href="/annix-rep/settings/calendars"
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
           >
             <svg
@@ -386,7 +386,7 @@ export default function SchedulePage() {
             Sync Calendars
           </Link>
           <Link
-            href="/fieldflow/meetings"
+            href="/annix-rep/meetings"
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 flex items-center gap-2"
           >
             <svg
@@ -466,7 +466,7 @@ export default function SchedulePage() {
                 Calendar Events ({calendarEvents?.length ?? 0})
               </h2>
               <Link
-                href="/fieldflow/settings/calendars"
+                href="/annix-rep/settings/calendars"
                 className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
               >
                 <svg
@@ -509,7 +509,7 @@ export default function SchedulePage() {
                   No calendar events for today
                 </p>
                 <Link
-                  href="/fieldflow/settings/calendars"
+                  href="/annix-rep/settings/calendars"
                   className="mt-2 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   Connect a calendar
@@ -584,7 +584,7 @@ export default function SchedulePage() {
               </svg>
               <p className="mt-2 text-gray-500 dark:text-gray-400">No upcoming meetings</p>
               <Link
-                href="/fieldflow/meetings"
+                href="/annix-rep/meetings"
                 className="mt-4 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Schedule a meeting

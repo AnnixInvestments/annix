@@ -237,7 +237,7 @@ export class MeetingSummaryService {
 
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const transcriptUrl = dto.includeTranscriptLink
-      ? `${frontendUrl}/fieldflow/meetings/${meetingId}/transcript`
+      ? `${frontendUrl}/annix-rep/meetings/${meetingId}/transcript`
       : undefined;
 
     const duration =

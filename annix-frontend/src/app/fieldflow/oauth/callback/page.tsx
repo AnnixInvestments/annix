@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import type { CalendarProvider } from "@/app/lib/api/fieldflowApi";
+import type { CalendarProvider } from "@/app/lib/api/annixRepApi";
 import { useConnectCalendar } from "@/app/lib/query/hooks";
 
 type ConnectionState = "connecting" | "success" | "error";
@@ -30,7 +30,7 @@ function OAuthCallbackContent() {
       return;
     }
 
-    const redirectUri = `${window.location.origin}/fieldflow/oauth/callback`;
+    const redirectUri = `${window.location.origin}/annix-rep/oauth/callback`;
 
     connectCalendar.mutate(
       {

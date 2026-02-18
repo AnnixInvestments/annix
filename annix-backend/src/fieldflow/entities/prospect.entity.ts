@@ -33,7 +33,7 @@ export enum FollowUpRecurrence {
   MONTHLY = "monthly",
 }
 
-@Entity("fieldflow_prospects")
+@Entity("annix_rep_prospects")
 export class Prospect {
   @PrimaryGeneratedColumn()
   id: number;

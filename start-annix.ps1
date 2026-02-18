@@ -1,8 +1,8 @@
 # Annix Development Servers Startup Script
 # This script starts both the backend and frontend development servers
 
-$backendPath = "C:\Users\andy\Documents\annix\annix-backend"
-$frontendPath = "C:\Users\andy\Documents\annix\annix-frontend"
+$backendPath = "C:\Users\andy\Documents\Annix-sync\annix-backend"
+$frontendPath = "C:\Users\andy\Documents\Annix-sync\annix-frontend"
 
 Write-Host "Starting Annix Development Servers..." -ForegroundColor Cyan
 

@@ -9,8 +9,8 @@ import type {
   Sentiment,
   Transcript,
   TranscriptSegment,
-} from "@/app/lib/api/fieldflowApi";
-import { fieldflowApi } from "@/app/lib/api/fieldflowApi";
+} from "@/app/lib/api/annixRepApi";
+import { annixRepApi } from "@/app/lib/api/annixRepApi";
 import {
   useMeeting,
   useMeetingRecording,
@@ -685,7 +685,7 @@ export default function TranscriptPage() {
 
   const audioUrl = useMemo(() => {
     if (!recording) return null;
-    return fieldflowApi.recordings.streamUrl(recording.id);
+    return annixRepApi.recordings.streamUrl(recording.id);
   }, [recording]);
 
   const matchingIndices = useMemo(() => {
@@ -802,7 +802,7 @@ export default function TranscriptPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 dark:text-gray-400">Meeting not found</p>
-        <Link href="/fieldflow/meetings" className="mt-4 text-blue-600 hover:underline">
+        <Link href="/annix-rep/meetings" className="mt-4 text-blue-600 hover:underline">
           Back to meetings
         </Link>
       </div>
@@ -814,7 +814,7 @@ export default function TranscriptPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <Link
-            href={`/fieldflow/meetings/${meetingId}`}
+            href={`/annix-rep/meetings/${meetingId}`}
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg
@@ -855,7 +855,7 @@ export default function TranscriptPage() {
             This meeting does not have a recording yet. Record the meeting to generate a transcript.
           </p>
           <Link
-            href={`/fieldflow/meetings/${meetingId}/record`}
+            href={`/annix-rep/meetings/${meetingId}/record`}
             className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
           >
             <svg
@@ -897,7 +897,7 @@ export default function TranscriptPage() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
         <Link
-          href={`/fieldflow/meetings/${meetingId}`}
+          href={`/annix-rep/meetings/${meetingId}`}
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg

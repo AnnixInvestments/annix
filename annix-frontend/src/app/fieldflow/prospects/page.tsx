@@ -8,7 +8,7 @@ import type {
   ImportProspectRow,
   Prospect,
   ProspectStatus,
-} from "@/app/lib/api/fieldflowApi";
+} from "@/app/lib/api/annixRepApi";
 import {
   useBulkDeleteProspects,
   useBulkUpdateProspectStatus,
@@ -107,7 +107,7 @@ function ProspectCard({
             />
           )}
           <div className="flex-1 min-w-0">
-            <Link href={`/fieldflow/prospects/${prospect.id}`}>
+            <Link href={`/annix-rep/prospects/${prospect.id}`}>
               <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400">
                 {prospect.companyName}
               </h3>
@@ -170,7 +170,7 @@ function ProspectCard({
                 <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg border border-gray-200 dark:border-slate-700 z-20">
                   <div className="py-1">
                     <Link
-                      href={`/fieldflow/prospects/${prospect.id}`}
+                      href={`/annix-rep/prospects/${prospect.id}`}
                       className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
                     >
                       View Details
@@ -1036,7 +1036,7 @@ export default function ProspectsPage() {
             <span className="hidden sm:inline">{selectionMode ? "Cancel" : "Select"}</span>
           </button>
           <Link
-            href="/fieldflow/prospects/nearby"
+            href="/annix-rep/prospects/nearby"
             className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
           >
             <svg

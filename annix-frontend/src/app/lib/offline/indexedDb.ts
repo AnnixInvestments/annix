@@ -1,4 +1,4 @@
-const DB_NAME = "fieldflow-offline";
+const DB_NAME = "annix-rep-offline";
 const DB_VERSION = 1;
 
 export interface PendingAction {

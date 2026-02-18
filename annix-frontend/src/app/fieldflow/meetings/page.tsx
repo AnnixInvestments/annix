@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { CreateMeetingDto, Meeting, MeetingStatus } from "@/app/lib/api/fieldflowApi";
+import type { CreateMeetingDto, Meeting, MeetingStatus } from "@/app/lib/api/annixRepApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useCreateMeeting, useMeetings } from "@/app/lib/query/hooks";
 
@@ -41,7 +41,7 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
   const colors = statusColors[meeting.status];
 
   return (
-    <Link href={`/fieldflow/meetings/${meeting.id}`}>
+    <Link href={`/annix-rep/meetings/${meeting.id}`}>
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -356,7 +356,7 @@ export default function MeetingsPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href="/fieldflow/meetings/record"
+            href="/annix-rep/meetings/record"
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
           >
             <svg

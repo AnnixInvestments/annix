@@ -12,7 +12,7 @@ import { CalendarConnection } from "./calendar-connection.entity";
 
 export { CalendarEventStatus, CalendarProvider };
 
-@Entity("fieldflow_calendar_events")
+@Entity("annix_rep_calendar_events")
 export class CalendarEvent {
   @PrimaryGeneratedColumn()
   id: number;

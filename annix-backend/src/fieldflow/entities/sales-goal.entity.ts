@@ -15,7 +15,7 @@ export enum GoalPeriod {
   QUARTERLY = "quarterly",
 }
 
-@Entity("fieldflow_sales_goals")
+@Entity("annix_rep_sales_goals")
 export class SalesGoal {
   @PrimaryGeneratedColumn()
   id: number;

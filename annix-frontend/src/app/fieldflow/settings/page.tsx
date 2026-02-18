@@ -11,7 +11,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Link href="/fieldflow/settings/calendars">
+        <Link href="/annix-rep/settings/calendars">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -41,7 +41,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/fieldflow/settings/crm">
+        <Link href="/annix-rep/settings/crm">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">

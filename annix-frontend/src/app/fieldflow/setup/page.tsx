@@ -2,12 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useFieldFlowAuth } from "@/app/context/FieldFlowAuthContext";
+import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import {
   allIndustryLabels,
   subIndustryByValue,
   subIndustryLabelsForIndustry,
-} from "@/app/lib/config/fieldflow/industryOptions";
+} from "@/app/lib/config/annix-rep/industryOptions";
 import { useCreateRepProfile, useRepProfileStatus } from "@/app/lib/query/hooks";
 
 const productCategoryLabelsForSubIndustries = (
@@ -55,7 +55,7 @@ interface AuthFormData {
 
 export default function RepSetupPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading, login, register, user } = useFieldFlowAuth();
+  const { isAuthenticated, isLoading: authLoading, login, register, user } = useAnnixRepAuth();
   const createProfile = useCreateRepProfile();
   const { data: profileStatus, isLoading: isCheckingStatus } = useRepProfileStatus();
 
@@ -72,7 +72,7 @@ export default function RepSetupPage() {
 
   useEffect(() => {
     if (!authLoading && !isCheckingStatus && profileStatus?.setupCompleted) {
-      router.replace("/fieldflow");
+      router.replace("/annix-rep");
     }
   }, [profileStatus, authLoading, isCheckingStatus, router]);
 
@@ -209,7 +209,7 @@ export default function RepSetupPage() {
   };
 
   const handleFinish = () => {
-    router.push("/fieldflow");
+    router.push("/annix-rep");
   };
 
   const stepNumber = {

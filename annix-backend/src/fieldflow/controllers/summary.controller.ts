@@ -1,13 +1,13 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { FieldFlowAuthGuard } from "../auth";
+import { AnnixRepAuthGuard } from "../auth";
 import { MeetingSummaryDto, SendSummaryDto, SendSummaryResultDto, SummaryPreviewDto } from "../dto";
 import { MeetingSummaryService } from "../services/meeting-summary.service";
 
-@ApiTags("FieldFlow Meeting Summaries")
+@ApiTags("Annix Rep - Meeting Summaries")
 @ApiBearerAuth()
-@UseGuards(FieldFlowAuthGuard)
-@Controller("fieldflow/summaries")
+@UseGuards(AnnixRepAuthGuard)
+@Controller("annix-rep/summaries")
 export class SummaryController {
   constructor(private readonly summaryService: MeetingSummaryService) {}
 

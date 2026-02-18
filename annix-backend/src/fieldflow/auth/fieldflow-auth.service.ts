@@ -9,29 +9,29 @@ import { User } from "../../user/entities/user.entity";
 import { UserRole } from "../../user-roles/entities/user-role.entity";
 import { RepProfile } from "../rep-profile/rep-profile.entity";
 import {
-  FieldFlowAuthResponseDto,
-  FieldFlowLoginDto,
-  FieldFlowProfileResponseDto,
-  FieldFlowRefreshTokenDto,
-  FieldFlowRegisterDto,
+  AnnixRepAuthResponseDto,
+  AnnixRepLoginDto,
+  AnnixRepProfileResponseDto,
+  AnnixRepRefreshTokenDto,
+  AnnixRepRegisterDto,
 } from "./dto";
-import { FieldFlowSession } from "./entities";
+import { AnnixRepSession } from "./entities";
 
-export interface FieldFlowJwtPayload {
+export interface AnnixRepJwtPayload {
   sub: number;
   email: string;
-  type: "fieldflow";
+  type: "annixRep";
   sessionToken: string;
-  fieldflowUserId: number;
+  annixRepUserId: number;
 }
 
 @Injectable()
-export class FieldFlowAuthService {
-  private readonly logger = new Logger(FieldFlowAuthService.name);
+export class AnnixRepAuthService {
+  private readonly logger = new Logger(AnnixRepAuthService.name);
 
   constructor(
-    @InjectRepository(FieldFlowSession)
-    private readonly sessionRepo: Repository<FieldFlowSession>,
+    @InjectRepository(AnnixRepSession)
+    private readonly sessionRepo: Repository<AnnixRepSession>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserRole)
@@ -43,10 +43,10 @@ export class FieldFlowAuthService {
   ) {}
 
   async register(
-    dto: FieldFlowRegisterDto,
+    dto: AnnixRepRegisterDto,
     clientIp: string,
     userAgent: string,
-  ): Promise<FieldFlowAuthResponseDto> {
+  ): Promise<AnnixRepAuthResponseDto> {
     const existingUser = await this.userRepo.findOne({
       where: { email: dto.email },
     });
@@ -54,12 +54,12 @@ export class FieldFlowAuthService {
       throw new ConflictException("An account with this email already exists");
     }
 
-    let fieldflowRole = await this.userRoleRepo.findOne({
-      where: { name: "fieldflow" },
+    let annixRepRole = await this.userRoleRepo.findOne({
+      where: { name: "annixRep" },
     });
-    if (!fieldflowRole) {
-      fieldflowRole = this.userRoleRepo.create({ name: "fieldflow" });
-      fieldflowRole = await this.userRoleRepo.save(fieldflowRole);
+    if (!annixRepRole) {
+      annixRepRole = this.userRoleRepo.create({ name: "annixRep" });
+      annixRepRole = await this.userRoleRepo.save(annixRepRole);
     }
 
     const { hash: hashedPassword, salt } = await this.passwordService.hash(dto.password);
@@ -71,7 +71,7 @@ export class FieldFlowAuthService {
       salt,
       firstName: dto.firstName,
       lastName: dto.lastName,
-      roles: [fieldflowRole],
+      roles: [annixRepRole],
     });
     const savedUser = await this.userRepo.save(user);
 
@@ -89,12 +89,12 @@ export class FieldFlowAuthService {
     });
     await this.sessionRepo.save(session);
 
-    const payload: FieldFlowJwtPayload = {
+    const payload: AnnixRepJwtPayload = {
       sub: savedUser.id,
       email: savedUser.email,
-      type: "fieldflow",
+      type: "annixRep",
       sessionToken,
-      fieldflowUserId: savedUser.id,
+      annixRepUserId: savedUser.id,
     };
 
     const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
@@ -112,10 +112,10 @@ export class FieldFlowAuthService {
   }
 
   async login(
-    dto: FieldFlowLoginDto,
+    dto: AnnixRepLoginDto,
     clientIp: string,
     userAgent: string,
-  ): Promise<FieldFlowAuthResponseDto> {
+  ): Promise<AnnixRepAuthResponseDto> {
     const user = await this.userRepo.findOne({
       where: { email: dto.email },
       relations: ["roles"],
@@ -130,9 +130,9 @@ export class FieldFlowAuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const hasFieldFlowRole = user.roles?.some((role) => role.name === "fieldflow");
-    if (!hasFieldFlowRole) {
-      this.logger.warn(`Login attempt for user ${dto.email} without fieldflow role`);
+    const hasAnnixRepRole = user.roles?.some((role) => role.name === "annixRep");
+    if (!hasAnnixRepRole) {
+      this.logger.warn(`Login attempt for user ${dto.email} without annixRep role`);
       throw new UnauthorizedException(
         "This account is not registered for Annix Rep. Please register first.",
       );
@@ -154,12 +154,12 @@ export class FieldFlowAuthService {
     });
     await this.sessionRepo.save(session);
 
-    const payload: FieldFlowJwtPayload = {
+    const payload: AnnixRepJwtPayload = {
       sub: user.id,
       email: user.email,
-      type: "fieldflow",
+      type: "annixRep",
       sessionToken,
-      fieldflowUserId: user.id,
+      annixRepUserId: user.id,
     };
 
     const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
@@ -194,14 +194,14 @@ export class FieldFlowAuthService {
   }
 
   async refreshSession(
-    dto: FieldFlowRefreshTokenDto,
+    dto: AnnixRepRefreshTokenDto,
     clientIp: string,
     userAgent: string,
-  ): Promise<FieldFlowAuthResponseDto> {
+  ): Promise<AnnixRepAuthResponseDto> {
     try {
-      const payload = await this.tokenService.verifyToken<FieldFlowJwtPayload>(dto.refreshToken);
+      const payload = await this.tokenService.verifyToken<AnnixRepJwtPayload>(dto.refreshToken);
 
-      if (payload.type !== "fieldflow") {
+      if (payload.type !== "annixRep") {
         throw new UnauthorizedException("Invalid token type");
       }
 
@@ -225,12 +225,12 @@ export class FieldFlowAuthService {
         },
       );
 
-      const newPayload: FieldFlowJwtPayload = {
+      const newPayload: AnnixRepJwtPayload = {
         sub: user.id,
         email: user.email,
-        type: "fieldflow",
+        type: "annixRep",
         sessionToken: newSessionToken,
-        fieldflowUserId: user.id,
+        annixRepUserId: user.id,
       };
 
       const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(newPayload);
@@ -254,7 +254,7 @@ export class FieldFlowAuthService {
     }
   }
 
-  async profile(userId: number): Promise<FieldFlowProfileResponseDto> {
+  async profile(userId: number): Promise<AnnixRepProfileResponseDto> {
     const user = await this.userRepo.findOne({
       where: { id: userId },
     });
@@ -283,7 +283,7 @@ export class FieldFlowAuthService {
     return !existingUser;
   }
 
-  async verifySession(sessionToken: string): Promise<FieldFlowSession | null> {
+  async verifySession(sessionToken: string): Promise<AnnixRepSession | null> {
     const session = await this.sessionRepo.findOne({
       where: { sessionToken, isActive: true },
       relations: ["user"],

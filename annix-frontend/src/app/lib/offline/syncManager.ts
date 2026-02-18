@@ -1,4 +1,4 @@
-import { fieldflowApi, type Meeting, type Visit } from "@/app/lib/api/fieldflowApi";
+import { annixRepApi, type Meeting, type Visit } from "@/app/lib/api/annixRepApi";
 import {
   addPendingAction,
   pendingActions,
@@ -137,7 +137,7 @@ export async function syncProspectsToOffline(): Promise<void> {
   if (!syncStatus.isOnline) return;
 
   try {
-    const prospects = await fieldflowApi.prospects.list();
+    const prospects = await annixRepApi.prospects.list();
     await saveProspects(prospects);
     await updateSyncMeta({
       key: "prospects",
@@ -153,9 +153,9 @@ export async function syncMeetingsToOffline(): Promise<void> {
 
   try {
     const [allMeetings, todaysMeetings, upcomingMeetings] = await Promise.all([
-      fieldflowApi.meetings.list(),
-      fieldflowApi.meetings.today(),
-      fieldflowApi.meetings.upcoming(7),
+      annixRepApi.meetings.list(),
+      annixRepApi.meetings.today(),
+      annixRepApi.meetings.upcoming(7),
     ]);
 
     const meetingsMap = new Map<number, Meeting>();
@@ -178,8 +178,8 @@ export async function syncVisitsToOffline(): Promise<void> {
 
   try {
     const [allVisits, todaysVisits] = await Promise.all([
-      fieldflowApi.visits.list(),
-      fieldflowApi.visits.today(),
+      annixRepApi.visits.list(),
+      annixRepApi.visits.today(),
     ]);
 
     const visitsMap = new Map<number, Visit>();

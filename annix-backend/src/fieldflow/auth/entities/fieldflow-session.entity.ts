@@ -10,10 +10,10 @@ import {
 import { SessionInvalidationReason } from "../../../shared/enums";
 import { User } from "../../../user/entities/user.entity";
 
-@Entity("fieldflow_sessions")
+@Entity("annix_rep_sessions")
 @Index(["sessionToken"], { unique: true })
 @Index(["userId", "isActive"])
-export class FieldFlowSession {
+export class AnnixRepSession {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -55,7 +55,7 @@ export class FieldFlowSession {
     name: "invalidation_reason",
     type: "enum",
     enum: SessionInvalidationReason,
-    enumName: "fieldflow_session_invalidation_reason_enum",
+    enumName: "annix_rep_session_invalidation_reason_enum",
     nullable: true,
   })
   invalidationReason: SessionInvalidationReason;

@@ -9,7 +9,7 @@ const nixAuthHeaders = (): Record<string, string> => {
     localStorage.getItem("adminAccessToken") ||
     localStorage.getItem("customerAccessToken") ||
     localStorage.getItem("supplierAccessToken") ||
-    localStorage.getItem("fieldflowAccessToken") ||
+    localStorage.getItem("annixRepAccessToken") ||
     localStorage.getItem("authToken") ||
     localStorage.getItem("token");
   return token ? { Authorization: `Bearer ${token}` } : {};

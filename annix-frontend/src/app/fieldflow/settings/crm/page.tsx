@@ -7,7 +7,7 @@ import type {
   CrmConfig,
   CrmType,
   WebhookConfig,
-} from "@/app/lib/api/fieldflowApi";
+} from "@/app/lib/api/annixRepApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
 import {
   useCreateCrmConfig,
@@ -451,7 +451,7 @@ export default function CrmSettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/fieldflow/settings"
+          href="/annix-rep/settings"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg

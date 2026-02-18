@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
 
-export class FieldFlowRegisterDto {
+export class AnnixRepRegisterDto {
   @ApiProperty({ description: "User email address", example: "rep@company.com" })
   @IsEmail()
   @IsNotEmpty()
@@ -23,7 +23,7 @@ export class FieldFlowRegisterDto {
   lastName: string;
 }
 
-export class FieldFlowLoginDto {
+export class AnnixRepLoginDto {
   @ApiProperty({ description: "User email address", example: "rep@company.com" })
   @IsEmail()
   @IsNotEmpty()
@@ -35,14 +35,14 @@ export class FieldFlowLoginDto {
   password: string;
 }
 
-export class FieldFlowRefreshTokenDto {
+export class AnnixRepRefreshTokenDto {
   @ApiProperty({ description: "Refresh token" })
   @IsString()
   @IsNotEmpty()
   refreshToken: string;
 }
 
-export class FieldFlowAuthResponseDto {
+export class AnnixRepAuthResponseDto {
   @ApiProperty({ description: "JWT access token" })
   accessToken: string;
 
@@ -68,7 +68,7 @@ export class FieldFlowAuthResponseDto {
   setupCompleted?: boolean;
 }
 
-export class FieldFlowProfileResponseDto {
+export class AnnixRepProfileResponseDto {
   @ApiProperty({ description: "User ID" })
   userId: number;
 

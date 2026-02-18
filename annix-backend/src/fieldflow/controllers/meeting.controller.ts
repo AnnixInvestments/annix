@@ -20,7 +20,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request } from "express";
-import { FieldFlowAuthGuard } from "../auth";
+import { AnnixRepAuthGuard } from "../auth";
 import {
   CreateMeetingDto,
   EndMeetingDto,
@@ -31,17 +31,17 @@ import {
 } from "../dto";
 import { MeetingService } from "../services";
 
-interface FieldFlowRequest extends Request {
-  fieldflowUser: {
+interface AnnixRepRequest extends Request {
+  annixRepUser: {
     userId: number;
     email: string;
     sessionToken: string;
   };
 }
 
-@ApiTags("FieldFlow - Meetings")
-@Controller("fieldflow/meetings")
-@UseGuards(FieldFlowAuthGuard)
+@ApiTags("Annix Rep - Meetings")
+@Controller("annix-rep/meetings")
+@UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()
 export class MeetingController {
   constructor(private readonly meetingService: MeetingService) {}
@@ -49,47 +49,44 @@ export class MeetingController {
   @Post()
   @ApiOperation({ summary: "Create a new meeting" })
   @ApiResponse({ status: 201, description: "Meeting created", type: MeetingResponseDto })
-  create(@Req() req: FieldFlowRequest, @Body() dto: CreateMeetingDto) {
-    return this.meetingService.create(req.fieldflowUser.userId, dto);
+  create(@Req() req: AnnixRepRequest, @Body() dto: CreateMeetingDto) {
+    return this.meetingService.create(req.annixRepUser.userId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: "Get all meetings for current user" })
   @ApiResponse({ status: 200, description: "List of meetings", type: [MeetingResponseDto] })
-  findAll(@Req() req: FieldFlowRequest) {
-    return this.meetingService.findAll(req.fieldflowUser.userId);
+  findAll(@Req() req: AnnixRepRequest) {
+    return this.meetingService.findAll(req.annixRepUser.userId);
   }
 
   @Get("today")
   @ApiOperation({ summary: "Get today's meetings" })
   @ApiResponse({ status: 200, description: "Today's meetings", type: [MeetingResponseDto] })
-  todaysMeetings(@Req() req: FieldFlowRequest) {
-    return this.meetingService.todaysMeetings(req.fieldflowUser.userId);
+  todaysMeetings(@Req() req: AnnixRepRequest) {
+    return this.meetingService.todaysMeetings(req.annixRepUser.userId);
   }
 
   @Get("upcoming")
   @ApiOperation({ summary: "Get upcoming meetings" })
   @ApiQuery({ name: "days", type: Number, required: false, description: "Number of days ahead" })
   @ApiResponse({ status: 200, description: "Upcoming meetings", type: [MeetingResponseDto] })
-  findUpcoming(@Req() req: FieldFlowRequest, @Query("days") days?: string) {
-    return this.meetingService.findUpcoming(
-      req.fieldflowUser.userId,
-      days ? parseInt(days, 10) : 7,
-    );
+  findUpcoming(@Req() req: AnnixRepRequest, @Query("days") days?: string) {
+    return this.meetingService.findUpcoming(req.annixRepUser.userId, days ? parseInt(days, 10) : 7);
   }
 
   @Get("active")
   @ApiOperation({ summary: "Get currently active meeting" })
   @ApiResponse({ status: 200, description: "Active meeting or null", type: MeetingResponseDto })
-  activeMeeting(@Req() req: FieldFlowRequest) {
-    return this.meetingService.activeMeeting(req.fieldflowUser.userId);
+  activeMeeting(@Req() req: AnnixRepRequest) {
+    return this.meetingService.activeMeeting(req.annixRepUser.userId);
   }
 
   @Get("with-recordings")
   @ApiOperation({ summary: "Get meetings that have recordings" })
   @ApiResponse({ status: 200, description: "Meetings with recordings", type: [MeetingResponseDto] })
-  meetingsWithRecordings(@Req() req: FieldFlowRequest) {
-    return this.meetingService.meetingsWithRecordings(req.fieldflowUser.userId);
+  meetingsWithRecordings(@Req() req: AnnixRepRequest) {
+    return this.meetingService.meetingsWithRecordings(req.annixRepUser.userId);
   }
 
   @Get("pending-transcription")
@@ -99,8 +96,8 @@ export class MeetingController {
     description: "Meetings pending transcription",
     type: [MeetingResponseDto],
   })
-  meetingsPendingTranscription(@Req() req: FieldFlowRequest) {
-    return this.meetingService.meetingsPendingTranscription(req.fieldflowUser.userId);
+  meetingsPendingTranscription(@Req() req: AnnixRepRequest) {
+    return this.meetingService.meetingsPendingTranscription(req.annixRepUser.userId);
   }
 
   @Get("range")
@@ -109,12 +106,12 @@ export class MeetingController {
   @ApiQuery({ name: "endDate", type: String, required: true })
   @ApiResponse({ status: 200, description: "List of meetings", type: [MeetingResponseDto] })
   findByDateRange(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Query("startDate") startDate: string,
     @Query("endDate") endDate: string,
   ) {
     return this.meetingService.findByDateRange(
-      req.fieldflowUser.userId,
+      req.annixRepUser.userId,
       new Date(startDate),
       new Date(endDate),
     );
@@ -125,8 +122,8 @@ export class MeetingController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Meeting details", type: MeetingResponseDto })
   @ApiResponse({ status: 404, description: "Meeting not found" })
-  findOne(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.meetingService.findOne(req.fieldflowUser.userId, id);
+  findOne(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.meetingService.findOne(req.annixRepUser.userId, id);
   }
 
   @Get(":id/details")
@@ -134,8 +131,8 @@ export class MeetingController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Meeting with details", type: MeetingWithDetailsDto })
   @ApiResponse({ status: 404, description: "Meeting not found" })
-  findOneWithDetails(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.meetingService.findOneWithDetails(req.fieldflowUser.userId, id);
+  findOneWithDetails(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.meetingService.findOneWithDetails(req.annixRepUser.userId, id);
   }
 
   @Patch(":id")
@@ -144,11 +141,11 @@ export class MeetingController {
   @ApiResponse({ status: 200, description: "Meeting updated", type: MeetingResponseDto })
   @ApiResponse({ status: 404, description: "Meeting not found" })
   update(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateMeetingDto,
   ) {
-    return this.meetingService.update(req.fieldflowUser.userId, id, dto);
+    return this.meetingService.update(req.annixRepUser.userId, id, dto);
   }
 
   @Post(":id/start")
@@ -157,11 +154,11 @@ export class MeetingController {
   @ApiResponse({ status: 200, description: "Meeting started", type: MeetingResponseDto })
   @ApiResponse({ status: 400, description: "Meeting already in progress or completed" })
   start(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: StartMeetingDto,
   ) {
-    return this.meetingService.start(req.fieldflowUser.userId, id, dto);
+    return this.meetingService.start(req.annixRepUser.userId, id, dto);
   }
 
   @Post(":id/end")
@@ -170,11 +167,11 @@ export class MeetingController {
   @ApiResponse({ status: 200, description: "Meeting ended", type: MeetingResponseDto })
   @ApiResponse({ status: 400, description: "Meeting not in progress" })
   end(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: EndMeetingDto,
   ) {
-    return this.meetingService.end(req.fieldflowUser.userId, id, dto);
+    return this.meetingService.end(req.annixRepUser.userId, id, dto);
   }
 
   @Post(":id/cancel")
@@ -182,16 +179,16 @@ export class MeetingController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Meeting cancelled", type: MeetingResponseDto })
   @ApiResponse({ status: 400, description: "Cannot cancel completed meeting" })
-  cancel(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.meetingService.cancel(req.fieldflowUser.userId, id);
+  cancel(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.meetingService.cancel(req.annixRepUser.userId, id);
   }
 
   @Post(":id/no-show")
   @ApiOperation({ summary: "Mark meeting as no-show" })
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Marked as no-show", type: MeetingResponseDto })
-  markNoShow(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.meetingService.markNoShow(req.fieldflowUser.userId, id);
+  markNoShow(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.meetingService.markNoShow(req.annixRepUser.userId, id);
   }
 
   @Delete(":id")
@@ -199,7 +196,7 @@ export class MeetingController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Meeting deleted" })
   @ApiResponse({ status: 404, description: "Meeting not found" })
-  remove(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.meetingService.remove(req.fieldflowUser.userId, id);
+  remove(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.meetingService.remove(req.annixRepUser.userId, id);
   }
 }

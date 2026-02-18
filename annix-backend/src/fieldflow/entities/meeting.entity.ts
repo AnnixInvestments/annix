@@ -26,7 +26,7 @@ export enum MeetingType {
   VIDEO = "video",
 }
 
-@Entity("fieldflow_meetings")
+@Entity("annix_rep_meetings")
 export class Meeting {
   @PrimaryGeneratedColumn()
   id: number;

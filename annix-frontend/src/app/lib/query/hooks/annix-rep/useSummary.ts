@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fieldflowApi, type SendSummaryDto } from "@/app/lib/api/fieldflowApi";
-import { fieldflowKeys } from "@/app/lib/query/keys/fieldflowKeys";
+import { annixRepApi, type SendSummaryDto } from "@/app/lib/api/annixRepApi";
+import { annixRepKeys } from "@/app/lib/query/keys/annixRepKeys";
 
 export function useSummaryPreview(meetingId: number) {
   return useQuery({
-    queryKey: fieldflowKeys.summaries.preview(meetingId),
-    queryFn: () => fieldflowApi.summaries.preview(meetingId),
+    queryKey: annixRepKeys.summaries.preview(meetingId),
+    queryFn: () => annixRepApi.summaries.preview(meetingId),
     enabled: meetingId > 0,
   });
 }
@@ -15,9 +15,9 @@ export function useSendSummary() {
 
   return useMutation({
     mutationFn: ({ meetingId, dto }: { meetingId: number; dto: SendSummaryDto }) =>
-      fieldflowApi.summaries.send(meetingId, dto),
+      annixRepApi.summaries.send(meetingId, dto),
     onSuccess: (_, { meetingId }) => {
-      queryClient.invalidateQueries({ queryKey: fieldflowKeys.meetings.detail(meetingId) });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.detail(meetingId) });
     },
   });
 }

@@ -22,7 +22,7 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { Request, Response } from "express";
-import { FieldFlowAuthGuard } from "../auth";
+import { AnnixRepAuthGuard } from "../auth";
 import {
   BulkDeleteDto,
   BulkDeleteResponseDto,
@@ -38,17 +38,17 @@ import {
 import { ProspectStatus } from "../entities";
 import { ProspectService } from "../services";
 
-interface FieldFlowRequest extends Request {
-  fieldflowUser: {
+interface AnnixRepRequest extends Request {
+  annixRepUser: {
     userId: number;
     email: string;
     sessionToken: string;
   };
 }
 
-@ApiTags("FieldFlow - Prospects")
-@Controller("fieldflow/prospects")
-@UseGuards(FieldFlowAuthGuard)
+@ApiTags("Annix Rep - Prospects")
+@Controller("annix-rep/prospects")
+@UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()
 export class ProspectController {
   constructor(private readonly prospectService: ProspectService) {}
@@ -56,23 +56,23 @@ export class ProspectController {
   @Post()
   @ApiOperation({ summary: "Create a new prospect" })
   @ApiResponse({ status: 201, description: "Prospect created", type: ProspectResponseDto })
-  create(@Req() req: FieldFlowRequest, @Body() dto: CreateProspectDto) {
-    return this.prospectService.create(req.fieldflowUser.userId, dto);
+  create(@Req() req: AnnixRepRequest, @Body() dto: CreateProspectDto) {
+    return this.prospectService.create(req.annixRepUser.userId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: "Get all prospects for current user" })
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
-  findAll(@Req() req: FieldFlowRequest) {
-    return this.prospectService.findAll(req.fieldflowUser.userId);
+  findAll(@Req() req: AnnixRepRequest) {
+    return this.prospectService.findAll(req.annixRepUser.userId);
   }
 
   @Get("status/:status")
   @ApiOperation({ summary: "Get prospects by status" })
   @ApiParam({ name: "status", enum: ProspectStatus })
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
-  findByStatus(@Req() req: FieldFlowRequest, @Param("status") status: ProspectStatus) {
-    return this.prospectService.findByStatus(req.fieldflowUser.userId, status);
+  findByStatus(@Req() req: AnnixRepRequest, @Param("status") status: ProspectStatus) {
+    return this.prospectService.findByStatus(req.annixRepUser.userId, status);
   }
 
   @Get("nearby")
@@ -87,7 +87,7 @@ export class ProspectController {
     type: [ProspectResponseDto],
   })
   findNearby(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Query("latitude") latitude: string,
     @Query("longitude") longitude: string,
     @Query("radiusKm") radiusKm?: string,
@@ -99,21 +99,21 @@ export class ProspectController {
       radiusKm: radiusKm ? parseFloat(radiusKm) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     };
-    return this.prospectService.findNearby(req.fieldflowUser.userId, query);
+    return this.prospectService.findNearby(req.annixRepUser.userId, query);
   }
 
   @Get("stats")
   @ApiOperation({ summary: "Get prospect counts by status" })
   @ApiResponse({ status: 200, description: "Counts by status" })
-  countByStatus(@Req() req: FieldFlowRequest) {
-    return this.prospectService.countByStatus(req.fieldflowUser.userId);
+  countByStatus(@Req() req: AnnixRepRequest) {
+    return this.prospectService.countByStatus(req.annixRepUser.userId);
   }
 
   @Get("follow-ups")
   @ApiOperation({ summary: "Get prospects with due follow-ups" })
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
-  followUpsDue(@Req() req: FieldFlowRequest) {
-    return this.prospectService.followUpsDue(req.fieldflowUser.userId);
+  followUpsDue(@Req() req: AnnixRepRequest) {
+    return this.prospectService.followUpsDue(req.annixRepUser.userId);
   }
 
   @Get("export/csv")
@@ -121,16 +121,16 @@ export class ProspectController {
   @ApiResponse({ status: 200, description: "CSV file download" })
   @Header("Content-Type", "text/csv")
   @Header("Content-Disposition", 'attachment; filename="prospects.csv"')
-  async exportCsv(@Req() req: FieldFlowRequest, @Res() res: Response) {
-    const csv = await this.prospectService.exportToCsv(req.fieldflowUser.userId);
+  async exportCsv(@Req() req: AnnixRepRequest, @Res() res: Response) {
+    const csv = await this.prospectService.exportToCsv(req.annixRepUser.userId);
     res.send(csv);
   }
 
   @Get("duplicates")
   @ApiOperation({ summary: "Find potential duplicate prospects" })
   @ApiResponse({ status: 200, description: "List of potential duplicates" })
-  findDuplicates(@Req() req: FieldFlowRequest) {
-    return this.prospectService.findDuplicates(req.fieldflowUser.userId);
+  findDuplicates(@Req() req: AnnixRepRequest) {
+    return this.prospectService.findDuplicates(req.annixRepUser.userId);
   }
 
   @Patch("bulk/status")
@@ -140,23 +140,23 @@ export class ProspectController {
     description: "Bulk update result",
     type: BulkUpdateStatusResponseDto,
   })
-  bulkUpdateStatus(@Req() req: FieldFlowRequest, @Body() dto: BulkUpdateStatusDto) {
-    return this.prospectService.bulkUpdateStatus(req.fieldflowUser.userId, dto.ids, dto.status);
+  bulkUpdateStatus(@Req() req: AnnixRepRequest, @Body() dto: BulkUpdateStatusDto) {
+    return this.prospectService.bulkUpdateStatus(req.annixRepUser.userId, dto.ids, dto.status);
   }
 
   @Delete("bulk")
   @ApiOperation({ summary: "Delete multiple prospects" })
   @ApiResponse({ status: 200, description: "Bulk delete result", type: BulkDeleteResponseDto })
-  bulkDelete(@Req() req: FieldFlowRequest, @Body() dto: BulkDeleteDto) {
-    return this.prospectService.bulkDelete(req.fieldflowUser.userId, dto.ids);
+  bulkDelete(@Req() req: AnnixRepRequest, @Body() dto: BulkDeleteDto) {
+    return this.prospectService.bulkDelete(req.annixRepUser.userId, dto.ids);
   }
 
   @Post("import")
   @ApiOperation({ summary: "Import prospects from CSV data" })
   @ApiResponse({ status: 201, description: "Import result", type: ImportProspectsResultDto })
-  importProspects(@Req() req: FieldFlowRequest, @Body() dto: ImportProspectsDto) {
+  importProspects(@Req() req: AnnixRepRequest, @Body() dto: ImportProspectsDto) {
     return this.prospectService.importFromCsv(
-      req.fieldflowUser.userId,
+      req.annixRepUser.userId,
       dto.rows,
       dto.skipInvalid ?? true,
     );
@@ -167,8 +167,8 @@ export class ProspectController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Prospect details", type: ProspectResponseDto })
   @ApiResponse({ status: 404, description: "Prospect not found" })
-  findOne(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.findOne(req.fieldflowUser.userId, id);
+  findOne(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.prospectService.findOne(req.annixRepUser.userId, id);
   }
 
   @Patch(":id")
@@ -177,11 +177,11 @@ export class ProspectController {
   @ApiResponse({ status: 200, description: "Prospect updated", type: ProspectResponseDto })
   @ApiResponse({ status: 404, description: "Prospect not found" })
   update(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateProspectDto,
   ) {
-    return this.prospectService.update(req.fieldflowUser.userId, id, dto);
+    return this.prospectService.update(req.annixRepUser.userId, id, dto);
   }
 
   @Patch(":id/status/:status")
@@ -190,19 +190,19 @@ export class ProspectController {
   @ApiParam({ name: "status", enum: ProspectStatus })
   @ApiResponse({ status: 200, description: "Status updated", type: ProspectResponseDto })
   updateStatus(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Param("status") status: ProspectStatus,
   ) {
-    return this.prospectService.updateStatus(req.fieldflowUser.userId, id, status);
+    return this.prospectService.updateStatus(req.annixRepUser.userId, id, status);
   }
 
   @Post(":id/contacted")
   @ApiOperation({ summary: "Mark prospect as contacted" })
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Marked as contacted", type: ProspectResponseDto })
-  markContacted(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.markContacted(req.fieldflowUser.userId, id);
+  markContacted(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.prospectService.markContacted(req.annixRepUser.userId, id);
   }
 
   @Post(":id/complete-followup")
@@ -215,8 +215,8 @@ export class ProspectController {
     description: "Follow-up completed, next scheduled if recurring",
     type: ProspectResponseDto,
   })
-  completeFollowUp(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.completeFollowUp(req.fieldflowUser.userId, id);
+  completeFollowUp(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.prospectService.completeFollowUp(req.annixRepUser.userId, id);
   }
 
   @Delete(":id")
@@ -224,7 +224,7 @@ export class ProspectController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, description: "Prospect deleted" })
   @ApiResponse({ status: 404, description: "Prospect not found" })
-  remove(@Req() req: FieldFlowRequest, @Param("id", ParseIntPipe) id: number) {
-    return this.prospectService.remove(req.fieldflowUser.userId, id);
+  remove(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.prospectService.remove(req.annixRepUser.userId, id);
   }
 }

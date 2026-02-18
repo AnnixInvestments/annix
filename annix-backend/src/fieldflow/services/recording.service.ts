@@ -102,7 +102,7 @@ export class RecordingService {
     });
 
     const apiBaseUrl = this.configService.get<string>("API_BASE_URL") ?? "http://localhost:4001";
-    const uploadUrl = `${apiBaseUrl}/fieldflow/recordings/${saved.id}/chunk`;
+    const uploadUrl = `${apiBaseUrl}/annix-rep/recordings/${saved.id}/chunk`;
 
     this.logger.log(`Recording upload initiated: ${saved.id} for meeting ${dto.meetingId}`);
 

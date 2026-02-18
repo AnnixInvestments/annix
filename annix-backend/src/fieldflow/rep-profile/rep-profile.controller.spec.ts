@@ -1,5 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { FieldFlowAuthGuard } from "../auth";
+import { AnnixRepAuthGuard } from "../auth";
 import { RepProfileController } from "./rep-profile.controller";
 import { CreateRepProfileDto, UpdateRepProfileDto } from "./rep-profile.dto";
 import { RepProfile } from "./rep-profile.entity";
@@ -35,7 +35,7 @@ describe("RepProfileController", () => {
   };
 
   const mockRequest = {
-    fieldflowUser: {
+    annixRepUser: {
       userId: 100,
       email: "rep@example.com",
       sessionToken: "test-token",
@@ -56,7 +56,7 @@ describe("RepProfileController", () => {
       controllers: [RepProfileController],
       providers: [{ provide: RepProfileService, useValue: mockService }],
     })
-      .overrideGuard(FieldFlowAuthGuard)
+      .overrideGuard(AnnixRepAuthGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

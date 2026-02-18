@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { ScheduleModule } from "@nestjs/schedule";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
-import { FieldFlowAuthModule } from "./auth";
+import { AnnixRepAuthModule } from "./auth";
 import {
   AnalyticsController,
   CalendarController,
@@ -65,7 +65,7 @@ import {
     ScheduleModule.forRoot(),
     AdminModule,
     RepProfileModule,
-    FieldFlowAuthModule,
+    AnnixRepAuthModule,
   ],
   controllers: [
     AnalyticsController,
@@ -108,7 +108,7 @@ import {
     MeetingSummaryService,
     CrmService,
     RepProfileModule,
-    FieldFlowAuthModule,
+    AnnixRepAuthModule,
   ],
 })
-export class FieldFlowModule {}
+export class AnnixRepModule {}

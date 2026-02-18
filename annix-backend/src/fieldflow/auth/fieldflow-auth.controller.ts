@@ -12,75 +12,75 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Public } from "../../auth/public.decorator";
 import {
+  AnnixRepAuthResponseDto,
+  AnnixRepLoginDto,
+  AnnixRepProfileResponseDto,
+  AnnixRepRefreshTokenDto,
+  AnnixRepRegisterDto,
   CheckEmailResponseDto,
-  FieldFlowAuthResponseDto,
-  FieldFlowLoginDto,
-  FieldFlowProfileResponseDto,
-  FieldFlowRefreshTokenDto,
-  FieldFlowRegisterDto,
 } from "./dto";
-import { FieldFlowAuthService } from "./fieldflow-auth.service";
-import { FieldFlowAuthGuard } from "./guards";
+import { AnnixRepAuthService } from "./fieldflow-auth.service";
+import { AnnixRepAuthGuard } from "./guards";
 
-@ApiTags("FieldFlow - Authentication")
-@Controller("fieldflow/auth")
-export class FieldFlowAuthController {
-  constructor(private readonly authService: FieldFlowAuthService) {}
+@ApiTags("Annix Rep - Authentication")
+@Controller("annix-rep/auth")
+export class AnnixRepAuthController {
+  constructor(private readonly authService: AnnixRepAuthService) {}
 
   @Post("register")
   @Public()
-  @ApiOperation({ summary: "Register a new FieldFlow user" })
-  @ApiResponse({ status: 201, type: FieldFlowAuthResponseDto })
+  @ApiOperation({ summary: "Register a new Annix Rep user" })
+  @ApiResponse({ status: 201, type: AnnixRepAuthResponseDto })
   @ApiResponse({ status: 409, description: "Email already exists" })
   async register(
-    @Body() dto: FieldFlowRegisterDto,
+    @Body() dto: AnnixRepRegisterDto,
     @Ip() clientIp: string,
     @Headers("user-agent") userAgent: string,
-  ): Promise<FieldFlowAuthResponseDto> {
+  ): Promise<AnnixRepAuthResponseDto> {
     return this.authService.register(dto, clientIp, userAgent || "unknown");
   }
 
   @Post("login")
   @Public()
-  @ApiOperation({ summary: "Login to FieldFlow" })
-  @ApiResponse({ status: 200, type: FieldFlowAuthResponseDto })
+  @ApiOperation({ summary: "Login to Annix Rep" })
+  @ApiResponse({ status: 200, type: AnnixRepAuthResponseDto })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   async login(
-    @Body() dto: FieldFlowLoginDto,
+    @Body() dto: AnnixRepLoginDto,
     @Ip() clientIp: string,
     @Headers("user-agent") userAgent: string,
-  ): Promise<FieldFlowAuthResponseDto> {
+  ): Promise<AnnixRepAuthResponseDto> {
     return this.authService.login(dto, clientIp, userAgent || "unknown");
   }
 
   @Post("logout")
-  @UseGuards(FieldFlowAuthGuard)
-  @ApiOperation({ summary: "Logout from FieldFlow" })
+  @UseGuards(AnnixRepAuthGuard)
+  @ApiOperation({ summary: "Logout from Annix Rep" })
   @ApiResponse({ status: 200 })
   async logout(@Request() req): Promise<{ success: boolean }> {
-    await this.authService.logout(req.fieldflowUser.sessionToken);
+    await this.authService.logout(req.annixRepUser.sessionToken);
     return { success: true };
   }
 
   @Post("refresh")
   @Public()
   @ApiOperation({ summary: "Refresh access token" })
-  @ApiResponse({ status: 200, type: FieldFlowAuthResponseDto })
+  @ApiResponse({ status: 200, type: AnnixRepAuthResponseDto })
   @ApiResponse({ status: 401, description: "Invalid refresh token" })
   async refresh(
-    @Body() dto: FieldFlowRefreshTokenDto,
+    @Body() dto: AnnixRepRefreshTokenDto,
     @Ip() clientIp: string,
     @Headers("user-agent") userAgent: string,
-  ): Promise<FieldFlowAuthResponseDto> {
+  ): Promise<AnnixRepAuthResponseDto> {
     return this.authService.refreshSession(dto, clientIp, userAgent || "unknown");
   }
 
   @Get("profile")
-  @UseGuards(FieldFlowAuthGuard)
+  @UseGuards(AnnixRepAuthGuard)
   @ApiOperation({ summary: "Get current user profile" })
-  @ApiResponse({ status: 200, type: FieldFlowProfileResponseDto })
-  async profile(@Request() req): Promise<FieldFlowProfileResponseDto> {
-    return this.authService.profile(req.fieldflowUser.userId);
+  @ApiResponse({ status: 200, type: AnnixRepProfileResponseDto })
+  async profile(@Request() req): Promise<AnnixRepProfileResponseDto> {
+    return this.authService.profile(req.annixRepUser.userId);
   }
 
   @Get("check-email")

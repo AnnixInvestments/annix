@@ -15,7 +15,7 @@ export interface TargetCustomerProfile {
   decisionMakerTitles?: string[];
 }
 
-@Entity("fieldflow_rep_profiles")
+@Entity("annix_rep_rep_profiles")
 export class RepProfile {
   @PrimaryGeneratedColumn()
   id: number;

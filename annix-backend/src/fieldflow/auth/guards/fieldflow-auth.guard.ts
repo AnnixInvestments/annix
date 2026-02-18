@@ -3,14 +3,14 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { isString } from "es-toolkit/compat";
 import { Request } from "express";
-import { FieldFlowAuthService, FieldFlowJwtPayload } from "../fieldflow-auth.service";
+import { AnnixRepAuthService, AnnixRepJwtPayload } from "../fieldflow-auth.service";
 
 @Injectable()
-export class FieldFlowAuthGuard implements CanActivate {
+export class AnnixRepAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly fieldFlowAuthService: FieldFlowAuthService,
+    private readonly annixRepAuthService: AnnixRepAuthService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -22,20 +22,20 @@ export class FieldFlowAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<FieldFlowJwtPayload>(token, {
+      const payload = await this.jwtService.verifyAsync<AnnixRepJwtPayload>(token, {
         secret: this.configService.get<string>("JWT_SECRET"),
       });
 
-      if (payload.type !== "fieldflow") {
+      if (payload.type !== "annixRep") {
         throw new UnauthorizedException("Invalid token type");
       }
 
-      const session = await this.fieldFlowAuthService.verifySession(payload.sessionToken);
+      const session = await this.annixRepAuthService.verifySession(payload.sessionToken);
       if (!session) {
         throw new UnauthorizedException("Session expired or invalid");
       }
 
-      request["fieldflowUser"] = {
+      request["annixRepUser"] = {
         userId: payload.sub,
         email: payload.email,
         sessionToken: payload.sessionToken,

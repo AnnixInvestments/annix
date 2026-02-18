@@ -1,20 +1,20 @@
 import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
-import { FieldFlowAuthGuard } from "../auth";
+import { AnnixRepAuthGuard } from "../auth";
 import { AnalyticsService } from "../services/analytics.service";
 
-interface FieldFlowRequest extends Request {
-  fieldflowUser: {
+interface AnnixRepRequest extends Request {
+  annixRepUser: {
     userId: number;
     email: string;
     sessionToken: string;
   };
 }
 
-@ApiTags("FieldFlow - Analytics")
-@Controller("fieldflow/analytics")
-@UseGuards(FieldFlowAuthGuard)
+@ApiTags("Annix Rep - Analytics")
+@Controller("annix-rep/analytics")
+@UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
@@ -22,8 +22,8 @@ export class AnalyticsController {
   @Get("summary")
   @ApiOperation({ summary: "Get analytics summary" })
   @ApiResponse({ status: 200, description: "Analytics summary data" })
-  summary(@Req() req: FieldFlowRequest) {
-    return this.analyticsService.summary(req.fieldflowUser.userId);
+  summary(@Req() req: AnnixRepRequest) {
+    return this.analyticsService.summary(req.annixRepUser.userId);
   }
 
   @Get("meetings-over-time")
@@ -32,12 +32,12 @@ export class AnalyticsController {
   @ApiQuery({ name: "count", type: Number, required: false })
   @ApiResponse({ status: 200, description: "Meetings over time data" })
   meetingsOverTime(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Query("period") period?: "week" | "month",
     @Query("count") count?: string,
   ) {
     return this.analyticsService.meetingsOverTime(
-      req.fieldflowUser.userId,
+      req.annixRepUser.userId,
       period || "week",
       count ? parseInt(count, 10) : 8,
     );
@@ -46,17 +46,17 @@ export class AnalyticsController {
   @Get("prospect-funnel")
   @ApiOperation({ summary: "Get prospects funnel data" })
   @ApiResponse({ status: 200, description: "Prospect funnel by status" })
-  prospectFunnel(@Req() req: FieldFlowRequest) {
-    return this.analyticsService.prospectFunnel(req.fieldflowUser.userId);
+  prospectFunnel(@Req() req: AnnixRepRequest) {
+    return this.analyticsService.prospectFunnel(req.annixRepUser.userId);
   }
 
   @Get("win-loss-trends")
   @ApiOperation({ summary: "Get win/loss rate trends" })
   @ApiQuery({ name: "months", type: Number, required: false })
   @ApiResponse({ status: 200, description: "Win/loss rate trends" })
-  winLossRateTrends(@Req() req: FieldFlowRequest, @Query("months") months?: string) {
+  winLossRateTrends(@Req() req: AnnixRepRequest, @Query("months") months?: string) {
     return this.analyticsService.winLossRateTrends(
-      req.fieldflowUser.userId,
+      req.annixRepUser.userId,
       months ? parseInt(months, 10) : 6,
     );
   }
@@ -64,24 +64,24 @@ export class AnalyticsController {
   @Get("activity-heatmap")
   @ApiOperation({ summary: "Get activity heatmap (visits by day/hour)" })
   @ApiResponse({ status: 200, description: "Activity heatmap data" })
-  activityHeatmap(@Req() req: FieldFlowRequest) {
-    return this.analyticsService.activityHeatmap(req.fieldflowUser.userId);
+  activityHeatmap(@Req() req: AnnixRepRequest) {
+    return this.analyticsService.activityHeatmap(req.annixRepUser.userId);
   }
 
   @Get("revenue-pipeline")
   @ApiOperation({ summary: "Get revenue pipeline by stage" })
   @ApiResponse({ status: 200, description: "Revenue pipeline data" })
-  revenuePipeline(@Req() req: FieldFlowRequest) {
-    return this.analyticsService.revenuePipeline(req.fieldflowUser.userId);
+  revenuePipeline(@Req() req: AnnixRepRequest) {
+    return this.analyticsService.revenuePipeline(req.annixRepUser.userId);
   }
 
   @Get("top-prospects")
   @ApiOperation({ summary: "Get top prospects by value" })
   @ApiQuery({ name: "limit", type: Number, required: false })
   @ApiResponse({ status: 200, description: "Top prospects by estimated value" })
-  topProspects(@Req() req: FieldFlowRequest, @Query("limit") limit?: string) {
+  topProspects(@Req() req: AnnixRepRequest, @Query("limit") limit?: string) {
     return this.analyticsService.topProspects(
-      req.fieldflowUser.userId,
+      req.annixRepUser.userId,
       limit ? parseInt(limit, 10) : 10,
     );
   }

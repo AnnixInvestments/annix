@@ -3,7 +3,7 @@
 import { GoogleMap, InfoWindow, Marker, useJsApiLoader } from "@react-google-maps/api";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import type { Prospect, ProspectStatus } from "@/app/lib/api/fieldflowApi";
+import type { Prospect, ProspectStatus } from "@/app/lib/api/annixRepApi";
 import { useNearbyProspects } from "@/app/lib/query/hooks";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -117,7 +117,7 @@ export default function NearbyProspectsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/fieldflow/prospects"
+            href="/annix-rep/prospects"
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg
@@ -263,7 +263,7 @@ export default function NearbyProspectsPage() {
                     </div>
                     <div className="mt-3 flex gap-2">
                       <Link
-                        href={`/fieldflow/prospects/${selectedProspect.id}`}
+                        href={`/annix-rep/prospects/${selectedProspect.id}`}
                         className="text-xs text-blue-600 hover:underline"
                       >
                         View Details

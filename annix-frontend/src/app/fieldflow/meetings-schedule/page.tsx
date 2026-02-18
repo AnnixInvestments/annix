@@ -83,7 +83,7 @@ export default function MeetingsSchedulePage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/fieldflow"
+          href="/annix-rep"
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
         >
           <svg
@@ -106,21 +106,21 @@ export default function MeetingsSchedulePage() {
         <FeatureCard
           title="Schedule"
           description="View your calendar with meetings, visits, and planned activities"
-          href="/fieldflow/schedule"
+          href="/annix-rep/schedule"
           icon="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
           color="purple"
         />
         <FeatureCard
           title="All Meetings"
           description="Browse your meeting history with recordings, transcripts, and summaries"
-          href="/fieldflow/meetings"
+          href="/annix-rep/meetings"
           icon="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
           color="pink"
         />
         <FeatureCard
           title="Record Meeting"
           description="Start a new meeting recording with AI-powered transcription"
-          href="/fieldflow/meetings?action=record"
+          href="/annix-rep/meetings?action=record"
           icon="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
           color="red"
           badge="AI"

@@ -2,34 +2,34 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {
-  FieldFlowAuthResponse,
-  FieldFlowAuthUser,
-  FieldFlowLoginDto,
-  FieldFlowRegisterDto,
-  fieldflowAuthApi,
-} from "../lib/api/fieldflowAuthApi";
+  AnnixRepAuthResponse,
+  AnnixRepAuthUser,
+  AnnixRepLoginDto,
+  AnnixRepRegisterDto,
+  annixRepAuthApi,
+} from "../lib/api/annixRepAuthApi";
 
-interface FieldFlowAuthContextValue {
+interface AnnixRepAuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: FieldFlowAuthUser | null;
-  login: (dto: FieldFlowLoginDto) => Promise<FieldFlowAuthResponse>;
-  register: (dto: FieldFlowRegisterDto) => Promise<FieldFlowAuthResponse>;
+  user: AnnixRepAuthUser | null;
+  login: (dto: AnnixRepLoginDto) => Promise<AnnixRepAuthResponse>;
+  register: (dto: AnnixRepRegisterDto) => Promise<AnnixRepAuthResponse>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
-const FieldFlowAuthContext = createContext<FieldFlowAuthContextValue | null>(null);
+const AnnixRepAuthContext = createContext<AnnixRepAuthContextValue | null>(null);
 
-export function FieldFlowAuthProvider({ children }: { children: React.ReactNode }) {
+export function AnnixRepAuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<FieldFlowAuthUser | null>(null);
+  const [user, setUser] = useState<AnnixRepAuthUser | null>(null);
 
   const isAuthenticated = !!user;
 
   const refreshProfile = useCallback(async () => {
     try {
-      const profile = await fieldflowAuthApi.profile();
+      const profile = await annixRepAuthApi.profile();
       setUser({
         userId: profile.userId,
         email: profile.email,
@@ -38,7 +38,7 @@ export function FieldFlowAuthProvider({ children }: { children: React.ReactNode 
         setupCompleted: profile.setupCompleted,
       });
     } catch {
-      const refreshed = await fieldflowAuthApi.refresh();
+      const refreshed = await annixRepAuthApi.refresh();
       if (refreshed) {
         setUser({
           userId: refreshed.userId,
@@ -55,7 +55,7 @@ export function FieldFlowAuthProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     const initAuth = async () => {
-      if (!fieldflowAuthApi.isAuthenticated()) {
+      if (!annixRepAuthApi.isAuthenticated()) {
         setIsLoading(false);
         return;
       }
@@ -72,8 +72,8 @@ export function FieldFlowAuthProvider({ children }: { children: React.ReactNode 
     initAuth();
   }, [refreshProfile]);
 
-  const login = useCallback(async (dto: FieldFlowLoginDto): Promise<FieldFlowAuthResponse> => {
-    const response = await fieldflowAuthApi.login(dto);
+  const login = useCallback(async (dto: AnnixRepLoginDto): Promise<AnnixRepAuthResponse> => {
+    const response = await annixRepAuthApi.login(dto);
     setUser({
       userId: response.userId,
       email: response.email,
@@ -84,28 +84,25 @@ export function FieldFlowAuthProvider({ children }: { children: React.ReactNode 
     return response;
   }, []);
 
-  const register = useCallback(
-    async (dto: FieldFlowRegisterDto): Promise<FieldFlowAuthResponse> => {
-      const response = await fieldflowAuthApi.register(dto);
-      setUser({
-        userId: response.userId,
-        email: response.email,
-        firstName: response.firstName,
-        lastName: response.lastName,
-        setupCompleted: response.setupCompleted ?? false,
-      });
-      return response;
-    },
-    [],
-  );
+  const register = useCallback(async (dto: AnnixRepRegisterDto): Promise<AnnixRepAuthResponse> => {
+    const response = await annixRepAuthApi.register(dto);
+    setUser({
+      userId: response.userId,
+      email: response.email,
+      firstName: response.firstName,
+      lastName: response.lastName,
+      setupCompleted: response.setupCompleted ?? false,
+    });
+    return response;
+  }, []);
 
   const logout = useCallback(async () => {
-    await fieldflowAuthApi.logout();
+    await annixRepAuthApi.logout();
     setUser(null);
   }, []);
 
   return (
-    <FieldFlowAuthContext.Provider
+    <AnnixRepAuthContext.Provider
       value={{
         isAuthenticated,
         isLoading,
@@ -117,14 +114,14 @@ export function FieldFlowAuthProvider({ children }: { children: React.ReactNode 
       }}
     >
       {children}
-    </FieldFlowAuthContext.Provider>
+    </AnnixRepAuthContext.Provider>
   );
 }
 
-export function useFieldFlowAuth() {
-  const context = useContext(FieldFlowAuthContext);
+export function useAnnixRepAuth() {
+  const context = useContext(AnnixRepAuthContext);
   if (!context) {
-    throw new Error("useFieldFlowAuth must be used within a FieldFlowAuthProvider");
+    throw new Error("useAnnixRepAuth must be used within a AnnixRepAuthProvider");
   }
   return context;
 }

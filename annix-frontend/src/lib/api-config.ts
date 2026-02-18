@@ -58,9 +58,9 @@ export const getAuthHeaders = (): Record<string, string> => {
   return {};
 };
 
-export const fieldflowAuthHeaders = (): Record<string, string> => {
+export const annixRepAuthHeaders = (): Record<string, string> => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("fieldflowAccessToken");
+    const token = localStorage.getItem("annixRepAccessToken");
     if (token) {
       return {
         Authorization: `Bearer ${token}`,

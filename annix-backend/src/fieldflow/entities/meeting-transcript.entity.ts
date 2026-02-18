@@ -34,7 +34,7 @@ export interface MeetingAnalysis {
   sentimentScore: number | null;
 }
 
-@Entity("fieldflow_meeting_transcripts")
+@Entity("annix_rep_meeting_transcripts")
 export class MeetingTranscript {
   @PrimaryGeneratedColumn()
   id: number;

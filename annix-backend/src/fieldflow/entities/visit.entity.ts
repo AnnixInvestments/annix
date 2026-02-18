@@ -25,7 +25,7 @@ export enum VisitOutcome {
   CONVERTED = "converted",
 }
 
-@Entity("fieldflow_visits")
+@Entity("annix_rep_visits")
 export class Visit {
   @PrimaryGeneratedColumn()
   id: number;

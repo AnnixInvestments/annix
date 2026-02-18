@@ -13,22 +13,22 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
-import { FieldFlowAuthGuard } from "../auth";
+import { AnnixRepAuthGuard } from "../auth";
 import { TranscriptWithSegmentsDto, UpdateTranscriptDto } from "../dto";
 import { TranscriptionService } from "../services/transcription.service";
 
-interface FieldFlowRequest extends Request {
-  fieldflowUser: {
+interface AnnixRepRequest extends Request {
+  annixRepUser: {
     userId: number;
     email: string;
     sessionToken: string;
   };
 }
 
-@ApiTags("FieldFlow Transcripts")
+@ApiTags("Annix Rep - Transcripts")
 @ApiBearerAuth()
-@UseGuards(FieldFlowAuthGuard)
-@Controller("fieldflow/transcripts")
+@UseGuards(AnnixRepAuthGuard)
+@Controller("annix-rep/transcripts")
 export class TranscriptController {
   constructor(private readonly transcriptionService: TranscriptionService) {}
 
@@ -111,11 +111,11 @@ export class TranscriptController {
   @ApiParam({ name: "id", type: Number })
   @ApiResponse({ status: 200, type: TranscriptWithSegmentsDto })
   async updateTranscript(
-    @Req() req: FieldFlowRequest,
+    @Req() req: AnnixRepRequest,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateTranscriptDto,
   ): Promise<TranscriptWithSegmentsDto> {
-    return this.transcriptionService.updateSegments(req.fieldflowUser.userId, id, dto);
+    return this.transcriptionService.updateSegments(req.annixRepUser.userId, id, dto);
   }
 
   @Delete("recording/:recordingId")

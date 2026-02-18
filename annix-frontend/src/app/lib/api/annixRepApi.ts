@@ -1,4 +1,4 @@
-import { fieldflowAuthHeaders } from "@/lib/api-config";
+import { annixRepAuthHeaders } from "@/lib/api-config";
 
 const getApiUrl = () => {
   if (typeof window !== "undefined") {
@@ -239,7 +239,7 @@ export interface CreateMeetingDto {
   agenda?: string;
 }
 
-export interface FieldFlowDashboard {
+export interface AnnixRepDashboard {
   stats: {
     totalProspects: number;
     activeProspects: number;
@@ -668,17 +668,17 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
-export const fieldflowApi = {
-  dashboard: async (): Promise<FieldFlowDashboard> => {
+export const annixRepApi = {
+  dashboard: async (): Promise<AnnixRepDashboard> => {
     const [prospectsRes, meetingsRes, followUpsRes] = await Promise.all([
-      fetch(`${getApiUrl()}/fieldflow/prospects`, {
-        headers: fieldflowAuthHeaders(),
+      fetch(`${getApiUrl()}/annix-rep/prospects`, {
+        headers: annixRepAuthHeaders(),
       }),
-      fetch(`${getApiUrl()}/fieldflow/meetings/today`, {
-        headers: fieldflowAuthHeaders(),
+      fetch(`${getApiUrl()}/annix-rep/meetings/today`, {
+        headers: annixRepAuthHeaders(),
       }),
-      fetch(`${getApiUrl()}/fieldflow/prospects/follow-ups`, {
-        headers: fieldflowAuthHeaders(),
+      fetch(`${getApiUrl()}/annix-rep/prospects/follow-ups`, {
+        headers: annixRepAuthHeaders(),
       }),
     ]);
 
@@ -711,31 +711,31 @@ export const fieldflowApi = {
 
   prospects: {
     list: async (): Promise<Prospect[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
 
     listByStatus: async (status: ProspectStatus): Promise<Prospect[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/status/${status}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/status/${status}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
 
     detail: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect>(response);
     },
 
     create: async (dto: CreateProspectDto): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -744,10 +744,10 @@ export const fieldflowApi = {
     },
 
     update: async (id: number, dto: Partial<CreateProspectDto>): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}`, {
         method: "PATCH",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -756,33 +756,33 @@ export const fieldflowApi = {
     },
 
     updateStatus: async (id: number, status: ProspectStatus): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}/status/${status}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/status/${status}`, {
         method: "PATCH",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect>(response);
     },
 
     markContacted: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}/contacted`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/contacted`, {
         method: "POST",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect>(response);
     },
 
     completeFollowUp: async (id: number): Promise<Prospect> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}/complete-followup`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/complete-followup`, {
         method: "POST",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect>(response);
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/${id}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}`, {
         method: "DELETE",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -803,22 +803,22 @@ export const fieldflowApi = {
       if (radiusKm) params.set("radiusKm", radiusKm.toString());
       if (limit) params.set("limit", limit.toString());
 
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/nearby?${params}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/nearby?${params}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
 
     stats: async (): Promise<Record<ProspectStatus, number>> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/stats`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/stats`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Record<ProspectStatus, number>>(response);
     },
 
     followUpsDue: async (): Promise<Prospect[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/follow-ups`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/follow-ups`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
     },
@@ -827,10 +827,10 @@ export const fieldflowApi = {
       ids: number[],
       status: ProspectStatus,
     ): Promise<BulkUpdateStatusResponse> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/bulk/status`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/bulk/status`, {
         method: "PATCH",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ ids, status }),
@@ -839,10 +839,10 @@ export const fieldflowApi = {
     },
 
     bulkDelete: async (ids: number[]): Promise<BulkDeleteResponse> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/bulk`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/bulk`, {
         method: "DELETE",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ ids }),
@@ -851,8 +851,8 @@ export const fieldflowApi = {
     },
 
     exportCsv: async (): Promise<Blob> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/export/csv`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/export/csv`, {
+        headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Export failed" }));
@@ -862,8 +862,8 @@ export const fieldflowApi = {
     },
 
     duplicates: async (): Promise<DuplicateProspects[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/duplicates`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/duplicates`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<DuplicateProspects[]>(response);
     },
@@ -872,10 +872,10 @@ export const fieldflowApi = {
       rows: ImportProspectRow[],
       skipInvalid = true,
     ): Promise<ImportProspectsResult> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/import`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/import`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ rows, skipInvalid }),
@@ -886,39 +886,39 @@ export const fieldflowApi = {
 
   meetings: {
     list: async (): Promise<Meeting[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Meeting[]>(response);
     },
 
     today: async (): Promise<Meeting[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/today`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/today`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Meeting[]>(response);
     },
 
     upcoming: async (days?: number): Promise<Meeting[]> => {
       const params = days ? `?days=${days}` : "";
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/upcoming${params}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/upcoming${params}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Meeting[]>(response);
     },
 
     detail: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Meeting>(response);
     },
 
     create: async (dto: CreateMeetingDto): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -927,10 +927,10 @@ export const fieldflowApi = {
     },
 
     update: async (id: number, dto: Partial<CreateMeetingDto>): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}`, {
         method: "PATCH",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -939,10 +939,10 @@ export const fieldflowApi = {
     },
 
     start: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}/start`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}/start`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({}),
@@ -951,10 +951,10 @@ export const fieldflowApi = {
     },
 
     end: async (id: number, notes?: string, outcomes?: string): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}/end`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}/end`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ notes, outcomes }),
@@ -963,17 +963,17 @@ export const fieldflowApi = {
     },
 
     cancel: async (id: number): Promise<Meeting> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}/cancel`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}/cancel`, {
         method: "POST",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Meeting>(response);
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/meetings/${id}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}`, {
         method: "DELETE",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -984,31 +984,31 @@ export const fieldflowApi = {
 
   visits: {
     list: async (): Promise<Visit[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/visits`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/visits`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Visit[]>(response);
     },
 
     today: async (): Promise<Visit[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/visits/today`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/visits/today`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Visit[]>(response);
     },
 
     byProspect: async (prospectId: number): Promise<Visit[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/visits/prospect/${prospectId}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/visits/prospect/${prospectId}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Visit[]>(response);
     },
 
     create: async (dto: CreateVisitDto): Promise<Visit> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/visits`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/visits`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1017,10 +1017,10 @@ export const fieldflowApi = {
     },
 
     checkIn: async (id: number, latitude: number, longitude: number): Promise<Visit> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/visits/${id}/check-in`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/visits/${id}/check-in`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ latitude, longitude }),
@@ -1035,10 +1035,10 @@ export const fieldflowApi = {
       outcome?: VisitOutcome,
       notes?: string,
     ): Promise<Visit> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/visits/${id}/check-out`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/visits/${id}/check-out`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ latitude, longitude, outcome, notes }),
@@ -1051,17 +1051,17 @@ export const fieldflowApi = {
     oauthUrl: async (provider: CalendarProvider, redirectUri: string): Promise<{ url: string }> => {
       const params = new URLSearchParams({ redirectUri });
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/calendars/oauth-url/${provider}?${params}`,
-        { headers: fieldflowAuthHeaders() },
+        `${getApiUrl()}/annix-rep/calendars/oauth-url/${provider}?${params}`,
+        { headers: annixRepAuthHeaders() },
       );
       return handleResponse<{ url: string }>(response);
     },
 
     connect: async (dto: ConnectCalendarDto): Promise<CalendarConnection> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connect`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connect`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1070,24 +1070,24 @@ export const fieldflowApi = {
     },
 
     connections: async (): Promise<CalendarConnection[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connections`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connections`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<CalendarConnection[]>(response);
     },
 
     connection: async (id: number): Promise<CalendarConnection> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connections/${id}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connections/${id}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<CalendarConnection>(response);
     },
 
     update: async (id: number, dto: UpdateCalendarConnectionDto): Promise<CalendarConnection> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connections/${id}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connections/${id}`, {
         method: "PATCH",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1096,9 +1096,9 @@ export const fieldflowApi = {
     },
 
     disconnect: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/connections/${id}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/connections/${id}`, {
         method: "DELETE",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Disconnect failed" }));
@@ -1108,19 +1108,19 @@ export const fieldflowApi = {
 
     availableCalendars: async (connectionId: number): Promise<CalendarListItem[]> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/calendars/connections/${connectionId}/calendars`,
-        { headers: fieldflowAuthHeaders() },
+        `${getApiUrl()}/annix-rep/calendars/connections/${connectionId}/calendars`,
+        { headers: annixRepAuthHeaders() },
       );
       return handleResponse<CalendarListItem[]>(response);
     },
 
     sync: async (connectionId: number, fullSync?: boolean): Promise<SyncResult> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/calendars/connections/${connectionId}/sync`,
+        `${getApiUrl()}/annix-rep/calendars/connections/${connectionId}/sync`,
         {
           method: "POST",
           headers: {
-            ...fieldflowAuthHeaders(),
+            ...annixRepAuthHeaders(),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ fullSync: fullSync ?? false }),
@@ -1131,8 +1131,8 @@ export const fieldflowApi = {
 
     events: async (startDate: string, endDate: string): Promise<CalendarEvent[]> => {
       const params = new URLSearchParams({ startDate, endDate });
-      const response = await fetch(`${getApiUrl()}/fieldflow/calendars/events?${params}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/events?${params}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<CalendarEvent[]>(response);
     },
@@ -1140,10 +1140,10 @@ export const fieldflowApi = {
 
   recordings: {
     initiate: async (dto: InitiateUploadDto): Promise<InitiateUploadResponse> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/initiate`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/initiate`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1157,11 +1157,11 @@ export const fieldflowApi = {
       data: Blob,
     ): Promise<{ chunkIndex: number; bytesReceived: number }> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/recordings/${recordingId}/chunk?index=${chunkIndex}`,
+        `${getApiUrl()}/annix-rep/recordings/${recordingId}/chunk?index=${chunkIndex}`,
         {
           method: "POST",
           headers: {
-            ...fieldflowAuthHeaders(),
+            ...annixRepAuthHeaders(),
             "Content-Type": "application/octet-stream",
           },
           body: data,
@@ -1171,10 +1171,10 @@ export const fieldflowApi = {
     },
 
     complete: async (recordingId: number, dto: CompleteUploadDto): Promise<Recording> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/${recordingId}/complete`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/${recordingId}/complete`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1183,15 +1183,15 @@ export const fieldflowApi = {
     },
 
     detail: async (recordingId: number): Promise<Recording> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/${recordingId}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/${recordingId}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<Recording>(response);
     },
 
     byMeeting: async (meetingId: number): Promise<Recording | null> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/meeting/${meetingId}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/meeting/${meetingId}`, {
+        headers: annixRepAuthHeaders(),
       });
       if (response.status === 404) return null;
       return handleResponse<Recording>(response);
@@ -1202,11 +1202,11 @@ export const fieldflowApi = {
       speakerLabels: Record<string, string>,
     ): Promise<Recording> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/recordings/${recordingId}/speaker-labels`,
+        `${getApiUrl()}/annix-rep/recordings/${recordingId}/speaker-labels`,
         {
           method: "PATCH",
           headers: {
-            ...fieldflowAuthHeaders(),
+            ...annixRepAuthHeaders(),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ speakerLabels }),
@@ -1216,9 +1216,9 @@ export const fieldflowApi = {
     },
 
     delete: async (recordingId: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/recordings/${recordingId}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/recordings/${recordingId}`, {
         method: "DELETE",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -1228,18 +1228,18 @@ export const fieldflowApi = {
 
     streamUrl: (recordingId: number): string | null => {
       if (typeof window === "undefined") return null;
-      const token = localStorage.getItem("fieldflowAccessToken");
+      const token = localStorage.getItem("annixRepAccessToken");
       if (!token) return null;
-      return `${getApiUrl()}/fieldflow/recordings/${recordingId}/stream?token=${encodeURIComponent(token)}`;
+      return `${getApiUrl()}/annix-rep/recordings/${recordingId}/stream?token=${encodeURIComponent(token)}`;
     },
   },
 
   transcripts: {
     byRecording: async (recordingId: number): Promise<Transcript | null> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/transcripts/recording/${recordingId}`,
+        `${getApiUrl()}/annix-rep/transcripts/recording/${recordingId}`,
         {
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       if (response.status === 404) return null;
@@ -1247,8 +1247,8 @@ export const fieldflowApi = {
     },
 
     byMeeting: async (meetingId: number): Promise<Transcript | null> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/transcripts/meeting/${meetingId}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/transcripts/meeting/${meetingId}`, {
+        headers: annixRepAuthHeaders(),
       });
       if (response.status === 404) return null;
       return handleResponse<Transcript>(response);
@@ -1256,10 +1256,10 @@ export const fieldflowApi = {
 
     transcribe: async (recordingId: number): Promise<Transcript> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/transcripts/recording/${recordingId}/transcribe`,
+        `${getApiUrl()}/annix-rep/transcripts/recording/${recordingId}/transcribe`,
         {
           method: "POST",
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       return handleResponse<Transcript>(response);
@@ -1267,20 +1267,20 @@ export const fieldflowApi = {
 
     retranscribe: async (recordingId: number): Promise<Transcript> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/transcripts/recording/${recordingId}/retranscribe`,
+        `${getApiUrl()}/annix-rep/transcripts/recording/${recordingId}/retranscribe`,
         {
           method: "POST",
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       return handleResponse<Transcript>(response);
     },
 
     update: async (transcriptId: number, dto: UpdateTranscriptDto): Promise<Transcript> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/transcripts/${transcriptId}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/transcripts/${transcriptId}`, {
         method: "PATCH",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1290,10 +1290,10 @@ export const fieldflowApi = {
 
     delete: async (recordingId: number): Promise<void> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/transcripts/recording/${recordingId}`,
+        `${getApiUrl()}/annix-rep/transcripts/recording/${recordingId}`,
         {
           method: "DELETE",
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       if (!response.ok) {
@@ -1306,26 +1306,26 @@ export const fieldflowApi = {
   summaries: {
     preview: async (meetingId: number): Promise<SummaryPreview> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/summaries/meeting/${meetingId}/preview`,
+        `${getApiUrl()}/annix-rep/summaries/meeting/${meetingId}/preview`,
         {
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       return handleResponse<SummaryPreview>(response);
     },
 
     generate: async (meetingId: number): Promise<MeetingSummary> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/summaries/meeting/${meetingId}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/summaries/meeting/${meetingId}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<MeetingSummary>(response);
     },
 
     send: async (meetingId: number, dto: SendSummaryDto): Promise<SendSummaryResult> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/summaries/meeting/${meetingId}/send`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/summaries/meeting/${meetingId}/send`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1336,24 +1336,24 @@ export const fieldflowApi = {
 
   crm: {
     configs: async (): Promise<CrmConfig[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<CrmConfig[]>(response);
     },
 
     config: async (id: number): Promise<CrmConfig> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${id}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${id}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<CrmConfig>(response);
     },
 
     create: async (dto: CreateCrmConfigDto): Promise<CrmConfig> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1362,10 +1362,10 @@ export const fieldflowApi = {
     },
 
     update: async (id: number, dto: UpdateCrmConfigDto): Promise<CrmConfig> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${id}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${id}`, {
         method: "PATCH",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1374,9 +1374,9 @@ export const fieldflowApi = {
     },
 
     delete: async (id: number): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${id}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${id}`, {
         method: "DELETE",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -1385,19 +1385,19 @@ export const fieldflowApi = {
     },
 
     testConnection: async (id: number): Promise<{ success: boolean; message: string }> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${id}/test`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${id}/test`, {
         method: "POST",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<{ success: boolean; message: string }>(response);
     },
 
     syncProspect: async (configId: number, prospectId: number): Promise<CrmSyncResult> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/crm/configs/${configId}/sync/prospect/${prospectId}`,
+        `${getApiUrl()}/annix-rep/crm/configs/${configId}/sync/prospect/${prospectId}`,
         {
           method: "POST",
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       return handleResponse<CrmSyncResult>(response);
@@ -1405,10 +1405,10 @@ export const fieldflowApi = {
 
     syncMeeting: async (configId: number, meetingId: number): Promise<CrmSyncResult> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/crm/configs/${configId}/sync/meeting/${meetingId}`,
+        `${getApiUrl()}/annix-rep/crm/configs/${configId}/sync/meeting/${meetingId}`,
         {
           method: "POST",
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       return handleResponse<CrmSyncResult>(response);
@@ -1416,26 +1416,26 @@ export const fieldflowApi = {
 
     syncAllProspects: async (configId: number): Promise<{ synced: number; failed: number }> => {
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/crm/configs/${configId}/sync/all-prospects`,
+        `${getApiUrl()}/annix-rep/crm/configs/${configId}/sync/all-prospects`,
         {
           method: "POST",
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       return handleResponse<{ synced: number; failed: number }>(response);
     },
 
     syncStatus: async (configId: number): Promise<CrmSyncStatus> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/crm/configs/${configId}/status`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/configs/${configId}/status`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<CrmSyncStatus>(response);
     },
 
     exportProspectsCsv: async (configId?: number): Promise<Blob> => {
       const params = configId ? `?configId=${configId}` : "";
-      const response = await fetch(`${getApiUrl()}/fieldflow/crm/export/prospects${params}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/export/prospects${params}`, {
+        headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Export failed" }));
@@ -1446,8 +1446,8 @@ export const fieldflowApi = {
 
     exportMeetingsCsv: async (configId?: number): Promise<Blob> => {
       const params = configId ? `?configId=${configId}` : "";
-      const response = await fetch(`${getApiUrl()}/fieldflow/crm/export/meetings${params}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/crm/export/meetings${params}`, {
+        headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Export failed" }));
@@ -1461,8 +1461,8 @@ export const fieldflowApi = {
     scheduleGaps: async (date: string, minGapMinutes?: number): Promise<ScheduleGap[]> => {
       const params = new URLSearchParams({ date });
       if (minGapMinutes) params.set("minGapMinutes", minGapMinutes.toString());
-      const response = await fetch(`${getApiUrl()}/fieldflow/routes/gaps?${params}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/routes/gaps?${params}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<ScheduleGap[]>(response);
     },
@@ -1478,9 +1478,9 @@ export const fieldflowApi = {
       if (currentLng !== undefined) params.set("currentLng", currentLng.toString());
       if (maxSuggestions) params.set("maxSuggestions", maxSuggestions.toString());
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/routes/cold-call-suggestions?${params}`,
+        `${getApiUrl()}/annix-rep/routes/cold-call-suggestions?${params}`,
         {
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       return handleResponse<ColdCallSuggestion[]>(response);
@@ -1492,10 +1492,10 @@ export const fieldflowApi = {
       stops: Array<{ id: number; type: "prospect" | "meeting" }>,
       returnToStart?: boolean,
     ): Promise<OptimizedRoute> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/routes/optimize`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/routes/optimize`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ startLat, startLng, stops, returnToStart }),
@@ -1514,8 +1514,8 @@ export const fieldflowApi = {
         params.set("includeColdCalls", includeColdCalls.toString());
       if (currentLat !== undefined) params.set("currentLat", currentLat.toString());
       if (currentLng !== undefined) params.set("currentLng", currentLng.toString());
-      const response = await fetch(`${getApiUrl()}/fieldflow/routes/plan-day?${params}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/routes/plan-day?${params}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<OptimizedRoute>(response);
     },
@@ -1523,25 +1523,25 @@ export const fieldflowApi = {
 
   repProfile: {
     status: async (): Promise<RepProfileStatus> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile/status`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile/status`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<RepProfileStatus>(response);
     },
 
     profile: async (): Promise<RepProfile | null> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile`, {
+        headers: annixRepAuthHeaders(),
       });
       if (response.status === 404) return null;
       return handleResponse<RepProfile>(response);
     },
 
     create: async (dto: CreateRepProfileDto): Promise<RepProfile> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1550,10 +1550,10 @@ export const fieldflowApi = {
     },
 
     update: async (dto: UpdateRepProfileDto): Promise<RepProfile> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile`, {
         method: "PATCH",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1562,16 +1562,16 @@ export const fieldflowApi = {
     },
 
     completeSetup: async (): Promise<RepProfile> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile/complete-setup`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile/complete-setup`, {
         method: "POST",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<RepProfile>(response);
     },
 
     searchTerms: async (): Promise<string[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/rep-profile/search-terms`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/rep-profile/search-terms`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<string[]>(response);
     },
@@ -1579,8 +1579,8 @@ export const fieldflowApi = {
 
   analytics: {
     summary: async (): Promise<AnalyticsSummary> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/summary`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/summary`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<AnalyticsSummary>(response);
     },
@@ -1594,47 +1594,47 @@ export const fieldflowApi = {
       if (count) params.set("count", count.toString());
       const query = params.toString() ? `?${params}` : "";
       const response = await fetch(
-        `${getApiUrl()}/fieldflow/analytics/meetings-over-time${query}`,
+        `${getApiUrl()}/annix-rep/analytics/meetings-over-time${query}`,
         {
-          headers: fieldflowAuthHeaders(),
+          headers: annixRepAuthHeaders(),
         },
       );
       return handleResponse<MeetingsOverTime[]>(response);
     },
 
     prospectFunnel: async (): Promise<ProspectFunnel[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/prospect-funnel`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/prospect-funnel`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<ProspectFunnel[]>(response);
     },
 
     winLossRateTrends: async (months?: number): Promise<WinLossRateTrend[]> => {
       const params = months ? `?months=${months}` : "";
-      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/win-loss-trends${params}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/win-loss-trends${params}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<WinLossRateTrend[]>(response);
     },
 
     activityHeatmap: async (): Promise<ActivityHeatmapCell[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/activity-heatmap`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/activity-heatmap`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<ActivityHeatmapCell[]>(response);
     },
 
     revenuePipeline: async (): Promise<RevenuePipeline[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/revenue-pipeline`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/revenue-pipeline`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<RevenuePipeline[]>(response);
     },
 
     topProspects: async (limit?: number): Promise<TopProspect[]> => {
       const params = limit ? `?limit=${limit}` : "";
-      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/top-prospects${params}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/analytics/top-prospects${params}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<TopProspect[]>(response);
     },
@@ -1642,24 +1642,24 @@ export const fieldflowApi = {
 
   goals: {
     list: async (): Promise<SalesGoal[]> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/goals`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/goals`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<SalesGoal[]>(response);
     },
 
     byPeriod: async (period: GoalPeriod): Promise<SalesGoal> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/goals/${period}`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/goals/${period}`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<SalesGoal>(response);
     },
 
     createOrUpdate: async (dto: CreateGoalDto): Promise<SalesGoal> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/goals`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/goals`, {
         method: "POST",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1668,10 +1668,10 @@ export const fieldflowApi = {
     },
 
     update: async (period: GoalPeriod, dto: UpdateGoalDto): Promise<SalesGoal> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/goals/${period}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/goals/${period}`, {
         method: "PUT",
         headers: {
-          ...fieldflowAuthHeaders(),
+          ...annixRepAuthHeaders(),
           "Content-Type": "application/json",
         },
         body: JSON.stringify(dto),
@@ -1680,9 +1680,9 @@ export const fieldflowApi = {
     },
 
     delete: async (period: GoalPeriod): Promise<void> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/goals/${period}`, {
+      const response = await fetch(`${getApiUrl()}/annix-rep/goals/${period}`, {
         method: "DELETE",
-        headers: fieldflowAuthHeaders(),
+        headers: annixRepAuthHeaders(),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -1691,8 +1691,8 @@ export const fieldflowApi = {
     },
 
     progress: async (period: GoalPeriod): Promise<GoalProgress> => {
-      const response = await fetch(`${getApiUrl()}/fieldflow/goals/${period}/progress`, {
-        headers: fieldflowAuthHeaders(),
+      const response = await fetch(`${getApiUrl()}/annix-rep/goals/${period}/progress`, {
+        headers: annixRepAuthHeaders(),
       });
       return handleResponse<GoalProgress>(response);
     },

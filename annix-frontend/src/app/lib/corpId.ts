@@ -70,7 +70,7 @@ export const corpId = {
         sidebarHover: "#f3f4f6",
         sidebarActive: "#FFD700",
       },
-      fieldflow: {
+      annixRep: {
         background: "#323288",
         text: "#FFFFFF",
         accent: "#FFA500",
@@ -106,7 +106,7 @@ export const corpId = {
   },
 } as const;
 
-export type PortalType = "admin" | "customer" | "supplier" | "auRubber" | "fieldflow";
+export type PortalType = "admin" | "customer" | "supplier" | "auRubber" | "annixRep";
 
 export const portalConfig = {
   admin: {
@@ -129,9 +129,9 @@ export const portalConfig = {
     homeHref: "/au-rubber/portal/dashboard",
     loginHref: "/au-rubber/login",
   },
-  fieldflow: {
-    title: "FieldFlow",
-    homeHref: "/fieldflow",
+  annixRep: {
+    title: "Annix Rep",
+    homeHref: "/annix-rep",
     loginHref: "/admin/login",
   },
 } as const;

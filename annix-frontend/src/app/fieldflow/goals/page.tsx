@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type {
-  CreateGoalDto,
-  GoalPeriod,
-  GoalProgress,
-  SalesGoal,
-} from "@/app/lib/api/fieldflowApi";
+import type { CreateGoalDto, GoalPeriod, GoalProgress, SalesGoal } from "@/app/lib/api/annixRepApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useCreateOrUpdateGoal,
@@ -412,7 +407,7 @@ export default function GoalsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/fieldflow"
+          href="/annix-rep"
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
         >
           <svg

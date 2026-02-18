@@ -25,7 +25,7 @@ export interface SpeakerSegment {
   confidence: number | null;
 }
 
-@Entity("fieldflow_meeting_recordings")
+@Entity("annix_rep_meeting_recordings")
 export class MeetingRecording {
   @PrimaryGeneratedColumn()
   id: number;
