@@ -42,7 +42,6 @@ import {
   NixAiPopup,
   NixChatPanel,
   NixClarificationPopup,
-  NixFloatingAvatar,
   NixProcessingPopup,
   nixApi,
 } from "@/app/lib/nix";
@@ -3328,12 +3327,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         progress={nixProcessingProgress}
         statusMessage={nixProcessingStatus}
         estimatedTimeRemaining={nixProcessingTimeRemaining ?? undefined}
-      />
-
-      {/* Nix Floating Avatar - shows when Nix is active */}
-      <NixFloatingAvatar
-        isVisible={rfqData.useNix === true && !nixChatPanelVisible}
-        onOpenChat={nixOpenChatPanel}
       />
 
       {/* Nix Clarification Popup - shows when Nix needs user input */}
