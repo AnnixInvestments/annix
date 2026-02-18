@@ -3,12 +3,14 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   ParseIntPipe,
   Patch,
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -19,10 +21,16 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { Request } from "express";
+import { Request, Response } from "express";
 import { FieldFlowAuthGuard } from "../auth";
 import {
+  BulkDeleteDto,
+  BulkDeleteResponseDto,
+  BulkUpdateStatusDto,
+  BulkUpdateStatusResponseDto,
   CreateProspectDto,
+  ImportProspectsDto,
+  ImportProspectsResultDto,
   NearbyProspectsQueryDto,
   ProspectResponseDto,
   UpdateProspectDto,
@@ -106,6 +114,52 @@ export class ProspectController {
   @ApiResponse({ status: 200, description: "List of prospects", type: [ProspectResponseDto] })
   followUpsDue(@Req() req: FieldFlowRequest) {
     return this.prospectService.followUpsDue(req.fieldflowUser.userId);
+  }
+
+  @Get("export/csv")
+  @ApiOperation({ summary: "Export all prospects to CSV" })
+  @ApiResponse({ status: 200, description: "CSV file download" })
+  @Header("Content-Type", "text/csv")
+  @Header("Content-Disposition", 'attachment; filename="prospects.csv"')
+  async exportCsv(@Req() req: FieldFlowRequest, @Res() res: Response) {
+    const csv = await this.prospectService.exportToCsv(req.fieldflowUser.userId);
+    res.send(csv);
+  }
+
+  @Get("duplicates")
+  @ApiOperation({ summary: "Find potential duplicate prospects" })
+  @ApiResponse({ status: 200, description: "List of potential duplicates" })
+  findDuplicates(@Req() req: FieldFlowRequest) {
+    return this.prospectService.findDuplicates(req.fieldflowUser.userId);
+  }
+
+  @Patch("bulk/status")
+  @ApiOperation({ summary: "Update status for multiple prospects" })
+  @ApiResponse({
+    status: 200,
+    description: "Bulk update result",
+    type: BulkUpdateStatusResponseDto,
+  })
+  bulkUpdateStatus(@Req() req: FieldFlowRequest, @Body() dto: BulkUpdateStatusDto) {
+    return this.prospectService.bulkUpdateStatus(req.fieldflowUser.userId, dto.ids, dto.status);
+  }
+
+  @Delete("bulk")
+  @ApiOperation({ summary: "Delete multiple prospects" })
+  @ApiResponse({ status: 200, description: "Bulk delete result", type: BulkDeleteResponseDto })
+  bulkDelete(@Req() req: FieldFlowRequest, @Body() dto: BulkDeleteDto) {
+    return this.prospectService.bulkDelete(req.fieldflowUser.userId, dto.ids);
+  }
+
+  @Post("import")
+  @ApiOperation({ summary: "Import prospects from CSV data" })
+  @ApiResponse({ status: 201, description: "Import result", type: ImportProspectsResultDto })
+  importProspects(@Req() req: FieldFlowRequest, @Body() dto: ImportProspectsDto) {
+    return this.prospectService.importFromCsv(
+      req.fieldflowUser.userId,
+      dto.rows,
+      dto.skipInvalid ?? true,
+    );
   }
 
   @Get(":id")

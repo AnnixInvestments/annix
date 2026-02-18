@@ -225,3 +225,149 @@ export class NearbyProspectsQueryDto {
   @IsOptional()
   limit?: number;
 }
+
+export class BulkUpdateStatusDto {
+  @ApiProperty({ description: "Array of prospect IDs to update", example: [1, 2, 3] })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  ids: number[];
+
+  @ApiProperty({ description: "New status for all selected prospects", enum: ProspectStatus })
+  @IsEnum(ProspectStatus)
+  status: ProspectStatus;
+}
+
+export class BulkUpdateStatusResponseDto {
+  @ApiProperty({ description: "Number of prospects updated" })
+  updated: number;
+
+  @ApiProperty({ description: "IDs of prospects that were updated" })
+  updatedIds: number[];
+
+  @ApiProperty({
+    description: "IDs of prospects that were not found (belong to another user or don't exist)",
+  })
+  notFoundIds: number[];
+}
+
+export class BulkDeleteDto {
+  @ApiProperty({ description: "Array of prospect IDs to delete", example: [1, 2, 3] })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  ids: number[];
+}
+
+export class BulkDeleteResponseDto {
+  @ApiProperty({ description: "Number of prospects deleted" })
+  deleted: number;
+
+  @ApiProperty({ description: "IDs of prospects that were deleted" })
+  deletedIds: number[];
+
+  @ApiProperty({ description: "IDs of prospects that were not found" })
+  notFoundIds: number[];
+}
+
+export class ImportProspectRowDto {
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  companyName?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  contactName?: string;
+
+  @ApiPropertyOptional()
+  @IsEmail()
+  @IsOptional()
+  contactEmail?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  contactPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  contactTitle?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  streetAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  province?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  postalCode?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  country?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  priority?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  notes?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  tags?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  estimatedValue?: string;
+}
+
+export class ImportProspectsDto {
+  @ApiProperty({ description: "Array of prospect data rows to import" })
+  @IsArray()
+  rows: ImportProspectRowDto[];
+
+  @ApiPropertyOptional({
+    description: "Whether to skip rows with validation errors",
+    default: true,
+  })
+  @IsOptional()
+  skipInvalid?: boolean;
+}
+
+export class ImportProspectsResultDto {
+  @ApiProperty({ description: "Number of prospects successfully imported" })
+  imported: number;
+
+  @ApiProperty({ description: "Number of rows that were skipped due to errors" })
+  skipped: number;
+
+  @ApiProperty({ description: "Details of any errors encountered" })
+  errors: Array<{ row: number; error: string }>;
+
+  @ApiProperty({ description: "IDs of newly created prospects" })
+  createdIds: number[];
+}

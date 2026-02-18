@@ -124,6 +124,49 @@ export interface CreateProspectDto {
   customFields?: Record<string, unknown>;
 }
 
+export interface BulkUpdateStatusResponse {
+  updated: number;
+  updatedIds: number[];
+  notFoundIds: number[];
+}
+
+export interface BulkDeleteResponse {
+  deleted: number;
+  deletedIds: number[];
+  notFoundIds: number[];
+}
+
+export interface DuplicateProspects {
+  field: string;
+  value: string;
+  prospects: Prospect[];
+}
+
+export interface ImportProspectRow {
+  companyName?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactTitle?: string;
+  streetAddress?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  country?: string;
+  status?: string;
+  priority?: string;
+  notes?: string;
+  tags?: string;
+  estimatedValue?: string;
+}
+
+export interface ImportProspectsResult {
+  imported: number;
+  skipped: number;
+  errors: Array<{ row: number; error: string }>;
+  createdIds: number[];
+}
+
 export interface Visit {
   id: number;
   prospectId: number;
@@ -663,6 +706,66 @@ export const fieldflowApi = {
         headers: fieldflowAuthHeaders(),
       });
       return handleResponse<Prospect[]>(response);
+    },
+
+    bulkUpdateStatus: async (
+      ids: number[],
+      status: ProspectStatus,
+    ): Promise<BulkUpdateStatusResponse> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/bulk/status`, {
+        method: "PATCH",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids, status }),
+      });
+      return handleResponse<BulkUpdateStatusResponse>(response);
+    },
+
+    bulkDelete: async (ids: number[]): Promise<BulkDeleteResponse> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/bulk`, {
+        method: "DELETE",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids }),
+      });
+      return handleResponse<BulkDeleteResponse>(response);
+    },
+
+    exportCsv: async (): Promise<Blob> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/export/csv`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Export failed" }));
+        throw new Error(error.message);
+      }
+      return response.blob();
+    },
+
+    duplicates: async (): Promise<DuplicateProspects[]> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/duplicates`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<DuplicateProspects[]>(response);
+    },
+
+    import: async (
+      rows: ImportProspectRow[],
+      skipInvalid = true,
+    ): Promise<ImportProspectsResult> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/prospects/import`, {
+        method: "POST",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ rows, skipInvalid }),
+      });
+      return handleResponse<ImportProspectsResult>(response);
     },
   },
 

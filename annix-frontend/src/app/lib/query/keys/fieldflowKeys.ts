@@ -16,6 +16,7 @@ export const fieldflowKeys = {
       [...fieldflowKeys.prospects.all, "nearby", lat, lng, radiusKm] as const,
     stats: () => [...fieldflowKeys.prospects.all, "stats"] as const,
     followUps: () => [...fieldflowKeys.prospects.all, "followUps"] as const,
+    duplicates: () => [...fieldflowKeys.prospects.all, "duplicates"] as const,
   },
   meetings: {
     all: ["fieldflow", "meetings"] as const,

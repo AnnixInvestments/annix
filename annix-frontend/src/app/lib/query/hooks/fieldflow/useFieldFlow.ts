@@ -1,10 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  type BulkDeleteResponse,
+  type BulkUpdateStatusResponse,
   type CreateMeetingDto,
   type CreateProspectDto,
   type CreateVisitDto,
+  type DuplicateProspects,
   type FieldFlowDashboard,
   fieldflowApi,
+  type ImportProspectRow,
+  type ImportProspectsResult,
   type Meeting,
   type Prospect,
   type ProspectStatus,
@@ -119,6 +124,59 @@ export function useDeleteProspect() {
 
   return useMutation({
     mutationFn: (id: number) => fieldflowApi.prospects.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.prospects.all });
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.dashboard.all });
+    },
+  });
+}
+
+export function useBulkUpdateProspectStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation<BulkUpdateStatusResponse, Error, { ids: number[]; status: ProspectStatus }>({
+    mutationFn: ({ ids, status }) => fieldflowApi.prospects.bulkUpdateStatus(ids, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.prospects.all });
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.dashboard.all });
+    },
+  });
+}
+
+export function useBulkDeleteProspects() {
+  const queryClient = useQueryClient();
+
+  return useMutation<BulkDeleteResponse, Error, number[]>({
+    mutationFn: (ids) => fieldflowApi.prospects.bulkDelete(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.prospects.all });
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.dashboard.all });
+    },
+  });
+}
+
+export function useProspectsCsvExport() {
+  return useMutation<Blob, Error, void>({
+    mutationFn: () => fieldflowApi.prospects.exportCsv(),
+  });
+}
+
+export function useProspectDuplicates() {
+  return useQuery<DuplicateProspects[]>({
+    queryKey: fieldflowKeys.prospects.duplicates(),
+    queryFn: () => fieldflowApi.prospects.duplicates(),
+  });
+}
+
+export function useImportProspects() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ImportProspectsResult,
+    Error,
+    { rows: ImportProspectRow[]; skipInvalid?: boolean }
+  >({
+    mutationFn: ({ rows, skipInvalid }) => fieldflowApi.prospects.import(rows, skipInvalid),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fieldflowKeys.prospects.all });
       queryClient.invalidateQueries({ queryKey: fieldflowKeys.dashboard.all });

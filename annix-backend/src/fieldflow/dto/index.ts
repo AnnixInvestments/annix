@@ -34,7 +34,14 @@ export {
   UpdateMeetingDto,
 } from "./meeting.dto";
 export {
+  BulkDeleteDto,
+  BulkDeleteResponseDto,
+  BulkUpdateStatusDto,
+  BulkUpdateStatusResponseDto,
   CreateProspectDto,
+  ImportProspectRowDto,
+  ImportProspectsDto,
+  ImportProspectsResultDto,
   NearbyProspectsQueryDto,
   ProspectResponseDto,
   UpdateProspectDto,

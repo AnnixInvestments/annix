@@ -23,5 +23,5 @@ export type {
   TranscriptSegment,
 } from "./meeting-transcript.entity";
 export { MeetingTranscript } from "./meeting-transcript.entity";
-export { Prospect, ProspectPriority, ProspectStatus } from "./prospect.entity";
+export { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "./prospect.entity";
 export { Visit, VisitOutcome, VisitType } from "./visit.entity";

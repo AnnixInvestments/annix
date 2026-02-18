@@ -1,9 +1,17 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { CreateProspectDto, NearbyProspectsQueryDto, UpdateProspectDto } from "../dto";
-import { Prospect, ProspectStatus } from "../entities";
+import {
+  BulkDeleteResponseDto,
+  BulkUpdateStatusResponseDto,
+  CreateProspectDto,
+  ImportProspectRowDto,
+  ImportProspectsResultDto,
+  NearbyProspectsQueryDto,
+  UpdateProspectDto,
+} from "../dto";
+import { Prospect, ProspectPriority, ProspectStatus } from "../entities";
 
 @Injectable()
 export class ProspectService {
@@ -189,5 +197,246 @@ export class ProspectService {
       })
       .orderBy("prospect.next_follow_up_at", "ASC")
       .getMany();
+  }
+
+  async bulkUpdateStatus(
+    ownerId: number,
+    ids: number[],
+    status: ProspectStatus,
+  ): Promise<BulkUpdateStatusResponseDto> {
+    const ownedProspects = await this.prospectRepo.find({
+      where: { ownerId, id: In(ids) },
+      select: ["id"],
+    });
+
+    const ownedIds = ownedProspects.map((p) => p.id);
+    const notFoundIds = ids.filter((id) => !ownedIds.includes(id));
+
+    if (ownedIds.length > 0) {
+      await this.prospectRepo.update({ id: In(ownedIds), ownerId }, { status });
+      this.logger.log(
+        `Bulk status update: ${ownedIds.length} prospects to ${status} by user ${ownerId}`,
+      );
+    }
+
+    return {
+      updated: ownedIds.length,
+      updatedIds: ownedIds,
+      notFoundIds,
+    };
+  }
+
+  async bulkDelete(ownerId: number, ids: number[]): Promise<BulkDeleteResponseDto> {
+    const ownedProspects = await this.prospectRepo.find({
+      where: { ownerId, id: In(ids) },
+      select: ["id"],
+    });
+
+    const ownedIds = ownedProspects.map((p) => p.id);
+    const notFoundIds = ids.filter((id) => !ownedIds.includes(id));
+
+    if (ownedIds.length > 0) {
+      await this.prospectRepo.delete({ id: In(ownedIds), ownerId });
+      this.logger.log(`Bulk delete: ${ownedIds.length} prospects by user ${ownerId}`);
+    }
+
+    return {
+      deleted: ownedIds.length,
+      deletedIds: ownedIds,
+      notFoundIds,
+    };
+  }
+
+  async exportToCsv(ownerId: number): Promise<string> {
+    const prospects = await this.findAll(ownerId);
+
+    const headers = [
+      "ID",
+      "Company Name",
+      "Contact Name",
+      "Contact Email",
+      "Contact Phone",
+      "Contact Title",
+      "Street Address",
+      "City",
+      "Province",
+      "Postal Code",
+      "Country",
+      "Latitude",
+      "Longitude",
+      "Status",
+      "Priority",
+      "Estimated Value",
+      "Tags",
+      "Notes",
+      "Last Contacted",
+      "Next Follow-Up",
+      "Created At",
+      "Updated At",
+    ];
+
+    const escapeField = (value: string | null | undefined): string => {
+      if (value === null || value === undefined) return "";
+      const str = String(value);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = prospects.map((p) =>
+      [
+        p.id,
+        escapeField(p.companyName),
+        escapeField(p.contactName),
+        escapeField(p.contactEmail),
+        escapeField(p.contactPhone),
+        escapeField(p.contactTitle),
+        escapeField(p.streetAddress),
+        escapeField(p.city),
+        escapeField(p.province),
+        escapeField(p.postalCode),
+        escapeField(p.country),
+        p.latitude ?? "",
+        p.longitude ?? "",
+        p.status,
+        p.priority,
+        p.estimatedValue ?? "",
+        escapeField(p.tags?.join("; ")),
+        escapeField(p.notes),
+        p.lastContactedAt?.toISOString() ?? "",
+        p.nextFollowUpAt?.toISOString() ?? "",
+        p.createdAt.toISOString(),
+        p.updatedAt.toISOString(),
+      ].join(","),
+    );
+
+    return [headers.join(","), ...rows].join("\n");
+  }
+
+  async findDuplicates(
+    ownerId: number,
+  ): Promise<Array<{ field: string; value: string; prospects: Prospect[] }>> {
+    const prospects = await this.findAll(ownerId);
+    const duplicates: Array<{ field: string; value: string; prospects: Prospect[] }> = [];
+
+    const checkDuplicates = (
+      field: "companyName" | "contactEmail" | "contactPhone",
+      fieldLabel: string,
+    ) => {
+      const valueMap = new Map<string, Prospect[]>();
+
+      prospects.forEach((p) => {
+        const value = p[field];
+        if (value) {
+          const normalizedValue = value.toLowerCase().trim();
+          const existing = valueMap.get(normalizedValue) ?? [];
+          valueMap.set(normalizedValue, [...existing, p]);
+        }
+      });
+
+      valueMap.forEach((matchingProspects, value) => {
+        if (matchingProspects.length > 1) {
+          duplicates.push({
+            field: fieldLabel,
+            value,
+            prospects: matchingProspects,
+          });
+        }
+      });
+    };
+
+    checkDuplicates("companyName", "Company Name");
+    checkDuplicates("contactEmail", "Email");
+    checkDuplicates("contactPhone", "Phone");
+
+    return duplicates;
+  }
+
+  async importFromCsv(
+    ownerId: number,
+    rows: ImportProspectRowDto[],
+    skipInvalid = true,
+  ): Promise<ImportProspectsResultDto> {
+    const result: ImportProspectsResultDto = {
+      imported: 0,
+      skipped: 0,
+      errors: [],
+      createdIds: [],
+    };
+
+    const validStatuses = Object.values(ProspectStatus);
+    const validPriorities = Object.values(ProspectPriority);
+
+    const processedProspects = rows.map((row, index) => {
+      if (!row.companyName?.trim()) {
+        return { row: index + 1, error: "Company name is required", data: null };
+      }
+
+      const status = row.status?.toLowerCase() as ProspectStatus;
+      const priority = row.priority?.toLowerCase() as ProspectPriority;
+
+      if (row.status && !validStatuses.includes(status)) {
+        return { row: index + 1, error: `Invalid status: ${row.status}`, data: null };
+      }
+
+      if (row.priority && !validPriorities.includes(priority)) {
+        return { row: index + 1, error: `Invalid priority: ${row.priority}`, data: null };
+      }
+
+      const estimatedValue = row.estimatedValue
+        ? parseFloat(row.estimatedValue.replace(/[^0-9.-]/g, ""))
+        : null;
+
+      const tags = row.tags
+        ? row.tags
+            .split(/[;,]/)
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : null;
+
+      return {
+        row: index + 1,
+        error: null,
+        data: {
+          ownerId,
+          companyName: row.companyName.trim(),
+          contactName: row.contactName?.trim() ?? null,
+          contactEmail: row.contactEmail?.trim() ?? null,
+          contactPhone: row.contactPhone?.trim() ?? null,
+          contactTitle: row.contactTitle?.trim() ?? null,
+          streetAddress: row.streetAddress?.trim() ?? null,
+          city: row.city?.trim() ?? null,
+          province: row.province?.trim() ?? null,
+          postalCode: row.postalCode?.trim() ?? null,
+          country: row.country?.trim() ?? "South Africa",
+          status: status || ProspectStatus.NEW,
+          priority: priority || ProspectPriority.MEDIUM,
+          notes: row.notes?.trim() ?? null,
+          tags,
+          estimatedValue: Number.isNaN(estimatedValue) ? null : estimatedValue,
+        },
+      };
+    });
+
+    const validProspects = processedProspects.filter((p) => p.data !== null);
+    const invalidProspects = processedProspects.filter((p) => p.error !== null);
+
+    result.errors = invalidProspects.map((p) => ({ row: p.row, error: p.error! }));
+    result.skipped = invalidProspects.length;
+
+    if (!skipInvalid && invalidProspects.length > 0) {
+      return result;
+    }
+
+    if (validProspects.length > 0) {
+      const prospects = validProspects.map((p) => this.prospectRepo.create(p.data!));
+      const saved = await this.prospectRepo.save(prospects);
+      result.imported = saved.length;
+      result.createdIds = saved.map((p) => p.id);
+      this.logger.log(`Imported ${saved.length} prospects for user ${ownerId}`);
+    }
+
+    return result;
   }
 }

@@ -1,14 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
-import type { CreateProspectDto, Prospect, ProspectStatus } from "@/app/lib/api/fieldflowApi";
+import type {
+  CreateProspectDto,
+  ImportProspectRow,
+  Prospect,
+  ProspectStatus,
+} from "@/app/lib/api/fieldflowApi";
 import {
+  useBulkDeleteProspects,
+  useBulkUpdateProspectStatus,
   useCreateProspect,
   useDeleteProspect,
+  useImportProspects,
   useProspectStats,
   useProspects,
+  useProspectsCsvExport,
   useUpdateProspectStatus,
 } from "@/app/lib/query/hooks";
 
@@ -61,10 +70,16 @@ function ProspectCard({
   prospect,
   onStatusChange,
   onDelete,
+  selectionMode,
+  isSelected,
+  onSelect,
 }: {
   prospect: Prospect;
   onStatusChange: (id: number, status: ProspectStatus) => void;
   onDelete: (id: number) => void;
+  selectionMode: boolean;
+  isSelected: boolean;
+  onSelect: (id: number, selected: boolean) => void;
 }) {
   const [showActions, setShowActions] = useState(false);
 
@@ -74,43 +89,59 @@ function ProspectCard({
       : null;
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+    <div
+      className={`bg-white dark:bg-slate-800 rounded-lg shadow-sm border p-4 transition-colors ${
+        isSelected
+          ? "border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-800"
+          : "border-gray-200 dark:border-slate-700"
+      }`}
+    >
       <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <Link href={`/fieldflow/prospects/${prospect.id}`}>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400">
-              {prospect.companyName}
-            </h3>
-          </Link>
-          {prospect.contactName && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-              {prospect.contactName}
-              {prospect.contactTitle && ` - ${prospect.contactTitle}`}
-            </p>
+        <div className="flex items-start gap-3 flex-1 min-w-0">
+          {selectionMode && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => onSelect(prospect.id, e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
           )}
-          {(prospect.city || prospect.province) && (
-            <p className="text-sm text-gray-500 dark:text-gray-500 flex items-center gap-1 mt-1">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-                />
-              </svg>
-              {[prospect.city, prospect.province].filter(Boolean).join(", ")}
-            </p>
-          )}
+          <div className="flex-1 min-w-0">
+            <Link href={`/fieldflow/prospects/${prospect.id}`}>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate hover:text-blue-600 dark:hover:text-blue-400">
+                {prospect.companyName}
+              </h3>
+            </Link>
+            {prospect.contactName && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                {prospect.contactName}
+                {prospect.contactTitle && ` - ${prospect.contactTitle}`}
+              </p>
+            )}
+            {(prospect.city || prospect.province) && (
+              <p className="text-sm text-gray-500 dark:text-gray-500 flex items-center gap-1 mt-1">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                  />
+                </svg>
+                {[prospect.city, prospect.province].filter(Boolean).join(", ")}
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <StatusBadge status={prospect.status} />
@@ -530,16 +561,299 @@ function CreateProspectModal({
   );
 }
 
+function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function parseCsv(text: string): ImportProspectRow[] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return [];
+
+  const headerLine = lines[0];
+  const headers = parseCsvLine(headerLine).map((h) => h.toLowerCase().replace(/[^a-z]/g, ""));
+
+  const fieldMap: Record<string, keyof ImportProspectRow> = {
+    companyname: "companyName",
+    company: "companyName",
+    contactname: "contactName",
+    contact: "contactName",
+    name: "contactName",
+    email: "contactEmail",
+    contactemail: "contactEmail",
+    phone: "contactPhone",
+    contactphone: "contactPhone",
+    telephone: "contactPhone",
+    title: "contactTitle",
+    contacttitle: "contactTitle",
+    jobtitle: "contactTitle",
+    address: "streetAddress",
+    streetaddress: "streetAddress",
+    street: "streetAddress",
+    city: "city",
+    province: "province",
+    state: "province",
+    region: "province",
+    postalcode: "postalCode",
+    postal: "postalCode",
+    zip: "postalCode",
+    zipcode: "postalCode",
+    country: "country",
+    status: "status",
+    priority: "priority",
+    notes: "notes",
+    tags: "tags",
+    estimatedvalue: "estimatedValue",
+    value: "estimatedValue",
+  };
+
+  return lines.slice(1).map((line) => {
+    const values = parseCsvLine(line);
+    const row: ImportProspectRow = {};
+
+    headers.forEach((header, i) => {
+      const field = fieldMap[header];
+      if (field && values[i]) {
+        row[field] = values[i];
+      }
+    });
+
+    return row;
+  });
+}
+
+function ImportProspectsModal({
+  isOpen,
+  onClose,
+  onImport,
+  isImporting,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onImport: (rows: ImportProspectRow[]) => Promise<void>;
+  isImporting: boolean;
+}) {
+  const [parsedRows, setParsedRows] = useState<ImportProspectRow[]>([]);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (!isOpen) return null;
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const rows = parseCsv(text);
+      setParsedRows(rows);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    const validRows = parsedRows.filter((r) => r.companyName?.trim());
+    await onImport(validRows);
+    setParsedRows([]);
+    setFileName(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleClose = () => {
+    setParsedRows([]);
+    setFileName(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    onClose();
+  };
+
+  const validRowsCount = parsedRows.filter((r) => r.companyName?.trim()).length;
+  const invalidRowsCount = parsedRows.length - validRowsCount;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex min-h-full items-end justify-center p-4 sm:items-center sm:p-0">
+        <div
+          className="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/75 transition-opacity"
+          onClick={handleClose}
+        />
+        <div className="relative transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Import Prospects
+            </h3>
+            <button onClick={handleClose} className="text-gray-400 hover:text-gray-500">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Upload CSV File
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleFileSelect}
+                className="block w-full text-sm text-gray-500 dark:text-gray-400
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-md file:border-0
+                  file:text-sm file:font-medium
+                  file:bg-blue-50 file:text-blue-700
+                  dark:file:bg-blue-900/30 dark:file:text-blue-300
+                  hover:file:bg-blue-100 dark:hover:file:bg-blue-900/50"
+              />
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Required columns: Company Name. Optional: Contact Name, Email, Phone, City, Status,
+                Priority, etc.
+              </p>
+            </div>
+
+            {parsedRows.length > 0 && (
+              <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Preview ({fileName})
+                  </span>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-green-600 dark:text-green-400">
+                      {validRowsCount} valid
+                    </span>
+                    {invalidRowsCount > 0 && (
+                      <span className="text-red-600 dark:text-red-400">
+                        {invalidRowsCount} missing company name
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-slate-700">
+                      <tr>
+                        <th className="pb-2 pr-4">Company</th>
+                        <th className="pb-2 pr-4">Contact</th>
+                        <th className="pb-2 pr-4">Email</th>
+                        <th className="pb-2">City</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                      {parsedRows.slice(0, 10).map((row, i) => (
+                        <tr key={i} className={!row.companyName?.trim() ? "opacity-50" : ""}>
+                          <td className="py-2 pr-4 text-gray-900 dark:text-white">
+                            {row.companyName || <span className="text-red-500">Missing</span>}
+                          </td>
+                          <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">
+                            {row.contactName || "-"}
+                          </td>
+                          <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">
+                            {row.contactEmail || "-"}
+                          </td>
+                          <td className="py-2 text-gray-600 dark:text-gray-400">
+                            {row.city || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {parsedRows.length > 10 && (
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      ...and {parsedRows.length - 10} more rows
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleImport}
+              disabled={validRowsCount === 0 || isImporting}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isImporting && (
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+              )}
+              Import {validRowsCount} Prospect{validRowsCount !== 1 ? "s" : ""}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProspectsPage() {
   const { data: prospects, isLoading, error } = useProspects();
   const { data: stats } = useProspectStats();
   const createProspect = useCreateProspect();
   const deleteProspect = useDeleteProspect();
   const updateStatus = useUpdateProspectStatus();
+  const bulkUpdateStatus = useBulkUpdateProspectStatus();
+  const bulkDelete = useBulkDeleteProspects();
+  const exportCsv = useProspectsCsvExport();
+  const importProspects = useImportProspects();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ProspectStatus | "all">("all");
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showBulkStatusMenu, setShowBulkStatusMenu] = useState(false);
 
   if (isLoading) {
     return (
@@ -557,14 +871,20 @@ export default function ProspectsPage() {
     );
   }
 
+  const allTags = Array.from(
+    new Set((prospects ?? []).flatMap((p) => p.tags ?? []).filter(Boolean)),
+  ).sort();
+
   const filteredProspects = (prospects ?? []).filter((p) => {
     if (statusFilter !== "all" && p.status !== statusFilter) return false;
+    if (tagFilter && !(p.tags ?? []).includes(tagFilter)) return false;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       return (
         p.companyName.toLowerCase().includes(query) ||
         (p.contactName?.toLowerCase().includes(query) ?? false) ||
-        (p.city?.toLowerCase().includes(query) ?? false)
+        (p.city?.toLowerCase().includes(query) ?? false) ||
+        (p.tags ?? []).some((t) => t.toLowerCase().includes(query))
       );
     }
     return true;
@@ -583,6 +903,65 @@ export default function ProspectsPage() {
     await deleteProspect.mutateAsync(id);
   };
 
+  const handleSelect = (id: number, selected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredProspects.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProspects.map((p) => p.id)));
+    }
+  };
+
+  const handleBulkStatusChange = async (status: ProspectStatus) => {
+    await bulkUpdateStatus.mutateAsync({ ids: Array.from(selectedIds), status });
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+    setShowBulkStatusMenu(false);
+  };
+
+  const handleBulkDelete = async () => {
+    if (confirm(`Delete ${selectedIds.size} prospect(s)?`)) {
+      await bulkDelete.mutateAsync(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+    }
+  };
+
+  const handleExportCsv = async () => {
+    const blob = await exportCsv.mutateAsync();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "prospects.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    if (selectionMode) {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleImport = async (rows: ImportProspectRow[]) => {
+    await importProspects.mutateAsync({ rows, skipInvalid: true });
+    setShowImportModal(false);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -590,10 +969,75 @@ export default function ProspectsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Prospects</h1>
           <p className="text-gray-500 dark:text-gray-400">Manage your sales pipeline</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportCsv}
+            disabled={exportCsv.isPending}
+            className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2 disabled:opacity-50"
+            title="Export to CSV"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+              />
+            </svg>
+            <span className="hidden sm:inline">Export</span>
+          </button>
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
+            title="Import from CSV"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+              />
+            </svg>
+            <span className="hidden sm:inline">Import</span>
+          </button>
+          <button
+            onClick={toggleSelectionMode}
+            className={`px-3 py-2 text-sm font-medium border rounded-md flex items-center gap-2 ${
+              selectionMode
+                ? "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700"
+                : "text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
+            }`}
+            title={selectionMode ? "Exit selection mode" : "Select multiple"}
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span className="hidden sm:inline">{selectionMode ? "Cancel" : "Select"}</span>
+          </button>
           <Link
             href="/fieldflow/prospects/nearby"
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
+            className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
           >
             <svg
               className="w-4 h-4"
@@ -613,11 +1057,11 @@ export default function ProspectsPage() {
                 d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
               />
             </svg>
-            Find Nearby
+            <span className="hidden sm:inline">Find Nearby</span>
           </Link>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 flex items-center gap-2"
+            className="px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 flex items-center gap-2"
           >
             <svg
               className="w-4 h-4"
@@ -628,10 +1072,78 @@ export default function ProspectsPage() {
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            Add Prospect
+            <span className="hidden sm:inline">Add Prospect</span>
           </button>
         </div>
       </div>
+
+      {selectionMode && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleSelectAll}
+              className="text-sm text-blue-700 dark:text-blue-300 hover:underline"
+            >
+              {selectedIds.size === filteredProspects.length ? "Deselect all" : "Select all"}
+            </button>
+            <span className="text-sm text-blue-700 dark:text-blue-300">
+              {selectedIds.size} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={() => setShowBulkStatusMenu(!showBulkStatusMenu)}
+                disabled={selectedIds.size === 0}
+                className="px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 bg-white dark:bg-slate-800 border border-blue-300 dark:border-blue-700 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                Change Status
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                  />
+                </svg>
+              </button>
+              {showBulkStatusMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowBulkStatusMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-800 rounded-md shadow-lg border border-gray-200 dark:border-slate-700 z-20">
+                    <div className="py-1">
+                      {(Object.keys(statusLabels) as ProspectStatus[]).map((status) => (
+                        <button
+                          key={status}
+                          onClick={() => handleBulkStatusChange(status)}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                        >
+                          {statusLabels[status]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <button
+              onClick={handleBulkDelete}
+              disabled={selectedIds.size === 0}
+              className="px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 bg-white dark:bg-slate-800 border border-red-300 dark:border-red-700 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
 
       {stats && (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -648,6 +1160,33 @@ export default function ProspectsPage() {
               {statusLabels[status]} ({stats[status] ?? 0})
             </button>
           ))}
+        </div>
+      )}
+
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-gray-500 dark:text-gray-400">Tags:</span>
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => setTagFilter(tagFilter === tag ? null : tag)}
+              className={`px-2 py-1 text-sm rounded-full transition-colors ${
+                tagFilter === tag
+                  ? "bg-blue-600 text-white"
+                  : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+          {tagFilter && (
+            <button
+              onClick={() => setTagFilter(null)}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              Clear
+            </button>
+          )}
         </div>
       )}
 
@@ -709,6 +1248,9 @@ export default function ProspectsPage() {
               prospect={prospect}
               onStatusChange={handleStatusChange}
               onDelete={handleDelete}
+              selectionMode={selectionMode}
+              isSelected={selectedIds.has(prospect.id)}
+              onSelect={handleSelect}
             />
           ))}
         </div>
@@ -718,6 +1260,13 @@ export default function ProspectsPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreate}
+      />
+
+      <ImportProspectsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleImport}
+        isImporting={importProspects.isPending}
       />
     </div>
   );

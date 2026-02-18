@@ -161,6 +161,7 @@ export default function ProspectDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<CreateProspectDto>>({});
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [tagInput, setTagInput] = useState("");
 
   if (isLoading) {
     return (
@@ -210,6 +211,10 @@ export default function ProspectDetailPage() {
       notes: prospect.notes ?? "",
       priority: prospect.priority,
       estimatedValue: prospect.estimatedValue ?? undefined,
+      tags: prospect.tags ?? [],
+      nextFollowUpAt: prospect.nextFollowUpAt
+        ? new Date(prospect.nextFollowUpAt).toISOString().slice(0, 16)
+        : undefined,
     });
     setIsEditing(true);
   };
@@ -246,6 +251,45 @@ export default function ProspectDetailPage() {
       await deleteProspect.mutateAsync(id);
       router.push("/fieldflow/prospects");
     }
+  };
+
+  const handleAddTag = () => {
+    const tag = tagInput.trim().toLowerCase();
+    if (tag && !editForm.tags?.includes(tag)) {
+      setEditForm({ ...editForm, tags: [...(editForm.tags ?? []), tag] });
+    }
+    setTagInput("");
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setEditForm({
+      ...editForm,
+      tags: (editForm.tags ?? []).filter((t) => t !== tagToRemove),
+    });
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
+  const handleScheduleFollowUp = async (days: number) => {
+    const followUpDate = new Date();
+    followUpDate.setDate(followUpDate.getDate() + days);
+    followUpDate.setHours(9, 0, 0, 0);
+    await updateProspect.mutateAsync({
+      id,
+      dto: { nextFollowUpAt: followUpDate.toISOString() },
+    });
+  };
+
+  const handleClearFollowUp = async () => {
+    await updateProspect.mutateAsync({
+      id,
+      dto: { nextFollowUpAt: undefined },
+    });
   };
 
   return (
@@ -460,6 +504,74 @@ export default function ProspectDetailPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Tags
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagKeyDown}
+                      placeholder="Add a tag..."
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddTag}
+                      className="px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {editForm.tags && editForm.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {editForm.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full"
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTag(tag)}
+                            className="hover:text-blue-900 dark:hover:text-blue-100"
+                          >
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Next Follow-up
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={editForm.nextFollowUpAt ?? ""}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, nextFollowUpAt: e.target.value || undefined })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
+                  />
+                </div>
+
                 <div className="flex justify-end gap-3">
                   <button
                     onClick={() => setIsEditing(false)}
@@ -556,9 +668,61 @@ export default function ProspectDetailPage() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Activity Timeline
             </h2>
-            <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-              No activity recorded yet
-            </p>
+            {!visits || visits.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+                No activity recorded yet
+              </p>
+            ) : (
+              <div className="relative">
+                <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-slate-700" />
+                <div className="space-y-6">
+                  {visits
+                    .sort(
+                      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+                    )
+                    .map((visit) => (
+                      <div key={visit.id} className="relative flex gap-4">
+                        <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                          {activityIcons.visit}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                              {visit.visitType.replace("_", " ")} Visit
+                            </span>
+                            {visit.outcome && (
+                              <span
+                                className={`px-2 py-0.5 text-xs rounded-full ${
+                                  visit.outcome === "successful"
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                    : visit.outcome === "not_interested"
+                                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                      : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                                }`}
+                              >
+                                {visit.outcome.replace("_", " ")}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {formatDateTimeZA(visit.createdAt.toString())}
+                          </p>
+                          {visit.notes && (
+                            <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                              {visit.notes}
+                            </p>
+                          )}
+                          {visit.contactMet && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Met with: {visit.contactMet}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -638,6 +802,58 @@ export default function ProspectDetailPage() {
                 {markContacted.isPending ? "Updating..." : "Mark Contacted"}
               </button>
             </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Schedule Follow-up
+            </h2>
+            {prospect.nextFollowUpAt && (
+              <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  Scheduled: {formatDateZA(prospect.nextFollowUpAt.toString())}
+                </p>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleScheduleFollowUp(1)}
+                disabled={updateProspect.isPending}
+                className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50"
+              >
+                Tomorrow
+              </button>
+              <button
+                onClick={() => handleScheduleFollowUp(3)}
+                disabled={updateProspect.isPending}
+                className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50"
+              >
+                In 3 days
+              </button>
+              <button
+                onClick={() => handleScheduleFollowUp(7)}
+                disabled={updateProspect.isPending}
+                className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50"
+              >
+                In 1 week
+              </button>
+              <button
+                onClick={() => handleScheduleFollowUp(14)}
+                disabled={updateProspect.isPending}
+                className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50"
+              >
+                In 2 weeks
+              </button>
+            </div>
+            {prospect.nextFollowUpAt && (
+              <button
+                onClick={handleClearFollowUp}
+                disabled={updateProspect.isPending}
+                className="w-full mt-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-50"
+              >
+                Clear Follow-up
+              </button>
+            )}
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
