@@ -1708,7 +1708,7 @@ export default function ProjectDetailsStep({
           </h4>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <div data-field="customerName">
+            <div data-field="customerName" data-nix-target="customerName">
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Customer Name <span className="text-red-600">*</span>
               </label>
@@ -1727,7 +1727,7 @@ export default function ProjectDetailsStep({
               )}
             </div>
 
-            <div data-field="customerEmail">
+            <div data-field="customerEmail" data-nix-target="customerEmail">
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Customer Email <span className="text-red-600">*</span>
               </label>
@@ -1746,7 +1746,7 @@ export default function ProjectDetailsStep({
               )}
             </div>
 
-            <div data-field="customerPhone">
+            <div data-field="customerPhone" data-nix-target="customerPhone">
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Customer Phone <span className="text-red-600">*</span>
               </label>
@@ -1765,7 +1765,7 @@ export default function ProjectDetailsStep({
               )}
             </div>
 
-            <div data-field="requiredDate">
+            <div data-field="requiredDate" data-nix-target="requiredDate">
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Required Date <span className="text-red-600">*</span>
               </label>
@@ -1800,7 +1800,7 @@ export default function ProjectDetailsStep({
               <p className="mt-1 text-xs text-red-600">{errors.customerRfqReference}</p>
             )}
           </div>
-          <div data-field="projectName">
+          <div data-field="projectName" data-nix-target="projectName">
             <label className="block text-xs font-semibold text-gray-900 mb-1">Project Name</label>
             <input
               type="text"
@@ -1810,7 +1810,7 @@ export default function ProjectDetailsStep({
               placeholder="Optional project name"
             />
           </div>
-          <div data-field="description">
+          <div data-field="description" data-nix-target="description">
             <label className="block text-xs font-semibold text-gray-900 mb-1">
               RFQ Description
             </label>
@@ -1825,7 +1825,11 @@ export default function ProjectDetailsStep({
         </div>
 
         {/* Project Type Selection - Compact */}
-        <div data-field="projectType" className={projectTypeConfirmed ? "opacity-75" : ""}>
+        <div
+          data-field="projectType"
+          data-nix-target="projectType"
+          className={projectTypeConfirmed ? "opacity-75" : ""}
+        >
           <label
             className={`block text-xs font-semibold mb-1 ${hasProjectTypeError ? "text-red-700" : "text-gray-900"}`}
           >
@@ -1937,7 +1941,11 @@ export default function ProjectDetailsStep({
 
         {/* Required Products/Services Selection - Hidden when using Nix */}
         {!useNix && (
-          <div data-field="requiredProducts" className={projectTypeConfirmed ? "opacity-75" : ""}>
+          <div
+            data-field="requiredProducts"
+            data-nix-target="requiredProducts"
+            className={projectTypeConfirmed ? "opacity-75" : ""}
+          >
             <label className="block text-xs font-semibold text-gray-900 mb-1">
               Required Products & Services <span className="text-red-600">*</span>
               {projectTypeConfirmed && (
@@ -2168,7 +2176,7 @@ export default function ProjectDetailsStep({
               </div>
             )}
           </div>
-          <div>
+          <div data-nix-target="notes">
             <label className="block text-xs font-semibold text-gray-900 mb-1">Custom Notes</label>
             <textarea
               value={rfqData.notes}
@@ -2493,7 +2501,7 @@ export default function ProjectDetailsStep({
             </div>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-4" data-nix-target="siteAddress">
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               Site Address / Location Description
             </label>

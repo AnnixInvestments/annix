@@ -51,6 +51,13 @@ export class NixChatSession {
       rfqType?: string;
       portalContext: "customer" | "supplier" | "admin" | "general";
     };
+    guidedMode?: {
+      isActive: boolean;
+      currentStep: number;
+      currentFieldId: string | null;
+      completedFields: string[];
+      skippedFields: string[];
+    };
   };
 
   @Column({ name: "is_active", default: true })

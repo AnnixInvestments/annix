@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { GuidedHighlight } from "@/app/components/rfq/GuidedHighlight";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { useToast } from "@/app/components/Toast";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
@@ -292,6 +293,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     nixCloseChatPanel,
     nixSetChatSessionId,
     nixSetChatPanelGeometry,
+    nixGuidedModeActive,
     currentDraftId,
     draftNumber,
     isSavingDraft,
@@ -3365,6 +3367,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           }}
         />
       )}
+
+      {nixGuidedModeActive && rfqData.useNix && <GuidedHighlight />}
 
       {/* LocalStorage Draft Restoration Prompt */}
       {showDraftRestorePrompt && pendingLocalDraft && (

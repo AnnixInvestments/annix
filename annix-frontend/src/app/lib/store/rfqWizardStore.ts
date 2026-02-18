@@ -131,6 +131,12 @@ interface RfqWizardState {
   nixChatPanelVisible: boolean;
   nixChatPanelGeometry: { x: number; y: number; width: number; height: number } | null;
 
+  nixGuidedModeActive: boolean;
+  nixGuidedModeCurrentField: string | null;
+  nixGuidedModeCompletedFields: string[];
+  nixGuidedModePaused: boolean;
+  nixGuidedModeTooltipMessage: string | null;
+
   currentDraftId: number | null;
   draftNumber: string | null;
   isSavingDraft: boolean;
@@ -246,6 +252,16 @@ interface RfqWizardActions {
     showToast: (msg: string, type: "success" | "error" | "info") => void,
   ) => Promise<void>;
   nixItemsPageReady: (showToast: (msg: string, type: "success" | "error" | "info") => void) => void;
+
+  nixStartGuidedMode: () => void;
+  nixEndGuidedMode: () => void;
+  nixPauseGuidedMode: () => void;
+  nixResumeGuidedMode: () => void;
+  nixFocusGuidedField: (fieldId: string, tooltipMessage?: string) => void;
+  nixMarkFieldComplete: (fieldId: string) => void;
+  nixSkipGuidedField: () => void;
+  nixAdvanceToNextField: () => void;
+  nixClearGuidedModeTooltip: () => void;
 
   setCurrentDraftId: (id: number | null) => void;
   setDraftNumber: (number: string | null) => void;
@@ -463,6 +479,12 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         nixChatSessionId: null,
         nixChatPanelVisible: false,
         nixChatPanelGeometry: null,
+
+        nixGuidedModeActive: false,
+        nixGuidedModeCurrentField: null,
+        nixGuidedModeCompletedFields: [],
+        nixGuidedModePaused: false,
+        nixGuidedModeTooltipMessage: null,
 
         currentDraftId: null,
         draftNumber: null,
@@ -940,6 +962,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               nixChatSessionId: null,
               nixChatPanelVisible: false,
               nixChatPanelGeometry: null,
+              nixGuidedModeActive: false,
+              nixGuidedModeCurrentField: null,
+              nixGuidedModeCompletedFields: [],
+              nixGuidedModePaused: false,
+              nixGuidedModeTooltipMessage: null,
               currentDraftId: null,
               draftNumber: null,
               isSavingDraft: false,
@@ -1180,6 +1207,82 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           width: number;
           height: number;
         }) => set({ nixChatPanelGeometry: geometry }, false, "nixSetChatPanelGeometry"),
+
+        nixStartGuidedMode: () =>
+          set(
+            {
+              nixGuidedModeActive: true,
+              nixGuidedModeCurrentField: null,
+              nixGuidedModeCompletedFields: [],
+              nixGuidedModePaused: false,
+              nixGuidedModeTooltipMessage: null,
+            },
+            false,
+            "nixStartGuidedMode",
+          ),
+
+        nixEndGuidedMode: () =>
+          set(
+            {
+              nixGuidedModeActive: false,
+              nixGuidedModeCurrentField: null,
+              nixGuidedModePaused: false,
+              nixGuidedModeTooltipMessage: null,
+            },
+            false,
+            "nixEndGuidedMode",
+          ),
+
+        nixPauseGuidedMode: () => set({ nixGuidedModePaused: true }, false, "nixPauseGuidedMode"),
+
+        nixResumeGuidedMode: () =>
+          set({ nixGuidedModePaused: false }, false, "nixResumeGuidedMode"),
+
+        nixFocusGuidedField: (fieldId: string, tooltipMessage?: string) =>
+          set(
+            {
+              nixGuidedModeCurrentField: fieldId,
+              nixGuidedModeTooltipMessage: tooltipMessage ?? null,
+            },
+            false,
+            "nixFocusGuidedField",
+          ),
+
+        nixMarkFieldComplete: (fieldId: string) =>
+          set(
+            (state) => ({
+              nixGuidedModeCompletedFields: state.nixGuidedModeCompletedFields.includes(fieldId)
+                ? state.nixGuidedModeCompletedFields
+                : [...state.nixGuidedModeCompletedFields, fieldId],
+            }),
+            false,
+            "nixMarkFieldComplete",
+          ),
+
+        nixSkipGuidedField: () =>
+          set(
+            (state) => ({
+              nixGuidedModeCompletedFields: state.nixGuidedModeCurrentField
+                ? state.nixGuidedModeCompletedFields.includes(state.nixGuidedModeCurrentField)
+                  ? state.nixGuidedModeCompletedFields
+                  : [...state.nixGuidedModeCompletedFields, state.nixGuidedModeCurrentField]
+                : state.nixGuidedModeCompletedFields,
+              nixGuidedModeCurrentField: null,
+              nixGuidedModeTooltipMessage: null,
+            }),
+            false,
+            "nixSkipGuidedField",
+          ),
+
+        nixAdvanceToNextField: () =>
+          set(
+            { nixGuidedModeCurrentField: null, nixGuidedModeTooltipMessage: null },
+            false,
+            "nixAdvanceToNextField",
+          ),
+
+        nixClearGuidedModeTooltip: () =>
+          set({ nixGuidedModeTooltipMessage: null }, false, "nixClearGuidedModeTooltip"),
 
         nixCloseClarification: () =>
           set({ showNixClarification: false }, false, "nixCloseClarification"),

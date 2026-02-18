@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { fieldById } from "@/app/lib/config/rfq/fieldRegistry";
+import { useGuidedMode } from "@/app/lib/hooks/useGuidedMode";
 import {
   type ChatMessage,
   useCreateNixSession,
@@ -11,6 +13,7 @@ import {
   useValidateNixRfq,
   type ValidationIssue,
 } from "@/app/lib/query/hooks";
+import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 
 const NIX_SESSION_STORAGE_KEY = "nix-chat-session-id";
 
@@ -127,6 +130,101 @@ const SparklesIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const CopyIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+);
+
+const CompassIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <circle cx="12" cy="12" r="10" />
+    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+  </svg>
+);
+
+const CheckIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+interface NixActionFocusField {
+  action: "focus_field";
+  fieldId: string;
+  message?: string;
+}
+
+interface NixActionAdvanceField {
+  action: "advance_field";
+}
+
+interface NixActionEndGuidance {
+  action: "end_guidance";
+}
+
+interface NixActionStartGuidance {
+  action: "start_guidance";
+  fieldId?: string;
+}
+
+type NixAction =
+  | NixActionFocusField
+  | NixActionAdvanceField
+  | NixActionEndGuidance
+  | NixActionStartGuidance;
+
+const JSON_ACTION_REGEX = /```json\s*(\{[\s\S]*?"action"[\s\S]*?\})\s*```/g;
+
+const parseNixActions = (content: string): NixAction[] => {
+  const actions: NixAction[] = [];
+  const matches = content.matchAll(JSON_ACTION_REGEX);
+
+  for (const match of matches) {
+    try {
+      const parsed = JSON.parse(match[1]) as NixAction;
+      if (parsed && typeof parsed.action === "string") {
+        actions.push(parsed);
+      }
+    } catch {
+      // Invalid JSON, skip
+    }
+  }
+
+  return actions;
+};
+
+const stripActionBlocks = (content: string): string =>
+  content.replace(JSON_ACTION_REGEX, "").trim();
+
 type PortalContext = "customer" | "supplier" | "admin" | "general";
 
 interface ContextConfig {
@@ -143,12 +241,12 @@ const CONTEXT_CONFIGS: Record<PortalContext, ContextConfig> = {
     welcomeMessage:
       "I can help you create RFQs, understand piping specifications, and answer questions about your quotes.",
     quickActions: [
+      { label: "Guide me through the form", prompt: "Help me fill out this form" },
       { label: "Create a new RFQ item", prompt: "Help me add a new item to my RFQ" },
       {
         label: "Explain pipe specifications",
         prompt: "What do the different pipe end options mean?",
       },
-      { label: "Check my RFQ status", prompt: "What's the status of my current RFQs?" },
     ],
   },
   supplier: {
@@ -302,11 +400,52 @@ export function NixChatPanel({
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [initError, setInitError] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const contextConfig = CONTEXT_CONFIGS[portalContext];
+
+  const {
+    isActive: isGuidedModeActive,
+    progress: guidedModeProgress,
+    startGuidedMode,
+    endGuidedMode,
+    focusField,
+    advanceToNextField,
+  } = useGuidedMode();
+
+  const currentStep = useRfqWizardStore((s) => s.currentStep);
+  const nixGuidedModeCompletedFields = useRfqWizardStore((s) => s.nixGuidedModeCompletedFields);
+
+  const executeNixAction = useCallback(
+    (action: NixAction) => {
+      if (action.action === "focus_field") {
+        const fieldDef = fieldById(action.fieldId);
+        focusField(action.fieldId, action.message ?? fieldDef?.helpText);
+      } else if (action.action === "advance_field") {
+        advanceToNextField();
+      } else if (action.action === "end_guidance") {
+        endGuidedMode();
+      } else if (action.action === "start_guidance") {
+        startGuidedMode();
+        if (action.fieldId) {
+          const fieldDef = fieldById(action.fieldId);
+          setTimeout(() => focusField(action.fieldId!, fieldDef?.helpText), 100);
+        }
+      }
+    },
+    [focusField, advanceToNextField, endGuidedMode, startGuidedMode],
+  );
+
+  const processResponseActions = useCallback(
+    (content: string) => {
+      const actions = parseNixActions(content);
+      actions.forEach(executeNixAction);
+    },
+    [executeNixAction],
+  );
 
   const createSessionMutation = useCreateNixSession();
   const sendMessageMutation = useSendNixMessage();
@@ -495,6 +634,16 @@ export function NixChatPanel({
 
     setMessages((prev) => [...prev, tempUserMessage]);
 
+    const guidedModeContext = isGuidedModeActive
+      ? {
+          guidedMode: {
+            isActive: true,
+            currentStep,
+            completedFields: nixGuidedModeCompletedFields,
+          },
+        }
+      : {};
+
     sendMessageMutation.mutate(
       {
         sessionId,
@@ -503,15 +652,19 @@ export function NixChatPanel({
           currentRfqItems,
           lastValidationIssues: validationIssues,
           pageContext: pageContext ?? { currentPage: "unknown", portalContext },
+          ...guidedModeContext,
         },
         portalContext,
       },
       {
         onSuccess: (result) => {
+          processResponseActions(result.content);
+
+          const displayContent = stripActionBlocks(result.content);
           const assistantMessage: ChatMessage = {
             id: result.messageId,
             role: "assistant",
-            content: result.content,
+            content: displayContent,
             metadata: result.metadata as ChatMessage["metadata"],
             createdAt: new Date().toISOString(),
           };
@@ -642,10 +795,13 @@ export function NixChatPanel({
       },
       {
         onSuccess: (result) => {
+          processResponseActions(result.content);
+
+          const displayContent = stripActionBlocks(result.content);
           const assistantMessage: ChatMessage = {
             id: result.messageId,
             role: "assistant",
-            content: result.content,
+            content: displayContent,
             metadata: result.metadata as ChatMessage["metadata"],
             createdAt: new Date().toISOString(),
           };
@@ -686,6 +842,13 @@ export function NixChatPanel({
     if (severity === "warning") return <AlertCircleIcon className="h-4 w-4 text-yellow-500" />;
     return <InfoIcon className="h-4 w-4 text-blue-500" />;
   };
+
+  const copyMessageContent = useCallback((messageId: number, content: string) => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopiedMessageId(messageId);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    });
+  }, []);
 
   const isInteracting = isDragging || resizeEdge !== null;
 
@@ -748,10 +911,32 @@ export function NixChatPanel({
             <h3 className="font-semibold text-gray-900 dark:text-gray-100">
               {contextConfig.title}
             </h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400">{contextConfig.subtitle}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-gray-600 dark:text-gray-400">{contextConfig.subtitle}</p>
+              {isGuidedModeActive ? (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded text-xs font-medium">
+                  <CompassIcon className="w-3 h-3" />
+                  Guiding
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {isGuidedModeActive ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                endGuidedMode();
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="p-1 hover:bg-orange-100 dark:hover:bg-gray-600 rounded transition-colors"
+              aria-label="End guided mode"
+              title="End form guidance"
+            >
+              <XIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+            </button>
+          ) : null}
           {messages.length >= 2 && (
             <button
               onClick={(e) => {
@@ -880,8 +1065,22 @@ export function NixChatPanel({
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
                 ) : message.role === "assistant" ? (
-                  <div className="text-sm prose prose-sm prose-gray dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_table]:border-collapse [&_th]:bg-gray-200 dark:[&_th]:bg-gray-600 [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_td]:border [&_th]:border-gray-300 dark:[&_th]:border-gray-500 [&_td]:border-gray-300 dark:[&_td]:border-gray-500 overflow-x-auto">
-                    <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
+                  <div className="relative group">
+                    <button
+                      onClick={() => copyMessageContent(message.id, message.content)}
+                      className="absolute top-0 right-0 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-opacity"
+                      aria-label="Copy message"
+                      title="Copy to clipboard"
+                    >
+                      {copiedMessageId === message.id ? (
+                        <CheckIcon className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <CopyIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      )}
+                    </button>
+                    <div className="text-sm prose prose-sm prose-gray dark:prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_table]:text-xs [&_table]:border-collapse [&_th]:bg-gray-200 dark:[&_th]:bg-gray-600 [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_td]:border [&_th]:border-gray-300 dark:[&_th]:border-gray-500 [&_td]:border-gray-300 dark:[&_td]:border-gray-500 overflow-x-auto pr-6">
+                      <Markdown remarkPlugins={[remarkGfm]}>{message.content}</Markdown>
+                    </div>
                   </div>
                 ) : (
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>

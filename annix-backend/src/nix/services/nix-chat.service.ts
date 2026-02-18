@@ -5,7 +5,7 @@ import { AiChatService } from "../ai-providers/ai-chat.service";
 import { ChatMessage } from "../ai-providers/claude-chat.provider";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession } from "../entities/nix-chat-session.entity";
-import { PIPING_DOMAIN_KNOWLEDGE } from "../prompts/piping-domain.prompt";
+import { GUIDED_MODE_INSTRUCTIONS, PIPING_DOMAIN_KNOWLEDGE } from "../prompts/piping-domain.prompt";
 import { NixItemParserService } from "./nix-item-parser.service";
 
 export interface CreateSessionDto {
@@ -23,6 +23,13 @@ export interface SendMessageDto {
       currentPage: string;
       rfqType?: string;
       portalContext: "customer" | "supplier" | "admin" | "general";
+    };
+    guidedMode?: {
+      isActive: boolean;
+      currentStep: number;
+      currentFieldId: string | null;
+      completedFields: string[];
+      skippedFields: string[];
     };
   };
 }
@@ -109,6 +116,20 @@ export class NixChatService {
     if (dto.context?.pageContext) {
       session.sessionContext.pageContext = dto.context.pageContext;
     }
+    if (dto.context?.guidedMode) {
+      session.sessionContext.guidedMode = dto.context.guidedMode;
+    }
+
+    const shouldActivateGuidedMode = this.detectGuidedModeTrigger(dto.message);
+    if (shouldActivateGuidedMode && !session.sessionContext.guidedMode?.isActive) {
+      session.sessionContext.guidedMode = {
+        isActive: true,
+        currentStep: session.sessionContext.guidedMode?.currentStep ?? 1,
+        currentFieldId: null,
+        completedFields: session.sessionContext.guidedMode?.completedFields ?? [],
+        skippedFields: [],
+      };
+    }
 
     const userMessage: ChatMessage = { role: "user", content: dto.message };
     const conversationHistory = this.buildConversationHistory(session, userMessage);
@@ -172,6 +193,20 @@ export class NixChatService {
     }
     if (dto.context?.pageContext) {
       session.sessionContext.pageContext = dto.context.pageContext;
+    }
+    if (dto.context?.guidedMode) {
+      session.sessionContext.guidedMode = dto.context.guidedMode;
+    }
+
+    const shouldActivateGuidedMode = this.detectGuidedModeTrigger(dto.message);
+    if (shouldActivateGuidedMode && !session.sessionContext.guidedMode?.isActive) {
+      session.sessionContext.guidedMode = {
+        isActive: true,
+        currentStep: session.sessionContext.guidedMode?.currentStep ?? 1,
+        currentFieldId: null,
+        completedFields: session.sessionContext.guidedMode?.completedFields ?? [],
+        skippedFields: [],
+      };
     }
 
     const userMessage: ChatMessage = { role: "user", content: dto.message };
@@ -344,7 +379,41 @@ ${rfqType ? `- What type of RFQ they want (it's ${rfqType})` : ""}
 Instead, directly help them with their request based on this context.`;
     }
 
+    if (session.sessionContext.guidedMode?.isActive) {
+      prompt += GUIDED_MODE_INSTRUCTIONS;
+      prompt += "\n\n## Current Guided Mode State\n\n";
+      prompt += "**Guided mode is ACTIVE**. You are guiding the user through the form.\n";
+      prompt += `Current step: ${session.sessionContext.guidedMode.currentStep}\n`;
+
+      if (session.sessionContext.guidedMode.completedFields?.length) {
+        prompt += `Completed fields: ${session.sessionContext.guidedMode.completedFields.join(", ")}\n`;
+      }
+      if (session.sessionContext.guidedMode.currentFieldId) {
+        prompt += `Currently focused field: ${session.sessionContext.guidedMode.currentFieldId}\n`;
+      }
+      prompt +=
+        "\nContinue guiding the user through the remaining fields. Use action blocks to control the UI.";
+    }
+
     return prompt;
+  }
+
+  private detectGuidedModeTrigger(message: string): boolean {
+    const lowerMessage = message.toLowerCase();
+    const triggerPhrases = [
+      "help me fill out",
+      "help me fill in",
+      "guide me through",
+      "walk me through",
+      "help me complete",
+      "help with this form",
+      "guide me",
+      "show me how to fill",
+      "assist me with the form",
+      "help filling out",
+    ];
+
+    return triggerPhrases.some((phrase) => lowerMessage.includes(phrase));
   }
 
   private async saveMessage(
