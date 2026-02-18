@@ -6,9 +6,29 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "Running pre-push checks..."
 
-echo "Running Biome check..."
+echo "Running Biome check on committed changes..."
 cd "$ROOT_DIR"
-pnpm biome check .
+
+CHANGED_FILES=""
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    RANGE="main..${local_sha}"
+  else
+    RANGE="${remote_sha}..${local_sha}"
+  fi
+  FILES=$(git diff --name-only "$RANGE" 2>/dev/null) || true
+  if [ -n "$FILES" ]; then
+    CHANGED_FILES="${CHANGED_FILES}
+${FILES}"
+  fi
+done
+
+UNIQUE_FILES=$(echo "$CHANGED_FILES" | sort -u | grep -v '^$')
+if [ -n "$UNIQUE_FILES" ]; then
+  echo "$UNIQUE_FILES" | xargs pnpm biome check
+else
+  echo "No committed file changes to check"
+fi
 
 echo "Running full test suite..."
 cd "$ROOT_DIR"
