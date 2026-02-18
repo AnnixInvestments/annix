@@ -4,16 +4,18 @@
     {
       "name": "backend",
       "start": "pnpm dev:backend",
-      "stop": "lsof -ti:4001 | xargs kill -15 2>/dev/null; true",
-      "kill": "lsof -ti:4001 | xargs kill -9 2>/dev/null; true",
-      "readyPattern": "Nest application successfully started"
+      "stop": "powershell -Command \"Get-NetTCPConnection -LocalPort 4001 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"",
+      "kill": "powershell -Command \"Get-NetTCPConnection -LocalPort 4001 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"",
+      "readyPattern": "Nest application successfully started",
+      "port": 4001
     },
     {
       "name": "frontend",
       "start": "pnpm dev:frontend",
-      "stop": "lsof -ti:3000 | xargs kill -15 2>/dev/null; true",
-      "kill": "lsof -ti:3000 | xargs kill -9 2>/dev/null; true",
-      "readyPattern": "Ready in"
+      "stop": "powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"",
+      "kill": "powershell -Command \"Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }\"",
+      "readyPattern": "Ready in",
+      "port": 3000
     }
   ]
 }

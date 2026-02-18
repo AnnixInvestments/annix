@@ -78,6 +78,21 @@ export class RepProfile {
   @Column({ name: "setup_completed_at", type: "timestamp", nullable: true })
   setupCompletedAt: Date | null;
 
+  @Column({ name: "default_buffer_before_minutes", type: "int", default: 15 })
+  defaultBufferBeforeMinutes: number;
+
+  @Column({ name: "default_buffer_after_minutes", type: "int", default: 15 })
+  defaultBufferAfterMinutes: number;
+
+  @Column({ name: "working_hours_start", type: "varchar", length: 5, default: "08:00" })
+  workingHoursStart: string;
+
+  @Column({ name: "working_hours_end", type: "varchar", length: 5, default: "17:00" })
+  workingHoursEnd: string;
+
+  @Column({ name: "working_days", type: "varchar", length: 20, default: "1,2,3,4,5" })
+  workingDays: string;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

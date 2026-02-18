@@ -10,6 +10,7 @@ import {
   useConnectCalendar,
   useDisconnectCalendar,
   useSyncCalendar,
+  useSyncConflictCount,
 } from "@/app/lib/query/hooks";
 
 interface CalDAVModalProps {
@@ -261,6 +262,7 @@ function ConnectionCard({
 
 export default function CalendarsSettingsPage() {
   const { data: connections, isLoading } = useCalendarConnections();
+  const { data: conflictCountData } = useSyncConflictCount();
   const oauthUrl = useCalendarOAuthUrl();
   const disconnect = useDisconnectCalendar();
   const sync = useSyncCalendar();
@@ -476,6 +478,69 @@ export default function CalendarsSettingsPage() {
         <div className="flex justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
+      )}
+
+      {connections && connections.length > 0 && (
+        <Link href="/fieldflow/settings/calendars/conflicts">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow cursor-pointer">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div
+                  className={`p-3 rounded-lg ${
+                    (conflictCountData?.count ?? 0) > 0
+                      ? "bg-amber-50 dark:bg-amber-900/20"
+                      : "bg-green-50 dark:bg-green-900/20"
+                  }`}
+                >
+                  <svg
+                    className={`w-6 h-6 ${
+                      (conflictCountData?.count ?? 0) > 0
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-green-600 dark:text-green-400"
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                  >
+                    {(conflictCountData?.count ?? 0) > 0 ? (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                      />
+                    ) : (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    )}
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Sync Conflicts
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {(conflictCountData?.count ?? 0) > 0
+                      ? `${conflictCountData?.count} conflict${conflictCountData?.count === 1 ? "" : "s"} need attention`
+                      : "No conflicts detected"}
+                  </p>
+                </div>
+              </div>
+              <svg
+                className="w-5 h-5 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </div>
+          </div>
+        </Link>
       )}
 
       <CalDAVModal

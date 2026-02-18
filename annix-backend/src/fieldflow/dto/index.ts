@@ -6,6 +6,16 @@ export {
   UpdateRepProfileDto,
 } from "../rep-profile";
 export {
+  AvailableSlotDto,
+  BookingConfirmationDto,
+  BookingLinkResponseDto,
+  BookSlotDto,
+  CreateBookingLinkDto,
+  CustomQuestionDto,
+  PublicBookingLinkDto,
+  UpdateBookingLinkDto,
+} from "./booking.dto";
+export {
   CalendarConnectionResponseDto,
   CalendarEventResponseDto,
   CalendarListResponseDto,
@@ -28,17 +38,24 @@ export {
   CustomFieldResponseDto,
   UpdateCustomFieldDto,
 } from "./custom-field.dto";
+export type { RecurrenceEndType, RecurrenceFrequency, RecurrenceUpdateScope } from "./meeting.dto";
 export {
   CreateMeetingDto,
+  CreateRecurringMeetingDto,
+  DeleteRecurringMeetingDto,
   EndMeetingDto,
   MeetingResponseDto,
   MeetingSummaryDto,
   MeetingWithDetailsDto,
+  RecurrenceOptionsDto,
+  RecurringMeetingInstanceDto,
+  RescheduleMeetingDto,
   SendSummaryDto,
   SendSummaryResultDto,
   StartMeetingDto,
   SummaryPreviewDto,
   UpdateMeetingDto,
+  UpdateRecurringMeetingDto,
 } from "./meeting.dto";
 export {
   BulkDeleteDto,

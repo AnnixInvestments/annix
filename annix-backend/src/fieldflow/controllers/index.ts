@@ -1,11 +1,13 @@
 export { RepProfileController } from "../rep-profile";
 export { AnalyticsController } from "./analytics.controller";
+export { BookingController } from "./booking.controller";
 export { CalendarController } from "./calendar.controller";
 export { CrmController } from "./crm.controller";
 export { CustomFieldController } from "./custom-field.controller";
 export { GoalsController } from "./goals.controller";
 export { MeetingController } from "./meeting.controller";
 export { ProspectController } from "./prospect.controller";
+export { PublicBookingController } from "./public-booking.controller";
 export { RecordingController } from "./recording.controller";
 export { RouteController } from "./route.controller";
 export { SummaryController } from "./summary.controller";

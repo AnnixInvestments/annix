@@ -110,6 +110,21 @@ export class RepProfileService {
         profile.setupCompletedAt = now().toJSDate();
       }
     }
+    if (dto.defaultBufferBeforeMinutes !== undefined) {
+      profile.defaultBufferBeforeMinutes = dto.defaultBufferBeforeMinutes;
+    }
+    if (dto.defaultBufferAfterMinutes !== undefined) {
+      profile.defaultBufferAfterMinutes = dto.defaultBufferAfterMinutes;
+    }
+    if (dto.workingHoursStart !== undefined) {
+      profile.workingHoursStart = dto.workingHoursStart;
+    }
+    if (dto.workingHoursEnd !== undefined) {
+      profile.workingHoursEnd = dto.workingHoursEnd;
+    }
+    if (dto.workingDays !== undefined) {
+      profile.workingDays = dto.workingDays;
+    }
 
     const saved = await this.repProfileRepo.save(profile);
     this.logger.log(`Rep profile updated for user ${userId}`);
@@ -140,5 +155,36 @@ export class RepProfileService {
     }
 
     return terms;
+  }
+
+  async scheduleSettings(userId: number): Promise<{
+    bufferBeforeMinutes: number;
+    bufferAfterMinutes: number;
+    workingStartHour: number;
+    workingStartMinute: number;
+    workingEndHour: number;
+    workingEndMinute: number;
+    workingDays: number[];
+  }> {
+    const profile = await this.profileByUserId(userId);
+
+    const parseTime = (timeStr: string): { hour: number; minute: number } => {
+      const [hour, minute] = timeStr.split(":").map(Number);
+      return { hour, minute };
+    };
+
+    const start = parseTime(profile?.workingHoursStart ?? "08:00");
+    const end = parseTime(profile?.workingHoursEnd ?? "17:00");
+    const days = (profile?.workingDays ?? "1,2,3,4,5").split(",").map(Number);
+
+    return {
+      bufferBeforeMinutes: profile?.defaultBufferBeforeMinutes ?? 15,
+      bufferAfterMinutes: profile?.defaultBufferAfterMinutes ?? 15,
+      workingStartHour: start.hour,
+      workingStartMinute: start.minute,
+      workingEndHour: end.hour,
+      workingEndMinute: end.minute,
+      workingDays: days,
+    };
   }
 }

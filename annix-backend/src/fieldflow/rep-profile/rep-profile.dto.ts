@@ -6,6 +6,8 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
+  Max,
   MaxLength,
   Min,
 } from "class-validator";
@@ -90,6 +92,41 @@ export class CreateRepProfileDto {
   @IsArray()
   @IsString({ each: true })
   customSearchTerms?: string[];
+
+  @ApiPropertyOptional({ description: "Buffer time before meetings in minutes", default: 15 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(120)
+  defaultBufferBeforeMinutes?: number;
+
+  @ApiPropertyOptional({ description: "Buffer time after meetings in minutes", default: 15 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(120)
+  defaultBufferAfterMinutes?: number;
+
+  @ApiPropertyOptional({ description: "Working hours start time (HH:MM)", default: "08:00" })
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: "workingHoursStart must be in HH:MM format" })
+  workingHoursStart?: string;
+
+  @ApiPropertyOptional({ description: "Working hours end time (HH:MM)", default: "17:00" })
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: "workingHoursEnd must be in HH:MM format" })
+  workingHoursEnd?: string;
+
+  @ApiPropertyOptional({
+    description: "Working days as comma-separated numbers (1=Mon, 7=Sun)",
+    default: "1,2,3,4,5",
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[1-7](,[1-7])*$/, { message: "workingDays must be comma-separated numbers 1-7" })
+  workingDays?: string;
 }
 
 export class UpdateRepProfileDto {
@@ -161,6 +198,38 @@ export class UpdateRepProfileDto {
   @IsOptional()
   @IsBoolean()
   setupCompleted?: boolean;
+
+  @ApiPropertyOptional({ description: "Buffer time before meetings in minutes" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(120)
+  defaultBufferBeforeMinutes?: number;
+
+  @ApiPropertyOptional({ description: "Buffer time after meetings in minutes" })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(120)
+  defaultBufferAfterMinutes?: number;
+
+  @ApiPropertyOptional({ description: "Working hours start time (HH:MM)" })
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: "workingHoursStart must be in HH:MM format" })
+  workingHoursStart?: string;
+
+  @ApiPropertyOptional({ description: "Working hours end time (HH:MM)" })
+  @IsOptional()
+  @IsString()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, { message: "workingHoursEnd must be in HH:MM format" })
+  workingHoursEnd?: string;
+
+  @ApiPropertyOptional({ description: "Working days as comma-separated numbers (1=Mon, 7=Sun)" })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[1-7](,[1-7])*$/, { message: "workingDays must be comma-separated numbers 1-7" })
+  workingDays?: string;
 }
 
 export class RepProfileResponseDto {
@@ -208,6 +277,21 @@ export class RepProfileResponseDto {
 
   @ApiPropertyOptional()
   setupCompletedAt: Date | null;
+
+  @ApiProperty({ default: 15 })
+  defaultBufferBeforeMinutes: number;
+
+  @ApiProperty({ default: 15 })
+  defaultBufferAfterMinutes: number;
+
+  @ApiProperty({ default: "08:00" })
+  workingHoursStart: string;
+
+  @ApiProperty({ default: "17:00" })
+  workingHoursEnd: string;
+
+  @ApiProperty({ default: "1,2,3,4,5" })
+  workingDays: string;
 
   @ApiProperty()
   createdAt: Date;

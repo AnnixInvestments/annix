@@ -92,3 +92,56 @@ export function useCalendarOAuthUrl() {
       annixRepApi.calendars.oauthUrl(provider, redirectUri),
   });
 }
+
+export function useSyncConflicts() {
+  return useQuery({
+    queryKey: annixRepKeys.calendars.conflicts(),
+    queryFn: () => annixRepApi.calendars.conflicts(),
+  });
+}
+
+export function useSyncConflictCount() {
+  return useQuery({
+    queryKey: annixRepKeys.calendars.conflictCount(),
+    queryFn: () => annixRepApi.calendars.conflictCount(),
+  });
+}
+
+export function useSyncConflict(id: number) {
+  return useQuery({
+    queryKey: annixRepKeys.calendars.conflict(id),
+    queryFn: () => annixRepApi.calendars.conflict(id),
+    enabled: id > 0,
+  });
+}
+
+export function useResolveConflict() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      resolution,
+    }: {
+      id: number;
+      resolution: "keep_local" | "keep_remote" | "dismissed";
+    }) => annixRepApi.calendars.resolveConflict(id, resolution),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.calendars.conflicts() });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.calendars.conflictCount() });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
+    },
+  });
+}
+
+export function useDetectConflicts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => annixRepApi.calendars.detectConflicts(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.calendars.conflicts() });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.calendars.conflictCount() });
+    },
+  });
+}

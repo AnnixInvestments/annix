@@ -7,12 +7,14 @@ import { User } from "../user/entities/user.entity";
 import { AnnixRepAuthModule } from "./auth";
 import {
   AnalyticsController,
+  BookingController,
   CalendarController,
   CrmController,
   CustomFieldController,
   GoalsController,
   MeetingController,
   ProspectController,
+  PublicBookingController,
   RecordingController,
   RouteController,
   SummaryController,
@@ -20,6 +22,8 @@ import {
   VisitController,
 } from "./controllers";
 import {
+  BookingLink,
+  CalendarColor,
   CalendarConnection,
   CalendarEvent,
   CrmConfig,
@@ -31,6 +35,7 @@ import {
   Prospect,
   ProspectActivity,
   SalesGoal,
+  SyncConflict,
   Visit,
 } from "./entities";
 import {
@@ -44,6 +49,8 @@ import {
 import { RepProfileModule } from "./rep-profile";
 import {
   AnalyticsService,
+  BookingService,
+  CalendarColorService,
   CalendarService,
   CalendarSyncService,
   CrmService,
@@ -56,6 +63,7 @@ import {
   ProspectActivityService,
   ProspectService,
   RecordingService,
+  RecurringMeetingService,
   RoutePlanningService,
   SpeakerDiarizationService,
   TranscriptionService,
@@ -65,6 +73,7 @@ import {
 @Module({
   imports: [
     TypeOrmModule.forFeature([
+      BookingLink,
       Prospect,
       ProspectActivity,
       CustomFieldDefinition,
@@ -72,11 +81,13 @@ import {
       Meeting,
       MeetingRecording,
       MeetingTranscript,
+      CalendarColor,
       CalendarConnection,
       CalendarEvent,
       CrmConfig,
       CrmSyncLog,
       SalesGoal,
+      SyncConflict,
       User,
     ]),
     ScheduleModule.forRoot(),
@@ -87,12 +98,14 @@ import {
   ],
   controllers: [
     AnalyticsController,
+    BookingController,
     GoalsController,
     ProspectController,
     CustomFieldController,
     VisitController,
     MeetingController,
     CalendarController,
+    PublicBookingController,
     RecordingController,
     TranscriptController,
     SummaryController,
@@ -101,6 +114,8 @@ import {
   ],
   providers: [
     AnalyticsService,
+    BookingService,
+    CalendarColorService,
     FollowUpReminderService,
     GoalsService,
     ProspectActivityService,
@@ -108,6 +123,7 @@ import {
     CustomFieldService,
     VisitService,
     MeetingService,
+    RecurringMeetingService,
     CalendarService,
     CalendarSyncService,
     RecordingService,

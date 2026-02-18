@@ -23,13 +23,17 @@ import { Request } from "express";
 import { AnnixRepAuthGuard } from "../auth";
 import {
   CreateMeetingDto,
+  CreateRecurringMeetingDto,
+  DeleteRecurringMeetingDto,
   EndMeetingDto,
   MeetingResponseDto,
   MeetingWithDetailsDto,
+  RescheduleMeetingDto,
   StartMeetingDto,
   UpdateMeetingDto,
+  UpdateRecurringMeetingDto,
 } from "../dto";
-import { MeetingService } from "../services";
+import { MeetingService, RecurringMeetingService } from "../services";
 
 interface AnnixRepRequest extends Request {
   annixRepUser: {
@@ -44,7 +48,10 @@ interface AnnixRepRequest extends Request {
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()
 export class MeetingController {
-  constructor(private readonly meetingService: MeetingService) {}
+  constructor(
+    private readonly meetingService: MeetingService,
+    private readonly recurringMeetingService: RecurringMeetingService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: "Create a new meeting" })
@@ -191,6 +198,20 @@ export class MeetingController {
     return this.meetingService.markNoShow(req.annixRepUser.userId, id);
   }
 
+  @Patch(":id/reschedule")
+  @ApiOperation({ summary: "Reschedule a meeting to a new time" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiResponse({ status: 200, description: "Meeting rescheduled", type: MeetingResponseDto })
+  @ApiResponse({ status: 400, description: "Cannot reschedule completed or in-progress meeting" })
+  @ApiResponse({ status: 404, description: "Meeting not found" })
+  reschedule(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: RescheduleMeetingDto,
+  ) {
+    return this.meetingService.reschedule(req.annixRepUser.userId, id, dto);
+  }
+
   @Delete(":id")
   @ApiOperation({ summary: "Delete a meeting" })
   @ApiParam({ name: "id", type: Number })
@@ -198,5 +219,65 @@ export class MeetingController {
   @ApiResponse({ status: 404, description: "Meeting not found" })
   remove(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
     return this.meetingService.remove(req.annixRepUser.userId, id);
+  }
+
+  @Post("recurring")
+  @ApiOperation({ summary: "Create a recurring meeting series" })
+  @ApiResponse({ status: 201, description: "Recurring meeting created", type: MeetingResponseDto })
+  createRecurring(@Req() req: AnnixRepRequest, @Body() dto: CreateRecurringMeetingDto) {
+    return this.recurringMeetingService.createRecurring(req.annixRepUser.userId, dto);
+  }
+
+  @Get("recurring/expanded")
+  @ApiOperation({ summary: "Get expanded recurring meetings for date range" })
+  @ApiQuery({ name: "startDate", type: String, required: true })
+  @ApiQuery({ name: "endDate", type: String, required: true })
+  @ApiResponse({ status: 200, description: "Expanded meetings", type: [MeetingResponseDto] })
+  expandedRecurringMeetings(
+    @Req() req: AnnixRepRequest,
+    @Query("startDate") startDate: string,
+    @Query("endDate") endDate: string,
+  ) {
+    return this.recurringMeetingService.expandRecurringMeetings(
+      req.annixRepUser.userId,
+      new Date(startDate),
+      new Date(endDate),
+    );
+  }
+
+  @Get("recurring/:id/instances")
+  @ApiOperation({ summary: "Get all instances of a recurring meeting series" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiResponse({ status: 200, description: "Series instances", type: [MeetingResponseDto] })
+  @ApiResponse({ status: 404, description: "Recurring series not found" })
+  seriesInstances(@Req() req: AnnixRepRequest, @Param("id", ParseIntPipe) id: number) {
+    return this.recurringMeetingService.seriesInstances(req.annixRepUser.userId, id);
+  }
+
+  @Patch("recurring/:id")
+  @ApiOperation({ summary: "Update a recurring meeting (with scope)" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiResponse({ status: 200, description: "Meeting updated", type: MeetingResponseDto })
+  @ApiResponse({ status: 404, description: "Meeting not found" })
+  updateRecurring(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateRecurringMeetingDto,
+  ) {
+    const { scope, ...updateDto } = dto;
+    return this.recurringMeetingService.updateSeries(req.annixRepUser.userId, id, updateDto, scope);
+  }
+
+  @Delete("recurring/:id")
+  @ApiOperation({ summary: "Delete from recurring meeting series (with scope)" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiResponse({ status: 200, description: "Deleted from series" })
+  @ApiResponse({ status: 404, description: "Meeting not found" })
+  deleteRecurring(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: DeleteRecurringMeetingDto,
+  ) {
+    return this.recurringMeetingService.deleteFromSeries(req.annixRepUser.userId, id, dto.scope);
   }
 }

@@ -1,4 +1,11 @@
 export { RepProfile, type TargetCustomerProfile } from "../rep-profile";
+export { BookingLink, type CustomQuestion } from "./booking-link.entity";
+export {
+  CalendarColor,
+  type CalendarColorType,
+  DEFAULT_MEETING_TYPE_COLORS,
+  DEFAULT_STATUS_COLORS,
+} from "./calendar-color.entity";
 export {
   CalendarConnection,
   CalendarProvider,
@@ -29,4 +36,10 @@ export { MeetingTranscript } from "./meeting-transcript.entity";
 export { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "./prospect.entity";
 export { ProspectActivity, ProspectActivityType } from "./prospect-activity.entity";
 export { GoalPeriod, SalesGoal } from "./sales-goal.entity";
+export type { ConflictData } from "./sync-conflict.entity";
+export {
+  type ConflictResolution,
+  type ConflictType,
+  SyncConflict,
+} from "./sync-conflict.entity";
 export { Visit, VisitOutcome, VisitType } from "./visit.entity";

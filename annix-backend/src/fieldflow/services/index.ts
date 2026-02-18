@@ -9,10 +9,14 @@ export type {
   WinLossRateTrend,
 } from "./analytics.service";
 export { AnalyticsService } from "./analytics.service";
+export { BookingService } from "./booking.service";
 export { CalendarService } from "./calendar.service";
+export type { UserColorScheme } from "./calendar-color.service";
+export { CalendarColorService } from "./calendar-color.service";
+export type { SyncConflictDto as SyncConflict } from "./calendar-sync.service";
 export { CalendarSyncService } from "./calendar-sync.service";
 export { CrmService } from "./crm.service";
-export type { SyncConflict } from "./crm-sync.service";
+export type { SyncConflict as CrmSyncConflict } from "./crm-sync.service";
 export { CrmSyncService } from "./crm-sync.service";
 export { CustomFieldService } from "./custom-field.service";
 export { FollowUpReminderService } from "./follow-up-reminder.service";
@@ -24,11 +28,13 @@ export { ProspectService } from "./prospect.service";
 export type { LogActivityParams } from "./prospect-activity.service";
 export { ProspectActivityService } from "./prospect-activity.service";
 export { RecordingService } from "./recording.service";
+export { RecurringMeetingService } from "./recurring-meeting.service";
 export type {
   ColdCallSuggestion,
   OptimizedRoute,
   RouteStop,
   ScheduleGap,
+  TravelInfo,
 } from "./route-planning.service";
 export { RoutePlanningService } from "./route-planning.service";
 export { SpeakerDiarizationService } from "./speaker-diarization.service";

@@ -2,7 +2,13 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from "@nes
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { CreateMeetingDto, EndMeetingDto, StartMeetingDto, UpdateMeetingDto } from "../dto";
+import {
+  CreateMeetingDto,
+  EndMeetingDto,
+  RescheduleMeetingDto,
+  StartMeetingDto,
+  UpdateMeetingDto,
+} from "../dto";
 import {
   Meeting,
   MeetingRecording,
@@ -213,6 +219,43 @@ export class MeetingService {
     const meeting = await this.findOne(salesRepId, id);
     meeting.status = MeetingStatus.NO_SHOW;
     return this.meetingRepo.save(meeting);
+  }
+
+  async reschedule(salesRepId: number, id: number, dto: RescheduleMeetingDto): Promise<Meeting> {
+    const meeting = await this.findOne(salesRepId, id);
+
+    if (meeting.status === MeetingStatus.COMPLETED) {
+      throw new BadRequestException("Cannot reschedule a completed meeting");
+    }
+
+    if (meeting.status === MeetingStatus.IN_PROGRESS) {
+      throw new BadRequestException("Cannot reschedule a meeting that is in progress");
+    }
+
+    const newStart = new Date(dto.scheduledStart);
+    const newEnd = new Date(dto.scheduledEnd);
+
+    if (newEnd <= newStart) {
+      throw new BadRequestException("End time must be after start time");
+    }
+
+    const originalStart = meeting.scheduledStart;
+    const originalEnd = meeting.scheduledEnd;
+
+    meeting.scheduledStart = newStart;
+    meeting.scheduledEnd = newEnd;
+
+    if (meeting.status === MeetingStatus.CANCELLED) {
+      meeting.status = MeetingStatus.SCHEDULED;
+    }
+
+    const saved = await this.meetingRepo.save(meeting);
+
+    this.logger.log(
+      `Meeting ${id} rescheduled from ${originalStart.toISOString()} to ${newStart.toISOString()}`,
+    );
+
+    return saved;
   }
 
   async remove(salesRepId: number, id: number): Promise<void> {

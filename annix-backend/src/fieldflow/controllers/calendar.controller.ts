@@ -13,6 +13,7 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -29,8 +30,10 @@ import {
   SyncCalendarDto,
   UpdateCalendarConnectionDto,
 } from "../dto";
-import { CalendarProvider } from "../entities";
+import { type CalendarColorType, CalendarProvider } from "../entities";
 import { CalendarService } from "../services/calendar.service";
+import { CalendarColorService, type UserColorScheme } from "../services/calendar-color.service";
+import { CalendarSyncService, type SyncConflictDto } from "../services/calendar-sync.service";
 
 interface AnnixRepRequest extends Request {
   annixRepUser: {
@@ -55,7 +58,11 @@ interface SyncResponse {
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()
 export class CalendarController {
-  constructor(private readonly calendarService: CalendarService) {}
+  constructor(
+    private readonly calendarService: CalendarService,
+    private readonly calendarColorService: CalendarColorService,
+    private readonly calendarSyncService: CalendarSyncService,
+  ) {}
 
   @Get("oauth-url/:provider")
   @ApiOperation({ summary: "Generate OAuth URL for calendar provider" })
@@ -168,5 +175,133 @@ export class CalendarController {
       new Date(startDate),
       new Date(endDate),
     );
+  }
+
+  @Get("colors")
+  @ApiOperation({ summary: "Get user color scheme for calendar" })
+  @ApiResponse({ status: 200, description: "User color scheme" })
+  colors(@Req() req: AnnixRepRequest): Promise<UserColorScheme> {
+    return this.calendarColorService.colorsForUser(req.annixRepUser.userId);
+  }
+
+  @Post("colors")
+  @ApiOperation({ summary: "Set multiple colors at once" })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        colors: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              colorType: { type: "string", enum: ["meeting_type", "status", "calendar"] },
+              colorKey: { type: "string" },
+              colorValue: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: "Colors updated" })
+  async setColors(
+    @Req() req: AnnixRepRequest,
+    @Body()
+    body: {
+      colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }>;
+    },
+  ): Promise<{ success: boolean }> {
+    await this.calendarColorService.setColors(req.annixRepUser.userId, body.colors);
+    return { success: true };
+  }
+
+  @Patch("colors/:colorType/:colorKey")
+  @ApiOperation({ summary: "Set a single color" })
+  @ApiParam({ name: "colorType", enum: ["meeting_type", "status", "calendar"] })
+  @ApiParam({ name: "colorKey", type: String })
+  @ApiBody({ schema: { type: "object", properties: { colorValue: { type: "string" } } } })
+  @ApiResponse({ status: 200, description: "Color updated" })
+  setColor(
+    @Req() req: AnnixRepRequest,
+    @Param("colorType") colorType: CalendarColorType,
+    @Param("colorKey") colorKey: string,
+    @Body() body: { colorValue: string },
+  ) {
+    return this.calendarColorService.setColor(
+      req.annixRepUser.userId,
+      colorType,
+      colorKey,
+      body.colorValue,
+    );
+  }
+
+  @Delete("colors/reset")
+  @ApiOperation({ summary: "Reset colors to defaults" })
+  @ApiQuery({ name: "colorType", enum: ["meeting_type", "status", "calendar"], required: false })
+  @ApiResponse({ status: 200, description: "Colors reset" })
+  async resetColors(
+    @Req() req: AnnixRepRequest,
+    @Query("colorType") colorType?: CalendarColorType,
+  ): Promise<{ success: boolean }> {
+    await this.calendarColorService.resetToDefaults(req.annixRepUser.userId, colorType);
+    return { success: true };
+  }
+
+  @Get("conflicts")
+  @ApiOperation({ summary: "Get pending sync conflicts" })
+  @ApiResponse({ status: 200, description: "List of pending conflicts" })
+  pendingConflicts(@Req() req: AnnixRepRequest): Promise<SyncConflictDto[]> {
+    return this.calendarSyncService.pendingConflicts(req.annixRepUser.userId);
+  }
+
+  @Get("conflicts/count")
+  @ApiOperation({ summary: "Get count of pending sync conflicts" })
+  @ApiResponse({ status: 200, description: "Number of pending conflicts" })
+  async conflictCount(@Req() req: AnnixRepRequest): Promise<{ count: number }> {
+    const count = await this.calendarSyncService.conflictCount(req.annixRepUser.userId);
+    return { count };
+  }
+
+  @Get("conflicts/:id")
+  @ApiOperation({ summary: "Get a sync conflict by ID" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiResponse({ status: 200, description: "Conflict details" })
+  @ApiResponse({ status: 404, description: "Conflict not found" })
+  conflict(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<SyncConflictDto> {
+    return this.calendarSyncService.conflictById(req.annixRepUser.userId, id);
+  }
+
+  @Post("conflicts/:id/resolve")
+  @ApiOperation({ summary: "Resolve a sync conflict" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        resolution: { type: "string", enum: ["keep_local", "keep_remote", "dismissed"] },
+      },
+      required: ["resolution"],
+    },
+  })
+  @ApiResponse({ status: 200, description: "Conflict resolved" })
+  @ApiResponse({ status: 404, description: "Conflict not found" })
+  resolveConflict(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { resolution: "keep_local" | "keep_remote" | "dismissed" },
+  ): Promise<SyncConflictDto> {
+    return this.calendarSyncService.resolveConflict(req.annixRepUser.userId, id, body.resolution);
+  }
+
+  @Post("conflicts/detect")
+  @ApiOperation({ summary: "Manually trigger conflict detection" })
+  @ApiResponse({ status: 200, description: "Detected conflicts" })
+  async detectConflicts(@Req() req: AnnixRepRequest): Promise<{ detected: number }> {
+    const conflicts = await this.calendarSyncService.detectTimeOverlaps(req.annixRepUser.userId);
+    return { detected: conflicts.length };
   }
 }

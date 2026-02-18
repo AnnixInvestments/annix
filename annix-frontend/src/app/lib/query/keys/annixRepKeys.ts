@@ -32,6 +32,10 @@ export const annixRepKeys = {
     today: () => [...annixRepKeys.meetings.all, "today"] as const,
     upcoming: (days?: number) => [...annixRepKeys.meetings.all, "upcoming", days] as const,
     detail: (id: number) => [...annixRepKeys.meetings.all, "detail", id] as const,
+    expandedRecurring: (startDate: string, endDate: string) =>
+      [...annixRepKeys.meetings.all, "expandedRecurring", startDate, endDate] as const,
+    seriesInstances: (parentId: number) =>
+      [...annixRepKeys.meetings.all, "seriesInstances", parentId] as const,
   },
   visits: {
     all: ["annixRep", "visits"] as const,
@@ -48,6 +52,9 @@ export const annixRepKeys = {
       [...annixRepKeys.calendars.all, "availableCalendars", connectionId] as const,
     events: (startDate: string, endDate: string) =>
       [...annixRepKeys.calendars.all, "events", startDate, endDate] as const,
+    conflicts: () => [...annixRepKeys.calendars.all, "conflicts"] as const,
+    conflictCount: () => [...annixRepKeys.calendars.all, "conflictCount"] as const,
+    conflict: (id: number) => [...annixRepKeys.calendars.all, "conflict", id] as const,
   },
   recordings: {
     all: ["annixRep", "recordings"] as const,
@@ -107,5 +114,16 @@ export const annixRepKeys = {
     list: () => [...annixRepKeys.goals.all, "list"] as const,
     byPeriod: (period: string) => [...annixRepKeys.goals.all, "byPeriod", period] as const,
     progress: (period: string) => [...annixRepKeys.goals.all, "progress", period] as const,
+  },
+  bookingLinks: {
+    all: ["annixRep", "bookingLinks"] as const,
+    list: () => [...annixRepKeys.bookingLinks.all, "list"] as const,
+    detail: (id: number) => [...annixRepKeys.bookingLinks.all, "detail", id] as const,
+  },
+  publicBooking: {
+    all: ["publicBooking"] as const,
+    linkDetails: (slug: string) => [...annixRepKeys.publicBooking.all, "link", slug] as const,
+    availability: (slug: string, date: string) =>
+      [...annixRepKeys.publicBooking.all, "availability", slug, date] as const,
   },
 } as const;

@@ -3,14 +3,21 @@ import {
   type ActivityHeatmapCell,
   type AnalyticsSummary,
   type AnnixRepDashboard,
+  type AvailableSlot,
   annixRepApi,
+  type BookingConfirmation,
+  type BookingLink,
+  type BookSlotDto,
   type BulkDeleteResponse,
   type BulkUpdateStatusResponse,
+  type CreateBookingLinkDto,
   type CreateCustomFieldDto,
   type CreateGoalDto,
   type CreateMeetingDto,
   type CreateProspectDto,
+  type CreateRecurringMeetingDto,
   type CreateVisitDto,
+  type DeleteRecurringMeetingDto,
   type DuplicateProspects,
   type GoalPeriod,
   type GoalProgress,
@@ -21,11 +28,16 @@ import {
   type Prospect,
   type ProspectFunnel,
   type ProspectStatus,
+  type PublicBookingLink,
+  publicBookingApi,
+  type RescheduleMeetingDto,
   type RevenuePipeline,
   type SalesGoal,
   type TopProspect,
+  type UpdateBookingLinkDto,
   type UpdateCustomFieldDto,
   type UpdateGoalDto,
+  type UpdateRecurringMeetingDto,
   type Visit,
   type VisitOutcome,
   type WinLossRateTrend,
@@ -411,6 +423,73 @@ export function useCancelMeeting() {
   });
 }
 
+export function useRescheduleMeeting() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: number; dto: RescheduleMeetingDto }) =>
+      annixRepApi.meetings.reschedule(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
+    },
+  });
+}
+
+export function useCreateRecurringMeeting() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: CreateRecurringMeetingDto) => annixRepApi.meetings.createRecurring(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
+    },
+  });
+}
+
+export function useExpandedRecurringMeetings(startDate: string, endDate: string) {
+  return useQuery<Meeting[]>({
+    queryKey: annixRepKeys.meetings.expandedRecurring(startDate, endDate),
+    queryFn: () => annixRepApi.meetings.expandedRecurring(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+export function useSeriesInstances(parentId: number) {
+  return useQuery<Meeting[]>({
+    queryKey: annixRepKeys.meetings.seriesInstances(parentId),
+    queryFn: () => annixRepApi.meetings.seriesInstances(parentId),
+    enabled: parentId > 0,
+  });
+}
+
+export function useUpdateRecurringMeeting() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: number; dto: UpdateRecurringMeetingDto }) =>
+      annixRepApi.meetings.updateRecurring(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
+    },
+  });
+}
+
+export function useDeleteRecurringMeeting() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: number; dto: DeleteRecurringMeetingDto }) =>
+      annixRepApi.meetings.deleteRecurring(id, dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
+    },
+  });
+}
+
 export function useVisits() {
   return useQuery<Visit[]>({
     queryKey: annixRepKeys.visits.list(),
@@ -591,5 +670,77 @@ export function useDeleteGoal() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: annixRepKeys.goals.all });
     },
+  });
+}
+
+export function useBookingLinks() {
+  return useQuery<BookingLink[]>({
+    queryKey: annixRepKeys.bookingLinks.list(),
+    queryFn: () => annixRepApi.bookingLinks.list(),
+  });
+}
+
+export function useBookingLink(id: number) {
+  return useQuery<BookingLink>({
+    queryKey: annixRepKeys.bookingLinks.detail(id),
+    queryFn: () => annixRepApi.bookingLinks.detail(id),
+    enabled: id > 0,
+  });
+}
+
+export function useCreateBookingLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: CreateBookingLinkDto) => annixRepApi.bookingLinks.create(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.bookingLinks.all });
+    },
+  });
+}
+
+export function useUpdateBookingLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: number; dto: UpdateBookingLinkDto }) =>
+      annixRepApi.bookingLinks.update(id, dto),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.bookingLinks.all });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.bookingLinks.detail(id) });
+    },
+  });
+}
+
+export function useDeleteBookingLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => annixRepApi.bookingLinks.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.bookingLinks.all });
+    },
+  });
+}
+
+export function usePublicBookingLink(slug: string) {
+  return useQuery<PublicBookingLink>({
+    queryKey: annixRepKeys.publicBooking.linkDetails(slug),
+    queryFn: () => publicBookingApi.linkDetails(slug),
+    enabled: !!slug,
+  });
+}
+
+export function useBookingAvailability(slug: string, date: string) {
+  return useQuery<AvailableSlot[]>({
+    queryKey: annixRepKeys.publicBooking.availability(slug, date),
+    queryFn: () => publicBookingApi.availability(slug, date),
+    enabled: !!slug && !!date,
+  });
+}
+
+export function useBookSlot() {
+  return useMutation<BookingConfirmation, Error, { slug: string; dto: BookSlotDto }>({
+    mutationFn: ({ slug, dto }) => publicBookingApi.bookSlot(slug, dto),
   });
 }

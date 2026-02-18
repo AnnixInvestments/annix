@@ -2,9 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { CreateMeetingDto, Meeting, MeetingStatus } from "@/app/lib/api/annixRepApi";
+import type {
+  CreateMeetingDto,
+  CreateRecurringMeetingDto,
+  Meeting,
+  MeetingStatus,
+  RecurrenceOptions,
+} from "@/app/lib/api/annixRepApi";
 import { formatDateZA } from "@/app/lib/datetime";
-import { useCreateMeeting, useMeetings } from "@/app/lib/query/hooks";
+import { useCreateMeeting, useCreateRecurringMeeting, useMeetings } from "@/app/lib/query/hooks";
+import { defaultRecurrenceOptions, RecurrenceEditor } from "./components/RecurrenceEditor";
 
 const statusColors: Record<MeetingStatus, { bg: string; text: string }> = {
   scheduled: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300" },
@@ -65,6 +72,24 @@ function MeetingCard({ meeting }: { meeting: Meeting }) {
             >
               {statusLabels[meeting.status]}
             </span>
+            {(meeting.isRecurring || meeting.recurringParentId) && (
+              <span className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                  />
+                </svg>
+                Recurring
+              </span>
+            )}
           </div>
           {meeting.summarySent && (
             <span className="text-xs text-green-600 dark:text-green-400">Summary sent</span>
@@ -151,10 +176,12 @@ function CreateMeetingModal({
   isOpen,
   onClose,
   onCreate,
+  onCreateRecurring,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (dto: CreateMeetingDto) => void;
+  onCreateRecurring: (dto: CreateRecurringMeetingDto) => void;
 }) {
   const [formData, setFormData] = useState<CreateMeetingDto>({
     title: "",
@@ -163,13 +190,28 @@ function CreateMeetingModal({
     scheduledEnd: "",
     location: "",
   });
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrence, setRecurrence] = useState<RecurrenceOptions>(defaultRecurrenceOptions());
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.scheduledStart || !formData.scheduledEnd) return;
-    onCreate(formData);
+
+    if (isRecurring) {
+      const startDate = new Date(formData.scheduledStart);
+      const endDate = new Date(formData.scheduledEnd);
+      onCreateRecurring({
+        ...formData,
+        scheduledStart: startDate.toISOString(),
+        scheduledEnd: endDate.toISOString(),
+        recurrence,
+      });
+    } else {
+      onCreate(formData);
+    }
+
     setFormData({
       title: "",
       meetingType: "in_person",
@@ -177,6 +219,8 @@ function CreateMeetingModal({
       scheduledEnd: "",
       location: "",
     });
+    setIsRecurring(false);
+    setRecurrence(defaultRecurrenceOptions());
   };
 
   return (
@@ -186,7 +230,7 @@ function CreateMeetingModal({
           className="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/75 transition-opacity"
           onClick={onClose}
         />
-        <div className="relative transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+        <div className="relative transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">New Meeting</h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
@@ -285,6 +329,26 @@ function CreateMeetingModal({
               />
             </div>
 
+            <div className="border-t border-gray-200 dark:border-slate-700 pt-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Make this a recurring meeting
+                </span>
+              </label>
+
+              {isRecurring && (
+                <div className="mt-4 p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+                  <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-3 mt-6">
               <button
                 type="button"
@@ -297,7 +361,7 @@ function CreateMeetingModal({
                 type="submit"
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
               >
-                Create Meeting
+                {isRecurring ? "Create Recurring Meeting" : "Create Meeting"}
               </button>
             </div>
           </form>
@@ -310,6 +374,7 @@ function CreateMeetingModal({
 export default function MeetingsPage() {
   const { data: meetings, isLoading, error } = useMeetings();
   const createMeeting = useCreateMeeting();
+  const createRecurringMeeting = useCreateRecurringMeeting();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState<MeetingStatus | "all">("all");
@@ -344,6 +409,11 @@ export default function MeetingsPage() {
       scheduledStart: startDate.toISOString(),
       scheduledEnd: endDate.toISOString(),
     });
+    setShowCreateModal(false);
+  };
+
+  const handleCreateRecurring = async (dto: CreateRecurringMeetingDto) => {
+    await createRecurringMeeting.mutateAsync(dto);
     setShowCreateModal(false);
   };
 
@@ -458,6 +528,7 @@ export default function MeetingsPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreate}
+        onCreateRecurring={handleCreateRecurring}
       />
     </div>
   );

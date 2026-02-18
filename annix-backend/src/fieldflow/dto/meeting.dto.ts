@@ -1,16 +1,64 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
   MaxLength,
+  ValidateNested,
 } from "class-validator";
 import { MeetingStatus, MeetingType } from "../entities";
+
+export type RecurrenceFrequency = "daily" | "weekly" | "monthly" | "yearly";
+export type RecurrenceEndType = "never" | "count" | "until";
+
+export class RecurrenceOptionsDto {
+  @ApiProperty({
+    description: "Recurrence frequency",
+    enum: ["daily", "weekly", "monthly", "yearly"],
+  })
+  @IsIn(["daily", "weekly", "monthly", "yearly"])
+  frequency: RecurrenceFrequency;
+
+  @ApiProperty({ description: "Interval between occurrences", example: 1, default: 1 })
+  @IsNumber()
+  @IsOptional()
+  interval?: number;
+
+  @ApiPropertyOptional({
+    description: "Days of week for weekly recurrence (0=Sun, 1=Mon, ..., 6=Sat)",
+    example: [1, 3, 5],
+  })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @IsOptional()
+  byWeekDay?: number[];
+
+  @ApiPropertyOptional({ description: "Day of month for monthly recurrence", example: 15 })
+  @IsNumber()
+  @IsOptional()
+  byMonthDay?: number;
+
+  @ApiProperty({ description: "How the recurrence ends", enum: ["never", "count", "until"] })
+  @IsIn(["never", "count", "until"])
+  endType: RecurrenceEndType;
+
+  @ApiPropertyOptional({ description: "Number of occurrences (if endType is count)", example: 10 })
+  @IsNumber()
+  @IsOptional()
+  count?: number;
+
+  @ApiPropertyOptional({ description: "End date (if endType is until)", example: "2025-12-31" })
+  @IsDateString()
+  @IsOptional()
+  until?: string;
+}
 
 export class CreateMeetingDto {
   @ApiPropertyOptional({ description: "Prospect ID" })
@@ -195,6 +243,18 @@ export class MeetingResponseDto {
   summarySent: boolean;
 
   @ApiProperty()
+  isRecurring: boolean;
+
+  @ApiPropertyOptional()
+  recurrenceRule: string | null;
+
+  @ApiPropertyOptional()
+  recurringParentId: number | null;
+
+  @ApiPropertyOptional()
+  recurrenceExceptionDates: string | null;
+
+  @ApiProperty()
   createdAt: Date;
 
   @ApiProperty()
@@ -297,4 +357,69 @@ export class SendSummaryResultDto {
 
   @ApiProperty()
   failed: string[];
+}
+
+export class RescheduleMeetingDto {
+  @ApiProperty({ description: "New scheduled start time" })
+  @IsDateString()
+  @IsNotEmpty()
+  scheduledStart: string;
+
+  @ApiProperty({ description: "New scheduled end time" })
+  @IsDateString()
+  @IsNotEmpty()
+  scheduledEnd: string;
+
+  @ApiPropertyOptional({ description: "Reason for rescheduling" })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  rescheduleReason?: string;
+}
+
+export class CreateRecurringMeetingDto extends CreateMeetingDto {
+  @ApiProperty({ description: "Recurrence options" })
+  @ValidateNested()
+  @Type(() => RecurrenceOptionsDto)
+  recurrence: RecurrenceOptionsDto;
+}
+
+export type RecurrenceUpdateScope = "this" | "future" | "all";
+
+export class UpdateRecurringMeetingDto extends UpdateMeetingDto {
+  @ApiProperty({
+    description: "Scope of update: this instance only, this and future, or all instances",
+    enum: ["this", "future", "all"],
+  })
+  @IsIn(["this", "future", "all"])
+  scope: RecurrenceUpdateScope;
+}
+
+export class DeleteRecurringMeetingDto {
+  @ApiProperty({
+    description: "Scope of deletion: this instance only, this and future, or all instances",
+    enum: ["this", "future", "all"],
+  })
+  @IsIn(["this", "future", "all"])
+  scope: RecurrenceUpdateScope;
+}
+
+export class RecurringMeetingInstanceDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty()
+  scheduledStart: Date;
+
+  @ApiProperty()
+  scheduledEnd: Date;
+
+  @ApiProperty()
+  isException: boolean;
+
+  @ApiPropertyOptional()
+  originalDate?: string;
 }

@@ -101,6 +101,11 @@ export class RepProfileController {
       customSearchTerms: profile.customSearchTerms,
       setupCompleted: profile.setupCompleted,
       setupCompletedAt: profile.setupCompletedAt,
+      defaultBufferBeforeMinutes: profile.defaultBufferBeforeMinutes,
+      defaultBufferAfterMinutes: profile.defaultBufferAfterMinutes,
+      workingHoursStart: profile.workingHoursStart,
+      workingHoursEnd: profile.workingHoursEnd,
+      workingDays: profile.workingDays,
       createdAt: profile.createdAt,
       updatedAt: profile.updatedAt,
     };

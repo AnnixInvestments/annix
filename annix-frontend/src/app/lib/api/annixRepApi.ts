@@ -29,6 +29,11 @@ export interface RepProfile {
   customSearchTerms: string[] | null;
   setupCompleted: boolean;
   setupCompletedAt: Date | null;
+  defaultBufferBeforeMinutes: number;
+  defaultBufferAfterMinutes: number;
+  workingHoursStart: string;
+  workingHoursEnd: string;
+  workingDays: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +54,11 @@ export interface CreateRepProfileDto {
 
 export interface UpdateRepProfileDto extends Partial<CreateRepProfileDto> {
   setupCompleted?: boolean;
+  defaultBufferBeforeMinutes?: number;
+  defaultBufferAfterMinutes?: number;
+  workingHoursStart?: string;
+  workingHoursEnd?: string;
+  workingDays?: string;
 }
 
 export interface RepProfileStatus {
@@ -293,9 +303,42 @@ export interface Meeting {
   outcomes: string | null;
   actionItems: Array<{ task: string; assignee: string | null; dueDate: string | null }> | null;
   summarySent: boolean;
+  isRecurring: boolean;
+  recurrenceRule: string | null;
+  recurringParentId: number | null;
+  recurrenceExceptionDates: string | null;
   createdAt: Date;
   updatedAt: Date;
   prospect?: Prospect | null;
+}
+
+export type RecurrenceFrequency = "daily" | "weekly" | "monthly" | "yearly";
+export type RecurrenceEndType = "never" | "count" | "until";
+export type RecurrenceUpdateScope = "this" | "future" | "all";
+
+export interface RecurrenceOptions {
+  frequency: RecurrenceFrequency;
+  interval?: number;
+  byWeekDay?: number[];
+  byMonthDay?: number;
+  endType: RecurrenceEndType;
+  count?: number;
+  until?: string;
+}
+
+export interface CreateRecurringMeetingDto extends CreateMeetingDto {
+  recurrence: RecurrenceOptions;
+}
+
+export interface UpdateRecurringMeetingDto extends Partial<CreateMeetingDto> {
+  scope: RecurrenceUpdateScope;
+  status?: MeetingStatus;
+  notes?: string;
+  outcomes?: string;
+}
+
+export interface DeleteRecurringMeetingDto {
+  scope: RecurrenceUpdateScope;
 }
 
 export interface CreateMeetingDto {
@@ -310,6 +353,12 @@ export interface CreateMeetingDto {
   longitude?: number;
   attendees?: string[];
   agenda?: string;
+}
+
+export interface RescheduleMeetingDto {
+  scheduledStart: string;
+  scheduledEnd: string;
+  rescheduleReason?: string;
 }
 
 export interface AnnixRepDashboard {
@@ -338,8 +387,31 @@ export interface CalendarConnection {
   lastSyncAt: Date | null;
   selectedCalendars: string[] | null;
   isPrimary: boolean;
+  displayColor: string;
   createdAt: Date;
 }
+
+export type CalendarColorType = "meeting_type" | "status" | "calendar";
+
+export interface CalendarColorScheme {
+  meetingTypes: Record<string, string>;
+  statuses: Record<string, string>;
+  calendars: Record<number, string>;
+}
+
+export const DEFAULT_MEETING_TYPE_COLORS: Record<string, string> = {
+  in_person: "#10B981",
+  phone: "#6366F1",
+  video: "#F59E0B",
+};
+
+export const DEFAULT_STATUS_COLORS: Record<string, string> = {
+  scheduled: "#3B82F6",
+  in_progress: "#EAB308",
+  completed: "#22C55E",
+  cancelled: "#6B7280",
+  no_show: "#EF4444",
+};
 
 export interface CalendarEvent {
   id: number;
@@ -379,6 +451,41 @@ export interface UpdateCalendarConnectionDto {
 
 export interface SyncCalendarDto {
   fullSync?: boolean;
+}
+
+export type ConflictType =
+  | "time_overlap"
+  | "data_conflict"
+  | "deleted_locally"
+  | "deleted_remotely";
+export type ConflictResolution = "pending" | "keep_local" | "keep_remote" | "merged" | "dismissed";
+
+export interface ConflictData {
+  title?: string;
+  startTime?: string;
+  endTime?: string;
+  location?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
+export interface SyncConflict {
+  id: number;
+  userId: number;
+  meetingId: number | null;
+  calendarEventId: number | null;
+  conflictType: ConflictType;
+  localData: ConflictData;
+  remoteData: ConflictData;
+  resolution: ConflictResolution;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  meeting?: Meeting | null;
+  calendarEvent?: CalendarEvent | null;
+}
+
+export interface ResolveConflictDto {
+  resolution: "keep_local" | "keep_remote" | "dismissed";
 }
 
 export interface SyncResult {
@@ -575,12 +682,20 @@ export interface SendSummaryResult {
   failed: string[];
 }
 
+export interface TravelInfo {
+  distanceKm: number;
+  estimatedMinutes: number;
+}
+
 export interface ScheduleGap {
   startTime: Date;
   endTime: Date;
   durationMinutes: number;
   precedingMeeting: Meeting | null;
   followingMeeting: Meeting | null;
+  travelFromPrevious: TravelInfo | null;
+  travelToNext: TravelInfo | null;
+  effectiveAvailableMinutes: number;
 }
 
 export interface ColdCallSuggestion {
@@ -667,6 +782,94 @@ export interface TopProspect {
 }
 
 export type GoalPeriod = "weekly" | "monthly" | "quarterly";
+
+export interface CustomQuestion {
+  id: string;
+  label: string;
+  type: "text" | "textarea" | "select";
+  required: boolean;
+  options?: string[];
+}
+
+export interface BookingLink {
+  id: number;
+  userId: number;
+  slug: string;
+  name: string;
+  meetingDurationMinutes: number;
+  bufferBeforeMinutes: number;
+  bufferAfterMinutes: number;
+  availableDays: string;
+  availableStartHour: number;
+  availableEndHour: number;
+  maxDaysAhead: number;
+  isActive: boolean;
+  customQuestions: CustomQuestion[] | null;
+  meetingType: MeetingType;
+  location: string | null;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  bookingUrl: string;
+}
+
+export interface CreateBookingLinkDto {
+  name: string;
+  meetingDurationMinutes?: number;
+  bufferBeforeMinutes?: number;
+  bufferAfterMinutes?: number;
+  availableDays?: string;
+  availableStartHour?: number;
+  availableEndHour?: number;
+  maxDaysAhead?: number;
+  customQuestions?: CustomQuestion[];
+  meetingType?: MeetingType;
+  location?: string;
+  description?: string;
+}
+
+export interface UpdateBookingLinkDto extends Partial<CreateBookingLinkDto> {
+  isActive?: boolean;
+}
+
+export interface PublicBookingLink {
+  slug: string;
+  name: string;
+  meetingDurationMinutes: number;
+  availableDays: string;
+  availableStartHour: number;
+  availableEndHour: number;
+  maxDaysAhead: number;
+  customQuestions: CustomQuestion[] | null;
+  meetingType: MeetingType;
+  location: string | null;
+  description: string | null;
+  hostName: string;
+}
+
+export interface AvailableSlot {
+  startTime: string;
+  endTime: string;
+}
+
+export interface BookSlotDto {
+  startTime: string;
+  name: string;
+  email: string;
+  notes?: string;
+  customAnswers?: Record<string, string>;
+}
+
+export interface BookingConfirmation {
+  meetingId: number;
+  title: string;
+  startTime: string;
+  endTime: string;
+  meetingType: MeetingType;
+  location: string | null;
+  hostName: string;
+  hostEmail: string;
+}
 
 export interface SalesGoal {
   id: number;
@@ -1203,10 +1406,82 @@ export const annixRepApi = {
       return handleResponse<Meeting>(response);
     },
 
+    reschedule: async (id: number, dto: RescheduleMeetingDto): Promise<Meeting> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}/reschedule`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<Meeting>(response);
+    },
+
     delete: async (id: number): Promise<void> => {
       const response = await fetch(`${getApiUrl()}/annix-rep/meetings/${id}`, {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Delete failed" }));
+        throw new Error(error.message);
+      }
+    },
+
+    createRecurring: async (dto: CreateRecurringMeetingDto): Promise<Meeting> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/recurring`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<Meeting>(response);
+    },
+
+    expandedRecurring: async (startDate: string, endDate: string): Promise<Meeting[]> => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/meetings/recurring/expanded?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      return handleResponse<Meeting[]>(response);
+    },
+
+    seriesInstances: async (parentId: number): Promise<Meeting[]> => {
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/meetings/recurring/${parentId}/instances`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      return handleResponse<Meeting[]>(response);
+    },
+
+    updateRecurring: async (id: number, dto: UpdateRecurringMeetingDto): Promise<Meeting> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/recurring/${id}`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<Meeting>(response);
+    },
+
+    deleteRecurring: async (id: number, dto: DeleteRecurringMeetingDto): Promise<void> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meetings/recurring/${id}`, {
+        method: "DELETE",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
       });
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: "Delete failed" }));
@@ -1368,6 +1643,102 @@ export const annixRepApi = {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<CalendarEvent[]>(response);
+    },
+
+    colors: async (): Promise<CalendarColorScheme> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/colors`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<CalendarColorScheme>(response);
+    },
+
+    setColors: async (
+      colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }>,
+    ): Promise<{ success: boolean }> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/colors`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ colors }),
+      });
+      return handleResponse<{ success: boolean }>(response);
+    },
+
+    setColor: async (
+      colorType: CalendarColorType,
+      colorKey: string,
+      colorValue: string,
+    ): Promise<void> => {
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/calendars/colors/${colorType}/${colorKey}`,
+        {
+          method: "PATCH",
+          headers: {
+            ...annixRepAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ colorValue }),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Set color failed" }));
+        throw new Error(error.message);
+      }
+    },
+
+    resetColors: async (colorType?: CalendarColorType): Promise<{ success: boolean }> => {
+      const params = colorType ? `?colorType=${colorType}` : "";
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/colors/reset${params}`, {
+        method: "DELETE",
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<{ success: boolean }>(response);
+    },
+
+    conflicts: async (): Promise<SyncConflict[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<SyncConflict[]>(response);
+    },
+
+    conflictCount: async (): Promise<{ count: number }> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts/count`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<{ count: number }>(response);
+    },
+
+    conflict: async (id: number): Promise<SyncConflict> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts/${id}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<SyncConflict>(response);
+    },
+
+    resolveConflict: async (
+      id: number,
+      resolution: "keep_local" | "keep_remote" | "dismissed",
+    ): Promise<SyncConflict> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts/${id}/resolve`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ resolution }),
+      });
+      return handleResponse<SyncConflict>(response);
+    },
+
+    detectConflicts: async (): Promise<{ detected: number }> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/calendars/conflicts/detect`, {
+        method: "POST",
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<{ detected: number }>(response);
     },
   },
 
@@ -1948,6 +2319,57 @@ export const annixRepApi = {
     },
   },
 
+  bookingLinks: {
+    list: async (): Promise<BookingLink[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<BookingLink[]>(response);
+    },
+
+    detail: async (id: number): Promise<BookingLink> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links/${id}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<BookingLink>(response);
+    },
+
+    create: async (dto: CreateBookingLinkDto): Promise<BookingLink> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<BookingLink>(response);
+    },
+
+    update: async (id: number, dto: UpdateBookingLinkDto): Promise<BookingLink> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links/${id}`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<BookingLink>(response);
+    },
+
+    delete: async (id: number): Promise<void> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/booking-links/${id}`, {
+        method: "DELETE",
+        headers: annixRepAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Delete failed" }));
+        throw new Error(error.message);
+      }
+    },
+  },
+
   goals: {
     list: async (): Promise<SalesGoal[]> => {
       const response = await fetch(`${getApiUrl()}/annix-rep/goals`, {
@@ -2004,5 +2426,29 @@ export const annixRepApi = {
       });
       return handleResponse<GoalProgress>(response);
     },
+  },
+};
+
+export const publicBookingApi = {
+  linkDetails: async (slug: string): Promise<PublicBookingLink> => {
+    const response = await fetch(`${getApiUrl()}/public/booking/${slug}`);
+    return handleResponse<PublicBookingLink>(response);
+  },
+
+  availability: async (slug: string, date: string): Promise<AvailableSlot[]> => {
+    const params = new URLSearchParams({ date });
+    const response = await fetch(`${getApiUrl()}/public/booking/${slug}/availability?${params}`);
+    return handleResponse<AvailableSlot[]>(response);
+  },
+
+  bookSlot: async (slug: string, dto: BookSlotDto): Promise<BookingConfirmation> => {
+    const response = await fetch(`${getApiUrl()}/public/booking/${slug}/book`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(dto),
+    });
+    return handleResponse<BookingConfirmation>(response);
   },
 };

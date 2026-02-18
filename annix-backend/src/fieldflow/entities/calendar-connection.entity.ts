@@ -73,6 +73,9 @@ export class CalendarConnection {
   @Column({ name: "is_primary", default: false })
   isPrimary: boolean;
 
+  @Column({ name: "display_color", type: "varchar", length: 7, default: "#3B82F6" })
+  displayColor: string;
+
   @OneToMany(
     () => CalendarEvent,
     (event) => event.connection,

@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { CalendarEvent, Meeting, Visit } from "@/app/lib/api/annixRepApi";
+import type { CalendarEvent, Meeting, TravelInfo, Visit } from "@/app/lib/api/annixRepApi";
 import { formatDateZA, now, nowISO } from "@/app/lib/datetime";
 import {
   useCalendarEvents,
+  useScheduleGaps,
   useTodaysMeetings,
   useTodaysVisits,
   useUpcomingMeetings,
 } from "@/app/lib/query/hooks";
+import { TravelTimeConnector } from "./components/TravelTimeIndicator";
 
 const meetingTypeIcons: Record<string, string> = {
   in_person:
@@ -313,6 +315,48 @@ function CalendarEventCard({ event }: { event: CalendarEvent }) {
   );
 }
 
+function MeetingsTimeline({ meetings }: { meetings: Meeting[] }) {
+  const sortedMeetings = [...meetings].sort(
+    (a, b) => new Date(a.scheduledStart).getTime() - new Date(b.scheduledStart).getTime(),
+  );
+
+  const calculateTravelTime = (from: Meeting, to: Meeting): TravelInfo | null => {
+    if (!from.latitude || !from.longitude || !to.latitude || !to.longitude) {
+      return null;
+    }
+
+    const R = 6371;
+    const dLat = ((Number(to.latitude) - Number(from.latitude)) * Math.PI) / 180;
+    const dLon = ((Number(to.longitude) - Number(from.longitude)) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((Number(from.latitude) * Math.PI) / 180) *
+        Math.cos((Number(to.latitude) * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceKm = Math.round(R * c * 10) / 10;
+    const estimatedMinutes = Math.round((distanceKm / 40) * 60);
+
+    return { distanceKm, estimatedMinutes };
+  };
+
+  return (
+    <div className="space-y-1">
+      {sortedMeetings.map((meeting, index) => (
+        <div key={meeting.id}>
+          <MeetingCard meeting={meeting} />
+          {index < sortedMeetings.length - 1 && (
+            <TravelTimeConnector
+              travelInfo={calculateTravelTime(meeting, sortedMeetings[index + 1])}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function SchedulePage() {
   const { data: todaysMeetings, isLoading: meetingsLoading } = useTodaysMeetings();
   const { data: upcomingMeetings, isLoading: upcomingLoading } = useUpcomingMeetings(7);
@@ -320,8 +364,9 @@ export default function SchedulePage() {
 
   const todayStr = nowISO().split("T")[0];
   const { data: calendarEvents, isLoading: eventsLoading } = useCalendarEvents(todayStr, todayStr);
+  const { data: scheduleGaps } = useScheduleGaps(todayStr);
 
-  const [activeTab, setActiveTab] = useState<"today" | "upcoming">("today");
+  const [activeTab, setActiveTab] = useState<"today" | "upcoming" | "timeline">("today");
 
   const isLoading = meetingsLoading || upcomingLoading || visitsLoading || eventsLoading;
 
@@ -347,6 +392,25 @@ export default function SchedulePage() {
           <p className="text-gray-500 dark:text-gray-400">{formatDateZA(now().toJSDate())}</p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/annix-rep/schedule/calendar-view"
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
+              />
+            </svg>
+            Calendar View
+          </Link>
           <Link
             href="/annix-rep/schedule/route-planner"
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
@@ -413,6 +477,16 @@ export default function SchedulePage() {
           }`}
         >
           Today
+        </button>
+        <button
+          onClick={() => setActiveTab("timeline")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "timeline"
+              ? "border-blue-600 text-blue-600 dark:text-blue-400"
+              : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          Timeline
         </button>
         <button
           onClick={() => setActiveTab("upcoming")}
@@ -562,6 +636,97 @@ export default function SchedulePage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {activeTab === "timeline" && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Today's Timeline
+            </h2>
+            {!todaysMeetings || todaysMeetings.length === 0 ? (
+              <div className="text-center py-8">
+                <svg
+                  className="w-12 h-12 mx-auto text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
+                  />
+                </svg>
+                <p className="mt-2 text-gray-500 dark:text-gray-400">
+                  No meetings scheduled for today
+                </p>
+              </div>
+            ) : (
+              <MeetingsTimeline meetings={todaysMeetings} />
+            )}
+          </div>
+
+          {scheduleGaps && scheduleGaps.length > 0 && (
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Available Gaps
+              </h2>
+              <div className="space-y-3">
+                {scheduleGaps.map((gap, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg"
+                  >
+                    <div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {new Date(gap.startTime).toLocaleTimeString("en-ZA", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                        -{" "}
+                        {new Date(gap.endTime).toLocaleTimeString("en-ZA", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {gap.durationMinutes} min total
+                        {gap.effectiveAvailableMinutes > 0 &&
+                          gap.effectiveAvailableMinutes !== gap.durationMinutes && (
+                            <span className="ml-2 text-green-600 dark:text-green-400">
+                              ({gap.effectiveAvailableMinutes} min available after buffers/travel)
+                            </span>
+                          )}
+                      </div>
+                    </div>
+                    {gap.travelFromPrevious && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="inline-flex items-center gap-1">
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={1.5}
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"
+                            />
+                          </svg>
+                          {gap.travelFromPrevious.estimatedMinutes} min travel
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

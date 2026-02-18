@@ -124,6 +124,22 @@ export class Meeting {
   @Column({ name: "crm_last_synced_at", type: "timestamp", nullable: true })
   crmLastSyncedAt: Date | null;
 
+  @Column({ name: "is_recurring", default: false })
+  isRecurring: boolean;
+
+  @Column({ name: "recurrence_rule", type: "varchar", length: 500, nullable: true })
+  recurrenceRule: string | null;
+
+  @ManyToOne(() => Meeting, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "recurring_parent_id" })
+  recurringParent: Meeting | null;
+
+  @Column({ name: "recurring_parent_id", nullable: true })
+  recurringParentId: number | null;
+
+  @Column({ name: "recurrence_exception_dates", type: "text", nullable: true })
+  recurrenceExceptionDates: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -3,6 +3,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Between, In, Not, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { Meeting, MeetingStatus, Prospect, ProspectStatus, Visit } from "../entities";
+import { RepProfileService } from "../rep-profile/rep-profile.service";
+
+export interface TravelInfo {
+  distanceKm: number;
+  estimatedMinutes: number;
+}
 
 export interface ScheduleGap {
   startTime: Date;
@@ -10,6 +16,9 @@ export interface ScheduleGap {
   durationMinutes: number;
   precedingMeeting: Meeting | null;
   followingMeeting: Meeting | null;
+  travelFromPrevious: TravelInfo | null;
+  travelToNext: TravelInfo | null;
+  effectiveAvailableMinutes: number;
 }
 
 export interface ColdCallSuggestion {
@@ -59,6 +68,7 @@ export class RoutePlanningService {
     private readonly prospectRepo: Repository<Prospect>,
     @InjectRepository(Visit)
     private readonly visitRepo: Repository<Visit>,
+    private readonly repProfileService: RepProfileService,
   ) {}
 
   async scheduleGaps(
@@ -66,11 +76,13 @@ export class RoutePlanningService {
     date: Date,
     minGapMinutes: number = this.MIN_GAP_MINUTES,
   ): Promise<ScheduleGap[]> {
+    const settings = await this.repProfileService.scheduleSettings(userId);
+
     const dayStart = new Date(date);
-    dayStart.setHours(this.WORKING_START_HOUR, 0, 0, 0);
+    dayStart.setHours(settings.workingStartHour, settings.workingStartMinute, 0, 0);
 
     const dayEnd = new Date(date);
-    dayEnd.setHours(this.WORKING_END_HOUR, 0, 0, 0);
+    dayEnd.setHours(settings.workingEndHour, settings.workingEndMinute, 0, 0);
 
     const meetings = await this.meetingRepo.find({
       where: {
@@ -84,29 +96,69 @@ export class RoutePlanningService {
 
     const gaps: ScheduleGap[] = [];
 
+    const calculateTravel = (
+      fromMeeting: Meeting | null,
+      toMeeting: Meeting | null,
+    ): TravelInfo | null => {
+      if (!fromMeeting?.latitude || !fromMeeting?.longitude) return null;
+      if (!toMeeting?.latitude || !toMeeting?.longitude) return null;
+
+      const distance = this.haversineDistance(
+        Number(fromMeeting.latitude),
+        Number(fromMeeting.longitude),
+        Number(toMeeting.latitude),
+        Number(toMeeting.longitude),
+      );
+      return {
+        distanceKm: Math.round(distance * 10) / 10,
+        estimatedMinutes: Math.round((distance / this.AVERAGE_SPEED_KMH) * 60),
+      };
+    };
+
+    const createGap = (
+      startTime: Date,
+      endTime: Date,
+      precedingMeeting: Meeting | null,
+      followingMeeting: Meeting | null,
+    ): ScheduleGap => {
+      const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+      const travelFromPrevious = calculateTravel(precedingMeeting, followingMeeting);
+      const travelToNext = calculateTravel(precedingMeeting, followingMeeting);
+
+      let effectiveAvailableMinutes = durationMinutes;
+      effectiveAvailableMinutes -= settings.bufferAfterMinutes;
+      effectiveAvailableMinutes -= settings.bufferBeforeMinutes;
+      if (travelFromPrevious) {
+        effectiveAvailableMinutes -= travelFromPrevious.estimatedMinutes;
+      }
+
+      return {
+        startTime,
+        endTime,
+        durationMinutes,
+        precedingMeeting,
+        followingMeeting,
+        travelFromPrevious,
+        travelToNext,
+        effectiveAvailableMinutes: Math.max(0, effectiveAvailableMinutes),
+      };
+    };
+
     if (meetings.length === 0) {
-      gaps.push({
-        startTime: dayStart,
-        endTime: dayEnd,
-        durationMinutes: (dayEnd.getTime() - dayStart.getTime()) / (1000 * 60),
-        precedingMeeting: null,
-        followingMeeting: null,
-      });
+      gaps.push(createGap(dayStart, dayEnd, null, null));
       return gaps;
     }
 
     const firstMeeting = meetings[0];
     const firstMeetingStart = new Date(firstMeeting.scheduledStart);
-    if (firstMeetingStart > dayStart) {
-      const gapMinutes = (firstMeetingStart.getTime() - dayStart.getTime()) / (1000 * 60);
+    const adjustedFirstStart = new Date(
+      firstMeetingStart.getTime() - settings.bufferBeforeMinutes * 60 * 1000,
+    );
+
+    if (adjustedFirstStart > dayStart) {
+      const gapMinutes = (adjustedFirstStart.getTime() - dayStart.getTime()) / (1000 * 60);
       if (gapMinutes >= minGapMinutes) {
-        gaps.push({
-          startTime: dayStart,
-          endTime: firstMeetingStart,
-          durationMinutes: gapMinutes,
-          precedingMeeting: null,
-          followingMeeting: firstMeeting,
-        });
+        gaps.push(createGap(dayStart, adjustedFirstStart, null, firstMeeting));
       }
     }
 
@@ -115,33 +167,32 @@ export class RoutePlanningService {
       const nextMeeting = meetings[i + 1];
 
       const currentEnd = new Date(currentMeeting.scheduledEnd);
-      const nextStart = new Date(nextMeeting.scheduledStart);
+      const adjustedCurrentEnd = new Date(
+        currentEnd.getTime() + settings.bufferAfterMinutes * 60 * 1000,
+      );
 
-      const gapMinutes = (nextStart.getTime() - currentEnd.getTime()) / (1000 * 60);
+      const nextStart = new Date(nextMeeting.scheduledStart);
+      const adjustedNextStart = new Date(
+        nextStart.getTime() - settings.bufferBeforeMinutes * 60 * 1000,
+      );
+
+      const gapMinutes = (adjustedNextStart.getTime() - adjustedCurrentEnd.getTime()) / (1000 * 60);
 
       if (gapMinutes >= minGapMinutes) {
-        gaps.push({
-          startTime: currentEnd,
-          endTime: nextStart,
-          durationMinutes: gapMinutes,
-          precedingMeeting: currentMeeting,
-          followingMeeting: nextMeeting,
-        });
+        gaps.push(createGap(adjustedCurrentEnd, adjustedNextStart, currentMeeting, nextMeeting));
       }
     }
 
     const lastMeeting = meetings[meetings.length - 1];
     const lastMeetingEnd = new Date(lastMeeting.scheduledEnd);
-    if (lastMeetingEnd < dayEnd) {
-      const gapMinutes = (dayEnd.getTime() - lastMeetingEnd.getTime()) / (1000 * 60);
+    const adjustedLastEnd = new Date(
+      lastMeetingEnd.getTime() + settings.bufferAfterMinutes * 60 * 1000,
+    );
+
+    if (adjustedLastEnd < dayEnd) {
+      const gapMinutes = (dayEnd.getTime() - adjustedLastEnd.getTime()) / (1000 * 60);
       if (gapMinutes >= minGapMinutes) {
-        gaps.push({
-          startTime: lastMeetingEnd,
-          endTime: dayEnd,
-          durationMinutes: gapMinutes,
-          precedingMeeting: lastMeeting,
-          followingMeeting: null,
-        });
+        gaps.push(createGap(adjustedLastEnd, dayEnd, lastMeeting, null));
       }
     }
 
