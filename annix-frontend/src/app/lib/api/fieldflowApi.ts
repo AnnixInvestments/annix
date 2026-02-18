@@ -564,6 +564,57 @@ export interface TopProspect {
   lastContactedAt: Date | null;
 }
 
+export type GoalPeriod = "weekly" | "monthly" | "quarterly";
+
+export interface SalesGoal {
+  id: number;
+  userId: number;
+  period: GoalPeriod;
+  meetingsTarget: number | null;
+  visitsTarget: number | null;
+  newProspectsTarget: number | null;
+  revenueTarget: number | null;
+  dealsWonTarget: number | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateGoalDto {
+  period: GoalPeriod;
+  meetingsTarget?: number | null;
+  visitsTarget?: number | null;
+  newProspectsTarget?: number | null;
+  revenueTarget?: number | null;
+  dealsWonTarget?: number | null;
+}
+
+export interface UpdateGoalDto {
+  meetingsTarget?: number | null;
+  visitsTarget?: number | null;
+  newProspectsTarget?: number | null;
+  revenueTarget?: number | null;
+  dealsWonTarget?: number | null;
+  isActive?: boolean;
+}
+
+export interface GoalMetric {
+  target: number | null;
+  actual: number;
+  percentage: number | null;
+}
+
+export interface GoalProgress {
+  period: GoalPeriod;
+  periodStart: string;
+  periodEnd: string;
+  meetings: GoalMetric;
+  visits: GoalMetric;
+  newProspects: GoalMetric;
+  revenue: GoalMetric;
+  dealsWon: GoalMetric;
+}
+
 export interface SpeakerSegment {
   startTime: number;
   endTime: number;
@@ -1586,6 +1637,64 @@ export const fieldflowApi = {
         headers: fieldflowAuthHeaders(),
       });
       return handleResponse<TopProspect[]>(response);
+    },
+  },
+
+  goals: {
+    list: async (): Promise<SalesGoal[]> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/goals`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<SalesGoal[]>(response);
+    },
+
+    byPeriod: async (period: GoalPeriod): Promise<SalesGoal> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/goals/${period}`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<SalesGoal>(response);
+    },
+
+    createOrUpdate: async (dto: CreateGoalDto): Promise<SalesGoal> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/goals`, {
+        method: "POST",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<SalesGoal>(response);
+    },
+
+    update: async (period: GoalPeriod, dto: UpdateGoalDto): Promise<SalesGoal> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/goals/${period}`, {
+        method: "PUT",
+        headers: {
+          ...fieldflowAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<SalesGoal>(response);
+    },
+
+    delete: async (period: GoalPeriod): Promise<void> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/goals/${period}`, {
+        method: "DELETE",
+        headers: fieldflowAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Delete failed" }));
+        throw new Error(error.message);
+      }
+    },
+
+    progress: async (period: GoalPeriod): Promise<GoalProgress> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/goals/${period}/progress`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<GoalProgress>(response);
     },
   },
 };

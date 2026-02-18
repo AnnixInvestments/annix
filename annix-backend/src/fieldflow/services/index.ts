@@ -12,6 +12,8 @@ export { AnalyticsService } from "./analytics.service";
 export { CalendarService } from "./calendar.service";
 export { CalendarSyncService } from "./calendar-sync.service";
 export { CrmService } from "./crm.service";
+export type { CreateGoalDto, GoalProgress, UpdateGoalDto } from "./goals.service";
+export { GoalsService } from "./goals.service";
 export { MeetingService } from "./meeting.service";
 export { MeetingSummaryService } from "./meeting-summary.service";
 export { ProspectService } from "./prospect.service";

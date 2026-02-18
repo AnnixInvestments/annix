@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import type {
   ActivityHeatmapCell,
+  GoalPeriod,
+  GoalProgress,
   MeetingsOverTime,
   ProspectFunnel,
   ProspectStatus,
@@ -20,6 +22,7 @@ function formatCurrency(value: number): string {
 import {
   useActivityHeatmap,
   useAnalyticsSummary,
+  useGoalProgress,
   useMeetingsOverTime,
   useProspectFunnel,
   useRevenuePipeline,
@@ -415,8 +418,160 @@ function TopProspectsList({ data }: { data: TopProspect[] }) {
   );
 }
 
+const goalPeriodLabels: Record<GoalPeriod, string> = {
+  weekly: "Weekly",
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+};
+
+function GoalProgressBar({
+  label,
+  actual,
+  target,
+  percentage,
+  isCurrency,
+}: {
+  label: string;
+  actual: number;
+  target: number | null;
+  percentage: number | null;
+  isCurrency?: boolean;
+}) {
+  if (target === null) {
+    return null;
+  }
+
+  const progressColor =
+    percentage !== null
+      ? percentage >= 100
+        ? "bg-green-500"
+        : percentage >= 75
+          ? "bg-blue-500"
+          : percentage >= 50
+            ? "bg-yellow-500"
+            : "bg-red-400"
+      : "bg-gray-400";
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+        <span className="text-sm font-medium text-gray-900 dark:text-white">
+          {isCurrency ? `R${formatCurrency(actual)}` : actual} /{" "}
+          {isCurrency ? `R${formatCurrency(target)}` : target}
+        </span>
+      </div>
+      <div className="h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${progressColor} transition-all duration-300`}
+          style={{ width: `${Math.min(percentage ?? 0, 100)}%` }}
+        />
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 text-right">
+        {percentage !== null ? `${percentage}%` : "-"}
+      </p>
+    </div>
+  );
+}
+
+function GoalProgressCard({
+  data,
+  period,
+  onPeriodChange,
+  isLoading,
+}: {
+  data: GoalProgress | undefined;
+  period: GoalPeriod;
+  onPeriodChange: (p: GoalPeriod) => void;
+  isLoading: boolean;
+}) {
+  const periods: GoalPeriod[] = ["weekly", "monthly", "quarterly"];
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Goal Progress</h3>
+        <div className="flex gap-1">
+          {periods.map((p) => (
+            <button
+              key={p}
+              onClick={() => onPeriodChange(p)}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                period === p
+                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                  : "text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              {goalPeriodLabels[p]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+        </div>
+      ) : !data ? (
+        <div className="text-center py-8">
+          <p className="text-gray-500 dark:text-gray-400">No goals set for this period</p>
+          <Link
+            href="/fieldflow/goals"
+            className="mt-2 inline-block text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Set up goals
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {formatDateZA(data.periodStart)} - {formatDateZA(data.periodEnd)}
+          </p>
+
+          <GoalProgressBar
+            label="Meetings"
+            actual={data.meetings.actual}
+            target={data.meetings.target}
+            percentage={data.meetings.percentage}
+          />
+
+          <GoalProgressBar
+            label="Visits"
+            actual={data.visits.actual}
+            target={data.visits.target}
+            percentage={data.visits.percentage}
+          />
+
+          <GoalProgressBar
+            label="New Prospects"
+            actual={data.newProspects.actual}
+            target={data.newProspects.target}
+            percentage={data.newProspects.percentage}
+          />
+
+          <GoalProgressBar
+            label="Revenue"
+            actual={data.revenue.actual}
+            target={data.revenue.target}
+            percentage={data.revenue.percentage}
+            isCurrency
+          />
+
+          <GoalProgressBar
+            label="Deals Won"
+            actual={data.dealsWon.actual}
+            target={data.dealsWon.target}
+            percentage={data.dealsWon.percentage}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AnalyticsDashboard() {
   const [meetingsPeriod, setMeetingsPeriod] = useState<"week" | "month">("week");
+  const [goalPeriod, setGoalPeriod] = useState<GoalPeriod>("monthly");
 
   const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary();
   const { data: meetingsOverTime } = useMeetingsOverTime(meetingsPeriod, 8);
@@ -425,6 +580,7 @@ export default function AnalyticsDashboard() {
   const { data: activityHeatmap } = useActivityHeatmap();
   const { data: revenuePipeline } = useRevenuePipeline();
   const { data: topProspects } = useTopProspects(10);
+  const { data: goalProgress, isLoading: goalProgressLoading } = useGoalProgress(goalPeriod);
 
   return (
     <div className="space-y-6">
@@ -480,6 +636,13 @@ export default function AnalyticsDashboard() {
               }
             />
           </div>
+
+          <GoalProgressCard
+            data={goalProgress}
+            period={goalPeriod}
+            onPeriodChange={setGoalPeriod}
+            isLoading={goalProgressLoading}
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {meetingsOverTime && (

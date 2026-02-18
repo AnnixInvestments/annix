@@ -92,4 +92,10 @@ export const fieldflowKeys = {
     topProspects: (limit?: number) =>
       [...fieldflowKeys.analytics.all, "topProspects", limit] as const,
   },
+  goals: {
+    all: ["fieldflow", "goals"] as const,
+    list: () => [...fieldflowKeys.goals.all, "list"] as const,
+    byPeriod: (period: string) => [...fieldflowKeys.goals.all, "byPeriod", period] as const,
+    progress: (period: string) => [...fieldflowKeys.goals.all, "progress", period] as const,
+  },
 } as const;

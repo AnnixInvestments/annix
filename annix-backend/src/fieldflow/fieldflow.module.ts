@@ -7,6 +7,7 @@ import {
   AnalyticsController,
   CalendarController,
   CrmController,
+  GoalsController,
   MeetingController,
   ProspectController,
   RecordingController,
@@ -23,6 +24,7 @@ import {
   MeetingRecording,
   MeetingTranscript,
   Prospect,
+  SalesGoal,
   Visit,
 } from "./entities";
 import {
@@ -36,6 +38,7 @@ import {
   CalendarService,
   CalendarSyncService,
   CrmService,
+  GoalsService,
   MeetingService,
   MeetingSummaryService,
   ProspectService,
@@ -57,6 +60,7 @@ import {
       CalendarConnection,
       CalendarEvent,
       CrmConfig,
+      SalesGoal,
     ]),
     ScheduleModule.forRoot(),
     AdminModule,
@@ -65,6 +69,7 @@ import {
   ],
   controllers: [
     AnalyticsController,
+    GoalsController,
     ProspectController,
     VisitController,
     MeetingController,
@@ -77,6 +82,7 @@ import {
   ],
   providers: [
     AnalyticsService,
+    GoalsService,
     ProspectService,
     VisitService,
     MeetingService,

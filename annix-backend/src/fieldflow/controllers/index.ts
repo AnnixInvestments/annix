@@ -2,6 +2,7 @@ export { RepProfileController } from "../rep-profile";
 export { AnalyticsController } from "./analytics.controller";
 export { CalendarController } from "./calendar.controller";
 export { CrmController } from "./crm.controller";
+export { GoalsController } from "./goals.controller";
 export { MeetingController } from "./meeting.controller";
 export { ProspectController } from "./prospect.controller";
 export { RecordingController } from "./recording.controller";

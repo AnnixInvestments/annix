@@ -4,12 +4,15 @@ import {
   type AnalyticsSummary,
   type BulkDeleteResponse,
   type BulkUpdateStatusResponse,
+  type CreateGoalDto,
   type CreateMeetingDto,
   type CreateProspectDto,
   type CreateVisitDto,
   type DuplicateProspects,
   type FieldFlowDashboard,
   fieldflowApi,
+  type GoalPeriod,
+  type GoalProgress,
   type ImportProspectRow,
   type ImportProspectsResult,
   type Meeting,
@@ -18,7 +21,9 @@ import {
   type ProspectFunnel,
   type ProspectStatus,
   type RevenuePipeline,
+  type SalesGoal,
   type TopProspect,
+  type UpdateGoalDto,
   type Visit,
   type VisitOutcome,
   type WinLossRateTrend,
@@ -406,5 +411,63 @@ export function useTopProspects(limit?: number) {
   return useQuery<TopProspect[]>({
     queryKey: fieldflowKeys.analytics.topProspects(limit),
     queryFn: () => fieldflowApi.analytics.topProspects(limit),
+  });
+}
+
+export function useSalesGoals() {
+  return useQuery<SalesGoal[]>({
+    queryKey: fieldflowKeys.goals.list(),
+    queryFn: () => fieldflowApi.goals.list(),
+  });
+}
+
+export function useSalesGoalByPeriod(period: GoalPeriod) {
+  return useQuery<SalesGoal>({
+    queryKey: fieldflowKeys.goals.byPeriod(period),
+    queryFn: () => fieldflowApi.goals.byPeriod(period),
+  });
+}
+
+export function useGoalProgress(period: GoalPeriod) {
+  return useQuery<GoalProgress>({
+    queryKey: fieldflowKeys.goals.progress(period),
+    queryFn: () => fieldflowApi.goals.progress(period),
+  });
+}
+
+export function useCreateOrUpdateGoal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: CreateGoalDto) => fieldflowApi.goals.createOrUpdate(dto),
+    onSuccess: (_, dto) => {
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.goals.all });
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.goals.progress(dto.period) });
+    },
+  });
+}
+
+export function useUpdateGoal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ period, dto }: { period: GoalPeriod; dto: UpdateGoalDto }) =>
+      fieldflowApi.goals.update(period, dto),
+    onSuccess: (_, { period }) => {
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.goals.all });
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.goals.byPeriod(period) });
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.goals.progress(period) });
+    },
+  });
+}
+
+export function useDeleteGoal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (period: GoalPeriod) => fieldflowApi.goals.delete(period),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fieldflowKeys.goals.all });
+    },
   });
 }
