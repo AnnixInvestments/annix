@@ -26,17 +26,21 @@ import { AnnixRepAuthGuard } from "../auth";
 import {
   BulkDeleteDto,
   BulkDeleteResponseDto,
+  BulkTagOperationDto,
+  BulkTagOperationResponseDto,
   BulkUpdateStatusDto,
   BulkUpdateStatusResponseDto,
   CreateProspectDto,
   ImportProspectsDto,
   ImportProspectsResultDto,
+  MergeProspectsDto,
   NearbyProspectsQueryDto,
+  ProspectActivityResponseDto,
   ProspectResponseDto,
   UpdateProspectDto,
 } from "../dto";
 import { ProspectStatus } from "../entities";
-import { ProspectService } from "../services";
+import { ProspectActivityService, ProspectService } from "../services";
 
 interface AnnixRepRequest extends Request {
   annixRepUser: {
@@ -51,7 +55,10 @@ interface AnnixRepRequest extends Request {
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()
 export class ProspectController {
-  constructor(private readonly prospectService: ProspectService) {}
+  constructor(
+    private readonly prospectService: ProspectService,
+    private readonly activityService: ProspectActivityService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: "Create a new prospect" })
@@ -160,6 +167,81 @@ export class ProspectController {
       dto.rows,
       dto.skipInvalid ?? true,
     );
+  }
+
+  @Post("merge")
+  @ApiOperation({ summary: "Merge duplicate prospects into primary" })
+  @ApiResponse({ status: 200, description: "Prospects merged", type: ProspectResponseDto })
+  @ApiResponse({ status: 404, description: "One or more prospects not found" })
+  mergeProspects(@Req() req: AnnixRepRequest, @Body() dto: MergeProspectsDto) {
+    return this.prospectService.mergeProspects(req.annixRepUser.userId, dto);
+  }
+
+  @Patch("bulk/tags")
+  @ApiOperation({ summary: "Add or remove tags from multiple prospects" })
+  @ApiResponse({
+    status: 200,
+    description: "Bulk tag operation result",
+    type: BulkTagOperationResponseDto,
+  })
+  bulkTagOperation(@Req() req: AnnixRepRequest, @Body() dto: BulkTagOperationDto) {
+    return this.prospectService.bulkTagOperation(req.annixRepUser.userId, dto);
+  }
+
+  @Patch("bulk/assign")
+  @ApiOperation({ summary: "Assign multiple prospects to a user" })
+  @ApiResponse({ status: 200, description: "Bulk assignment result" })
+  bulkAssign(
+    @Req() req: AnnixRepRequest,
+    @Body() dto: { ids: number[]; assignedToId: number | null },
+  ) {
+    return this.prospectService.bulkAssign(req.annixRepUser.userId, dto.ids, dto.assignedToId);
+  }
+
+  @Post("recalculate-scores")
+  @ApiOperation({ summary: "Recalculate scores for all prospects" })
+  @ApiResponse({ status: 200, description: "Scores recalculated" })
+  recalculateScores(@Req() req: AnnixRepRequest) {
+    return this.prospectService.recalculateAllScores(req.annixRepUser.userId);
+  }
+
+  @Get(":id/activities")
+  @ApiOperation({ summary: "Get activity history for a prospect" })
+  @ApiParam({ name: "id", type: Number })
+  @ApiQuery({
+    name: "limit",
+    type: Number,
+    required: false,
+    description: "Max activities to return",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "List of activities",
+    type: [ProspectActivityResponseDto],
+  })
+  async prospectActivities(
+    @Req() req: AnnixRepRequest,
+    @Param("id", ParseIntPipe) id: number,
+    @Query("limit") limit?: string,
+  ) {
+    await this.prospectService.findOne(req.annixRepUser.userId, id);
+    const activities = await this.activityService.findByProspect(
+      id,
+      limit ? parseInt(limit, 10) : 50,
+    );
+    return activities.map((a) => ({
+      id: a.id,
+      prospectId: a.prospectId,
+      userId: a.userId,
+      userName: a.user
+        ? [a.user.firstName, a.user.lastName].filter(Boolean).join(" ") || a.user.email
+        : null,
+      activityType: a.activityType,
+      oldValues: a.oldValues,
+      newValues: a.newValues,
+      description: a.description,
+      createdAt: a.createdAt,
+    }));
   }
 
   @Get(":id")

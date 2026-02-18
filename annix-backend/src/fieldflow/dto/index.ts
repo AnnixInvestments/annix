@@ -22,6 +22,11 @@ export {
   UpdateCrmConfigDto,
 } from "./crm.dto";
 export {
+  CreateCustomFieldDto,
+  CustomFieldResponseDto,
+  UpdateCustomFieldDto,
+} from "./custom-field.dto";
+export {
   CreateMeetingDto,
   EndMeetingDto,
   MeetingResponseDto,
@@ -36,13 +41,18 @@ export {
 export {
   BulkDeleteDto,
   BulkDeleteResponseDto,
+  BulkTagOperationDto,
+  BulkTagOperationResponseDto,
   BulkUpdateStatusDto,
   BulkUpdateStatusResponseDto,
   CreateProspectDto,
   ImportProspectRowDto,
   ImportProspectsDto,
   ImportProspectsResultDto,
+  MergeProspectsDto,
+  MergeProspectsResponseDto,
   NearbyProspectsQueryDto,
+  ProspectActivityResponseDto,
   ProspectResponseDto,
   UpdateProspectDto,
 } from "./prospect.dto";

@@ -17,6 +17,14 @@ export const annixRepKeys = {
     stats: () => [...annixRepKeys.prospects.all, "stats"] as const,
     followUps: () => [...annixRepKeys.prospects.all, "followUps"] as const,
     duplicates: () => [...annixRepKeys.prospects.all, "duplicates"] as const,
+    activities: (id: number, limit?: number) =>
+      [...annixRepKeys.prospects.all, "activities", id, limit] as const,
+  },
+  customFields: {
+    all: ["annixRep", "customFields"] as const,
+    list: (includeInactive?: boolean) =>
+      [...annixRepKeys.customFields.all, "list", includeInactive] as const,
+    detail: (id: number) => [...annixRepKeys.customFields.all, "detail", id] as const,
   },
   meetings: {
     all: ["annixRep", "meetings"] as const,

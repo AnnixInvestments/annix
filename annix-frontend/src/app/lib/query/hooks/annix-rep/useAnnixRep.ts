@@ -6,6 +6,7 @@ import {
   annixRepApi,
   type BulkDeleteResponse,
   type BulkUpdateStatusResponse,
+  type CreateCustomFieldDto,
   type CreateGoalDto,
   type CreateMeetingDto,
   type CreateProspectDto,
@@ -23,6 +24,7 @@ import {
   type RevenuePipeline,
   type SalesGoal,
   type TopProspect,
+  type UpdateCustomFieldDto,
   type UpdateGoalDto,
   type Visit,
   type VisitOutcome,
@@ -206,6 +208,126 @@ export function useImportProspects() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
       queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
+    },
+  });
+}
+
+export function useMergeProspects() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: {
+      primaryId: number;
+      mergeIds: number[];
+      fieldOverrides?: Partial<CreateProspectDto>;
+    }) => annixRepApi.prospects.merge(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
+    },
+  });
+}
+
+export function useBulkTagOperation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: { ids: number[]; tags: string[]; operation: "add" | "remove" }) =>
+      annixRepApi.prospects.bulkTagOperation(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
+    },
+  });
+}
+
+export function useBulkAssignProspects() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ ids, assignedToId }: { ids: number[]; assignedToId: number | null }) =>
+      annixRepApi.prospects.bulkAssign(ids, assignedToId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
+    },
+  });
+}
+
+export function useRecalculateProspectScores() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => annixRepApi.prospects.recalculateScores(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
+    },
+  });
+}
+
+export function useProspectActivities(id: number, limit?: number) {
+  return useQuery({
+    queryKey: annixRepKeys.prospects.activities(id, limit),
+    queryFn: () => annixRepApi.prospects.activities(id, limit),
+    enabled: id > 0,
+  });
+}
+
+export function useCustomFields(includeInactive = false) {
+  return useQuery({
+    queryKey: annixRepKeys.customFields.list(includeInactive),
+    queryFn: () => annixRepApi.customFields.list(includeInactive),
+  });
+}
+
+export function useCustomField(id: number) {
+  return useQuery({
+    queryKey: annixRepKeys.customFields.detail(id),
+    queryFn: () => annixRepApi.customFields.detail(id),
+    enabled: id > 0,
+  });
+}
+
+export function useCreateCustomField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (dto: CreateCustomFieldDto) => annixRepApi.customFields.create(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.all });
+    },
+  });
+}
+
+export function useUpdateCustomField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: number; dto: UpdateCustomFieldDto }) =>
+      annixRepApi.customFields.update(id, dto),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.detail(id) });
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.list() });
+    },
+  });
+}
+
+export function useDeleteCustomField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => annixRepApi.customFields.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.all });
+    },
+  });
+}
+
+export function useReorderCustomFields() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (orderedIds: number[]) => annixRepApi.customFields.reorder(orderedIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.all });
     },
   });
 }

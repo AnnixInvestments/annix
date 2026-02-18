@@ -12,11 +12,14 @@ export { AnalyticsService } from "./analytics.service";
 export { CalendarService } from "./calendar.service";
 export { CalendarSyncService } from "./calendar-sync.service";
 export { CrmService } from "./crm.service";
+export { CustomFieldService } from "./custom-field.service";
 export type { CreateGoalDto, GoalProgress, UpdateGoalDto } from "./goals.service";
 export { GoalsService } from "./goals.service";
 export { MeetingService } from "./meeting.service";
 export { MeetingSummaryService } from "./meeting-summary.service";
 export { ProspectService } from "./prospect.service";
+export type { LogActivityParams } from "./prospect-activity.service";
+export { ProspectActivityService } from "./prospect-activity.service";
 export { RecordingService } from "./recording.service";
 export type {
   ColdCallSuggestion,

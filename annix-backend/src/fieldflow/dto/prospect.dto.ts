@@ -3,6 +3,7 @@ import {
   IsArray,
   IsEmail,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsObject,
@@ -10,7 +11,12 @@ import {
   IsString,
   MaxLength,
 } from "class-validator";
-import { FollowUpRecurrence, ProspectPriority, ProspectStatus } from "../entities";
+import {
+  FollowUpRecurrence,
+  ProspectActivityType,
+  ProspectPriority,
+  ProspectStatus,
+} from "../entities";
 
 export class CreateProspectDto {
   @ApiProperty({ description: "Company name", example: "Acme Industries" })
@@ -382,4 +388,80 @@ export class ImportProspectsResultDto {
 
   @ApiProperty({ description: "IDs of newly created prospects" })
   createdIds: number[];
+}
+
+export class MergeProspectsDto {
+  @ApiProperty({ description: "ID of the prospect to keep as primary", example: 1 })
+  @IsNumber()
+  primaryId: number;
+
+  @ApiProperty({ description: "IDs of prospects to merge into primary", example: [2, 3] })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  mergeIds: number[];
+
+  @ApiPropertyOptional({ description: "Optional field overrides for the merged prospect" })
+  @IsOptional()
+  fieldOverrides?: Partial<CreateProspectDto>;
+}
+
+export class MergeProspectsResponseDto {
+  @ApiProperty({ description: "The merged prospect" })
+  prospect: ProspectResponseDto;
+
+  @ApiProperty({ description: "Number of prospects that were merged and deleted" })
+  mergedCount: number;
+}
+
+export class BulkTagOperationDto {
+  @ApiProperty({ description: "Prospect IDs to update", example: [1, 2, 3] })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  ids: number[];
+
+  @ApiProperty({ description: "Tags to add or remove", example: ["VIP", "Priority"] })
+  @IsArray()
+  @IsString({ each: true })
+  tags: string[];
+
+  @ApiProperty({ description: "Operation to perform", enum: ["add", "remove"] })
+  @IsIn(["add", "remove"])
+  operation: "add" | "remove";
+}
+
+export class BulkTagOperationResponseDto {
+  @ApiProperty({ description: "Number of prospects updated" })
+  updated: number;
+
+  @ApiProperty({ description: "IDs of prospects that were updated" })
+  updatedIds: number[];
+}
+
+export class ProspectActivityResponseDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  prospectId: number;
+
+  @ApiProperty()
+  userId: number;
+
+  @ApiPropertyOptional()
+  userName: string | null;
+
+  @ApiProperty({ enum: ProspectActivityType })
+  activityType: ProspectActivityType;
+
+  @ApiPropertyOptional()
+  oldValues: Record<string, unknown> | null;
+
+  @ApiPropertyOptional()
+  newValues: Record<string, unknown> | null;
+
+  @ApiPropertyOptional()
+  description: string | null;
+
+  @ApiProperty()
+  createdAt: Date;
 }

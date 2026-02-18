@@ -133,6 +133,15 @@ export class Prospect {
   @Column({ name: "custom_fields", type: "json", nullable: true })
   customFields: Record<string, unknown> | null;
 
+  @Column({ type: "integer", default: 0 })
+  score: number;
+
+  @Column({ name: "score_updated_at", type: "timestamp", nullable: true })
+  scoreUpdatedAt: Date | null;
+
+  @Column({ name: "assigned_to_id", type: "integer", nullable: true })
+  assignedToId: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

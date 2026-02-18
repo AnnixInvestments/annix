@@ -7,6 +7,7 @@ export {
 export { CalendarEvent, CalendarEventStatus } from "./calendar-event.entity";
 export type { FieldMapping, WebhookConfig } from "./crm-config.entity";
 export { CrmConfig, CrmType } from "./crm-config.entity";
+export { CustomFieldDefinition, CustomFieldType } from "./custom-field-definition.entity";
 export {
   Meeting,
   MeetingStatus,
@@ -24,5 +25,6 @@ export type {
 } from "./meeting-transcript.entity";
 export { MeetingTranscript } from "./meeting-transcript.entity";
 export { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "./prospect.entity";
+export { ProspectActivity, ProspectActivityType } from "./prospect-activity.entity";
 export { GoalPeriod, SalesGoal } from "./sales-goal.entity";
 export { Visit, VisitOutcome, VisitType } from "./visit.entity";

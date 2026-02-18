@@ -99,8 +99,80 @@ export interface Prospect {
   nextFollowUpAt: Date | null;
   followUpRecurrence: FollowUpRecurrence;
   customFields: Record<string, unknown> | null;
+  score: number;
+  scoreUpdatedAt: Date | null;
+  assignedToId: number | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export type ProspectActivityType =
+  | "created"
+  | "status_change"
+  | "note_added"
+  | "follow_up_completed"
+  | "field_updated"
+  | "tag_added"
+  | "tag_removed"
+  | "merged"
+  | "contacted";
+
+export interface ProspectActivity {
+  id: number;
+  prospectId: number;
+  userId: number;
+  userName: string | null;
+  activityType: ProspectActivityType;
+  oldValues: Record<string, unknown> | null;
+  newValues: Record<string, unknown> | null;
+  description: string | null;
+  createdAt: Date;
+}
+
+export type CustomFieldType = "text" | "number" | "date" | "select" | "multiselect" | "boolean";
+
+export interface CustomFieldDefinition {
+  id: number;
+  userId: number;
+  name: string;
+  fieldKey: string;
+  fieldType: CustomFieldType;
+  isRequired: boolean;
+  options: string[] | null;
+  displayOrder: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateCustomFieldDto {
+  name: string;
+  fieldKey: string;
+  fieldType?: CustomFieldType;
+  isRequired?: boolean;
+  options?: string[];
+  displayOrder?: number;
+}
+
+export interface UpdateCustomFieldDto extends Partial<CreateCustomFieldDto> {
+  isActive?: boolean;
+}
+
+export interface MergeProspectsDto {
+  primaryId: number;
+  mergeIds: number[];
+  fieldOverrides?: Partial<CreateProspectDto>;
+}
+
+export interface BulkTagOperationDto {
+  ids: number[];
+  tags: string[];
+  operation: "add" | "remove";
+}
+
+export interface BulkTagOperationResponse {
+  updated: number;
+  updatedIds: number[];
 }
 
 export interface CreateProspectDto {
@@ -881,6 +953,125 @@ export const annixRepApi = {
         body: JSON.stringify({ rows, skipInvalid }),
       });
       return handleResponse<ImportProspectsResult>(response);
+    },
+
+    merge: async (dto: MergeProspectsDto): Promise<Prospect> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/merge`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<Prospect>(response);
+    },
+
+    bulkTagOperation: async (dto: BulkTagOperationDto): Promise<BulkTagOperationResponse> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/bulk/tags`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<BulkTagOperationResponse>(response);
+    },
+
+    bulkAssign: async (
+      ids: number[],
+      assignedToId: number | null,
+    ): Promise<{ updated: number; updatedIds: number[] }> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/bulk/assign`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ids, assignedToId }),
+      });
+      return handleResponse<{ updated: number; updatedIds: number[] }>(response);
+    },
+
+    recalculateScores: async (): Promise<{ updated: number }> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/recalculate-scores`, {
+        method: "POST",
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<{ updated: number }>(response);
+    },
+
+    activities: async (id: number, limit?: number): Promise<ProspectActivity[]> => {
+      const params = limit ? `?limit=${limit}` : "";
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/${id}/activities${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<ProspectActivity[]>(response);
+    },
+  },
+
+  customFields: {
+    list: async (includeInactive = false): Promise<CustomFieldDefinition[]> => {
+      const params = includeInactive ? "?includeInactive=true" : "";
+      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<CustomFieldDefinition[]>(response);
+    },
+
+    detail: async (id: number): Promise<CustomFieldDefinition> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields/${id}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<CustomFieldDefinition>(response);
+    },
+
+    create: async (dto: CreateCustomFieldDto): Promise<CustomFieldDefinition> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<CustomFieldDefinition>(response);
+    },
+
+    update: async (id: number, dto: UpdateCustomFieldDto): Promise<CustomFieldDefinition> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields/${id}`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<CustomFieldDefinition>(response);
+    },
+
+    delete: async (id: number): Promise<void> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields/${id}`, {
+        method: "DELETE",
+        headers: annixRepAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Delete failed" }));
+        throw new Error(error.message);
+      }
+    },
+
+    reorder: async (orderedIds: number[]): Promise<CustomFieldDefinition[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/custom-fields/reorder`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderedIds }),
+      });
+      return handleResponse<CustomFieldDefinition[]>(response);
     },
   },
 
