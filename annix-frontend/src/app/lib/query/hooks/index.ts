@@ -167,6 +167,8 @@ export {
   useUpdateCrmConfig,
 } from "./fieldflow/useCrm";
 export {
+  useBulkDeleteProspects,
+  useBulkUpdateProspectStatus,
   useCancelMeeting,
   useCheckIn,
   useCheckOut,
@@ -177,14 +179,17 @@ export {
   useEndMeeting,
   useFieldFlowDashboard,
   useFollowUpsDue,
+  useImportProspects,
   useMarkContacted,
   useMeeting,
   useMeetings,
   useNearbyProspects,
   useProspect,
+  useProspectDuplicates,
   useProspectStats,
   useProspects,
   useProspectsByStatus,
+  useProspectsCsvExport,
   useProspectVisits,
   useStartMeeting,
   useTodaysMeetings,
@@ -235,6 +240,29 @@ export {
   useTranscript,
   useUpdateTranscript,
 } from "./fieldflow/useTranscript";
+export type {
+  ChatMessage,
+  ChatSession,
+  CreateItemsResponse,
+  ItemConfirmation,
+  ParsedItem,
+  ParsedItemSpecifications,
+  ParseItemsResponse,
+  ValidationIssue,
+} from "./nix/useNix";
+export {
+  useCreateNixItems,
+  useCreateNixSession,
+  useEndNixSession,
+  useNixHistory,
+  useNixSession,
+  useParseNixItems,
+  useRecordNixCorrection,
+  useSendNixMessage,
+  useUpdateNixPreferences,
+  useValidateNixItem,
+  useValidateNixRfq,
+} from "./nix/useNix";
 export type { PublicStats, UpcomingRfq } from "./public/usePublicStats";
 export { usePublicStats } from "./public/usePublicStats";
 export type { PaginatedReviewResult, ReviewWorkflow } from "./review/useReviews";

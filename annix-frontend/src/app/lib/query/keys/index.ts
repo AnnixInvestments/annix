@@ -8,6 +8,8 @@ export { drawingKeys } from "./drawingKeys";
 export { featureFlagKeys } from "./featureFlagKeys";
 export { fieldflowKeys } from "./fieldflowKeys";
 export { messagingKeys } from "./messagingKeys";
+export type { NixSessionQueryParams } from "./nixKeys";
+export { nixKeys } from "./nixKeys";
 export { publicKeys } from "./publicKeys";
 export { referenceDataKeys } from "./referenceDataKeys";
 export type { ReviewQueryParams } from "./reviewKeys";

@@ -3,8 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { ChatMessage, ValidationIssue } from "../chat-api";
-import { nixChatApi } from "../chat-api";
+import {
+  type ChatMessage,
+  useCreateNixSession,
+  useNixHistory,
+  useSendNixMessage,
+  useValidateNixRfq,
+  type ValidationIssue,
+} from "@/app/lib/query/hooks";
+
+const NIX_SESSION_STORAGE_KEY = "nix-chat-session-id";
 
 const AlertCircleIcon = ({ className }: { className?: string }) => (
   <svg
@@ -238,6 +246,33 @@ const loadSavedGeometry = (saved?: PanelGeometry | null): PanelGeometry | null =
   return null;
 };
 
+const loadPersistedSessionId = (): number | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(NIX_SESSION_STORAGE_KEY);
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
+const persistSessionId = (sessionId: number | null): void => {
+  if (typeof window === "undefined") return;
+  try {
+    if (sessionId === null) {
+      localStorage.removeItem(NIX_SESSION_STORAGE_KEY);
+    } else {
+      localStorage.setItem(NIX_SESSION_STORAGE_KEY, sessionId.toString());
+    }
+  } catch {
+    // storage unavailable
+  }
+};
+
 export function NixChatPanel({
   sessionId: initialSessionId,
   rfqId,
@@ -249,7 +284,9 @@ export function NixChatPanel({
   className = "",
   portalContext = "general",
 }: NixChatPanelProps) {
-  const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
+  const [sessionId, setSessionId] = useState<number | null>(() => {
+    return initialSessionId ?? loadPersistedSessionId();
+  });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -262,6 +299,18 @@ export function NixChatPanel({
   const panelRef = useRef<HTMLDivElement>(null);
 
   const contextConfig = CONTEXT_CONFIGS[portalContext];
+
+  const createSessionMutation = useCreateNixSession();
+  const sendMessageMutation = useSendNixMessage();
+  const validateRfqMutation = useValidateNixRfq();
+
+  const historyQuery = useNixHistory(sessionId);
+
+  useEffect(() => {
+    if (historyQuery.data?.messages) {
+      setMessages(historyQuery.data.messages);
+    }
+  }, [historyQuery.data?.messages]);
 
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
     const geo = loadSavedGeometry(savedGeometry);
@@ -392,8 +441,6 @@ export function NixChatPanel({
   useEffect(() => {
     if (!sessionId && !initialSessionId) {
       initializeSession();
-    } else if (sessionId) {
-      loadHistory();
     }
   }, []);
 
@@ -401,40 +448,32 @@ export function NixChatPanel({
     scrollToBottom();
   }, [messages, streamingContent]);
 
-  const initializeSession = async () => {
+  const initializeSession = () => {
     setInitError(null);
-    try {
-      const { sessionId: newSessionId } = await nixChatApi.createSession(rfqId);
-      setSessionId(newSessionId);
-      onSessionCreated?.(newSessionId);
-    } catch (error) {
-      console.error("Failed to create chat session:", error);
-      setInitError("Could not connect to Nix. Is the backend running?");
-    }
-  };
-
-  const loadHistory = async () => {
-    if (!sessionId) return;
-
-    try {
-      const { messages: history } = await nixChatApi.history(sessionId);
-      setMessages(history);
-    } catch (error) {
-      console.error("Failed to load chat history:", error);
-    }
+    createSessionMutation.mutate(rfqId, {
+      onSuccess: (data) => {
+        setSessionId(data.sessionId);
+        persistSessionId(data.sessionId);
+        onSessionCreated?.(data.sessionId);
+      },
+      onError: (error) => {
+        console.error("Failed to create chat session:", error);
+        setInitError("Could not connect to Nix. Is the backend running?");
+      },
+    });
   };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!inputValue.trim() || !sessionId || isStreaming) return;
 
     const userMessage = inputValue.trim();
     setInputValue("");
     setIsStreaming(true);
-    setStreamingContent("");
+    setStreamingContent("Thinking...");
 
     const tempUserMessage: ChatMessage = {
       id: Date.now(),
@@ -445,43 +484,48 @@ export function NixChatPanel({
 
     setMessages((prev) => [...prev, tempUserMessage]);
 
-    try {
-      setStreamingContent("Thinking...");
+    sendMessageMutation.mutate(
+      {
+        sessionId,
+        message: userMessage,
+        context: {
+          currentRfqItems,
+          lastValidationIssues: validationIssues,
+        },
+      },
+      {
+        onSuccess: (result) => {
+          const assistantMessage: ChatMessage = {
+            id: result.messageId,
+            role: "assistant",
+            content: result.content,
+            metadata: result.metadata as ChatMessage["metadata"],
+            createdAt: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+          setStreamingContent("");
+          setIsStreaming(false);
+        },
+        onError: (error) => {
+          console.error("Failed to send message:", error);
+          setStreamingContent("");
 
-      const result = await nixChatApi.sendMessage(sessionId, userMessage, {
-        currentRfqItems,
-        lastValidationIssues: validationIssues,
-      });
+          const errorContent =
+            error instanceof Error ? error.message : "Something went wrong. Please try again.";
 
-      const assistantMessage: ChatMessage = {
-        id: result.messageId,
-        role: "assistant",
-        content: result.content,
-        metadata: result.metadata,
-        createdAt: new Date().toISOString(),
-      };
+          const errorMessage: ChatMessage = {
+            id: Date.now() + 1,
+            role: "assistant",
+            content: errorContent,
+            metadata: { intent: "error" },
+            createdAt: new Date().toISOString(),
+          };
 
-      setMessages((prev) => [...prev, assistantMessage]);
-      setStreamingContent("");
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      setStreamingContent("");
-
-      const errorContent =
-        error instanceof Error ? error.message : "Something went wrong. Please try again.";
-
-      const errorMessage: ChatMessage = {
-        id: Date.now() + 1,
-        role: "assistant",
-        content: errorContent,
-        metadata: { intent: "error" },
-        createdAt: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsStreaming(false);
-    }
+          setMessages((prev) => [...prev, errorMessage]);
+          setIsStreaming(false);
+        },
+      },
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -491,22 +535,20 @@ export function NixChatPanel({
     }
   };
 
-  const validateCurrentItems = async () => {
+  useEffect(() => {
     if (!currentRfqItems || currentRfqItems.length === 0) {
       setValidationIssues([]);
       return;
     }
 
-    try {
-      const { issues } = await nixChatApi.validateRfq(currentRfqItems);
-      setValidationIssues(issues);
-    } catch (error) {
-      console.error("Failed to validate RFQ:", error);
-    }
-  };
-
-  useEffect(() => {
-    validateCurrentItems();
+    validateRfqMutation.mutate(currentRfqItems, {
+      onSuccess: (result) => {
+        setValidationIssues(result.issues);
+      },
+      onError: (error) => {
+        console.error("Failed to validate RFQ:", error);
+      },
+    });
   }, [currentRfqItems]);
 
   const exportChatAsText = useCallback(() => {
@@ -556,11 +598,11 @@ export function NixChatPanel({
     return () => document.removeEventListener("click", handleClickOutside);
   }, [showExportMenu]);
 
-  const requestSummary = useCallback(async () => {
+  const requestSummary = useCallback(() => {
     if (!sessionId || isStreaming || messages.length < 2) return;
 
     setIsStreaming(true);
-    setStreamingContent("");
+    setStreamingContent("Generating summary...");
 
     const summaryPrompt =
       "Please provide a brief summary of our conversation so far, highlighting the key topics discussed and any important decisions or items mentioned.";
@@ -574,41 +616,46 @@ export function NixChatPanel({
 
     setMessages((prev) => [...prev, tempUserMessage]);
 
-    try {
-      setStreamingContent("Generating summary...");
+    sendMessageMutation.mutate(
+      {
+        sessionId,
+        message: summaryPrompt,
+        context: {
+          currentRfqItems,
+          lastValidationIssues: validationIssues,
+        },
+      },
+      {
+        onSuccess: (result) => {
+          const assistantMessage: ChatMessage = {
+            id: result.messageId,
+            role: "assistant",
+            content: result.content,
+            metadata: result.metadata as ChatMessage["metadata"],
+            createdAt: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+          setStreamingContent("");
+          setIsStreaming(false);
+        },
+        onError: (error) => {
+          console.error("Failed to generate summary:", error);
+          setStreamingContent("");
 
-      const result = await nixChatApi.sendMessage(sessionId, summaryPrompt, {
-        currentRfqItems,
-        lastValidationIssues: validationIssues,
-      });
+          const errorMessage: ChatMessage = {
+            id: Date.now() + 1,
+            role: "assistant",
+            content: "Sorry, I couldn't generate a summary. Please try again.",
+            metadata: { intent: "error" },
+            createdAt: new Date().toISOString(),
+          };
 
-      const assistantMessage: ChatMessage = {
-        id: result.messageId,
-        role: "assistant",
-        content: result.content,
-        metadata: result.metadata,
-        createdAt: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-      setStreamingContent("");
-    } catch (error) {
-      console.error("Failed to generate summary:", error);
-      setStreamingContent("");
-
-      const errorMessage: ChatMessage = {
-        id: Date.now() + 1,
-        role: "assistant",
-        content: "Sorry, I couldn't generate a summary. Please try again.",
-        metadata: { intent: "error" },
-        createdAt: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsStreaming(false);
-    }
-  }, [sessionId, isStreaming, messages, currentRfqItems, validationIssues]);
+          setMessages((prev) => [...prev, errorMessage]);
+          setIsStreaming(false);
+        },
+      },
+    );
+  }, [sessionId, isStreaming, messages, currentRfqItems, validationIssues, sendMessageMutation]);
 
   const issueIcon = (severity: ValidationIssue["severity"]) => {
     if (severity === "error") return <AlertCircleIcon className="h-4 w-4 text-red-500" />;
