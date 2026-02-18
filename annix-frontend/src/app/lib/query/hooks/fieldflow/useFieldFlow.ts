@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  type ActivityHeatmapCell,
+  type AnalyticsSummary,
   type BulkDeleteResponse,
   type BulkUpdateStatusResponse,
   type CreateMeetingDto,
@@ -11,10 +13,15 @@ import {
   type ImportProspectRow,
   type ImportProspectsResult,
   type Meeting,
+  type MeetingsOverTime,
   type Prospect,
+  type ProspectFunnel,
   type ProspectStatus,
+  type RevenuePipeline,
+  type TopProspect,
   type Visit,
   type VisitOutcome,
+  type WinLossRateTrend,
 } from "@/app/lib/api/fieldflowApi";
 import { fieldflowKeys } from "../../keys/fieldflowKeys";
 
@@ -350,5 +357,54 @@ export function useCheckOut() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fieldflowKeys.visits.all });
     },
+  });
+}
+
+export function useAnalyticsSummary() {
+  return useQuery<AnalyticsSummary>({
+    queryKey: fieldflowKeys.analytics.summary(),
+    queryFn: () => fieldflowApi.analytics.summary(),
+  });
+}
+
+export function useMeetingsOverTime(period?: "week" | "month", count?: number) {
+  return useQuery<MeetingsOverTime[]>({
+    queryKey: fieldflowKeys.analytics.meetingsOverTime(period, count),
+    queryFn: () => fieldflowApi.analytics.meetingsOverTime(period, count),
+  });
+}
+
+export function useProspectFunnel() {
+  return useQuery<ProspectFunnel[]>({
+    queryKey: fieldflowKeys.analytics.prospectFunnel(),
+    queryFn: () => fieldflowApi.analytics.prospectFunnel(),
+  });
+}
+
+export function useWinLossRateTrends(months?: number) {
+  return useQuery<WinLossRateTrend[]>({
+    queryKey: fieldflowKeys.analytics.winLossRateTrends(months),
+    queryFn: () => fieldflowApi.analytics.winLossRateTrends(months),
+  });
+}
+
+export function useActivityHeatmap() {
+  return useQuery<ActivityHeatmapCell[]>({
+    queryKey: fieldflowKeys.analytics.activityHeatmap(),
+    queryFn: () => fieldflowApi.analytics.activityHeatmap(),
+  });
+}
+
+export function useRevenuePipeline() {
+  return useQuery<RevenuePipeline[]>({
+    queryKey: fieldflowKeys.analytics.revenuePipeline(),
+    queryFn: () => fieldflowApi.analytics.revenuePipeline(),
+  });
+}
+
+export function useTopProspects(limit?: number) {
+  return useQuery<TopProspect[]>({
+    queryKey: fieldflowKeys.analytics.topProspects(limit),
+    queryFn: () => fieldflowApi.analytics.topProspects(limit),
   });
 }

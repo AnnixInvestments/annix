@@ -1,4 +1,14 @@
 export { RepProfileService } from "../rep-profile";
+export type {
+  ActivityHeatmapCell,
+  AnalyticsSummary,
+  MeetingsOverTime,
+  ProspectFunnel,
+  RevenuePipeline,
+  TopProspect,
+  WinLossRateTrend,
+} from "./analytics.service";
+export { AnalyticsService } from "./analytics.service";
 export { CalendarService } from "./calendar.service";
 export { CalendarSyncService } from "./calendar-sync.service";
 export { CrmService } from "./crm.service";

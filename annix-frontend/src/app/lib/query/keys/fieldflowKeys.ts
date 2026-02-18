@@ -79,4 +79,17 @@ export const fieldflowKeys = {
     profile: () => [...fieldflowKeys.repProfile.all, "profile"] as const,
     searchTerms: () => [...fieldflowKeys.repProfile.all, "searchTerms"] as const,
   },
+  analytics: {
+    all: ["fieldflow", "analytics"] as const,
+    summary: () => [...fieldflowKeys.analytics.all, "summary"] as const,
+    meetingsOverTime: (period?: "week" | "month", count?: number) =>
+      [...fieldflowKeys.analytics.all, "meetingsOverTime", period, count] as const,
+    prospectFunnel: () => [...fieldflowKeys.analytics.all, "prospectFunnel"] as const,
+    winLossRateTrends: (months?: number) =>
+      [...fieldflowKeys.analytics.all, "winLossRateTrends", months] as const,
+    activityHeatmap: () => [...fieldflowKeys.analytics.all, "activityHeatmap"] as const,
+    revenuePipeline: () => [...fieldflowKeys.analytics.all, "revenuePipeline"] as const,
+    topProspects: (limit?: number) =>
+      [...fieldflowKeys.analytics.all, "topProspects", limit] as const,
+  },
 } as const;

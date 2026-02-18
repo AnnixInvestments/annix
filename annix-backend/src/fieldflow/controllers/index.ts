@@ -1,4 +1,5 @@
 export { RepProfileController } from "../rep-profile";
+export { AnalyticsController } from "./analytics.controller";
 export { CalendarController } from "./calendar.controller";
 export { CrmController } from "./crm.controller";
 export { MeetingController } from "./meeting.controller";

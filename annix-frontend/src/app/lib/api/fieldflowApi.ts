@@ -511,6 +511,59 @@ export interface OptimizedRoute {
   googleMapsUrl: string;
 }
 
+export interface AnalyticsSummary {
+  totalProspects: number;
+  activeProspects: number;
+  totalMeetings: number;
+  completedMeetings: number;
+  totalVisits: number;
+  totalPipelineValue: number;
+  avgDealCycledays: number | null;
+  winRate: number | null;
+}
+
+export interface MeetingsOverTime {
+  period: string;
+  count: number;
+  completed: number;
+  cancelled: number;
+}
+
+export interface ProspectFunnel {
+  status: ProspectStatus;
+  count: number;
+  totalValue: number;
+}
+
+export interface WinLossRateTrend {
+  period: string;
+  won: number;
+  lost: number;
+  winRate: number;
+}
+
+export interface ActivityHeatmapCell {
+  dayOfWeek: number;
+  hour: number;
+  count: number;
+}
+
+export interface RevenuePipeline {
+  status: ProspectStatus;
+  count: number;
+  totalValue: number;
+  avgValue: number;
+}
+
+export interface TopProspect {
+  id: number;
+  companyName: string;
+  contactName: string | null;
+  status: ProspectStatus;
+  estimatedValue: number;
+  lastContactedAt: Date | null;
+}
+
 export interface SpeakerSegment {
   startTime: number;
   endTime: number;
@@ -1470,6 +1523,69 @@ export const fieldflowApi = {
         headers: fieldflowAuthHeaders(),
       });
       return handleResponse<string[]>(response);
+    },
+  },
+
+  analytics: {
+    summary: async (): Promise<AnalyticsSummary> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/summary`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<AnalyticsSummary>(response);
+    },
+
+    meetingsOverTime: async (
+      period?: "week" | "month",
+      count?: number,
+    ): Promise<MeetingsOverTime[]> => {
+      const params = new URLSearchParams();
+      if (period) params.set("period", period);
+      if (count) params.set("count", count.toString());
+      const query = params.toString() ? `?${params}` : "";
+      const response = await fetch(
+        `${getApiUrl()}/fieldflow/analytics/meetings-over-time${query}`,
+        {
+          headers: fieldflowAuthHeaders(),
+        },
+      );
+      return handleResponse<MeetingsOverTime[]>(response);
+    },
+
+    prospectFunnel: async (): Promise<ProspectFunnel[]> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/prospect-funnel`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<ProspectFunnel[]>(response);
+    },
+
+    winLossRateTrends: async (months?: number): Promise<WinLossRateTrend[]> => {
+      const params = months ? `?months=${months}` : "";
+      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/win-loss-trends${params}`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<WinLossRateTrend[]>(response);
+    },
+
+    activityHeatmap: async (): Promise<ActivityHeatmapCell[]> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/activity-heatmap`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<ActivityHeatmapCell[]>(response);
+    },
+
+    revenuePipeline: async (): Promise<RevenuePipeline[]> => {
+      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/revenue-pipeline`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<RevenuePipeline[]>(response);
+    },
+
+    topProspects: async (limit?: number): Promise<TopProspect[]> => {
+      const params = limit ? `?limit=${limit}` : "";
+      const response = await fetch(`${getApiUrl()}/fieldflow/analytics/top-prospects${params}`, {
+        headers: fieldflowAuthHeaders(),
+      });
+      return handleResponse<TopProspect[]>(response);
     },
   },
 };

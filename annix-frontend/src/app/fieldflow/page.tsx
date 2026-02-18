@@ -138,7 +138,7 @@ export default function AnnixRepDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
         <SectionCard
           title="Prospecting"
           description="Find and manage your sales prospects with location-based discovery"
@@ -156,6 +156,14 @@ export default function AnnixRepDashboard() {
           featureCount={3}
         />
         <SectionCard
+          title="Analytics"
+          description="Track your sales performance with charts and insights"
+          href="/fieldflow/analytics"
+          icon="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"
+          color="green"
+          featureCount={7}
+        />
+        <SectionCard
           title="AI Features"
           description="Powered by artificial intelligence for transcription and insights"
           href="/fieldflow/ai-features"
@@ -168,7 +176,7 @@ export default function AnnixRepDashboard() {
           description="Connect with your existing calendars, CRM, and tools"
           href="/fieldflow/integrations"
           icon="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
-          color="green"
+          color="blue"
           featureCount={3}
         />
       </div>

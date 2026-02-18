@@ -4,6 +4,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { FieldFlowAuthModule } from "./auth";
 import {
+  AnalyticsController,
   CalendarController,
   CrmController,
   MeetingController,
@@ -31,6 +32,7 @@ import {
 } from "./providers";
 import { RepProfileModule } from "./rep-profile";
 import {
+  AnalyticsService,
   CalendarService,
   CalendarSyncService,
   CrmService,
@@ -62,6 +64,7 @@ import {
     FieldFlowAuthModule,
   ],
   controllers: [
+    AnalyticsController,
     ProspectController,
     VisitController,
     MeetingController,
@@ -73,6 +76,7 @@ import {
     RouteController,
   ],
   providers: [
+    AnalyticsService,
     ProspectService,
     VisitService,
     MeetingService,
