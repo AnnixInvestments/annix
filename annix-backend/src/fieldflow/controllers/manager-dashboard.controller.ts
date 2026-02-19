@@ -100,4 +100,16 @@ export class ManagerDashboardController {
       | "prospects_created";
     return this.analyticsService.leaderboard(orgId, validMetric ?? "deals_won");
   }
+
+  @Get("overdue-followups")
+  @ApiOperation({ summary: "Get team-wide overdue follow-ups" })
+  @ApiQuery({ name: "limit", required: false, type: Number })
+  async overdueFollowUps(@Req() req: AnnixRepRequest, @Query("limit") limit?: string) {
+    const orgId = req.annixRepUser.organizationId;
+    if (!orgId) {
+      throw new ForbiddenException("User is not part of an organization");
+    }
+    const parsedLimit = limit ? parseInt(limit, 10) : 20;
+    return this.analyticsService.teamOverdueFollowUps(orgId, parsedLimit);
+  }
 }

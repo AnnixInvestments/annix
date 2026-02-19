@@ -52,6 +52,8 @@ export const annixRepKeys = {
     pipelineByRep: () => [...annixRepKeys.managerDashboard.all, "pipelineByRep"] as const,
     leaderboard: (metric?: string) =>
       [...annixRepKeys.managerDashboard.all, "leaderboard", metric] as const,
+    overdueFollowUps: (limit?: number) =>
+      [...annixRepKeys.managerDashboard.all, "overdueFollowUps", limit] as const,
   },
   prospects: {
     all: ["annixRep", "prospects"] as const,

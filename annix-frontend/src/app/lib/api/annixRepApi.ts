@@ -2820,6 +2820,16 @@ export interface LeaderboardEntry {
   value: number;
 }
 
+export interface TeamOverdueFollowUp {
+  prospectId: number;
+  companyName: string;
+  ownerName: string;
+  ownerId: number;
+  nextFollowUpAt: string;
+  daysOverdue: number;
+  status: ProspectStatus;
+}
+
 export interface HandoffHistory {
   id: number;
   prospectId: number;
@@ -3208,6 +3218,14 @@ export const teamApi = {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<LeaderboardEntry[]>(response);
+    },
+
+    overdueFollowUps: async (limit?: number): Promise<TeamOverdueFollowUp[]> => {
+      const params = limit ? `?limit=${limit}` : "";
+      const response = await fetch(`${getApiUrl()}/annix-rep/manager/overdue-followups${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamOverdueFollowUp[]>(response);
     },
   },
 };

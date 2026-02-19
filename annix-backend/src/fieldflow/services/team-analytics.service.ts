@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Between, Repository } from "typeorm";
+import { Between, In, LessThan, Not, Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
 import { User } from "../../user/entities/user.entity";
 import { Meeting, MeetingStatus } from "../entities/meeting.entity";
@@ -50,6 +50,16 @@ type LeaderboardMetric =
   | "pipeline_value"
   | "meetings_completed"
   | "prospects_created";
+
+export interface TeamOverdueFollowUp {
+  prospectId: number;
+  companyName: string;
+  ownerName: string;
+  ownerId: number;
+  nextFollowUpAt: Date;
+  daysOverdue: number;
+  status: ProspectStatus;
+}
 
 @Injectable()
 export class TeamAnalyticsService {
@@ -291,5 +301,39 @@ export class TeamAnalyticsService {
       rank: index + 1,
       ...entry,
     }));
+  }
+
+  async teamOverdueFollowUps(orgId: number, limit = 20): Promise<TeamOverdueFollowUp[]> {
+    const currentTime = now().toJSDate();
+
+    const prospects = await this.prospectRepo.find({
+      where: {
+        organizationId: orgId,
+        nextFollowUpAt: LessThan(currentTime),
+        status: Not(In([ProspectStatus.WON, ProspectStatus.LOST])),
+      },
+      relations: ["owner"],
+      order: { nextFollowUpAt: "ASC" },
+      take: limit,
+    });
+
+    return prospects.map((prospect) => {
+      const followUpDate = prospect.nextFollowUpAt as Date;
+      const daysOverdue = Math.floor(
+        (currentTime.getTime() - followUpDate.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      return {
+        prospectId: prospect.id,
+        companyName: prospect.companyName,
+        ownerName: prospect.owner
+          ? `${prospect.owner.firstName ?? ""} ${prospect.owner.lastName ?? ""}`.trim()
+          : "Unassigned",
+        ownerId: prospect.ownerId,
+        nextFollowUpAt: followUpDate,
+        daysOverdue: Math.max(0, daysOverdue),
+        status: prospect.status,
+      };
+    });
   }
 }

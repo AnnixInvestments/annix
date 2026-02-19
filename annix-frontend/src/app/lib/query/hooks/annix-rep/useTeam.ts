@@ -380,3 +380,10 @@ export function useLeaderboard(metric?: LeaderboardMetric) {
     queryFn: () => teamApi.manager.leaderboard(metric),
   });
 }
+
+export function useTeamOverdueFollowUps(limit?: number) {
+  return useQuery({
+    queryKey: annixRepKeys.managerDashboard.overdueFollowUps(limit),
+    queryFn: () => teamApi.manager.overdueFollowUps(limit),
+  });
+}

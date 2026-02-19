@@ -241,6 +241,7 @@ export {
   useTeamInvitations,
   useTeamMember,
   useTeamMembers,
+  useTeamOverdueFollowUps,
   useTeamPerformance,
   useTerritories,
   useTerritory,

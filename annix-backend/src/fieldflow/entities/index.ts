@@ -29,7 +29,9 @@ export {
 } from "./meeting-recording.entity";
 export type {
   ActionItem,
+  DealProbability,
   MeetingAnalysis,
+  ObjectionResponse,
   TranscriptSegment,
 } from "./meeting-transcript.entity";
 export { MeetingTranscript } from "./meeting-transcript.entity";

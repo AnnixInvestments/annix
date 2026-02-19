@@ -24,6 +24,21 @@ export interface ActionItem {
   extracted: boolean;
 }
 
+export interface ObjectionResponse {
+  objection: string;
+  suggestedResponse: string;
+  category: "budget" | "timing" | "competition" | "features" | "trust" | "general";
+}
+
+export interface DealProbability {
+  score: number;
+  confidence: "low" | "medium" | "high";
+  factors: {
+    positive: string[];
+    negative: string[];
+  };
+}
+
 export interface MeetingAnalysis {
   topics: string[];
   questions: string[];
@@ -32,6 +47,8 @@ export interface MeetingAnalysis {
   keyPoints: string[];
   sentiment: "positive" | "neutral" | "negative" | null;
   sentimentScore: number | null;
+  dealProbability: DealProbability | null;
+  objectionResponses: ObjectionResponse[];
 }
 
 @Entity("annix_rep_meeting_transcripts")
