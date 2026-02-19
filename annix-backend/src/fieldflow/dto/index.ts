@@ -102,6 +102,26 @@ export {
   ScheduleGapsQueryDto,
 } from "./route-planning.dto";
 export {
+  AssignTerritoryDto,
+  BulkHandoffDto,
+  CreateInvitationDto,
+  CreateOrganizationDto,
+  CreateTerritoryDto,
+  HandoffProspectDto,
+  InvitationResponseDto,
+  LeaderboardEntryDto,
+  ManagerDashboardResponseDto,
+  MemberPerformanceResponseDto,
+  OrganizationResponseDto,
+  SetReportsToDto,
+  TeamActivityResponseDto,
+  TeamMemberResponseDto,
+  TerritoryResponseDto,
+  UpdateMemberRoleDto,
+  UpdateOrganizationDto,
+  UpdateTerritoryDto,
+} from "./team.dto";
+export {
   CheckInDto,
   CheckOutDto,
   CreateVisitDto,

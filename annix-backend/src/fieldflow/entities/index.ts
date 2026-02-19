@@ -33,6 +33,7 @@ export type {
   TranscriptSegment,
 } from "./meeting-transcript.entity";
 export { MeetingTranscript } from "./meeting-transcript.entity";
+export { Organization, OrganizationPlan } from "./organization.entity";
 export { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "./prospect.entity";
 export { ProspectActivity, ProspectActivityType } from "./prospect-activity.entity";
 export { GoalPeriod, SalesGoal } from "./sales-goal.entity";
@@ -42,4 +43,9 @@ export {
   type ConflictType,
   SyncConflict,
 } from "./sync-conflict.entity";
+export { TeamActivity, TeamActivityType } from "./team-activity.entity";
+export { TeamInvitation, TeamInvitationStatus } from "./team-invitation.entity";
+export { TeamMember, TeamMemberStatus, TeamRole } from "./team-member.entity";
+export type { TerritoryBounds } from "./territory.entity";
+export { Territory } from "./territory.entity";
 export { Visit, VisitOutcome, VisitType } from "./visit.entity";

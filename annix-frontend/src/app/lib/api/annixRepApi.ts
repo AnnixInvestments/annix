@@ -2632,6 +2632,586 @@ export const annixRepApi = {
   },
 };
 
+export type OrganizationPlan = "free" | "team" | "enterprise";
+export type TeamRole = "admin" | "manager" | "rep";
+export type TeamMemberStatus = "active" | "inactive" | "suspended";
+export type TeamInvitationStatus = "pending" | "accepted" | "expired" | "cancelled" | "declined";
+export type TeamActivityType =
+  | "member_joined"
+  | "member_left"
+  | "prospect_created"
+  | "prospect_status_changed"
+  | "prospect_handoff"
+  | "meeting_completed"
+  | "deal_won"
+  | "deal_lost"
+  | "territory_assigned"
+  | "note_shared";
+
+export interface Organization {
+  id: number;
+  name: string;
+  slug: string;
+  ownerId: number;
+  plan: OrganizationPlan;
+  maxMembers: number;
+  industry: string | null;
+  logoUrl: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateOrganizationDto {
+  name: string;
+  industry?: string;
+  logoUrl?: string;
+}
+
+export interface UpdateOrganizationDto {
+  name?: string;
+  industry?: string;
+  logoUrl?: string;
+  plan?: OrganizationPlan;
+  maxMembers?: number;
+}
+
+export interface OrganizationStats {
+  memberCount: number;
+  activeMembers: number;
+  territoryCount: number;
+  prospectCount: number;
+  meetingsThisMonth: number;
+}
+
+export interface TeamMember {
+  id: number;
+  organizationId: number;
+  userId: number;
+  role: TeamRole;
+  status: TeamMemberStatus;
+  reportsToId: number | null;
+  joinedAt: Date;
+  userName?: string;
+  userEmail?: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+export interface TerritoryBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+export interface Territory {
+  id: number;
+  organizationId: number;
+  name: string;
+  description: string | null;
+  provinces: string[] | null;
+  cities: string[] | null;
+  bounds: TerritoryBounds | null;
+  assignedToId: number | null;
+  assignedToName?: string;
+  isActive: boolean;
+  prospectCount?: number;
+}
+
+export interface CreateTerritoryDto {
+  name: string;
+  description?: string;
+  provinces?: string[];
+  cities?: string[];
+  bounds?: TerritoryBounds;
+}
+
+export interface UpdateTerritoryDto extends Partial<CreateTerritoryDto> {
+  isActive?: boolean;
+}
+
+export interface TeamInvitation {
+  id: number;
+  organizationId: number;
+  email: string;
+  inviteeName: string | null;
+  role: TeamRole;
+  territoryId: number | null;
+  status: TeamInvitationStatus;
+  message: string | null;
+  expiresAt: Date;
+  createdAt: Date;
+  invitedByName?: string;
+  organizationName?: string;
+}
+
+export interface CreateInvitationDto {
+  email: string;
+  inviteeName?: string;
+  role?: TeamRole;
+  territoryId?: number;
+  message?: string;
+}
+
+export interface ValidateInvitationResult {
+  valid: boolean;
+  message?: string;
+  invitation?: {
+    id: number;
+    email: string;
+    inviteeName: string | null;
+    role: TeamRole;
+    status: string;
+    expiresAt: Date;
+    organizationName?: string;
+    invitedByName?: string;
+  };
+}
+
+export interface TeamActivity {
+  id: number;
+  userId: number;
+  userName?: string;
+  activityType: TeamActivityType;
+  entityType: string;
+  entityId: number | null;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: Date;
+}
+
+export interface ManagerDashboard {
+  teamSize: number;
+  activeReps: number;
+  totalPipelineValue: number;
+  teamMeetingsThisMonth: number;
+  teamDealsWonThisMonth: number;
+  teamDealsLostThisMonth: number;
+}
+
+export interface MemberPerformance {
+  userId: number;
+  userName: string;
+  prospectCount: number;
+  pipelineValue: number;
+  dealsWon: number;
+  dealsLost: number;
+  meetingsCompleted: number;
+  winRate: number;
+}
+
+export interface TerritoryPerformance {
+  territoryId: number;
+  territoryName: string;
+  assignedToName: string | null;
+  prospectCount: number;
+  pipelineValue: number;
+  dealsWon: number;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  userId: number;
+  userName: string;
+  value: number;
+}
+
+export interface HandoffHistory {
+  id: number;
+  prospectId: number;
+  fromUserId: number;
+  fromUserName: string;
+  toUserId: number;
+  toUserName: string;
+  reason: string | null;
+  timestamp: Date;
+}
+
+export interface TeamHierarchyNode {
+  member: TeamMember;
+  directReports: TeamHierarchyNode[];
+}
+
+export const teamApi = {
+  organization: {
+    current: async (): Promise<Organization | null> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/organization`, {
+        headers: annixRepAuthHeaders(),
+      });
+      if (response.status === 404) return null;
+      return handleResponse<Organization>(response);
+    },
+
+    create: async (dto: CreateOrganizationDto): Promise<Organization> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/organization`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<Organization>(response);
+    },
+
+    update: async (id: number, dto: UpdateOrganizationDto): Promise<Organization> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/organization/${id}`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<Organization>(response);
+    },
+
+    delete: async (id: number): Promise<void> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/organization/${id}`, {
+        method: "DELETE",
+        headers: annixRepAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Delete failed" }));
+        throw new Error(error.message);
+      }
+    },
+
+    stats: async (id: number): Promise<OrganizationStats> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/organization/${id}/stats`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<OrganizationStats>(response);
+    },
+  },
+
+  members: {
+    list: async (): Promise<TeamMember[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/members`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamMember[]>(response);
+    },
+
+    detail: async (id: number): Promise<TeamMember> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/members/${id}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamMember>(response);
+    },
+
+    updateRole: async (id: number, role: TeamRole): Promise<TeamMember> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/members/${id}/role`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role }),
+      });
+      return handleResponse<TeamMember>(response);
+    },
+
+    remove: async (id: number): Promise<void> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/members/${id}`, {
+        method: "DELETE",
+        headers: annixRepAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Remove failed" }));
+        throw new Error(error.message);
+      }
+    },
+
+    setReportsTo: async (id: number, reportsToId: number | null): Promise<TeamMember> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/members/${id}/reports-to`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reportsToId }),
+      });
+      return handleResponse<TeamMember>(response);
+    },
+
+    hierarchy: async (): Promise<TeamHierarchyNode[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/hierarchy`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamHierarchyNode[]>(response);
+    },
+
+    myTeam: async (): Promise<TeamMember[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/my-team`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamMember[]>(response);
+    },
+  },
+
+  invitations: {
+    list: async (): Promise<TeamInvitation[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamInvitation[]>(response);
+    },
+
+    create: async (dto: CreateInvitationDto): Promise<TeamInvitation> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<TeamInvitation>(response);
+    },
+
+    validate: async (token: string): Promise<ValidateInvitationResult> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/validate/${token}`);
+      return handleResponse<ValidateInvitationResult>(response);
+    },
+
+    accept: async (token: string): Promise<TeamMember> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/${token}/accept`, {
+        method: "POST",
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamMember>(response);
+    },
+
+    decline: async (token: string): Promise<void> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/${token}/decline`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Decline failed" }));
+        throw new Error(error.message);
+      }
+    },
+
+    cancel: async (id: number): Promise<void> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/${id}`, {
+        method: "DELETE",
+        headers: annixRepAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Cancel failed" }));
+        throw new Error(error.message);
+      }
+    },
+
+    resend: async (id: number): Promise<TeamInvitation> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/invitations/${id}/resend`, {
+        method: "POST",
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamInvitation>(response);
+    },
+  },
+
+  territories: {
+    list: async (): Promise<Territory[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/territories`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<Territory[]>(response);
+    },
+
+    my: async (): Promise<Territory[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/territories/my`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<Territory[]>(response);
+    },
+
+    detail: async (id: number): Promise<Territory> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<Territory>(response);
+    },
+
+    create: async (dto: CreateTerritoryDto): Promise<Territory> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/territories`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<Territory>(response);
+    },
+
+    update: async (id: number, dto: UpdateTerritoryDto): Promise<Territory> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<Territory>(response);
+    },
+
+    delete: async (id: number): Promise<void> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}`, {
+        method: "DELETE",
+        headers: annixRepAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Delete failed" }));
+        throw new Error(error.message);
+      }
+    },
+
+    assign: async (id: number, userId: number | null): Promise<Territory> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}/assign`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      });
+      return handleResponse<Territory>(response);
+    },
+
+    prospects: async (id: number): Promise<Prospect[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/territories/${id}/prospects`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<Prospect[]>(response);
+    },
+  },
+
+  handoff: {
+    handoff: async (prospectId: number, toUserId: number, reason?: string): Promise<Prospect> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/handoff/${prospectId}`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ toUserId, reason }),
+      });
+      return handleResponse<Prospect>(response);
+    },
+
+    bulkHandoff: async (
+      prospectIds: number[],
+      toUserId: number,
+      reason?: string,
+    ): Promise<Prospect[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/prospects/handoff/bulk`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prospectIds, toUserId, reason }),
+      });
+      return handleResponse<Prospect[]>(response);
+    },
+
+    history: async (prospectId: number): Promise<HandoffHistory[]> => {
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/prospects/handoff/${prospectId}/history`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      return handleResponse<HandoffHistory[]>(response);
+    },
+  },
+
+  activity: {
+    feed: async (limit?: number): Promise<TeamActivity[]> => {
+      const params = limit ? `?limit=${limit}` : "";
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/activity/feed${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamActivity[]>(response);
+    },
+
+    myTeamFeed: async (limit?: number): Promise<TeamActivity[]> => {
+      const params = limit ? `?limit=${limit}` : "";
+      const response = await fetch(`${getApiUrl()}/annix-rep/team/activity/feed/my-team${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamActivity[]>(response);
+    },
+
+    userActivity: async (userId: number, limit?: number): Promise<TeamActivity[]> => {
+      const params = limit ? `?limit=${limit}` : "";
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/team/activity/user/${userId}${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      return handleResponse<TeamActivity[]>(response);
+    },
+  },
+
+  manager: {
+    dashboard: async (): Promise<ManagerDashboard> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/manager/dashboard`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<ManagerDashboard>(response);
+    },
+
+    teamPerformance: async (startDate?: string, endDate?: string): Promise<MemberPerformance[]> => {
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      const query = params.toString() ? `?${params}` : "";
+      const response = await fetch(`${getApiUrl()}/annix-rep/manager/team-performance${query}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<MemberPerformance[]>(response);
+    },
+
+    territoryPerformance: async (): Promise<TerritoryPerformance[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/manager/territory-performance`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TerritoryPerformance[]>(response);
+    },
+
+    pipelineByRep: async (): Promise<
+      Array<{ userId: number; userName: string; pipeline: number }>
+    > => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/manager/pipeline-by-rep`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<Array<{ userId: number; userName: string; pipeline: number }>>(
+        response,
+      );
+    },
+
+    leaderboard: async (
+      metric?: "deals_won" | "pipeline_value" | "meetings_completed" | "prospects_created",
+    ): Promise<LeaderboardEntry[]> => {
+      const params = metric ? `?metric=${metric}` : "";
+      const response = await fetch(`${getApiUrl()}/annix-rep/manager/leaderboard${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<LeaderboardEntry[]>(response);
+    },
+  },
+};
+
 export const publicBookingApi = {
   linkDetails: async (slug: string): Promise<PublicBookingLink> => {
     const response = await fetch(`${getApiUrl()}/public/booking/${slug}`);

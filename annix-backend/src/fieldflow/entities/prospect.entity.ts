@@ -8,6 +8,8 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "../../user/entities/user.entity";
+import { Organization } from "./organization.entity";
+import { Territory } from "./territory.entity";
 
 export enum ProspectStatus {
   NEW = "new",
@@ -141,6 +143,26 @@ export class Prospect {
 
   @Column({ name: "assigned_to_id", type: "integer", nullable: true })
   assignedToId: number | null;
+
+  @ManyToOne(() => Organization, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "organization_id" })
+  organization: Organization | null;
+
+  @Column({ name: "organization_id", nullable: true })
+  organizationId: number | null;
+
+  @ManyToOne(() => Territory, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "territory_id" })
+  territory: Territory | null;
+
+  @Column({ name: "territory_id", nullable: true })
+  territoryId: number | null;
+
+  @Column({ name: "is_shared_with_team", default: false })
+  isSharedWithTeam: boolean;
+
+  @Column({ name: "shared_notes_visible", default: true })
+  sharedNotesVisible: boolean;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

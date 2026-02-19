@@ -3,7 +3,17 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { isString } from "es-toolkit/compat";
 import { Request } from "express";
+import { TeamRole } from "../../entities/team-member.entity";
+import { TeamService } from "../../services/team.service";
 import { AnnixRepAuthService, AnnixRepJwtPayload } from "../fieldflow-auth.service";
+
+export interface AnnixRepUser {
+  userId: number;
+  email: string;
+  sessionToken: string;
+  organizationId?: number;
+  teamRole?: TeamRole;
+}
 
 @Injectable()
 export class AnnixRepAuthGuard implements CanActivate {
@@ -11,6 +21,7 @@ export class AnnixRepAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly annixRepAuthService: AnnixRepAuthService,
+    private readonly teamService: TeamService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -35,11 +46,19 @@ export class AnnixRepAuthGuard implements CanActivate {
         throw new UnauthorizedException("Session expired or invalid");
       }
 
-      request["annixRepUser"] = {
+      const annixRepUser: AnnixRepUser = {
         userId: payload.sub,
         email: payload.email,
         sessionToken: payload.sessionToken,
       };
+
+      const member = await this.teamService.memberByUserAnyOrg(payload.sub);
+      if (member) {
+        annixRepUser.organizationId = member.organizationId;
+        annixRepUser.teamRole = member.role;
+      }
+
+      request["annixRepUser"] = annixRepUser;
 
       return true;
     } catch (error) {

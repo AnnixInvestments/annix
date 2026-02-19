@@ -10,6 +10,7 @@ import {
 } from "typeorm";
 import { User } from "../../user/entities/user.entity";
 import { CalendarEvent } from "./calendar-event.entity";
+import { Organization } from "./organization.entity";
 import { Prospect } from "./prospect.entity";
 
 export enum MeetingStatus {
@@ -139,6 +140,16 @@ export class Meeting {
 
   @Column({ name: "recurrence_exception_dates", type: "text", nullable: true })
   recurrenceExceptionDates: string | null;
+
+  @ManyToOne(() => Organization, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "organization_id" })
+  organization: Organization | null;
+
+  @Column({ name: "organization_id", nullable: true })
+  organizationId: number | null;
+
+  @Column({ name: "notes_visible_to_team", default: false })
+  notesVisibleToTeam: boolean;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

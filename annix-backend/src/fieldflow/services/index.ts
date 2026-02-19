@@ -24,10 +24,18 @@ export type { CreateGoalDto, GoalProgress, UpdateGoalDto } from "./goals.service
 export { GoalsService } from "./goals.service";
 export { MeetingService } from "./meeting.service";
 export { MeetingSummaryService } from "./meeting-summary.service";
+export type {
+  CreateOrganizationDto,
+  OrganizationStats,
+  UpdateOrganizationDto,
+} from "./organization.service";
+export { OrganizationService } from "./organization.service";
 export { PdfGenerationService } from "./pdf-generation.service";
 export { ProspectService } from "./prospect.service";
 export type { LogActivityParams } from "./prospect-activity.service";
 export { ProspectActivityService } from "./prospect-activity.service";
+export type { HandoffHistory } from "./prospect-handoff.service";
+export { ProspectHandoffService } from "./prospect-handoff.service";
 export { RecordingService } from "./recording.service";
 export { RecurringMeetingService } from "./recurring-meeting.service";
 export { ReportsService } from "./reports.service";
@@ -40,5 +48,27 @@ export type {
 } from "./route-planning.service";
 export { RoutePlanningService } from "./route-planning.service";
 export { SpeakerDiarizationService } from "./speaker-diarization.service";
+export type { TeamHierarchyNode } from "./team.service";
+export { TeamService } from "./team.service";
+export type {
+  ActivityFeedOptions,
+  LogActivityParams as TeamLogActivityParams,
+} from "./team-activity.service";
+export { TeamActivityService } from "./team-activity.service";
+export type {
+  LeaderboardEntry,
+  MemberPerformance,
+  TeamSummary,
+  TerritoryPerformance,
+} from "./team-analytics.service";
+export { TeamAnalyticsService } from "./team-analytics.service";
+export type { CreateInvitationDto } from "./team-invitation.service";
+export { TeamInvitationService } from "./team-invitation.service";
+export type {
+  CreateTerritoryDto,
+  TerritoryWithProspectCount,
+  UpdateTerritoryDto,
+} from "./territory.service";
+export { TerritoryService } from "./territory.service";
 export { TranscriptionService } from "./transcription.service";
 export { VisitService } from "./visit.service";

@@ -20,6 +20,7 @@ export enum ProspectActivityType {
   TAG_REMOVED = "tag_removed",
   MERGED = "merged",
   CONTACTED = "contacted",
+  OWNERSHIP_CHANGED = "ownership_changed",
 }
 
 @Entity("annix_rep_prospect_activities")
@@ -56,6 +57,9 @@ export class ProspectActivity {
 
   @Column({ type: "text", nullable: true })
   description: string | null;
+
+  @Column({ type: "jsonb", nullable: true })
+  metadata: Record<string, unknown> | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -6,6 +6,53 @@ export const annixRepKeys = {
     all: ["annixRep", "dashboard"] as const,
     data: () => [...annixRepKeys.dashboard.all, "data"] as const,
   },
+  organization: {
+    all: ["annixRep", "organization"] as const,
+    current: () => [...annixRepKeys.organization.all, "current"] as const,
+    stats: (id: number) => [...annixRepKeys.organization.all, "stats", id] as const,
+  },
+  team: {
+    all: ["annixRep", "team"] as const,
+    members: () => [...annixRepKeys.team.all, "members"] as const,
+    member: (id: number) => [...annixRepKeys.team.all, "member", id] as const,
+    hierarchy: () => [...annixRepKeys.team.all, "hierarchy"] as const,
+    myTeam: () => [...annixRepKeys.team.all, "myTeam"] as const,
+  },
+  invitations: {
+    all: ["annixRep", "invitations"] as const,
+    list: () => [...annixRepKeys.invitations.all, "list"] as const,
+    validate: (token: string) => [...annixRepKeys.invitations.all, "validate", token] as const,
+  },
+  territories: {
+    all: ["annixRep", "territories"] as const,
+    list: () => [...annixRepKeys.territories.all, "list"] as const,
+    my: () => [...annixRepKeys.territories.all, "my"] as const,
+    detail: (id: number) => [...annixRepKeys.territories.all, "detail", id] as const,
+    prospects: (id: number) => [...annixRepKeys.territories.all, "prospects", id] as const,
+  },
+  handoff: {
+    all: ["annixRep", "handoff"] as const,
+    history: (prospectId: number) => [...annixRepKeys.handoff.all, "history", prospectId] as const,
+  },
+  teamActivity: {
+    all: ["annixRep", "teamActivity"] as const,
+    feed: (limit?: number) => [...annixRepKeys.teamActivity.all, "feed", limit] as const,
+    myTeamFeed: (limit?: number) =>
+      [...annixRepKeys.teamActivity.all, "myTeamFeed", limit] as const,
+    userActivity: (userId: number, limit?: number) =>
+      [...annixRepKeys.teamActivity.all, "userActivity", userId, limit] as const,
+  },
+  managerDashboard: {
+    all: ["annixRep", "managerDashboard"] as const,
+    data: () => [...annixRepKeys.managerDashboard.all, "data"] as const,
+    teamPerformance: (period?: string) =>
+      [...annixRepKeys.managerDashboard.all, "teamPerformance", period] as const,
+    territoryPerformance: () =>
+      [...annixRepKeys.managerDashboard.all, "territoryPerformance"] as const,
+    pipelineByRep: () => [...annixRepKeys.managerDashboard.all, "pipelineByRep"] as const,
+    leaderboard: (metric?: string) =>
+      [...annixRepKeys.managerDashboard.all, "leaderboard", metric] as const,
+  },
   prospects: {
     all: ["annixRep", "prospects"] as const,
     list: () => [...annixRepKeys.prospects.all, "list"] as const,

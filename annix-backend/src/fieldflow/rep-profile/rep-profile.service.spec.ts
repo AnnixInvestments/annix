@@ -12,6 +12,8 @@ describe("RepProfileService", () => {
   const mockProfile: RepProfile = {
     id: 1,
     userId: 100,
+    organizationId: null,
+    organization: null as any,
     industry: "manufacturing",
     subIndustries: ["automotive", "aerospace"],
     productCategories: ["bearings", "seals"],

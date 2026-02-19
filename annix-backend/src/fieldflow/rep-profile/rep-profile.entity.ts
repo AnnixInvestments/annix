@@ -3,11 +3,13 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "../../user/entities/user.entity";
+import { Organization } from "../entities/organization.entity";
 
 export interface TargetCustomerProfile {
   businessTypes?: string[];
@@ -92,6 +94,13 @@ export class RepProfile {
 
   @Column({ name: "working_days", type: "varchar", length: 20, default: "1,2,3,4,5" })
   workingDays: string;
+
+  @ManyToOne(() => Organization, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "organization_id" })
+  organization: Organization | null;
+
+  @Column({ name: "organization_id", nullable: true })
+  organizationId: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
