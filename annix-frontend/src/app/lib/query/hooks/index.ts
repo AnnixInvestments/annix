@@ -261,6 +261,12 @@ export {
   useTranscript,
   useUpdateTranscript,
 } from "./annix-rep/useTranscript";
+export {
+  useDiscoveryImport,
+  useDiscoveryQuota,
+  useDiscoverySearch,
+  useDiscoverySearchMutation,
+} from "./annix-rep/useDiscovery";
 export type { Boq, BoqDetail, BoqLineItem, PaginatedBoqResult, UploadResult } from "./boq/useBoqs";
 export {
   useAddBoqLineItem,

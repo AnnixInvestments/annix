@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Annix Voice Filter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f1419;
+      color: #e7e9ea;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a1f26 0%, #141a21 100%);
+      border-bottom: 1px solid #2f3336;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #1d9bf0 0%, #7856ff 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .logo-text { font-size: 18px; font-weight: 600; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .header-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #e7e9ea;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .header-btn:hover { background: rgba(255,255,255,0.15); }
+    .container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .welcome { text-align: center; margin-bottom: 48px; }
+    .welcome-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, rgba(29, 155, 240, 0.15), rgba(120, 86, 255, 0.15));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 36px;
+    }
+    .welcome-title { font-size: 28px; font-weight: 700; margin-bottom: 12px; }
+    .welcome-subtitle { font-size: 15px; color: #71767b; line-height: 1.5; max-width: 500px; margin: 0 auto; }
+    .modes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      width: 100%;
+    }
+    .mode-card {
+      background: #16181c;
+      border: 1px solid #2f3336;
+      border-radius: 16px;
+      padding: 28px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .mode-card:hover {
+      border-color: #1d9bf0;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+    .mode-card.filter:hover { border-color: #00ba7c; }
+    .mode-card.meeting:hover { border-color: #7856ff; }
+    .mode-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 28px;
+    }
+    .mode-card.filter .mode-icon {
+      background: linear-gradient(135deg, rgba(0, 186, 124, 0.2), rgba(29, 155, 240, 0.2));
+    }
+    .mode-card.meeting .mode-icon {
+      background: linear-gradient(135deg, rgba(120, 86, 255, 0.2), rgba(249, 24, 128, 0.2));
+    }
+    .mode-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .mode-description { font-size: 13px; color: #71767b; line-height: 1.5; margin-bottom: 16px; }
+    .mode-features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .mode-feature {
+      font-size: 11px;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      color: #a0a4a8;
+    }
+    .mode-card.filter .mode-feature { color: #00ba7c; background: rgba(0, 186, 124, 0.1); }
+    .mode-card.meeting .mode-feature { color: #7856ff; background: rgba(120, 86, 255, 0.1); }
+    .mode-btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 9999px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-card.filter .mode-btn { background: #00ba7c; color: #fff; }
+    .mode-card.filter .mode-btn:hover { background: #00a36c; }
+    .mode-card.meeting .mode-btn { background: #7856ff; color: #fff; }
+    .mode-card.meeting .mode-btn:hover { background: #6a4de0; }
+    .footer-info {
+      margin-top: 48px;
+      text-align: center;
+      font-size: 12px;
+      color: #536471;
+    }
+    .footer-info a {
+      color: #1d9bf0;
+      text-decoration: none;
+    }
+    .footer-info a:hover { text-decoration: underline; }
+    .profile-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #71767b;
+    }
+    .profile-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #71767b;
+    }
+    .profile-dot.enrolled { background: #00ba7c; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-icon">🎙️</div>
+      <span class="logo-text">Annix Voice Filter</span>
+    </div>
+    <div class="header-actions">
+      <div class="profile-status">
+        <div class="profile-dot" id="profile-dot"></div>
+        <span id="profile-status-text">Checking profile...</span>
+      </div>
+      <button class="header-btn" id="btn-mini" title="Open compact control panel">
+        <span>📌</span> Mini Mode
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="welcome">
+      <div class="welcome-icon">🎤</div>
+      <h1 class="welcome-title">Welcome to Voice Filter</h1>
+      <p class="welcome-subtitle">Secure your audio with voice verification or capture multi-speaker meetings with automatic transcription.</p>
+    </div>
+
+    <div class="modes-grid">
+      <div class="mode-card filter" id="card-filter">
+        <div class="mode-icon">🔐</div>
+        <h2 class="mode-title">Voice Filter</h2>
+        <p class="mode-description">Protect your microphone by only allowing your voice through. Unauthorized speakers are automatically muted.</p>
+        <div class="mode-features">
+          <span class="mode-feature">Single Speaker</span>
+          <span class="mode-feature">Real-time Verification</span>
+          <span class="mode-feature">VB-Cable Output</span>
+        </div>
+        <button class="mode-btn">Open Voice Filter</button>
+      </div>
+
+      <div class="mode-card meeting" id="card-meeting">
+        <div class="mode-icon">👥</div>
+        <h2 class="mode-title">Meeting Mode</h2>
+        <p class="mode-description">Record meetings with automatic speaker identification and AI-powered transcription for meeting minutes.</p>
+        <div class="mode-features">
+          <span class="mode-feature">Multi-Speaker</span>
+          <span class="mode-feature">Voice Enrollment</span>
+          <span class="mode-feature">Live Transcript</span>
+        </div>
+        <button class="mode-btn">Start Meeting</button>
+      </div>
+    </div>
+
+    <div class="footer-info">
+      <p>Need help? Check the <a href="#" id="link-docs">documentation</a> or <a href="#" id="link-settings">configure settings</a>.</p>
+    </div>
+  </div>
+
+  <script>
+    var ws = new WebSocket("ws://" + window.location.host);
+
+    ws.onopen = function() {
+      ws.send(JSON.stringify({ type: "ready", data: {} }));
+    };
+
+    ws.onmessage = function(event) {
+      var msg = JSON.parse(event.data);
+      if (msg.type === "has-profile") {
+        document.getElementById("profile-dot").classList.add("enrolled");
+        document.getElementById("profile-status-text").textContent = "Voice profile enrolled";
+      }
+    };
+
+    document.getElementById("card-filter").onclick = function() {
+      window.location.href = "/filter";
+    };
+
+    document.getElementById("card-meeting").onclick = function() {
+      window.location.href = "/meeting";
+    };
+
+    document.getElementById("btn-mini").onclick = function() {
+      window.open("/mini", "VoiceFilterMini", "width=225,height=460,resizable=yes,scrollbars=no,status=no,menubar=no,toolbar=no,location=no");
+    };
+
+    document.getElementById("link-settings").onclick = function(e) {
+      e.preventDefault();
+      window.location.href = "/filter";
+    };
+
+    document.getElementById("link-docs").onclick = function(e) {
+      e.preventDefault();
+      alert("Documentation coming soon!");
+    };
+  </script>
+</body>
+</html>

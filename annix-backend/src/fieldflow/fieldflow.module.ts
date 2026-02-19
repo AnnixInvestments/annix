@@ -5,6 +5,7 @@ import { AdminModule } from "../admin/admin.module";
 import { EmailModule } from "../email/email.module";
 import { User } from "../user/entities/user.entity";
 import { AnnixRepAuthModule } from "./auth";
+import { DiscoveryModule } from "./discovery";
 import {
   AnalyticsController,
   BookingController,
@@ -122,6 +123,7 @@ import {
     EmailModule,
     RepProfileModule,
     AnnixRepAuthModule,
+    DiscoveryModule,
   ],
   controllers: [
     AnalyticsController,

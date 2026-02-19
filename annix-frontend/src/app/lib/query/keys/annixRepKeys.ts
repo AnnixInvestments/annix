@@ -145,6 +145,12 @@ export const annixRepKeys = {
     profile: () => [...annixRepKeys.repProfile.all, "profile"] as const,
     searchTerms: () => [...annixRepKeys.repProfile.all, "searchTerms"] as const,
   },
+  discovery: {
+    all: ["annixRep", "discovery"] as const,
+    search: (lat: number, lng: number, radiusKm?: number, sources?: string[]) =>
+      [...annixRepKeys.discovery.all, "search", lat, lng, radiusKm, sources?.join(",")] as const,
+    quota: () => [...annixRepKeys.discovery.all, "quota"] as const,
+  },
   analytics: {
     all: ["annixRep", "analytics"] as const,
     summary: () => [...annixRepKeys.analytics.all, "summary"] as const,

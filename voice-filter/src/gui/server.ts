@@ -26,7 +26,14 @@ let meetingSession: MeetingSession | null = null;
 let detectedDevice: { id: number; name: string } | null = null;
 let wsClient: WebSocket | null = null;
 
-function serveHtml(_req: IncomingMessage, res: ServerResponse): void {
+function serveHomeHtml(_req: IncomingMessage, res: ServerResponse): void {
+  const htmlPath = join(import.meta.dirname, "home.html");
+  const html = readFileSync(htmlPath, "utf-8");
+  res.writeHead(200, { "Content-Type": "text/html" });
+  res.end(html);
+}
+
+function serveFilterHtml(_req: IncomingMessage, res: ServerResponse): void {
   const htmlPath = join(import.meta.dirname, "index.html");
   const html = readFileSync(htmlPath, "utf-8");
   res.writeHead(200, { "Content-Type": "text/html" });
@@ -570,8 +577,10 @@ function handleMessage(message: string): void {
 
 export async function startGuiServer(openBrowser: boolean = true): Promise<void> {
   const server = createServer((req, res) => {
-    if (req.url === "/" || req.url === "/index.html") {
-      serveHtml(req, res);
+    if (req.url === "/" || req.url === "/home") {
+      serveHomeHtml(req, res);
+    } else if (req.url === "/filter" || req.url === "/index.html") {
+      serveFilterHtml(req, res);
     } else if (req.url === "/mini") {
       serveMiniHtml(req, res);
     } else if (req.url === "/meeting") {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
@@ -33,7 +34,6 @@ const productCategoryLabelsForSubIndustries = (
 };
 
 type Step = "account" | "industry" | "subIndustry" | "products" | "details" | "complete";
-type AuthMode = "register" | "login";
 
 interface FormData {
   industry: string;
@@ -45,7 +45,7 @@ interface FormData {
   customSearchTerms: string[];
 }
 
-interface AuthFormData {
+interface RegistrationFormData {
   email: string;
   password: string;
   confirmPassword: string;
@@ -55,14 +55,13 @@ interface AuthFormData {
 
 export default function RepSetupPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading, login, register, user } = useAnnixRepAuth();
+  const { isAuthenticated, isLoading: authLoading, register, user } = useAnnixRepAuth();
   const createProfile = useCreateRepProfile();
   const { data: profileStatus, isLoading: isCheckingStatus } = useRepProfileStatus();
 
-  const [authMode, setAuthMode] = useState<AuthMode>("register");
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [authFormData, setAuthFormData] = useState<AuthFormData>({
+  const [registrationFormData, setRegistrationFormData] = useState<RegistrationFormData>({
     email: "",
     password: "",
     confirmPassword: "",
@@ -108,38 +107,31 @@ export default function RepSetupPage() {
     .filter((s) => formData.subIndustries.includes(s.value))
     .map((s) => s.label);
 
-  const handleAuthSubmit = async (e: React.FormEvent) => {
+  const handleRegistrationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAuthError(null);
+    setRegistrationError(null);
     setIsSubmitting(true);
 
     try {
-      if (authMode === "register") {
-        if (authFormData.password !== authFormData.confirmPassword) {
-          setAuthError("Passwords do not match");
-          setIsSubmitting(false);
-          return;
-        }
-        if (authFormData.password.length < 8) {
-          setAuthError("Password must be at least 8 characters");
-          setIsSubmitting(false);
-          return;
-        }
-        await register({
-          email: authFormData.email,
-          password: authFormData.password,
-          firstName: authFormData.firstName,
-          lastName: authFormData.lastName,
-        });
-      } else {
-        await login({
-          email: authFormData.email,
-          password: authFormData.password,
-        });
+      if (registrationFormData.password !== registrationFormData.confirmPassword) {
+        setRegistrationError("Passwords do not match");
+        setIsSubmitting(false);
+        return;
       }
+      if (registrationFormData.password.length < 8) {
+        setRegistrationError("Password must be at least 8 characters");
+        setIsSubmitting(false);
+        return;
+      }
+      await register({
+        email: registrationFormData.email,
+        password: registrationFormData.password,
+        firstName: registrationFormData.firstName,
+        lastName: registrationFormData.lastName,
+      });
       setStep("industry");
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Authentication failed");
+      setRegistrationError(error instanceof Error ? error.message : "Registration failed");
     } finally {
       setIsSubmitting(false);
     }
@@ -220,7 +212,6 @@ export default function RepSetupPage() {
     details: 4,
     complete: 5,
   }[step];
-  const totalSteps = isAuthenticated ? 4 : 5;
   const displayStepNumber = isAuthenticated ? stepNumber : stepNumber;
 
   if (authLoading || isCheckingStatus) {
@@ -244,11 +235,11 @@ export default function RepSetupPage() {
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg overflow-hidden">
         <div className="px-6 py-4 bg-indigo-600 dark:bg-indigo-700">
           <h1 className="text-xl font-semibold text-white">
-            {step === "account" ? "Welcome to Annix Rep" : "Set Up Your Sales Profile"}
+            {step === "account" ? "Create Your Account" : "Set Up Your Sales Profile"}
           </h1>
           <p className="text-indigo-100 text-sm mt-1">
             {step === "account"
-              ? "Create an account or sign in to get started"
+              ? "Join Annix Rep to start finding prospects"
               : "Tell us about what you sell so we can help you find prospects"}
           </p>
         </div>
@@ -295,79 +286,52 @@ export default function RepSetupPage() {
         <div className="p-6">
           {step === "account" && (
             <div>
-              <div className="flex border-b border-gray-200 dark:border-slate-600 mb-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode("register");
-                    setAuthError(null);
-                  }}
-                  className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    authMode === "register"
-                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                      : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                  }`}
-                >
-                  Create Account
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode("login");
-                    setAuthError(null);
-                  }}
-                  className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    authMode === "login"
-                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                      : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                  }`}
-                >
-                  Sign In
-                </button>
-              </div>
-
-              <form onSubmit={handleAuthSubmit}>
-                {authError && (
+              <form onSubmit={handleRegistrationSubmit}>
+                {registrationError && (
                   <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                    <p className="text-sm text-red-600 dark:text-red-400">{authError}</p>
+                    <p className="text-sm text-red-600 dark:text-red-400">{registrationError}</p>
                   </div>
                 )}
 
                 <div className="space-y-4">
-                  {authMode === "register" && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          First Name
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={authFormData.firstName}
-                          onChange={(e) =>
-                            setAuthFormData({ ...authFormData, firstName: e.target.value })
-                          }
-                          placeholder="John"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Last Name
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={authFormData.lastName}
-                          onChange={(e) =>
-                            setAuthFormData({ ...authFormData, lastName: e.target.value })
-                          }
-                          placeholder="Doe"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
-                        />
-                      </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        First Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={registrationFormData.firstName}
+                        onChange={(e) =>
+                          setRegistrationFormData({
+                            ...registrationFormData,
+                            firstName: e.target.value,
+                          })
+                        }
+                        placeholder="John"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
+                      />
                     </div>
-                  )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Last Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={registrationFormData.lastName}
+                        onChange={(e) =>
+                          setRegistrationFormData({
+                            ...registrationFormData,
+                            lastName: e.target.value,
+                          })
+                        }
+                        placeholder="Doe"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
+                      />
+                    </div>
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -376,8 +340,10 @@ export default function RepSetupPage() {
                     <input
                       type="email"
                       required
-                      value={authFormData.email}
-                      onChange={(e) => setAuthFormData({ ...authFormData, email: e.target.value })}
+                      value={registrationFormData.email}
+                      onChange={(e) =>
+                        setRegistrationFormData({ ...registrationFormData, email: e.target.value })
+                      }
                       placeholder="you@company.com"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
                     />
@@ -390,34 +356,36 @@ export default function RepSetupPage() {
                     <input
                       type="password"
                       required
-                      value={authFormData.password}
+                      value={registrationFormData.password}
                       onChange={(e) =>
-                        setAuthFormData({ ...authFormData, password: e.target.value })
+                        setRegistrationFormData({
+                          ...registrationFormData,
+                          password: e.target.value,
+                        })
                       }
-                      placeholder={
-                        authMode === "register" ? "Minimum 8 characters" : "Enter your password"
-                      }
+                      placeholder="Minimum 8 characters"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
                     />
                   </div>
 
-                  {authMode === "register" && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Confirm Password
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        value={authFormData.confirmPassword}
-                        onChange={(e) =>
-                          setAuthFormData({ ...authFormData, confirmPassword: e.target.value })
-                        }
-                        placeholder="Confirm your password"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
-                      />
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Confirm Password
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={registrationFormData.confirmPassword}
+                      onChange={(e) =>
+                        setRegistrationFormData({
+                          ...registrationFormData,
+                          confirmPassword: e.target.value,
+                        })
+                      }
+                      placeholder="Confirm your password"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
+                    />
+                  </div>
                 </div>
 
                 <button
@@ -425,13 +393,21 @@ export default function RepSetupPage() {
                   disabled={isSubmitting}
                   className="w-full mt-6 py-3 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isSubmitting
-                    ? "Please wait..."
-                    : authMode === "register"
-                      ? "Create Account"
-                      : "Sign In"}
+                  {isSubmitting ? "Creating account..." : "Create Account"}
                 </button>
               </form>
+
+              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-600 text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Already have an account?{" "}
+                  <Link
+                    href="/annix-rep/login"
+                    className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
+                  >
+                    Sign In
+                  </Link>
+                </p>
+              </div>
             </div>
           )}
 

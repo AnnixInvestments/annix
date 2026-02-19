@@ -73,6 +73,7 @@ export type CalendarEventStatus = "confirmed" | "tentative" | "cancelled";
 export type ProspectStatus = "new" | "contacted" | "qualified" | "proposal" | "won" | "lost";
 export type ProspectPriority = "low" | "medium" | "high" | "urgent";
 export type FollowUpRecurrence = "none" | "daily" | "weekly" | "biweekly" | "monthly";
+export type DiscoverySource = "google_places" | "yellow_pages" | "osm";
 export type MeetingType = "in_person" | "phone" | "video";
 export type MeetingStatus = "scheduled" | "in_progress" | "completed" | "cancelled" | "no_show";
 export type VisitType = "cold_call" | "scheduled" | "follow_up" | "drop_in";
@@ -100,6 +101,9 @@ export interface Prospect {
   latitude: number | null;
   longitude: number | null;
   googlePlaceId: string | null;
+  discoverySource: string | null;
+  discoveredAt: Date | null;
+  externalId: string | null;
   status: ProspectStatus;
   priority: ProspectPriority;
   notes: string | null;
@@ -1069,6 +1073,50 @@ export interface InitiateUploadResponse {
 export interface CompleteUploadDto {
   fileSizeBytes: number;
   durationSeconds?: number;
+}
+
+export interface DiscoverProspectsDto {
+  latitude: number;
+  longitude: number;
+  radiusKm?: number;
+  sources?: DiscoverySource[];
+  searchTerms?: string[];
+}
+
+export interface DiscoveredBusiness {
+  source: DiscoverySource;
+  externalId: string;
+  companyName: string;
+  streetAddress: string | null;
+  city: string | null;
+  province: string | null;
+  latitude: number;
+  longitude: number;
+  phone: string | null;
+  website: string | null;
+  businessTypes: string[];
+  rating: number | null;
+  userRatingsTotal: number | null;
+}
+
+export interface DiscoverySearchResult {
+  discovered: DiscoveredBusiness[];
+  existingMatches: number;
+  totalFound: number;
+  sourcesQueried: string[];
+}
+
+export interface DiscoveryImportResult {
+  created: number;
+  duplicates: number;
+  createdIds: number[];
+}
+
+export interface DiscoveryQuota {
+  googleDailyLimit: number;
+  googleUsedToday: number;
+  googleRemaining: number;
+  lastResetAt: string;
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -2628,6 +2676,39 @@ export const annixRepApi = {
         throw new Error(error.message);
       }
       return response.blob();
+    },
+  },
+
+  discovery: {
+    search: async (dto: DiscoverProspectsDto): Promise<DiscoverySearchResult> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/discovery/search`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<DiscoverySearchResult>(response);
+    },
+
+    import: async (businesses: DiscoveredBusiness[]): Promise<DiscoveryImportResult> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/discovery/import`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(businesses),
+      });
+      return handleResponse<DiscoveryImportResult>(response);
+    },
+
+    quota: async (): Promise<DiscoveryQuota> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/discovery/quota`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<DiscoveryQuota>(response);
     },
   },
 };

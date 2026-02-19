@@ -86,6 +86,15 @@ export class Prospect {
   @Column({ name: "google_place_id", type: "varchar", length: 255, nullable: true })
   googlePlaceId: string | null;
 
+  @Column({ name: "discovery_source", type: "varchar", length: 50, nullable: true })
+  discoverySource: string | null;
+
+  @Column({ name: "discovered_at", type: "timestamp", nullable: true })
+  discoveredAt: Date | null;
+
+  @Column({ name: "external_id", type: "varchar", length: 255, nullable: true })
+  externalId: string | null;
+
   @Column({
     type: "enum",
     enum: ProspectStatus,

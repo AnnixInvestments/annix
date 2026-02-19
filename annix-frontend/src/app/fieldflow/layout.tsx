@@ -76,7 +76,7 @@ function AnnixRepNavigation() {
       user={toolbarUser}
       onLogout={async () => {
         await logout();
-        window.location.href = "/annix-rep/setup";
+        window.location.href = "/annix-rep/welcome";
       }}
       featureFlags={flags}
     />
@@ -94,10 +94,13 @@ function SetupGate({ children }: { children: React.ReactNode }) {
     isError,
   } = useRepProfileStatus();
 
+  const isWelcomePage = pathname === "/annix-rep/welcome";
+  const isLoginPage = pathname === "/annix-rep/login";
   const isSetupPage = pathname === "/annix-rep/setup";
   const isSettingsPage = pathname?.startsWith("/annix-rep/settings");
   const isOAuthCallback = pathname === "/annix-rep/oauth/callback";
-  const isExcludedPage = isSetupPage || isSettingsPage || isOAuthCallback;
+  const isAuthPage = isWelcomePage || isLoginPage || isSetupPage;
+  const isExcludedPage = isAuthPage || isSettingsPage || isOAuthCallback;
 
   const isLoading = authLoading || (isAuthenticated && profileLoading);
   const needsSetup = isSuccess && (!profileStatus || !profileStatus.setupCompleted);
@@ -107,8 +110,8 @@ function SetupGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (!isAuthenticated && !isSetupPage) {
-      router.replace("/annix-rep/setup");
+    if (!isAuthenticated && !isAuthPage) {
+      router.replace("/annix-rep/welcome");
       return;
     }
 
@@ -125,11 +128,11 @@ function SetupGate({ children }: { children: React.ReactNode }) {
     authLoading,
     profileLoading,
     isExcludedPage,
-    isSetupPage,
+    isAuthPage,
     router,
   ]);
 
-  if (isSetupPage) {
+  if (isAuthPage) {
     return <>{children}</>;
   }
 
@@ -171,8 +174,11 @@ function SetupGate({ children }: { children: React.ReactNode }) {
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAnnixRepAuth();
   const pathname = usePathname();
-  const isSetupPage = pathname === "/annix-rep/setup";
-  const showNavigation = isAuthenticated && !isSetupPage && !isLoading;
+  const isAuthPage =
+    pathname === "/annix-rep/setup" ||
+    pathname === "/annix-rep/welcome" ||
+    pathname === "/annix-rep/login";
+  const showNavigation = isAuthenticated && !isAuthPage && !isLoading;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
