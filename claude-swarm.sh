@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 cd "$(dirname "$0")"
-../claude-swarm/bin/claude-swarm
+[ -f node_modules/@annix/claude-swarm/run.sh ] || pnpm install
+exec node_modules/@annix/claude-swarm/run.sh

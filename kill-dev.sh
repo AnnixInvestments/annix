@@ -1,21 +1,10 @@
 #!/bin/bash
-# Kill all Annix development processes
+# shellcheck source=dev-lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/dev-lib.sh"
 
-echo "🛑 Stopping Annix development servers..."
-
-# Kill backend processes
-pkill -f "nest start" 2>/dev/null
-pkill -f "annix-backend/dist/main" 2>/dev/null
-pkill -f "annix-backend.*node" 2>/dev/null
-
-# Kill frontend processes
-pkill -f "next dev" 2>/dev/null
-pkill -f "annix-frontend.*node" 2>/dev/null
-
-# Kill any processes on Annix ports (backend: 4001, frontend: 3000)
-lsof -ti:4001 2>/dev/null | xargs kill -9 2>/dev/null
-lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null
-
-echo "✅ All development processes stopped"
+echo "Stopping Annix development servers..."
+kill_service "${ANNIX_BACKEND_PORT:-4001}"
+kill_service "${ANNIX_FRONTEND_PORT:-3000}"
+echo "All development processes stopped"
 echo ""
 echo "Tip: You can restart with ./run-dev.sh"

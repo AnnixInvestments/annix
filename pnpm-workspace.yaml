@@ -2,7 +2,6 @@ packages:
   - annix-backend
   - annix-frontend
   - voice-filter
-
 ignoredBuiltDependencies:
   - '@nestjs/core'
   - '@openapitools/openapi-generator-cli'
@@ -13,3 +12,4 @@ ignoredBuiltDependencies:
   - sharp
   - tesseract.js
   - unrs-resolver
+

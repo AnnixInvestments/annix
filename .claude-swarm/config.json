@@ -1,0 +1,17 @@
+{
+  "branchPrefix": "claude/",
+  "apps": [
+    {
+      "name": "backend",
+      "start": { "mac": "./run-backend.sh", "windows": ".\\run-backend.ps1" },
+      "readyPattern": "Nest application successfully started",
+      "port": 4001
+    },
+    {
+      "name": "frontend",
+      "start": { "mac": "./run-frontend.sh", "windows": ".\\run-frontend.ps1" },
+      "readyPattern": "Ready in",
+      "port": 3000
+    }
+  ]
+}

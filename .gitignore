@@ -17,8 +17,10 @@ annix-backend-latest.tar.gz
 # Log files
 backend-dev.log
 frontend-dev.log
-.claude-swarm-*.log
 .pcm-app.log
+.claude-swarm-*.log
+logs/
+.claude-swarm/registry.json
 
 # OS files
 .DS_Store
