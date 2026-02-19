@@ -6,14 +6,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { formatDateZA, now } from "@/app/lib/datetime";
 import { useExportReportPdf, useTerritoryCoverageReport } from "@/app/lib/query/hooks";
+import { ReportSkeleton, Skeleton } from "../../components/Skeleton";
 
 const TerritoryMap = dynamic(() => import("../components/TerritoryMap"), {
   ssr: false,
-  loading: () => (
-    <div className="w-full h-[500px] rounded-xl bg-gray-100 dark:bg-slate-700 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-    </div>
-  ),
+  loading: () => <Skeleton className="w-full h-[500px] rounded-xl" />,
 });
 
 function StatCard({
@@ -167,9 +164,7 @@ function TerritoryCoverageReportContent() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-        </div>
+        <ReportSkeleton />
       ) : error ? (
         <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-6 text-center">
           <p className="text-red-600 dark:text-red-400">Failed to load report</p>

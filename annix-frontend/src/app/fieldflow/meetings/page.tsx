@@ -11,6 +11,8 @@ import type {
 } from "@/app/lib/api/annixRepApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useCreateMeeting, useCreateRecurringMeeting, useMeetings } from "@/app/lib/query/hooks";
+import { QueryErrorFallback } from "../components/ErrorBoundary";
+import { MeetingListSkeleton } from "../components/Skeleton";
 import { defaultRecurrenceOptions, RecurrenceEditor } from "./components/RecurrenceEditor";
 
 const statusColors: Record<MeetingStatus, { bg: string; text: string }> = {
@@ -372,7 +374,7 @@ function CreateMeetingModal({
 }
 
 export default function MeetingsPage() {
-  const { data: meetings, isLoading, error } = useMeetings();
+  const { data: meetings, isLoading, error, refetch } = useMeetings();
   const createMeeting = useCreateMeeting();
   const createRecurringMeeting = useCreateRecurringMeeting();
 
@@ -380,18 +382,17 @@ export default function MeetingsPage() {
   const [statusFilter, setStatusFilter] = useState<MeetingStatus | "all">("all");
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <MeetingListSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-        <p className="text-red-700 dark:text-red-400">Failed to load meetings</p>
-      </div>
+      <QueryErrorFallback
+        error={error}
+        refetch={refetch}
+        title="Unable to load meetings"
+        message="We couldn't fetch your meetings. Please check your connection and try again."
+      />
     );
   }
 

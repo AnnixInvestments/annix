@@ -63,7 +63,14 @@ export class SpeakerVerifier extends EventEmitter {
       return null;
     }
     const buffer = readFileSync(embeddingPath);
-    return new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
+    if (buffer.length === 0 || buffer.length % 4 !== 0) {
+      return null;
+    }
+    const result = new Float32Array(buffer.length / 4);
+    for (let i = 0; i < result.length; i++) {
+      result[i] = buffer.readFloatLE(i * 4);
+    }
+    return result;
   }
 
   onSpeechStart(): void {
@@ -434,7 +441,7 @@ export class SpeakerVerifier extends EventEmitter {
 
   private bufferToSamples(buffer: Buffer): number[] {
     const samples: number[] = [];
-    for (let i = 0; i < buffer.length - 1; i += 2) {
+    for (let i = 0; i + 2 <= buffer.length; i += 2) {
       samples.push(buffer.readInt16LE(i) / 32768);
     }
     return samples;

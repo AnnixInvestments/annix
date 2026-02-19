@@ -1,8 +1,15 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRef, useState } from "react";
-import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
+import { Skeleton } from "../components/Skeleton";
+
+const GoogleMapLocationPicker = dynamic(() => import("@/app/components/GoogleMapLocationPicker"), {
+  ssr: false,
+  loading: () => <Skeleton className="w-full h-64 rounded-lg" />,
+});
+
 import type {
   CreateProspectDto,
   ImportProspectRow,
@@ -20,6 +27,8 @@ import {
   useProspectsCsvExport,
   useUpdateProspectStatus,
 } from "@/app/lib/query/hooks";
+import { QueryErrorFallback } from "../components/ErrorBoundary";
+import { ProspectListSkeleton } from "../components/Skeleton";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -836,7 +845,7 @@ function ImportProspectsModal({
 }
 
 export default function ProspectsPage() {
-  const { data: prospects, isLoading, error } = useProspects();
+  const { data: prospects, isLoading, error, refetch } = useProspects();
   const { data: stats } = useProspectStats();
   const createProspect = useCreateProspect();
   const deleteProspect = useDeleteProspect();
@@ -856,18 +865,17 @@ export default function ProspectsPage() {
   const [showBulkStatusMenu, setShowBulkStatusMenu] = useState(false);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <ProspectListSkeleton />;
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-        <p className="text-red-700 dark:text-red-400">Failed to load prospects</p>
-      </div>
+      <QueryErrorFallback
+        error={error}
+        refetch={refetch}
+        title="Unable to load prospects"
+        message="We couldn't fetch your prospects. Please check your connection and try again."
+      />
     );
   }
 
@@ -1146,7 +1154,7 @@ export default function ProspectsPage() {
       )}
 
       {stats && (
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
           {(Object.keys(statusLabels) as ProspectStatus[]).map((status) => (
             <button
               key={status}

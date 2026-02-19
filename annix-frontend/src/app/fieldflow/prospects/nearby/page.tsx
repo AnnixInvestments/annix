@@ -1,12 +1,19 @@
 "use client";
 
-import { GoogleMap, InfoWindow, Marker, useJsApiLoader } from "@react-google-maps/api";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { Prospect, ProspectStatus } from "@/app/lib/api/annixRepApi";
 import { useNearbyProspects } from "@/app/lib/query/hooks";
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const NearbyMap = dynamic(() => import("../../components/LazyNearbyMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-96">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  ),
+});
 
 const statusColors: Record<ProspectStatus, string> = {
   new: "#3B82F6",
@@ -36,22 +43,12 @@ const defaultCenter: Location = {
   lng: 28.04363,
 };
 
-const mapContainerStyle = {
-  width: "100%",
-  height: "calc(100vh - 200px)",
-  minHeight: "400px",
-};
-
 export default function NearbyProspectsPage() {
   const [userLocation, setUserLocation] = useState<Location | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(true);
   const [radiusKm, setRadiusKm] = useState(10);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
-  });
 
   const {
     data: prospects,
@@ -100,14 +97,6 @@ export default function NearbyProspectsPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Getting your location...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-        <p className="text-red-700 dark:text-red-400">Failed to load Google Maps</p>
       </div>
     );
   }
@@ -192,97 +181,13 @@ export default function NearbyProspectsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-          {!isLoaded ? (
-            <div className="flex items-center justify-center h-96">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : (
-            <GoogleMap
-              mapContainerStyle={mapContainerStyle}
-              center={userLocation || defaultCenter}
-              zoom={12}
-              options={{
-                streetViewControl: false,
-                mapTypeControl: true,
-                fullscreenControl: true,
-              }}
-            >
-              {userLocation && (
-                <Marker
-                  position={userLocation}
-                  icon={{
-                    path: google.maps.SymbolPath.CIRCLE,
-                    scale: 10,
-                    fillColor: "#3B82F6",
-                    fillOpacity: 1,
-                    strokeColor: "#FFFFFF",
-                    strokeWeight: 3,
-                  }}
-                  title="Your location"
-                />
-              )}
-
-              {prospectsWithLocation.map((prospect) => (
-                <Marker
-                  key={prospect.id}
-                  position={{ lat: prospect.latitude!, lng: prospect.longitude! }}
-                  icon={{
-                    path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-                    scale: 6,
-                    fillColor: statusColors[prospect.status],
-                    fillOpacity: 1,
-                    strokeColor: "#FFFFFF",
-                    strokeWeight: 2,
-                  }}
-                  onClick={() => setSelectedProspect(prospect)}
-                />
-              ))}
-
-              {selectedProspect?.latitude && selectedProspect.longitude && (
-                <InfoWindow
-                  position={{ lat: selectedProspect.latitude, lng: selectedProspect.longitude }}
-                  onCloseClick={() => setSelectedProspect(null)}
-                >
-                  <div className="p-2 min-w-[200px]">
-                    <h3 className="font-semibold text-gray-900">{selectedProspect.companyName}</h3>
-                    {selectedProspect.contactName && (
-                      <p className="text-sm text-gray-600">{selectedProspect.contactName}</p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      {[selectedProspect.city, selectedProspect.province]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span
-                        className="px-2 py-0.5 text-xs font-medium rounded-full text-white"
-                        style={{ backgroundColor: statusColors[selectedProspect.status] }}
-                      >
-                        {statusLabels[selectedProspect.status]}
-                      </span>
-                    </div>
-                    <div className="mt-3 flex gap-2">
-                      <Link
-                        href={`/annix-rep/prospects/${selectedProspect.id}`}
-                        className="text-xs text-blue-600 hover:underline"
-                      >
-                        View Details
-                      </Link>
-                      {selectedProspect.latitude && selectedProspect.longitude && (
-                        <a
-                          href={`https://waze.com/ul?ll=${selectedProspect.latitude},${selectedProspect.longitude}&navigate=yes`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-600 hover:underline"
-                        >
-                          Navigate
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </InfoWindow>
-              )}
-            </GoogleMap>
+          {userLocation && (
+            <NearbyMap
+              userLocation={userLocation}
+              prospects={prospects ?? []}
+              selectedProspect={selectedProspect}
+              onSelectProspect={setSelectedProspect}
+            />
           )}
         </div>
 

@@ -12,6 +12,7 @@ import {
   useMeetingRecording,
   useStartMeeting,
 } from "@/app/lib/query/hooks";
+import { MeetingDetailSkeleton } from "../../components/Skeleton";
 
 const statusColors: Record<MeetingStatus, { bg: string; text: string; border: string }> = {
   scheduled: {
@@ -71,11 +72,7 @@ export default function MeetingDetailPage() {
   const deleteRecording = useDeleteRecording();
 
   if (meetingLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-      </div>
-    );
+    return <MeetingDetailSkeleton />;
   }
 
   if (!meeting) {

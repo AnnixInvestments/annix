@@ -6,6 +6,7 @@ import {
   type TerritoryCoverageReport,
   type WeeklyActivityReport,
 } from "@/app/lib/api/annixRepApi";
+import { cacheConfig } from "../../cacheConfig";
 import { annixRepKeys } from "../../keys/annixRepKeys";
 
 export function useWeeklyActivityReport(startDate: string, endDate: string) {
@@ -13,6 +14,7 @@ export function useWeeklyActivityReport(startDate: string, endDate: string) {
     queryKey: annixRepKeys.reports.weeklyActivity(startDate, endDate),
     queryFn: () => annixRepApi.reports.weeklyActivity(startDate, endDate),
     enabled: Boolean(startDate && endDate),
+    ...cacheConfig.reports,
   });
 }
 
@@ -21,6 +23,7 @@ export function useMonthlySalesReport(month: string) {
     queryKey: annixRepKeys.reports.monthlySales(month),
     queryFn: () => annixRepApi.reports.monthlySales(month),
     enabled: Boolean(month),
+    ...cacheConfig.reports,
   });
 }
 
@@ -29,6 +32,7 @@ export function useTerritoryCoverageReport(startDate: string, endDate: string) {
     queryKey: annixRepKeys.reports.territoryCoverage(startDate, endDate),
     queryFn: () => annixRepApi.reports.territoryCoverage(startDate, endDate),
     enabled: Boolean(startDate && endDate),
+    ...cacheConfig.reports,
   });
 }
 
@@ -37,6 +41,7 @@ export function useMeetingOutcomesReport(startDate: string, endDate: string) {
     queryKey: annixRepKeys.reports.meetingOutcomes(startDate, endDate),
     queryFn: () => annixRepApi.reports.meetingOutcomes(startDate, endDate),
     enabled: Boolean(startDate && endDate),
+    ...cacheConfig.reports,
   });
 }
 

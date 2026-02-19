@@ -5,12 +5,14 @@ import {
   type CrmProvider,
   type UpdateCrmConfigDto,
 } from "@/app/lib/api/annixRepApi";
+import { cacheConfig } from "@/app/lib/query/cacheConfig";
 import { annixRepKeys } from "@/app/lib/query/keys/annixRepKeys";
 
 export function useCrmConfigs() {
   return useQuery({
     queryKey: annixRepKeys.crm.configs(),
     queryFn: () => annixRepApi.crm.configs(),
+    ...cacheConfig.crm,
   });
 }
 
@@ -19,6 +21,7 @@ export function useCrmConfig(configId: number) {
     queryKey: annixRepKeys.crm.config(configId),
     queryFn: () => annixRepApi.crm.config(configId),
     enabled: configId > 0,
+    ...cacheConfig.crm,
   });
 }
 
@@ -209,6 +212,7 @@ export function useCrmSyncLogs(configId: number, limit?: number, offset?: number
     queryKey: annixRepKeys.crm.syncLogs(configId, limit, offset),
     queryFn: () => annixRepApi.crm.syncLogs(configId, limit, offset),
     enabled: configId > 0,
+    ...cacheConfig.crm,
   });
 }
 

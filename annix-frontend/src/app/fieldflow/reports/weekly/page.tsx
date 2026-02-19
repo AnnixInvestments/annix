@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import { useExportReportPdf, useWeeklyActivityReport } from "@/app/lib/query/hooks";
+import { ReportSkeleton } from "../../components/Skeleton";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("en-ZA");
@@ -257,9 +258,7 @@ function WeeklyActivityReportContent() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-        </div>
+        <ReportSkeleton />
       ) : error ? (
         <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-6 text-center">
           <p className="text-red-600 dark:text-red-400">Failed to load report</p>

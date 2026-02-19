@@ -4,6 +4,7 @@ import {
   type CreateRepProfileDto,
   type UpdateRepProfileDto,
 } from "@/app/lib/api/annixRepApi";
+import { cacheConfig } from "@/app/lib/query/cacheConfig";
 import { annixRepKeys } from "@/app/lib/query/keys/annixRepKeys";
 
 export function useRepProfileStatus() {
@@ -19,6 +20,7 @@ export function useRepProfile() {
   return useQuery({
     queryKey: annixRepKeys.repProfile.profile(),
     queryFn: () => annixRepApi.repProfile.profile(),
+    ...cacheConfig.profile,
   });
 }
 
@@ -26,6 +28,7 @@ export function useRepSearchTerms() {
   return useQuery({
     queryKey: annixRepKeys.repProfile.searchTerms(),
     queryFn: () => annixRepApi.repProfile.searchTerms(),
+    ...cacheConfig.profile,
   });
 }
 

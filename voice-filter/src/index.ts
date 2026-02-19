@@ -132,10 +132,13 @@ export class VoiceFilter extends EventEmitter {
     let frameCount = 0;
     let lastLogTime = 0;
     this.capture.on("audio", async (samples: Float32Array, buffer: Buffer) => {
-      const probability = await this.vad!.process(samples);
-      const isSpeech = this.vad!.isSpeech();
+      if (!this.running || !this.vad || !this.output) {
+        return;
+      }
+      const probability = await this.vad.process(samples);
+      const isSpeech = this.vad.isSpeech();
       const previousState = this.currentSpeechState;
-      this.currentSpeechState = this.vad!.state();
+      this.currentSpeechState = this.vad.state();
 
       frameCount++;
       const now = Date.now();
@@ -166,14 +169,14 @@ export class VoiceFilter extends EventEmitter {
         console.log("[WARN] No verifier - running without speaker verification");
       }
 
-      this.output!.writeBuffer(buffer);
+      this.output.writeBuffer(buffer);
 
       this.emit("audio", {
         samples,
         buffer,
         probability,
         isSpeech,
-        muted: this.output!.isMuted(),
+        muted: this.output.isMuted(),
       });
     });
 

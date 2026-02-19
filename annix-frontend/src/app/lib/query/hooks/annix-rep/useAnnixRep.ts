@@ -42,12 +42,14 @@ import {
   type VisitOutcome,
   type WinLossRateTrend,
 } from "@/app/lib/api/annixRepApi";
+import { cacheConfig } from "../../cacheConfig";
 import { annixRepKeys } from "../../keys/annixRepKeys";
 
 export function useAnnixRepDashboard() {
   return useQuery<AnnixRepDashboard>({
     queryKey: annixRepKeys.dashboard.data(),
     queryFn: () => annixRepApi.dashboard(),
+    ...cacheConfig.dashboard,
   });
 }
 
@@ -287,6 +289,7 @@ export function useCustomFields(includeInactive = false) {
   return useQuery({
     queryKey: annixRepKeys.customFields.list(includeInactive),
     queryFn: () => annixRepApi.customFields.list(includeInactive),
+    ...cacheConfig.static,
   });
 }
 
@@ -295,6 +298,7 @@ export function useCustomField(id: number) {
     queryKey: annixRepKeys.customFields.detail(id),
     queryFn: () => annixRepApi.customFields.detail(id),
     enabled: id > 0,
+    ...cacheConfig.static,
   });
 }
 
@@ -355,6 +359,7 @@ export function useTodaysMeetings() {
   return useQuery<Meeting[]>({
     queryKey: annixRepKeys.meetings.today(),
     queryFn: () => annixRepApi.meetings.today(),
+    ...cacheConfig.timeSensitive,
   });
 }
 
@@ -501,6 +506,7 @@ export function useTodaysVisits() {
   return useQuery<Visit[]>({
     queryKey: annixRepKeys.visits.today(),
     queryFn: () => annixRepApi.visits.today(),
+    ...cacheConfig.timeSensitive,
   });
 }
 
@@ -570,6 +576,7 @@ export function useAnalyticsSummary() {
   return useQuery<AnalyticsSummary>({
     queryKey: annixRepKeys.analytics.summary(),
     queryFn: () => annixRepApi.analytics.summary(),
+    ...cacheConfig.analytics,
   });
 }
 
@@ -577,6 +584,7 @@ export function useMeetingsOverTime(period?: "week" | "month", count?: number) {
   return useQuery<MeetingsOverTime[]>({
     queryKey: annixRepKeys.analytics.meetingsOverTime(period, count),
     queryFn: () => annixRepApi.analytics.meetingsOverTime(period, count),
+    ...cacheConfig.analytics,
   });
 }
 
@@ -584,6 +592,7 @@ export function useProspectFunnel() {
   return useQuery<ProspectFunnel[]>({
     queryKey: annixRepKeys.analytics.prospectFunnel(),
     queryFn: () => annixRepApi.analytics.prospectFunnel(),
+    ...cacheConfig.analytics,
   });
 }
 
@@ -591,6 +600,7 @@ export function useWinLossRateTrends(months?: number) {
   return useQuery<WinLossRateTrend[]>({
     queryKey: annixRepKeys.analytics.winLossRateTrends(months),
     queryFn: () => annixRepApi.analytics.winLossRateTrends(months),
+    ...cacheConfig.analytics,
   });
 }
 
@@ -598,6 +608,7 @@ export function useActivityHeatmap() {
   return useQuery<ActivityHeatmapCell[]>({
     queryKey: annixRepKeys.analytics.activityHeatmap(),
     queryFn: () => annixRepApi.analytics.activityHeatmap(),
+    ...cacheConfig.analytics,
   });
 }
 
@@ -605,6 +616,7 @@ export function useRevenuePipeline() {
   return useQuery<RevenuePipeline[]>({
     queryKey: annixRepKeys.analytics.revenuePipeline(),
     queryFn: () => annixRepApi.analytics.revenuePipeline(),
+    ...cacheConfig.analytics,
   });
 }
 
@@ -612,6 +624,7 @@ export function useTopProspects(limit?: number) {
   return useQuery<TopProspect[]>({
     queryKey: annixRepKeys.analytics.topProspects(limit),
     queryFn: () => annixRepApi.analytics.topProspects(limit),
+    ...cacheConfig.analytics,
   });
 }
 
@@ -619,6 +632,7 @@ export function useSalesGoals() {
   return useQuery<SalesGoal[]>({
     queryKey: annixRepKeys.goals.list(),
     queryFn: () => annixRepApi.goals.list(),
+    ...cacheConfig.goals,
   });
 }
 
@@ -626,6 +640,7 @@ export function useSalesGoalByPeriod(period: GoalPeriod) {
   return useQuery<SalesGoal>({
     queryKey: annixRepKeys.goals.byPeriod(period),
     queryFn: () => annixRepApi.goals.byPeriod(period),
+    ...cacheConfig.goals,
   });
 }
 
@@ -633,6 +648,7 @@ export function useGoalProgress(period: GoalPeriod) {
   return useQuery<GoalProgress>({
     queryKey: annixRepKeys.goals.progress(period),
     queryFn: () => annixRepApi.goals.progress(period),
+    ...cacheConfig.goals,
   });
 }
 
@@ -736,6 +752,7 @@ export function useBookingAvailability(slug: string, date: string) {
     queryKey: annixRepKeys.publicBooking.availability(slug, date),
     queryFn: () => publicBookingApi.availability(slug, date),
     enabled: !!slug && !!date,
+    ...cacheConfig.timeSensitive,
   });
 }
 

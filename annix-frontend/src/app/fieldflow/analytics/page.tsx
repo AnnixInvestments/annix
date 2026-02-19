@@ -14,6 +14,7 @@ import type {
   WinLossRateTrend,
 } from "@/app/lib/api/annixRepApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { AnalyticsSkeleton, SkeletonStatCard } from "../components/Skeleton";
 
 function formatCurrency(value: number): string {
   return value.toLocaleString("en-ZA");
@@ -509,8 +510,10 @@ function GoalProgressCard({
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+        <div className="space-y-4 py-4">
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+          <SkeletonStatCard />
         </div>
       ) : !data ? (
         <div className="text-center py-8">
@@ -606,9 +609,7 @@ export default function AnalyticsDashboard() {
       </div>
 
       {summaryLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-        </div>
+        <AnalyticsSkeleton />
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

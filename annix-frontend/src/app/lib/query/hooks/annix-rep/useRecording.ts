@@ -4,6 +4,7 @@ import {
   type CompleteUploadDto,
   type InitiateUploadDto,
 } from "@/app/lib/api/annixRepApi";
+import { cacheConfig } from "@/app/lib/query/cacheConfig";
 import { annixRepKeys } from "@/app/lib/query/keys/annixRepKeys";
 
 export function useRecording(recordingId: number) {
@@ -11,6 +12,7 @@ export function useRecording(recordingId: number) {
     queryKey: annixRepKeys.recordings.detail(recordingId),
     queryFn: () => annixRepApi.recordings.detail(recordingId),
     enabled: recordingId > 0,
+    ...cacheConfig.recordings,
   });
 }
 
@@ -19,6 +21,7 @@ export function useMeetingRecording(meetingId: number) {
     queryKey: annixRepKeys.recordings.byMeeting(meetingId),
     queryFn: () => annixRepApi.recordings.byMeeting(meetingId),
     enabled: meetingId > 0,
+    ...cacheConfig.recordings,
   });
 }
 

@@ -120,6 +120,9 @@ export class AudioCapture extends EventEmitter {
     }) as unknown as AudioStream;
 
     this.stream.on("data", (buffer: Buffer) => {
+      if (!Buffer.isBuffer(buffer) || buffer.length === 0 || buffer.length % 2 !== 0) {
+        return;
+      }
       const samples = new Float32Array(buffer.length / 2);
       for (let i = 0; i < samples.length; i++) {
         samples[i] = buffer.readInt16LE(i * 2) / 32768;

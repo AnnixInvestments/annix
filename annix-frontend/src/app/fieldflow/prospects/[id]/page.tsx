@@ -1,10 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { JSX } from "react";
 import { useState } from "react";
-import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
+import { Skeleton } from "../../components/Skeleton";
+
+const GoogleMapLocationPicker = dynamic(() => import("@/app/components/GoogleMapLocationPicker"), {
+  ssr: false,
+  loading: () => <Skeleton className="w-full h-64 rounded-lg" />,
+});
+
 import type {
   CreateProspectDto,
   FollowUpRecurrence,
@@ -20,6 +27,7 @@ import {
   useUpdateProspect,
   useUpdateProspectStatus,
 } from "@/app/lib/query/hooks";
+import { ProspectDetailSkeleton } from "../../components/Skeleton";
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -178,11 +186,7 @@ export default function ProspectDetailPage() {
   const [tagInput, setTagInput] = useState("");
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <ProspectDetailSkeleton />;
   }
 
   if (error || !prospect) {
