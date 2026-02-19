@@ -1558,13 +1558,21 @@ export default function ProjectDetailsStep({
   };
 
   // Customer auth for auto-filling customer fields (optional - may be used in admin context)
-  const { isAuthenticated: isCustomerAuthenticated, customer, profile } = useOptionalCustomerAuth();
-  const { isAuthenticated: isAdminAuthenticated } = useOptionalAdminAuth();
+  const {
+    isAuthenticated: isCustomerAuthenticated,
+    isLoading: isCustomerAuthLoading,
+    customer,
+    profile,
+  } = useOptionalCustomerAuth();
+  const { isAuthenticated: isAdminAuthenticated, isLoading: isAdminAuthLoading } =
+    useOptionalAdminAuth();
 
   // Unregistered customer restrictions - when not authenticated as customer or admin, limit available options
+  // Don't apply restrictions while auth is still loading to prevent flash of restricted state
   const restrictUnregistered = !featureFlags || featureFlags["RFQ_RESTRICT_UNREGISTERED"] !== false;
+  const isAuthLoading = isCustomerAuthLoading || isAdminAuthLoading;
   const isUnregisteredCustomer =
-    restrictUnregistered && !isCustomerAuthenticated && !isAdminAuthenticated;
+    !isAuthLoading && restrictUnregistered && !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state for unregistered customers
   const [restrictionPopup, setRestrictionPopup] = useState<RestrictionPopupPosition | null>(null);

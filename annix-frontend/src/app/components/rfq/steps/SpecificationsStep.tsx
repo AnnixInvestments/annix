@@ -773,9 +773,14 @@ export default function SpecificationsStep({
   const globalSpecs = rfqData.globalSpecs;
   const requiredProducts = rfqData.requiredProducts || [];
   // Authentication status for restrictions
-  const { isAuthenticated: isCustomerAuthenticated } = useOptionalCustomerAuth();
-  const { isAuthenticated: isAdminAuthenticated } = useOptionalAdminAuth();
-  const isUnregisteredCustomer = !isCustomerAuthenticated && !isAdminAuthenticated;
+  // Don't apply restrictions while auth is still loading to prevent flash of restricted state
+  const { isAuthenticated: isCustomerAuthenticated, isLoading: isCustomerAuthLoading } =
+    useOptionalCustomerAuth();
+  const { isAuthenticated: isAdminAuthenticated, isLoading: isAdminAuthLoading } =
+    useOptionalAdminAuth();
+  const isAuthLoading = isCustomerAuthLoading || isAdminAuthLoading;
+  const isUnregisteredCustomer =
+    !isAuthLoading && !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state
   const [restrictionPopup, setRestrictionPopup] = useState<RestrictionPopupPosition | null>(null);

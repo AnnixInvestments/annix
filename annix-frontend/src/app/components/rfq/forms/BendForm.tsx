@@ -112,8 +112,9 @@ function BendFormComponent({
   log.info(`🔄 BendForm RENDER - entry.id: ${entry.id}, index: ${index}`);
 
   // Authentication status for quantity restrictions
-  const { isAuthenticated } = useOptionalCustomerAuth();
-  const isUnregisteredCustomer = isUnregisteredCustomerProp ?? !isAuthenticated;
+  // Don't apply restrictions while auth is still loading
+  const { isAuthenticated, isLoading: isAuthLoading } = useOptionalCustomerAuth();
+  const isUnregisteredCustomer = isUnregisteredCustomerProp ?? (!isAuthLoading && !isAuthenticated);
   const MAX_QUANTITY_UNREGISTERED = 1;
   const [quantityLimitPopup, setQuantityLimitPopup] = useState<{ x: number; y: number } | null>(
     null,

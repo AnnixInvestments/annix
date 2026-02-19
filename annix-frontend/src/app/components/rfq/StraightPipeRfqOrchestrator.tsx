@@ -53,7 +53,6 @@ import {
   validatePage2Specifications,
   validatePage3Items,
 } from "@/app/lib/utils/validation";
-import NixFormHelper, { NixMinimizedButton } from "./NixFormHelper";
 import BOQStep from "./steps/BOQStep";
 import ItemUploadStep from "./steps/ItemUploadStep";
 import ProjectDetailsStep from "./steps/ProjectDetailsStep";
@@ -266,20 +265,10 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     nixClarifications,
     currentClarificationIndex,
     showNixClarification,
-    nixFormHelperVisible,
-    nixFormHelperMinimized,
     nixShowPopup,
     nixAccept,
     nixDecline,
     nixStopUsing,
-    nixFormHelperClose,
-    nixFormHelperReactivate,
-    nixDiagnosticTargetItemId,
-    nixDiagnosticIssues,
-    nixDiagnosticDismissedIds,
-    nixStartDiagnostic,
-    nixDismissDiagnostic,
-    nixClearDiagnostic,
     nixCloseClarification,
     nixProcessDocuments,
     nixSubmitClarification,
@@ -2486,13 +2475,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     [updateItem, updateStraightPipeEntry],
   );
 
-  const handleApplyDiagnosticFix = useCallback(
-    (itemId: string, field: string, value: string | number) => {
-      handleUpdateEntry(itemId, { specs: { [field]: value } });
-    },
-    [handleUpdateEntry],
-  );
-
   // State for save progress feedback
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
@@ -3637,9 +3619,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                 </button>
               )}
               <div className="text-sm text-gray-500">{rfqData?.projectName || "New RFQ"}</div>
-              {nixFormHelperMinimized && !rfqData.useNix && currentStep === 3 && (
-                <NixMinimizedButton onClick={nixFormHelperReactivate} />
-              )}
               <button
                 onClick={() => {
                   const isDraft = searchParams?.get("draft") || searchParams?.get("draftId");
@@ -3741,25 +3720,6 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           </div>
         </div>
       </div>
-
-      {/* Nix Form Helper - shows on step 3 (items page) when not using Nix AI mode */}
-      {!rfqData.useNix && currentStep === 3 && (
-        <NixFormHelper
-          isVisible={nixFormHelperVisible}
-          onClose={nixFormHelperClose}
-          onReactivate={nixFormHelperReactivate}
-          isMinimized={nixFormHelperMinimized}
-          items={rfqData.items}
-          globalSpecs={rfqData.globalSpecs}
-          diagnosticTargetItemId={nixDiagnosticTargetItemId}
-          diagnosticIssues={nixDiagnosticIssues}
-          diagnosticDismissedIds={nixDiagnosticDismissedIds}
-          onStartDiagnostic={nixStartDiagnostic}
-          onDismissDiagnostic={nixDismissDiagnostic}
-          onClearDiagnostic={nixClearDiagnostic}
-          onApplyFix={handleApplyDiagnosticFix}
-        />
-      )}
 
       {/* Fixed Bottom Navigation Toolbar - always visible at bottom */}
       <div
