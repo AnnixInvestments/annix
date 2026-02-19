@@ -2,7 +2,131 @@
 
 import Link from "next/link";
 import { formatDateZA } from "@/app/lib/datetime";
-import { useFollowUpsDue } from "@/app/lib/query/hooks";
+import {
+  useAnalyticsSummary,
+  useCalendarConnections,
+  useCrmConfigs,
+  useFollowUpsDue,
+  useTodaysMeetings,
+} from "@/app/lib/query/hooks";
+
+interface StatCardProps {
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  color: string;
+}
+
+function StatCard({ label, value, icon, color }: StatCardProps) {
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+      <div className="flex items-center gap-3">
+        <div className={`p-2 rounded-lg ${color}`}>{icon}</div>
+        <div>
+          <p className="text-lg font-bold text-gray-900 dark:text-white">{value}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickStats() {
+  const { data: summary } = useAnalyticsSummary();
+  const { data: todaysMeetings } = useTodaysMeetings();
+  const { data: calendarConnections } = useCalendarConnections();
+  const { data: crmConfigs } = useCrmConfigs();
+
+  const meetingsToday = todaysMeetings?.length ?? 0;
+  const calendarsConnected = calendarConnections?.length ?? 0;
+  const crmsConnected = crmConfigs?.filter((c) => c.isActive)?.length ?? 0;
+  const totalIntegrations = calendarsConnected + crmsConnected;
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
+      <StatCard
+        label="Pipeline"
+        value={`R${(summary?.totalPipelineValue ?? 0).toLocaleString()}`}
+        color="bg-green-50 dark:bg-green-900/20"
+        icon={
+          <svg
+            className="w-5 h-5 text-green-600 dark:text-green-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        }
+      />
+      <StatCard
+        label="Today's Meetings"
+        value={meetingsToday}
+        color="bg-blue-50 dark:bg-blue-900/20"
+        icon={
+          <svg
+            className="w-5 h-5 text-blue-600 dark:text-blue-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
+            />
+          </svg>
+        }
+      />
+      <StatCard
+        label="Win Rate"
+        value={`${summary?.winRate ?? 0}%`}
+        color="bg-purple-50 dark:bg-purple-900/20"
+        icon={
+          <svg
+            className="w-5 h-5 text-purple-600 dark:text-purple-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0"
+            />
+          </svg>
+        }
+      />
+      <StatCard
+        label="Integrations"
+        value={`${totalIntegrations} connected`}
+        color="bg-orange-50 dark:bg-orange-900/20"
+        icon={
+          <svg
+            className="w-5 h-5 text-orange-600 dark:text-orange-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"
+            />
+          </svg>
+        }
+      />
+    </div>
+  );
+}
 
 interface SectionCardProps {
   title: string;
@@ -82,6 +206,8 @@ export default function AnnixRepDashboard() {
           Mobile sales field assistant for prospecting, meetings, and route planning
         </p>
       </div>
+
+      <QuickStats />
 
       {followUpsDue && followUpsDue.length > 0 && (
         <div className="max-w-4xl mx-auto">

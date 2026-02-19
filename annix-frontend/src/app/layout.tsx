@@ -53,6 +53,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${greatVibes.variable} antialiased`}
+        suppressHydrationWarning
       >
         <Providers>
           <ConditionalNavigation />

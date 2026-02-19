@@ -3,6 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: process.env.NODE_ENV === "production" ? "standalone" : undefined,
 
+  async rewrites() {
+    return [
+      {
+        source: "/annix-rep/:path*",
+        destination: "/fieldflow/:path*",
+      },
+    ];
+  },
+
   experimental: {
     optimizePackageImports: [
       "es-toolkit",

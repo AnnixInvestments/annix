@@ -7,5 +7,9 @@ export const shouldShowGlobalNavigation = (pathname: string): boolean => {
     return false;
   }
 
+  if (pathname.startsWith("/fieldflow") || pathname.startsWith("/annix-rep")) {
+    return false;
+  }
+
   return true;
 };

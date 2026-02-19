@@ -1,6 +1,102 @@
 "use client";
 
 import Link from "next/link";
+import { useCalendarConnections, useCrmConfigs } from "@/app/lib/query/hooks";
+
+function ConnectionStatus() {
+  const { data: calendars, isLoading: calendarsLoading } = useCalendarConnections();
+  const { data: crms, isLoading: crmsLoading } = useCrmConfigs();
+
+  const isLoading = calendarsLoading || crmsLoading;
+  const hasCalendars = calendars && calendars.length > 0;
+  const activeCrms = crms?.filter((c) => c.isActive) ?? [];
+  const hasActiveCrms = activeCrms.length > 0;
+
+  if (isLoading) {
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6 animate-pulse">
+        <div className="flex items-center gap-4">
+          <div className="h-6 w-6 bg-gray-200 dark:bg-slate-700 rounded-full" />
+          <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-1/3" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        Connection Status
+      </h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+          <div
+            className={`w-3 h-3 rounded-full ${hasCalendars ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}
+          />
+          <div className="flex-1">
+            <p className="font-medium text-gray-900 dark:text-white">Calendar Sync</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {hasCalendars
+                ? `${calendars?.length} calendar${calendars?.length === 1 ? "" : "s"} connected`
+                : "Not connected"}
+            </p>
+          </div>
+          {hasCalendars ? (
+            <svg
+              className="w-5 h-5 text-green-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          ) : (
+            <Link
+              href="/annix-rep/settings/calendars"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Connect
+            </Link>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
+          <div
+            className={`w-3 h-3 rounded-full ${hasActiveCrms ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`}
+          />
+          <div className="flex-1">
+            <p className="font-medium text-gray-900 dark:text-white">CRM Integration</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {hasActiveCrms
+                ? `${activeCrms.length} CRM${activeCrms.length === 1 ? "" : "s"} active`
+                : "Not configured"}
+            </p>
+          </div>
+          {hasActiveCrms ? (
+            <svg
+              className="w-5 h-5 text-green-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          ) : (
+            <Link
+              href="/annix-rep/settings/crm"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Configure
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface FeatureCardProps {
   title: string;
@@ -101,6 +197,8 @@ export default function IntegrationsPage() {
           <p className="text-gray-500 dark:text-gray-400">Connect with your existing tools</p>
         </div>
       </div>
+
+      <ConnectionStatus />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <FeatureCard

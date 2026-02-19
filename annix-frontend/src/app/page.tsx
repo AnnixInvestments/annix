@@ -378,7 +378,12 @@ export default function HomePage() {
           </Link>
 
           {/* Voice Filter Card */}
-          <Link href="/voice-filter" className="group">
+          <a
+            href="http://localhost:47823"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group"
+          >
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-100 rounded-2xl text-cyan-600 mb-6 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
@@ -389,7 +394,7 @@ export default function HomePage() {
                   Speaker verification filter that only passes through your authorized voice.
                 </p>
                 <span className="inline-flex items-center text-cyan-600 font-semibold group-hover:translate-x-1 transition-transform">
-                  Learn More
+                  Open Dashboard
                   <svg
                     className="w-5 h-5 ml-2"
                     fill="none"
@@ -400,13 +405,13 @@ export default function HomePage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M9 5l7 7-7 7"
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                     />
                   </svg>
                 </span>
               </div>
             </div>
-          </Link>
+          </a>
 
           {/* Annix Rep Card */}
           <Link href="/annix-rep/setup" className="group">

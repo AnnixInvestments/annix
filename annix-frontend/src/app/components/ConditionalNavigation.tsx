@@ -1,8 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { shouldShowGlobalNavigation } from "../lib/navigation-utils";
-import Navigation from "./Navigation";
+
+const Navigation = dynamic(() => import("./Navigation"), { ssr: false });
 
 export default function ConditionalNavigation() {
   const pathname = usePathname();
