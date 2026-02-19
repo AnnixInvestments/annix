@@ -12,6 +12,7 @@ import type {
 import { formatDateZA } from "@/app/lib/datetime";
 import { useCreateMeeting, useCreateRecurringMeeting, useMeetings } from "@/app/lib/query/hooks";
 import { QueryErrorFallback } from "../components/ErrorBoundary";
+import { PullToRefresh } from "../components/PullToRefresh";
 import { MeetingListSkeleton } from "../components/Skeleton";
 import { defaultRecurrenceOptions, RecurrenceEditor } from "./components/RecurrenceEditor";
 
@@ -418,119 +419,125 @@ export default function MeetingsPage() {
     setShowCreateModal(false);
   };
 
+  const handleRefresh = async () => {
+    await refetch();
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Meetings</h1>
-          <p className="text-gray-500 dark:text-gray-400">Manage your meetings and recordings</p>
+    <PullToRefresh onRefresh={handleRefresh} className="min-h-full">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Meetings</h1>
+            <p className="text-gray-500 dark:text-gray-400">Manage your meetings and recordings</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/annix-rep/meetings/record"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
+                />
+              </svg>
+              Start Recording
+            </Link>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 flex items-center gap-2"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              New Meeting
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/annix-rep/meetings/record"
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
+
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+              statusFilter === "all"
+                ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-transparent"
+                : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
+            }`}
           >
+            All
+          </button>
+          {(Object.keys(statusLabels) as MeetingStatus[]).map((status) => {
+            const colors = statusColors[status];
+            return (
+              <button
+                key={status}
+                onClick={() => setStatusFilter(statusFilter === status ? "all" : status)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                  statusFilter === status
+                    ? `${colors.bg} ${colors.text} border-transparent`
+                    : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
+                }`}
+              >
+                {statusLabels[status]}
+              </button>
+            );
+          })}
+        </div>
+
+        {filteredMeetings.length === 0 ? (
+          <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
             <svg
-              className="w-4 h-4"
+              className="w-12 h-12 mx-auto text-gray-400"
               fill="none"
               viewBox="0 0 24 24"
-              strokeWidth={1.5}
+              strokeWidth={1}
               stroke="currentColor"
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
+                d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
               />
             </svg>
-            Start Recording
-          </Link>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 flex items-center gap-2"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            New Meeting
-          </button>
-        </div>
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => setStatusFilter("all")}
-          className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-            statusFilter === "all"
-              ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-transparent"
-              : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
-          }`}
-        >
-          All
-        </button>
-        {(Object.keys(statusLabels) as MeetingStatus[]).map((status) => {
-          const colors = statusColors[status];
-          return (
+            <p className="mt-2 text-gray-500 dark:text-gray-400">
+              {statusFilter !== "all" ? "No meetings match this filter" : "No meetings yet"}
+            </p>
             <button
-              key={status}
-              onClick={() => setStatusFilter(statusFilter === status ? "all" : status)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-                statusFilter === status
-                  ? `${colors.bg} ${colors.text} border-transparent`
-                  : "bg-white dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700"
-              }`}
+              onClick={() => setShowCreateModal(true)}
+              className="mt-4 text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              {statusLabels[status]}
+              Schedule your first meeting
             </button>
-          );
-        })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredMeetings.map((meeting) => (
+              <MeetingCard key={meeting.id} meeting={meeting} />
+            ))}
+          </div>
+        )}
+
+        <CreateMeetingModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreate}
+          onCreateRecurring={handleCreateRecurring}
+        />
       </div>
-
-      {filteredMeetings.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
-          <svg
-            className="w-12 h-12 mx-auto text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1}
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
-            />
-          </svg>
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
-            {statusFilter !== "all" ? "No meetings match this filter" : "No meetings yet"}
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="mt-4 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            Schedule your first meeting
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredMeetings.map((meeting) => (
-            <MeetingCard key={meeting.id} meeting={meeting} />
-          ))}
-        </div>
-      )}
-
-      <CreateMeetingModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onCreate={handleCreate}
-        onCreateRecurring={handleCreateRecurring}
-      />
-    </div>
+    </PullToRefresh>
   );
 }
