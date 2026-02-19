@@ -23,9 +23,10 @@ ${FILES}"
   fi
 done
 
-UNIQUE_FILES=$(echo "$CHANGED_FILES" | sort -u | grep -v '^$')
-if [ -n "$UNIQUE_FILES" ]; then
-  echo "$UNIQUE_FILES" | xargs pnpm biome check
+UNIQUE_FILES=$(echo "$CHANGED_FILES" | sort -u | grep -v '^$' || true)
+BIOME_FILES=$(echo "$UNIQUE_FILES" | grep -E '\.(ts|tsx|js|jsx|json)$' || true)
+if [ -n "$BIOME_FILES" ]; then
+  echo "$BIOME_FILES" | xargs pnpm biome check
 else
   echo "No committed file changes to check"
 fi
