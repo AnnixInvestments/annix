@@ -3,7 +3,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { join } from "node:path";
 import open from "open";
 import { type WebSocket, WebSocketServer } from "ws";
-import { AudioCapture, findRealMicrophone, listInputDevices } from "../audio/capture.js";
+import {
+  AudioCapture,
+  findRealMicrophone,
+  listInputDevices,
+  listOutputDevices,
+} from "../audio/capture.js";
 import { findVBCableDevice } from "../audio/output.js";
 import { loadProfile, loadSettings, updateSettings } from "../config/settings.js";
 import { VoiceFilter, type VoiceFilterStatus } from "../index.js";
@@ -20,6 +25,13 @@ let wsClient: WebSocket | null = null;
 
 function serveHtml(_req: IncomingMessage, res: ServerResponse): void {
   const htmlPath = join(import.meta.dirname, "index.html");
+  const html = readFileSync(htmlPath, "utf-8");
+  res.writeHead(200, { "Content-Type": "text/html" });
+  res.end(html);
+}
+
+function serveMiniHtml(_req: IncomingMessage, res: ServerResponse): void {
+  const htmlPath = join(import.meta.dirname, "mini.html");
   const html = readFileSync(htmlPath, "utf-8");
   res.writeHead(200, { "Content-Type": "text/html" });
   res.end(html);
@@ -203,8 +215,9 @@ async function startVoiceFilter(): Promise<void> {
     inputDeviceId: detectedDevice?.id,
     outputDeviceId: vbCableId,
     speakerId: settings.speakerId ?? undefined,
-    failOpen: false,
-    verificationThreshold: 0.6,
+    failOpen: settings.failOpen,
+    verificationThreshold: settings.verificationThreshold,
+    vadThreshold: settings.vadThreshold,
   });
 
   voiceFilter.on("started", (status: VoiceFilterStatus) => {
@@ -229,6 +242,20 @@ async function startVoiceFilter(): Promise<void> {
     sendMessage("filter-error", { message: error.message });
   });
 
+  voiceFilter.on(
+    "audio",
+    (data: { samples: Float32Array; probability: number; isSpeech: boolean; muted: boolean }) => {
+      let sum = 0;
+      for (let i = 0; i < data.samples.length; i++) {
+        sum += Math.abs(data.samples[i]);
+      }
+      const avg = sum / data.samples.length;
+      const level = Math.min(1, avg * 10);
+      sendMessage("volume-level", level);
+      sendMessage("vad-level", data.probability);
+    },
+  );
+
   try {
     await voiceFilter.start();
   } catch (error) {
@@ -247,23 +274,43 @@ function stopVoiceFilter(): void {
   }
 }
 
-function checkExistingProfile(): boolean {
+function checkExistingProfile(): { exists: boolean; speakerId: string | null } {
   const settings = loadSettings();
   if (settings.speakerId) {
     const profile = loadProfile(settings.speakerId);
-    return profile !== null;
+    return { exists: profile !== null, speakerId: settings.speakerId };
   }
-  return false;
+  return { exists: false, speakerId: null };
+}
+
+function sendDeviceList(): void {
+  const inputs = listInputDevices().map((d) => ({ id: d.id, name: d.name }));
+  const outputs = listOutputDevices().map((d) => ({ id: d.id, name: d.name }));
+  sendMessage("devices", { inputs, outputs });
+}
+
+function sendCurrentSettings(): void {
+  const settings = loadSettings();
+  sendMessage("settings", {
+    verificationThreshold: settings.verificationThreshold,
+    vadThreshold: settings.vadThreshold,
+    failOpen: settings.failOpen,
+    inputDeviceId: settings.inputDeviceId,
+    outputDeviceId: settings.outputDeviceId,
+  });
 }
 
 function handleMessage(message: string): void {
   try {
-    const { type } = JSON.parse(message);
+    const { type, data } = JSON.parse(message);
 
     if (type === "ready") {
-      if (checkExistingProfile()) {
-        sendMessage("has-profile", true);
+      const profileInfo = checkExistingProfile();
+      if (profileInfo.exists) {
+        sendMessage("has-profile", { speakerId: profileInfo.speakerId });
       }
+      sendDeviceList();
+      sendCurrentSettings();
       startMicTest();
     } else if (type === "start-enrollment") {
       startEnrollment();
@@ -275,6 +322,32 @@ function handleMessage(message: string): void {
       startVoiceFilter();
     } else if (type === "stop-filter") {
       stopVoiceFilter();
+    } else if (type === "update-settings") {
+      if (data) {
+        const updates: Record<string, unknown> = {};
+        if (data.verificationThreshold !== undefined) {
+          updates.verificationThreshold = data.verificationThreshold;
+        }
+        if (data.vadThreshold !== undefined) {
+          updates.vadThreshold = data.vadThreshold;
+        }
+        if (data.failOpen !== undefined) {
+          updates.failOpen = data.failOpen;
+        }
+        if (data.inputDeviceId !== undefined) {
+          updates.inputDeviceId = data.inputDeviceId;
+          const devices = listInputDevices();
+          const device = devices.find((d) => d.id === data.inputDeviceId);
+          if (device) {
+            detectedDevice = { id: device.id, name: device.name };
+          }
+        }
+        if (data.outputDeviceId !== undefined) {
+          updates.outputDeviceId = data.outputDeviceId;
+        }
+        updateSettings(updates);
+        console.log("Settings updated:", updates);
+      }
     } else if (type === "start-meeting") {
       console.log("Starting meeting mode...");
       sendMessage("meeting-started", true);
@@ -291,10 +364,12 @@ function handleMessage(message: string): void {
   }
 }
 
-export async function startGuiServer(): Promise<void> {
+export async function startGuiServer(openBrowser: boolean = true): Promise<void> {
   const server = createServer((req, res) => {
     if (req.url === "/" || req.url === "/index.html") {
       serveHtml(req, res);
+    } else if (req.url === "/mini") {
+      serveMiniHtml(req, res);
     } else {
       res.writeHead(404);
       res.end("Not found");
@@ -319,8 +394,10 @@ export async function startGuiServer(): Promise<void> {
 
   server.listen(PORT, () => {
     console.log(`Voice Filter UI running at http://localhost:${PORT}`);
-    console.log("Opening browser...");
-    open(`http://localhost:${PORT}`);
+    if (openBrowser) {
+      console.log("Opening browser...");
+      open(`http://localhost:${PORT}`);
+    }
   });
 
   process.on("SIGINT", () => {

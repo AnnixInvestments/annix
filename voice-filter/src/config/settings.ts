@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS: VoiceFilterSettings = {
   awsRegion: "us-east-1",
   awsVoiceIdDomainId: null,
   speakerId: null,
-  vadThreshold: 0.5,
+  vadThreshold: 0.01,
   silenceTimeout: 2000,
   verificationThreshold: 0.7,
   failOpen: true,

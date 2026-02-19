@@ -9,8 +9,9 @@
   },
   "scripts": {
     "build": "tsc",
-    "start": "tsx src/cli/background.ts",
+    "start": "tsx src/gui/launch-mini.ts",
     "dashboard": "tsx src/gui/launch.ts",
+    "mini": "tsx src/gui/launch-mini.ts",
     "dev": "tsx src/cli/index.ts",
     "enroll": "tsx src/cli/index.ts enroll",
     "enroll:gui": "tsx src/gui/launch.ts",
