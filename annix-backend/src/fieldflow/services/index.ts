@@ -24,11 +24,13 @@ export type { CreateGoalDto, GoalProgress, UpdateGoalDto } from "./goals.service
 export { GoalsService } from "./goals.service";
 export { MeetingService } from "./meeting.service";
 export { MeetingSummaryService } from "./meeting-summary.service";
+export { PdfGenerationService } from "./pdf-generation.service";
 export { ProspectService } from "./prospect.service";
 export type { LogActivityParams } from "./prospect-activity.service";
 export { ProspectActivityService } from "./prospect-activity.service";
 export { RecordingService } from "./recording.service";
 export { RecurringMeetingService } from "./recurring-meeting.service";
+export { ReportsService } from "./reports.service";
 export type {
   ColdCallSuggestion,
   OptimizedRoute,

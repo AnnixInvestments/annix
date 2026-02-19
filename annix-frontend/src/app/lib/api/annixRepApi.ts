@@ -783,6 +783,112 @@ export interface TopProspect {
 
 export type GoalPeriod = "weekly" | "monthly" | "quarterly";
 
+export interface ReportDateRange {
+  startDate: string;
+  endDate: string;
+}
+
+export interface WeeklyActivityReport {
+  period: ReportDateRange;
+  summary: {
+    totalMeetings: number;
+    completedMeetings: number;
+    cancelledMeetings: number;
+    totalVisits: number;
+    successfulVisits: number;
+    newProspects: number;
+    contactedProspects: number;
+    dealsWon: number;
+    dealsLost: number;
+    revenueWon: number;
+  };
+  meetingsByDay: Array<{ date: string; count: number; completed: number }>;
+  visitsByDay: Array<{ date: string; count: number; successful: number }>;
+  prospectStatusChanges: Array<{
+    prospectId: number;
+    companyName: string;
+    fromStatus: string;
+    toStatus: string;
+    date: string;
+  }>;
+}
+
+export interface MonthlySalesReport {
+  period: ReportDateRange;
+  summary: {
+    totalRevenue: number;
+    dealsClosed: number;
+    averageDealSize: number;
+    winRate: number;
+    pipelineValue: number;
+    meetingsHeld: number;
+    visitsCompleted: number;
+    newProspectsAdded: number;
+  };
+  revenueByWeek: Array<{ week: string; revenue: number; deals: number }>;
+  prospectsByStatus: Array<{ status: string; count: number; value: number }>;
+  topDeals: Array<{
+    prospectId: number;
+    companyName: string;
+    value: number;
+    closedDate: string;
+  }>;
+}
+
+export interface TerritoryCoverageReport {
+  period: ReportDateRange;
+  bounds: { north: number; south: number; east: number; west: number };
+  prospects: Array<{
+    id: number;
+    companyName: string;
+    latitude: number;
+    longitude: number;
+    status: string;
+    lastVisitDate: string | null;
+    visitCount: number;
+  }>;
+  visits: Array<{
+    id: number;
+    prospectId: number;
+    latitude: number;
+    longitude: number;
+    date: string;
+    outcome: string | null;
+  }>;
+  coverage: {
+    totalProspectsWithLocation: number;
+    visitedProspects: number;
+    coveragePercentage: number;
+  };
+}
+
+export interface MeetingOutcomesReport {
+  period: ReportDateRange;
+  summary: {
+    totalMeetings: number;
+    completed: number;
+    cancelled: number;
+    noShow: number;
+    completionRate: number;
+    averageDurationMinutes: number | null;
+  };
+  outcomesByType: Array<{
+    meetingType: string;
+    total: number;
+    completed: number;
+    cancelled: number;
+  }>;
+  detailedMeetings: Array<{
+    id: number;
+    title: string;
+    prospectName: string | null;
+    scheduledDate: string;
+    status: string;
+    duration: number | null;
+    outcomes: string | null;
+  }>;
+}
+
 export interface CustomQuestion {
   id: string;
   label: string;
@@ -2425,6 +2531,103 @@ export const annixRepApi = {
         headers: annixRepAuthHeaders(),
       });
       return handleResponse<GoalProgress>(response);
+    },
+  },
+
+  reports: {
+    weeklyActivity: async (startDate: string, endDate: string): Promise<WeeklyActivityReport> => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const response = await fetch(`${getApiUrl()}/annix-rep/reports/weekly-activity?${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<WeeklyActivityReport>(response);
+    },
+
+    weeklyActivityPdf: async (startDate: string, endDate: string): Promise<Blob> => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/reports/weekly-activity/pdf?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "PDF generation failed" }));
+        throw new Error(error.message);
+      }
+      return response.blob();
+    },
+
+    monthlySales: async (month: string): Promise<MonthlySalesReport> => {
+      const params = new URLSearchParams({ month });
+      const response = await fetch(`${getApiUrl()}/annix-rep/reports/monthly-sales?${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<MonthlySalesReport>(response);
+    },
+
+    monthlySalesPdf: async (month: string): Promise<Blob> => {
+      const params = new URLSearchParams({ month });
+      const response = await fetch(`${getApiUrl()}/annix-rep/reports/monthly-sales/pdf?${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "PDF generation failed" }));
+        throw new Error(error.message);
+      }
+      return response.blob();
+    },
+
+    territoryCoverage: async (
+      startDate: string,
+      endDate: string,
+    ): Promise<TerritoryCoverageReport> => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/reports/territory-coverage?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      return handleResponse<TerritoryCoverageReport>(response);
+    },
+
+    territoryCoveragePdf: async (startDate: string, endDate: string): Promise<Blob> => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/reports/territory-coverage/pdf?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "PDF generation failed" }));
+        throw new Error(error.message);
+      }
+      return response.blob();
+    },
+
+    meetingOutcomes: async (startDate: string, endDate: string): Promise<MeetingOutcomesReport> => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const response = await fetch(`${getApiUrl()}/annix-rep/reports/meeting-outcomes?${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<MeetingOutcomesReport>(response);
+    },
+
+    meetingOutcomesPdf: async (startDate: string, endDate: string): Promise<Blob> => {
+      const params = new URLSearchParams({ startDate, endDate });
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/reports/meeting-outcomes/pdf?${params}`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "PDF generation failed" }));
+        throw new Error(error.message);
+      }
+      return response.blob();
     },
   },
 };

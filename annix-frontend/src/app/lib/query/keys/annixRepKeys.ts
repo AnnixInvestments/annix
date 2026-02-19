@@ -126,4 +126,14 @@ export const annixRepKeys = {
     availability: (slug: string, date: string) =>
       [...annixRepKeys.publicBooking.all, "availability", slug, date] as const,
   },
+  reports: {
+    all: ["annixRep", "reports"] as const,
+    weeklyActivity: (startDate: string, endDate: string) =>
+      [...annixRepKeys.reports.all, "weeklyActivity", startDate, endDate] as const,
+    monthlySales: (month: string) => [...annixRepKeys.reports.all, "monthlySales", month] as const,
+    territoryCoverage: (startDate: string, endDate: string) =>
+      [...annixRepKeys.reports.all, "territoryCoverage", startDate, endDate] as const,
+    meetingOutcomes: (startDate: string, endDate: string) =>
+      [...annixRepKeys.reports.all, "meetingOutcomes", startDate, endDate] as const,
+  },
 } as const;

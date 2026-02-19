@@ -9,6 +9,7 @@ export { MeetingController } from "./meeting.controller";
 export { ProspectController } from "./prospect.controller";
 export { PublicBookingController } from "./public-booking.controller";
 export { RecordingController } from "./recording.controller";
+export { ReportsController } from "./reports.controller";
 export { RouteController } from "./route.controller";
 export { SummaryController } from "./summary.controller";
 export { TranscriptController } from "./transcript.controller";

@@ -87,6 +87,13 @@ export {
   UpdateTranscriptDto,
   UpdateTranscriptSegmentDto,
 } from "./recording.dto";
+export type {
+  MeetingOutcomesReport,
+  MonthlySalesReport,
+  ReportDateRange,
+  TerritoryCoverageReport,
+  WeeklyActivityReport,
+} from "./report.dto";
 export {
   ColdCallSuggestionsQueryDto,
   OptimizeRouteDto,

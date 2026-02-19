@@ -2,14 +2,19 @@ packages:
   - annix-backend
   - annix-frontend
   - voice-filter
+
+onlyBuiltDependencies:
+  - '@annix/claude-swarm'
+  - puppeteer
+
 ignoredBuiltDependencies:
   - '@nestjs/core'
   - '@openapitools/openapi-generator-cli'
   - '@scarf/scarf'
   - bcrypt
+  - esbuild
   - naudiodon
   - segfault-handler
   - sharp
   - tesseract.js
   - unrs-resolver
-

@@ -186,6 +186,14 @@ export {
   useUpdateSpeakerLabels,
   useUploadRecordingChunk,
 } from "./annix-rep/useRecording";
+export type { ReportType } from "./annix-rep/useReports";
+export {
+  useExportReportPdf,
+  useMeetingOutcomesReport,
+  useMonthlySalesReport,
+  useTerritoryCoverageReport,
+  useWeeklyActivityReport,
+} from "./annix-rep/useReports";
 export {
   useCompleteRepSetup,
   useCreateRepProfile,
