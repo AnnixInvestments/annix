@@ -6,6 +6,7 @@ import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
+import { NixAssistant } from "@/app/lib/nix";
 
 const navItems = [
   {
@@ -99,6 +100,13 @@ export default function SupplierPortalLayout({ children }: { children: React.Rea
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <main className="w-full">{children}</main>
       </div>
+      <NixAssistant
+        context="supplier"
+        pageContext={{
+          currentPage: "Supplier Portal",
+          portalContext: "supplier",
+        }}
+      />
     </div>
   );
 }
