@@ -12,6 +12,8 @@ import {
 import { findVBCableDevice } from "../audio/output.js";
 import { loadProfile, loadSettings, updateSettings } from "../config/settings.js";
 import { VoiceFilter, type VoiceFilterStatus } from "../index.js";
+import { MeetingSession } from "../meeting/MeetingSession.js";
+import type { MeetingAttendee, MeetingExport, TranscriptEntry } from "../meeting/types.js";
 import { EnrollmentSession } from "../verification/enrollment.js";
 import type { VerificationResult } from "../verification/verify.js";
 
@@ -20,6 +22,7 @@ const PORT = 47823;
 let audioCapture: AudioCapture | null = null;
 let enrollmentSession: EnrollmentSession | null = null;
 let voiceFilter: VoiceFilter | null = null;
+let meetingSession: MeetingSession | null = null;
 let detectedDevice: { id: number; name: string } | null = null;
 let wsClient: WebSocket | null = null;
 
@@ -32,6 +35,13 @@ function serveHtml(_req: IncomingMessage, res: ServerResponse): void {
 
 function serveMiniHtml(_req: IncomingMessage, res: ServerResponse): void {
   const htmlPath = join(import.meta.dirname, "mini.html");
+  const html = readFileSync(htmlPath, "utf-8");
+  res.writeHead(200, { "Content-Type": "text/html" });
+  res.end(html);
+}
+
+function serveMeetingHtml(_req: IncomingMessage, res: ServerResponse): void {
+  const htmlPath = join(import.meta.dirname, "meeting.html");
   const html = readFileSync(htmlPath, "utf-8");
   res.writeHead(200, { "Content-Type": "text/html" });
   res.end(html);
@@ -300,6 +310,184 @@ function sendCurrentSettings(): void {
   });
 }
 
+function handleMeetingCreate(data: { title: string; attendeeCount: number }): void {
+  const settings = loadSettings();
+
+  meetingSession = new MeetingSession({
+    title: data.title,
+    attendeeCount: data.attendeeCount,
+    inputDeviceId: detectedDevice?.id,
+    openaiApiKey: settings.openaiApiKey ?? undefined,
+  });
+
+  meetingSession.on("attendee-added", (attendee: MeetingAttendee) => {
+    sendMessage("meeting-attendee-added", { attendee });
+  });
+
+  meetingSession.on("attendee-removed", (attendee: MeetingAttendee) => {
+    sendMessage("meeting-attendee-removed", { attendee });
+  });
+
+  meetingSession.on("enrollment-audio", (samples: Float32Array) => {
+    let sum = 0;
+    for (let i = 0; i < samples.length; i++) {
+      sum += Math.abs(samples[i]);
+    }
+    const avg = sum / samples.length;
+    const level = Math.min(1, avg * 10);
+    sendMessage("volume-level", level);
+  });
+
+  meetingSession.on("enrollment-progress", (progress) => {
+    sendMessage("meeting-enrollment-progress", progress);
+  });
+
+  meetingSession.on("enrollment-complete", (attendee: MeetingAttendee) => {
+    sendMessage("meeting-enrollment-complete", { attendee });
+  });
+
+  meetingSession.on("enrollment-error", (error: Error) => {
+    sendMessage("meeting-enrollment-error", { message: error.message });
+  });
+
+  meetingSession.on("enrollment-cancelled", () => {
+    sendMessage("meeting-enrollment-cancelled", {});
+  });
+
+  meetingSession.on("all-enrolled", () => {
+    sendMessage("meeting-ready", { session: meetingSession!.data() });
+  });
+
+  meetingSession.on("meeting-started", () => {
+    sendMessage("meeting-active", { session: meetingSession!.data() });
+  });
+
+  meetingSession.on("speaker-identified", (speaker) => {
+    sendMessage("meeting-speaker-identified", speaker);
+  });
+
+  meetingSession.on("speaker-changed", (speaker) => {
+    sendMessage("meeting-speaker-changed", speaker);
+  });
+
+  meetingSession.on("transcript-entry", (entry: TranscriptEntry) => {
+    sendMessage("meeting-transcript-entry", entry);
+  });
+
+  meetingSession.on("volume-level", (level: number) => {
+    sendMessage("volume-level", level);
+  });
+
+  meetingSession.on("meeting-paused", () => {
+    sendMessage("meeting-paused", {});
+  });
+
+  meetingSession.on("meeting-resumed", () => {
+    sendMessage("meeting-resumed", {});
+  });
+
+  meetingSession.on("meeting-ended", (exportData: MeetingExport) => {
+    sendMessage("meeting-ended", exportData);
+  });
+
+  meetingSession.on("error", (error: Error) => {
+    sendMessage("meeting-error", { message: error.message });
+  });
+
+  console.log("Meeting created:", meetingSession.sessionId_());
+  sendMessage("meeting-created", { sessionId: meetingSession.sessionId_() });
+}
+
+function handleMeetingAddAttendee(data: { name: string; title: string }): void {
+  if (!meetingSession) {
+    sendMessage("meeting-error", { message: "No active meeting session" });
+    return;
+  }
+
+  const attendee = meetingSession.addAttendee(data.name, data.title);
+  console.log("Attendee added:", attendee.name);
+}
+
+function handleMeetingRemoveAttendee(data: { attendeeId: string }): void {
+  if (!meetingSession) {
+    sendMessage("meeting-error", { message: "No active meeting session" });
+    return;
+  }
+
+  meetingSession.removeAttendee(data.attendeeId);
+}
+
+async function handleMeetingStartEnrollment(data: { attendeeIndex: number }): Promise<void> {
+  if (!meetingSession) {
+    sendMessage("meeting-error", { message: "No active meeting session" });
+    return;
+  }
+
+  try {
+    await meetingSession.startEnrollment(data.attendeeIndex);
+  } catch (error) {
+    sendMessage("meeting-enrollment-error", { message: (error as Error).message });
+  }
+}
+
+function handleMeetingCancelEnrollment(): void {
+  if (meetingSession) {
+    meetingSession.cancelEnrollment();
+  }
+}
+
+async function handleMeetingStart(): Promise<void> {
+  if (!meetingSession) {
+    sendMessage("meeting-error", { message: "No active meeting session" });
+    return;
+  }
+
+  try {
+    stopAudioCapture();
+    stopVoiceFilter();
+    await meetingSession.startMeeting();
+  } catch (error) {
+    sendMessage("meeting-error", { message: (error as Error).message });
+  }
+}
+
+function handleMeetingPause(): void {
+  if (meetingSession) {
+    meetingSession.pauseMeeting();
+  }
+}
+
+function handleMeetingResume(): void {
+  if (meetingSession) {
+    meetingSession.resumeMeeting();
+  }
+}
+
+function handleMeetingEnd(): void {
+  if (meetingSession) {
+    meetingSession.endMeeting();
+    meetingSession = null;
+  }
+}
+
+function handleMeetingExport(data: { format: "txt" | "json" }): void {
+  if (!meetingSession) {
+    sendMessage("meeting-error", { message: "No active meeting session" });
+    return;
+  }
+
+  const content = meetingSession.exportTranscript(data.format);
+  sendMessage("meeting-export-ready", { format: data.format, content });
+}
+
+function handleMeetingStatus(): void {
+  if (meetingSession) {
+    sendMessage("meeting-status", { session: meetingSession.data() });
+  } else {
+    sendMessage("meeting-status", { session: null });
+  }
+}
+
 function handleMessage(message: string): void {
   try {
     const { type, data } = JSON.parse(message);
@@ -348,12 +536,28 @@ function handleMessage(message: string): void {
         updateSettings(updates);
         console.log("Settings updated:", updates);
       }
-    } else if (type === "start-meeting") {
-      console.log("Starting meeting mode...");
-      sendMessage("meeting-started", true);
-    } else if (type === "start-recording") {
-      console.log("Starting recording...");
-      sendMessage("recording-started", true);
+    } else if (type === "meeting-create") {
+      handleMeetingCreate(data);
+    } else if (type === "meeting-add-attendee") {
+      handleMeetingAddAttendee(data);
+    } else if (type === "meeting-remove-attendee") {
+      handleMeetingRemoveAttendee(data);
+    } else if (type === "meeting-start-enrollment") {
+      handleMeetingStartEnrollment(data);
+    } else if (type === "meeting-cancel-enrollment") {
+      handleMeetingCancelEnrollment();
+    } else if (type === "meeting-start") {
+      handleMeetingStart();
+    } else if (type === "meeting-pause") {
+      handleMeetingPause();
+    } else if (type === "meeting-resume") {
+      handleMeetingResume();
+    } else if (type === "meeting-end") {
+      handleMeetingEnd();
+    } else if (type === "meeting-export") {
+      handleMeetingExport(data);
+    } else if (type === "meeting-status") {
+      handleMeetingStatus();
     } else if (type === "close-window") {
       stopAudioCapture();
       stopVoiceFilter();
@@ -370,6 +574,8 @@ export async function startGuiServer(openBrowser: boolean = true): Promise<void>
       serveHtml(req, res);
     } else if (req.url === "/mini") {
       serveMiniHtml(req, res);
+    } else if (req.url === "/meeting") {
+      serveMeetingHtml(req, res);
     } else {
       res.writeHead(404);
       res.end("Not found");

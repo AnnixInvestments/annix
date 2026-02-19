@@ -12,6 +12,9 @@ export interface VoiceFilterSettings {
   silenceTimeout: number;
   verificationThreshold: number;
   failOpen: boolean;
+  openaiApiKey: string | null;
+  speakerIdentificationThreshold: number;
+  meetingSavePath: string | null;
 }
 
 const DEFAULT_SETTINGS: VoiceFilterSettings = {
@@ -24,6 +27,9 @@ const DEFAULT_SETTINGS: VoiceFilterSettings = {
   silenceTimeout: 2000,
   verificationThreshold: 0.7,
   failOpen: true,
+  openaiApiKey: null,
+  speakerIdentificationThreshold: 0.65,
+  meetingSavePath: null,
 };
 
 function configPath(): string {

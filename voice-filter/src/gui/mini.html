@@ -192,13 +192,13 @@
     <button class="main-btn start" id="main-btn">Start Filter</button>
 
     <div class="quick-btns">
+      <div class="quick-btn" id="btn-meeting">
+        <div class="quick-btn-icon">🎙️</div>
+        <div class="quick-btn-label">Meeting</div>
+      </div>
       <div class="quick-btn" id="btn-enroll">
         <div class="quick-btn-icon">🔄</div>
         <div class="quick-btn-label">Re-enroll</div>
-      </div>
-      <div class="quick-btn" id="btn-settings">
-        <div class="quick-btn-icon">⚙️</div>
-        <div class="quick-btn-label">Settings</div>
       </div>
       <div class="quick-btn" id="btn-dashboard">
         <div class="quick-btn-icon">📊</div>
@@ -366,11 +366,11 @@
       window.close();
     };
 
-    document.getElementById("btn-enroll").onclick = function() {
-      window.open("http://localhost:47823", "_blank", "width=1100,height=800");
+    document.getElementById("btn-meeting").onclick = function() {
+      window.open("http://localhost:47823/meeting", "_blank", "width=1000,height=700");
     };
 
-    document.getElementById("btn-settings").onclick = function() {
+    document.getElementById("btn-enroll").onclick = function() {
       window.open("http://localhost:47823", "_blank", "width=1100,height=800");
     };
 

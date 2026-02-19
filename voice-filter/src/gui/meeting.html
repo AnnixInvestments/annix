@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meeting Mode - Voice Filter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; background: #0f1419; color: #e7e9ea; min-height: 100vh; display: flex; flex-direction: column; }
+    .header { background: linear-gradient(135deg, #1a1f26 0%, #141a21 100%); border-bottom: 1px solid #2f3336; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, #7856ff 0%, #f91880 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .logo-text { font-size: 18px; font-weight: 600; }
+    .header-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #71767b; }
+    .status-indicator { width: 8px; height: 8px; border-radius: 50%; background: #71767b; }
+    .status-indicator.active { background: #00ba7c; box-shadow: 0 0 8px #00ba7c; animation: pulse 2s infinite; }
+    .status-indicator.warning { background: #ffd400; }
+    .status-indicator.error { background: #f4212e; }
+    .status-indicator.recording { background: #f4212e; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+    .container { flex: 1; display: flex; flex-direction: column; max-width: 900px; width: 100%; margin: 0 auto; padding: 24px; }
+    .card { background: #16181c; border: 1px solid #2f3336; border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+    .card-header { padding: 14px 18px; border-bottom: 1px solid #2f3336; display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-size: 14px; font-weight: 600; }
+    .card-body { padding: 18px; }
+    .btn { padding: 12px 18px; font-size: 14px; font-weight: 600; border: none; border-radius: 9999px; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-primary { background: #1d9bf0; color: #fff; }
+    .btn-primary:hover { background: #1a8cd8; }
+    .btn-primary:disabled { background: #38444d; color: #71767b; cursor: not-allowed; }
+    .btn-secondary { background: transparent; color: #e7e9ea; border: 1px solid #536471; }
+    .btn-secondary:hover { background: rgba(239, 243, 244, 0.1); }
+    .btn-danger { background: #f4212e; color: #fff; }
+    .btn-danger:hover { background: #dc1d28; }
+    .btn-success { background: #00ba7c; color: #fff; }
+    .btn-success:hover { background: #00a36c; }
+    .btn-full { width: 100%; }
+    .hidden { display: none !important; }
+    .input-group { margin-bottom: 16px; }
+    .input-label { font-size: 12px; color: #71767b; margin-bottom: 6px; display: block; }
+    .input-field { width: 100%; padding: 12px; background: #1c1f23; border: 1px solid #2f3336; border-radius: 8px; color: #e7e9ea; font-size: 14px; }
+    .input-field:focus { outline: none; border-color: #1d9bf0; }
+    .input-row { display: flex; gap: 12px; }
+    .input-row .input-group { flex: 1; }
+
+    .setup-icon { width: 72px; height: 72px; background: linear-gradient(135deg, rgba(120, 86, 255, 0.15), rgba(249, 24, 128, 0.15)); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 32px; }
+    .setup-title { font-size: 22px; font-weight: 700; margin-bottom: 10px; text-align: center; }
+    .setup-description { font-size: 13px; color: #71767b; line-height: 1.5; margin-bottom: 28px; text-align: center; }
+
+    .attendee-list { list-style: none; }
+    .attendee-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #1c1f23; border-radius: 10px; margin-bottom: 8px; }
+    .attendee-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #7856ff, #1d9bf0); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; }
+    .attendee-info { flex: 1; }
+    .attendee-name { font-size: 14px; font-weight: 600; }
+    .attendee-title { font-size: 12px; color: #71767b; }
+    .attendee-status { font-size: 11px; padding: 4px 8px; border-radius: 4px; }
+    .attendee-status.pending { background: rgba(255, 212, 0, 0.2); color: #ffd400; }
+    .attendee-status.enrolled { background: rgba(0, 186, 124, 0.2); color: #00ba7c; }
+    .attendee-status.enrolling { background: rgba(29, 155, 240, 0.2); color: #1d9bf0; }
+    .attendee-actions { display: flex; gap: 8px; }
+    .attendee-btn { padding: 6px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; border: none; }
+    .attendee-btn.enroll { background: #1d9bf0; color: #fff; }
+    .attendee-btn.remove { background: transparent; color: #f4212e; border: 1px solid #f4212e; }
+
+    .progress-ring-container { position: relative; width: 160px; height: 160px; margin: 0 auto 20px; }
+    .progress-ring { transform: rotate(-90deg); }
+    .progress-ring-bg { fill: none; stroke: #2f3336; stroke-width: 8; }
+    .progress-ring-fg { fill: none; stroke: #7856ff; stroke-width: 8; stroke-linecap: round; stroke-dasharray: 440; stroke-dashoffset: 440; transition: stroke-dashoffset 0.3s; }
+    .progress-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .progress-percent { font-size: 32px; font-weight: 700; }
+    .progress-label { font-size: 12px; color: #71767b; }
+
+    .mic-visual { height: 60px; background: #1c1f23; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 0 16px; }
+    .mic-bar { width: 4px; height: 8px; background: #2f3336; border-radius: 2px; transition: height 0.1s, background 0.2s; }
+    .mic-bar.active { background: linear-gradient(180deg, #7856ff, #f91880); }
+
+    .speaker-ring { position: relative; width: 120px; height: 120px; }
+    .speaker-ring-bg { position: absolute; inset: 0; border-radius: 50%; border: 4px solid #2f3336; }
+    .speaker-ring-progress { position: absolute; inset: 0; border-radius: 50%; border: 4px solid transparent; border-top-color: #7856ff; transition: all 0.3s; }
+    .speaker-ring-progress.active { border-color: #00ba7c; }
+    .speaker-ring-content { position: absolute; inset: 8px; border-radius: 50%; background: #1c1f23; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .speaker-avatar { font-size: 28px; margin-bottom: 4px; }
+    .speaker-name { font-size: 11px; font-weight: 600; max-width: 80px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .speaker-confidence { font-size: 10px; color: #71767b; }
+
+    .meeting-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+    .transcript-panel { flex: 1; }
+    .speakers-panel { }
+
+    .transcript-list { max-height: 400px; overflow-y: auto; }
+    .transcript-entry { padding: 12px; border-bottom: 1px solid #2f3336; }
+    .transcript-entry:last-child { border-bottom: none; }
+    .transcript-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .transcript-speaker { font-size: 13px; font-weight: 600; color: #7856ff; }
+    .transcript-time { font-size: 11px; color: #71767b; }
+    .transcript-text { font-size: 14px; line-height: 1.5; }
+
+    .speakers-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .speaker-card { background: #1c1f23; border-radius: 10px; padding: 12px; text-align: center; }
+    .speaker-card.active { border: 2px solid #00ba7c; }
+    .speaker-card .attendee-avatar { margin: 0 auto 8px; }
+    .speaker-card-name { font-size: 12px; font-weight: 600; }
+    .speaker-card-title { font-size: 10px; color: #71767b; }
+
+    .meeting-controls { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+
+    .audio-meter { margin-top: 16px; }
+    .audio-meter-label { font-size: 11px; color: #71767b; margin-bottom: 6px; }
+    .audio-meter-bar { height: 6px; background: #2f3336; border-radius: 3px; overflow: hidden; }
+    .audio-meter-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #7856ff, #f91880); border-radius: 3px; transition: width 0.05s; }
+
+    .export-options { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+
+    .summary-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: #1c1f23; border-radius: 10px; padding: 16px; text-align: center; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #7856ff; }
+    .stat-label { font-size: 11px; color: #71767b; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-icon">🎙️</div>
+      <span class="logo-text">Meeting Mode</span>
+    </div>
+    <div class="header-status">
+      <div class="status-indicator" id="global-status"></div>
+      <span id="global-status-text">Initializing...</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="view-setup">
+      <div class="card">
+        <div class="card-body" style="text-align: center; padding: 40px;">
+          <div class="setup-icon">🎤</div>
+          <h1 class="setup-title">Start a Meeting</h1>
+          <p class="setup-description">Create a new meeting session. You'll add attendees and enroll their voices before starting.</p>
+          <div style="max-width: 400px; margin: 0 auto;">
+            <div class="input-group">
+              <label class="input-label">Meeting Title</label>
+              <input type="text" class="input-field" id="meeting-title" placeholder="e.g., Weekly Team Standup">
+            </div>
+            <button class="btn btn-primary btn-full" id="btn-create-meeting">Create Meeting</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-roster" class="hidden">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Attendees</span>
+          <span style="font-size: 12px; color: #71767b;" id="attendee-count">0 attendees</span>
+        </div>
+        <div class="card-body">
+          <ul class="attendee-list" id="attendee-list"></ul>
+          <div class="input-row" style="margin-top: 16px;">
+            <div class="input-group" style="margin-bottom: 0;">
+              <input type="text" class="input-field" id="attendee-name" placeholder="Name">
+            </div>
+            <div class="input-group" style="margin-bottom: 0;">
+              <input type="text" class="input-field" id="attendee-title" placeholder="Title (optional)">
+            </div>
+            <button class="btn btn-secondary" id="btn-add-attendee">Add</button>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 12px;">
+        <button class="btn btn-secondary" id="btn-back-to-setup">Back</button>
+        <button class="btn btn-primary" id="btn-start-meeting" style="flex: 1;" disabled>Start Meeting</button>
+      </div>
+    </div>
+
+    <div id="view-enrollment" class="hidden">
+      <div class="card">
+        <div class="card-body" style="text-align: center; padding: 40px;">
+          <div class="progress-ring-container">
+            <svg class="progress-ring" width="160" height="160">
+              <circle class="progress-ring-bg" cx="80" cy="80" r="70"/>
+              <circle class="progress-ring-fg" id="enroll-progress-ring" cx="80" cy="80" r="70"/>
+            </svg>
+            <div class="progress-center">
+              <span class="progress-percent" id="enroll-percent">0%</span>
+              <span class="progress-label" id="enroll-label">Recording</span>
+            </div>
+          </div>
+          <h2 style="margin-bottom: 8px;">Enrolling: <span id="enrolling-name">--</span></h2>
+          <p style="font-size: 13px; color: #71767b; margin-bottom: 20px;">Speak clearly for 10 seconds</p>
+          <div class="mic-visual" id="mic-bars"></div>
+          <button class="btn btn-secondary" id="btn-cancel-enrollment">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-active" class="hidden">
+      <div class="meeting-grid">
+        <div class="transcript-panel">
+          <div class="card" style="height: 100%;">
+            <div class="card-header">
+              <span class="card-title">Live Transcript</span>
+              <span style="font-size: 12px; color: #71767b;" id="transcript-count">0 entries</span>
+            </div>
+            <div class="card-body">
+              <div class="transcript-list" id="transcript-list">
+                <div style="text-align: center; padding: 40px; color: #71767b;">
+                  Waiting for speech...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="speakers-panel">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Current Speaker</span>
+            </div>
+            <div class="card-body" style="text-align: center;">
+              <div class="speaker-ring" style="margin: 0 auto;">
+                <div class="speaker-ring-bg"></div>
+                <div class="speaker-ring-progress" id="speaker-ring"></div>
+                <div class="speaker-ring-content">
+                  <span class="speaker-avatar" id="current-speaker-avatar">?</span>
+                  <span class="speaker-name" id="current-speaker-name">Unknown</span>
+                  <span class="speaker-confidence" id="current-speaker-confidence">--</span>
+                </div>
+              </div>
+              <div class="audio-meter">
+                <div class="audio-meter-label">Volume Level</div>
+                <div class="audio-meter-bar">
+                  <div class="audio-meter-fill" id="volume-meter"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Attendees</span>
+            </div>
+            <div class="card-body">
+              <div class="speakers-grid" id="speakers-grid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="meeting-controls">
+        <button class="btn btn-secondary" id="btn-pause-meeting">Pause</button>
+        <button class="btn btn-danger" id="btn-end-meeting">End Meeting</button>
+      </div>
+    </div>
+
+    <div id="view-summary" class="hidden">
+      <div class="card">
+        <div class="card-body" style="text-align: center; padding: 40px;">
+          <div class="setup-icon" style="background: linear-gradient(135deg, rgba(0, 186, 124, 0.15), rgba(29, 155, 240, 0.15));">
+            <span style="font-size: 32px;">✓</span>
+          </div>
+          <h1 class="setup-title">Meeting Ended</h1>
+          <div class="summary-stats">
+            <div class="stat-card">
+              <div class="stat-value" id="summary-duration">0:00</div>
+              <div class="stat-label">Duration</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="summary-attendees">0</div>
+              <div class="stat-label">Attendees</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="summary-entries">0</div>
+              <div class="stat-label">Transcript Entries</div>
+            </div>
+          </div>
+          <div class="export-options">
+            <button class="btn btn-secondary" id="btn-export-txt">Export TXT</button>
+            <button class="btn btn-secondary" id="btn-export-json">Export JSON</button>
+          </div>
+          <button class="btn btn-primary" id="btn-new-meeting" style="margin-top: 20px;">New Meeting</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var ws = new WebSocket("ws://" + window.location.host);
+    var viewSetup = document.getElementById("view-setup");
+    var viewRoster = document.getElementById("view-roster");
+    var viewEnrollment = document.getElementById("view-enrollment");
+    var viewActive = document.getElementById("view-active");
+    var viewSummary = document.getElementById("view-summary");
+
+    var globalStatus = document.getElementById("global-status");
+    var globalStatusText = document.getElementById("global-status-text");
+    var meetingTitleInput = document.getElementById("meeting-title");
+    var attendeeNameInput = document.getElementById("attendee-name");
+    var attendeeTitleInput = document.getElementById("attendee-title");
+    var attendeeList = document.getElementById("attendee-list");
+    var attendeeCountSpan = document.getElementById("attendee-count");
+    var transcriptList = document.getElementById("transcript-list");
+    var transcriptCountSpan = document.getElementById("transcript-count");
+    var speakersGrid = document.getElementById("speakers-grid");
+    var volumeMeter = document.getElementById("volume-meter");
+
+    var btnCreateMeeting = document.getElementById("btn-create-meeting");
+    var btnAddAttendee = document.getElementById("btn-add-attendee");
+    var btnBackToSetup = document.getElementById("btn-back-to-setup");
+    var btnStartMeeting = document.getElementById("btn-start-meeting");
+    var btnCancelEnrollment = document.getElementById("btn-cancel-enrollment");
+    var btnPauseMeeting = document.getElementById("btn-pause-meeting");
+    var btnEndMeeting = document.getElementById("btn-end-meeting");
+    var btnExportTxt = document.getElementById("btn-export-txt");
+    var btnExportJson = document.getElementById("btn-export-json");
+    var btnNewMeeting = document.getElementById("btn-new-meeting");
+
+    var attendees = [];
+    var transcript = [];
+    var currentSpeakerId = null;
+    var isPaused = false;
+    var micBarsCreated = false;
+
+    function send(type, data) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: type, data: data || {} }));
+      }
+    }
+
+    function showView(viewName) {
+      viewSetup.classList.add("hidden");
+      viewRoster.classList.add("hidden");
+      viewEnrollment.classList.add("hidden");
+      viewActive.classList.add("hidden");
+      viewSummary.classList.add("hidden");
+
+      if (viewName === "setup") viewSetup.classList.remove("hidden");
+      else if (viewName === "roster") viewRoster.classList.remove("hidden");
+      else if (viewName === "enrollment") viewEnrollment.classList.remove("hidden");
+      else if (viewName === "active") viewActive.classList.remove("hidden");
+      else if (viewName === "summary") viewSummary.classList.remove("hidden");
+    }
+
+    function updateGlobalStatus(status, text) {
+      globalStatus.classList.remove("active", "warning", "error", "recording");
+      globalStatus.classList.add(status);
+      globalStatusText.textContent = text;
+    }
+
+    function createMicBars() {
+      if (micBarsCreated) return;
+      var container = document.getElementById("mic-bars");
+      for (var i = 0; i < 40; i++) {
+        var bar = document.createElement("div");
+        bar.className = "mic-bar";
+        bar.id = "mic-bar-" + i;
+        container.appendChild(bar);
+      }
+      micBarsCreated = true;
+    }
+
+    function updateMicBars(level) {
+      for (var i = 0; i < 40; i++) {
+        var bar = document.getElementById("mic-bar-" + i);
+        if (!bar) continue;
+        var randomFactor = 0.5 + Math.random() * 0.5;
+        var barLevel = level * randomFactor;
+        var height = Math.max(8, Math.min(50, barLevel * 120));
+        bar.style.height = height + "px";
+        bar.classList.toggle("active", barLevel > 0.05);
+      }
+    }
+
+    function renderAttendeeList() {
+      attendeeList.innerHTML = "";
+      attendees.forEach(function(att, index) {
+        var li = document.createElement("li");
+        li.className = "attendee-item";
+        li.innerHTML = '<div class="attendee-avatar">' + att.name.charAt(0).toUpperCase() + '</div>' +
+          '<div class="attendee-info">' +
+          '<div class="attendee-name">' + att.name + '</div>' +
+          '<div class="attendee-title">' + (att.title || "Attendee") + '</div>' +
+          '</div>' +
+          '<span class="attendee-status ' + (att.enrolledAt ? 'enrolled' : 'pending') + '">' +
+          (att.enrolledAt ? 'Enrolled' : 'Pending') + '</span>' +
+          '<div class="attendee-actions">' +
+          (att.enrolledAt ? '' : '<button class="attendee-btn enroll" data-index="' + index + '">Enroll</button>') +
+          '<button class="attendee-btn remove" data-id="' + att.id + '">Remove</button>' +
+          '</div>';
+        attendeeList.appendChild(li);
+      });
+
+      attendeeCountSpan.textContent = attendees.length + " attendee" + (attendees.length === 1 ? "" : "s");
+
+      var enrolledCount = attendees.filter(function(a) { return a.enrolledAt; }).length;
+      btnStartMeeting.disabled = enrolledCount < 2;
+
+      document.querySelectorAll(".attendee-btn.enroll").forEach(function(btn) {
+        btn.onclick = function() {
+          var index = parseInt(btn.getAttribute("data-index"));
+          startEnrollment(index);
+        };
+      });
+
+      document.querySelectorAll(".attendee-btn.remove").forEach(function(btn) {
+        btn.onclick = function() {
+          var id = btn.getAttribute("data-id");
+          send("meeting-remove-attendee", { attendeeId: id });
+          attendees = attendees.filter(function(a) { return a.id !== id; });
+          renderAttendeeList();
+        };
+      });
+    }
+
+    function renderSpeakersGrid() {
+      speakersGrid.innerHTML = "";
+      attendees.forEach(function(att) {
+        var div = document.createElement("div");
+        div.className = "speaker-card" + (att.id === currentSpeakerId ? " active" : "");
+        div.id = "speaker-card-" + att.id;
+        div.innerHTML = '<div class="attendee-avatar">' + att.name.charAt(0).toUpperCase() + '</div>' +
+          '<div class="speaker-card-name">' + att.name + '</div>' +
+          '<div class="speaker-card-title">' + (att.title || "Attendee") + '</div>';
+        speakersGrid.appendChild(div);
+      });
+    }
+
+    function startEnrollment(index) {
+      var att = attendees[index];
+      document.getElementById("enrolling-name").textContent = att.name;
+      document.getElementById("enroll-percent").textContent = "0%";
+      document.getElementById("enroll-label").textContent = "Recording";
+      document.getElementById("enroll-progress-ring").style.strokeDashoffset = 440;
+      createMicBars();
+      showView("enrollment");
+      send("meeting-start-enrollment", { attendeeIndex: index });
+    }
+
+    function addTranscriptEntry(entry) {
+      if (transcript.length === 0) {
+        transcriptList.innerHTML = "";
+      }
+      transcript.push(entry);
+      var div = document.createElement("div");
+      div.className = "transcript-entry";
+      var time = new Date(entry.timestamp).toLocaleTimeString();
+      div.innerHTML = '<div class="transcript-header">' +
+        '<span class="transcript-speaker">' + entry.speakerName + '</span>' +
+        '<span class="transcript-time">' + time + '</span>' +
+        '</div>' +
+        '<div class="transcript-text">' + entry.text + '</div>';
+      transcriptList.appendChild(div);
+      transcriptList.scrollTop = transcriptList.scrollHeight;
+      transcriptCountSpan.textContent = transcript.length + " entr" + (transcript.length === 1 ? "y" : "ies");
+    }
+
+    function updateCurrentSpeaker(speaker) {
+      currentSpeakerId = speaker.speakerId;
+      var avatar = document.getElementById("current-speaker-avatar");
+      var name = document.getElementById("current-speaker-name");
+      var confidence = document.getElementById("current-speaker-confidence");
+      var ring = document.getElementById("speaker-ring");
+
+      if (speaker.speakerId) {
+        var att = attendees.find(function(a) { return a.id === speaker.speakerId; });
+        avatar.textContent = att ? att.name.charAt(0).toUpperCase() : "?";
+        name.textContent = speaker.speakerName;
+        ring.classList.add("active");
+      } else {
+        avatar.textContent = "?";
+        name.textContent = "Unknown";
+        ring.classList.remove("active");
+      }
+      confidence.textContent = Math.round(speaker.confidence * 100) + "% confidence";
+
+      document.querySelectorAll(".speaker-card").forEach(function(card) {
+        card.classList.remove("active");
+      });
+      if (speaker.speakerId) {
+        var activeCard = document.getElementById("speaker-card-" + speaker.speakerId);
+        if (activeCard) activeCard.classList.add("active");
+      }
+    }
+
+    function formatDuration(ms) {
+      var seconds = Math.floor(ms / 1000);
+      var minutes = Math.floor(seconds / 60);
+      var hours = Math.floor(minutes / 60);
+      seconds = seconds % 60;
+      minutes = minutes % 60;
+      if (hours > 0) {
+        return hours + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+      }
+      return minutes + ":" + String(seconds).padStart(2, "0");
+    }
+
+    function downloadFile(content, filename) {
+      var blob = new Blob([content], { type: "text/plain" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    ws.onopen = function() {
+      updateGlobalStatus("active", "Connected");
+    };
+
+    ws.onclose = function() {
+      updateGlobalStatus("error", "Disconnected");
+    };
+
+    ws.onmessage = function(event) {
+      var msg = JSON.parse(event.data);
+      var type = msg.type;
+      var data = msg.data;
+
+      if (type === "meeting-created") {
+        showView("roster");
+        updateGlobalStatus("active", "Meeting Created");
+      } else if (type === "meeting-attendee-added") {
+        attendees.push(data.attendee);
+        renderAttendeeList();
+      } else if (type === "meeting-attendee-removed") {
+        attendees = attendees.filter(function(a) { return a.id !== data.attendee.id; });
+        renderAttendeeList();
+      } else if (type === "volume-level") {
+        var percent = Math.round(data * 100);
+        volumeMeter.style.width = percent + "%";
+        updateMicBars(data);
+      } else if (type === "meeting-enrollment-progress") {
+        var enrollmentPercent = Math.round(data.percentComplete);
+        document.getElementById("enroll-percent").textContent = enrollmentPercent + "%";
+        document.getElementById("enroll-label").textContent = data.isSpeech ? "Recording..." : "Speak now";
+        var circumference = 2 * Math.PI * 70;
+        var offset = circumference - (enrollmentPercent / 100) * circumference;
+        document.getElementById("enroll-progress-ring").style.strokeDashoffset = offset;
+      } else if (type === "meeting-enrollment-complete") {
+        var updatedAttendee = data.attendee;
+        attendees = attendees.map(function(a) {
+          return a.id === updatedAttendee.id ? updatedAttendee : a;
+        });
+        renderAttendeeList();
+        showView("roster");
+      } else if (type === "meeting-enrollment-cancelled") {
+        showView("roster");
+      } else if (type === "meeting-enrollment-error") {
+        alert("Enrollment Error: " + data.message);
+        showView("roster");
+      } else if (type === "meeting-ready") {
+        updateGlobalStatus("active", "Ready to Start");
+      } else if (type === "meeting-active") {
+        transcript = [];
+        transcriptList.innerHTML = '<div style="text-align: center; padding: 40px; color: #71767b;">Waiting for speech...</div>';
+        transcriptCountSpan.textContent = "0 entries";
+        renderSpeakersGrid();
+        showView("active");
+        updateGlobalStatus("recording", "Recording");
+      } else if (type === "meeting-speaker-identified" || type === "meeting-speaker-changed") {
+        updateCurrentSpeaker(data);
+      } else if (type === "meeting-transcript-entry") {
+        addTranscriptEntry(data);
+      } else if (type === "meeting-paused") {
+        isPaused = true;
+        btnPauseMeeting.textContent = "Resume";
+        updateGlobalStatus("warning", "Paused");
+      } else if (type === "meeting-resumed") {
+        isPaused = false;
+        btnPauseMeeting.textContent = "Pause";
+        updateGlobalStatus("recording", "Recording");
+      } else if (type === "meeting-ended") {
+        document.getElementById("summary-duration").textContent = formatDuration(data.duration);
+        document.getElementById("summary-attendees").textContent = data.session.attendees.length;
+        document.getElementById("summary-entries").textContent = data.transcript.length;
+        showView("summary");
+        updateGlobalStatus("active", "Meeting Ended");
+      } else if (type === "meeting-export-ready") {
+        var filename = "meeting-transcript." + data.format;
+        downloadFile(data.content, filename);
+      } else if (type === "meeting-error") {
+        alert("Error: " + data.message);
+      }
+    };
+
+    btnCreateMeeting.onclick = function() {
+      var title = meetingTitleInput.value.trim();
+      if (!title) {
+        alert("Please enter a meeting title");
+        return;
+      }
+      send("meeting-create", { title: title, attendeeCount: 12 });
+    };
+
+    btnAddAttendee.onclick = function() {
+      var name = attendeeNameInput.value.trim();
+      var title = attendeeTitleInput.value.trim();
+      if (!name) {
+        alert("Please enter a name");
+        return;
+      }
+      send("meeting-add-attendee", { name: name, title: title });
+      attendeeNameInput.value = "";
+      attendeeTitleInput.value = "";
+    };
+
+    btnBackToSetup.onclick = function() {
+      attendees = [];
+      renderAttendeeList();
+      showView("setup");
+    };
+
+    btnStartMeeting.onclick = function() {
+      send("meeting-start");
+    };
+
+    btnCancelEnrollment.onclick = function() {
+      send("meeting-cancel-enrollment");
+    };
+
+    btnPauseMeeting.onclick = function() {
+      if (isPaused) {
+        send("meeting-resume");
+      } else {
+        send("meeting-pause");
+      }
+    };
+
+    btnEndMeeting.onclick = function() {
+      if (confirm("Are you sure you want to end the meeting?")) {
+        send("meeting-end");
+      }
+    };
+
+    btnExportTxt.onclick = function() {
+      send("meeting-export", { format: "txt" });
+    };
+
+    btnExportJson.onclick = function() {
+      send("meeting-export", { format: "json" });
+    };
+
+    btnNewMeeting.onclick = function() {
+      attendees = [];
+      transcript = [];
+      currentSpeakerId = null;
+      isPaused = false;
+      meetingTitleInput.value = "";
+      showView("setup");
+    };
+
+    attendeeNameInput.onkeypress = function(e) {
+      if (e.key === "Enter") btnAddAttendee.click();
+    };
+    attendeeTitleInput.onkeypress = function(e) {
+      if (e.key === "Enter") btnAddAttendee.click();
+    };
+  </script>
+</body>
+</html>
