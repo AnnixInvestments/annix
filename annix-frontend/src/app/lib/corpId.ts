@@ -77,6 +77,17 @@ export const corpId = {
         hover: "#4a4da3",
         active: "#252560",
       },
+      stockControl: {
+        background: "#0d9488",
+        text: "#FFFFFF",
+        accent: "#2dd4bf",
+        hover: "#0f766e",
+        active: "#115e59",
+        sidebar: "#FFFFFF",
+        sidebarText: "#1f2937",
+        sidebarHover: "#f0fdfa",
+        sidebarActive: "#0d9488",
+      },
     },
   },
 
@@ -106,7 +117,7 @@ export const corpId = {
   },
 } as const;
 
-export type PortalType = "admin" | "customer" | "supplier" | "auRubber" | "annixRep";
+export type PortalType = "admin" | "customer" | "supplier" | "auRubber" | "annixRep" | "stockControl";
 
 export const portalConfig = {
   admin: {
@@ -133,6 +144,11 @@ export const portalConfig = {
     title: "Annix Rep",
     homeHref: "/annix-rep",
     loginHref: "/admin/login",
+  },
+  stockControl: {
+    title: "Stock Control",
+    homeHref: "/stock-control/portal/dashboard",
+    loginHref: "/stock-control/login",
   },
 } as const;
 

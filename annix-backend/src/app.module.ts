@@ -59,6 +59,7 @@ import { PumpProductModule } from "./pump-product/pump-product.module";
 import { PvcModule } from "./pvc/pvc.module";
 import { ReducerCalculatorModule } from "./reducer-calculator/reducer-calculator.module";
 import { RemoteAccessModule } from "./remote-access/remote-access.module";
+import { StockControlModule } from "./stock-control/stock-control.module";
 import { RetainingRingWeightModule } from "./retaining-ring-weight/retaining-ring-weight.module";
 import { RfqModule } from "./rfq/rfq.module";
 import { RubberLiningModule } from "./rubber-lining/rubber-lining.module";
@@ -159,6 +160,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     PumpOrderModule,
     ReducerCalculatorModule,
     AnnixRepModule,
+    StockControlModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

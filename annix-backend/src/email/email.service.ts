@@ -221,6 +221,59 @@ export class EmailService {
     });
   }
 
+  async sendStockControlVerificationEmail(email: string, verificationToken: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const verificationLink = `${frontendUrl}/stock-control/verify-email?token=${verificationToken}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Verify Your Email - ASCA Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #0d9488;">Welcome to ASCA Stock Control</h1>
+          <p>Thank you for registering. Please verify your email address to complete your registration and access the stock control system.</p>
+          <p style="margin: 30px 0;">
+            <a href="${verificationLink}"
+               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Verify Email Address
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${verificationLink}</p>
+          <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not register for an ASCA Stock Control account, please ignore this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Welcome to ASCA Stock Control
+
+      Thank you for registering. Please verify your email address to complete your registration and access the stock control system.
+
+      Click here to verify: ${verificationLink}
+
+      This link will expire in 24 hours.
+
+      If you did not register for an ASCA Stock Control account, please ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "Verify Your Email - ASCA Stock Control",
+      html,
+      text,
+    });
+  }
+
   // Customer Portal Email Methods
 
   async sendCustomerVerificationEmail(email: string, verificationToken: string): Promise<boolean> {
