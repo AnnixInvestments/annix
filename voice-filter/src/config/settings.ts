@@ -15,6 +15,7 @@ export interface VoiceFilterSettings {
   openaiApiKey: string | null;
   speakerIdentificationThreshold: number;
   meetingSavePath: string | null;
+  jwtSecret: string | null;
 }
 
 const DEFAULT_SETTINGS: VoiceFilterSettings = {
@@ -30,6 +31,7 @@ const DEFAULT_SETTINGS: VoiceFilterSettings = {
   openaiApiKey: null,
   speakerIdentificationThreshold: 0.65,
   meetingSavePath: null,
+  jwtSecret: null,
 };
 
 function configPath(): string {

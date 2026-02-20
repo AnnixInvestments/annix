@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Annix Voice Filter - Login</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f1419;
+      color: #e7e9ea;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .auth-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 24px;
+    }
+    .logo {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .logo-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #1d9bf0 0%, #7856ff 100%);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 28px;
+    }
+    .logo-title {
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .logo-subtitle {
+      font-size: 14px;
+      color: #71767b;
+      margin-top: 6px;
+    }
+    .auth-card {
+      background: #16181c;
+      border: 1px solid #2f3336;
+      border-radius: 16px;
+      padding: 28px;
+    }
+    .tab-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid #2f3336;
+      border-radius: 9999px;
+      background: transparent;
+      color: #71767b;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: #1d9bf0;
+      border-color: #1d9bf0;
+      color: #fff;
+    }
+    .tab-btn:not(.active):hover {
+      background: rgba(255,255,255,0.05);
+      color: #e7e9ea;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      display: block;
+      font-size: 13px;
+      color: #71767b;
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 15px;
+      background: #0f1419;
+      border: 1px solid #2f3336;
+      border-radius: 8px;
+      color: #e7e9ea;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus {
+      border-color: #1d9bf0;
+    }
+    .form-input::placeholder {
+      color: #536471;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 9999px;
+      background: #1d9bf0;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .submit-btn:hover {
+      background: #1a8cd8;
+    }
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .error-toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f4212e;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      display: none;
+      z-index: 1000;
+      box-shadow: 0 4px 16px rgba(244, 33, 46, 0.3);
+    }
+    .error-toast.visible {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .success-toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #00ba7c;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      display: none;
+      z-index: 1000;
+      box-shadow: 0 4px 16px rgba(0, 186, 124, 0.3);
+    }
+    .success-toast.visible {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0;
+      font-size: 12px;
+      color: #536471;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #2f3336;
+    }
+    .oauth-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .oauth-btn {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid #2f3336;
+      border-radius: 9999px;
+      background: transparent;
+      color: #71767b;
+      cursor: not-allowed;
+      opacity: 0.5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .confirm-group {
+      display: none;
+    }
+    .confirm-group.visible {
+      display: block;
+    }
+    .password-hint {
+      font-size: 11px;
+      color: #536471;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="error-toast" class="error-toast"></div>
+  <div id="success-toast" class="success-toast"></div>
+
+  <div class="auth-container">
+    <div class="logo">
+      <div class="logo-icon">🎙️</div>
+      <div class="logo-title">Annix Voice Filter</div>
+      <div class="logo-subtitle">Sign in to access your voice profiles</div>
+    </div>
+
+    <div class="auth-card">
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+        <button class="tab-btn" id="tab-register" onclick="switchTab('register')">Create Account</button>
+      </div>
+
+      <form id="auth-form" onsubmit="handleSubmit(event)">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-input" type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" type="password" id="password" placeholder="Enter your password" required autocomplete="current-password" minlength="8">
+          <div class="password-hint" id="password-hint" style="display: none;">Minimum 8 characters</div>
+        </div>
+
+        <div class="form-group confirm-group" id="confirm-group">
+          <label class="form-label" for="confirm-password">Confirm Password</label>
+          <input class="form-input" type="password" id="confirm-password" placeholder="Confirm your password" autocomplete="new-password">
+        </div>
+
+        <button class="submit-btn" type="submit" id="submit-btn">Sign In</button>
+      </form>
+
+      <div class="divider">or continue with</div>
+
+      <div class="oauth-buttons">
+        <button class="oauth-btn" disabled title="Coming soon">Google (coming soon)</button>
+        <button class="oauth-btn" disabled title="Coming soon">Microsoft (coming soon)</button>
+        <button class="oauth-btn" disabled title="Coming soon">Zoom (coming soon)</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var mode = 'login';
+
+    function switchTab(newMode) {
+      mode = newMode;
+      var loginTab = document.getElementById('tab-login');
+      var registerTab = document.getElementById('tab-register');
+      var confirmGroup = document.getElementById('confirm-group');
+      var submitBtn = document.getElementById('submit-btn');
+      var passwordHint = document.getElementById('password-hint');
+      var passwordInput = document.getElementById('password');
+
+      if (mode === 'register') {
+        loginTab.classList.remove('active');
+        registerTab.classList.add('active');
+        confirmGroup.classList.add('visible');
+        submitBtn.textContent = 'Create Account';
+        passwordHint.style.display = 'block';
+        passwordInput.autocomplete = 'new-password';
+      } else {
+        loginTab.classList.add('active');
+        registerTab.classList.remove('active');
+        confirmGroup.classList.remove('visible');
+        submitBtn.textContent = 'Sign In';
+        passwordHint.style.display = 'none';
+        passwordInput.autocomplete = 'current-password';
+      }
+    }
+
+    function showError(message) {
+      var toast = document.getElementById('error-toast');
+      toast.textContent = message;
+      toast.classList.add('visible');
+      setTimeout(function() { toast.classList.remove('visible'); }, 4000);
+    }
+
+    function showSuccess(message) {
+      var toast = document.getElementById('success-toast');
+      toast.textContent = message;
+      toast.classList.add('visible');
+      setTimeout(function() { toast.classList.remove('visible'); }, 3000);
+    }
+
+    function handleSubmit(event) {
+      event.preventDefault();
+
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      var submitBtn = document.getElementById('submit-btn');
+
+      if (!email || !password) {
+        showError('Please fill in all fields.');
+        return;
+      }
+
+      if (password.length < 8) {
+        showError('Password must be at least 8 characters.');
+        return;
+      }
+
+      if (mode === 'register') {
+        var confirmPassword = document.getElementById('confirm-password').value;
+        if (password !== confirmPassword) {
+          showError('Passwords do not match.');
+          return;
+        }
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = mode === 'login' ? 'Signing in...' : 'Creating account...';
+
+      var endpoint = mode === 'login' ? '/api/login' : '/api/register';
+
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: password })
+      })
+      .then(function(res) {
+        return res.json().then(function(data) {
+          return { ok: res.ok, data: data };
+        });
+      })
+      .then(function(result) {
+        if (result.ok) {
+          showSuccess(mode === 'login' ? 'Signed in!' : 'Account created!');
+          setTimeout(function() { window.location.href = '/home'; }, 500);
+        } else {
+          showError(result.data.error || 'Something went wrong.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = mode === 'login' ? 'Sign In' : 'Create Account';
+        }
+      })
+      .catch(function() {
+        showError('Network error. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = mode === 'login' ? 'Sign In' : 'Create Account';
+      });
+    }
+  </script>
+</body>
+</html>

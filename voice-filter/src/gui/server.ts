@@ -10,6 +10,14 @@ import {
   listOutputDevices,
 } from "../audio/capture.js";
 import { findVBCableDevice } from "../audio/output.js";
+import {
+  createUser,
+  findUserByEmail,
+  initDatabase,
+  oauthTokens,
+  verifyPassword,
+} from "../auth/database.js";
+import { extractTokenFromCookie, signToken, verifyToken } from "../auth/jwt.js";
 import { loadProfile, loadSettings, updateSettings } from "../config/settings.js";
 import { VoiceFilter, type VoiceFilterStatus } from "../index.js";
 import { MeetingSession } from "../meeting/MeetingSession.js";
@@ -52,6 +60,136 @@ function serveMeetingHtml(_req: IncomingMessage, res: ServerResponse): void {
   const html = readFileSync(htmlPath, "utf-8");
   res.writeHead(200, { "Content-Type": "text/html" });
   res.end(html);
+}
+
+function serveLoginHtml(_req: IncomingMessage, res: ServerResponse): void {
+  const htmlPath = join(import.meta.dirname, "login.html");
+  const html = readFileSync(htmlPath, "utf-8");
+  res.writeHead(200, { "Content-Type": "text/html" });
+  res.end(html);
+}
+
+function parseJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => {
+      try {
+        const body = Buffer.concat(chunks).toString("utf-8");
+        resolve(JSON.parse(body));
+      } catch {
+        reject(new Error("Invalid JSON"));
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function sendJson(res: ServerResponse, status: number, data: unknown): void {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data));
+}
+
+function setTokenCookie(res: ServerResponse, token: string): void {
+  res.setHeader("Set-Cookie", `vf_token=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=604800`);
+}
+
+function clearTokenCookie(res: ServerResponse): void {
+  res.setHeader("Set-Cookie", "vf_token=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0");
+}
+
+function redirectTo(res: ServerResponse, location: string): void {
+  res.writeHead(302, { Location: location });
+  res.end();
+}
+
+function authenticatedUserId(req: IncomingMessage): number | null {
+  const token = extractTokenFromCookie(req.headers.cookie);
+  if (!token) {
+    return null;
+  }
+  const payload = verifyToken(token);
+  return payload ? payload.userId : null;
+}
+
+async function handleApiRegister(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  try {
+    const body = await parseJsonBody(req);
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+
+    if (!email || !password) {
+      sendJson(res, 400, { error: "Email and password are required." });
+      return;
+    }
+
+    if (password.length < 8) {
+      sendJson(res, 400, { error: "Password must be at least 8 characters." });
+      return;
+    }
+
+    const existing = findUserByEmail(email);
+    if (existing) {
+      sendJson(res, 409, { error: "An account with this email already exists." });
+      return;
+    }
+
+    const user = await createUser(email, password);
+    const token = signToken(user.id);
+    setTokenCookie(res, token);
+    sendJson(res, 201, { success: true });
+  } catch {
+    sendJson(res, 500, { error: "Registration failed. Please try again." });
+  }
+}
+
+async function handleApiLogin(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  try {
+    const body = await parseJsonBody(req);
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+
+    if (!email || !password) {
+      sendJson(res, 400, { error: "Email and password are required." });
+      return;
+    }
+
+    const user = findUserByEmail(email);
+    if (!user) {
+      sendJson(res, 401, { error: "Invalid email or password." });
+      return;
+    }
+
+    const valid = await verifyPassword(password, user.password_hash);
+    if (!valid) {
+      sendJson(res, 401, { error: "Invalid email or password." });
+      return;
+    }
+
+    const token = signToken(user.id);
+    setTokenCookie(res, token);
+    sendJson(res, 200, { success: true });
+  } catch {
+    sendJson(res, 500, { error: "Login failed. Please try again." });
+  }
+}
+
+function handleApiLogout(_req: IncomingMessage, res: ServerResponse): void {
+  clearTokenCookie(res);
+  sendJson(res, 200, { success: true });
+}
+
+function handleApiCheckCredentials(req: IncomingMessage, res: ServerResponse): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const tokens = oauthTokens(userId);
+  const services = ["google", "microsoft", "zoom"];
+  const missing = services.filter((s) => !tokens[s]);
+  sendJson(res, 200, { missing });
 }
 
 function stopAudioCapture(): void {
@@ -565,6 +703,13 @@ function handleMessage(message: string): void {
       handleMeetingExport(data);
     } else if (type === "meeting-status") {
       handleMeetingStatus();
+    } else if (type === "meeting-check-credentials") {
+      if (data && typeof data.userId === "number") {
+        const tokens = oauthTokens(data.userId);
+        const services = ["google", "microsoft", "zoom"];
+        const missing = services.filter((s) => !tokens[s]);
+        sendMessage("meeting-credentials-status", { missing });
+      }
     } else if (type === "close-window") {
       stopAudioCapture();
       stopVoiceFilter();
@@ -576,14 +721,46 @@ function handleMessage(message: string): void {
 }
 
 export async function startGuiServer(openBrowser: boolean = true): Promise<void> {
+  initDatabase();
+
   const server = createServer((req, res) => {
-    if (req.url === "/" || req.url === "/home") {
+    const url = req.url ?? "/";
+
+    if (url === "/login") {
+      serveLoginHtml(req, res);
+      return;
+    }
+
+    if (url === "/api/register" && req.method === "POST") {
+      handleApiRegister(req, res);
+      return;
+    }
+
+    if (url === "/api/login" && req.method === "POST") {
+      handleApiLogin(req, res);
+      return;
+    }
+
+    if (url === "/api/logout" && req.method === "POST") {
+      handleApiLogout(req, res);
+      return;
+    }
+
+    const userId = authenticatedUserId(req);
+    if (!userId) {
+      redirectTo(res, "/login");
+      return;
+    }
+
+    if (url === "/api/check-credentials") {
+      handleApiCheckCredentials(req, res);
+    } else if (url === "/" || url === "/home") {
       serveHomeHtml(req, res);
-    } else if (req.url === "/filter" || req.url === "/index.html") {
+    } else if (url === "/filter" || url === "/index.html") {
       serveFilterHtml(req, res);
-    } else if (req.url === "/mini") {
+    } else if (url === "/mini") {
       serveMiniHtml(req, res);
-    } else if (req.url === "/meeting") {
+    } else if (url === "/meeting") {
       serveMeetingHtml(req, res);
     } else {
       res.writeHead(404);
@@ -593,7 +770,13 @@ export async function startGuiServer(openBrowser: boolean = true): Promise<void>
 
   const wss = new WebSocketServer({ server });
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws, req) => {
+    const userId = authenticatedUserId(req);
+    if (!userId) {
+      ws.close(4401, "Unauthorized");
+      return;
+    }
+
     wsClient = ws;
 
     ws.on("message", (data) => {

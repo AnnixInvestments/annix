@@ -20,7 +20,10 @@
   },
   "dependencies": {
     "@aws-sdk/client-voice-id": "^3.700.0",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.6.2",
     "commander": "^12.1.0",
+    "jsonwebtoken": "^9.0.3",
     "open": "^10.2.0",
     "ora": "^8.1.1",
     "ws": "^8.19.0"
@@ -30,6 +33,9 @@
     "systray2": "^2.1.4"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.10.0",
     "@types/ws": "^8.18.1",
     "tsx": "^4.19.2",
