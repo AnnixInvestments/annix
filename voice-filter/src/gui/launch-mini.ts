@@ -1,15 +1,15 @@
 import open from "open";
 import { startGuiServer } from "./server.js";
 
-const MINI_URL = "http://localhost:47823/mini";
+const BASE_URL = "http://localhost:47823";
 
 async function launchMini(): Promise<void> {
   await startGuiServer(false);
 
-  await open(MINI_URL, {
+  await open(BASE_URL, {
     app: {
       name: "chrome",
-      arguments: [`--app=${MINI_URL}`, "--window-size=280,395", "--window-position=100,100"],
+      arguments: [`--app=${BASE_URL}`, "--window-size=420,600", "--window-position=100,100"],
     },
   });
 }

@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { join } from "node:path";
@@ -11,13 +12,18 @@ import {
 } from "../audio/capture.js";
 import { findVBCableDevice } from "../audio/output.js";
 import {
+  calendarEventById,
   createUser,
+  findOrCreateOAuthUser,
   findUserByEmail,
+  findUserById,
   initDatabase,
   oauthTokens,
   verifyPassword,
 } from "../auth/database.js";
 import { extractTokenFromCookie, signToken, verifyToken } from "../auth/jwt.js";
+import { calendarService, initCalendarService } from "../calendar/calendar-service.js";
+import type { CalendarProvider } from "../calendar/types.js";
 import { loadProfile, loadSettings, updateSettings } from "../config/settings.js";
 import { VoiceFilter, type VoiceFilterStatus } from "../index.js";
 import { MeetingSession } from "../meeting/MeetingSession.js";
@@ -26,6 +32,122 @@ import { EnrollmentSession } from "../verification/enrollment.js";
 import type { VerificationResult } from "../verification/verify.js";
 
 const PORT = 47823;
+const OAUTH_REDIRECT_URI = `http://localhost:${PORT}/oauth/callback`;
+
+interface OAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  authUrl: string;
+  tokenUrl: string;
+  userInfoUrl: string;
+  scopes: string[];
+}
+
+const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+    authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+    tokenUrl: "https://oauth2.googleapis.com/token",
+    userInfoUrl: "https://www.googleapis.com/oauth2/v2/userinfo",
+    scopes: ["email", "profile"],
+  },
+  microsoft: {
+    clientId: process.env.MICROSOFT_CLIENT_ID ?? "",
+    clientSecret: process.env.MICROSOFT_CLIENT_SECRET ?? "",
+    authUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
+    tokenUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+    userInfoUrl: "https://graph.microsoft.com/v1.0/me",
+    scopes: ["openid", "email", "profile", "User.Read"],
+  },
+  zoom: {
+    clientId: process.env.ZOOM_CLIENT_ID ?? "",
+    clientSecret: process.env.ZOOM_CLIENT_SECRET ?? "",
+    authUrl: "https://zoom.us/oauth/authorize",
+    tokenUrl: "https://zoom.us/oauth/token",
+    userInfoUrl: "https://api.zoom.us/v2/users/me",
+    scopes: ["user:read"],
+  },
+};
+
+function oauthAuthUrl(configKey: string, state: string): string | null {
+  const config = OAUTH_CONFIGS[configKey];
+  if (!config || !config.clientId) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    client_id: config.clientId,
+    redirect_uri: OAUTH_REDIRECT_URI,
+    response_type: "code",
+    scope: config.scopes.join(" "),
+    state: state,
+  });
+
+  return `${config.authUrl}?${params.toString()}`;
+}
+
+async function exchangeOAuthCode(
+  provider: string,
+  code: string,
+): Promise<{ accessToken: string; email: string; oauthId: string } | null> {
+  const config = OAUTH_CONFIGS[provider];
+  if (!config || !config.clientId || !config.clientSecret) {
+    return null;
+  }
+
+  const tokenBody = new URLSearchParams({
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    code,
+    grant_type: "authorization_code",
+    redirect_uri: OAUTH_REDIRECT_URI,
+  });
+
+  const tokenRes = await fetch(config.tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: tokenBody.toString(),
+  });
+
+  if (!tokenRes.ok) {
+    console.error("OAuth token exchange failed:", await tokenRes.text());
+    return null;
+  }
+
+  const tokenData = (await tokenRes.json()) as { access_token: string };
+  const accessToken = tokenData.access_token;
+
+  const userHeaders: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+  };
+
+  const userRes = await fetch(config.userInfoUrl, { headers: userHeaders });
+  if (!userRes.ok) {
+    console.error("OAuth user info fetch failed:", await userRes.text());
+    return null;
+  }
+
+  const userData = (await userRes.json()) as Record<string, unknown>;
+
+  let email: string;
+  let oauthId: string;
+
+  if (provider === "google") {
+    email = userData.email as string;
+    oauthId = userData.id as string;
+  } else if (provider === "microsoft") {
+    email = (userData.mail ?? userData.userPrincipalName) as string;
+    oauthId = userData.id as string;
+  } else if (provider === "zoom") {
+    email = userData.email as string;
+    oauthId = userData.id as string;
+  } else {
+    return null;
+  }
+
+  return { accessToken, email, oauthId };
+}
 
 let audioCapture: AudioCapture | null = null;
 let enrollmentSession: EnrollmentSession | null = null;
@@ -65,6 +187,18 @@ function serveMeetingHtml(_req: IncomingMessage, res: ServerResponse): void {
 function serveLoginHtml(_req: IncomingMessage, res: ServerResponse): void {
   const htmlPath = join(import.meta.dirname, "login.html");
   const html = readFileSync(htmlPath, "utf-8");
+  res.writeHead(200, {
+    "Content-Type": "text/html",
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
+  });
+  res.end(html);
+}
+
+function serveCalendarHtml(_req: IncomingMessage, res: ServerResponse): void {
+  const htmlPath = join(import.meta.dirname, "calendar.html");
+  const html = readFileSync(htmlPath, "utf-8");
   res.writeHead(200, { "Content-Type": "text/html" });
   res.end(html);
 }
@@ -91,7 +225,10 @@ function sendJson(res: ServerResponse, status: number, data: unknown): void {
 }
 
 function setTokenCookie(res: ServerResponse, token: string): void {
-  res.setHeader("Set-Cookie", `vf_token=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=604800`);
+  res.setHeader(
+    "Set-Cookie",
+    `vf_token=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=604800`,
+  );
 }
 
 function clearTokenCookie(res: ServerResponse): void {
@@ -155,7 +292,7 @@ async function handleApiLogin(req: IncomingMessage, res: ServerResponse): Promis
     }
 
     const user = findUserByEmail(email);
-    if (!user) {
+    if (!user || !user.password_hash) {
       sendJson(res, 401, { error: "Invalid email or password." });
       return;
     }
@@ -190,6 +327,215 @@ function handleApiCheckCredentials(req: IncomingMessage, res: ServerResponse): v
   const services = ["google", "microsoft", "zoom"];
   const missing = services.filter((s) => !tokens[s]);
   sendJson(res, 200, { missing });
+}
+
+function handleApiUserInfo(req: IncomingMessage, res: ServerResponse): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const user = findUserById(userId);
+  if (!user) {
+    sendJson(res, 404, { error: "User not found." });
+    return;
+  }
+
+  sendJson(res, 200, {
+    id: user.id,
+    email: user.email,
+    provider: user.oauth_provider,
+  });
+}
+
+function handleApiCalendarProviders(req: IncomingMessage, res: ServerResponse): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const service = calendarService();
+  const available = service.availableProviders();
+  const connected = service.connectedProviders(userId);
+  const syncStatus = service.syncStatus(userId);
+
+  const providers = available.map((p) => ({
+    provider: p,
+    connected: connected.includes(p),
+    lastSync: syncStatus.get(p)?.lastSync ?? null,
+    status: syncStatus.get(p)?.status ?? "idle",
+    error: syncStatus.get(p)?.error ?? null,
+  }));
+
+  sendJson(res, 200, { providers });
+}
+
+function handleApiCalendarEvents(req: IncomingMessage, res: ServerResponse): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+  const provider = url.searchParams.get("provider") as CalendarProvider | null;
+  const fromDate = url.searchParams.get("from") ?? undefined;
+  const toDate = url.searchParams.get("to") ?? undefined;
+  const limit = parseInt(url.searchParams.get("limit") ?? "50", 10);
+
+  const service = calendarService();
+
+  let events;
+  if (provider) {
+    events = service.eventsByProvider(userId, provider, { fromDate, toDate });
+  } else {
+    events = service.allEvents(userId, { fromDate, toDate });
+  }
+
+  events = events.slice(0, limit);
+
+  const mapped = events.map((e) => ({
+    id: e.id,
+    provider: e.provider,
+    externalId: e.external_event_id,
+    title: e.title,
+    description: e.description,
+    startTime: e.start_time,
+    endTime: e.end_time,
+    timezone: e.timezone,
+    location: e.location,
+    meetingUrl: e.meeting_url,
+    attendees: e.attendees ? JSON.parse(e.attendees) : [],
+    organizerEmail: e.organizer_email,
+    isRecurring: !!e.is_recurring,
+    status: e.status,
+  }));
+
+  sendJson(res, 200, { events: mapped });
+}
+
+function handleApiCalendarEventById(
+  req: IncomingMessage,
+  res: ServerResponse,
+  eventId: number,
+): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const event = calendarEventById(eventId);
+  if (!event || event.user_id !== userId) {
+    sendJson(res, 404, { error: "Event not found." });
+    return;
+  }
+
+  sendJson(res, 200, {
+    id: event.id,
+    provider: event.provider,
+    externalId: event.external_event_id,
+    title: event.title,
+    description: event.description,
+    startTime: event.start_time,
+    endTime: event.end_time,
+    timezone: event.timezone,
+    location: event.location,
+    meetingUrl: event.meeting_url,
+    attendees: event.attendees ? JSON.parse(event.attendees) : [],
+    organizerEmail: event.organizer_email,
+    isRecurring: !!event.is_recurring,
+    status: event.status,
+    rawData: event.raw_data ? JSON.parse(event.raw_data) : null,
+  });
+}
+
+function handleApiCalendarUpcoming(req: IncomingMessage, res: ServerResponse): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+  const limit = parseInt(url.searchParams.get("limit") ?? "10", 10);
+
+  const service = calendarService();
+  const events = service.upcomingEvents(userId, limit);
+
+  const mapped = events.map((e) => ({
+    id: e.id,
+    provider: e.provider,
+    title: e.title,
+    startTime: e.start_time,
+    endTime: e.end_time,
+    meetingUrl: e.meeting_url,
+    location: e.location,
+  }));
+
+  sendJson(res, 200, { events: mapped });
+}
+
+async function handleApiCalendarSync(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  try {
+    const body = await parseJsonBody(req);
+    const provider = body.provider as CalendarProvider | undefined;
+    const fullSync = body.fullSync === true;
+
+    const service = calendarService();
+
+    if (provider) {
+      if (!service.hasProvider(provider)) {
+        sendJson(res, 400, { error: `Provider ${provider} not configured.` });
+        return;
+      }
+
+      const result = await service.syncCalendar(userId, provider, { fullSync });
+      sendJson(res, 200, {
+        success: true,
+        results: { [provider]: result },
+      });
+    } else {
+      const results = await service.syncAllCalendars(userId);
+      const resultsObj: Record<string, { added: number; updated: number; deleted: number }> = {};
+      results.forEach((v, k) => {
+        resultsObj[k] = v;
+      });
+      sendJson(res, 200, { success: true, results: resultsObj });
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Sync failed";
+    sendJson(res, 500, { error: message });
+  }
+}
+
+function handleApiCalendarSyncStatus(req: IncomingMessage, res: ServerResponse): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const service = calendarService();
+  const status = service.syncStatus(userId);
+
+  const statusObj: Record<
+    string,
+    { lastSync: string | null; status: string; error: string | null }
+  > = {};
+  status.forEach((v, k) => {
+    statusObj[k] = v;
+  });
+
+  sendJson(res, 200, { status: statusObj });
 }
 
 function stopAudioCapture(): void {
@@ -722,6 +1068,7 @@ function handleMessage(message: string): void {
 
 export async function startGuiServer(openBrowser: boolean = true): Promise<void> {
   initDatabase();
+  initCalendarService();
 
   const server = createServer((req, res) => {
     const url = req.url ?? "/";
@@ -746,6 +1093,94 @@ export async function startGuiServer(openBrowser: boolean = true): Promise<void>
       return;
     }
 
+    if (url.startsWith("/oauth/") && !url.includes("/callback")) {
+      const provider = url.replace("/oauth/", "");
+      console.log("OAuth request for provider:", provider);
+      if (["google", "microsoft", "teams", "zoom"].includes(provider)) {
+        const configKey = provider === "teams" ? "microsoft" : provider;
+        const config = OAUTH_CONFIGS[configKey];
+        console.log("OAuth config clientId exists:", !!config.clientId);
+        if (!config.clientId) {
+          const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+          console.log("Showing error page - not configured");
+          res.writeHead(200, { "Content-Type": "text/html" });
+          res.end(`<!DOCTYPE html>
+<html><head><title>OAuth Not Configured</title>
+<style>
+body { font-family: sans-serif; background: #0f1419; color: #e7e9ea; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+.card { background: #16181c; border: 1px solid #f4212e; border-radius: 16px; padding: 32px; max-width: 400px; text-align: center; }
+h1 { color: #f4212e; margin-bottom: 16px; }
+p { color: #71767b; line-height: 1.6; }
+a { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #1d9bf0; color: white; text-decoration: none; border-radius: 9999px; }
+a:hover { background: #1a8cd8; }
+code { background: #2f3336; padding: 2px 6px; border-radius: 4px; }
+</style></head>
+<body><div class="card">
+<h1>${providerName} Not Configured</h1>
+<p>To enable ${providerName} sign-in, add your OAuth credentials to the <code>.env</code> file in the voice-filter folder.</p>
+<p>You need: <code>${configKey.toUpperCase()}_CLIENT_ID</code> and <code>${configKey.toUpperCase()}_CLIENT_SECRET</code></p>
+<a href="/login">Back to Login</a>
+</div></body></html>`);
+          return;
+        }
+        const state = Math.random().toString(36).substring(2, 15);
+        const authUrl = oauthAuthUrl(configKey, `${provider}:${state}`);
+        if (authUrl) {
+          redirectTo(res, authUrl);
+        } else {
+          sendJson(res, 500, { error: "Failed to generate OAuth URL" });
+        }
+        return;
+      }
+    }
+
+    if (url.startsWith("/oauth/callback")) {
+      const urlObj = new URL(url, `http://localhost:${PORT}`);
+      const code = urlObj.searchParams.get("code");
+      const state = urlObj.searchParams.get("state");
+      const error = urlObj.searchParams.get("error");
+
+      if (error) {
+        redirectTo(res, `/login?error=${encodeURIComponent(error)}`);
+        return;
+      }
+
+      if (!code || !state) {
+        redirectTo(res, "/login?error=missing_code");
+        return;
+      }
+
+      const [provider] = state.split(":");
+      if (!["google", "microsoft", "teams", "zoom"].includes(provider)) {
+        redirectTo(res, "/login?error=invalid_provider");
+        return;
+      }
+
+      const configKey = provider === "teams" ? "microsoft" : provider;
+      exchangeOAuthCode(configKey, code)
+        .then((result) => {
+          if (!result) {
+            redirectTo(res, "/login?error=oauth_failed");
+            return;
+          }
+
+          const user = findOrCreateOAuthUser(
+            result.email,
+            provider,
+            result.oauthId,
+            result.accessToken,
+          );
+          const token = signToken(user.id);
+          setTokenCookie(res, token);
+          redirectTo(res, "/home");
+        })
+        .catch((err) => {
+          console.error("OAuth callback error:", err);
+          redirectTo(res, "/login?error=oauth_error");
+        });
+      return;
+    }
+
     const userId = authenticatedUserId(req);
     if (!userId) {
       redirectTo(res, "/login");
@@ -754,6 +1189,25 @@ export async function startGuiServer(openBrowser: boolean = true): Promise<void>
 
     if (url === "/api/check-credentials") {
       handleApiCheckCredentials(req, res);
+    } else if (url === "/api/user") {
+      handleApiUserInfo(req, res);
+    } else if (url === "/api/calendar/providers") {
+      handleApiCalendarProviders(req, res);
+    } else if (url.startsWith("/api/calendar/events/") && req.method === "GET") {
+      const eventId = parseInt(url.replace("/api/calendar/events/", ""), 10);
+      if (Number.isNaN(eventId)) {
+        sendJson(res, 400, { error: "Invalid event ID." });
+      } else {
+        handleApiCalendarEventById(req, res, eventId);
+      }
+    } else if (url.startsWith("/api/calendar/events") && req.method === "GET") {
+      handleApiCalendarEvents(req, res);
+    } else if (url === "/api/calendar/upcoming" && req.method === "GET") {
+      handleApiCalendarUpcoming(req, res);
+    } else if (url === "/api/calendar/sync" && req.method === "POST") {
+      handleApiCalendarSync(req, res);
+    } else if (url === "/api/calendar/sync-status" && req.method === "GET") {
+      handleApiCalendarSyncStatus(req, res);
     } else if (url === "/" || url === "/home") {
       serveHomeHtml(req, res);
     } else if (url === "/filter" || url === "/index.html") {
@@ -762,6 +1216,8 @@ export async function startGuiServer(openBrowser: boolean = true): Promise<void>
       serveMiniHtml(req, res);
     } else if (url === "/meeting") {
       serveMeetingHtml(req, res);
+    } else if (url === "/calendar") {
+      serveCalendarHtml(req, res);
     } else {
       res.writeHead(404);
       res.end("Not found");

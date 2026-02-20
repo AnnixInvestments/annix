@@ -16,6 +16,11 @@ export interface MeetingSessionData {
   startedAt: string | null;
   endedAt: string | null;
   currentAttendeeIndex: number;
+  calendarEventId: number | null;
+  calendarProvider: string | null;
+  scheduledStartTime: string | null;
+  scheduledEndTime: string | null;
+  meetingUrl: string | null;
 }
 
 export interface TranscriptEntry {

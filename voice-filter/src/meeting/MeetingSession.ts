@@ -22,6 +22,11 @@ export interface MeetingSessionOptions {
   inputDeviceId?: number;
   openaiApiKey?: string;
   config?: Partial<MeetingConfig>;
+  calendarEventId?: number;
+  calendarProvider?: string;
+  scheduledStartTime?: string;
+  scheduledEndTime?: string;
+  meetingUrl?: string;
 }
 
 const SAMPLE_RATE = 16000;
@@ -68,6 +73,11 @@ export class MeetingSession extends EventEmitter {
       startedAt: null,
       endedAt: null,
       currentAttendeeIndex: 0,
+      calendarEventId: options.calendarEventId ?? null,
+      calendarProvider: options.calendarProvider ?? null,
+      scheduledStartTime: options.scheduledStartTime ?? null,
+      scheduledEndTime: options.scheduledEndTime ?? null,
+      meetingUrl: options.meetingUrl ?? null,
     };
 
     this.ensureMeetingDir();
@@ -460,6 +470,11 @@ export class MeetingSession extends EventEmitter {
     const session = new MeetingSession({
       title: sessionData.title,
       attendeeCount: sessionData.attendees.length,
+      calendarEventId: sessionData.calendarEventId ?? undefined,
+      calendarProvider: sessionData.calendarProvider ?? undefined,
+      scheduledStartTime: sessionData.scheduledStartTime ?? undefined,
+      scheduledEndTime: sessionData.scheduledEndTime ?? undefined,
+      meetingUrl: sessionData.meetingUrl ?? undefined,
     });
 
     session.session = sessionData;
@@ -470,5 +485,55 @@ export class MeetingSession extends EventEmitter {
     }
 
     return session;
+  }
+
+  static fromCalendarEvent(options: {
+    calendarEventId: number;
+    calendarProvider: string;
+    title: string;
+    scheduledStartTime: string;
+    scheduledEndTime: string;
+    meetingUrl?: string;
+    attendeeNames?: string[];
+    inputDeviceId?: number;
+    openaiApiKey?: string;
+    config?: Partial<MeetingConfig>;
+  }): MeetingSession {
+    const session = new MeetingSession({
+      title: options.title,
+      attendeeCount: options.attendeeNames?.length ?? 0,
+      inputDeviceId: options.inputDeviceId,
+      openaiApiKey: options.openaiApiKey,
+      config: options.config,
+      calendarEventId: options.calendarEventId,
+      calendarProvider: options.calendarProvider,
+      scheduledStartTime: options.scheduledStartTime,
+      scheduledEndTime: options.scheduledEndTime,
+      meetingUrl: options.meetingUrl,
+    });
+
+    if (options.attendeeNames) {
+      for (const name of options.attendeeNames) {
+        session.addAttendee(name, "Attendee");
+      }
+    }
+
+    return session;
+  }
+
+  calendarInfo(): {
+    eventId: number | null;
+    provider: string | null;
+    scheduledStart: string | null;
+    scheduledEnd: string | null;
+    meetingUrl: string | null;
+  } {
+    return {
+      eventId: this.session.calendarEventId,
+      provider: this.session.calendarProvider,
+      scheduledStart: this.session.scheduledStartTime,
+      scheduledEnd: this.session.scheduledEndTime,
+      meetingUrl: this.session.meetingUrl,
+    };
   }
 }

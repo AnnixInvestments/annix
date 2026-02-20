@@ -11,7 +11,10 @@
     .header-left { display: flex; align-items: center; gap: 12px; }
     .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, #7856ff 0%, #f91880 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
     .logo-text { font-size: 18px; font-weight: 600; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
     .header-status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #71767b; }
+    .back-home-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(255,255,255,0.1); border: 1px solid #2f3336; border-radius: 8px; color: #e7e9ea; text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+    .back-home-btn:hover { background: rgba(255,255,255,0.15); border-color: #536471; }
     .status-indicator { width: 8px; height: 8px; border-radius: 50%; background: #71767b; }
     .status-indicator.active { background: #00ba7c; box-shadow: 0 0 8px #00ba7c; animation: pulse 2s infinite; }
     .status-indicator.warning { background: #ffd400; }
@@ -103,6 +106,38 @@
 
     .meeting-controls { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
 
+    /* Fathom-style participant view */
+    .fathom-meeting-container { display: flex; flex-direction: column; height: calc(100vh - 100px); }
+    .fathom-participants { flex: 1; display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; align-items: center; padding: 24px; background: #1a1f26; border-radius: 16px; margin-bottom: 16px; }
+    .fathom-participant { position: relative; width: 280px; height: 220px; background: linear-gradient(180deg, var(--participant-color) 0%, var(--participant-color-dark) 100%); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.2s, box-shadow 0.2s; }
+    .fathom-participant.speaking { transform: scale(1.02); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3), 0 8px 32px rgba(0, 0, 0, 0.3); }
+    .fathom-participant-avatar { width: 100px; height: 100px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); display: flex; align-items: center; justify-content: center; font-size: 42px; font-weight: 600; color: rgba(255, 255, 255, 0.9); margin-bottom: 16px; }
+    .fathom-participant-name { position: absolute; bottom: 12px; left: 12px; background: rgba(0, 0, 0, 0.6); color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+    .fathom-participant-name .speaking-icon { width: 8px; height: 8px; background: #00ba7c; border-radius: 50%; animation: pulse 1s infinite; }
+
+    .fathom-recording-box { background: #1c1f23; border-radius: 16px; padding: 24px 32px; text-align: center; margin-bottom: 16px; border: 1px solid #2f3336; }
+    .fathom-recording-status { font-size: 18px; font-weight: 500; color: #e7e9ea; margin-bottom: 12px; }
+    .fathom-brand { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px; }
+    .fathom-brand-logo { font-size: 20px; font-weight: 700; color: #e7e9ea; letter-spacing: 1px; }
+    .fathom-brand-icon { color: #7856ff; }
+    .fathom-bot-name { font-size: 12px; color: #71767b; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .fathom-bot-name .mic-icon { font-size: 14px; }
+
+    .fathom-timer { position: absolute; top: 16px; left: 16px; background: rgba(0, 0, 0, 0.5); color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .fathom-timer .rec-dot { width: 8px; height: 8px; background: #f4212e; border-radius: 50%; animation: pulse 1s infinite; }
+
+    /* Pastel color palette for participants */
+    .participant-color-0 { --participant-color: #4ecdc4; --participant-color-dark: #3db8b0; }
+    .participant-color-1 { --participant-color: #deb887; --participant-color-dark: #c9a677; }
+    .participant-color-2 { --participant-color: #98d8c8; --participant-color-dark: #7fc4b4; }
+    .participant-color-3 { --participant-color: #f7dc6f; --participant-color-dark: #e5c85e; }
+    .participant-color-4 { --participant-color: #bb8fce; --participant-color-dark: #a77abd; }
+    .participant-color-5 { --participant-color: #85c1e9; --participant-color-dark: #6fb0db; }
+    .participant-color-6 { --participant-color: #f1948a; --participant-color-dark: #e57e73; }
+    .participant-color-7 { --participant-color: #82e0aa; --participant-color-dark: #6bd197; }
+
+    .fathom-bottom-section { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+
     .audio-meter { margin-top: 16px; }
     .audio-meter-label { font-size: 11px; color: #71767b; margin-bottom: 6px; }
     .audio-meter-bar { height: 6px; background: #2f3336; border-radius: 3px; overflow: hidden; }
@@ -124,9 +159,12 @@
         <span class="logo-text">Meeting Mode</span>
       </a>
     </div>
-    <div class="header-status">
-      <div class="status-indicator" id="global-status"></div>
-      <span id="global-status-text">Initializing...</span>
+    <div class="header-right">
+      <a href="/" class="back-home-btn">🏠 Home</a>
+      <div class="header-status">
+        <div class="status-indicator" id="global-status"></div>
+        <span id="global-status-text">Initializing...</span>
+      </div>
     </div>
   </header>
 
@@ -195,58 +233,71 @@
     </div>
 
     <div id="view-active" class="hidden">
-      <div class="meeting-grid">
-        <div class="transcript-panel">
-          <div class="card" style="height: 100%;">
+      <div class="fathom-meeting-container">
+        <!-- Timer overlay -->
+        <div class="fathom-timer" id="meeting-timer">
+          <span class="rec-dot"></span>
+          <span id="timer-display">0:00</span>
+        </div>
+
+        <!-- Participant cards grid -->
+        <div class="fathom-participants" id="fathom-participants"></div>
+
+        <!-- Recording indicator box (Fathom-style) -->
+        <div class="fathom-recording-box">
+          <div class="fathom-recording-status">Recording and taking notes</div>
+          <div class="fathom-brand">
+            <span class="fathom-brand-logo">ANNIX</span>
+            <span class="fathom-brand-icon">▶</span>
+          </div>
+          <div class="fathom-bot-name">
+            <span class="mic-icon">🎙️</span>
+            <span>Voice Filter Meeting Assistant</span>
+          </div>
+        </div>
+
+        <!-- Bottom section: Transcript + Controls -->
+        <div class="fathom-bottom-section">
+          <div class="card" style="margin-bottom: 0;">
             <div class="card-header">
               <span class="card-title">Live Transcript</span>
               <span style="font-size: 12px; color: #71767b;" id="transcript-count">0 entries</span>
             </div>
             <div class="card-body">
-              <div class="transcript-list" id="transcript-list">
-                <div style="text-align: center; padding: 40px; color: #71767b;">
+              <div class="transcript-list" id="transcript-list" style="max-height: 200px;">
+                <div style="text-align: center; padding: 20px; color: #71767b;">
                   Waiting for speech...
                 </div>
               </div>
             </div>
           </div>
-        </div>
-        <div class="speakers-panel">
-          <div class="card">
+          <div class="card" style="margin-bottom: 0;">
             <div class="card-header">
-              <span class="card-title">Current Speaker</span>
+              <span class="card-title">Controls</span>
             </div>
-            <div class="card-body" style="text-align: center;">
-              <div class="speaker-ring" style="margin: 0 auto;">
-                <div class="speaker-ring-bg"></div>
-                <div class="speaker-ring-progress" id="speaker-ring"></div>
-                <div class="speaker-ring-content">
-                  <span class="speaker-avatar" id="current-speaker-avatar">?</span>
-                  <span class="speaker-name" id="current-speaker-name">Unknown</span>
-                  <span class="speaker-confidence" id="current-speaker-confidence">--</span>
-                </div>
-              </div>
-              <div class="audio-meter">
+            <div class="card-body">
+              <div class="audio-meter" style="margin-top: 0; margin-bottom: 16px;">
                 <div class="audio-meter-label">Volume Level</div>
                 <div class="audio-meter-bar">
                   <div class="audio-meter-fill" id="volume-meter"></div>
                 </div>
               </div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">Attendees</span>
-            </div>
-            <div class="card-body">
-              <div class="speakers-grid" id="speakers-grid"></div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <button class="btn btn-secondary btn-full" id="btn-pause-meeting">Pause</button>
+                <button class="btn btn-danger btn-full" id="btn-end-meeting">End Meeting</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="meeting-controls">
-        <button class="btn btn-secondary" id="btn-pause-meeting">Pause</button>
-        <button class="btn btn-danger" id="btn-end-meeting">End Meeting</button>
+
+      <!-- Hidden elements for compatibility -->
+      <div class="hidden">
+        <div id="speakers-grid"></div>
+        <span id="current-speaker-avatar"></span>
+        <span id="current-speaker-name"></span>
+        <span id="current-speaker-confidence"></span>
+        <div id="speaker-ring"></div>
       </div>
     </div>
 
@@ -317,6 +368,8 @@
     var currentSpeakerId = null;
     var isPaused = false;
     var micBarsCreated = false;
+    var meetingStartTime = null;
+    var timerInterval = null;
 
     function send(type, data) {
       if (ws.readyState === WebSocket.OPEN) {
@@ -420,6 +473,69 @@
           '<div class="speaker-card-title">' + (att.title || "Attendee") + '</div>';
         speakersGrid.appendChild(div);
       });
+    }
+
+    function getInitials(name) {
+      var parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+      }
+      return name.substring(0, 2).toUpperCase();
+    }
+
+    function renderFathomParticipants() {
+      var container = document.getElementById("fathom-participants");
+      container.innerHTML = "";
+      attendees.forEach(function(att, index) {
+        var div = document.createElement("div");
+        var colorIndex = index % 8;
+        var isSpeaking = att.id === currentSpeakerId;
+        div.className = "fathom-participant participant-color-" + colorIndex + (isSpeaking ? " speaking" : "");
+        div.id = "fathom-participant-" + att.id;
+        div.innerHTML = '<div class="fathom-participant-avatar">' + getInitials(att.name) + '</div>' +
+          '<div class="fathom-participant-name">' +
+          (isSpeaking ? '<span class="speaking-icon"></span>' : '') +
+          att.name +
+          '</div>';
+        container.appendChild(div);
+      });
+    }
+
+    function updateFathomSpeaker(speakerId) {
+      currentSpeakerId = speakerId;
+      document.querySelectorAll(".fathom-participant").forEach(function(el) {
+        el.classList.remove("speaking");
+        var nameEl = el.querySelector(".fathom-participant-name");
+        var icon = nameEl.querySelector(".speaking-icon");
+        if (icon) icon.remove();
+      });
+      if (speakerId) {
+        var activeEl = document.getElementById("fathom-participant-" + speakerId);
+        if (activeEl) {
+          activeEl.classList.add("speaking");
+          var nameEl = activeEl.querySelector(".fathom-participant-name");
+          var icon = document.createElement("span");
+          icon.className = "speaking-icon";
+          nameEl.insertBefore(icon, nameEl.firstChild);
+        }
+      }
+    }
+
+    function startMeetingTimer() {
+      meetingStartTime = Date.now();
+      timerInterval = setInterval(function() {
+        if (!isPaused) {
+          var elapsed = Date.now() - meetingStartTime;
+          document.getElementById("timer-display").textContent = formatDuration(elapsed);
+        }
+      }, 1000);
+    }
+
+    function stopMeetingTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
     }
 
     function startEnrollment(index) {
@@ -552,13 +668,16 @@
         updateGlobalStatus("active", "Ready to Start");
       } else if (type === "meeting-active") {
         transcript = [];
-        transcriptList.innerHTML = '<div style="text-align: center; padding: 40px; color: #71767b;">Waiting for speech...</div>';
+        transcriptList.innerHTML = '<div style="text-align: center; padding: 20px; color: #71767b;">Waiting for speech...</div>';
         transcriptCountSpan.textContent = "0 entries";
         renderSpeakersGrid();
+        renderFathomParticipants();
+        startMeetingTimer();
         showView("active");
         updateGlobalStatus("recording", "Recording");
       } else if (type === "meeting-speaker-identified" || type === "meeting-speaker-changed") {
         updateCurrentSpeaker(data);
+        updateFathomSpeaker(data.speakerId);
       } else if (type === "meeting-transcript-entry") {
         addTranscriptEntry(data);
       } else if (type === "meeting-paused") {
@@ -570,6 +689,7 @@
         btnPauseMeeting.textContent = "Pause";
         updateGlobalStatus("recording", "Recording");
       } else if (type === "meeting-ended") {
+        stopMeetingTimer();
         document.getElementById("summary-duration").textContent = formatDuration(data.duration);
         document.getElementById("summary-attendees").textContent = data.session.attendees.length;
         document.getElementById("summary-entries").textContent = data.transcript.length;
@@ -641,11 +761,14 @@
     };
 
     btnNewMeeting.onclick = function() {
+      stopMeetingTimer();
       attendees = [];
       transcript = [];
       currentSpeakerId = null;
       isPaused = false;
+      meetingStartTime = null;
       meetingTitleInput.value = "";
+      document.getElementById("timer-display").textContent = "0:00";
       showView("setup");
     };
 

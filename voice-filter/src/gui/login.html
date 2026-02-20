@@ -192,13 +192,34 @@
       border: 1px solid #2f3336;
       border-radius: 9999px;
       background: transparent;
-      color: #71767b;
-      cursor: not-allowed;
-      opacity: 0.5;
+      color: #e7e9ea;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .oauth-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: #536471;
+    }
+    .oauth-btn.disabled {
+      color: #71767b;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+    .oauth-btn.disabled:hover {
+      background: transparent;
+      border-color: #2f3336;
+    }
+    .oauth-icon {
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .confirm-group {
       display: none;
@@ -253,9 +274,46 @@
       <div class="divider">or continue with</div>
 
       <div class="oauth-buttons">
-        <button class="oauth-btn" disabled title="Coming soon">Google (coming soon)</button>
-        <button class="oauth-btn" disabled title="Coming soon">Microsoft (coming soon)</button>
-        <button class="oauth-btn" disabled title="Coming soon">Zoom (coming soon)</button>
+        <a href="http://localhost:47823/oauth/google" class="oauth-btn">
+          <span class="oauth-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z"/>
+              <path fill="#34A853" d="M16.0407269,18.0125889 C14.9509167,18.7163016 13.5660892,19.0909091 12,19.0909091 C8.86648613,19.0909091 6.21911939,17.076871 5.27698177,14.2678769 L1.23746264,17.3349879 C3.19279051,21.2936293 7.26500293,24 12,24 C14.9328362,24 17.7353462,22.9573905 19.834192,20.9995801 L16.0407269,18.0125889 Z"/>
+              <path fill="#4A90E2" d="M19.834192,20.9995801 C22.0291676,18.9520994 23.4545455,15.903663 23.4545455,12 C23.4545455,11.2909091 23.3454545,10.5272727 23.1818182,9.81818182 L12,9.81818182 L12,14.4545455 L18.4363636,14.4545455 C18.1187732,16.013626 17.2662994,17.2212117 16.0407269,18.0125889 L19.834192,20.9995801 Z"/>
+              <path fill="#FBBC05" d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443647,10.4668121 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z"/>
+            </svg>
+          </span>
+          Continue with Google
+        </a>
+        <a href="http://localhost:47823/oauth/microsoft" class="oauth-btn">
+          <span class="oauth-icon">
+            <svg width="18" height="18" viewBox="0 0 23 23">
+              <path fill="#f25022" d="M1 1h10v10H1z"/>
+              <path fill="#00a4ef" d="M1 12h10v10H1z"/>
+              <path fill="#7fba00" d="M12 1h10v10H12z"/>
+              <path fill="#ffb900" d="M12 12h10v10H12z"/>
+            </svg>
+          </span>
+          Continue with Microsoft
+        </a>
+        <a href="http://localhost:47823/oauth/teams" class="oauth-btn">
+          <span class="oauth-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path fill="#5059C9" d="M19.5 6.5h-3V5a2 2 0 0 0-2-2h-5a2 2 0 0 0-2 2v1.5h-3A1.5 1.5 0 0 0 3 8v9a1.5 1.5 0 0 0 1.5 1.5h15A1.5 1.5 0 0 0 21 17V8a1.5 1.5 0 0 0-1.5-1.5zM9.5 5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v1.5h-5V5z"/>
+              <circle fill="#7B83EB" cx="16" cy="4" r="2.5"/>
+              <path fill="#7B83EB" d="M20 9h-4v8h3a1 1 0 0 0 1-1V9z"/>
+            </svg>
+          </span>
+          Continue with Teams
+        </a>
+        <a href="http://localhost:47823/oauth/zoom" class="oauth-btn">
+          <span class="oauth-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#2D8CFF">
+              <path d="M4.585 6.836A2.25 2.25 0 0 1 6.75 6h7.5a2.25 2.25 0 0 1 2.25 2.25v1.5l3.128-1.876A1.125 1.125 0 0 1 21.375 9v6a1.125 1.125 0 0 1-1.747.936L16.5 14.06v1.69a2.25 2.25 0 0 1-2.25 2.25h-7.5a2.25 2.25 0 0 1-2.25-2.25v-7.5c0-.597.237-1.169.585-1.585z"/>
+            </svg>
+          </span>
+          Continue with Zoom
+        </a>
       </div>
     </div>
   </div>
@@ -359,6 +417,25 @@
         submitBtn.textContent = mode === 'login' ? 'Sign In' : 'Create Account';
       });
     }
+
+    (function checkUrlError() {
+      var params = new URLSearchParams(window.location.search);
+      var error = params.get('error');
+      if (error) {
+        var decodedError = decodeURIComponent(error);
+        var messages = {
+          'oauth_failed': 'OAuth sign-in failed. Please try again.',
+          'oauth_error': 'An error occurred during sign-in.',
+          'missing_code': 'OAuth authorization was incomplete.',
+          'invalid_provider': 'Invalid OAuth provider.',
+          'access_denied': 'Access was denied. Please try again.'
+        };
+        var message = messages[decodedError] || decodedError;
+        alert(message);
+        showError(message);
+        window.history.replaceState({}, '', '/login');
+      }
+    })();
   </script>
 </body>
 </html>

@@ -27,6 +27,22 @@
     .header-left { display: flex; align-items: center; gap: 10px; }
     .logo { font-size: 20px; }
     .title { font-size: 14px; font-weight: 600; }
+    .header-btns { display: flex; gap: 6px; -webkit-app-region: no-drag; }
+    .header-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-btn:hover { background: rgba(255,255,255,0.3); }
     .close-btn {
       background: rgba(255,255,255,0.2);
       border: none;
@@ -158,7 +174,10 @@
       <span class="logo">🎙️</span>
       <span class="title">Voice Filter</span>
     </div>
-    <button class="close-btn" id="close-btn">✕</button>
+    <div class="header-btns">
+      <a href="http://localhost:47823/" class="header-btn" title="Back to Home">🏠</a>
+      <button class="close-btn" id="close-btn">✕</button>
+    </div>
   </div>
 
   <div class="content" id="main-view">

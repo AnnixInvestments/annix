@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar Connections - Voice Filter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f1419;
+      color: #e7e9ea;
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a1f26 0%, #141a21 100%);
+      border-bottom: 1px solid #2f3336;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .back-btn {
+      background: none;
+      border: none;
+      color: #71767b;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.1); color: #e7e9ea; }
+    .header-title { font-size: 18px; font-weight: 600; flex: 1; }
+    .header-actions { display: flex; gap: 8px; }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+    .section { margin-bottom: 32px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #71767b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .provider-card {
+      background: #16181c;
+      border: 1px solid #2f3336;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .provider-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    .provider-icon.google { background: rgba(234, 67, 53, 0.15); }
+    .provider-icon.microsoft { background: rgba(0, 120, 212, 0.15); }
+    .provider-icon.zoom { background: rgba(45, 140, 255, 0.15); }
+    .provider-info { flex: 1; }
+    .provider-name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .provider-status { font-size: 13px; color: #71767b; }
+    .provider-status.connected { color: #00ba7c; }
+    .provider-status.syncing { color: #ffd400; }
+    .provider-status.error { color: #f4212e; }
+    .provider-sync-info { font-size: 11px; color: #536471; margin-top: 4px; }
+    .btn {
+      padding: 10px 20px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-primary { background: #1d9bf0; color: white; }
+    .btn-primary:hover { background: #1a8cd8; }
+    .btn-secondary { background: transparent; border: 1px solid #536471; color: #e7e9ea; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+    .btn-danger { background: transparent; border: 1px solid #f4212e; color: #f4212e; }
+    .btn-danger:hover { background: rgba(244, 33, 46, 0.1); }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .status-dot.connected { background: #00ba7c; }
+    .status-dot.disconnected { background: #71767b; }
+    .status-dot.syncing { background: #ffd400; animation: pulse 1s infinite; }
+    .status-dot.error { background: #f4212e; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .events-list { margin-top: 16px; }
+    .event-card {
+      background: #16181c;
+      border: 1px solid #2f3336;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 16px;
+    }
+    .event-time {
+      min-width: 80px;
+      text-align: center;
+      padding: 8px;
+      background: #1c1f23;
+      border-radius: 8px;
+    }
+    .event-time-date { font-size: 11px; color: #71767b; text-transform: uppercase; }
+    .event-time-hour { font-size: 16px; font-weight: 600; margin-top: 4px; }
+    .event-details { flex: 1; }
+    .event-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .event-meta { font-size: 13px; color: #71767b; display: flex; gap: 16px; flex-wrap: wrap; }
+    .event-meta-item { display: flex; align-items: center; gap: 4px; }
+    .event-provider {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      padding: 2px 8px;
+      background: #2f3336;
+      border-radius: 4px;
+      color: #e7e9ea;
+    }
+    .event-meeting-link {
+      color: #1d9bf0;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .event-meeting-link:hover { text-decoration: underline; }
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: #71767b;
+    }
+    .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state-title { font-size: 18px; font-weight: 600; color: #e7e9ea; margin-bottom: 8px; }
+    .empty-state-text { font-size: 14px; line-height: 1.5; }
+    .loading { text-align: center; padding: 24px; color: #71767b; }
+    .info-box {
+      background: rgba(29, 155, 240, 0.1);
+      border: 1px solid rgba(29, 155, 240, 0.3);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 24px;
+    }
+    .info-box-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1d9bf0;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .info-box-text { font-size: 13px; color: #8ecdf8; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="/home" class="back-btn" title="Back to Home">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+    </a>
+    <span class="header-title">Calendar & Meeting Connections</span>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" id="btn-sync-all" onclick="syncAll()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Sync All
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="section">
+      <p class="section-title">Connected Accounts</p>
+
+      <div class="provider-card" id="provider-google">
+        <div class="provider-icon google">
+          <svg width="24" height="24" viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z"/>
+            <path fill="#34A853" d="M16.0407269,18.0125889 C14.9509167,18.7163016 13.5660892,19.0909091 12,19.0909091 C8.86648613,19.0909091 6.21911939,17.076871 5.27698177,14.2678769 L1.23746264,17.3349879 C3.19279051,21.2936293 7.26500293,24 12,24 C14.9328362,24 17.7353462,22.9573905 19.834192,20.9995801 L16.0407269,18.0125889 Z"/>
+            <path fill="#4A90E2" d="M19.834192,20.9995801 C22.0291676,18.9520994 23.4545455,15.903663 23.4545455,12 C23.4545455,11.2909091 23.3454545,10.5272727 23.1818182,9.81818182 L12,9.81818182 L12,14.4545455 L18.4363636,14.4545455 C18.1187732,16.013626 17.2662994,17.2212117 16.0407269,18.0125889 L19.834192,20.9995801 Z"/>
+            <path fill="#FBBC05" d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443647,10.4668121 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z"/>
+          </svg>
+        </div>
+        <div class="provider-info">
+          <div class="provider-name">Google Calendar</div>
+          <div class="provider-status" id="google-status">
+            <span class="status-dot disconnected"></span>Not connected
+          </div>
+          <div class="provider-sync-info" id="google-sync-info"></div>
+        </div>
+        <button class="btn btn-primary" id="btn-google" onclick="connectProvider('google')">Connect</button>
+      </div>
+
+      <div class="provider-card" id="provider-microsoft">
+        <div class="provider-icon microsoft">
+          <svg width="24" height="24" viewBox="0 0 23 23">
+            <path fill="#f25022" d="M1 1h10v10H1z"/>
+            <path fill="#00a4ef" d="M1 12h10v10H1z"/>
+            <path fill="#7fba00" d="M12 1h10v10H12z"/>
+            <path fill="#ffb900" d="M12 12h10v10H12z"/>
+          </svg>
+        </div>
+        <div class="provider-info">
+          <div class="provider-name">Microsoft Outlook</div>
+          <div class="provider-status" id="microsoft-status">
+            <span class="status-dot disconnected"></span>Not connected
+          </div>
+          <div class="provider-sync-info" id="microsoft-sync-info"></div>
+        </div>
+        <button class="btn btn-primary" id="btn-microsoft" onclick="connectProvider('microsoft')">Connect</button>
+      </div>
+
+      <div class="provider-card" id="provider-zoom">
+        <div class="provider-icon zoom">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="#2D8CFF">
+            <path d="M4.585 6.836A2.25 2.25 0 0 1 6.75 6h7.5a2.25 2.25 0 0 1 2.25 2.25v1.5l3.128-1.876A1.125 1.125 0 0 1 21.375 9v6a1.125 1.125 0 0 1-1.747.936L16.5 14.06v1.69a2.25 2.25 0 0 1-2.25 2.25h-7.5a2.25 2.25 0 0 1-2.25-2.25v-7.5c0-.597.237-1.169.585-1.585z"/>
+          </svg>
+        </div>
+        <div class="provider-info">
+          <div class="provider-name">Zoom Meetings</div>
+          <div class="provider-status" id="zoom-status">
+            <span class="status-dot disconnected"></span>Not connected
+          </div>
+          <div class="provider-sync-info" id="zoom-sync-info"></div>
+        </div>
+        <button class="btn btn-primary" id="btn-zoom" onclick="connectProvider('zoom')">Connect</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <p class="section-title">Upcoming Events</p>
+      </div>
+      <div id="events-container">
+        <div class="loading">Loading events...</div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 16v-4M12 8h.01"/>
+        </svg>
+        Why connect your accounts?
+      </div>
+      <div class="info-box-text">
+        Connecting your calendar and meeting accounts allows Voice Filter to automatically detect meetings,
+        retrieve recordings, and generate AI-powered meeting summaries with speaker identification.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var providersData = {};
+
+    function loadProviders() {
+      fetch('/api/calendar/providers')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (!data.providers) return;
+
+          data.providers.forEach(function(p) {
+            providersData[p.provider] = p;
+            updateProviderUI(p.provider, p);
+          });
+        })
+        .catch(function(err) {
+          console.error('Failed to load providers:', err);
+        });
+    }
+
+    function updateProviderUI(provider, data) {
+      var statusEl = document.getElementById(provider + '-status');
+      var btnEl = document.getElementById('btn-' + provider);
+      var syncInfoEl = document.getElementById(provider + '-sync-info');
+
+      if (data.connected) {
+        var statusClass = data.status === 'syncing' ? 'syncing' : (data.status === 'error' ? 'error' : 'connected');
+        var statusText = data.status === 'syncing' ? 'Syncing...' : (data.status === 'error' ? 'Sync error' : 'Connected');
+        statusEl.innerHTML = '<span class="status-dot ' + statusClass + '"></span>' + statusText;
+        statusEl.className = 'provider-status ' + statusClass;
+
+        if (data.lastSync) {
+          var lastSync = new Date(data.lastSync);
+          syncInfoEl.textContent = 'Last synced: ' + lastSync.toLocaleString();
+        } else {
+          syncInfoEl.textContent = 'Never synced';
+        }
+
+        btnEl.textContent = 'Sync Now';
+        btnEl.className = 'btn btn-secondary';
+        btnEl.onclick = function() { syncProvider(provider); };
+      } else {
+        statusEl.innerHTML = '<span class="status-dot disconnected"></span>Not connected';
+        statusEl.className = 'provider-status';
+        syncInfoEl.textContent = '';
+        btnEl.textContent = 'Connect';
+        btnEl.className = 'btn btn-primary';
+        btnEl.onclick = function() { connectProvider(provider); };
+      }
+    }
+
+    function connectProvider(provider) {
+      window.location.href = '/oauth/' + provider;
+    }
+
+    function syncProvider(provider) {
+      var btnEl = document.getElementById('btn-' + provider);
+      var statusEl = document.getElementById(provider + '-status');
+
+      btnEl.disabled = true;
+      btnEl.textContent = 'Syncing...';
+      statusEl.innerHTML = '<span class="status-dot syncing"></span>Syncing...';
+      statusEl.className = 'provider-status syncing';
+
+      fetch('/api/calendar/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: provider })
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          btnEl.disabled = false;
+          if (data.success) {
+            var result = data.results[provider];
+            alert('Sync complete!\nAdded: ' + result.added + '\nUpdated: ' + result.updated + '\nDeleted: ' + result.deleted);
+            loadProviders();
+            loadEvents();
+          } else {
+            alert('Sync failed: ' + (data.error || 'Unknown error'));
+            loadProviders();
+          }
+        })
+        .catch(function(err) {
+          btnEl.disabled = false;
+          alert('Sync failed: ' + err.message);
+          loadProviders();
+        });
+    }
+
+    function syncAll() {
+      var btn = document.getElementById('btn-sync-all');
+      btn.disabled = true;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinning"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Syncing...';
+
+      fetch('/api/calendar/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          btn.disabled = false;
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Sync All';
+
+          if (data.success) {
+            var msg = 'Sync complete!\n\n';
+            for (var p in data.results) {
+              var r = data.results[p];
+              msg += p + ': ' + r.added + ' added, ' + r.updated + ' updated, ' + r.deleted + ' deleted\n';
+            }
+            alert(msg);
+            loadProviders();
+            loadEvents();
+          } else {
+            alert('Sync failed: ' + (data.error || 'Unknown error'));
+          }
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Sync All';
+          alert('Sync failed: ' + err.message);
+        });
+    }
+
+    function loadEvents() {
+      fetch('/api/calendar/upcoming?limit=10')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          var container = document.getElementById('events-container');
+
+          if (!data.events || data.events.length === 0) {
+            container.innerHTML = '<div class="empty-state">' +
+              '<div class="empty-state-icon">📅</div>' +
+              '<div class="empty-state-title">No upcoming events</div>' +
+              '<div class="empty-state-text">Connect your calendar accounts and sync to see your upcoming meetings here.</div>' +
+              '</div>';
+            return;
+          }
+
+          var html = '<div class="events-list">';
+          data.events.forEach(function(event) {
+            var start = new Date(event.startTime);
+            var end = new Date(event.endTime);
+            var dateStr = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            var timeStr = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            var endTimeStr = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+            html += '<div class="event-card">';
+            html += '<div class="event-time">';
+            html += '<div class="event-time-date">' + dateStr + '</div>';
+            html += '<div class="event-time-hour">' + timeStr + '</div>';
+            html += '</div>';
+            html += '<div class="event-details">';
+            html += '<div class="event-title">' + escapeHtml(event.title) + '</div>';
+            html += '<div class="event-meta">';
+            html += '<span class="event-meta-item"><span class="event-provider">' + event.provider + '</span></span>';
+            html += '<span class="event-meta-item">' + timeStr + ' - ' + endTimeStr + '</span>';
+            if (event.location) {
+              html += '<span class="event-meta-item">📍 ' + escapeHtml(event.location) + '</span>';
+            }
+            html += '</div>';
+            if (event.meetingUrl) {
+              html += '<a href="' + event.meetingUrl + '" target="_blank" class="event-meeting-link">Join Meeting →</a>';
+            }
+            html += '</div>';
+            html += '</div>';
+          });
+          html += '</div>';
+
+          container.innerHTML = html;
+        })
+        .catch(function(err) {
+          console.error('Failed to load events:', err);
+          document.getElementById('events-container').innerHTML =
+            '<div class="empty-state"><div class="empty-state-text">Failed to load events</div></div>';
+        });
+    }
+
+    function escapeHtml(text) {
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    loadProviders();
+    loadEvents();
+  </script>
+  <style>
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spinning { animation: spin 1s linear infinite; }
+  </style>
+</body>
+</html>
