@@ -240,10 +240,15 @@ export function createOAuthUser(
   provider: string,
   oauthId: string,
   accessToken: string,
+  refreshToken?: string | null,
 ): User {
   const database = ensureDb();
   const now = new Date().toISOString();
-  const tokens = JSON.stringify({ [provider]: accessToken });
+  const tokenData: Record<string, string> = { [provider]: accessToken };
+  if (refreshToken) {
+    tokenData[`${provider}_refresh`] = refreshToken;
+  }
+  const tokens = JSON.stringify(tokenData);
 
   const existingByEmail = findUserByEmail(email);
   if (existingByEmail) {
@@ -280,13 +285,17 @@ export function findOrCreateOAuthUser(
   provider: string,
   oauthId: string,
   accessToken: string,
+  refreshToken?: string | null,
 ): User {
   const existing = findUserByOAuth(provider, oauthId);
   if (existing) {
     saveOAuthToken(existing.id, provider, accessToken);
+    if (refreshToken) {
+      saveOAuthToken(existing.id, `${provider}_refresh`, refreshToken);
+    }
     return existing;
   }
-  return createOAuthUser(email, provider, oauthId, accessToken);
+  return createOAuthUser(email, provider, oauthId, accessToken, refreshToken);
 }
 
 export interface CreateCalendarEventInput {

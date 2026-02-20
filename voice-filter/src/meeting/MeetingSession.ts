@@ -108,12 +108,12 @@ export class MeetingSession extends EventEmitter {
     writeFileSync(transcriptPath, JSON.stringify(this.transcript, null, 2));
   }
 
-  addAttendee(name: string, title: string): MeetingAttendee {
+  addAttendee(name: string, title: string, options?: { isHost?: boolean }): MeetingAttendee {
     const attendee: MeetingAttendee = {
       id: randomUUID(),
       name,
       title,
-      enrolledAt: null,
+      enrolledAt: options?.isHost ? new Date().toISOString() : null,
       profilePath: null,
     };
 

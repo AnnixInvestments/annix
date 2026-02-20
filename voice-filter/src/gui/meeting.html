@@ -370,6 +370,18 @@
     var micBarsCreated = false;
     var meetingStartTime = null;
     var timerInterval = null;
+    var currentUser = null;
+
+    fetch("/api/user")
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.email) {
+          currentUser = data;
+        }
+      })
+      .catch(function(err) {
+        console.error("Failed to fetch user info:", err);
+      });
 
     function send(type, data) {
       if (ws.readyState === WebSocket.OPEN) {
@@ -635,6 +647,10 @@
       if (type === "meeting-created") {
         showView("roster");
         updateGlobalStatus("active", "Meeting Created");
+        if (currentUser && currentUser.email) {
+          var hostName = currentUser.name || currentUser.email.split("@")[0];
+          send("meeting-add-attendee", { name: hostName, title: "Host", isHost: true });
+        }
       } else if (type === "meeting-attendee-added") {
         attendees.push(data.attendee);
         renderAttendeeList();

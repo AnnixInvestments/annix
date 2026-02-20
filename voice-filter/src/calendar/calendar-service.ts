@@ -69,7 +69,7 @@ export class CalendarService {
       throw new Error(`Provider ${provider} not configured`);
     }
 
-    const credentials = await this.credentialsForProvider(userId, provider);
+    let credentials = await this.credentialsForProvider(userId, provider);
     if (!credentials) {
       throw new Error(`No credentials for ${provider}`);
     }
@@ -84,11 +84,37 @@ export class CalendarService {
       const fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const toDate = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-      const result = await providerImpl.listEvents(credentials, {
-        fromDate,
-        toDate,
-        syncToken,
-      });
+      let result;
+      try {
+        result = await providerImpl.listEvents(credentials, {
+          fromDate,
+          toDate,
+          syncToken,
+        });
+      } catch (error) {
+        const isTokenExpired =
+          error instanceof Error &&
+          (error.message.includes("token is expired") ||
+            error.message.includes("InvalidAuthenticationToken") ||
+            error.message.includes("401"));
+
+        if (isTokenExpired) {
+          console.log(`Token expired for ${provider}, attempting refresh...`);
+          const refreshedCredentials = await this.refreshTokenIfNeeded(userId, provider);
+          if (refreshedCredentials) {
+            credentials = refreshedCredentials;
+            result = await providerImpl.listEvents(credentials, {
+              fromDate,
+              toDate,
+              syncToken,
+            });
+          } else {
+            throw new Error(`Failed to refresh ${provider} token`);
+          }
+        } else {
+          throw error;
+        }
+      }
 
       let added = 0;
       let updated = 0;
@@ -247,6 +273,7 @@ export class CalendarService {
   ): Promise<CalendarCredentials | null> {
     const providerImpl = this.providers.get(provider);
     if (!providerImpl) {
+      console.error(`No provider implementation for ${provider}`);
       return null;
     }
 
@@ -254,8 +281,14 @@ export class CalendarService {
     const refreshToken = tokens[`${provider}_refresh`];
 
     if (!refreshToken) {
+      console.error(
+        `No refresh token stored for ${provider}. Available tokens:`,
+        Object.keys(tokens),
+      );
       return null;
     }
+
+    console.log(`Attempting to refresh ${provider} token...`);
 
     try {
       const newCredentials = await providerImpl.refreshAccessToken(refreshToken);
@@ -265,6 +298,7 @@ export class CalendarService {
         saveOAuthToken(userId, `${provider}_refresh`, newCredentials.refreshToken);
       }
 
+      console.log(`Successfully refreshed ${provider} token`);
       return newCredentials;
     } catch (error) {
       console.error(`Failed to refresh ${provider} token:`, error);

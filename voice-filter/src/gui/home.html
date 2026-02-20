@@ -418,7 +418,11 @@
     <div class="upcoming-section" id="upcoming-section">
       <div class="section-header">
         <span class="section-title">📅 Upcoming Meetings</span>
-        <a href="/calendar" class="section-link">View all →</a>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span id="sync-status" style="font-size: 11px; color: #71767b;"></span>
+          <button id="btn-sync-calendar" class="header-btn" style="padding: 4px 10px; font-size: 11px;">🔄 Sync</button>
+          <a href="/calendar" class="section-link">View all →</a>
+        </div>
       </div>
       <div class="upcoming-events" id="upcoming-events">
         <div class="upcoming-empty">
@@ -520,9 +524,18 @@
     // Fetch upcoming events
     function loadUpcomingEvents() {
       fetch("/api/calendar/upcoming?limit=5")
-        .then(function(res) { return res.json(); })
+        .then(function(res) {
+          if (!res.ok) {
+            throw new Error("HTTP " + res.status);
+          }
+          return res.json();
+        })
         .then(function(data) {
           var container = document.getElementById("upcoming-events");
+
+          if (data.error) {
+            throw new Error(data.error);
+          }
 
           if (!data.events || data.events.length === 0) {
             container.innerHTML = '<div class="upcoming-empty">' +
@@ -568,7 +581,11 @@
         .catch(function(err) {
           console.error('Failed to load upcoming events:', err);
           document.getElementById("upcoming-events").innerHTML =
-            '<div class="upcoming-empty"><div>Unable to load events</div></div>';
+            '<div class="upcoming-empty">' +
+            '<div class="upcoming-empty-icon">⚠️</div>' +
+            '<div>Unable to load events</div>' +
+            '<div style="margin-top: 8px; font-size: 12px; color: #71767b;">Try clicking Sync or <a href="/calendar" style="color: #1d9bf0;">connect your calendar</a></div>' +
+            '</div>';
         });
     }
 
@@ -587,6 +604,71 @@
     }
 
     loadUpcomingEvents();
+    loadSyncStatus();
+
+    document.getElementById("btn-sync-calendar").onclick = function() {
+      var btn = document.getElementById("btn-sync-calendar");
+      btn.disabled = true;
+      btn.textContent = "Syncing...";
+      document.getElementById("sync-status").textContent = "";
+
+      fetch("/api/calendar/sync", { method: "POST" })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          btn.disabled = false;
+          btn.textContent = "🔄 Sync";
+          if (data.results) {
+            var total = 0;
+            Object.keys(data.results).forEach(function(k) {
+              total += data.results[k].added + data.results[k].updated;
+            });
+            document.getElementById("sync-status").textContent = "Synced " + total + " events";
+            document.getElementById("sync-status").style.color = "#00ba7c";
+          }
+          loadUpcomingEvents();
+          setTimeout(function() {
+            document.getElementById("sync-status").textContent = "";
+          }, 5000);
+        })
+        .catch(function(err) {
+          btn.disabled = false;
+          btn.textContent = "🔄 Sync";
+          document.getElementById("sync-status").textContent = "Sync failed";
+          document.getElementById("sync-status").style.color = "#f4212e";
+        });
+    };
+
+    function loadSyncStatus() {
+      fetch("/api/calendar/sync-status")
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          var status = data.status || {};
+          var hasError = false;
+          var lastSync = null;
+          Object.keys(status).forEach(function(provider) {
+            if (status[provider].error) hasError = true;
+            if (status[provider].lastSync) {
+              var syncTime = new Date(status[provider].lastSync);
+              if (!lastSync || syncTime > lastSync) lastSync = syncTime;
+            }
+          });
+          if (hasError) {
+            document.getElementById("sync-status").textContent = "⚠️ Sync error - reconnect calendar";
+            document.getElementById("sync-status").style.color = "#f4212e";
+          } else if (lastSync) {
+            var ago = Math.round((Date.now() - lastSync.getTime()) / 60000);
+            if (ago < 1) {
+              document.getElementById("sync-status").textContent = "Just synced";
+            } else if (ago < 60) {
+              document.getElementById("sync-status").textContent = "Synced " + ago + "m ago";
+            } else {
+              document.getElementById("sync-status").textContent = "Synced " + Math.round(ago/60) + "h ago";
+            }
+            document.getElementById("sync-status").style.color = "#71767b";
+          }
+        })
+        .catch(function() {});
+    }
   </script>
 </body>
 </html>

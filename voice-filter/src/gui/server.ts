@@ -58,7 +58,7 @@ const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     authUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     tokenUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
     userInfoUrl: "https://graph.microsoft.com/v1.0/me",
-    scopes: ["openid", "email", "profile", "User.Read"],
+    scopes: ["openid", "email", "profile", "User.Read", "Calendars.Read", "offline_access"],
   },
   zoom: {
     clientId: process.env.ZOOM_CLIENT_ID ?? "",
@@ -90,7 +90,12 @@ function oauthAuthUrl(configKey: string, state: string): string | null {
 async function exchangeOAuthCode(
   provider: string,
   code: string,
-): Promise<{ accessToken: string; email: string; oauthId: string } | null> {
+): Promise<{
+  accessToken: string;
+  refreshToken: string | null;
+  email: string;
+  oauthId: string;
+} | null> {
   const config = OAUTH_CONFIGS[provider];
   if (!config || !config.clientId || !config.clientSecret) {
     return null;
@@ -115,8 +120,12 @@ async function exchangeOAuthCode(
     return null;
   }
 
-  const tokenData = (await tokenRes.json()) as { access_token: string };
+  const tokenData = (await tokenRes.json()) as {
+    access_token: string;
+    refresh_token?: string;
+  };
   const accessToken = tokenData.access_token;
+  const refreshToken = tokenData.refresh_token ?? null;
 
   const userHeaders: Record<string, string> = {
     Authorization: `Bearer ${accessToken}`,
@@ -146,7 +155,7 @@ async function exchangeOAuthCode(
     return null;
   }
 
-  return { accessToken, email, oauthId };
+  return { accessToken, refreshToken, email, oauthId };
 }
 
 let audioCapture: AudioCapture | null = null;
@@ -453,29 +462,36 @@ function handleApiCalendarEventById(
 }
 
 function handleApiCalendarUpcoming(req: IncomingMessage, res: ServerResponse): void {
-  const userId = authenticatedUserId(req);
-  if (!userId) {
-    sendJson(res, 401, { error: "Not authenticated." });
-    return;
+  try {
+    const userId = authenticatedUserId(req);
+    console.log("Calendar upcoming - userId:", userId);
+    if (!userId) {
+      sendJson(res, 401, { error: "Not authenticated." });
+      return;
+    }
+
+    const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+    const limit = parseInt(url.searchParams.get("limit") ?? "10", 10);
+
+    const service = calendarService();
+    const events = service.upcomingEvents(userId, limit);
+    console.log("Calendar upcoming - found", events.length, "events");
+
+    const mapped = events.map((e) => ({
+      id: e.id,
+      provider: e.provider,
+      title: e.title,
+      startTime: e.start_time,
+      endTime: e.end_time,
+      meetingUrl: e.meeting_url,
+      location: e.location,
+    }));
+
+    sendJson(res, 200, { events: mapped });
+  } catch (error) {
+    console.error("Error fetching upcoming events:", error);
+    sendJson(res, 500, { error: "Failed to fetch events" });
   }
-
-  const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
-  const limit = parseInt(url.searchParams.get("limit") ?? "10", 10);
-
-  const service = calendarService();
-  const events = service.upcomingEvents(userId, limit);
-
-  const mapped = events.map((e) => ({
-    id: e.id,
-    provider: e.provider,
-    title: e.title,
-    startTime: e.start_time,
-    endTime: e.end_time,
-    meetingUrl: e.meeting_url,
-    location: e.location,
-  }));
-
-  sendJson(res, 200, { events: mapped });
 }
 
 async function handleApiCalendarSync(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -889,14 +905,16 @@ function handleMeetingCreate(data: { title: string; attendeeCount: number }): vo
   sendMessage("meeting-created", { sessionId: meetingSession.sessionId_() });
 }
 
-function handleMeetingAddAttendee(data: { name: string; title: string }): void {
+function handleMeetingAddAttendee(data: { name: string; title: string; isHost?: boolean }): void {
   if (!meetingSession) {
     sendMessage("meeting-error", { message: "No active meeting session" });
     return;
   }
 
-  const attendee = meetingSession.addAttendee(data.name, data.title);
-  console.log("Attendee added:", attendee.name);
+  const attendee = meetingSession.addAttendee(data.name, data.title, {
+    isHost: data.isHost,
+  });
+  console.log("Attendee added:", attendee.name, data.isHost ? "(host)" : "");
 }
 
 function handleMeetingRemoveAttendee(data: { attendeeId: string }): void {
@@ -1135,30 +1153,40 @@ code { background: #2f3336; padding: 2px 6px; border-radius: 4px; }
     }
 
     if (url.startsWith("/oauth/callback")) {
+      console.log("OAuth callback received");
       const urlObj = new URL(url, `http://localhost:${PORT}`);
       const code = urlObj.searchParams.get("code");
       const state = urlObj.searchParams.get("state");
       const error = urlObj.searchParams.get("error");
+      const errorDescription = urlObj.searchParams.get("error_description");
+
+      console.log("OAuth callback params - code:", !!code, "state:", state, "error:", error);
 
       if (error) {
+        console.error("OAuth error:", error, errorDescription);
         redirectTo(res, `/login?error=${encodeURIComponent(error)}`);
         return;
       }
 
       if (!code || !state) {
+        console.error("Missing code or state in OAuth callback");
         redirectTo(res, "/login?error=missing_code");
         return;
       }
 
       const [provider] = state.split(":");
+      console.log("OAuth provider from state:", provider);
       if (!["google", "microsoft", "teams", "zoom"].includes(provider)) {
+        console.error("Invalid OAuth provider:", provider);
         redirectTo(res, "/login?error=invalid_provider");
         return;
       }
 
       const configKey = provider === "teams" ? "microsoft" : provider;
+      console.log("Exchanging OAuth code for provider:", configKey);
       exchangeOAuthCode(configKey, code)
         .then((result) => {
+          console.log("OAuth exchange result:", result ? "success" : "failed", result?.email);
           if (!result) {
             redirectTo(res, "/login?error=oauth_failed");
             return;
@@ -1169,6 +1197,7 @@ code { background: #2f3336; padding: 2px 6px; border-radius: 4px; }
             provider,
             result.oauthId,
             result.accessToken,
+            result.refreshToken,
           );
           const token = signToken(user.id);
           setTokenCookie(res, token);
@@ -1202,7 +1231,7 @@ code { background: #2f3336; padding: 2px 6px; border-radius: 4px; }
       }
     } else if (url.startsWith("/api/calendar/events") && req.method === "GET") {
       handleApiCalendarEvents(req, res);
-    } else if (url === "/api/calendar/upcoming" && req.method === "GET") {
+    } else if (url.startsWith("/api/calendar/upcoming") && req.method === "GET") {
       handleApiCalendarUpcoming(req, res);
     } else if (url === "/api/calendar/sync" && req.method === "POST") {
       handleApiCalendarSync(req, res);
