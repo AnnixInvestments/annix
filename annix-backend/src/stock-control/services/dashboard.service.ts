@@ -37,21 +37,23 @@ export class DashboardService {
     private readonly allocationRepo: Repository<StockAllocation>,
   ) {}
 
-  async stats(): Promise<DashboardStats> {
-    const totalItems = await this.stockItemRepo.count();
+  async stats(companyId: number): Promise<DashboardStats> {
+    const totalItems = await this.stockItemRepo.count({ where: { companyId } });
 
     const valueResult = await this.stockItemRepo
       .createQueryBuilder("item")
       .select("COALESCE(SUM(item.quantity * item.cost_per_unit), 0)", "totalValue")
+      .where("item.company_id = :companyId", { companyId })
       .getRawOne();
 
     const lowStockCount = await this.stockItemRepo
       .createQueryBuilder("item")
-      .where("item.quantity <= item.min_stock_level")
+      .where("item.company_id = :companyId", { companyId })
+      .andWhere("item.quantity <= item.min_stock_level")
       .getCount();
 
     const activeJobs = await this.jobCardRepo.count({
-      where: { status: JobCardStatus.ACTIVE },
+      where: { status: JobCardStatus.ACTIVE, companyId },
     });
 
     return {
@@ -62,12 +64,13 @@ export class DashboardService {
     };
   }
 
-  async sohSummary(): Promise<{ category: string; totalQuantity: number; totalValue: number }[]> {
+  async sohSummary(companyId: number): Promise<{ category: string; totalQuantity: number; totalValue: number }[]> {
     const result = await this.stockItemRepo
       .createQueryBuilder("item")
       .select("COALESCE(item.category, 'Uncategorized')", "category")
       .addSelect("SUM(item.quantity)", "totalQuantity")
       .addSelect("SUM(item.quantity * item.cost_per_unit)", "totalValue")
+      .where("item.company_id = :companyId", { companyId })
       .groupBy("COALESCE(item.category, 'Uncategorized')")
       .orderBy("category", "ASC")
       .getRawMany();
@@ -79,8 +82,9 @@ export class DashboardService {
     }));
   }
 
-  async recentActivity(limit = 10): Promise<RecentActivity[]> {
+  async recentActivity(companyId: number, limit = 10): Promise<RecentActivity[]> {
     const movements = await this.movementRepo.find({
+      where: { companyId },
       relations: ["stockItem"],
       order: { createdAt: "DESC" },
       take: limit,
@@ -98,10 +102,11 @@ export class DashboardService {
     }));
   }
 
-  async reorderAlerts(): Promise<StockItem[]> {
+  async reorderAlerts(companyId: number): Promise<StockItem[]> {
     return this.stockItemRepo
       .createQueryBuilder("item")
-      .where("item.quantity <= item.min_stock_level")
+      .where("item.company_id = :companyId", { companyId })
+      .andWhere("item.quantity <= item.min_stock_level")
       .orderBy("item.quantity", "ASC")
       .getMany();
   }

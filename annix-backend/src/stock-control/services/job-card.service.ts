@@ -19,13 +19,13 @@ export class JobCardService {
     private readonly movementRepo: Repository<StockMovement>,
   ) {}
 
-  async create(data: Partial<JobCard>): Promise<JobCard> {
-    const jobCard = this.jobCardRepo.create(data);
+  async create(companyId: number, data: Partial<JobCard>): Promise<JobCard> {
+    const jobCard = this.jobCardRepo.create({ ...data, companyId });
     return this.jobCardRepo.save(jobCard);
   }
 
-  async findAll(status?: string): Promise<JobCard[]> {
-    const where: Record<string, unknown> = {};
+  async findAll(companyId: number, status?: string): Promise<JobCard[]> {
+    const where: Record<string, unknown> = { companyId };
     if (status) {
       where.status = status;
     }
@@ -35,9 +35,9 @@ export class JobCardService {
     });
   }
 
-  async findById(id: number): Promise<JobCard> {
+  async findById(companyId: number, id: number): Promise<JobCard> {
     const jobCard = await this.jobCardRepo.findOne({
-      where: { id },
+      where: { id, companyId },
       relations: ["allocations", "allocations.stockItem"],
     });
     if (!jobCard) {
@@ -46,18 +46,18 @@ export class JobCardService {
     return jobCard;
   }
 
-  async update(id: number, data: Partial<JobCard>): Promise<JobCard> {
-    const jobCard = await this.findById(id);
+  async update(companyId: number, id: number, data: Partial<JobCard>): Promise<JobCard> {
+    const jobCard = await this.findById(companyId, id);
     Object.assign(jobCard, data);
     return this.jobCardRepo.save(jobCard);
   }
 
-  async remove(id: number): Promise<void> {
-    const jobCard = await this.findById(id);
+  async remove(companyId: number, id: number): Promise<void> {
+    const jobCard = await this.findById(companyId, id);
     await this.jobCardRepo.remove(jobCard);
   }
 
-  async allocateStock(data: {
+  async allocateStock(companyId: number, data: {
     stockItemId: number;
     jobCardId: number;
     quantityUsed: number;
@@ -65,12 +65,12 @@ export class JobCardService {
     notes?: string;
     allocatedBy?: string;
   }): Promise<StockAllocation> {
-    const stockItem = await this.stockItemRepo.findOne({ where: { id: data.stockItemId } });
+    const stockItem = await this.stockItemRepo.findOne({ where: { id: data.stockItemId, companyId } });
     if (!stockItem) {
       throw new NotFoundException("Stock item not found");
     }
 
-    const jobCard = await this.jobCardRepo.findOne({ where: { id: data.jobCardId } });
+    const jobCard = await this.jobCardRepo.findOne({ where: { id: data.jobCardId, companyId } });
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }
@@ -91,6 +91,7 @@ export class JobCardService {
       photoUrl: data.photoUrl || null,
       notes: data.notes || null,
       allocatedBy: data.allocatedBy || null,
+      companyId,
     });
     const saved = await this.allocationRepo.save(allocation);
 
@@ -102,15 +103,16 @@ export class JobCardService {
       referenceId: saved.id,
       notes: `Allocated to job ${jobCard.jobNumber}`,
       createdBy: data.allocatedBy || null,
+      companyId,
     });
     await this.movementRepo.save(movement);
 
     return saved;
   }
 
-  async allocationsByJobCard(jobCardId: number): Promise<StockAllocation[]> {
+  async allocationsByJobCard(companyId: number, jobCardId: number): Promise<StockAllocation[]> {
     return this.allocationRepo.find({
-      where: { jobCard: { id: jobCardId } },
+      where: { jobCard: { id: jobCardId }, companyId },
       relations: ["stockItem"],
       order: { createdAt: "DESC" },
     });

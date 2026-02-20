@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, LessThanOrEqual, Repository } from "typeorm";
+import { ILike, Repository } from "typeorm";
 import { StockItem } from "../entities/stock-item.entity";
 
 @Injectable()
@@ -10,12 +10,12 @@ export class InventoryService {
     private readonly stockItemRepo: Repository<StockItem>,
   ) {}
 
-  async create(data: Partial<StockItem>): Promise<StockItem> {
-    const item = this.stockItemRepo.create(data);
+  async create(companyId: number, data: Partial<StockItem>): Promise<StockItem> {
+    const item = this.stockItemRepo.create({ ...data, companyId });
     return this.stockItemRepo.save(item);
   }
 
-  async findAll(filters?: {
+  async findAll(companyId: number, filters?: {
     category?: string;
     belowMinStock?: string;
     search?: string;
@@ -26,14 +26,14 @@ export class InventoryService {
     const limit = Math.min(100, Math.max(1, Number(filters?.limit) || 50));
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    if (filters?.search) {
+      return this.searchItems(companyId, filters.search, skip, limit);
+    }
+
+    const where: Record<string, unknown> = { companyId };
 
     if (filters?.category) {
       where.category = filters.category;
-    }
-
-    if (filters?.search) {
-      return this.searchItems(filters.search, skip, limit);
     }
 
     const [items, total] = await this.stockItemRepo.findAndCount({
@@ -52,15 +52,16 @@ export class InventoryService {
   }
 
   private async searchItems(
+    companyId: number,
     search: string,
     skip: number,
     limit: number,
   ): Promise<{ items: StockItem[]; total: number }> {
     const [items, total] = await this.stockItemRepo.findAndCount({
       where: [
-        { name: ILike(`%${search}%`) },
-        { sku: ILike(`%${search}%`) },
-        { description: ILike(`%${search}%`) },
+        { companyId, name: ILike(`%${search}%`) },
+        { companyId, sku: ILike(`%${search}%`) },
+        { companyId, description: ILike(`%${search}%`) },
       ],
       order: { name: "ASC" },
       skip,
@@ -70,9 +71,9 @@ export class InventoryService {
     return { items, total };
   }
 
-  async findById(id: number): Promise<StockItem> {
+  async findById(companyId: number, id: number): Promise<StockItem> {
     const item = await this.stockItemRepo.findOne({
-      where: { id },
+      where: { id, companyId },
       relations: ["allocations", "movements"],
     });
     if (!item) {
@@ -81,46 +82,48 @@ export class InventoryService {
     return item;
   }
 
-  async update(id: number, data: Partial<StockItem>): Promise<StockItem> {
-    const item = await this.findById(id);
+  async update(companyId: number, id: number, data: Partial<StockItem>): Promise<StockItem> {
+    const item = await this.findById(companyId, id);
     Object.assign(item, data);
     return this.stockItemRepo.save(item);
   }
 
-  async remove(id: number): Promise<void> {
-    const item = await this.findById(id);
+  async remove(companyId: number, id: number): Promise<void> {
+    const item = await this.findById(companyId, id);
     await this.stockItemRepo.remove(item);
   }
 
-  async lowStockAlerts(): Promise<StockItem[]> {
+  async lowStockAlerts(companyId: number): Promise<StockItem[]> {
     const items = await this.stockItemRepo
       .createQueryBuilder("item")
-      .where("item.quantity <= item.min_stock_level")
+      .where("item.company_id = :companyId", { companyId })
+      .andWhere("item.quantity <= item.min_stock_level")
       .orderBy("item.quantity", "ASC")
       .getMany();
 
     return items;
   }
 
-  async categories(): Promise<string[]> {
+  async categories(companyId: number): Promise<string[]> {
     const result = await this.stockItemRepo
       .createQueryBuilder("item")
       .select("DISTINCT item.category", "category")
-      .where("item.category IS NOT NULL")
+      .where("item.company_id = :companyId", { companyId })
+      .andWhere("item.category IS NOT NULL")
       .orderBy("item.category", "ASC")
       .getRawMany();
 
     return result.map((r) => r.category);
   }
 
-  async adjustQuantity(id: number, delta: number): Promise<StockItem> {
-    const item = await this.findById(id);
+  async adjustQuantity(companyId: number, id: number, delta: number): Promise<StockItem> {
+    const item = await this.findById(companyId, id);
     item.quantity = Math.max(0, item.quantity + delta);
     return this.stockItemRepo.save(item);
   }
 
-  async bulkCreate(items: Partial<StockItem>[]): Promise<StockItem[]> {
-    const entities = items.map((data) => this.stockItemRepo.create(data));
+  async bulkCreate(companyId: number, items: Partial<StockItem>[]): Promise<StockItem[]> {
+    const entities = items.map((data) => this.stockItemRepo.create({ ...data, companyId }));
     return this.stockItemRepo.save(entities);
   }
 }

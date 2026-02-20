@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { StockItem } from "./stock-item.entity";
 import { JobCard } from "./job-card.entity";
+import { StockControlCompany } from "./stock-control-company.entity";
 
 @Entity("stock_allocations")
 export class StockAllocation {
@@ -32,6 +33,13 @@ export class StockAllocation {
 
   @Column({ name: "allocated_by", type: "varchar", length: 255, nullable: true })
   allocatedBy: string | null;
+
+  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company: StockControlCompany;
+
+  @Column({ name: "company_id" })
+  companyId: number;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

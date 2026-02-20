@@ -7,6 +7,7 @@ import { StockControlAuthController } from "./controllers/auth.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
 import { ImportController } from "./controllers/import.controller";
+import { InvitationController } from "./controllers/invitation.controller";
 import { InventoryController } from "./controllers/inventory.controller";
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
@@ -15,14 +16,18 @@ import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
 import { DeliveryNote } from "./entities/delivery-note.entity";
 import { JobCard } from "./entities/job-card.entity";
 import { StockAllocation } from "./entities/stock-allocation.entity";
+import { StockControlCompany } from "./entities/stock-control-company.entity";
+import { StockControlInvitation } from "./entities/stock-control-invitation.entity";
 import { StockControlUser } from "./entities/stock-control-user.entity";
 import { StockItem } from "./entities/stock-item.entity";
 import { StockMovement } from "./entities/stock-movement.entity";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
+import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
 import { DashboardService } from "./services/dashboard.service";
 import { DeliveryService } from "./services/delivery.service";
 import { ImportService } from "./services/import.service";
+import { StockControlInvitationService } from "./services/invitation.service";
 import { InventoryService } from "./services/inventory.service";
 import { JobCardService } from "./services/job-card.service";
 import { MovementService } from "./services/movement.service";
@@ -32,6 +37,8 @@ import { ReportsService } from "./services/reports.service";
   imports: [
     TypeOrmModule.forFeature([
       StockControlUser,
+      StockControlCompany,
+      StockControlInvitation,
       StockItem,
       JobCard,
       StockAllocation,
@@ -62,10 +69,13 @@ import { ReportsService } from "./services/reports.service";
     ImportController,
     DashboardController,
     ReportsController,
+    InvitationController,
   ],
   providers: [
     StockControlAuthGuard,
+    StockControlRoleGuard,
     StockControlAuthService,
+    StockControlInvitationService,
     InventoryService,
     JobCardService,
     DeliveryService,

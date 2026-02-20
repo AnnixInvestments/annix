@@ -2,11 +2,13 @@ import { Body, Controller, Post, Req, UploadedFile, UseGuards, UseInterceptors }
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { ImportService } from "../services/import.service";
 
 @ApiTags("Stock Control - Import")
 @Controller("stock-control/import")
-@UseGuards(StockControlAuthGuard)
+@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+@StockControlRoles("manager", "admin")
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
 
@@ -33,6 +35,6 @@ export class ImportController {
   @Post("confirm")
   @ApiOperation({ summary: "Confirm and import parsed rows into inventory" })
   async confirm(@Body() body: { rows: any[] }, @Req() req: any) {
-    return this.importService.importRows(body.rows, req.user.name);
+    return this.importService.importRows(req.user.companyId, body.rows, req.user.name);
   }
 }

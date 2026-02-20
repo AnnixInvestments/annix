@@ -27,6 +27,7 @@ export class StockControlAuthGuard implements CanActivate {
         email: payload.email,
         name: payload.name,
         role: payload.role,
+        companyId: payload.companyId,
       };
 
       return true;

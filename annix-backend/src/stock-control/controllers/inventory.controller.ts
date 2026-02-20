@@ -1,59 +1,64 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { InventoryService } from "../services/inventory.service";
 
 @ApiTags("Stock Control - Inventory")
 @Controller("stock-control/inventory")
-@UseGuards(StockControlAuthGuard)
+@UseGuards(StockControlAuthGuard, StockControlRoleGuard)
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Get()
   @ApiOperation({ summary: "List stock items with optional filters" })
   async list(
+    @Req() req: any,
     @Query("category") category?: string,
     @Query("belowMinStock") belowMinStock?: string,
     @Query("search") search?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
   ) {
-    return this.inventoryService.findAll({ category, belowMinStock, search, page, limit });
+    return this.inventoryService.findAll(req.user.companyId, { category, belowMinStock, search, page, limit });
   }
 
   @Get("low-stock")
   @ApiOperation({ summary: "Items below minimum stock level" })
-  async lowStock() {
-    return this.inventoryService.lowStockAlerts();
+  async lowStock(@Req() req: any) {
+    return this.inventoryService.lowStockAlerts(req.user.companyId);
   }
 
   @Get("categories")
   @ApiOperation({ summary: "Distinct stock item categories" })
-  async categories() {
-    return this.inventoryService.categories();
+  async categories(@Req() req: any) {
+    return this.inventoryService.categories(req.user.companyId);
   }
 
   @Get(":id")
   @ApiOperation({ summary: "Stock item by ID" })
-  async findById(@Param("id") id: number) {
-    return this.inventoryService.findById(id);
+  async findById(@Req() req: any, @Param("id") id: number) {
+    return this.inventoryService.findById(req.user.companyId, id);
   }
 
+  @StockControlRoles("manager", "admin")
   @Post()
   @ApiOperation({ summary: "Create a stock item" })
-  async create(@Body() body: any) {
-    return this.inventoryService.create(body);
+  async create(@Req() req: any, @Body() body: any) {
+    return this.inventoryService.create(req.user.companyId, body);
   }
 
+  @StockControlRoles("manager", "admin")
   @Put(":id")
   @ApiOperation({ summary: "Update a stock item" })
-  async update(@Param("id") id: number, @Body() body: any) {
-    return this.inventoryService.update(id, body);
+  async update(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.inventoryService.update(req.user.companyId, id, body);
   }
 
+  @StockControlRoles("manager", "admin")
   @Delete(":id")
   @ApiOperation({ summary: "Delete a stock item" })
-  async remove(@Param("id") id: number) {
-    return this.inventoryService.remove(id);
+  async remove(@Req() req: any, @Param("id") id: number) {
+    return this.inventoryService.remove(req.user.companyId, id);
   }
 }

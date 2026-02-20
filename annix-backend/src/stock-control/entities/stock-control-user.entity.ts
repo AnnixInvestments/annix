@@ -1,14 +1,10 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { StockControlCompany } from "./stock-control-company.entity";
 
 export enum StockControlRole {
   STOREMAN = "storeman",
   MANAGER = "manager",
   ADMIN = "admin",
-}
-
-export enum BrandingType {
-  ANNIX = "annix",
-  CUSTOM = "custom",
 }
 
 @Entity("stock_control_users")
@@ -37,14 +33,12 @@ export class StockControlUser {
   @Column({ name: "email_verification_expires", type: "timestamptz", nullable: true })
   emailVerificationExpires: Date | null;
 
-  @Column({ name: "branding_type", type: "varchar", length: 20, default: BrandingType.ANNIX })
-  brandingType: BrandingType;
+  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company: StockControlCompany;
 
-  @Column({ name: "website_url", type: "varchar", length: 500, nullable: true })
-  websiteUrl: string | null;
-
-  @Column({ name: "branding_authorized", type: "boolean", default: false })
-  brandingAuthorized: boolean;
+  @Column({ name: "company_id" })
+  companyId: number;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

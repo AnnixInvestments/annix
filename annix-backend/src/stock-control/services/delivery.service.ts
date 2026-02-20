@@ -19,7 +19,7 @@ export class DeliveryService {
     private readonly movementRepo: Repository<StockMovement>,
   ) {}
 
-  async create(data: {
+  async create(companyId: number, data: {
     deliveryNumber: string;
     supplierName: string;
     receivedDate?: Date;
@@ -35,11 +35,12 @@ export class DeliveryService {
       notes: data.notes || null,
       photoUrl: data.photoUrl || null,
       receivedBy: data.receivedBy || null,
+      companyId,
     });
     const savedNote = await this.deliveryNoteRepo.save(deliveryNote);
 
     const itemPromises = data.items.map(async (itemData) => {
-      const stockItem = await this.stockItemRepo.findOne({ where: { id: itemData.stockItemId } });
+      const stockItem = await this.stockItemRepo.findOne({ where: { id: itemData.stockItemId, companyId } });
       if (!stockItem) {
         throw new NotFoundException(`Stock item ${itemData.stockItemId} not found`);
       }
@@ -49,6 +50,7 @@ export class DeliveryService {
         stockItem,
         quantityReceived: itemData.quantityReceived,
         photoUrl: itemData.photoUrl || null,
+        companyId,
       });
       await this.deliveryNoteItemRepo.save(noteItem);
 
@@ -63,6 +65,7 @@ export class DeliveryService {
         referenceId: savedNote.id,
         notes: `Received via delivery ${data.deliveryNumber}`,
         createdBy: data.receivedBy || null,
+        companyId,
       });
       await this.movementRepo.save(movement);
 
@@ -71,19 +74,20 @@ export class DeliveryService {
 
     await Promise.all(itemPromises);
 
-    return this.findById(savedNote.id);
+    return this.findById(companyId, savedNote.id);
   }
 
-  async findAll(): Promise<DeliveryNote[]> {
+  async findAll(companyId: number): Promise<DeliveryNote[]> {
     return this.deliveryNoteRepo.find({
+      where: { companyId },
       relations: ["items", "items.stockItem"],
       order: { createdAt: "DESC" },
     });
   }
 
-  async findById(id: number): Promise<DeliveryNote> {
+  async findById(companyId: number, id: number): Promise<DeliveryNote> {
     const note = await this.deliveryNoteRepo.findOne({
-      where: { id },
+      where: { id, companyId },
       relations: ["items", "items.stockItem"],
     });
     if (!note) {
@@ -92,8 +96,8 @@ export class DeliveryService {
     return note;
   }
 
-  async remove(id: number): Promise<void> {
-    const note = await this.findById(id);
+  async remove(companyId: number, id: number): Promise<void> {
+    const note = await this.findById(companyId, id);
     await this.deliveryNoteRepo.remove(note);
   }
 }

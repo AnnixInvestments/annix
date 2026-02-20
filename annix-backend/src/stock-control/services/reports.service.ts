@@ -35,7 +35,7 @@ export class ReportsService {
     private readonly movementRepo: Repository<StockMovement>,
   ) {}
 
-  async costByJob(): Promise<CostByJob[]> {
+  async costByJob(companyId: number): Promise<CostByJob[]> {
     const result = await this.allocationRepo
       .createQueryBuilder("a")
       .innerJoin("a.jobCard", "j")
@@ -46,6 +46,7 @@ export class ReportsService {
       .addSelect("j.customer_name", "customerName")
       .addSelect("SUM(a.quantity_used * i.cost_per_unit)", "totalCost")
       .addSelect("SUM(a.quantity_used)", "totalItemsAllocated")
+      .where("a.company_id = :companyId", { companyId })
       .groupBy("j.id")
       .addGroupBy("j.job_number")
       .addGroupBy("j.job_name")
@@ -63,11 +64,12 @@ export class ReportsService {
     }));
   }
 
-  async stockValuation(): Promise<{
+  async stockValuation(companyId: number): Promise<{
     items: StockValuationItem[];
     totalValue: number;
   }> {
     const items = await this.stockItemRepo.find({
+      where: { companyId },
       order: { name: "ASC" },
     });
 
@@ -86,7 +88,7 @@ export class ReportsService {
     return { items: valuationItems, totalValue };
   }
 
-  async movementHistory(filters?: {
+  async movementHistory(companyId: number, filters?: {
     startDate?: string;
     endDate?: string;
     movementType?: string;
@@ -95,6 +97,7 @@ export class ReportsService {
     const query = this.movementRepo
       .createQueryBuilder("m")
       .leftJoinAndSelect("m.stockItem", "item")
+      .where("m.company_id = :companyId", { companyId })
       .orderBy("m.created_at", "DESC");
 
     if (filters?.startDate) {

@@ -1,12 +1,13 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { DeliveryNoteItem } from "./delivery-note-item.entity";
+import { StockControlCompany } from "./stock-control-company.entity";
 
 @Entity("delivery_notes")
 export class DeliveryNote {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: "delivery_number", type: "varchar", length: 100, unique: true })
+  @Column({ name: "delivery_number", type: "varchar", length: 100 })
   deliveryNumber: string;
 
   @Column({ name: "supplier_name", type: "varchar", length: 255 })
@@ -23,6 +24,13 @@ export class DeliveryNote {
 
   @Column({ name: "received_by", type: "varchar", length: 255, nullable: true })
   receivedBy: string | null;
+
+  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company: StockControlCompany;
+
+  @Column({ name: "company_id" })
+  companyId: number;
 
   @OneToMany(
     () => DeliveryNoteItem,

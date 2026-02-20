@@ -9,9 +9,10 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ReactNode;
+  roles?: string[];
 }
 
-const navItems: NavItem[] = [
+const allNavItems: NavItem[] = [
   {
     href: "/stock-control/portal/dashboard",
     label: "Dashboard",
@@ -71,6 +72,7 @@ const navItems: NavItem[] = [
   {
     href: "/stock-control/portal/reports",
     label: "Reports",
+    roles: ["manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -82,6 +84,27 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
+  {
+    href: "/stock-control/portal/settings",
+    label: "Settings",
+    roles: ["admin"],
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+      </svg>
+    ),
+  },
 ];
 
 export function StockControlSidebar() {
@@ -89,6 +112,11 @@ export function StockControlSidebar() {
   const { user, logout } = useStockControlAuth();
 
   const colors = corpId.colors.portal.stockControl;
+
+  const visibleNavItems = allNavItems.filter((item) => {
+    if (!item.roles) return true;
+    return user?.role ? item.roles.includes(user.role) : false;
+  });
 
   const isActive = (href: string) => {
     if (href === "/stock-control/portal/dashboard") {
@@ -125,25 +153,38 @@ export function StockControlSidebar() {
             {userInitials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
+            <p className="text-sm font-medium truncate" style={{ color: colors.sidebarText }}>
               {user?.name ?? "Stock Control"}
             </p>
-            <p className="text-xs text-gray-500 truncate">{user?.email ?? ""}</p>
+            <p className="text-xs truncate" style={{ color: colors.sidebarText, opacity: 0.6 }}>
+              {user?.email ?? ""}
+            </p>
           </div>
         </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-3">
         <div className="space-y-1">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className="flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors"
+              style={
                 isActive(item.href)
-                  ? "bg-teal-100 text-teal-800"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
+                  ? { backgroundColor: colors.sidebarActive, color: "#FFFFFF" }
+                  : { color: colors.sidebarText }
+              }
+              onMouseEnter={(e) => {
+                if (!isActive(item.href)) {
+                  e.currentTarget.style.backgroundColor = colors.sidebarHover;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive(item.href)) {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }
+              }}
             >
               <span className="mr-3">{item.icon}</span>
               {item.label}
@@ -155,7 +196,14 @@ export function StockControlSidebar() {
       <div className="p-3 border-t border-gray-200">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+          className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors"
+          style={{ color: colors.sidebarText }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colors.sidebarHover;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+          }}
         >
           <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path

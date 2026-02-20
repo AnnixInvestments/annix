@@ -1,14 +1,15 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { StockAllocation } from "./stock-allocation.entity";
 import { StockMovement } from "./stock-movement.entity";
 import { DeliveryNoteItem } from "./delivery-note-item.entity";
+import { StockControlCompany } from "./stock-control-company.entity";
 
 @Entity("stock_items")
 export class StockItem {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: "varchar", length: 100, unique: true })
+  @Column({ type: "varchar", length: 100 })
   sku: string;
 
   @Column({ type: "varchar", length: 255 })
@@ -37,6 +38,13 @@ export class StockItem {
 
   @Column({ name: "photo_url", type: "text", nullable: true })
   photoUrl: string | null;
+
+  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company: StockControlCompany;
+
+  @Column({ name: "company_id" })
+  companyId: number;
 
   @OneToMany(
     () => StockAllocation,

@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Controller, Get, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { DashboardService } from "../services/dashboard.service";
@@ -11,25 +11,25 @@ export class DashboardController {
 
   @Get("stats")
   @ApiOperation({ summary: "Dashboard statistics overview" })
-  async stats() {
-    return this.dashboardService.stats();
+  async stats(@Req() req: any) {
+    return this.dashboardService.stats(req.user.companyId);
   }
 
   @Get("soh-summary")
   @ApiOperation({ summary: "Stock on hand summary by category" })
-  async sohSummary() {
-    return this.dashboardService.sohSummary();
+  async sohSummary(@Req() req: any) {
+    return this.dashboardService.sohSummary(req.user.companyId);
   }
 
   @Get("recent-activity")
   @ApiOperation({ summary: "Recent stock movement activity" })
-  async recentActivity() {
-    return this.dashboardService.recentActivity();
+  async recentActivity(@Req() req: any) {
+    return this.dashboardService.recentActivity(req.user.companyId);
   }
 
   @Get("reorder-alerts")
   @ApiOperation({ summary: "Items that need reordering" })
-  async reorderAlerts() {
-    return this.dashboardService.reorderAlerts();
+  async reorderAlerts(@Req() req: any) {
+    return this.dashboardService.reorderAlerts(req.user.companyId);
   }
 }

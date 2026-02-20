@@ -276,6 +276,71 @@ export class EmailService {
 
   // Customer Portal Email Methods
 
+  async sendStockControlInvitationEmail(
+    email: string,
+    token: string,
+    companyName: string,
+    inviterName: string,
+    role: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const registerLink = `${frontendUrl}/stock-control/register?invitation=${token}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Team Invitation - ASCA Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #0d9488;">You've Been Invited!</h1>
+          <p><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> on ASCA Stock Control as a <strong>${role}</strong>.</p>
+          <p>As a team member, you'll be able to:</p>
+          <ul>
+            <li>Access the stock control system</li>
+            <li>Manage inventory and job cards</li>
+            <li>Track deliveries and stock movements</li>
+          </ul>
+          <p style="margin: 30px 0;">
+            <a href="${registerLink}"
+               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Accept Invitation
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${registerLink}</p>
+          <p style="color: #666; font-size: 14px;">This invitation will expire in 7 days.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not expect this invitation, please ignore this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      You've Been Invited to ASCA Stock Control
+
+      ${inviterName} has invited you to join ${companyName} as a ${role}.
+
+      Click here to accept: ${registerLink}
+
+      This invitation will expire in 7 days.
+
+      If you did not expect this invitation, please ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Team Invitation from ${companyName} - ASCA Stock Control`,
+      html,
+      text,
+    });
+  }
+
   async sendCustomerVerificationEmail(email: string, verificationToken: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/customer/verify-email?token=${verificationToken}`;

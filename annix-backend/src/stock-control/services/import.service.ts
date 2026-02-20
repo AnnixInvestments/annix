@@ -77,7 +77,7 @@ export class ImportService {
     return rows;
   }
 
-  async importRows(rows: ImportRow[], createdBy?: string): Promise<ImportResult> {
+  async importRows(companyId: number, rows: ImportRow[], createdBy?: string): Promise<ImportResult> {
     const result: ImportResult = {
       totalRows: rows.length,
       created: 0,
@@ -94,7 +94,7 @@ export class ImportService {
       }
 
       try {
-        const existing = await this.stockItemRepo.findOne({ where: { sku: row.sku } });
+        const existing = await this.stockItemRepo.findOne({ where: { sku: row.sku, companyId } });
 
         if (existing) {
           Object.assign(existing, {
@@ -118,6 +118,7 @@ export class ImportService {
               referenceType: ReferenceType.IMPORT,
               notes: "Updated via import",
               createdBy: createdBy || null,
+              companyId,
             });
             await this.movementRepo.save(movement);
           }
@@ -135,6 +136,7 @@ export class ImportService {
             quantity: row.quantity || 0,
             minStockLevel: row.minStockLevel || 0,
             location: row.location || null,
+            companyId,
           });
           const saved = await this.stockItemRepo.save(item);
 
@@ -146,6 +148,7 @@ export class ImportService {
               referenceType: ReferenceType.IMPORT,
               notes: "Initial import",
               createdBy: createdBy || null,
+              companyId,
             });
             await this.movementRepo.save(movement);
           }

@@ -11,9 +11,8 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  const [status, setStatus] = useState<"verifying" | "success" | "branding" | "complete" | "error">("verifying");
+  const [status, setStatus] = useState<"verifying" | "branding" | "complete" | "error">("verifying");
   const [message, setMessage] = useState("");
-  const [userId, setUserId] = useState<number | null>(null);
 
   const [brandingSelection, setBrandingSelection] = useState<BrandingSelection>(null);
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -31,8 +30,11 @@ function VerifyEmailContent() {
     stockControlApiClient
       .verifyEmail(token)
       .then((response) => {
-        setUserId(response.userId);
-        setStatus("branding");
+        if (response.needsBranding) {
+          setStatus("branding");
+        } else {
+          setStatus("complete");
+        }
         setMessage(response.message);
       })
       .catch((e) => {
@@ -51,7 +53,7 @@ function VerifyEmailContent() {
   };
 
   const handleContinue = async () => {
-    if (!brandingSelection || userId === null) return;
+    if (!brandingSelection) return;
 
     if (brandingSelection === "custom") {
       if (!websiteUrl.trim()) {
@@ -80,7 +82,6 @@ function VerifyEmailContent() {
           : undefined;
 
       await stockControlApiClient.setBranding({
-        userId,
         brandingType: brandingSelection,
         websiteUrl: normalizedUrl,
         brandingAuthorized: brandingSelection === "custom" ? brandingAuthorized : undefined,
@@ -264,7 +265,9 @@ function VerifyEmailContent() {
         {status === "complete" && (
           <div className="bg-white py-8 px-4 shadow-2xl rounded-lg sm:px-10">
             <div className="text-center">
-              <p className="text-gray-700">Your branding preference has been saved. You can now sign in.</p>
+              <p className="text-gray-700">
+                {message || "Your email has been verified. You can now sign in."}
+              </p>
               <Link
                 href="/stock-control/login"
                 className="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors"

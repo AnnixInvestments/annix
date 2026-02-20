@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { DeliveryNote } from "./delivery-note.entity";
 import { StockItem } from "./stock-item.entity";
+import { StockControlCompany } from "./stock-control-company.entity";
 
 @Entity("delivery_note_items")
 export class DeliveryNoteItem {
@@ -26,4 +27,11 @@ export class DeliveryNoteItem {
 
   @Column({ name: "photo_url", type: "text", nullable: true })
   photoUrl: string | null;
+
+  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company: StockControlCompany;
+
+  @Column({ name: "company_id" })
+  companyId: number;
 }

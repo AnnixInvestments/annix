@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { StockItem } from "./stock-item.entity";
+import { StockControlCompany } from "./stock-control-company.entity";
 
 export enum MovementType {
   IN = "in",
@@ -43,6 +44,13 @@ export class StockMovement {
 
   @Column({ name: "created_by", type: "varchar", length: 255, nullable: true })
   createdBy: string | null;
+
+  @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company: StockControlCompany;
+
+  @Column({ name: "company_id" })
+  companyId: number;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
+import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
 
 @ApiTags("Stock Control - Auth")
@@ -10,8 +11,10 @@ export class StockControlAuthController {
 
   @Post("register")
   @ApiOperation({ summary: "Register a new stock control user" })
-  async register(@Body() body: { email: string; password: string; name: string; role?: string }) {
-    return this.authService.register(body.email, body.password, body.name, body.role as any);
+  async register(
+    @Body() body: { email: string; password: string; name: string; companyName?: string; invitationToken?: string },
+  ) {
+    return this.authService.register(body.email, body.password, body.name, body.companyName, body.invitationToken);
   }
 
   @Get("verify-email")
@@ -38,12 +41,15 @@ export class StockControlAuthController {
     return this.authService.refreshToken(body.refreshToken);
   }
 
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
   @Post("set-branding")
-  @ApiOperation({ summary: "Set branding preference for a user" })
+  @ApiOperation({ summary: "Set branding preference for company" })
   async setBranding(
-    @Body() body: { userId: number; brandingType: string; websiteUrl?: string; brandingAuthorized?: boolean },
+    @Req() req: any,
+    @Body() body: { brandingType: string; websiteUrl?: string; brandingAuthorized?: boolean },
   ) {
-    return this.authService.setBranding(body.userId, body.brandingType, body.websiteUrl, body.brandingAuthorized);
+    return this.authService.setBranding(req.user.companyId, body.brandingType, body.websiteUrl, body.brandingAuthorized);
   }
 
   @UseGuards(StockControlAuthGuard)
@@ -51,6 +57,22 @@ export class StockControlAuthController {
   @ApiOperation({ summary: "Current user profile" })
   async currentUser(@Req() req: any) {
     return this.authService.currentUser(req.user.id);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Get("team")
+  @ApiOperation({ summary: "List team members" })
+  async teamMembers(@Req() req: any) {
+    return this.authService.teamMembers(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Patch("team/:id/role")
+  @ApiOperation({ summary: "Update team member role" })
+  async updateMemberRole(@Req() req: any, @Param("id") id: number, @Body() body: { role: string }) {
+    return this.authService.updateMemberRole(req.user.companyId, id, body.role as any);
   }
 
   @UseGuards(StockControlAuthGuard)

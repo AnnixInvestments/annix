@@ -13,14 +13,14 @@ export class MovementService {
     private readonly stockItemRepo: Repository<StockItem>,
   ) {}
 
-  async findAll(filters?: {
+  async findAll(companyId: number, filters?: {
     stockItemId?: number;
     movementType?: MovementType;
     startDate?: string;
     endDate?: string;
     limit?: number;
   }): Promise<StockMovement[]> {
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { companyId };
 
     if (filters?.stockItemId) {
       where.stockItem = { id: filters.stockItemId };
@@ -42,14 +42,14 @@ export class MovementService {
     });
   }
 
-  async createManualAdjustment(data: {
+  async createManualAdjustment(companyId: number, data: {
     stockItemId: number;
     movementType: MovementType;
     quantity: number;
     notes?: string;
     createdBy?: string;
   }): Promise<StockMovement> {
-    const stockItem = await this.stockItemRepo.findOne({ where: { id: data.stockItemId } });
+    const stockItem = await this.stockItemRepo.findOne({ where: { id: data.stockItemId, companyId } });
     if (!stockItem) {
       throw new NotFoundException("Stock item not found");
     }
@@ -71,14 +71,15 @@ export class MovementService {
       referenceType: ReferenceType.MANUAL,
       notes: data.notes || null,
       createdBy: data.createdBy || null,
+      companyId,
     });
 
     return this.movementRepo.save(movement);
   }
 
-  async movementsByItem(stockItemId: number): Promise<StockMovement[]> {
+  async movementsByItem(companyId: number, stockItemId: number): Promise<StockMovement[]> {
     return this.movementRepo.find({
-      where: { stockItem: { id: stockItemId } },
+      where: { stockItem: { id: stockItemId }, companyId },
       order: { createdAt: "DESC" },
     });
   }

@@ -23,6 +23,39 @@ export interface StockControlUserProfile {
   email: string;
   name: string;
   role: string;
+  companyId: number;
+  companyName: string | null;
+  brandingType: string;
+  createdAt: string;
+}
+
+export interface StockControlCompany {
+  id: number;
+  name: string;
+  brandingType: string;
+  websiteUrl: string | null;
+  brandingAuthorized: boolean;
+}
+
+export interface StockControlInvitation {
+  id: number;
+  companyId: number;
+  invitedById: number;
+  email: string;
+  token: string;
+  role: string;
+  status: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  createdAt: string;
+  invitedBy?: { name: string; email: string };
+}
+
+export interface StockControlTeamMember {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
   createdAt: string;
 }
 
@@ -147,6 +180,14 @@ export interface ImportResult {
   created: number;
   updated: number;
   errors: { row: number; message: string }[];
+}
+
+export interface InvitationValidation {
+  valid: boolean;
+  email?: string;
+  role?: string;
+  companyName?: string | null;
+  status?: string;
 }
 
 const TOKEN_KEYS = {
@@ -305,20 +346,20 @@ class StockControlApiClient {
     email: string;
     password: string;
     name: string;
-    role?: string;
-  }): Promise<{ message: string; user: StockControlUser }> {
+    companyName?: string;
+    invitationToken?: string;
+  }): Promise<{ message: string; user: StockControlUser; isInvitedUser: boolean }> {
     return this.request("/stock-control/auth/register", {
       method: "POST",
       body: JSON.stringify(dto),
     });
   }
 
-  async verifyEmail(token: string): Promise<{ message: string; userId: number; email: string }> {
+  async verifyEmail(token: string): Promise<{ message: string; userId: number; email: string; needsBranding: boolean }> {
     return this.request(`/stock-control/auth/verify-email?token=${encodeURIComponent(token)}`);
   }
 
   async setBranding(data: {
-    userId: number;
     brandingType: string;
     websiteUrl?: string;
     brandingAuthorized?: boolean;
@@ -346,6 +387,40 @@ class StockControlApiClient {
 
   async currentUser(): Promise<StockControlUserProfile> {
     return this.request<StockControlUserProfile>("/stock-control/auth/me");
+  }
+
+  async teamMembers(): Promise<StockControlTeamMember[]> {
+    return this.request("/stock-control/auth/team");
+  }
+
+  async updateMemberRole(userId: number, role: string): Promise<{ message: string }> {
+    return this.request(`/stock-control/auth/team/${userId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async companyInvitations(): Promise<StockControlInvitation[]> {
+    return this.request("/stock-control/invitations");
+  }
+
+  async createInvitation(email: string, role: string): Promise<StockControlInvitation> {
+    return this.request("/stock-control/invitations", {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    });
+  }
+
+  async cancelInvitation(id: number): Promise<{ message: string }> {
+    return this.request(`/stock-control/invitations/${id}`, { method: "DELETE" });
+  }
+
+  async resendInvitation(id: number): Promise<StockControlInvitation> {
+    return this.request(`/stock-control/invitations/${id}/resend`, { method: "POST" });
+  }
+
+  async validateInvitation(token: string): Promise<InvitationValidation> {
+    return this.request(`/stock-control/invitations/validate/${encodeURIComponent(token)}`);
   }
 
   async stockItems(params?: {
