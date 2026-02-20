@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@annix/claude-swarm':
-        specifier: 0.1.9
-        version: 0.1.9(@types/node@25.0.9)
+        specifier: 0.1.10
+        version: 0.1.10(@types/node@25.0.9)
       '@biomejs/biome':
         specifier: ^2.3.14
         version: 2.3.14
@@ -467,8 +467,8 @@ packages:
     resolution: {integrity: sha512-J4Jarr0SohdrHcb40gTL4wGPCQ952IMWF1G/MSAQfBAPvA9ZKApYhpxcY7PmehVePve+ujpus1dGsJ7dPxz8Kg==}
     engines: {node: ^18.19.1 || ^20.11.1 || >=22.0.0, npm: ^6.11.0 || ^7.5.6 || >=8.0.0, yarn: '>= 1.13.0'}
 
-  '@annix/claude-swarm@0.1.9':
-    resolution: {integrity: sha512-BEtueDX4rbpEEHPCCbGfrQTtv+B1QvBcltLKY1l1f2VhdqZesEJCE/cXDckFbWwDEzHMWMr/9LT5/efIeaf2Ow==}
+  '@annix/claude-swarm@0.1.10':
+    resolution: {integrity: sha512-fKWtQ40tgBhG1JTkiwSloa5Hy4OpJrvQYVa/u5M6gICmoILkbabppFXJ1U43BUAvz56Qs7+olxQMDtZBQ1LnMw==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -7919,7 +7919,7 @@ snapshots:
     transitivePeerDependencies:
       - chokidar
 
-  '@annix/claude-swarm@0.1.9(@types/node@25.0.9)':
+  '@annix/claude-swarm@0.1.10(@types/node@25.0.9)':
     dependencies:
       '@inquirer/prompts': 8.2.0(@types/node@25.0.9)
       chalk: 5.6.2
