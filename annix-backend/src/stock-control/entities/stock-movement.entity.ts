@@ -1,6 +1,13 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { StockItem } from "./stock-item.entity";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { StockControlCompany } from "./stock-control-company.entity";
+import { StockItem } from "./stock-item.entity";
 
 export enum MovementType {
   IN = "in",

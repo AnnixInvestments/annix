@@ -51,7 +51,7 @@ export class ReportsService {
       .addGroupBy("j.job_number")
       .addGroupBy("j.job_name")
       .addGroupBy("j.customer_name")
-      .orderBy("\"totalCost\"", "DESC")
+      .orderBy('"totalCost"', "DESC")
       .getRawMany();
 
     return result.map((r) => ({
@@ -88,12 +88,15 @@ export class ReportsService {
     return { items: valuationItems, totalValue };
   }
 
-  async movementHistory(companyId: number, filters?: {
-    startDate?: string;
-    endDate?: string;
-    movementType?: string;
-    stockItemId?: number;
-  }): Promise<StockMovement[]> {
+  async movementHistory(
+    companyId: number,
+    filters?: {
+      startDate?: string;
+      endDate?: string;
+      movementType?: string;
+      stockItemId?: number;
+    },
+  ): Promise<StockMovement[]> {
     const query = this.movementRepo
       .createQueryBuilder("m")
       .leftJoinAndSelect("m.stockItem", "item")

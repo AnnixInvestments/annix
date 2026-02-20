@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef } from "react";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useRef, useState } from "react";
 import type { ImportResult } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 type ImportStep = "upload" | "preview" | "result";
 
@@ -86,25 +86,39 @@ export default function ImportPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <Link
-          href="/stock-control/portal/inventory"
-          className="text-gray-500 hover:text-gray-700"
-        >
+        <Link href="/stock-control/portal/inventory" className="text-gray-500 hover:text-gray-700">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </Link>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Import Stock Items</h1>
-          <p className="mt-1 text-sm text-gray-600">Upload an Excel or PDF file to import stock items</p>
+          <p className="mt-1 text-sm text-gray-600">
+            Upload an Excel or PDF file to import stock items
+          </p>
         </div>
       </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex">
-            <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-5 h-5 text-red-600 mr-2 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <p className="text-sm text-red-700">{error}</p>
           </div>
@@ -139,8 +153,18 @@ export default function ImportPage() {
                 </div>
               ) : (
                 <>
-                  <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  <svg
+                    className="mx-auto h-16 w-16 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
                   </svg>
                   <p className="mt-4 text-lg font-medium text-gray-900">
                     Drop your file here, or click to browse
@@ -184,16 +208,27 @@ export default function ImportPage() {
             {parsedRows.length === 0 ? (
               <div className="text-center py-12">
                 <h3 className="text-sm font-medium text-gray-900">No data found</h3>
-                <p className="mt-1 text-sm text-gray-500">The uploaded file contained no parseable rows.</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  The uploaded file contained no parseable rows.
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Row</th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Row
+                      </th>
                       {columnHeaders.map((header) => (
-                        <th key={header} scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th
+                          key={header}
+                          scope="col"
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
                           {header}
                         </th>
                       ))}
@@ -202,9 +237,14 @@ export default function ImportPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {parsedRows.map((row, index) => (
                       <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                          {index + 1}
+                        </td>
                         {columnHeaders.map((header) => (
-                          <td key={header} className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                          <td
+                            key={header}
+                            className="px-4 py-3 whitespace-nowrap text-sm text-gray-900"
+                          >
                             {String(row[header] ?? "")}
                           </td>
                         ))}

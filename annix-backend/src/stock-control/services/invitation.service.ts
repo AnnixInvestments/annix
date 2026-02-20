@@ -4,7 +4,10 @@ import { Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
-import { StockControlInvitation, StockControlInvitationStatus } from "../entities/stock-control-invitation.entity";
+import {
+  StockControlInvitation,
+  StockControlInvitationStatus,
+} from "../entities/stock-control-invitation.entity";
 import { StockControlUser } from "../entities/stock-control-user.entity";
 
 const INVITATION_EXPIRY_DAYS = 7;
@@ -23,7 +26,12 @@ export class StockControlInvitationService {
     private readonly emailService: EmailService,
   ) {}
 
-  async create(companyId: number, invitedById: number, email: string, role: string): Promise<StockControlInvitation> {
+  async create(
+    companyId: number,
+    invitedById: number,
+    email: string,
+    role: string,
+  ): Promise<StockControlInvitation> {
     const existingUser = await this.userRepo.findOne({ where: { email, companyId } });
     if (existingUser) {
       throw new ConflictException("User is already a member of this company");
@@ -80,7 +88,11 @@ export class StockControlInvitationService {
       relations: ["company"],
     });
 
-    if (invitation && invitation.status === StockControlInvitationStatus.PENDING && new Date() > invitation.expiresAt) {
+    if (
+      invitation &&
+      invitation.status === StockControlInvitationStatus.PENDING &&
+      new Date() > invitation.expiresAt
+    ) {
       invitation.status = StockControlInvitationStatus.EXPIRED;
       await this.invitationRepo.save(invitation);
     }
@@ -89,7 +101,9 @@ export class StockControlInvitationService {
   }
 
   async cancel(companyId: number, invitationId: number): Promise<void> {
-    const invitation = await this.invitationRepo.findOne({ where: { id: invitationId, companyId } });
+    const invitation = await this.invitationRepo.findOne({
+      where: { id: invitationId, companyId },
+    });
     if (!invitation) {
       throw new NotFoundException("Invitation not found");
     }

@@ -15,13 +15,16 @@ export class InventoryService {
     return this.stockItemRepo.save(item);
   }
 
-  async findAll(companyId: number, filters?: {
-    category?: string;
-    belowMinStock?: string;
-    search?: string;
-    page?: string;
-    limit?: string;
-  }): Promise<{ items: StockItem[]; total: number }> {
+  async findAll(
+    companyId: number,
+    filters?: {
+      category?: string;
+      belowMinStock?: string;
+      search?: string;
+      page?: string;
+      limit?: string;
+    },
+  ): Promise<{ items: StockItem[]; total: number }> {
     const page = Math.max(1, Number(filters?.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(filters?.limit) || 50));
     const skip = (page - 1) * limit;

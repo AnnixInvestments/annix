@@ -55,7 +55,9 @@ export function StockItemModal({ isOpen, onClose, onSave, item }: StockItemModal
     }
   }, [item, isOpen]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -138,7 +140,9 @@ export function StockItemModal({ isOpen, onClose, onSave, item }: StockItemModal
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Unit of Measure</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unit of Measure
+                  </label>
                   <select
                     name="unitOfMeasure"
                     value={form.unitOfMeasure}
@@ -157,7 +161,9 @@ export function StockItemModal({ isOpen, onClose, onSave, item }: StockItemModal
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cost per Unit</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Cost per Unit
+                  </label>
                   <input
                     type="number"
                     name="costPerUnit"
@@ -180,7 +186,9 @@ export function StockItemModal({ isOpen, onClose, onSave, item }: StockItemModal
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Stock Level</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Min Stock Level
+                  </label>
                   <input
                     type="number"
                     name="minStockLevel"

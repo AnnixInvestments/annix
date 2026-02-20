@@ -13,13 +13,16 @@ export class MovementService {
     private readonly stockItemRepo: Repository<StockItem>,
   ) {}
 
-  async findAll(companyId: number, filters?: {
-    stockItemId?: number;
-    movementType?: MovementType;
-    startDate?: string;
-    endDate?: string;
-    limit?: number;
-  }): Promise<StockMovement[]> {
+  async findAll(
+    companyId: number,
+    filters?: {
+      stockItemId?: number;
+      movementType?: MovementType;
+      startDate?: string;
+      endDate?: string;
+      limit?: number;
+    },
+  ): Promise<StockMovement[]> {
     const where: Record<string, unknown> = { companyId };
 
     if (filters?.stockItemId) {
@@ -42,14 +45,19 @@ export class MovementService {
     });
   }
 
-  async createManualAdjustment(companyId: number, data: {
-    stockItemId: number;
-    movementType: MovementType;
-    quantity: number;
-    notes?: string;
-    createdBy?: string;
-  }): Promise<StockMovement> {
-    const stockItem = await this.stockItemRepo.findOne({ where: { id: data.stockItemId, companyId } });
+  async createManualAdjustment(
+    companyId: number,
+    data: {
+      stockItemId: number;
+      movementType: MovementType;
+      quantity: number;
+      notes?: string;
+      createdBy?: string;
+    },
+  ): Promise<StockMovement> {
+    const stockItem = await this.stockItemRepo.findOne({
+      where: { id: data.stockItemId, companyId },
+    });
     if (!stockItem) {
       throw new NotFoundException("Stock item not found");
     }

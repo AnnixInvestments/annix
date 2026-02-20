@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import {
   StockControlInvitation,
@@ -166,7 +166,11 @@ export default function StockControlSettingsPage() {
   };
 
   const roleLabel = (role: string) => {
-    const labels: Record<string, string> = { admin: "Admin", manager: "Manager", storeman: "Storeman" };
+    const labels: Record<string, string> = {
+      admin: "Admin",
+      manager: "Manager",
+      storeman: "Storeman",
+    };
     return labels[role] || role;
   };
 
@@ -196,7 +200,12 @@ export default function StockControlSettingsPage() {
             }`}
           >
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-teal-100 mb-3">
-              <svg className="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-6 h-6 text-teal-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -206,7 +215,9 @@ export default function StockControlSettingsPage() {
               </svg>
             </div>
             <h3 className="text-base font-semibold text-gray-900">Annix Branding</h3>
-            <p className="mt-1 text-sm text-gray-500 text-center">Default ASCA corporate identity</p>
+            <p className="mt-1 text-sm text-gray-500 text-center">
+              Default ASCA corporate identity
+            </p>
             {brandingSelection === "annix" && (
               <div className="absolute top-2 right-2">
                 <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
@@ -234,7 +245,12 @@ export default function StockControlSettingsPage() {
             }`}
           >
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 mb-3">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-6 h-6 text-purple-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -288,15 +304,17 @@ export default function StockControlSettingsPage() {
                 className="mt-0.5 h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
               />
               <span className="text-sm text-gray-600">
-                I authorize ASCA to access my website to extract branding elements (logo, colors) for use within this
-                application
+                I authorize ASCA to access my website to extract branding elements (logo, colors)
+                for use within this application
               </span>
             </label>
           </div>
         )}
 
         {brandingError && <p className="mt-3 text-sm text-red-600">{brandingError}</p>}
-        {brandingSuccess && <p className="mt-3 text-sm text-green-600">Branding preference saved successfully.</p>}
+        {brandingSuccess && (
+          <p className="mt-3 text-sm text-green-600">Branding preference saved successfully.</p>
+        )}
 
         <button
           type="button"
@@ -363,10 +381,18 @@ export default function StockControlSettingsPage() {
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">Role</th>
-                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">Joined</th>
+                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">
+                      Name
+                    </th>
+                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">
+                      Email
+                    </th>
+                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">
+                      Role
+                    </th>
+                    <th className="text-left py-3 px-2 text-xs font-medium text-gray-500 uppercase">
+                      Joined
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

@@ -9,12 +9,15 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
-import { v4 as uuidv4 } from "uuid";
 import { MoreThan, Repository } from "typeorm";
+import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
-import { StockControlUser, StockControlRole } from "../entities/stock-control-user.entity";
-import { StockControlCompany, BrandingType } from "../entities/stock-control-company.entity";
-import { StockControlInvitation, StockControlInvitationStatus } from "../entities/stock-control-invitation.entity";
+import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
+import {
+  StockControlInvitation,
+  StockControlInvitationStatus,
+} from "../entities/stock-control-invitation.entity";
+import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
 
@@ -118,7 +121,9 @@ export class StockControlAuthService {
     });
 
     if (!user) {
-      throw new BadRequestException("Invalid or expired verification link. Please request a new one.");
+      throw new BadRequestException(
+        "Invalid or expired verification link. Please request a new one.",
+      );
     }
 
     const isInvitedUser = user.role !== StockControlRole.ADMIN;
@@ -250,9 +255,11 @@ export class StockControlAuthService {
       throw new NotFoundException("Company not found");
     }
 
-    company.brandingType = brandingType === BrandingType.CUSTOM ? BrandingType.CUSTOM : BrandingType.ANNIX;
+    company.brandingType =
+      brandingType === BrandingType.CUSTOM ? BrandingType.CUSTOM : BrandingType.ANNIX;
     company.websiteUrl = brandingType === BrandingType.CUSTOM ? (websiteUrl ?? null) : null;
-    company.brandingAuthorized = brandingType === BrandingType.CUSTOM ? (brandingAuthorized ?? false) : false;
+    company.brandingAuthorized =
+      brandingType === BrandingType.CUSTOM ? (brandingAuthorized ?? false) : false;
     await this.companyRepo.save(company);
 
     return { message: "Branding preference saved successfully." };
@@ -284,7 +291,9 @@ export class StockControlAuthService {
       throw new BadRequestException(`Invalid role. Must be one of: ${validRoles.join(", ")}`);
     }
 
-    const admins = await this.userRepo.count({ where: { companyId, role: StockControlRole.ADMIN } });
+    const admins = await this.userRepo.count({
+      where: { companyId, role: StockControlRole.ADMIN },
+    });
     if (user.role === StockControlRole.ADMIN && role !== StockControlRole.ADMIN && admins <= 1) {
       throw new ForbiddenException("Cannot change role of the only admin");
     }

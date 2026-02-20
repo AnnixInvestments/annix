@@ -221,7 +221,10 @@ export class EmailService {
     });
   }
 
-  async sendStockControlVerificationEmail(email: string, verificationToken: string): Promise<boolean> {
+  async sendStockControlVerificationEmail(
+    email: string,
+    verificationToken: string,
+  ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/stock-control/verify-email?token=${verificationToken}`;
 

@@ -33,7 +33,10 @@ export function ReorderAlert({ items }: ReorderAlertProps) {
           </h3>
           <ul className="mt-2 space-y-1">
             {items.map((item) => (
-              <li key={item.id} className="text-sm text-amber-700 flex items-center justify-between">
+              <li
+                key={item.id}
+                className="text-sm text-amber-700 flex items-center justify-between"
+              >
                 <span className="truncate mr-2">{item.name}</span>
                 <span className="flex-shrink-0 font-medium">
                   {item.quantity} / {item.minStockLevel}

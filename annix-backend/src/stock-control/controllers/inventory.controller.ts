@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
@@ -20,7 +31,13 @@ export class InventoryController {
     @Query("page") page?: string,
     @Query("limit") limit?: string,
   ) {
-    return this.inventoryService.findAll(req.user.companyId, { category, belowMinStock, search, page, limit });
+    return this.inventoryService.findAll(req.user.companyId, {
+      category,
+      belowMinStock,
+      search,
+      page,
+      limit,
+    });
   }
 
   @Get("low-stock")

@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { DeliveryNote } from "./delivery-note.entity";
-import { StockItem } from "./stock-item.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
+import { StockItem } from "./stock-item.entity";
 
 @Entity("delivery_note_items")
 export class DeliveryNoteItem {

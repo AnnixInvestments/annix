@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { JobCard, JobCardStatus } from "../entities/job-card.entity";
+import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -57,15 +57,20 @@ export class JobCardService {
     await this.jobCardRepo.remove(jobCard);
   }
 
-  async allocateStock(companyId: number, data: {
-    stockItemId: number;
-    jobCardId: number;
-    quantityUsed: number;
-    photoUrl?: string;
-    notes?: string;
-    allocatedBy?: string;
-  }): Promise<StockAllocation> {
-    const stockItem = await this.stockItemRepo.findOne({ where: { id: data.stockItemId, companyId } });
+  async allocateStock(
+    companyId: number,
+    data: {
+      stockItemId: number;
+      jobCardId: number;
+      quantityUsed: number;
+      photoUrl?: string;
+      notes?: string;
+      allocatedBy?: string;
+    },
+  ): Promise<StockAllocation> {
+    const stockItem = await this.stockItemRepo.findOne({
+      where: { id: data.stockItemId, companyId },
+    });
     if (!stockItem) {
       throw new NotFoundException("Stock item not found");
     }

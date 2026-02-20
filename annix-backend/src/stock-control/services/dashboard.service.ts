@@ -64,7 +64,9 @@ export class DashboardService {
     };
   }
 
-  async sohSummary(companyId: number): Promise<{ category: string; totalQuantity: number; totalValue: number }[]> {
+  async sohSummary(
+    companyId: number,
+  ): Promise<{ category: string; totalQuantity: number; totalValue: number }[]> {
     const result = await this.stockItemRepo
       .createQueryBuilder("item")
       .select("COALESCE(item.category, 'Uncategorized')", "category")

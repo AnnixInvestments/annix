@@ -117,7 +117,13 @@ export const corpId = {
   },
 } as const;
 
-export type PortalType = "admin" | "customer" | "supplier" | "auRubber" | "annixRep" | "stockControl";
+export type PortalType =
+  | "admin"
+  | "customer"
+  | "supplier"
+  | "auRubber"
+  | "annixRep"
+  | "stockControl";
 
 export const portalConfig = {
   admin: {

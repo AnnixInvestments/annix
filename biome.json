@@ -103,7 +103,8 @@
       "!**/*.config.js",
       "!**/*.config.mjs",
       "!**/*.config.ts",
-      "!**/scripts/test-pipe-calculations.ts"
+      "!**/scripts/test-pipe-calculations.ts",
+      "!voice-filter"
     ]
   }
 }

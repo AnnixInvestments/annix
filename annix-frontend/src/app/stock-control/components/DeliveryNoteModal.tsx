@@ -102,7 +102,9 @@ export function DeliveryNoteModal({ isOpen, onClose, onSave, stockItems }: Deliv
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Delivery Number
+                  </label>
                   <input
                     type="text"
                     name="deliveryNumber"
@@ -113,7 +115,9 @@ export function DeliveryNoteModal({ isOpen, onClose, onSave, stockItems }: Deliv
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Supplier Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Supplier Name
+                  </label>
                   <input
                     type="text"
                     name="supplierName"
@@ -155,7 +159,12 @@ export function DeliveryNoteModal({ isOpen, onClose, onSave, stockItems }: Deliv
                     onClick={addLineItem}
                     className="inline-flex items-center px-3 py-1 text-sm font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100"
                   >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      className="w-4 h-4 mr-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -173,7 +182,9 @@ export function DeliveryNoteModal({ isOpen, onClose, onSave, stockItems }: Deliv
                       <div className="flex-1">
                         <select
                           value={lineItem.stockItemId ?? ""}
-                          onChange={(e) => handleLineItemChange(index, "stockItemId", e.target.value)}
+                          onChange={(e) =>
+                            handleLineItemChange(index, "stockItemId", e.target.value)
+                          }
                           required
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm"
                         >
@@ -202,7 +213,12 @@ export function DeliveryNoteModal({ isOpen, onClose, onSave, stockItems }: Deliv
                           onClick={() => removeLineItem(index)}
                           className="p-1 text-red-400 hover:text-red-600"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"

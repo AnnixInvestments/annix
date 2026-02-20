@@ -28,7 +28,9 @@ export function AllocationModal({ isOpen, onClose, onSave, stockItems }: Allocat
 
   const selectedItem = stockItems.find((item) => item.id === form.stockItemId) ?? null;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
     if (name === "stockItemId") {
       setForm((prev) => ({ ...prev, stockItemId: value ? Number(value) : null }));

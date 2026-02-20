@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState, useCallback } from "react";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useCallback, useEffect, useState } from "react";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
 export default function DeliveryDetailPage() {
@@ -49,7 +49,10 @@ export default function DeliveryDetailPage() {
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
           <p className="text-gray-600">{error?.message || "Delivery note not found"}</p>
-          <Link href="/stock-control/portal/deliveries" className="mt-4 inline-block text-teal-600 hover:text-teal-800">
+          <Link
+            href="/stock-control/portal/deliveries"
+            className="mt-4 inline-block text-teal-600 hover:text-teal-800"
+          >
             Back to Deliveries
           </Link>
         </div>
@@ -60,12 +63,14 @@ export default function DeliveryDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <Link
-          href="/stock-control/portal/deliveries"
-          className="text-gray-500 hover:text-gray-700"
-        >
+        <Link href="/stock-control/portal/deliveries" className="text-gray-500 hover:text-gray-700">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </Link>
         <div>
@@ -133,10 +138,20 @@ export default function DeliveryDetailPage() {
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Delivered Items</h3>
         </div>
-        {(!delivery.items || delivery.items.length === 0) ? (
+        {!delivery.items || delivery.items.length === 0 ? (
           <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+              />
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">No items</h3>
             <p className="mt-1 text-sm text-gray-500">This delivery note has no items.</p>
@@ -145,9 +160,24 @@ export default function DeliveryDetailPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Received</th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Item Name
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  SKU
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Qty Received
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">

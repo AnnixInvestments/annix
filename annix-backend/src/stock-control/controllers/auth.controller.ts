@@ -12,9 +12,21 @@ export class StockControlAuthController {
   @Post("register")
   @ApiOperation({ summary: "Register a new stock control user" })
   async register(
-    @Body() body: { email: string; password: string; name: string; companyName?: string; invitationToken?: string },
+    @Body() body: {
+      email: string;
+      password: string;
+      name: string;
+      companyName?: string;
+      invitationToken?: string;
+    },
   ) {
-    return this.authService.register(body.email, body.password, body.name, body.companyName, body.invitationToken);
+    return this.authService.register(
+      body.email,
+      body.password,
+      body.name,
+      body.companyName,
+      body.invitationToken,
+    );
   }
 
   @Get("verify-email")
@@ -49,7 +61,12 @@ export class StockControlAuthController {
     @Req() req: any,
     @Body() body: { brandingType: string; websiteUrl?: string; brandingAuthorized?: boolean },
   ) {
-    return this.authService.setBranding(req.user.companyId, body.brandingType, body.websiteUrl, body.brandingAuthorized);
+    return this.authService.setBranding(
+      req.user.companyId,
+      body.brandingType,
+      body.websiteUrl,
+      body.brandingAuthorized,
+    );
   }
 
   @UseGuards(StockControlAuthGuard)

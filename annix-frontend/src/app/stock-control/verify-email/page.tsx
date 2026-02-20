@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import React, { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 type BrandingSelection = "annix" | "custom" | null;
@@ -11,7 +11,9 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
-  const [status, setStatus] = useState<"verifying" | "branding" | "complete" | "error">("verifying");
+  const [status, setStatus] = useState<"verifying" | "branding" | "complete" | "error">(
+    "verifying",
+  );
   const [message, setMessage] = useState("");
 
   const [brandingSelection, setBrandingSelection] = useState<BrandingSelection>(null);
@@ -104,13 +106,33 @@ function VerifyEmailContent() {
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-white"></div>
             )}
             {(status === "branding" || status === "complete") && (
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <svg
+                className="w-10 h-10 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             )}
             {status === "error" && (
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-10 h-10 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             )}
           </div>
@@ -126,7 +148,9 @@ function VerifyEmailContent() {
         </div>
       </div>
 
-      <div className={`mt-8 sm:mx-auto sm:w-full ${status === "branding" ? "sm:max-w-2xl" : "sm:max-w-md"}`}>
+      <div
+        className={`mt-8 sm:mx-auto sm:w-full ${status === "branding" ? "sm:max-w-2xl" : "sm:max-w-md"}`}
+      >
         {status === "verifying" && (
           <div className="bg-white py-8 px-4 shadow-2xl rounded-lg sm:px-10">
             <div className="text-center">
@@ -151,7 +175,12 @@ function VerifyEmailContent() {
                 }`}
               >
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-teal-100 mb-3">
-                  <svg className="w-7 h-7 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-7 h-7 text-teal-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -161,7 +190,9 @@ function VerifyEmailContent() {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">Annix Branding</h3>
-                <p className="mt-1 text-sm text-gray-500 text-center">Use the default ASCA corporate identity</p>
+                <p className="mt-1 text-sm text-gray-500 text-center">
+                  Use the default ASCA corporate identity
+                </p>
                 {brandingSelection === "annix" && (
                   <div className="absolute top-3 right-3">
                     <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
@@ -188,7 +219,12 @@ function VerifyEmailContent() {
                 }`}
               >
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-purple-100 mb-3">
-                  <svg className="w-7 h-7 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-7 h-7 text-purple-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -198,7 +234,9 @@ function VerifyEmailContent() {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">Your Branding</h3>
-                <p className="mt-1 text-sm text-gray-500 text-center">White-label with your corporate identity</p>
+                <p className="mt-1 text-sm text-gray-500 text-center">
+                  White-label with your corporate identity
+                </p>
                 {brandingSelection === "custom" && (
                   <div className="absolute top-3 right-3">
                     <svg className="w-5 h-5 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
@@ -242,8 +280,8 @@ function VerifyEmailContent() {
                     className="mt-0.5 h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
                   />
                   <span className="text-sm text-gray-600">
-                    I authorize ASCA to access my website to extract branding elements (logo, colors) for use within
-                    this application
+                    I authorize ASCA to access my website to extract branding elements (logo,
+                    colors) for use within this application
                   </span>
                 </label>
               </div>

@@ -43,13 +43,17 @@ export class ImportService {
 
     return rawRows.map((row) => ({
       sku: String(row["SKU"] || row["sku"] || row["Sku"] || "").trim() || undefined,
-      name: String(row["Name"] || row["name"] || row["ITEM"] || row["Item"] || "").trim() || undefined,
+      name:
+        String(row["Name"] || row["name"] || row["ITEM"] || row["Item"] || "").trim() || undefined,
       description: String(row["Description"] || row["description"] || "").trim() || undefined,
       category: String(row["Category"] || row["category"] || "").trim() || undefined,
-      unitOfMeasure: String(row["Unit"] || row["UOM"] || row["unit_of_measure"] || "").trim() || undefined,
+      unitOfMeasure:
+        String(row["Unit"] || row["UOM"] || row["unit_of_measure"] || "").trim() || undefined,
       costPerUnit: Number(row["Cost"] || row["cost_per_unit"] || row["Price"] || 0) || undefined,
-      quantity: Number(row["Quantity"] || row["quantity"] || row["Qty"] || row["QTY"] || 0) || undefined,
-      minStockLevel: Number(row["Min Stock"] || row["min_stock_level"] || row["Min"] || 0) || undefined,
+      quantity:
+        Number(row["Quantity"] || row["quantity"] || row["Qty"] || row["QTY"] || 0) || undefined,
+      minStockLevel:
+        Number(row["Min Stock"] || row["min_stock_level"] || row["Min"] || 0) || undefined,
       location: String(row["Location"] || row["location"] || "").trim() || undefined,
     }));
   }
@@ -77,7 +81,11 @@ export class ImportService {
     return rows;
   }
 
-  async importRows(companyId: number, rows: ImportRow[], createdBy?: string): Promise<ImportResult> {
+  async importRows(
+    companyId: number,
+    rows: ImportRow[],
+    createdBy?: string,
+  ): Promise<ImportResult> {
     const result: ImportResult = {
       totalRows: rows.length,
       created: 0,

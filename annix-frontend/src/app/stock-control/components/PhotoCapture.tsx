@@ -25,11 +25,7 @@ export function PhotoCapture({ onCapture, currentPhotoUrl }: PhotoCaptureProps) 
     return (
       <div className="space-y-2">
         <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-gray-200">
-          <img
-            src={currentPhotoUrl}
-            alt="Captured"
-            className="w-full h-full object-cover"
-          />
+          <img src={currentPhotoUrl} alt="Captured" className="w-full h-full object-cover" />
         </div>
         <button
           type="button"

@@ -59,7 +59,6 @@ import { PumpProductModule } from "./pump-product/pump-product.module";
 import { PvcModule } from "./pvc/pvc.module";
 import { ReducerCalculatorModule } from "./reducer-calculator/reducer-calculator.module";
 import { RemoteAccessModule } from "./remote-access/remote-access.module";
-import { StockControlModule } from "./stock-control/stock-control.module";
 import { RetainingRingWeightModule } from "./retaining-ring-weight/retaining-ring-weight.module";
 import { RfqModule } from "./rfq/rfq.module";
 import { RubberLiningModule } from "./rubber-lining/rubber-lining.module";
@@ -67,6 +66,7 @@ import { SecureDocumentsModule } from "./secure-documents/secure-documents.modul
 import { AuthSharedModule } from "./shared/auth/auth-shared.module";
 import { SpectacleBlindModule } from "./spectacle-blind/spectacle-blind.module";
 import { SteelSpecificationModule } from "./steel-specification/steel-specification.module";
+import { StockControlModule } from "./stock-control/stock-control.module";
 // Phase 2 modules
 import { StorageModule } from "./storage/storage.module";
 import { StructuralSteelModule } from "./structural-steel/structural-steel.module";

@@ -1,8 +1,17 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { StockAllocation } from "./stock-allocation.entity";
-import { StockMovement } from "./stock-movement.entity";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from "typeorm";
 import { DeliveryNoteItem } from "./delivery-note-item.entity";
+import { StockAllocation } from "./stock-allocation.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
+import { StockMovement } from "./stock-movement.entity";
 
 @Entity("stock_items")
 export class StockItem {

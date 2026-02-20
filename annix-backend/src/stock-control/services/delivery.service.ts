@@ -19,15 +19,18 @@ export class DeliveryService {
     private readonly movementRepo: Repository<StockMovement>,
   ) {}
 
-  async create(companyId: number, data: {
-    deliveryNumber: string;
-    supplierName: string;
-    receivedDate?: Date;
-    notes?: string;
-    photoUrl?: string;
-    receivedBy?: string;
-    items: { stockItemId: number; quantityReceived: number; photoUrl?: string }[];
-  }): Promise<DeliveryNote> {
+  async create(
+    companyId: number,
+    data: {
+      deliveryNumber: string;
+      supplierName: string;
+      receivedDate?: Date;
+      notes?: string;
+      photoUrl?: string;
+      receivedBy?: string;
+      items: { stockItemId: number; quantityReceived: number; photoUrl?: string }[];
+    },
+  ): Promise<DeliveryNote> {
     const deliveryNote = this.deliveryNoteRepo.create({
       deliveryNumber: data.deliveryNumber,
       supplierName: data.supplierName,
@@ -40,7 +43,9 @@ export class DeliveryService {
     const savedNote = await this.deliveryNoteRepo.save(deliveryNote);
 
     const itemPromises = data.items.map(async (itemData) => {
-      const stockItem = await this.stockItemRepo.findOne({ where: { id: itemData.stockItemId, companyId } });
+      const stockItem = await this.stockItemRepo.findOne({
+        where: { id: itemData.stockItemId, companyId },
+      });
       if (!stockItem) {
         throw new NotFoundException(`Stock item ${itemData.stockItemId} not found`);
       }

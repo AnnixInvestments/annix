@@ -1,9 +1,16 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, SetMetadata } from "@nestjs/common";
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  SetMetadata,
+} from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 
 export const STOCK_CONTROL_ROLES_KEY = "stockControlRoles";
 
-export const StockControlRoles = (...roles: string[]) => SetMetadata(STOCK_CONTROL_ROLES_KEY, roles);
+export const StockControlRoles = (...roles: string[]) =>
+  SetMetadata(STOCK_CONTROL_ROLES_KEY, roles);
 
 @Injectable()
 export class StockControlRoleGuard implements CanActivate {

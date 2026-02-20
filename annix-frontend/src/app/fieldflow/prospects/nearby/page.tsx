@@ -236,7 +236,13 @@ export default function NearbyProspectsPage() {
                 : "text-orange-600 bg-white border border-orange-300 hover:bg-orange-50 dark:bg-slate-700 dark:border-orange-600 dark:hover:bg-slate-600"
             }`}
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -321,7 +327,13 @@ export default function NearbyProspectsPage() {
               {discoveryMutation.isPending ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               ) : (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -421,11 +433,22 @@ export default function NearbyProspectsPage() {
                   {importMutation.isPending ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   ) : (
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 4.5v15m7.5-7.5h-15"
+                      />
                     </svg>
                   )}
-                  Import {selectedBusinesses.size} Business{selectedBusinesses.size !== 1 ? "es" : ""} as Prospects
+                  Import {selectedBusinesses.size} Business
+                  {selectedBusinesses.size !== 1 ? "es" : ""} as Prospects
                 </button>
               )}
             </div>
@@ -433,7 +456,8 @@ export default function NearbyProspectsPage() {
 
           {discoveryMutation.isSuccess && discoveredBusinesses.length === 0 && (
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-              No new businesses found in this area. Try expanding your search radius or adjusting sources.
+              No new businesses found in this area. Try expanding your search radius or adjusting
+              sources.
             </p>
           )}
         </div>
