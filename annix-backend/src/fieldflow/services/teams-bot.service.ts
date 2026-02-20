@@ -1,6 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { randomUUID } from "node:crypto";
 import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import type {
@@ -130,10 +130,7 @@ export class TeamsBotService {
     return sessions.map((s) => this.mapToResponse(s));
   }
 
-  async sessionHistory(
-    userId: number,
-    limit: number = 20,
-  ): Promise<TeamsBotSessionResponseDto[]> {
+  async sessionHistory(userId: number, limit: number = 20): Promise<TeamsBotSessionResponseDto[]> {
     const sessions = await this.sessionRepo.find({
       where: { userId },
       order: { createdAt: "DESC" },
@@ -143,10 +140,7 @@ export class TeamsBotService {
     return sessions.map((s) => this.mapToResponse(s));
   }
 
-  async transcript(
-    userId: number,
-    sessionId: string,
-  ): Promise<TeamsBotTranscriptResponseDto> {
+  async transcript(userId: number, sessionId: string): Promise<TeamsBotTranscriptResponseDto> {
     const session = await this.sessionRepo.findOne({
       where: { sessionId, userId },
     });
@@ -217,10 +211,7 @@ export class TeamsBotService {
     return session;
   }
 
-  async removeParticipant(
-    callId: string,
-    participantId: string,
-  ): Promise<TeamsBotSession | null> {
+  async removeParticipant(callId: string, participantId: string): Promise<TeamsBotSession | null> {
     const session = await this.sessionRepo.findOne({
       where: { callId },
     });

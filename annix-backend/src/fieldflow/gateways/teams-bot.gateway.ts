@@ -1,9 +1,12 @@
 import { Controller, Logger, Param, Req, Res, Sse, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from "@nestjs/swagger";
 import { Request, Response } from "express";
-import { Observable, Subject, filter, map } from "rxjs";
+import { filter, map, Observable, Subject } from "rxjs";
 import { AnnixRepAuthGuard } from "../auth";
-import type { TeamsBotSessionStatus, TeamsBotTranscriptEntry } from "../entities/teams-bot-session.entity";
+import type {
+  TeamsBotSessionStatus,
+  TeamsBotTranscriptEntry,
+} from "../entities/teams-bot-session.entity";
 
 interface AnnixRepRequest extends Request {
   annixRepUser: {
@@ -92,10 +95,13 @@ export class TeamsBotGateway {
 
     return this.eventSubject.pipe(
       filter((event) => event.data.sessionId === sessionId),
-      map((event) => ({
-        data: JSON.stringify(event),
-        type: event.type,
-      } as MessageEvent)),
+      map(
+        (event) =>
+          ({
+            data: JSON.stringify(event),
+            type: event.type,
+          }) as MessageEvent,
+      ),
     );
   }
 

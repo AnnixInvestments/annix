@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { annixRepApi, type JoinTeamsMeetingDto, type TeamsBotSession } from "@/app/lib/api/annixRepApi";
+import {
+  annixRepApi,
+  type JoinTeamsMeetingDto,
+  type TeamsBotSession,
+} from "@/app/lib/api/annixRepApi";
 import { annixRepKeys } from "@/app/lib/query/keys";
 
 export function useTeamsBotActiveSessions() {

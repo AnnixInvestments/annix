@@ -84,10 +84,7 @@ export class TeamsAudioAdapter extends EventEmitter {
     return samples;
   }
 
-  private resampleIfNeeded(
-    samples: Float32Array,
-    _chunk: TeamsAudioChunk,
-  ): Float32Array {
+  private resampleIfNeeded(samples: Float32Array, _chunk: TeamsAudioChunk): Float32Array {
     return samples;
   }
 

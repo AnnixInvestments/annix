@@ -4,8 +4,8 @@ import { Response } from "express";
 import { nowISO } from "../../lib/datetime";
 import { TeamsBotSessionStatus } from "../entities/teams-bot-session.entity";
 import { TeamsBotGateway } from "../gateways/teams-bot.gateway";
-import { TeamsBotAudioService } from "../services/teams-bot-audio.service";
 import { TeamsBotService } from "../services/teams-bot.service";
+import { TeamsBotAudioService } from "../services/teams-bot-audio.service";
 
 interface TeamsCommsNotification {
   value: Array<{
@@ -70,10 +70,7 @@ export class TeamsBotWebhookController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Receive Teams bot call state notifications" })
   @ApiResponse({ status: 200, description: "Notification processed" })
-  async callState(
-    @Body() body: unknown,
-    @Res() res: Response,
-  ): Promise<void> {
+  async callState(@Body() body: unknown, @Res() res: Response): Promise<void> {
     const payload = body as TeamsCommsNotification;
 
     if (!payload.value || payload.value.length === 0) {
@@ -117,10 +114,7 @@ export class TeamsBotWebhookController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Receive Teams bot participant notifications" })
   @ApiResponse({ status: 200, description: "Notification processed" })
-  async participants(
-    @Body() body: unknown,
-    @Res() res: Response,
-  ): Promise<void> {
+  async participants(@Body() body: unknown, @Res() res: Response): Promise<void> {
     const payload = body as TeamsParticipantNotification;
 
     if (!payload.value || payload.value.length === 0) {
@@ -182,10 +176,7 @@ export class TeamsBotWebhookController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Receive Teams bot media stream data" })
   @ApiResponse({ status: 200, description: "Media processed" })
-  async media(
-    @Body() body: unknown,
-    @Res() res: Response,
-  ): Promise<void> {
+  async media(@Body() body: unknown, @Res() res: Response): Promise<void> {
     const payload = body as TeamsMediaNotification;
 
     if (!payload.callId || !payload.audioBuffer) {

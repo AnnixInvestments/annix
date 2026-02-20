@@ -272,14 +272,6 @@ export {
   useValidateInvitation,
 } from "./annix-rep/useTeam";
 export {
-  useDeleteTranscript,
-  useMeetingTranscript,
-  useRetranscribeRecording,
-  useTranscribeRecording,
-  useTranscript,
-  useUpdateTranscript,
-} from "./annix-rep/useTranscript";
-export {
   teamsBotEventsUrl,
   useJoinTeamsMeeting,
   useLeaveTeamsMeeting,
@@ -288,6 +280,14 @@ export {
   useTeamsBotSessionHistory,
   useTeamsBotTranscript,
 } from "./annix-rep/useTeamsBot";
+export {
+  useDeleteTranscript,
+  useMeetingTranscript,
+  useRetranscribeRecording,
+  useTranscribeRecording,
+  useTranscript,
+  useUpdateTranscript,
+} from "./annix-rep/useTranscript";
 export type { Boq, BoqDetail, BoqLineItem, PaginatedBoqResult, UploadResult } from "./boq/useBoqs";
 export {
   useAddBoqLineItem,
