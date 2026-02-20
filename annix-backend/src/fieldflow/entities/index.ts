@@ -22,6 +22,11 @@ export {
   MeetingStatus,
   MeetingType,
 } from "./meeting.entity";
+export {
+  MeetingPlatform,
+  PlatformConnectionStatus,
+} from "./meeting-platform.enums";
+export { MeetingPlatformConnection } from "./meeting-platform-connection.entity";
 export type { SpeakerSegment } from "./meeting-recording.entity";
 export {
   MeetingRecording,
@@ -36,6 +41,14 @@ export type {
 } from "./meeting-transcript.entity";
 export { MeetingTranscript } from "./meeting-transcript.entity";
 export { Organization, OrganizationPlan } from "./organization.entity";
+export type {
+  PlatformMeetingRawData,
+  PlatformRecordingRawData,
+} from "./platform-meeting-record.entity";
+export {
+  PlatformMeetingRecord,
+  PlatformRecordingStatus,
+} from "./platform-meeting-record.entity";
 export { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "./prospect.entity";
 export { ProspectActivity, ProspectActivityType } from "./prospect-activity.entity";
 export { GoalPeriod, SalesGoal } from "./sales-goal.entity";

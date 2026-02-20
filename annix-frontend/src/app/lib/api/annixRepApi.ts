@@ -2711,7 +2711,170 @@ export const annixRepApi = {
       return handleResponse<DiscoveryQuota>(response);
     },
   },
+
+  meetingPlatforms: {
+    connections: async (): Promise<MeetingPlatformConnection[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/connections`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<MeetingPlatformConnection[]>(response);
+    },
+
+    connection: async (id: number): Promise<MeetingPlatformConnection> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/connections/${id}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<MeetingPlatformConnection>(response);
+    },
+
+    oauthUrl: async (
+      platform: MeetingPlatform,
+      redirectUri: string,
+    ): Promise<{ url: string; state: string }> => {
+      const params = new URLSearchParams({ redirectUri });
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/meeting-platforms/oauth/${platform}/url?${params}`,
+        { headers: annixRepAuthHeaders() },
+      );
+      return handleResponse<{ url: string; state: string }>(response);
+    },
+
+    oauthCallback: async (
+      platform: MeetingPlatform,
+      authCode: string,
+      redirectUri: string,
+    ): Promise<MeetingPlatformConnection> => {
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/meeting-platforms/oauth/${platform}/callback`,
+        {
+          method: "POST",
+          headers: {
+            ...annixRepAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ authCode, redirectUri }),
+        },
+      );
+      return handleResponse<MeetingPlatformConnection>(response);
+    },
+
+    update: async (
+      id: number,
+      dto: UpdateMeetingPlatformConnectionDto,
+    ): Promise<MeetingPlatformConnection> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/connections/${id}`, {
+        method: "PATCH",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<MeetingPlatformConnection>(response);
+    },
+
+    disconnect: async (id: number): Promise<{ success: boolean }> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/connections/${id}`, {
+        method: "DELETE",
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<{ success: boolean }>(response);
+    },
+
+    sync: async (
+      id: number,
+      daysBack?: number,
+    ): Promise<{ synced: number; recordings: number }> => {
+      const params = daysBack ? `?daysBack=${daysBack}` : "";
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/meeting-platforms/connections/${id}/sync${params}`,
+        {
+          method: "POST",
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      return handleResponse<{ synced: number; recordings: number }>(response);
+    },
+
+    recordings: async (connectionId: number, limit?: number): Promise<PlatformMeetingRecord[]> => {
+      const params = limit ? `?limit=${limit}` : "";
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/meeting-platforms/connections/${connectionId}/recordings${params}`,
+        { headers: annixRepAuthHeaders() },
+      );
+      return handleResponse<PlatformMeetingRecord[]>(response);
+    },
+
+    recording: async (recordId: number): Promise<PlatformMeetingRecord> => {
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/meeting-platforms/recordings/${recordId}`,
+        { headers: annixRepAuthHeaders() },
+      );
+      return handleResponse<PlatformMeetingRecord>(response);
+    },
+
+    availablePlatforms: async (): Promise<{
+      platforms: Array<{ id: MeetingPlatform; name: string; description: string }>;
+    }> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/meeting-platforms/available`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<{
+        platforms: Array<{ id: MeetingPlatform; name: string; description: string }>;
+      }>(response);
+    },
+  },
 };
+
+export type MeetingPlatform = "zoom" | "teams" | "google_meet";
+export type PlatformConnectionStatus = "active" | "error" | "disconnected" | "token_expired";
+export type PlatformRecordingStatus =
+  | "pending"
+  | "downloading"
+  | "downloaded"
+  | "processing"
+  | "transcribing"
+  | "completed"
+  | "failed"
+  | "no_recording";
+
+export interface MeetingPlatformConnection {
+  id: number;
+  userId: number;
+  platform: MeetingPlatform;
+  accountEmail: string;
+  accountName: string | null;
+  connectionStatus: PlatformConnectionStatus;
+  autoFetchRecordings: boolean;
+  autoTranscribe: boolean;
+  autoSendSummary: boolean;
+  lastRecordingSyncAt: Date | null;
+  lastError: string | null;
+  createdAt: Date;
+}
+
+export interface UpdateMeetingPlatformConnectionDto {
+  autoFetchRecordings?: boolean;
+  autoTranscribe?: boolean;
+  autoSendSummary?: boolean;
+}
+
+export interface PlatformMeetingRecord {
+  id: number;
+  connectionId: number;
+  meetingId: number | null;
+  platformMeetingId: string;
+  title: string;
+  topic: string | null;
+  hostEmail: string | null;
+  startTime: Date;
+  endTime: Date | null;
+  durationSeconds: number | null;
+  recordingStatus: PlatformRecordingStatus;
+  participantCount: number | null;
+  joinUrl: string | null;
+  createdAt: Date;
+}
 
 export type OrganizationPlan = "free" | "team" | "enterprise";
 export type TeamRole = "admin" | "manager" | "rep";

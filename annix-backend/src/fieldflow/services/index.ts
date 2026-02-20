@@ -15,6 +15,8 @@ export type { UserColorScheme } from "./calendar-color.service";
 export { CalendarColorService } from "./calendar-color.service";
 export type { SyncConflictDto as SyncConflict } from "./calendar-sync.service";
 export { CalendarSyncService } from "./calendar-sync.service";
+export type { WebhookProcessResult } from "./calendar-webhook.service";
+export { CalendarWebhookService } from "./calendar-webhook.service";
 export { CrmService } from "./crm.service";
 export type { SyncConflict as CrmSyncConflict } from "./crm-sync.service";
 export { CrmSyncService } from "./crm-sync.service";
@@ -23,6 +25,14 @@ export { FollowUpReminderService } from "./follow-up-reminder.service";
 export type { CreateGoalDto, GoalProgress, UpdateGoalDto } from "./goals.service";
 export { GoalsService } from "./goals.service";
 export { MeetingService } from "./meeting.service";
+export type {
+  ConnectPlatformDto,
+  PlatformConnectionResponseDto,
+  PlatformMeetingRecordResponseDto,
+  UpdatePlatformConnectionDto,
+} from "./meeting-platform.service";
+export { MeetingPlatformService } from "./meeting-platform.service";
+export { MeetingSchedulerService } from "./meeting-scheduler.service";
 export { MeetingSummaryService } from "./meeting-summary.service";
 export type {
   CreateOrganizationDto,
@@ -31,6 +41,8 @@ export type {
 } from "./organization.service";
 export { OrganizationService } from "./organization.service";
 export { PdfGenerationService } from "./pdf-generation.service";
+export type { DownloadResult } from "./platform-recording.service";
+export { PlatformRecordingService } from "./platform-recording.service";
 export { ProspectService } from "./prospect.service";
 export type { LogActivityParams } from "./prospect-activity.service";
 export { ProspectActivityService } from "./prospect-activity.service";

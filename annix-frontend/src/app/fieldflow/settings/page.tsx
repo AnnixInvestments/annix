@@ -266,6 +266,35 @@ export default function SettingsPage() {
           </div>
         </Link>
 
+        <Link href="/fieldflow/settings/integrations">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
+                <svg
+                  className="w-6 h-6 text-cyan-600 dark:text-cyan-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Meeting Platforms
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Connect Zoom, Teams, or Google Meet
+                </p>
+              </div>
+            </div>
+          </div>
+        </Link>
+
         <Link href="/annix-rep/settings/colors">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">

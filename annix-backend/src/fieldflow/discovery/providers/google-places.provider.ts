@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { DiscoveredBusiness, DiscoverySource } from "../dto";
 import { DiscoveryProvider, DiscoverySearchParams } from "../discovery-source.interface";
+import { DiscoveredBusiness, DiscoverySource } from "../dto";
 
 interface GooglePlaceResult {
   id: string;

@@ -5,6 +5,7 @@ import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { Prospect, ProspectStatus } from "../entities/prospect.entity";
 import { RepProfile } from "../rep-profile/rep-profile.entity";
+import { DiscoverySearchParams } from "./discovery-source.interface";
 import {
   DiscoveredBusiness,
   DiscoverProspectsDto,
@@ -13,12 +14,7 @@ import {
   DiscoverySearchResult,
   DiscoverySource,
 } from "./dto";
-import { DiscoverySearchParams } from "./discovery-source.interface";
-import {
-  GooglePlacesProvider,
-  OsmOverpassProvider,
-  YellowPagesProvider,
-} from "./providers";
+import { GooglePlacesProvider, OsmOverpassProvider, YellowPagesProvider } from "./providers";
 
 @Injectable()
 export class DiscoveryService {
@@ -27,10 +23,7 @@ export class DiscoveryService {
   private googleUsedToday = 0;
   private lastResetDate: string;
 
-  private discoveryCache = new Map<
-    string,
-    { results: DiscoveredBusiness[]; timestamp: number }
-  >();
+  private discoveryCache = new Map<string, { results: DiscoveredBusiness[]; timestamp: number }>();
   private readonly cacheTtlMs: number;
 
   constructor(
@@ -43,22 +36,13 @@ export class DiscoveryService {
     private readonly osmOverpassProvider: OsmOverpassProvider,
     private readonly configService: ConfigService,
   ) {
-    this.googleDailyLimit = this.configService.get<number>(
-      "DISCOVERY_GOOGLE_DAILY_LIMIT",
-      1000,
-    );
-    const cacheTtlMinutes = this.configService.get<number>(
-      "DISCOVERY_CACHE_TTL_MINUTES",
-      60,
-    );
+    this.googleDailyLimit = this.configService.get<number>("DISCOVERY_GOOGLE_DAILY_LIMIT", 1000);
+    const cacheTtlMinutes = this.configService.get<number>("DISCOVERY_CACHE_TTL_MINUTES", 60);
     this.cacheTtlMs = cacheTtlMinutes * 60 * 1000;
     this.lastResetDate = now().toISODate() ?? "";
   }
 
-  async search(
-    userId: number,
-    dto: DiscoverProspectsDto,
-  ): Promise<DiscoverySearchResult> {
+  async search(userId: number, dto: DiscoverProspectsDto): Promise<DiscoverySearchResult> {
     const repProfile = await this.repProfileRepository.findOne({
       where: { userId },
     });
@@ -128,9 +112,7 @@ export class DiscoveryService {
         longitude: business.longitude,
         contactPhone: business.phone,
         googlePlaceId:
-          business.source === DiscoverySource.GOOGLE_PLACES
-            ? business.externalId
-            : null,
+          business.source === DiscoverySource.GOOGLE_PLACES ? business.externalId : null,
         status: ProspectStatus.NEW,
         discoverySource: business.source,
         discoveredAt: now().toJSDate(),
@@ -161,10 +143,7 @@ export class DiscoveryService {
     };
   }
 
-  private buildSearchTerms(
-    repProfile: RepProfile | null,
-    customTerms?: string[],
-  ): string[] {
+  private buildSearchTerms(repProfile: RepProfile | null, customTerms?: string[]): string[] {
     const terms: string[] = [];
 
     if (customTerms && customTerms.length > 0) {
@@ -229,9 +208,7 @@ export class DiscoveryService {
   ): Promise<DiscoverySearchResult> {
     const existingExternalIds = await this.existingExternalIds(userId);
 
-    const newDiscoveries = discovered.filter(
-      (d) => !existingExternalIds.has(d.externalId),
-    );
+    const newDiscoveries = discovered.filter((d) => !existingExternalIds.has(d.externalId));
 
     return {
       discovered: newDiscoveries,
@@ -261,10 +238,7 @@ export class DiscoveryService {
     return ids;
   }
 
-  private async checkForDuplicate(
-    userId: number,
-    business: DiscoveredBusiness,
-  ): Promise<boolean> {
+  private async checkForDuplicate(userId: number, business: DiscoveredBusiness): Promise<boolean> {
     const byExternalId = await this.prospectRepository.findOne({
       where: [
         { ownerId: userId, googlePlaceId: business.externalId },
@@ -310,9 +284,7 @@ export class DiscoveryService {
     return phone.replace(/\D/g, "");
   }
 
-  private deduplicateAcrossSources(
-    results: DiscoveredBusiness[],
-  ): DiscoveredBusiness[] {
+  private deduplicateAcrossSources(results: DiscoveredBusiness[]): DiscoveredBusiness[] {
     const seen = new Map<string, DiscoveredBusiness>();
 
     for (const result of results) {
@@ -332,10 +304,7 @@ export class DiscoveryService {
     return [...seen.values()];
   }
 
-  private buildCacheKey(
-    params: DiscoverySearchParams,
-    sources: DiscoverySource[],
-  ): string {
+  private buildCacheKey(params: DiscoverySearchParams, sources: DiscoverySource[]): string {
     return `${params.latitude.toFixed(3)}-${params.longitude.toFixed(3)}-${params.radiusKm}-${params.searchTerms.sort().join(",")}-${sources.sort().join(",")}`;
   }
 

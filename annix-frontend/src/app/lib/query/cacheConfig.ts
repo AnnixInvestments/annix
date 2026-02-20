@@ -49,4 +49,9 @@ export const cacheConfig = {
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   },
+
+  meetingPlatforms: {
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  },
 } as const;

@@ -178,6 +178,24 @@ export {
   useUpdateCrmConfig,
 } from "./annix-rep/useCrm";
 export {
+  useDiscoveryImport,
+  useDiscoveryQuota,
+  useDiscoverySearch,
+  useDiscoverySearchMutation,
+} from "./annix-rep/useDiscovery";
+export {
+  useAvailableMeetingPlatforms,
+  useConnectMeetingPlatform,
+  useDisconnectMeetingPlatform,
+  useMeetingPlatformConnection,
+  useMeetingPlatformConnections,
+  useMeetingPlatformOAuthUrl,
+  usePlatformRecording,
+  usePlatformRecordings,
+  useSyncMeetingPlatform,
+  useUpdateMeetingPlatformConnection,
+} from "./annix-rep/useMeetingPlatforms";
+export {
   useCompleteRecordingUpload,
   useDeleteRecording,
   useInitiateRecordingUpload,
@@ -261,12 +279,6 @@ export {
   useTranscript,
   useUpdateTranscript,
 } from "./annix-rep/useTranscript";
-export {
-  useDiscoveryImport,
-  useDiscoveryQuota,
-  useDiscoverySearch,
-  useDiscoverySearchMutation,
-} from "./annix-rep/useDiscovery";
 export type { Boq, BoqDetail, BoqLineItem, PaginatedBoqResult, UploadResult } from "./boq/useBoqs";
 export {
   useAddBoqLineItem,

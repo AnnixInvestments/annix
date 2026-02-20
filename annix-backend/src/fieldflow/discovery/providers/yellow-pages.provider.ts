@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import * as puppeteer from "puppeteer";
-import { DiscoveredBusiness, DiscoverySource } from "../dto";
 import { DiscoveryProvider, DiscoverySearchParams } from "../discovery-source.interface";
+import { DiscoveredBusiness, DiscoverySource } from "../dto";
 
 interface ScrapedBusiness {
   name: string;
@@ -122,9 +122,11 @@ export class YellowPagesProvider implements DiscoveryProvider {
     };
   }
 
-  private parseAddress(
-    address: string | null,
-  ): { street: string | null; city: string | null; province: string | null } {
+  private parseAddress(address: string | null): {
+    street: string | null;
+    city: string | null;
+    province: string | null;
+  } {
     if (!address) {
       return { street: null, city: null, province: null };
     }
@@ -195,7 +197,7 @@ export class YellowPagesProvider implements DiscoveryProvider {
     let minDistance = Infinity;
 
     for (const city of cities) {
-      const distance = Math.sqrt(Math.pow(lat - city.lat, 2) + Math.pow(lng - city.lng, 2));
+      const distance = Math.sqrt((lat - city.lat) ** 2 + (lng - city.lng) ** 2);
       if (distance < minDistance) {
         minDistance = distance;
         closestCity = city.name;

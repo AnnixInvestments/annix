@@ -3,9 +3,9 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { EmailModule } from "../email/email.module";
+import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
 import { AnnixRepAuthModule } from "./auth";
-import { DiscoveryModule } from "./discovery";
 import {
   AnalyticsController,
   BookingController,
@@ -15,7 +15,9 @@ import {
   GoalsController,
   ManagerDashboardController,
   MeetingController,
+  MeetingPlatformController,
   OrganizationController,
+  PlatformWebhookController,
   ProspectController,
   ProspectHandoffController,
   PublicBookingController,
@@ -30,6 +32,7 @@ import {
   TranscriptController,
   VisitController,
 } from "./controllers";
+import { DiscoveryModule } from "./discovery";
 import {
   BookingLink,
   CalendarColor,
@@ -39,9 +42,11 @@ import {
   CrmSyncLog,
   CustomFieldDefinition,
   Meeting,
+  MeetingPlatformConnection,
   MeetingRecording,
   MeetingTranscript,
   Organization,
+  PlatformMeetingRecord,
   Prospect,
   ProspectActivity,
   SalesGoal,
@@ -55,10 +60,13 @@ import {
 import {
   CaldavCalendarProvider,
   GoogleCalendarProvider,
+  GoogleMeetProvider,
   HubSpotOAuthProvider,
   OutlookCalendarProvider,
   PipedriveOAuthProvider,
   SalesforceOAuthProvider,
+  TeamsMeetingProvider,
+  ZoomMeetingProvider,
 } from "./providers";
 import { RepProfileModule } from "./rep-profile";
 import {
@@ -67,15 +75,19 @@ import {
   CalendarColorService,
   CalendarService,
   CalendarSyncService,
+  CalendarWebhookService,
   CrmService,
   CrmSyncService,
   CustomFieldService,
   FollowUpReminderService,
   GoalsService,
+  MeetingPlatformService,
+  MeetingSchedulerService,
   MeetingService,
   MeetingSummaryService,
   OrganizationService,
   PdfGenerationService,
+  PlatformRecordingService,
   ProspectActivityService,
   ProspectHandoffService,
   ProspectService,
@@ -104,6 +116,8 @@ import {
       Meeting,
       MeetingRecording,
       MeetingTranscript,
+      MeetingPlatformConnection,
+      PlatformMeetingRecord,
       CalendarColor,
       CalendarConnection,
       CalendarEvent,
@@ -118,6 +132,7 @@ import {
       TeamInvitation,
       TeamActivity,
     ]),
+    StorageModule,
     ScheduleModule.forRoot(),
     AdminModule,
     EmailModule,
@@ -133,6 +148,7 @@ import {
     CustomFieldController,
     VisitController,
     MeetingController,
+    MeetingPlatformController,
     CalendarController,
     PublicBookingController,
     RecordingController,
@@ -148,13 +164,18 @@ import {
     ProspectHandoffController,
     TeamActivityController,
     ManagerDashboardController,
+    PlatformWebhookController,
   ],
   providers: [
     AnalyticsService,
     BookingService,
     CalendarColorService,
+    CalendarWebhookService,
     FollowUpReminderService,
     GoalsService,
+    MeetingPlatformService,
+    MeetingSchedulerService,
+    PlatformRecordingService,
     ProspectActivityService,
     ProspectService,
     CustomFieldService,
@@ -173,11 +194,14 @@ import {
     ReportsService,
     PdfGenerationService,
     GoogleCalendarProvider,
+    GoogleMeetProvider,
     OutlookCalendarProvider,
     CaldavCalendarProvider,
     SalesforceOAuthProvider,
     HubSpotOAuthProvider,
     PipedriveOAuthProvider,
+    ZoomMeetingProvider,
+    TeamsMeetingProvider,
     OrganizationService,
     TeamService,
     TerritoryService,
@@ -190,6 +214,8 @@ import {
     ProspectService,
     VisitService,
     MeetingService,
+    MeetingPlatformService,
+    PlatformRecordingService,
     CalendarService,
     RecordingService,
     TranscriptionService,

@@ -6,14 +6,10 @@ import {
   type DiscoveryImportResult,
   type DiscoveryQuota,
   type DiscoverySearchResult,
-  type DiscoverySource,
 } from "@/app/lib/api/annixRepApi";
 import { annixRepKeys } from "../../keys/annixRepKeys";
 
-export function useDiscoverySearch(
-  dto: DiscoverProspectsDto | null,
-  enabled = true,
-) {
+export function useDiscoverySearch(dto: DiscoverProspectsDto | null, enabled = true) {
   return useQuery<DiscoverySearchResult>({
     queryKey: annixRepKeys.discovery.search(
       dto?.latitude ?? 0,

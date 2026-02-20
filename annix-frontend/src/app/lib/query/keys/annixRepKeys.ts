@@ -191,4 +191,14 @@ export const annixRepKeys = {
     meetingOutcomes: (startDate: string, endDate: string) =>
       [...annixRepKeys.reports.all, "meetingOutcomes", startDate, endDate] as const,
   },
+  meetingPlatforms: {
+    all: ["annixRep", "meetingPlatforms"] as const,
+    connections: () => [...annixRepKeys.meetingPlatforms.all, "connections"] as const,
+    connection: (id: number) => [...annixRepKeys.meetingPlatforms.all, "connection", id] as const,
+    recordings: (connectionId: number, limit?: number) =>
+      [...annixRepKeys.meetingPlatforms.all, "recordings", connectionId, limit] as const,
+    recording: (recordId: number) =>
+      [...annixRepKeys.meetingPlatforms.all, "recording", recordId] as const,
+    availablePlatforms: () => [...annixRepKeys.meetingPlatforms.all, "availablePlatforms"] as const,
+  },
 } as const;

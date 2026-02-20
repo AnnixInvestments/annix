@@ -11,6 +11,7 @@ interface AnnixRepRequest extends Request {
     sessionToken: string;
   };
 }
+
 import {
   DiscoveredBusiness,
   DiscoverProspectsDto,
