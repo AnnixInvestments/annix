@@ -62,8 +62,6 @@ export { RoutePlanningService } from "./route-planning.service";
 export { SpeakerDiarizationService } from "./speaker-diarization.service";
 export type { TeamHierarchyNode } from "./team.service";
 export { TeamService } from "./team.service";
-export { TeamsBotAudioService } from "./teams-bot-audio.service";
-export { TeamsBotService } from "./teams-bot.service";
 export type {
   ActivityFeedOptions,
   LogActivityParams as TeamLogActivityParams,
@@ -78,6 +76,8 @@ export type {
 export { TeamAnalyticsService } from "./team-analytics.service";
 export type { CreateInvitationDto } from "./team-invitation.service";
 export { TeamInvitationService } from "./team-invitation.service";
+export { TeamsBotService } from "./teams-bot.service";
+export { TeamsBotAudioService } from "./teams-bot-audio.service";
 export type {
   CreateTerritoryDto,
   TerritoryWithProspectCount,

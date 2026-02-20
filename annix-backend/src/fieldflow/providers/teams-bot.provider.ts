@@ -270,14 +270,11 @@ export class TeamsBotProvider {
   ): Promise<Array<{ id: string; displayName: string; type: "user" | "application" }>> {
     const token = await this.appOnlyToken();
 
-    const response = await fetch(
-      `${this.graphUrl}/communications/calls/${callId}/participants`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    const response = await fetch(`${this.graphUrl}/communications/calls/${callId}/participants`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-    );
+    });
 
     if (!response.ok) {
       this.logger.warn(`Failed to get call participants: ${response.status}`);
