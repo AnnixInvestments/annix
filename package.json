@@ -26,7 +26,7 @@
     "type-check": "cd annix-frontend && pnpm type-check"
   },
   "devDependencies": {
-    "@annix/claude-swarm": "0.1.6",
+    "@annix/claude-swarm": "0.1.8",
     "@biomejs/biome": "^2.3.14",
     "@inquirer/prompts": "^8.2.0",
     "@types/node": "^25.0.9",

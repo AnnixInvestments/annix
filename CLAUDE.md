@@ -15,6 +15,7 @@
     - ❌ `getUser()` - redundant "get" prefix
     - ❌ `getUserData()` - redundant "get" prefix
 - **Use null instead of undefined**: Always use `null` for absence of value, never `undefined`
+- **Prefer const over let**: Always use `const` for variable declarations. Only use `let` when reassignment is genuinely unavoidable (e.g. loop counters, accumulator variables in reduce alternatives). Never use `var`.
 - **Immutable operations**: Use immutable ES6+ operations and es-toolkit/compat functions instead of mutating arrays/objects as side effects
     - ✅ `const newArray = array.map()`
     - ✅ `const newMap = map.reduce()`

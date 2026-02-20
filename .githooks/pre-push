@@ -4,10 +4,9 @@ set -e
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
-echo "Running pre-push checks..."
+source "${ROOT_DIR}/node_modules/@annix/claude-swarm/timer.sh"
 
-echo "Running Biome check on committed changes..."
-cd "$ROOT_DIR"
+echo "Running pre-push checks..."
 
 CHANGED_FILES=""
 while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
@@ -25,26 +24,59 @@ done
 
 UNIQUE_FILES=$(echo "$CHANGED_FILES" | sort -u | grep -v '^$' || true)
 BIOME_FILES=$(echo "$UNIQUE_FILES" | grep -E '\.(ts|tsx|js|jsx|json)$' || true)
-if [ -n "$BIOME_FILES" ]; then
-  echo "$BIOME_FILES" | xargs pnpm biome check
-else
-  echo "No committed file changes to check"
-fi
 
-echo "Running full test suite..."
+biome_check() {
+  if [ -n "$BIOME_FILES" ]; then
+    echo "$BIOME_FILES" | xargs pnpm biome check
+  else
+    echo "No committed file changes to check"
+  fi
+}
+
+run_tests() {
+  rm -rf "$ROOT_DIR/annix-frontend/.next/dev"
+  pnpm test:all
+}
+
+pull_rebase() {
+  git fetch origin main 2>&1
+  local behind ahead
+  behind=$(git rev-list --count HEAD..origin/main)
+  ahead=$(git rev-list --count origin/main..HEAD)
+
+  if [ "$behind" -eq 0 ]; then
+    echo "Already up to date with remote."
+    return 0
+  fi
+
+  if [ "$ahead" -gt 0 ]; then
+    echo "Branch has diverged (${ahead} ahead, ${behind} behind) — skipping auto-rebase."
+    echo "If this is an intended force push, push will be rejected unless you use --force-with-lease."
+    return 0
+  fi
+
+  echo "Integrating ${behind} new remote commit(s)..."
+  if ! git rebase origin/main; then
+    git rebase --abort 2>/dev/null || true
+    echo ""
+    echo "Rebase conflict: resolve the conflict below, then push again."
+    return 1
+  fi
+}
+
 cd "$ROOT_DIR"
-pnpm test:all
+timed_step "git pull --rebase" pull_rebase
+timed_step "biome check" biome_check
+timed_step "test suite" run_tests
 
-echo "Building backend..."
 cd "$ROOT_DIR/annix-backend"
-pnpm run build
+timed_step "backend build" pnpm run build
+timed_step "migrations" pnpm run migration:run
 
-echo "Running migrations..."
-pnpm run migration:run
-
-echo "Building frontend..."
 cd "$ROOT_DIR/annix-frontend"
-pnpm run build
+timed_step "frontend build" pnpm run build
+
+print_timing_summary
 
 echo "Pre-push checks passed!"
 
