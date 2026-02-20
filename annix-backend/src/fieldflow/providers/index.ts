@@ -31,5 +31,7 @@ export type {
 export { OutlookCalendarProvider } from "./outlook-calendar.provider";
 export { PipedriveOAuthProvider } from "./pipedrive-oauth.provider";
 export { SalesforceOAuthProvider } from "./salesforce-oauth.provider";
+export type { ParsedTeamsMeetingUrl } from "./teams-bot.provider";
+export { TeamsBotProvider } from "./teams-bot.provider";
 export { TeamsMeetingProvider } from "./teams-meeting.provider";
 export { ZoomMeetingProvider } from "./zoom-meeting.provider";

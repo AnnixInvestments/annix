@@ -279,6 +279,15 @@ export {
   useTranscript,
   useUpdateTranscript,
 } from "./annix-rep/useTranscript";
+export {
+  teamsBotEventsUrl,
+  useJoinTeamsMeeting,
+  useLeaveTeamsMeeting,
+  useTeamsBotActiveSessions,
+  useTeamsBotSession,
+  useTeamsBotSessionHistory,
+  useTeamsBotTranscript,
+} from "./annix-rep/useTeamsBot";
 export type { Boq, BoqDetail, BoqLineItem, PaginatedBoqResult, UploadResult } from "./boq/useBoqs";
 export {
   useAddBoqLineItem,

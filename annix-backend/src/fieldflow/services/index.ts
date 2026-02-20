@@ -62,6 +62,8 @@ export { RoutePlanningService } from "./route-planning.service";
 export { SpeakerDiarizationService } from "./speaker-diarization.service";
 export type { TeamHierarchyNode } from "./team.service";
 export { TeamService } from "./team.service";
+export { TeamsBotAudioService } from "./teams-bot-audio.service";
+export { TeamsBotService } from "./teams-bot.service";
 export type {
   ActivityFeedOptions,
   LogActivityParams as TeamLogActivityParams,

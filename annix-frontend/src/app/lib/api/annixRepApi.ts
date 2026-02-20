@@ -569,6 +569,52 @@ export interface CrmSyncLog {
   completedAt: Date | null;
 }
 
+export type TeamsBotSessionStatus = "joining" | "active" | "leaving" | "ended" | "failed";
+
+export interface TeamsBotParticipant {
+  id: string;
+  displayName: string;
+  joinedAt: string;
+  leftAt: string | null;
+}
+
+export interface TeamsBotTranscriptEntry {
+  timestamp: string;
+  speakerId: string | null;
+  speakerName: string;
+  text: string;
+  confidence: number;
+}
+
+export interface TeamsBotSession {
+  id: number;
+  sessionId: string;
+  userId: number;
+  meetingId: number | null;
+  meetingUrl: string;
+  status: TeamsBotSessionStatus;
+  botDisplayName: string;
+  errorMessage: string | null;
+  participants: TeamsBotParticipant[] | null;
+  participantCount: number;
+  transcriptEntryCount: number;
+  startedAt: string | null;
+  endedAt: string | null;
+  createdAt: string;
+}
+
+export interface TeamsBotTranscript {
+  sessionId: string;
+  entries: TeamsBotTranscriptEntry[];
+  totalCount: number;
+}
+
+export interface JoinTeamsMeetingDto {
+  meetingUrl: string;
+  meetingId?: number;
+  botDisplayName?: string;
+}
+
 export interface CreateCrmConfigDto {
   name: string;
   crmType: CrmType;
@@ -2822,6 +2868,68 @@ export const annixRepApi = {
       return handleResponse<{
         platforms: Array<{ id: MeetingPlatform; name: string; description: string }>;
       }>(response);
+    },
+  },
+
+  teamsBot: {
+    join: async (dto: JoinTeamsMeetingDto): Promise<TeamsBotSession> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/join`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dto),
+      });
+      return handleResponse<TeamsBotSession>(response);
+    },
+
+    leave: async (sessionId: string): Promise<TeamsBotSession> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/leave`, {
+        method: "POST",
+        headers: {
+          ...annixRepAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+      return handleResponse<TeamsBotSession>(response);
+    },
+
+    session: async (sessionId: string): Promise<TeamsBotSession> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/sessions/${sessionId}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamsBotSession>(response);
+    },
+
+    activeSessions: async (): Promise<TeamsBotSession[]> => {
+      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/sessions/active`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamsBotSession[]>(response);
+    },
+
+    sessionHistory: async (limit?: number): Promise<TeamsBotSession[]> => {
+      const params = limit ? `?limit=${limit}` : "";
+      const response = await fetch(`${getApiUrl()}/annix-rep/teams-bot/sessions/history${params}`, {
+        headers: annixRepAuthHeaders(),
+      });
+      return handleResponse<TeamsBotSession[]>(response);
+    },
+
+    transcript: async (sessionId: string): Promise<TeamsBotTranscript> => {
+      const response = await fetch(
+        `${getApiUrl()}/annix-rep/teams-bot/sessions/${sessionId}/transcript`,
+        {
+          headers: annixRepAuthHeaders(),
+        },
+      );
+      return handleResponse<TeamsBotTranscript>(response);
+    },
+
+    eventsUrl: (sessionId: string): string => {
+      return `${getApiUrl()}/annix-rep/teams-bot/events/${sessionId}`;
     },
   },
 };

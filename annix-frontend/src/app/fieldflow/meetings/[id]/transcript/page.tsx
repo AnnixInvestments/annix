@@ -16,9 +16,11 @@ import {
   useMeetingRecording,
   useMeetingTranscript,
   useRetranscribeRecording,
+  useTeamsBotActiveSessions,
   useTranscribeRecording,
   useUpdateTranscript,
 } from "@/app/lib/query/hooks";
+import { LiveTranscriptViewer } from "../LiveTranscriptViewer";
 
 const speakerColors: Record<string, string> = {
   "Speaker 1": "bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700",
@@ -674,6 +676,7 @@ export default function TranscriptPage() {
 
   const { data: meeting, isLoading: meetingLoading } = useMeeting(meetingId);
   const { data: recording, isLoading: recordingLoading } = useMeetingRecording(meetingId);
+  const { data: activeBotSessions } = useTeamsBotActiveSessions();
   const {
     data: transcript,
     isLoading: transcriptLoading,
@@ -682,6 +685,8 @@ export default function TranscriptPage() {
   const transcribe = useTranscribeRecording();
   const retranscribe = useRetranscribeRecording();
   const updateTranscript = useUpdateTranscript();
+
+  const activeBotSession = activeBotSessions?.find((s) => s.meetingId === meetingId);
 
   const audioUrl = useMemo(() => {
     if (!recording) return null;
@@ -806,6 +811,16 @@ export default function TranscriptPage() {
           Back to meetings
         </Link>
       </div>
+    );
+  }
+
+  if (activeBotSession) {
+    return (
+      <LiveTranscriptViewer
+        meetingId={meetingId}
+        sessionId={activeBotSession.sessionId}
+        meetingTitle={meeting.title}
+      />
     );
   }
 

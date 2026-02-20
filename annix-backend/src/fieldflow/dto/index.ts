@@ -122,6 +122,15 @@ export {
   UpdateTerritoryDto,
 } from "./team.dto";
 export {
+  JoinTeamsMeetingDto,
+  LeaveTeamsMeetingDto,
+  TeamsBotParticipantUpdateDto,
+  TeamsBotSessionResponseDto,
+  TeamsBotStatusUpdateDto,
+  TeamsBotTranscriptResponseDto,
+  TeamsBotTranscriptUpdateDto,
+} from "./teams-bot.dto";
+export {
   CheckInDto,
   CheckOutDto,
   CreateVisitDto,

@@ -201,4 +201,13 @@ export const annixRepKeys = {
       [...annixRepKeys.meetingPlatforms.all, "recording", recordId] as const,
     availablePlatforms: () => [...annixRepKeys.meetingPlatforms.all, "availablePlatforms"] as const,
   },
+  teamsBot: {
+    all: ["annixRep", "teamsBot"] as const,
+    activeSessions: () => [...annixRepKeys.teamsBot.all, "activeSessions"] as const,
+    sessionHistory: (limit?: number) =>
+      [...annixRepKeys.teamsBot.all, "sessionHistory", limit] as const,
+    session: (sessionId: string) => [...annixRepKeys.teamsBot.all, "session", sessionId] as const,
+    transcript: (sessionId: string) =>
+      [...annixRepKeys.teamsBot.all, "transcript", sessionId] as const,
+  },
 } as const;

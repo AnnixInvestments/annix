@@ -20,6 +20,8 @@ export { SummaryController } from "./summary.controller";
 export { TeamController } from "./team.controller";
 export { TeamActivityController } from "./team-activity.controller";
 export { TeamInvitationController } from "./team-invitation.controller";
+export { TeamsBotController } from "./teams-bot.controller";
+export { TeamsBotWebhookController } from "./teams-bot-webhook.controller";
 export { TerritoryController } from "./territory.controller";
 export { TranscriptController } from "./transcript.controller";
 export { VisitController } from "./visit.controller";

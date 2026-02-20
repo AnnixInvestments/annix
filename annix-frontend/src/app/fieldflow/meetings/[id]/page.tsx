@@ -2,15 +2,23 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import type { MeetingStatus, RecordingProcessingStatus } from "@/app/lib/api/annixRepApi";
+import { useState } from "react";
+import type {
+  MeetingStatus,
+  RecordingProcessingStatus,
+  TeamsBotSessionStatus,
+} from "@/app/lib/api/annixRepApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 import {
   useCancelMeeting,
   useDeleteRecording,
   useEndMeeting,
+  useJoinTeamsMeeting,
+  useLeaveTeamsMeeting,
   useMeeting,
   useMeetingRecording,
   useStartMeeting,
+  useTeamsBotActiveSessions,
 } from "@/app/lib/query/hooks";
 import { MeetingDetailSkeleton } from "../../components/Skeleton";
 
@@ -59,17 +67,39 @@ const recordingStatusLabels: Record<RecordingProcessingStatus, { label: string; 
   failed: { label: "Failed", color: "text-red-500" },
 };
 
+const botStatusLabels: Record<TeamsBotSessionStatus, { label: string; color: string }> = {
+  joining: { label: "Joining...", color: "text-yellow-500" },
+  active: { label: "Recording", color: "text-green-500" },
+  leaving: { label: "Leaving...", color: "text-yellow-500" },
+  ended: { label: "Ended", color: "text-gray-500" },
+  failed: { label: "Failed", color: "text-red-500" },
+};
+
+function isTeamsUrl(url: string): boolean {
+  return url.includes("teams.microsoft.com") || url.includes("teams.live.com");
+}
+
 export default function MeetingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const meetingId = Number(params.id);
 
+  const [showBotUrlModal, setShowBotUrlModal] = useState(false);
+  const [teamsUrl, setTeamsUrl] = useState("");
+
   const { data: meeting, isLoading: meetingLoading } = useMeeting(meetingId);
   const { data: recording, isLoading: recordingLoading } = useMeetingRecording(meetingId);
+  const { data: activeBotSessions } = useTeamsBotActiveSessions();
   const startMeeting = useStartMeeting();
   const endMeeting = useEndMeeting();
   const cancelMeeting = useCancelMeeting();
   const deleteRecording = useDeleteRecording();
+  const joinTeamsMeeting = useJoinTeamsMeeting();
+  const leaveTeamsMeeting = useLeaveTeamsMeeting();
+
+  const activeBotSession = activeBotSessions?.find((s) => s.meetingId === meetingId);
+  const hasBotActive = Boolean(activeBotSession);
+  const botStatus = activeBotSession?.status ?? null;
 
   if (meetingLoading) {
     return <MeetingDetailSkeleton />;
@@ -110,6 +140,33 @@ export default function MeetingDetailPage() {
     if (!recording) return;
     if (confirm("Are you sure you want to delete this recording? This cannot be undone.")) {
       await deleteRecording.mutateAsync(recording.id);
+    }
+  };
+
+  const handleJoinWithBot = () => {
+    const detectedUrl = meeting.location && isTeamsUrl(meeting.location) ? meeting.location : "";
+    setTeamsUrl(detectedUrl);
+    setShowBotUrlModal(true);
+  };
+
+  const handleConfirmJoinBot = async () => {
+    if (!teamsUrl || !isTeamsUrl(teamsUrl)) {
+      alert("Please enter a valid Microsoft Teams meeting URL");
+      return;
+    }
+
+    await joinTeamsMeeting.mutateAsync({
+      meetingUrl: teamsUrl,
+      meetingId,
+    });
+    setShowBotUrlModal(false);
+    setTeamsUrl("");
+  };
+
+  const handleLeaveBot = async () => {
+    if (!activeBotSession) return;
+    if (confirm("Are you sure you want to remove the bot from this meeting?")) {
+      await leaveTeamsMeeting.mutateAsync(activeBotSession.sessionId);
     }
   };
 
@@ -411,6 +468,62 @@ export default function MeetingDetailPage() {
                 </Link>
               )}
 
+              {hasBotActive ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-4 py-2 text-sm bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="font-medium text-purple-700 dark:text-purple-300">
+                        Teams Bot Active
+                      </span>
+                    </div>
+                    {botStatus && (
+                      <span className={`text-xs ${botStatusLabels[botStatus].color}`}>
+                        {botStatusLabels[botStatus].label}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/fieldflow/meetings/${meetingId}/transcript`}
+                      className="flex-1 px-3 py-1.5 text-sm font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md text-center"
+                    >
+                      View Live Transcript
+                    </Link>
+                    <button
+                      onClick={handleLeaveBot}
+                      disabled={leaveTeamsMeeting.isPending}
+                      className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md disabled:opacity-50"
+                    >
+                      {leaveTeamsMeeting.isPending ? "Leaving..." : "Leave"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                (meeting.status === "scheduled" || meeting.status === "in_progress") && (
+                  <button
+                    onClick={handleJoinWithBot}
+                    disabled={joinTeamsMeeting.isPending}
+                    className="w-full px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"
+                      />
+                    </svg>
+                    {joinTeamsMeeting.isPending ? "Joining..." : "Join with AI Bot"}
+                  </button>
+                )
+              )}
+
               {canCancel && (
                 <button
                   onClick={handleCancel}
@@ -445,6 +558,50 @@ export default function MeetingDetailPage() {
           )}
         </div>
       </div>
+
+      {showBotUrlModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Join Teams Meeting with AI Bot
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Enter the Microsoft Teams meeting URL. The AI bot will join the meeting and transcribe
+              the conversation in real-time.
+            </p>
+            <input
+              type="url"
+              value={teamsUrl}
+              onChange={(e) => setTeamsUrl(e.target.value)}
+              placeholder="https://teams.microsoft.com/l/meetup-join/..."
+              className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 mb-4"
+            />
+            {teamsUrl && !isTeamsUrl(teamsUrl) && (
+              <p className="text-sm text-red-500 mb-4">
+                Please enter a valid Microsoft Teams meeting URL
+              </p>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowBotUrlModal(false);
+                  setTeamsUrl("");
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmJoinBot}
+                disabled={!teamsUrl || !isTeamsUrl(teamsUrl) || joinTeamsMeeting.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {joinTeamsMeeting.isPending ? "Joining..." : "Join Meeting"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

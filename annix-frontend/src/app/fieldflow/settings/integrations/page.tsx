@@ -2,14 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { MeetingPlatform, MeetingPlatformConnection } from "@/app/lib/api/annixRepApi";
+import type {
+  MeetingPlatform,
+  MeetingPlatformConnection,
+  TeamsBotSessionStatus,
+} from "@/app/lib/api/annixRepApi";
 import { annixRepApi } from "@/app/lib/api/annixRepApi";
-import { formatDateLongZA } from "@/app/lib/datetime";
+import { formatDateLongZA, formatDateTimeZA } from "@/app/lib/datetime";
 import {
   useDisconnectMeetingPlatform,
   useMeetingPlatformConnections,
   usePlatformRecordings,
   useSyncMeetingPlatform,
+  useTeamsBotActiveSessions,
+  useTeamsBotSessionHistory,
   useUpdateMeetingPlatformConnection,
 } from "@/app/lib/query/hooks";
 
@@ -438,8 +444,33 @@ function PlatformConnectCard({
   );
 }
 
+const botStatusLabels: Record<TeamsBotSessionStatus, { label: string; color: string }> = {
+  joining: {
+    label: "Joining",
+    color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  },
+  active: {
+    label: "Active",
+    color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  },
+  leaving: {
+    label: "Leaving",
+    color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  },
+  ended: {
+    label: "Ended",
+    color: "bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-gray-300",
+  },
+  failed: {
+    label: "Failed",
+    color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  },
+};
+
 export default function IntegrationsSettingsPage() {
   const { data: connections, isLoading, refetch } = useMeetingPlatformConnections();
+  const { data: activeBotSessions } = useTeamsBotActiveSessions();
+  const { data: botSessionHistory } = useTeamsBotSessionHistory(5);
 
   const activeConnections = connections?.filter((c) => c.connectionStatus === "active");
   const connectionByPlatform = (platform: MeetingPlatform) =>
@@ -534,6 +565,136 @@ export default function IntegrationsSettingsPage() {
           </div>
         </div>
       )}
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">AI Bot Sessions</h2>
+          {activeBotSessions && activeBotSessions.length > 0 && (
+            <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
+              {activeBotSessions.length} active
+            </span>
+          )}
+        </div>
+
+        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+              />
+            </svg>
+            <div>
+              <h3 className="text-sm font-medium text-purple-900 dark:text-purple-300">
+                AI Bot Transcription
+              </h3>
+              <p className="text-sm text-purple-700 dark:text-purple-400 mt-1">
+                The AI Bot can join your Microsoft Teams meetings to transcribe conversations in
+                real-time. Start a session from any meeting detail page by clicking "Join with AI
+                Bot".
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {activeBotSessions && activeBotSessions.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Active Sessions
+            </h3>
+            <div className="space-y-2">
+              {activeBotSessions.map((session) => (
+                <Link
+                  key={session.id}
+                  href={`/fieldflow/meetings/${session.meetingId}/transcript`}
+                  className="block bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          Meeting #{session.meetingId}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {session.participantCount} participants
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 text-xs rounded-full ${botStatusLabels[session.status].color}`}
+                    >
+                      {botStatusLabels[session.status].label}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {botSessionHistory && botSessionHistory.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Recent Sessions
+            </h3>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 divide-y divide-gray-100 dark:divide-slate-700">
+              {botSessionHistory.map((session) => (
+                <div key={session.id} className="p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        Meeting #{session.meetingId ?? "N/A"}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {session.startedAt
+                          ? formatDateTimeZA(new Date(session.startedAt))
+                          : "Not started"}
+                        {" - "}
+                        {session.transcriptEntryCount} entries
+                      </p>
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 text-xs rounded-full ${botStatusLabels[session.status].color}`}
+                  >
+                    {botStatusLabels[session.status].label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(!activeBotSessions || activeBotSessions.length === 0) &&
+          (!botSessionHistory || botSessionHistory.length === 0) && (
+            <div className="text-center py-8 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
+              <svg
+                className="w-12 h-12 mx-auto text-gray-400 mb-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+                />
+              </svg>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No AI bot sessions yet. Start a session from a meeting detail page.
+              </p>
+            </div>
+          )}
+      </div>
 
       {isLoading && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">

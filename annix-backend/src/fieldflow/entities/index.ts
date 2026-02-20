@@ -61,6 +61,11 @@ export {
 export { TeamActivity, TeamActivityType } from "./team-activity.entity";
 export { TeamInvitation, TeamInvitationStatus } from "./team-invitation.entity";
 export { TeamMember, TeamMemberStatus, TeamRole } from "./team-member.entity";
+export type {
+  TeamsBotParticipant,
+  TeamsBotTranscriptEntry,
+} from "./teams-bot-session.entity";
+export { TeamsBotSession, TeamsBotSessionStatus } from "./teams-bot-session.entity";
 export type { TerritoryBounds } from "./territory.entity";
 export { Territory } from "./territory.entity";
 export { Visit, VisitOutcome, VisitType } from "./visit.entity";
