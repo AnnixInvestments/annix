@@ -11,5 +11,9 @@ export const shouldShowGlobalNavigation = (pathname: string): boolean => {
     return false;
   }
 
+  if (pathname.startsWith("/au-rubber") || pathname.startsWith("/stock-control")) {
+    return false;
+  }
+
   return true;
 };
