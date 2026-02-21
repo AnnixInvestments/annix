@@ -85,16 +85,28 @@ function VerifyEmailContent() {
             : `https://${websiteUrl.trim()}`
           : undefined;
 
-      let scrapedLogoUrl: string | undefined;
-      let scrapedPrimaryColor: string | undefined;
-      let scrapedAccentColor: string | undefined;
+      let processedLogoUrl: string | undefined;
+      let processedPrimaryColor: string | undefined;
+      let processedAccentColor: string | undefined;
+      let processedHeroUrl: string | undefined;
 
       if (brandingSelection === "custom" && normalizedUrl && brandingAuthorized) {
         try {
-          const scraped = await stockControlApiClient.scrapeBranding(normalizedUrl);
-          scrapedLogoUrl = scraped.logoUrl ?? undefined;
-          scrapedPrimaryColor = scraped.primaryColor ?? undefined;
-          scrapedAccentColor = scraped.accentColor ?? undefined;
+          const candidates = await stockControlApiClient.scrapeBranding(normalizedUrl);
+          const firstLogo = candidates.logoCandidates[0]?.url ?? undefined;
+          const firstHero = candidates.heroCandidates[0]?.url ?? undefined;
+
+          if (firstLogo || firstHero) {
+            const processed = await stockControlApiClient.processBrandingSelection({
+              logoSourceUrl: firstLogo,
+              heroSourceUrl: firstHero,
+              scrapedPrimaryColor: candidates.primaryColor ?? undefined,
+            });
+            processedLogoUrl = processed.logoUrl ?? undefined;
+            processedHeroUrl = processed.heroImageUrl ?? undefined;
+            processedPrimaryColor = processed.primaryColor ?? undefined;
+            processedAccentColor = processed.accentColor ?? undefined;
+          }
         } catch {
           // Scraping is best-effort; continue saving without scraped data
         }
@@ -104,9 +116,10 @@ function VerifyEmailContent() {
         brandingType: brandingSelection,
         websiteUrl: normalizedUrl,
         brandingAuthorized: brandingSelection === "custom" ? brandingAuthorized : undefined,
-        primaryColor: scrapedPrimaryColor,
-        accentColor: scrapedAccentColor,
-        logoUrl: scrapedLogoUrl,
+        primaryColor: processedPrimaryColor,
+        accentColor: processedAccentColor,
+        logoUrl: processedLogoUrl,
+        heroImageUrl: processedHeroUrl,
       });
 
       setStatus("complete");

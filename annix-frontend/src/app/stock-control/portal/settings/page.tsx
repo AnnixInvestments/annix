@@ -1,15 +1,116 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import {
+  CandidateImage,
   StockControlInvitation,
   StockControlTeamMember,
   stockControlApiClient,
 } from "@/app/lib/api/stockControlApi";
 
 type BrandingSelection = "annix" | "custom";
+
+const SOURCE_LABELS: Record<string, string> = {
+  "logo-attr": "Logo element",
+  "header-img": "Header image",
+  "og-image": "Open Graph",
+  favicon: "Favicon",
+  "hero-selector": "Hero section",
+  "bg-image": "Background",
+  "large-img": "Large image",
+};
+
+function CandidateThumbnail({
+  candidate,
+  selected,
+  onSelect,
+  size,
+}: {
+  candidate: CandidateImage;
+  selected: boolean;
+  onSelect: () => void;
+  size: "small" | "large";
+}) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let revoked = false;
+    const proxyUrl = stockControlApiClient.proxyImageUrl(candidate.url);
+    const headers = stockControlApiClient.authHeaders();
+
+    fetch(proxyUrl, { headers })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("proxy failed");
+        }
+        return res.blob();
+      })
+      .then((blob) => {
+        if (!revoked) {
+          setObjectUrl(URL.createObjectURL(blob));
+        }
+      })
+      .catch(() => {
+        if (!revoked) {
+          setFailed(true);
+        }
+      });
+
+    return () => {
+      revoked = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [candidate.url]);
+
+  if (failed) {
+    return null;
+  }
+
+  const heightClass = size === "small" ? "h-16" : "h-32";
+  const label = SOURCE_LABELS[candidate.source] || candidate.source;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`relative flex flex-col items-center rounded-lg border-2 p-1.5 transition-all hover:shadow-md ${
+        selected
+          ? "border-teal-500 bg-teal-50 ring-2 ring-teal-500"
+          : "border-gray-200 hover:border-teal-300"
+      }`}
+    >
+      {objectUrl ? (
+        <img
+          src={objectUrl}
+          alt={label}
+          className={`${heightClass} w-full object-contain rounded`}
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className={`${heightClass} w-full flex items-center justify-center bg-gray-100 rounded`}>
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-teal-500 border-t-transparent" />
+        </div>
+      )}
+      <span className="mt-1 text-[10px] text-gray-500 truncate w-full text-center">{label}</span>
+      {selected && (
+        <div className="absolute top-1 right-1">
+          <svg className="w-4 h-4 text-teal-500" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </div>
+      )}
+    </button>
+  );
+}
 
 export default function StockControlSettingsPage() {
   const router = useRouter();
@@ -29,7 +130,15 @@ export default function StockControlSettingsPage() {
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingSuccess, setBrandingSuccess] = useState(false);
   const [scraping, setScraping] = useState(false);
-  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+
+  const [logoCandidates, setLogoCandidates] = useState<CandidateImage[]>([]);
+  const [heroCandidates, setHeroCandidates] = useState<CandidateImage[]>([]);
+  const [selectedLogoUrl, setSelectedLogoUrl] = useState<string | null>(null);
+  const [selectedHeroUrl, setSelectedHeroUrl] = useState<string | null>(null);
+  const [processedLogoUrl, setProcessedLogoUrl] = useState<string | null>(null);
+  const [processedHeroUrl, setProcessedHeroUrl] = useState<string | null>(null);
+  const [scrapedPrimaryColor, setScrapedPrimaryColor] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   const [teamMembers, setTeamMembers] = useState<StockControlTeamMember[]>([]);
   const [invitations, setInvitations] = useState<StockControlInvitation[]>([]);
@@ -40,6 +149,22 @@ export default function StockControlSettingsPage() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSending, setInviteSending] = useState(false);
+
+  const loadTeamData = useCallback(async () => {
+    setTeamLoading(true);
+    try {
+      const [members, invites] = await Promise.all([
+        stockControlApiClient.teamMembers(),
+        stockControlApiClient.companyInvitations(),
+      ]);
+      setTeamMembers(members);
+      setInvitations(invites);
+    } catch {
+      // Silent fail
+    } finally {
+      setTeamLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (user?.role !== "admin") {
@@ -64,27 +189,14 @@ export default function StockControlSettingsPage() {
     }
 
     if (profile?.logoUrl) {
-      setLogoPreviewUrl(profile.logoUrl);
+      setProcessedLogoUrl(profile.logoUrl);
+    }
+    if (profile?.heroImageUrl) {
+      setProcessedHeroUrl(profile.heroImageUrl);
     }
 
     loadTeamData();
-  }, [user, profile, router]);
-
-  const loadTeamData = async () => {
-    setTeamLoading(true);
-    try {
-      const [members, invites] = await Promise.all([
-        stockControlApiClient.teamMembers(),
-        stockControlApiClient.companyInvitations(),
-      ]);
-      setTeamMembers(members);
-      setInvitations(invites);
-    } catch {
-      // Silent fail
-    } finally {
-      setTeamLoading(false);
-    }
-  };
+  }, [user, profile, router, loadTeamData]);
 
   const isValidUrl = (url: string): boolean => {
     try {
@@ -132,6 +244,13 @@ export default function StockControlSettingsPage() {
 
     setBrandingError("");
     setScraping(true);
+    setLogoCandidates([]);
+    setHeroCandidates([]);
+    setSelectedLogoUrl(null);
+    setSelectedHeroUrl(null);
+    setProcessedLogoUrl(null);
+    setProcessedHeroUrl(null);
+    setScrapedPrimaryColor(null);
 
     try {
       const normalizedUrl = websiteUrl.startsWith("http")
@@ -139,14 +258,22 @@ export default function StockControlSettingsPage() {
         : `https://${websiteUrl.trim()}`;
       const result = await stockControlApiClient.scrapeBranding(normalizedUrl);
 
-      if (result.primaryColor) {
-        setPrimaryColor(result.primaryColor);
-      }
-      if (result.accentColor) {
-        setAccentColor(result.accentColor);
-      }
-      if (result.logoUrl) {
-        setLogoPreviewUrl(result.logoUrl);
+      if (result.logoCandidates.length === 0 && result.heroCandidates.length === 0 && !result.primaryColor) {
+        setBrandingError("Could not extract branding from this website. You can set colors and logo manually.");
+      } else {
+        setLogoCandidates(result.logoCandidates);
+        setHeroCandidates(result.heroCandidates);
+        setScrapedPrimaryColor(result.primaryColor);
+
+        if (result.logoCandidates.length > 0) {
+          setSelectedLogoUrl(result.logoCandidates[0].url);
+        }
+        if (result.heroCandidates.length > 0) {
+          setSelectedHeroUrl(result.heroCandidates[0].url);
+        }
+        if (result.primaryColor) {
+          setPrimaryColor(result.primaryColor);
+        }
       }
     } catch (e) {
       setBrandingError(e instanceof Error ? e.message : "Failed to extract branding from website.");
@@ -183,13 +310,46 @@ export default function StockControlSettingsPage() {
             : `https://${websiteUrl.trim()}`
           : undefined;
 
+      let finalLogoUrl = processedLogoUrl;
+      let finalHeroUrl = processedHeroUrl;
+      let finalPrimary = primaryColor;
+      let finalAccent = accentColor;
+
+      if (brandingSelection === "custom" && (selectedLogoUrl || selectedHeroUrl)) {
+        setProcessing(true);
+        const processed = await stockControlApiClient.processBrandingSelection({
+          logoSourceUrl: selectedLogoUrl ?? undefined,
+          heroSourceUrl: selectedHeroUrl ?? undefined,
+          scrapedPrimaryColor: scrapedPrimaryColor ?? undefined,
+        });
+        setProcessing(false);
+
+        if (processed.logoUrl) {
+          finalLogoUrl = processed.logoUrl;
+          setProcessedLogoUrl(processed.logoUrl);
+        }
+        if (processed.heroImageUrl) {
+          finalHeroUrl = processed.heroImageUrl;
+          setProcessedHeroUrl(processed.heroImageUrl);
+        }
+        if (processed.primaryColor) {
+          finalPrimary = processed.primaryColor;
+          setPrimaryColor(processed.primaryColor);
+        }
+        if (processed.accentColor) {
+          finalAccent = processed.accentColor;
+          setAccentColor(processed.accentColor);
+        }
+      }
+
       await stockControlApiClient.setBranding({
         brandingType: brandingSelection,
         websiteUrl: normalizedUrl,
         brandingAuthorized: brandingSelection === "custom" ? brandingAuthorized : undefined,
-        primaryColor: brandingSelection === "custom" ? primaryColor : undefined,
-        accentColor: brandingSelection === "custom" ? accentColor : undefined,
-        logoUrl: brandingSelection === "custom" ? (logoPreviewUrl ?? undefined) : undefined,
+        primaryColor: brandingSelection === "custom" ? finalPrimary : undefined,
+        accentColor: brandingSelection === "custom" ? finalAccent : undefined,
+        logoUrl: brandingSelection === "custom" ? (finalLogoUrl ?? undefined) : undefined,
+        heroImageUrl: brandingSelection === "custom" ? (finalHeroUrl ?? undefined) : undefined,
       });
 
       setBrandingSuccess(true);
@@ -198,6 +358,7 @@ export default function StockControlSettingsPage() {
       setBrandingError(e instanceof Error ? e.message : "Failed to save branding preference.");
     } finally {
       setBrandingSaving(false);
+      setProcessing(false);
     }
   };
 
@@ -257,9 +418,20 @@ export default function StockControlSettingsPage() {
     const labels: Record<string, string> = {
       admin: "Admin",
       manager: "Manager",
+      accounts: "Accounts",
       storeman: "Storeman",
     };
     return labels[role] || role;
+  };
+
+  const savingLabel = () => {
+    if (processing) {
+      return "Processing images...";
+    }
+    if (brandingSaving) {
+      return "Saving...";
+    }
+    return "Save Branding";
   };
 
   if (user?.role !== "admin") {
@@ -437,36 +609,77 @@ export default function StockControlSettingsPage() {
                   Extracting branding...
                 </>
               ) : (
-                "Extract Branding"
+                logoCandidates.length > 0 || heroCandidates.length > 0 ? "Re-extract Branding" : "Extract Branding"
               )}
             </button>
-            {logoPreviewUrl && (
+
+            {logoCandidates.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  Logo Candidates ({logoCandidates.length})
+                </h3>
+                <div className="grid grid-cols-4 gap-2">
+                  {logoCandidates.map((candidate) => (
+                    <CandidateThumbnail
+                      key={candidate.url}
+                      candidate={candidate}
+                      selected={selectedLogoUrl === candidate.url}
+                      onSelect={() => setSelectedLogoUrl(candidate.url)}
+                      size="small"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {heroCandidates.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  Hero Image Candidates ({heroCandidates.length})
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {heroCandidates.map((candidate) => (
+                    <CandidateThumbnail
+                      key={candidate.url}
+                      candidate={candidate}
+                      selected={selectedHeroUrl === candidate.url}
+                      onSelect={() => setSelectedHeroUrl(candidate.url)}
+                      size="large"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {processedLogoUrl && logoCandidates.length === 0 && (
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <img
-                  src={logoPreviewUrl}
-                  alt="Extracted logo"
+                  src={processedLogoUrl}
+                  alt="Current logo"
                   className="h-12 w-12 object-contain rounded"
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">Logo extracted</p>
-                  <p className="text-xs text-gray-500 truncate">{logoPreviewUrl}</p>
+                  <p className="text-sm font-medium text-gray-900">Current logo</p>
+                  <p className="text-xs text-gray-500">Extract branding to choose a different logo</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setLogoPreviewUrl(null)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
               </div>
             )}
+
+            {processedHeroUrl && heroCandidates.length === 0 && (
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-sm font-medium text-gray-900 mb-2">Current hero image</p>
+                <div className="relative rounded overflow-hidden" style={{ maxHeight: 160 }}>
+                  <img
+                    src={processedHeroUrl}
+                    alt="Current hero"
+                    className="w-full object-cover rounded"
+                    style={{ maxHeight: 160 }}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Extract branding to choose a different image</p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700">
@@ -532,10 +745,10 @@ export default function StockControlSettingsPage() {
         <button
           type="button"
           onClick={handleSaveBranding}
-          disabled={brandingSaving}
+          disabled={brandingSaving || processing}
           className="mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {brandingSaving ? "Saving..." : "Save Branding"}
+          {savingLabel()}
         </button>
       </div>
 
@@ -570,6 +783,7 @@ export default function StockControlSettingsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
               >
                 <option value="storeman">Storeman</option>
+                <option value="accounts">Accounts</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
               </select>

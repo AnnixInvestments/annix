@@ -247,6 +247,16 @@ export class StockControlAuthService {
       throw new UnauthorizedException("User not found");
     }
 
+    if (user.role !== StockControlRole.ADMIN) {
+      const adminCount = await this.userRepo.count({
+        where: { companyId: user.companyId, role: StockControlRole.ADMIN },
+      });
+      if (adminCount === 0) {
+        user.role = StockControlRole.ADMIN;
+        await this.userRepo.save(user);
+      }
+    }
+
     return {
       id: user.id,
       email: user.email,
@@ -258,6 +268,7 @@ export class StockControlAuthService {
       primaryColor: user.company?.primaryColor ?? null,
       accentColor: user.company?.accentColor ?? null,
       logoUrl: user.company?.logoUrl ?? null,
+      heroImageUrl: user.company?.heroImageUrl ?? null,
       createdAt: user.createdAt,
     };
   }
@@ -300,6 +311,7 @@ export class StockControlAuthService {
     primaryColor?: string,
     accentColor?: string,
     logoUrl?: string,
+    heroImageUrl?: string,
   ) {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
     if (!company) {
@@ -314,6 +326,7 @@ export class StockControlAuthService {
     company.primaryColor = brandingType === BrandingType.CUSTOM ? (primaryColor ?? null) : null;
     company.accentColor = brandingType === BrandingType.CUSTOM ? (accentColor ?? null) : null;
     company.logoUrl = brandingType === BrandingType.CUSTOM ? (logoUrl ?? null) : null;
+    company.heroImageUrl = brandingType === BrandingType.CUSTOM ? (heroImageUrl ?? null) : null;
     await this.companyRepo.save(company);
 
     return { message: "Branding preference saved successfully." };

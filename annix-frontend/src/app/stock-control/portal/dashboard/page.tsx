@@ -10,6 +10,8 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useStockControlBranding } from "../../context/StockControlBrandingContext";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 
 function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", {
@@ -29,6 +31,8 @@ function movementTypeBadge(type: string): string {
 }
 
 export default function StockControlDashboard() {
+  const { colors, heroImageUrl } = useStockControlBranding();
+  const { user } = useStockControlAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [sohSummary, setSohSummary] = useState<SohSummary[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
@@ -86,12 +90,40 @@ export default function StockControlDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Stock Control Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Overview of inventory, jobs, and recent activity
-        </p>
-      </div>
+      {heroImageUrl ? (
+        <div
+          className="relative rounded-xl overflow-hidden shadow-lg"
+          style={{ minHeight: 180 }}
+        >
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${heroImageUrl})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-black/30" />
+          <div className="relative px-8 py-10">
+            <h1 className="text-3xl font-bold text-white">
+              Welcome back, {user?.name?.split(" ")[0] ?? "there"}
+            </h1>
+            <p className="mt-2 text-white/80 text-sm">
+              Overview of inventory, jobs, and recent activity
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="relative rounded-xl overflow-hidden shadow-lg"
+          style={{ backgroundColor: colors.background, minHeight: 140 }}
+        >
+          <div className="relative px-8 py-8">
+            <h1 className="text-2xl font-bold text-white">
+              Welcome back, {user?.name?.split(" ")[0] ?? "there"}
+            </h1>
+            <p className="mt-1 text-white/80 text-sm">
+              Overview of inventory, jobs, and recent activity
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <Link

@@ -1,5 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { Response } from "express";
+import { ProcessBrandingSelectionDto } from "../dto/process-branding-selection.dto";
+import { SetBrandingDto } from "../dto/set-branding.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
@@ -72,9 +75,45 @@ export class StockControlAuthController {
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
   @StockControlRoles("admin")
   @Post("scrape-branding")
-  @ApiOperation({ summary: "Scrape branding from a website" })
-  async scrapeBranding(@Req() req: any, @Body() body: { websiteUrl: string }) {
-    return this.brandingScraperService.scrapeBranding(body.websiteUrl, req.user.companyId);
+  @ApiOperation({ summary: "Scrape branding candidates from a website" })
+  async scrapeBranding(@Body() body: { websiteUrl: string }) {
+    return this.brandingScraperService.scrapeCandidates(body.websiteUrl);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Post("process-branding-selection")
+  @ApiOperation({ summary: "Process and store selected branding images" })
+  async processBrandingSelection(@Req() req: any, @Body() body: ProcessBrandingSelectionDto) {
+    return this.brandingScraperService.processAndStoreSelected(
+      req.user.companyId,
+      body.logoSourceUrl ?? null,
+      body.heroSourceUrl ?? null,
+      body.scrapedPrimaryColor ?? null,
+    );
+  }
+
+  @UseGuards(StockControlAuthGuard)
+  @Get("proxy-image")
+  @ApiOperation({ summary: "Proxy an external image to avoid CORS issues" })
+  async proxyImage(@Query("url") url: string, @Res() res: Response) {
+    if (!url) {
+      res.status(HttpStatus.BAD_REQUEST).json({ message: "url query parameter is required" });
+      return;
+    }
+
+    const result = await this.brandingScraperService.proxyImage(url);
+    if (!result) {
+      res.status(HttpStatus.BAD_GATEWAY).json({ message: "Failed to fetch image" });
+      return;
+    }
+
+    res.set({
+      "Content-Type": result.contentType,
+      "Cache-Control": "public, max-age=300",
+      "Content-Length": result.buffer.length.toString(),
+    });
+    res.send(result.buffer);
   }
 
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
@@ -83,7 +122,7 @@ export class StockControlAuthController {
   @ApiOperation({ summary: "Set branding preference for company" })
   async setBranding(
     @Req() req: any,
-    @Body() body: { brandingType: string; websiteUrl?: string; brandingAuthorized?: boolean; primaryColor?: string; accentColor?: string; logoUrl?: string },
+    @Body() body: SetBrandingDto,
   ) {
     return this.authService.setBranding(
       req.user.companyId,
@@ -93,6 +132,7 @@ export class StockControlAuthController {
       body.primaryColor,
       body.accentColor,
       body.logoUrl,
+      body.heroImageUrl,
     );
   }
 

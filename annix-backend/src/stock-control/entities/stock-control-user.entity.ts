@@ -11,6 +11,7 @@ import { StockControlCompany } from "./stock-control-company.entity";
 
 export enum StockControlRole {
   STOREMAN = "storeman",
+  ACCOUNTS = "accounts",
   MANAGER = "manager",
   ADMIN = "admin",
 }

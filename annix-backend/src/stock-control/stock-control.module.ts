@@ -8,6 +8,7 @@ import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
 import { ImportController } from "./controllers/import.controller";
 import { InventoryController } from "./controllers/inventory.controller";
+import { JobCardImportController } from "./controllers/job-card-import.controller";
 import { InvitationController } from "./controllers/invitation.controller";
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
@@ -15,6 +16,7 @@ import { ReportsController } from "./controllers/reports.controller";
 import { DeliveryNote } from "./entities/delivery-note.entity";
 import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
 import { JobCard } from "./entities/job-card.entity";
+import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity";
 import { StockAllocation } from "./entities/stock-allocation.entity";
 import { StockControlCompany } from "./entities/stock-control-company.entity";
 import { StockControlInvitation } from "./entities/stock-control-invitation.entity";
@@ -29,6 +31,7 @@ import { DashboardService } from "./services/dashboard.service";
 import { DeliveryService } from "./services/delivery.service";
 import { ImportService } from "./services/import.service";
 import { InventoryService } from "./services/inventory.service";
+import { JobCardImportService } from "./services/job-card-import.service";
 import { StockControlInvitationService } from "./services/invitation.service";
 import { JobCardService } from "./services/job-card.service";
 import { MovementService } from "./services/movement.service";
@@ -43,6 +46,7 @@ import { ReportsService } from "./services/reports.service";
       StockItem,
       JobCard,
       StockAllocation,
+      JobCardImportMapping,
       DeliveryNote,
       DeliveryNoteItem,
       StockMovement,
@@ -68,6 +72,7 @@ import { ReportsService } from "./services/reports.service";
     DeliveriesController,
     MovementsController,
     ImportController,
+    JobCardImportController,
     DashboardController,
     ReportsController,
     InvitationController,
@@ -83,6 +88,7 @@ import { ReportsService } from "./services/reports.service";
     DeliveryService,
     MovementService,
     ImportService,
+    JobCardImportService,
     DashboardService,
     ReportsService,
   ],

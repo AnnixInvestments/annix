@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { JobCard } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { setPendingImportFile } from "./import/pending-file";
 
 const STATUS_TABS = ["all", "draft", "active", "completed", "cancelled"] as const;
 
@@ -19,11 +21,14 @@ function statusBadgeColor(status: string): string {
 }
 
 export default function JobCardsPage() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [createForm, setCreateForm] = useState({
     jobNumber: "",
     jobName: "",
@@ -31,6 +36,37 @@ export default function JobCardsPage() {
     description: "",
   });
   const [isCreating, setIsCreating] = useState(false);
+
+  const navigateWithFile = (file: File) => {
+    setPendingImportFile(file);
+    router.push("/stock-control/portal/job-cards/import");
+  };
+
+  const handleImportDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) {
+      navigateWithFile(droppedFile);
+    }
+  };
+
+  const handleImportDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleImportDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setIsDragging(false);
+  };
+
+  const handleImportFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      navigateWithFile(selectedFile);
+    }
+  };
 
   const fetchJobCards = useCallback(async () => {
     try {
@@ -90,21 +126,70 @@ export default function JobCardsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 relative"
+      onDrop={handleImportDrop}
+      onDragOver={handleImportDragOver}
+      onDragLeave={handleImportDragLeave}
+    >
+      {isDragging && (
+        <div className="absolute inset-0 z-40 bg-teal-50 bg-opacity-90 border-2 border-dashed border-teal-500 rounded-lg flex items-center justify-center">
+          <div className="text-center">
+            <svg
+              className="mx-auto h-16 w-16 text-teal-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <p className="mt-2 text-lg font-medium text-teal-700">Drop file to import job cards</p>
+            <p className="text-sm text-teal-600">Supports Excel, CSV, and PDF files</p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Job Cards</h1>
           <p className="mt-1 text-sm text-gray-600">Manage job cards and stock allocations</p>
         </div>
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Job Card
-        </button>
+        <div className="flex items-center space-x-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.pdf,.csv"
+            onChange={handleImportFileInput}
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            Import
+          </button>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Job Card
+          </button>
+        </div>
       </div>
 
       <div className="border-b border-gray-200">

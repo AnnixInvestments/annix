@@ -29,6 +29,7 @@ export interface StockControlUserProfile {
   primaryColor: string | null;
   accentColor: string | null;
   logoUrl: string | null;
+  heroImageUrl: string | null;
   createdAt: string;
 }
 
@@ -185,6 +186,37 @@ export interface ImportResult {
   errors: { row: number; message: string }[];
 }
 
+export interface JobCardImportMapping {
+  id: number;
+  companyId: number;
+  jobNumberColumn: string;
+  jobNameColumn: string;
+  customerNameColumn: string | null;
+  descriptionColumn: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobCardImportRow {
+  jobNumber?: string;
+  jobName?: string;
+  customerName?: string;
+  description?: string;
+}
+
+export interface JobCardImportResult {
+  totalRows: number;
+  created: number;
+  skipped: number;
+  errors: { row: number; message: string }[];
+}
+
+export interface JobCardImportUploadResponse {
+  headers: string[];
+  rawRows: Record<string, unknown>[];
+  savedMapping: JobCardImportMapping | null;
+}
+
 export interface InvitationValidation {
   valid: boolean;
   email?: string;
@@ -193,8 +225,22 @@ export interface InvitationValidation {
   status?: string;
 }
 
-export interface ScrapedBranding {
+export interface CandidateImage {
+  url: string;
+  source: string;
+  width: number | null;
+  height: number | null;
+}
+
+export interface ScrapedBrandingCandidates {
+  logoCandidates: CandidateImage[];
+  heroCandidates: CandidateImage[];
+  primaryColor: string | null;
+}
+
+export interface ProcessedBrandingResult {
   logoUrl: string | null;
+  heroImageUrl: string | null;
   primaryColor: string | null;
   accentColor: string | null;
 }
@@ -414,11 +460,30 @@ class StockControlApiClient {
     });
   }
 
-  async scrapeBranding(websiteUrl: string): Promise<ScrapedBranding> {
+  async scrapeBranding(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
     return this.request("/stock-control/auth/scrape-branding", {
       method: "POST",
       body: JSON.stringify({ websiteUrl }),
     });
+  }
+
+  async processBrandingSelection(data: {
+    logoSourceUrl?: string;
+    heroSourceUrl?: string;
+    scrapedPrimaryColor?: string;
+  }): Promise<ProcessedBrandingResult> {
+    return this.request("/stock-control/auth/process-branding-selection", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  proxyImageUrl(url: string): string {
+    return `${this.baseURL}/stock-control/auth/proxy-image?url=${encodeURIComponent(url)}`;
+  }
+
+  authHeaders(): Record<string, string> {
+    return this.headers();
   }
 
   async setBranding(data: {
@@ -428,6 +493,7 @@ class StockControlApiClient {
     primaryColor?: string;
     accentColor?: string;
     logoUrl?: string;
+    heroImageUrl?: string;
   }): Promise<{ message: string }> {
     return this.request("/stock-control/auth/set-branding", {
       method: "POST",
@@ -719,6 +785,50 @@ class StockControlApiClient {
 
   async confirmImport(rows: unknown[]): Promise<ImportResult> {
     return this.request("/stock-control/import/confirm", {
+      method: "POST",
+      body: JSON.stringify({ rows }),
+    });
+  }
+
+  async uploadJobCardImportFile(file: File): Promise<JobCardImportUploadResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/job-card-import/upload`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Import failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async jobCardImportMapping(): Promise<JobCardImportMapping | null> {
+    return this.request("/stock-control/job-card-import/mapping");
+  }
+
+  async saveJobCardImportMapping(mapping: {
+    jobNumberColumn: string;
+    jobNameColumn: string;
+    customerNameColumn?: string | null;
+    descriptionColumn?: string | null;
+  }): Promise<JobCardImportMapping> {
+    return this.request("/stock-control/job-card-import/mapping", {
+      method: "POST",
+      body: JSON.stringify(mapping),
+    });
+  }
+
+  async confirmJobCardImport(rows: JobCardImportRow[]): Promise<JobCardImportResult> {
+    return this.request("/stock-control/job-card-import/confirm", {
       method: "POST",
       body: JSON.stringify({ rows }),
     });

@@ -46,7 +46,9 @@ export function StockControlHeader({ onSearch, lowStockCount = 0 }: StockControl
     >
       <div className="flex items-center">
         {logoUrl ? (
-          <img src={logoUrl} alt="Company logo" className="h-10 w-10 object-contain rounded" />
+          <div className="h-10 px-2 flex items-center bg-white rounded-md">
+            <img src={logoUrl} alt="Company logo" className="h-8 w-auto object-contain" />
+          </div>
         ) : (
           <div className="text-2xl font-bold" style={{ color: colors.accent }}>
             ASCA

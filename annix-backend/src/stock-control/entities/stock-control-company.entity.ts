@@ -37,6 +37,9 @@ export class StockControlCompany {
   @Column({ name: "logo_url", type: "varchar", length: 500, nullable: true })
   logoUrl: string | null;
 
+  @Column({ name: "hero_image_url", type: "varchar", length: 500, nullable: true })
+  heroImageUrl: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
