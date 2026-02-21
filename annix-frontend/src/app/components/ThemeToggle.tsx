@@ -3,24 +3,22 @@
 import { useTheme } from "./ThemeProvider";
 import { Tooltip } from "./Tooltip";
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  className?: string;
+  iconClassName?: string;
+}
+
+export function ThemeToggle({ className, iconClassName }: ThemeToggleProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const tooltipText = `Switch to ${resolvedTheme === "light" ? "dark" : "light"} mode`;
+  const buttonClass = className ?? "p-2 rounded-lg transition-colors hover:bg-amix-navy-light";
+  const iconClass = iconClassName ?? "w-5 h-5 text-amix-orange";
 
   return (
     <Tooltip text={tooltipText} position="bottom">
-      <button
-        onClick={toggleTheme}
-        className="p-2 rounded-lg transition-colors hover:bg-amix-navy-light"
-        aria-label={tooltipText}
-      >
+      <button onClick={toggleTheme} className={buttonClass} aria-label={tooltipText}>
         {resolvedTheme === "light" ? (
-          <svg
-            className="w-5 h-5 text-amix-orange"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -29,12 +27,7 @@ export function ThemeToggle() {
             />
           </svg>
         ) : (
-          <svg
-            className="w-5 h-5 text-amix-orange"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

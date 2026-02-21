@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { corpId } from "@/app/lib/corpId";
 
 interface AuHeaderProps {
@@ -72,6 +73,10 @@ export function AuHeader({ onSearch, onExport, onImport }: AuHeaderProps) {
             IMPORT
           </button>
         )}
+        <ThemeToggle
+          className="p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
+          iconClassName="w-5 h-5 text-white"
+        />
         <button className="relative p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path

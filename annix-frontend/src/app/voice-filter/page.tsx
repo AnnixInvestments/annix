@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useVoiceFilterAuth } from "@/app/context/VoiceFilterAuthContext";
 import { VoiceFilterCalendarEvent, voiceFilterApi } from "@/app/lib/api/voiceFilterApi";
 import { fromISO } from "@/app/lib/datetime";
@@ -70,6 +71,10 @@ export default function VoiceFilterPage() {
             >
               Back to Annix
             </Link>
+            <ThemeToggle
+              className="px-3 py-1.5 text-sm bg-white/10 border border-white/20 rounded-md hover:bg-white/15 transition-colors"
+              iconClassName="w-4 h-4 text-white"
+            />
             {!isLoading &&
               (isAuthenticated && user ? (
                 <div className="flex items-center gap-3 ml-2 pl-3 border-l border-white/20">

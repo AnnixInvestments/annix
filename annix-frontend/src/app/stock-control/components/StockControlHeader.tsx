@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useStockControlBranding } from "../context/StockControlBrandingContext";
 
 interface StockControlHeaderProps {
@@ -83,6 +84,10 @@ export function StockControlHeader({ onSearch, lowStockCount = 0 }: StockControl
       </div>
 
       <div className="flex items-center space-x-3">
+        <ThemeToggle
+          className="p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
+          iconClassName="w-5 h-5 text-white"
+        />
         <button className="relative p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path

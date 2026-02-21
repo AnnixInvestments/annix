@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useVoiceFilterAuth } from "@/app/context/VoiceFilterAuthContext";
 import { VoiceFilterCalendarProvider, voiceFilterApi } from "@/app/lib/api/voiceFilterApi";
 import { formatRelative } from "@/app/lib/datetime";
@@ -215,17 +216,23 @@ export default function VoiceFilterCalendarPage() {
     return (
       <div className="min-h-screen bg-[#0f1419] text-[#e7e9ea]">
         <header className="bg-gradient-to-r from-[#1a1f26] to-[#141a21] border-b border-[#2f3336] px-6 py-4">
-          <div className="max-w-4xl mx-auto flex items-center gap-4">
-            <Link
-              href="/voice-filter"
-              className="p-2 rounded-full hover:bg-white/10 transition-colors text-[#71767b] hover:text-white"
-            >
-              <BackIcon />
-            </Link>
-            <div>
-              <h1 className="text-lg font-semibold">Calendar Connections</h1>
-              <p className="text-sm text-[#71767b]">Connect your calendars to sync events</p>
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link
+                href="/voice-filter"
+                className="p-2 rounded-full hover:bg-white/10 transition-colors text-[#71767b] hover:text-white"
+              >
+                <BackIcon />
+              </Link>
+              <div>
+                <h1 className="text-lg font-semibold">Calendar Connections</h1>
+                <p className="text-sm text-[#71767b]">Connect your calendars to sync events</p>
+              </div>
             </div>
+            <ThemeToggle
+              className="px-3 py-1.5 text-sm bg-white/10 border border-white/20 rounded-md hover:bg-white/15 transition-colors"
+              iconClassName="w-4 h-4 text-white"
+            />
           </div>
         </header>
 
@@ -253,17 +260,23 @@ export default function VoiceFilterCalendarPage() {
   return (
     <div className="min-h-screen bg-[#0f1419] text-[#e7e9ea]">
       <header className="bg-gradient-to-r from-[#1a1f26] to-[#141a21] border-b border-[#2f3336] px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link
-            href="/voice-filter"
-            className="p-2 rounded-full hover:bg-white/10 transition-colors text-[#71767b] hover:text-white"
-          >
-            <BackIcon />
-          </Link>
-          <div>
-            <h1 className="text-lg font-semibold">Calendar Connections</h1>
-            <p className="text-sm text-[#71767b]">Connect your calendars to sync events</p>
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/voice-filter"
+              className="p-2 rounded-full hover:bg-white/10 transition-colors text-[#71767b] hover:text-white"
+            >
+              <BackIcon />
+            </Link>
+            <div>
+              <h1 className="text-lg font-semibold">Calendar Connections</h1>
+              <p className="text-sm text-[#71767b]">Connect your calendars to sync events</p>
+            </div>
           </div>
+          <ThemeToggle
+            className="px-3 py-1.5 text-sm bg-white/10 border border-white/20 rounded-md hover:bg-white/15 transition-colors"
+            iconClassName="w-4 h-4 text-white"
+          />
         </div>
       </header>
 

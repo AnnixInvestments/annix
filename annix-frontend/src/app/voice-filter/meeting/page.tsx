@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 
 const BackIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,15 +109,21 @@ export default function VoiceFilterMeetingPage() {
               <p className="text-sm text-[#71767b]">Multi-speaker recording with transcription</p>
             </div>
           </div>
-          {isRecording && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 text-red-400 rounded-full">
-                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-sm font-medium">Recording</span>
-              </div>
-              <span className="text-lg font-mono text-white">{formatTime(elapsedTime)}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <ThemeToggle
+              className="px-3 py-1.5 text-sm bg-white/10 border border-white/20 rounded-md hover:bg-white/15 transition-colors"
+              iconClassName="w-4 h-4 text-white"
+            />
+            {isRecording && (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/20 text-red-400 rounded-full">
+                  <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                  <span className="text-sm font-medium">Recording</span>
+                </div>
+                <span className="text-lg font-mono text-white">{formatTime(elapsedTime)}</span>
+              </>
+            )}
+          </div>
         </div>
       </header>
 

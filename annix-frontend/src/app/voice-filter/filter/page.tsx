@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ThemeToggle } from "@/app/components/ThemeToggle";
 
 const BackIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,12 +91,18 @@ export default function VoiceFilterPage() {
               <p className="text-sm text-[#71767b]">Single-speaker voice verification</p>
             </div>
           </div>
-          <div
-            className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-              isActive ? "bg-[#00ba7c]/20 text-[#00ba7c]" : "bg-[#71767b]/20 text-[#71767b]"
-            }`}
-          >
-            {isActive ? "Active" : "Inactive"}
+          <div className="flex items-center gap-3">
+            <ThemeToggle
+              className="px-3 py-1.5 text-sm bg-white/10 border border-white/20 rounded-md hover:bg-white/15 transition-colors"
+              iconClassName="w-4 h-4 text-white"
+            />
+            <div
+              className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+                isActive ? "bg-[#00ba7c]/20 text-[#00ba7c]" : "bg-[#71767b]/20 text-[#71767b]"
+              }`}
+            >
+              {isActive ? "Active" : "Inactive"}
+            </div>
           </div>
         </div>
       </header>
