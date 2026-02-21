@@ -197,6 +197,8 @@ export class EnrollmentSession extends EventEmitter {
       enrolledAt: new Date().toISOString(),
       awsDomainId: this.domainId,
       awsSpeakerId: this.speakerId,
+      email: null,
+      name: null,
     };
     saveProfile(profile);
     return profile;

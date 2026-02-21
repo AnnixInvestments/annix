@@ -4,16 +4,20 @@ import { Between, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import {
   CreateMeetingDto,
+  CreateMeetingFromCalendarDto,
   EndMeetingDto,
   RescheduleMeetingDto,
   StartMeetingDto,
   UpdateMeetingDto,
 } from "../dto";
 import {
+  CalendarConnection,
+  CalendarEvent,
   Meeting,
   MeetingRecording,
   MeetingStatus,
   MeetingTranscript,
+  MeetingType,
   Prospect,
   RecordingProcessingStatus,
 } from "../entities";
@@ -31,6 +35,10 @@ export class MeetingService {
     private readonly transcriptRepo: Repository<MeetingTranscript>,
     @InjectRepository(Prospect)
     private readonly prospectRepo: Repository<Prospect>,
+    @InjectRepository(CalendarEvent)
+    private readonly calendarEventRepo: Repository<CalendarEvent>,
+    @InjectRepository(CalendarConnection)
+    private readonly calendarConnectionRepo: Repository<CalendarConnection>,
   ) {}
 
   async create(salesRepId: number, dto: CreateMeetingDto): Promise<Meeting> {
@@ -335,5 +343,88 @@ export class MeetingService {
       .leftJoinAndSelect("meeting.prospect", "prospect")
       .orderBy("meeting.scheduled_start", "DESC")
       .getMany();
+  }
+
+  async createFromCalendarEvent(
+    salesRepId: number,
+    calendarEventId: number,
+    dto: CreateMeetingFromCalendarDto,
+  ): Promise<{ meeting: Meeting; calendarProvider: string; meetingUrl: string | null }> {
+    const calendarEvent = await this.calendarEventRepo.findOne({
+      where: { id: calendarEventId },
+      relations: ["connection"],
+    });
+
+    if (!calendarEvent) {
+      throw new NotFoundException(`Calendar event ${calendarEventId} not found`);
+    }
+
+    const connection = await this.calendarConnectionRepo.findOne({
+      where: { id: calendarEvent.connectionId },
+    });
+
+    if (!connection || connection.userId !== salesRepId) {
+      throw new NotFoundException(`Calendar event ${calendarEventId} not found or not accessible`);
+    }
+
+    const existingMeeting = await this.meetingRepo.findOne({
+      where: { calendarEventId },
+    });
+
+    if (existingMeeting) {
+      throw new BadRequestException(
+        `A meeting already exists for calendar event ${calendarEventId}`,
+      );
+    }
+
+    if (dto.prospectId) {
+      const prospect = await this.prospectRepo.findOne({
+        where: { id: dto.prospectId },
+      });
+      if (!prospect) {
+        throw new NotFoundException(`Prospect ${dto.prospectId} not found`);
+      }
+    }
+
+    const meetingType = dto.meetingType ?? this.inferMeetingType(calendarEvent);
+
+    const allAttendees = [...(calendarEvent.attendees ?? []), ...(dto.additionalAttendees ?? [])];
+
+    const meeting = this.meetingRepo.create({
+      salesRepId,
+      prospectId: dto.prospectId ?? null,
+      calendarEventId,
+      title: dto.overrideTitle ?? calendarEvent.title,
+      description: calendarEvent.description,
+      meetingType,
+      scheduledStart: calendarEvent.startTime,
+      scheduledEnd: calendarEvent.endTime,
+      location: calendarEvent.location,
+      attendees: allAttendees.length > 0 ? allAttendees : null,
+    });
+
+    const saved = await this.meetingRepo.save(meeting);
+    this.logger.log(
+      `Meeting ${saved.id} created from calendar event ${calendarEventId} by user ${salesRepId}`,
+    );
+
+    return {
+      meeting: saved,
+      calendarProvider: calendarEvent.provider,
+      meetingUrl: calendarEvent.meetingUrl,
+    };
+  }
+
+  private inferMeetingType(event: CalendarEvent): MeetingType {
+    if (event.meetingUrl) {
+      return MeetingType.VIDEO;
+    }
+    if (
+      event.location?.toLowerCase().includes("phone") ||
+      event.location?.toLowerCase().includes("call")
+    ) {
+      return MeetingType.PHONE;
+    }
+    return MeetingType.IN_PERSON;
   }
 }

@@ -23,9 +23,11 @@ import { Request } from "express";
 import { AnnixRepAuthGuard } from "../auth";
 import {
   CreateMeetingDto,
+  CreateMeetingFromCalendarDto,
   CreateRecurringMeetingDto,
   DeleteRecurringMeetingDto,
   EndMeetingDto,
+  MeetingFromCalendarResponseDto,
   MeetingResponseDto,
   MeetingWithDetailsDto,
   RescheduleMeetingDto,
@@ -58,6 +60,33 @@ export class MeetingController {
   @ApiResponse({ status: 201, description: "Meeting created", type: MeetingResponseDto })
   create(@Req() req: AnnixRepRequest, @Body() dto: CreateMeetingDto) {
     return this.meetingService.create(req.annixRepUser.userId, dto);
+  }
+
+  @Post("from-calendar/:eventId")
+  @ApiOperation({ summary: "Create a meeting from a calendar event" })
+  @ApiParam({ name: "eventId", type: Number, description: "Calendar event ID" })
+  @ApiResponse({
+    status: 201,
+    description: "Meeting created from calendar event",
+    type: MeetingFromCalendarResponseDto,
+  })
+  @ApiResponse({ status: 404, description: "Calendar event not found" })
+  @ApiResponse({ status: 400, description: "Meeting already exists for this calendar event" })
+  async createFromCalendar(
+    @Req() req: AnnixRepRequest,
+    @Param("eventId", ParseIntPipe) eventId: number,
+    @Body() dto: CreateMeetingFromCalendarDto,
+  ) {
+    const result = await this.meetingService.createFromCalendarEvent(
+      req.annixRepUser.userId,
+      eventId,
+      dto,
+    );
+    return {
+      ...result.meeting,
+      calendarProvider: result.calendarProvider,
+      meetingUrl: result.meetingUrl,
+    };
   }
 
   @Get()

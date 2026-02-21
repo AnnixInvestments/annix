@@ -5,6 +5,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { AudioCapture, type AudioCaptureOptions } from "../audio/capture.js";
 import { VoiceActivityDetector } from "../audio/vad.js";
+import { profilesByEmails, type SpeakerProfile } from "../config/settings.js";
 import { MeetingEnrollment } from "./MeetingEnrollment.js";
 import { SpeakerIdentifier } from "./SpeakerIdentifier.js";
 import { Transcriber } from "./Transcriber.js";
@@ -108,19 +109,66 @@ export class MeetingSession extends EventEmitter {
     writeFileSync(transcriptPath, JSON.stringify(this.transcript, null, 2));
   }
 
-  addAttendee(name: string, title: string, options?: { isHost?: boolean }): MeetingAttendee {
+  addAttendee(
+    name: string,
+    title: string,
+    options?: { isHost?: boolean; email?: string },
+  ): MeetingAttendee {
     const attendee: MeetingAttendee = {
       id: randomUUID(),
       name,
       title,
+      email: options?.email ?? null,
       enrolledAt: options?.isHost ? new Date().toISOString() : null,
       profilePath: null,
+      matchedProfileId: null,
     };
 
     this.session.attendees.push(attendee);
     this.saveSession();
     this.emit("attendee-added", attendee);
     return attendee;
+  }
+
+  matchAttendeesToProfiles(): { matched: number; unmatched: number } {
+    const emails = this.session.attendees
+      .filter((a) => a.email !== null)
+      .map((a) => a.email as string);
+
+    if (emails.length === 0) {
+      return { matched: 0, unmatched: this.session.attendees.length };
+    }
+
+    const profileMap = profilesByEmails(emails);
+    let matched = 0;
+
+    for (const attendee of this.session.attendees) {
+      if (attendee.email) {
+        const profile = profileMap.get(attendee.email.toLowerCase().trim());
+        if (profile) {
+          attendee.matchedProfileId = profile.speakerId;
+          attendee.enrolledAt = profile.enrolledAt;
+          matched++;
+        }
+      }
+    }
+
+    this.saveSession();
+    this.emit("profiles-matched", { matched, unmatched: this.session.attendees.length - matched });
+
+    return { matched, unmatched: this.session.attendees.length - matched };
+  }
+
+  enrolledAttendees(): MeetingAttendee[] {
+    return this.session.attendees.filter(
+      (a) => a.enrolledAt !== null || a.matchedProfileId !== null,
+    );
+  }
+
+  unenrolledAttendees(): MeetingAttendee[] {
+    return this.session.attendees.filter(
+      (a) => a.enrolledAt === null && a.matchedProfileId === null,
+    );
   }
 
   removeAttendee(attendeeId: string): boolean {
@@ -494,14 +542,14 @@ export class MeetingSession extends EventEmitter {
     scheduledStartTime: string;
     scheduledEndTime: string;
     meetingUrl?: string;
-    attendeeNames?: string[];
+    attendees?: Array<{ name: string; email: string }>;
     inputDeviceId?: number;
     openaiApiKey?: string;
     config?: Partial<MeetingConfig>;
   }): MeetingSession {
     const session = new MeetingSession({
       title: options.title,
-      attendeeCount: options.attendeeNames?.length ?? 0,
+      attendeeCount: options.attendees?.length ?? 0,
       inputDeviceId: options.inputDeviceId,
       openaiApiKey: options.openaiApiKey,
       config: options.config,
@@ -512,10 +560,11 @@ export class MeetingSession extends EventEmitter {
       meetingUrl: options.meetingUrl,
     });
 
-    if (options.attendeeNames) {
-      for (const name of options.attendeeNames) {
-        session.addAttendee(name, "Attendee");
+    if (options.attendees) {
+      for (const attendee of options.attendees) {
+        session.addAttendee(attendee.name, "Attendee", { email: attendee.email });
       }
+      session.matchAttendeesToProfiles();
     }
 
     return session;

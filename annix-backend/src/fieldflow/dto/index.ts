@@ -41,9 +41,11 @@ export {
 export type { RecurrenceEndType, RecurrenceFrequency, RecurrenceUpdateScope } from "./meeting.dto";
 export {
   CreateMeetingDto,
+  CreateMeetingFromCalendarDto,
   CreateRecurringMeetingDto,
   DeleteRecurringMeetingDto,
   EndMeetingDto,
+  MeetingFromCalendarResponseDto,
   MeetingResponseDto,
   MeetingSummaryDto,
   MeetingWithDetailsDto,

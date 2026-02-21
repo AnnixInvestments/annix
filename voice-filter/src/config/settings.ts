@@ -80,6 +80,8 @@ export interface SpeakerProfile {
   enrolledAt: string;
   awsDomainId: string;
   awsSpeakerId: string;
+  email: string | null;
+  name: string | null;
 }
 
 export function saveProfile(profile: SpeakerProfile): void {
@@ -93,4 +95,42 @@ export function loadProfile(speakerId: string): SpeakerProfile | null {
     return null;
   }
   return JSON.parse(readFileSync(path, "utf-8")) as SpeakerProfile;
+}
+
+export function allProfiles(): SpeakerProfile[] {
+  const dir = profilesPath();
+  if (!existsSync(dir)) {
+    return [];
+  }
+  const { readdirSync } = require("node:fs");
+  const files = readdirSync(dir) as string[];
+  return files
+    .filter((f: string) => f.endsWith(".json"))
+    .map((f: string) => {
+      const content = readFileSync(join(dir, f), "utf-8");
+      return JSON.parse(content) as SpeakerProfile;
+    });
+}
+
+export function profileByEmail(email: string): SpeakerProfile | null {
+  const profiles = allProfiles();
+  const normalizedEmail = email.toLowerCase().trim();
+  return profiles.find((p) => p.email?.toLowerCase().trim() === normalizedEmail) ?? null;
+}
+
+export function profilesByEmails(emails: string[]): Map<string, SpeakerProfile> {
+  const profiles = allProfiles();
+  const result = new Map<string, SpeakerProfile>();
+  const normalizedEmails = emails.map((e) => e.toLowerCase().trim());
+
+  for (const profile of profiles) {
+    if (profile.email) {
+      const normalizedProfileEmail = profile.email.toLowerCase().trim();
+      if (normalizedEmails.includes(normalizedProfileEmail)) {
+        result.set(normalizedProfileEmail, profile);
+      }
+    }
+  }
+
+  return result;
 }

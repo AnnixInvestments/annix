@@ -198,8 +198,10 @@ export class RemoteMeetingSession extends EventEmitter {
       id: participant.id,
       name: participant.displayName,
       title: "Remote Participant",
+      email: null,
       enrolledAt: participant.joinedAt,
       profilePath: null,
+      matchedProfileId: null,
     };
 
     const existing = this.session.attendees.find((a) => a.id === participant.id);

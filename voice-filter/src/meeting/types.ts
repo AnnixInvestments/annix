@@ -2,8 +2,10 @@ export interface MeetingAttendee {
   id: string;
   name: string;
   title: string;
+  email: string | null;
   enrolledAt: string | null;
   profilePath: string | null;
+  matchedProfileId: string | null;
 }
 
 export type MeetingStatus = "setup" | "enrolling" | "active" | "paused" | "ended";

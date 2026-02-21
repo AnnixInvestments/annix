@@ -423,3 +423,44 @@ export class RecurringMeetingInstanceDto {
   @ApiPropertyOptional()
   originalDate?: string;
 }
+
+export class CreateMeetingFromCalendarDto {
+  @ApiPropertyOptional({
+    description: "Override the calendar event title",
+    example: "Discovery Call with John",
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  overrideTitle?: string;
+
+  @ApiPropertyOptional({
+    description: "Additional attendees to add beyond calendar attendees",
+    example: ["extra@example.com"],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  additionalAttendees?: string[];
+
+  @ApiPropertyOptional({ description: "Prospect ID to link to this meeting" })
+  @IsNumber()
+  @IsOptional()
+  prospectId?: number;
+
+  @ApiPropertyOptional({
+    description: "Meeting type override",
+    enum: MeetingType,
+  })
+  @IsEnum(MeetingType)
+  @IsOptional()
+  meetingType?: MeetingType;
+}
+
+export class MeetingFromCalendarResponseDto extends MeetingResponseDto {
+  @ApiProperty({ description: "Calendar provider (google, outlook, etc.)" })
+  calendarProvider: string;
+
+  @ApiPropertyOptional({ description: "Meeting URL from calendar event" })
+  meetingUrl: string | null;
+}
