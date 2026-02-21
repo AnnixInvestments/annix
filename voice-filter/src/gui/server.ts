@@ -13,14 +13,24 @@ import {
 import { findVBCableDevice } from "../audio/output.js";
 import {
   calendarEventById,
+  createPostMeetingJob,
   createUser,
   findOrCreateOAuthUser,
   findUserByEmail,
   findUserById,
   initDatabase,
   oauthTokens,
+  postMeetingJobById,
+  postMeetingJobByCalendarEvent,
+  postMeetingJobsByUser,
+  updatePostMeetingJob,
   verifyPassword,
 } from "../auth/database.js";
+import {
+  DEFAULT_POST_MEETING_CONFIG,
+  initPostMeetingService,
+  postMeetingService,
+} from "../post-meeting/index.js";
 import { extractTokenFromCookie, signToken, verifyToken } from "../auth/jwt.js";
 import { calendarService, initCalendarService } from "../calendar/calendar-service.js";
 import type { CalendarProvider } from "../calendar/types.js";
@@ -565,6 +575,221 @@ function handleApiCalendarSyncStatus(req: IncomingMessage, res: ServerResponse):
   sendJson(res, 200, { status: statusObj });
 }
 
+function handleApiPostMeetingJobs(req: IncomingMessage, res: ServerResponse): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+  const status = url.searchParams.get("status") ?? undefined;
+  const limit = parseInt(url.searchParams.get("limit") ?? "50", 10);
+
+  const jobs = postMeetingJobsByUser(userId, { status: status as never, limit });
+
+  const mapped = jobs.map((job) => ({
+    id: job.id,
+    calendarEventId: job.calendar_event_id,
+    meetingSessionId: job.meeting_session_id,
+    provider: job.provider,
+    status: job.status,
+    scheduledEndTime: job.scheduled_end_time,
+    actualEndTime: job.actual_end_time,
+    recordingPath: job.recording_path,
+    transcriptPath: job.transcript_path,
+    summaryPath: job.summary_path,
+    emailSentAt: job.email_sent_at,
+    errorMessage: job.error_message,
+    retryCount: job.retry_count,
+    createdAt: job.created_at,
+    updatedAt: job.updated_at,
+  }));
+
+  sendJson(res, 200, { jobs: mapped });
+}
+
+function handleApiPostMeetingJobById(
+  req: IncomingMessage,
+  res: ServerResponse,
+  jobId: number,
+): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const job = postMeetingJobById(jobId);
+  if (!job || job.user_id !== userId) {
+    sendJson(res, 404, { error: "Job not found." });
+    return;
+  }
+
+  sendJson(res, 200, {
+    id: job.id,
+    calendarEventId: job.calendar_event_id,
+    meetingSessionId: job.meeting_session_id,
+    provider: job.provider,
+    status: job.status,
+    scheduledEndTime: job.scheduled_end_time,
+    actualEndTime: job.actual_end_time,
+    recordingUrl: job.recording_url,
+    recordingPath: job.recording_path,
+    transcriptPath: job.transcript_path,
+    summaryPath: job.summary_path,
+    emailSentAt: job.email_sent_at,
+    errorMessage: job.error_message,
+    retryCount: job.retry_count,
+    createdAt: job.created_at,
+    updatedAt: job.updated_at,
+  });
+}
+
+async function handleApiPostMeetingCreate(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  try {
+    const body = await parseJsonBody(req);
+    const calendarEventId = body.calendarEventId as number;
+    const meetingSessionId = body.meetingSessionId as string | undefined;
+
+    if (!calendarEventId) {
+      sendJson(res, 400, { error: "calendarEventId is required." });
+      return;
+    }
+
+    const event = calendarEventById(calendarEventId);
+    if (!event || event.user_id !== userId) {
+      sendJson(res, 404, { error: "Calendar event not found." });
+      return;
+    }
+
+    const existing = postMeetingJobByCalendarEvent(userId, calendarEventId);
+    if (existing) {
+      sendJson(res, 200, {
+        job: {
+          id: existing.id,
+          status: existing.status,
+          createdAt: existing.created_at,
+        },
+        existing: true,
+      });
+      return;
+    }
+
+    const job = createPostMeetingJob({
+      userId,
+      calendarEventId,
+      meetingSessionId,
+      provider: event.provider,
+      scheduledEndTime: event.end_time,
+    });
+
+    sendJson(res, 201, {
+      job: {
+        id: job.id,
+        status: job.status,
+        createdAt: job.created_at,
+      },
+      existing: false,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create job";
+    sendJson(res, 500, { error: message });
+  }
+}
+
+async function handleApiPostMeetingProcess(
+  req: IncomingMessage,
+  res: ServerResponse,
+  jobId: number,
+): Promise<void> {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const job = postMeetingJobById(jobId);
+  if (!job || job.user_id !== userId) {
+    sendJson(res, 404, { error: "Job not found." });
+    return;
+  }
+
+  const service = postMeetingService();
+  if (!service) {
+    sendJson(res, 503, { error: "Post-meeting service not initialized." });
+    return;
+  }
+
+  try {
+    await service.processJob(job);
+    const updatedJob = postMeetingJobById(jobId);
+    sendJson(res, 200, { success: true, status: updatedJob?.status ?? job.status });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Processing failed";
+    sendJson(res, 500, { error: message });
+  }
+}
+
+function handleApiPostMeetingCancel(
+  req: IncomingMessage,
+  res: ServerResponse,
+  jobId: number,
+): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const job = postMeetingJobById(jobId);
+  if (!job || job.user_id !== userId) {
+    sendJson(res, 404, { error: "Job not found." });
+    return;
+  }
+
+  if (job.status === "completed" || job.status === "failed") {
+    sendJson(res, 400, { error: "Cannot cancel a completed or failed job." });
+    return;
+  }
+
+  updatePostMeetingJob(jobId, { status: "skipped" });
+  sendJson(res, 200, { success: true });
+}
+
+function handleApiPostMeetingStatus(req: IncomingMessage, res: ServerResponse): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  const service = postMeetingService();
+  const isRunning = service !== null;
+
+  const jobs = postMeetingJobsByUser(userId, { limit: 10 });
+  const pending = jobs.filter((j) => j.status === "pending").length;
+  const processing = jobs.filter(
+    (j) => !["pending", "completed", "failed", "skipped"].includes(j.status),
+  ).length;
+  const completed = jobs.filter((j) => j.status === "completed").length;
+  const failed = jobs.filter((j) => j.status === "failed").length;
+
+  sendJson(res, 200, {
+    serviceRunning: isRunning,
+    stats: { pending, processing, completed, failed },
+  });
+}
+
 function stopAudioCapture(): void {
   if (audioCapture) {
     audioCapture.stop();
@@ -1099,6 +1324,22 @@ export async function startGuiServer(openBrowser: boolean = true): Promise<void>
   initDatabase();
   initCalendarService();
 
+  const settings = loadSettings();
+  const postMeetingConfig = {
+    ...DEFAULT_POST_MEETING_CONFIG,
+    openaiApiKey: settings.openaiApiKey,
+    smtpHost: process.env.SMTP_HOST ?? null,
+    smtpPort: parseInt(process.env.SMTP_PORT ?? "587", 10),
+    smtpUser: process.env.SMTP_USER ?? null,
+    smtpPassword: process.env.SMTP_PASSWORD ?? null,
+    smtpFromAddress: process.env.SMTP_FROM ?? null,
+  };
+
+  const postMeetingSvc = initPostMeetingService(postMeetingConfig);
+  if (postMeetingConfig.enableAutoDetection) {
+    postMeetingSvc.startPolling();
+  }
+
   const server = createServer((req, res) => {
     const url = req.url ?? "/";
 
@@ -1256,6 +1497,21 @@ code { background: #2f3336; padding: 2px 6px; border-radius: 4px; }
       handleApiCalendarSync(req, res);
     } else if (url === "/api/calendar/sync-status" && req.method === "GET") {
       handleApiCalendarSyncStatus(req, res);
+    } else if (url === "/api/post-meeting/jobs" && req.method === "GET") {
+      handleApiPostMeetingJobs(req, res);
+    } else if (url.match(/^\/api\/post-meeting\/jobs\/\d+$/) && req.method === "GET") {
+      const jobId = parseInt(url.replace("/api/post-meeting/jobs/", ""), 10);
+      handleApiPostMeetingJobById(req, res, jobId);
+    } else if (url === "/api/post-meeting/jobs" && req.method === "POST") {
+      handleApiPostMeetingCreate(req, res);
+    } else if (url.match(/^\/api\/post-meeting\/jobs\/\d+\/process$/) && req.method === "POST") {
+      const jobId = parseInt(url.replace("/api/post-meeting/jobs/", "").replace("/process", ""), 10);
+      handleApiPostMeetingProcess(req, res, jobId);
+    } else if (url.match(/^\/api\/post-meeting\/jobs\/\d+\/cancel$/) && req.method === "POST") {
+      const jobId = parseInt(url.replace("/api/post-meeting/jobs/", "").replace("/cancel", ""), 10);
+      handleApiPostMeetingCancel(req, res, jobId);
+    } else if (url === "/api/post-meeting/status" && req.method === "GET") {
+      handleApiPostMeetingStatus(req, res);
     } else if (url === "/" || url === "/home") {
       serveHomeHtml(req, res);
     } else if (url === "/filter" || url === "/index.html") {

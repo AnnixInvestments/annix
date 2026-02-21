@@ -96,6 +96,31 @@ export function initDatabase(): void {
   if (!columnNames.includes("oauth_id")) {
     db.exec("ALTER TABLE users ADD COLUMN oauth_id TEXT DEFAULT NULL");
   }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS post_meeting_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      calendar_event_id INTEGER NOT NULL,
+      meeting_session_id TEXT,
+      provider TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      scheduled_end_time TEXT NOT NULL,
+      actual_end_time TEXT,
+      recording_url TEXT,
+      recording_path TEXT,
+      transcript_path TEXT,
+      summary_path TEXT,
+      email_sent_at TEXT,
+      error_message TEXT,
+      retry_count INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (calendar_event_id) REFERENCES calendar_events(id),
+      UNIQUE(user_id, calendar_event_id)
+    )
+  `);
 }
 
 function ensureDb(): Database.Database {
@@ -617,4 +642,242 @@ export function upcomingCalendarEvents(userId: number, limit = 10): CalendarEven
       "SELECT * FROM calendar_events WHERE user_id = ? AND end_time >= ? ORDER BY start_time ASC LIMIT ?",
     )
     .all(userId, now, limit) as CalendarEvent[];
+}
+
+export type PostMeetingStatus =
+  | "pending"
+  | "detecting_end"
+  | "fetching_recording"
+  | "transcribing"
+  | "generating_summary"
+  | "sending_email"
+  | "completed"
+  | "failed"
+  | "skipped";
+
+export interface PostMeetingJob {
+  id: number;
+  user_id: number;
+  calendar_event_id: number;
+  meeting_session_id: string | null;
+  provider: CalendarProvider;
+  status: PostMeetingStatus;
+  scheduled_end_time: string;
+  actual_end_time: string | null;
+  recording_url: string | null;
+  recording_path: string | null;
+  transcript_path: string | null;
+  summary_path: string | null;
+  email_sent_at: string | null;
+  error_message: string | null;
+  retry_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePostMeetingJobInput {
+  userId: number;
+  calendarEventId: number;
+  meetingSessionId?: string;
+  provider: CalendarProvider;
+  scheduledEndTime: string;
+}
+
+export function createPostMeetingJob(input: CreatePostMeetingJobInput): PostMeetingJob {
+  const database = ensureDb();
+  const now = new Date().toISOString();
+
+  const existing = database
+    .prepare("SELECT * FROM post_meeting_jobs WHERE user_id = ? AND calendar_event_id = ?")
+    .get(input.userId, input.calendarEventId) as PostMeetingJob | undefined;
+
+  if (existing) {
+    return existing;
+  }
+
+  const stmt = database.prepare(`
+    INSERT INTO post_meeting_jobs (
+      user_id, calendar_event_id, meeting_session_id, provider,
+      status, scheduled_end_time, retry_count, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, 'pending', ?, 0, ?, ?)
+  `);
+
+  const result = stmt.run(
+    input.userId,
+    input.calendarEventId,
+    input.meetingSessionId ?? null,
+    input.provider,
+    input.scheduledEndTime,
+    now,
+    now,
+  );
+
+  return {
+    id: result.lastInsertRowid as number,
+    user_id: input.userId,
+    calendar_event_id: input.calendarEventId,
+    meeting_session_id: input.meetingSessionId ?? null,
+    provider: input.provider,
+    status: "pending",
+    scheduled_end_time: input.scheduledEndTime,
+    actual_end_time: null,
+    recording_url: null,
+    recording_path: null,
+    transcript_path: null,
+    summary_path: null,
+    email_sent_at: null,
+    error_message: null,
+    retry_count: 0,
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+export function postMeetingJobById(jobId: number): PostMeetingJob | null {
+  const database = ensureDb();
+  const row = database.prepare("SELECT * FROM post_meeting_jobs WHERE id = ?").get(jobId) as
+    | PostMeetingJob
+    | undefined;
+  return row ?? null;
+}
+
+export function postMeetingJobByCalendarEvent(
+  userId: number,
+  calendarEventId: number,
+): PostMeetingJob | null {
+  const database = ensureDb();
+  const row = database
+    .prepare("SELECT * FROM post_meeting_jobs WHERE user_id = ? AND calendar_event_id = ?")
+    .get(userId, calendarEventId) as PostMeetingJob | undefined;
+  return row ?? null;
+}
+
+export function pendingPostMeetingJobs(): PostMeetingJob[] {
+  const database = ensureDb();
+  const now = new Date().toISOString();
+  return database
+    .prepare(
+      `SELECT * FROM post_meeting_jobs
+       WHERE status IN ('pending', 'detecting_end')
+       AND scheduled_end_time <= ?
+       ORDER BY scheduled_end_time ASC`,
+    )
+    .all(now) as PostMeetingJob[];
+}
+
+export function activePostMeetingJobs(): PostMeetingJob[] {
+  const database = ensureDb();
+  return database
+    .prepare(
+      `SELECT * FROM post_meeting_jobs
+       WHERE status IN ('fetching_recording', 'transcribing', 'generating_summary', 'sending_email')
+       ORDER BY updated_at ASC`,
+    )
+    .all() as PostMeetingJob[];
+}
+
+export function postMeetingJobsByUser(
+  userId: number,
+  options?: { status?: PostMeetingStatus; limit?: number },
+): PostMeetingJob[] {
+  const database = ensureDb();
+  let query = "SELECT * FROM post_meeting_jobs WHERE user_id = ?";
+  const params: (number | string)[] = [userId];
+
+  if (options?.status) {
+    query += " AND status = ?";
+    params.push(options.status);
+  }
+
+  query += " ORDER BY created_at DESC";
+
+  if (options?.limit) {
+    query += " LIMIT ?";
+    params.push(options.limit);
+  }
+
+  return database.prepare(query).all(...params) as PostMeetingJob[];
+}
+
+export function updatePostMeetingJob(
+  jobId: number,
+  updates: Partial<
+    Omit<PostMeetingJob, "id" | "user_id" | "calendar_event_id" | "created_at" | "provider">
+  >,
+): PostMeetingJob | null {
+  const database = ensureDb();
+  const now = new Date().toISOString();
+
+  const existing = postMeetingJobById(jobId);
+  if (!existing) {
+    return null;
+  }
+
+  const fields: string[] = [];
+  const values: (string | number | null)[] = [];
+
+  if (updates.meeting_session_id !== undefined) {
+    fields.push("meeting_session_id = ?");
+    values.push(updates.meeting_session_id);
+  }
+  if (updates.status !== undefined) {
+    fields.push("status = ?");
+    values.push(updates.status);
+  }
+  if (updates.actual_end_time !== undefined) {
+    fields.push("actual_end_time = ?");
+    values.push(updates.actual_end_time);
+  }
+  if (updates.recording_url !== undefined) {
+    fields.push("recording_url = ?");
+    values.push(updates.recording_url);
+  }
+  if (updates.recording_path !== undefined) {
+    fields.push("recording_path = ?");
+    values.push(updates.recording_path);
+  }
+  if (updates.transcript_path !== undefined) {
+    fields.push("transcript_path = ?");
+    values.push(updates.transcript_path);
+  }
+  if (updates.summary_path !== undefined) {
+    fields.push("summary_path = ?");
+    values.push(updates.summary_path);
+  }
+  if (updates.email_sent_at !== undefined) {
+    fields.push("email_sent_at = ?");
+    values.push(updates.email_sent_at);
+  }
+  if (updates.error_message !== undefined) {
+    fields.push("error_message = ?");
+    values.push(updates.error_message);
+  }
+  if (updates.retry_count !== undefined) {
+    fields.push("retry_count = ?");
+    values.push(updates.retry_count);
+  }
+
+  fields.push("updated_at = ?");
+  values.push(now);
+  values.push(jobId);
+
+  database.prepare(`UPDATE post_meeting_jobs SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+
+  return postMeetingJobById(jobId);
+}
+
+export function incrementPostMeetingJobRetry(jobId: number): PostMeetingJob | null {
+  const database = ensureDb();
+  const now = new Date().toISOString();
+
+  database
+    .prepare("UPDATE post_meeting_jobs SET retry_count = retry_count + 1, updated_at = ? WHERE id = ?")
+    .run(now, jobId);
+
+  return postMeetingJobById(jobId);
+}
+
+export function deletePostMeetingJob(jobId: number): void {
+  const database = ensureDb();
+  database.prepare("DELETE FROM post_meeting_jobs WHERE id = ?").run(jobId);
 }
