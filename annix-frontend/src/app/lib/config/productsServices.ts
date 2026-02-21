@@ -49,7 +49,6 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: React.createElement(HdpePipeIcon, { size: 20 }),
     category: "product",
     flagKey: "RFQ_PRODUCT_HDPE",
-    comingSoon: true,
   },
   {
     value: "pvc",
@@ -58,7 +57,6 @@ export const PRODUCTS_AND_SERVICES: ProductService[] = [
     icon: React.createElement(PvcPipeIcon, { size: 20 }),
     category: "product",
     flagKey: "RFQ_PRODUCT_PVC",
-    comingSoon: true,
   },
   {
     value: "structural_steel",
@@ -137,6 +135,8 @@ export const UNREGISTERED_ALLOWED_PRODUCTS = [
   "fabricated_steel",
   "fasteners_gaskets",
   "surface_protection",
+  "hdpe",
+  "pvc",
 ];
 
 export const UNREGISTERED_ALLOWED_PROJECT_TYPES = ["standard"];

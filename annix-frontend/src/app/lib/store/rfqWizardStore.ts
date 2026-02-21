@@ -13,6 +13,7 @@ import type {
   GlobalSpecs,
   InstrumentEntry,
   PipeItem,
+  PipeMaterialType,
   PipeSteelWorkEntry,
   PumpEntry,
   RfqFormData,
@@ -158,9 +159,9 @@ interface RfqWizardActions {
   ) => void;
   updateGlobalSpecs: (specs: GlobalSpecs) => void;
 
-  addStraightPipeEntry: (description?: string, insertAtStart?: boolean) => string;
-  addBendEntry: (description?: string, insertAtStart?: boolean) => string;
-  addFittingEntry: (description?: string, insertAtStart?: boolean) => string;
+  addStraightPipeEntry: (description?: string, insertAtStart?: boolean, materialType?: PipeMaterialType) => string;
+  addBendEntry: (description?: string, insertAtStart?: boolean, materialType?: PipeMaterialType) => string;
+  addFittingEntry: (description?: string, insertAtStart?: boolean, materialType?: PipeMaterialType) => string;
   addPipeSteelWorkEntry: (description?: string, insertAtStart?: boolean) => string;
   addExpansionJointEntry: (description?: string, insertAtStart?: boolean) => string;
   addValveEntry: (description?: string, insertAtStart?: boolean) => string;
@@ -514,10 +515,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             "updateGlobalSpecs",
           ),
 
-        addStraightPipeEntry: (description, insertAtStart) => {
+        addStraightPipeEntry: (description, insertAtStart, materialType) => {
           const newEntry: StraightPipeEntry = {
             id: generateUniqueId(),
             itemType: "straight_pipe",
+            materialType: materialType ?? "steel",
             description: description || "New Straight Pipe Item - Please configure specifications",
             specs: { ...DEFAULT_PIPE_SPECS } as CreateStraightPipeRfqDto,
             notes: "",
@@ -542,10 +544,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           return newEntry.id;
         },
 
-        addBendEntry: (description, insertAtStart) => {
+        addBendEntry: (description, insertAtStart, materialType) => {
           const newEntry: BendEntry = {
             id: generateUniqueId(),
             itemType: "bend",
+            materialType: materialType ?? "steel",
             description: description || "New Bend Item",
             specs: {
               nominalBoreMm: undefined,
@@ -582,7 +585,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           return newEntry.id;
         },
 
-        addFittingEntry: (description, insertAtStart) => {
+        addFittingEntry: (description, insertAtStart, materialType) => {
           const { rfqData } = get();
           const steelSpecId = rfqData.globalSpecs?.steelSpecificationId || 2;
           const fittingStandard = steelSpecId === 8 ? "SABS719" : "SABS62";
@@ -590,6 +593,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           const newEntry: FittingEntry = {
             id: generateUniqueId(),
             itemType: "fitting",
+            materialType: materialType ?? "steel",
             description: description || "New Fitting Item",
             specs: {
               fittingStandard: fittingStandard as "SABS62" | "SABS719",

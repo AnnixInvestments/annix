@@ -472,6 +472,30 @@ function BendFormComponent({
         showSplitToggle={entry.specs?.nominalBoreMm && entry.specs?.bendDegrees}
         formContent={
           <>
+            {/* Material Type Badge for non-steel materials */}
+            {entry.materialType && entry.materialType !== "steel" && (
+              <div className="mb-3 p-3 bg-gray-100 border border-gray-200 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2 py-1 rounded text-xs font-bold ${
+                      entry.materialType === "hdpe"
+                        ? "bg-gray-900 text-white"
+                        : "bg-blue-400 text-white"
+                    }`}
+                  >
+                    {entry.materialType === "hdpe" ? "HDPE" : "PVC"}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {entry.materialType === "hdpe" ? "HDPE Bend" : "PVC Bend"}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Detailed {entry.materialType.toUpperCase()} specifications will use the global settings configured in Step 2.
+                  Item-specific overrides coming soon.
+                </p>
+              </div>
+            )}
+
             {/* Item Description */}
             <div>
               <label

@@ -5,10 +5,15 @@ import type {
   FloodRiskLevel,
   TimeOfWetnessResult,
 } from "../services/environmentalIntelligence";
+import type { HdpeGrade, HdpeJoiningMethod, HdpeSdr } from "../config/rfq/hdpe";
+import type { PvcJoiningMethod, PvcPressureClass, PvcType } from "../config/rfq/pvc";
+
+export type PipeMaterialType = "steel" | "hdpe" | "pvc";
 
 export interface StraightPipeEntry {
   id: string;
   itemType: "straight_pipe";
+  materialType?: PipeMaterialType;
   description: string;
   clientItemNumber?: string;
   useSequentialNumbering?: boolean;
@@ -34,6 +39,7 @@ export interface BendStub {
 export interface BendEntry {
   id: string;
   itemType: "bend";
+  materialType?: PipeMaterialType;
   description: string;
   clientItemNumber?: string;
   useSequentialNumbering?: boolean;
@@ -67,6 +73,7 @@ export interface BendEntry {
 export interface FittingEntry {
   id: string;
   itemType: "fitting";
+  materialType?: PipeMaterialType;
   description: string;
   clientItemNumber?: string;
   useSequentialNumbering?: boolean;
@@ -376,6 +383,17 @@ export interface GlobalSpecs {
   internalRubberLineCallout?: string;
 
   steelPipesSpecsConfirmed?: boolean;
+
+  hdpeGrade?: HdpeGrade;
+  hdpeSdr?: HdpeSdr;
+  hdpePressureRating?: string;
+  hdpeJoiningMethod?: HdpeJoiningMethod;
+  hdpeSpecsConfirmed?: boolean;
+
+  pvcType?: PvcType;
+  pvcPressureClass?: PvcPressureClass;
+  pvcJoiningMethod?: PvcJoiningMethod;
+  pvcSpecsConfirmed?: boolean;
 
   ecpTemperature?: string;
   iso12944Category?: string;

@@ -30,6 +30,8 @@ import {
 import { usePtRecommendations } from "@/app/lib/hooks/usePtRecommendations";
 import { log } from "@/app/lib/logger";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
+import { HdpeSpecificationsSection } from "@/app/components/rfq/specifications/HdpeSpecificationsSection";
+import { PvcSpecificationsSection } from "@/app/components/rfq/specifications/PvcSpecificationsSection";
 
 interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -7049,32 +7051,76 @@ export default function SpecificationsStep({
         {showHdpePipes && (
           <div className="space-y-3">
             <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
-              <span className="text-2xl">🔵</span>
+              <span className="w-8 h-8 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center font-semibold">PE</span>
               <h3 className="text-xl font-bold text-gray-900">HDPE Pipes & Fittings</h3>
+              {globalSpecs?.hdpeSpecsConfirmed && (
+                <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                  Confirmed
+                </span>
+              )}
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <svg
-                  className="w-6 h-6 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <h4 className="text-lg font-semibold text-blue-800">Coming Soon</h4>
+            {globalSpecs?.hdpeSpecsConfirmed ? (
+              <div className="bg-green-100 border border-green-400 rounded-md p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <div className="text-sm">
+                      <span className="font-semibold text-gray-900">
+                        {globalSpecs?.hdpeGrade ?? "PE100"}
+                      </span>
+                      <span className="text-gray-600 mx-2">|</span>
+                      <span className="text-gray-700">
+                        SDR {globalSpecs?.hdpeSdr ?? "-"}
+                      </span>
+                      <span className="text-gray-600 mx-2">|</span>
+                      <span className="text-gray-700">
+                        {globalSpecs?.hdpeJoiningMethod?.replace(/_/g, " ") ?? "-"}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, hdpeSpecsConfirmed: false })}
+                    className="px-3 py-1 text-xs font-medium text-green-700 hover:text-green-800 hover:underline"
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
-              <p className="text-blue-700 text-sm">
-                HDPE pipe specifications and configuration options will be available in a future
-                update. This will include PE grades, SDR ratings, fusion joint specifications, and
-                more.
-              </p>
-            </div>
+            ) : (
+              <>
+                <HdpeSpecificationsSection
+                  globalSpecs={globalSpecs}
+                  onUpdateGlobalSpecs={onUpdateGlobalSpecs}
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (globalSpecs?.hdpeGrade && globalSpecs?.hdpeSdr && globalSpecs?.hdpeJoiningMethod) {
+                        onUpdateGlobalSpecs({ ...globalSpecs, hdpeSpecsConfirmed: true });
+                      }
+                    }}
+                    disabled={!globalSpecs?.hdpeGrade || !globalSpecs?.hdpeSdr || !globalSpecs?.hdpeJoiningMethod}
+                    className="px-4 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Confirm HDPE Specifications
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -7082,31 +7128,76 @@ export default function SpecificationsStep({
         {showPvcPipes && (
           <div className="space-y-3">
             <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
-              <span className="text-2xl">⚪</span>
+              <span className="w-8 h-8 rounded-full bg-blue-400 text-white text-xs flex items-center justify-center font-semibold">PVC</span>
               <h3 className="text-xl font-bold text-gray-900">PVC Pipes & Fittings</h3>
+              {globalSpecs?.pvcSpecsConfirmed && (
+                <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                  Confirmed
+                </span>
+              )}
             </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <svg
-                  className="w-6 h-6 text-gray-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <h4 className="text-lg font-semibold text-gray-800">Coming Soon</h4>
+            {globalSpecs?.pvcSpecsConfirmed ? (
+              <div className="bg-green-100 border border-green-400 rounded-md p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <div className="text-sm">
+                      <span className="font-semibold text-gray-900">
+                        {globalSpecs?.pvcType ?? "uPVC"}
+                      </span>
+                      <span className="text-gray-600 mx-2">|</span>
+                      <span className="text-gray-700">
+                        Class {globalSpecs?.pvcPressureClass ?? "-"}
+                      </span>
+                      <span className="text-gray-600 mx-2">|</span>
+                      <span className="text-gray-700">
+                        {globalSpecs?.pvcJoiningMethod?.replace(/_/g, " ") ?? "-"}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, pvcSpecsConfirmed: false })}
+                    className="px-3 py-1 text-xs font-medium text-green-700 hover:text-green-800 hover:underline"
+                  >
+                    Edit
+                  </button>
+                </div>
               </div>
-              <p className="text-gray-700 text-sm">
-                PVC pipe specifications and configuration options will be available in a future
-                update. This will include PVC grades, pressure classes, joint types, and more.
-              </p>
-            </div>
+            ) : (
+              <>
+                <PvcSpecificationsSection
+                  globalSpecs={globalSpecs}
+                  onUpdateGlobalSpecs={onUpdateGlobalSpecs}
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (globalSpecs?.pvcType && globalSpecs?.pvcPressureClass && globalSpecs?.pvcJoiningMethod) {
+                        onUpdateGlobalSpecs({ ...globalSpecs, pvcSpecsConfirmed: true });
+                      }
+                    }}
+                    disabled={!globalSpecs?.pvcType || !globalSpecs?.pvcPressureClass || !globalSpecs?.pvcJoiningMethod}
+                    className="px-4 py-2 bg-blue-400 text-white font-semibold rounded-lg hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Confirm PVC Specifications
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

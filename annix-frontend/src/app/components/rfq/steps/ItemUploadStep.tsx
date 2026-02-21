@@ -61,6 +61,12 @@ import {
   StraightPipeForm,
   ValveForm,
 } from "@/app/components/rfq/forms";
+import {
+  MaterialTypeSelector,
+  MaterialBadge,
+  ItemTypeButtons,
+} from "@/app/components/rfq/MaterialTypeSelector";
+import type { PipeMaterialType } from "@/app/lib/hooks/useRfqForm";
 
 interface ItemWrapperProps {
   entry: any;
@@ -396,6 +402,14 @@ export default function ItemUploadStep({
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
   const [drawingsHidden, setDrawingsHidden] = useState(hideDrawings);
   const hasCalledOnReady = useRef(false);
+
+  const PIPE_MATERIALS = ["fabricated_steel", "hdpe", "pvc"];
+  const selectedPipeMaterials = requiredProducts.filter((p) => PIPE_MATERIALS.includes(p));
+  const [activeMaterial, setActiveMaterial] = useState<PipeMaterialType | null>(
+    selectedPipeMaterials.length === 1
+      ? (selectedPipeMaterials[0] === "fabricated_steel" ? "steel" : selectedPipeMaterials[0] as PipeMaterialType)
+      : null
+  );
 
   // Authentication status for unregistered customer restrictions
   // Don't apply restrictions while auth is still loading to prevent flash of restricted state
@@ -1333,172 +1347,102 @@ export default function ItemUploadStep({
     fetchAvailableSchedules,
   ]);
 
-  const addItemButtons = (insertAtStart?: boolean) => (
-    <div
-      className="flex gap-2"
-      data-nix-target={insertAtStart ? "add-item-section-top" : undefined}
-    >
-      {requiredProducts.includes("fabricated_steel") && (
-        <>
-          <button
-            data-nix-target={insertAtStart ? "add-pipe-button-top" : undefined}
-            onClick={
-              !canAddMoreItems
-                ? showRestrictionPopup("itemLimit")
-                : () => {
-                    const existingIds = new Set(
-                      Array.from(document.querySelectorAll('[id^="pipe-nb-"]')).map((el) => el.id),
-                    );
+  const handleAddPipe = (material: PipeMaterialType, insertAtStart?: boolean) => {
+    const existingIds = new Set(
+      Array.from(document.querySelectorAll('[id^="pipe-nb-"]')).map((el) => el.id),
+    );
 
-                    onAddEntry(undefined, insertAtStart);
+    onAddEntry(undefined, insertAtStart, material);
 
-                    const tryFocus = (attempt: number) => {
-                      if (attempt > 10) return;
-                      setTimeout(
-                        () => {
-                          const allNbSelects = document.querySelectorAll('[id^="pipe-nb-"]');
-                          let newSelect: Element | null = null;
+    const tryFocus = (attempt: number) => {
+      if (attempt > 10) return;
+      setTimeout(
+        () => {
+          const allNbSelects = document.querySelectorAll('[id^="pipe-nb-"]');
+          let newSelect: Element | null = null;
 
-                          for (const select of allNbSelects) {
-                            if (!existingIds.has(select.id)) {
-                              newSelect = select;
-                              break;
-                            }
-                          }
-
-                          if (newSelect) {
-                            const button = newSelect as HTMLElement;
-                            button.click();
-                            button.scrollIntoView({ behavior: "smooth", block: "center" });
-                          } else {
-                            tryFocus(attempt + 1);
-                          }
-                        },
-                        150 + attempt * 100,
-                      );
-                    };
-                    tryFocus(0);
-                  }
+          for (const select of allNbSelects) {
+            if (!existingIds.has(select.id)) {
+              newSelect = select;
+              break;
             }
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-              !canAddMoreItems
-                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                : "bg-blue-100 hover:bg-blue-200 border-blue-300"
-            }`}
-          >
-            {!canAddMoreItems && (
-              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-            <svg
-              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-blue-600"}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
+          }
+
+          if (newSelect) {
+            const button = newSelect as HTMLElement;
+            button.click();
+            button.scrollIntoView({ behavior: "smooth", block: "center" });
+          } else {
+            tryFocus(attempt + 1);
+          }
+        },
+        150 + attempt * 100,
+      );
+    };
+    tryFocus(0);
+  };
+
+  const addItemButtons = (insertAtStart?: boolean) => {
+    const hasPipeMaterials = selectedPipeMaterials.length > 0;
+    const hasMultipleMaterials = selectedPipeMaterials.length > 1;
+
+    const currentMaterial: PipeMaterialType | null = hasMultipleMaterials
+      ? activeMaterial
+      : selectedPipeMaterials.length === 1
+        ? (selectedPipeMaterials[0] === "fabricated_steel" ? "steel" : selectedPipeMaterials[0] as PipeMaterialType)
+        : null;
+
+    return (
+      <div
+        className="flex gap-2 items-center flex-wrap"
+        data-nix-target={insertAtStart ? "add-item-section-top" : undefined}
+      >
+        {hasPipeMaterials && (
+          <>
+            {hasMultipleMaterials && !activeMaterial ? (
+              <MaterialTypeSelector
+                selectedMaterials={requiredProducts}
+                onSelectMaterial={(material) => setActiveMaterial(material)}
+                disabled={!canAddMoreItems}
               />
-            </svg>
-            <span
-              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-blue-700"}`}
-            >
-              Pipe
-            </span>
-          </button>
-          <button
-            data-nix-target={insertAtStart ? "add-bend-button-top" : undefined}
-            onClick={
-              !canAddMoreItems
-                ? showRestrictionPopup("itemLimit")
-                : () => onAddBendEntry(undefined, insertAtStart)
-            }
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-              !canAddMoreItems
-                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                : "bg-purple-100 hover:bg-purple-200 border-purple-300"
-            }`}
-          >
-            {!canAddMoreItems && (
-              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                  clipRule="evenodd"
+            ) : currentMaterial ? (
+              <div className="flex gap-2 items-center">
+                {hasMultipleMaterials && (
+                  <MaterialBadge
+                    material={currentMaterial}
+                    onClear={() => setActiveMaterial(null)}
+                  />
+                )}
+                <ItemTypeButtons
+                  material={currentMaterial}
+                  onAddPipe={() => {
+                    if (!canAddMoreItems) {
+                      showRestrictionPopup("itemLimit")({} as React.MouseEvent);
+                      return;
+                    }
+                    handleAddPipe(currentMaterial, insertAtStart);
+                  }}
+                  onAddBend={() => {
+                    if (!canAddMoreItems) {
+                      showRestrictionPopup("itemLimit")({} as React.MouseEvent);
+                      return;
+                    }
+                    onAddBendEntry(undefined, insertAtStart, currentMaterial);
+                  }}
+                  onAddFitting={() => {
+                    if (isUnregisteredCustomer) {
+                      showRestrictionPopup("fittings")({} as React.MouseEvent);
+                      return;
+                    }
+                    onAddFittingEntry(undefined, insertAtStart, currentMaterial);
+                  }}
+                  disabled={!canAddMoreItems}
+                  fittingsDisabled={isUnregisteredCustomer}
                 />
-              </svg>
-            )}
-            <svg
-              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-purple-600"}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span
-              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-purple-700"}`}
-            >
-              Bend
-            </span>
-          </button>
-          <button
-            data-nix-target={insertAtStart ? "add-fitting-button-top" : undefined}
-            onClick={
-              isUnregisteredCustomer
-                ? showRestrictionPopup("fittings")
-                : () => onAddFittingEntry(undefined, insertAtStart)
-            }
-            onMouseEnter={isUnregisteredCustomer ? showRestrictionPopup("fittings") : undefined}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-              isUnregisteredCustomer
-                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-                : "bg-green-100 hover:bg-green-200 border-green-300"
-            }`}
-          >
-            {isUnregisteredCustomer && (
-              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            )}
-            <svg
-              className={`w-4 h-4 ${isUnregisteredCustomer ? "text-gray-400" : "text-green-600"}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            <span
-              className={`text-xs font-semibold ${isUnregisteredCustomer ? "text-gray-500" : "text-green-700"}`}
-            >
-              Fitting
-            </span>
-          </button>
-        </>
-      )}
+              </div>
+            ) : null}
+          </>
+        )}
       {requiredProducts.includes("pipe_steel_work") && onAddPipeSteelWorkEntry && (
         <button
           onClick={() => onAddPipeSteelWorkEntry(undefined, insertAtStart)}
@@ -1643,7 +1587,8 @@ export default function ItemUploadStep({
         </button>
       )}
     </div>
-  );
+    );
+  };
 
   return (
     <div>
