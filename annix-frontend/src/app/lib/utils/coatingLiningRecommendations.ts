@@ -1,3 +1,7 @@
+import type { CeramicProduct } from "@/app/lib/config/ceramic/ceramicProducts";
+import type { PaintProduct } from "@/app/lib/config/paint/paintProducts";
+import type { RubberProduct } from "@/app/lib/config/rubber/rubberProducts";
+
 export interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
   particleShape: "Rounded" | "SubAngular" | "Angular";
@@ -551,4 +555,781 @@ export function deriveTemperatureCategory(tempC: number | undefined | null): str
     return "Ambient";
   }
   return "Ambient";
+}
+
+export type {
+  AdhesiveConditions,
+  AdhesiveRecommendation as CeramicAdhesiveRecommendation,
+  ApplicationType,
+  CeramicLiningRequirements,
+  CeramicMaterial,
+  CeramicProduct,
+  CeramicSupplier,
+  CompositeSystemConfig,
+  CompositeSystemRecommendation,
+  EquipmentGeometryType,
+  ImpactZoneDefinition,
+  ImpactZoneRecommendation,
+  RecommendedCeramicLining,
+  ThermalCyclingConditions,
+  ThermalCyclingResult,
+  TileLayoutGeometry,
+  TileLayoutResult,
+  TileShape,
+} from "@/app/lib/config/ceramic";
+export {
+  allCeramicProducts,
+  bestCeramicForImpactZones,
+  bestCeramicForSlidingAbrasion,
+  buildCompositeSystem,
+  calculateTileLayout,
+  ceramicProductById,
+  ceramicProducts,
+  ceramicProductsByAluminaContent,
+  ceramicProductsByMaterial,
+  ceramicProductsBySupplier,
+  ceramicProductsByWearRating,
+  ceramicProductsForApplication,
+  ceramicProductsForTemperature,
+  checkThermalCycling,
+  compareCeramicMaterials,
+  highImpactCeramicProducts,
+  identifyImpactZones,
+  recommendCeramicLining,
+  recommendForChutes,
+  recommendForCyclones as recommendCeramicForCyclones,
+  recommendForHighTemperature,
+  recommendForImpactZones,
+  recommendForSlidingAbrasion,
+  selectCeramicAdhesive,
+} from "@/app/lib/config/ceramic";
+export type {
+  CorrosivityCategory,
+  PaintProduct,
+  PaintSupplier,
+} from "@/app/lib/config/paint/paintProducts";
+export {
+  compatiblePrimers,
+  compatibleTopcoats,
+  paintProducts,
+  primersForEnvironment,
+  productsForCorrosivity,
+  productsForTemperature,
+  surfaceTolerantProducts,
+  topcoatsForEnvironment,
+} from "@/app/lib/config/paint/paintProducts";
+export type {
+  CoatingSystemRequirements,
+  CompatibilityValidation,
+  CoverageCalculation,
+  CoverageResult,
+  CureScheduleInput,
+  CureScheduleResult,
+  ISO12944Durability,
+  ISO12944DurabilityResult,
+  ISO12944Environment,
+  NORSOKSystem,
+  NORSOKSystemNumber,
+  OvercoatWindow,
+  OvercoatWindowResult,
+  RecommendedCoatingSystem,
+  SurfacePrepStandard,
+} from "@/app/lib/config/paint/paintSystemRecommendations";
+export {
+  allNORSOKSystems,
+  allSurfacePrepStandards,
+  calculateCoverage,
+  calculateCureSchedule,
+  calculateISO12944Durability,
+  checkOvercoatWindow,
+  generateNORSOKSystem,
+  highTempSystemRecommendation,
+  mapSurfacePrepStandards,
+  recommendCoatingSystem,
+  recommendPrimersForCategory,
+  recommendTopcoatsForPrimer,
+  surfacePrepForCorrosivity,
+  systemDftSummary,
+  validateMultiCoatCompatibility,
+} from "@/app/lib/config/paint/paintSystemRecommendations";
+export type {
+  AbrasionResistance,
+  AdhesiveRecommendation,
+  CureMethodRecommendation,
+  DamageMechanismProfile,
+  EquipmentGeometry,
+  HardnessClass,
+  PolymerBase,
+  RecommendedRubberLining,
+  RubberLiningRequirements,
+  RubberProduct,
+  RubberSupplier,
+  SANS1198Classification,
+  SANS1198ComplianceResult,
+  SANS1198Grade,
+  SANS1198Requirements,
+  SANS1198Type,
+  SubstrateCondition,
+  ThicknessOptimization,
+  WearConditions,
+  WearLifeEstimate,
+} from "@/app/lib/config/rubber";
+export {
+  allRubberProducts,
+  bestAbrasionResistantProducts,
+  checkSANS1198Compliance,
+  checkSANS1201Compliance,
+  estimateWearLife,
+  highTensileProducts,
+  optimizeThickness,
+  recommendCureMethod,
+  recommendForCyclones,
+  recommendForDryAbrasion,
+  recommendForPipesAndChutes,
+  recommendForWetSlurry,
+  recommendRubberLining,
+  rubberProductByCompoundCode,
+  rubberProductById,
+  rubberProducts,
+  rubberProductsByHardness,
+  rubberProductsByPolymer,
+  rubberProductsBySANS1198Grade,
+  rubberProductsBySANS1198Type,
+  rubberProductsBySupplier,
+  rubberProductsForAbrasion,
+  rubberProductsForTemperature,
+  selectAdhesiveSystem,
+} from "@/app/lib/config/rubber";
+
+export type BudgetTier = "economy" | "standard" | "premium";
+
+export type SupplierRegion = "south-africa" | "europe" | "usa" | "asia" | "global";
+
+export interface SupplierInfo {
+  name: string;
+  region: SupplierRegion;
+  tier: BudgetTier;
+  leadTimeDays: number;
+  localStock: boolean;
+}
+
+export interface BudgetFilterConfig {
+  tier: BudgetTier;
+  allowUpgrade: boolean;
+  maxPriceMultiplier?: number;
+}
+
+export interface SupplierPreference {
+  preferredSuppliers: string[];
+  excludedSuppliers: string[];
+  weightMultiplier: number;
+}
+
+export interface RegionalFilterConfig {
+  allowedRegions: SupplierRegion[];
+  requireLocalStock: boolean;
+  maxLeadTimeDays?: number;
+}
+
+export interface TemperatureCyclingConfig {
+  minTempC: number;
+  maxTempC: number;
+  cyclesPerDay: number;
+  rampRateCPerMin: number;
+  holdTimeMinutes: number;
+  environment: "dry" | "wet" | "steam" | "chemical";
+}
+
+export interface CrossModuleFilterResult<T> {
+  filtered: T[];
+  excluded: { item: T; reason: string }[];
+  appliedFilters: string[];
+}
+
+export interface TemperatureCyclingAssessment {
+  productId: string;
+  productName: string;
+  productType: "paint" | "rubber" | "ceramic";
+  isSuitable: boolean;
+  suitabilityScore: number;
+  thermalStressRating: "low" | "moderate" | "high" | "severe";
+  concerns: string[];
+  recommendations: string[];
+}
+
+const SUPPLIER_INFO: Record<string, SupplierInfo> = {
+  Jotun: { name: "Jotun", region: "europe", tier: "premium", leadTimeDays: 14, localStock: true },
+  Sigma: { name: "Sigma", region: "europe", tier: "premium", leadTimeDays: 14, localStock: true },
+  Hempel: { name: "Hempel", region: "europe", tier: "premium", leadTimeDays: 14, localStock: true },
+  PPG: { name: "PPG", region: "usa", tier: "premium", leadTimeDays: 21, localStock: false },
+  Carboline: {
+    name: "Carboline",
+    region: "usa",
+    tier: "premium",
+    leadTimeDays: 21,
+    localStock: false,
+  },
+  International: {
+    name: "International",
+    region: "europe",
+    tier: "premium",
+    leadTimeDays: 14,
+    localStock: true,
+  },
+  "Sherwin-Williams": {
+    name: "Sherwin-Williams",
+    region: "usa",
+    tier: "standard",
+    leadTimeDays: 21,
+    localStock: false,
+  },
+  StonCor: {
+    name: "StonCor",
+    region: "usa",
+    tier: "standard",
+    leadTimeDays: 21,
+    localStock: false,
+  },
+  Generic: {
+    name: "Generic",
+    region: "global",
+    tier: "economy",
+    leadTimeDays: 7,
+    localStock: true,
+  },
+
+  "REMA TIP TOP": {
+    name: "REMA TIP TOP",
+    region: "europe",
+    tier: "premium",
+    leadTimeDays: 14,
+    localStock: true,
+  },
+  "AU Industries": {
+    name: "AU Industries",
+    region: "south-africa",
+    tier: "standard",
+    leadTimeDays: 7,
+    localStock: true,
+  },
+  "S&N Rubber": {
+    name: "S&N Rubber",
+    region: "south-africa",
+    tier: "standard",
+    leadTimeDays: 7,
+    localStock: true,
+  },
+  "Weir Minerals": {
+    name: "Weir Minerals",
+    region: "global",
+    tier: "premium",
+    leadTimeDays: 14,
+    localStock: true,
+  },
+  Impilo: {
+    name: "Impilo",
+    region: "south-africa",
+    tier: "standard",
+    leadTimeDays: 7,
+    localStock: true,
+  },
+  Truco: {
+    name: "Truco",
+    region: "south-africa",
+    tier: "standard",
+    leadTimeDays: 5,
+    localStock: true,
+  },
+  Zenith: {
+    name: "Zenith",
+    region: "south-africa",
+    tier: "economy",
+    leadTimeDays: 5,
+    localStock: true,
+  },
+  "Rubber Inc": {
+    name: "Rubber Inc",
+    region: "south-africa",
+    tier: "economy",
+    leadTimeDays: 5,
+    localStock: true,
+  },
+
+  "TITAN Industrial": {
+    name: "TITAN Industrial",
+    region: "south-africa",
+    tier: "premium",
+    leadTimeDays: 7,
+    localStock: true,
+  },
+  "HUDCO WearLine": {
+    name: "HUDCO WearLine",
+    region: "south-africa",
+    tier: "standard",
+    leadTimeDays: 7,
+    localStock: true,
+  },
+  Multotec: {
+    name: "Multotec",
+    region: "south-africa",
+    tier: "premium",
+    leadTimeDays: 7,
+    localStock: true,
+  },
+  Ceresist: {
+    name: "Ceresist",
+    region: "south-africa",
+    tier: "standard",
+    leadTimeDays: 7,
+    localStock: true,
+  },
+  "HMA Wear Solutions": {
+    name: "HMA Wear Solutions",
+    region: "south-africa",
+    tier: "standard",
+    leadTimeDays: 7,
+    localStock: true,
+  },
+};
+
+const TIER_ORDER: Record<BudgetTier, number> = {
+  economy: 1,
+  standard: 2,
+  premium: 3,
+};
+
+function supplierTier(supplierName: string): BudgetTier {
+  return SUPPLIER_INFO[supplierName]?.tier || "standard";
+}
+
+function supplierRegion(supplierName: string): SupplierRegion {
+  return SUPPLIER_INFO[supplierName]?.region || "global";
+}
+
+function supplierLeadTime(supplierName: string): number {
+  return SUPPLIER_INFO[supplierName]?.leadTimeDays || 14;
+}
+
+function hasLocalStock(supplierName: string): boolean {
+  return SUPPLIER_INFO[supplierName]?.localStock ?? false;
+}
+
+export function filterByBudgetTier<T extends { supplier: string }>(
+  products: T[],
+  config: BudgetFilterConfig,
+): CrossModuleFilterResult<T> {
+  const appliedFilters: string[] = [`Budget tier: ${config.tier}`];
+  const filtered: T[] = [];
+  const excluded: { item: T; reason: string }[] = [];
+
+  const targetTierOrder = TIER_ORDER[config.tier];
+
+  products.forEach((product) => {
+    const productTier = supplierTier(product.supplier);
+    const productTierOrder = TIER_ORDER[productTier];
+
+    if (productTierOrder === targetTierOrder) {
+      filtered.push(product);
+    } else if (config.allowUpgrade && productTierOrder > targetTierOrder) {
+      filtered.push(product);
+      appliedFilters.push(`Upgraded from ${config.tier} to ${productTier}: ${product.supplier}`);
+    } else if (productTierOrder < targetTierOrder) {
+      excluded.push({
+        item: product,
+        reason: `Product tier (${productTier}) below requested tier (${config.tier})`,
+      });
+    } else {
+      excluded.push({
+        item: product,
+        reason: `Product tier (${productTier}) above requested tier (${config.tier}) and upgrades not allowed`,
+      });
+    }
+  });
+
+  return { filtered, excluded, appliedFilters };
+}
+
+export function applySupplierPreference<T extends { supplier: string; id: string }>(
+  products: T[],
+  preference: SupplierPreference,
+): { ranked: T[]; scores: Map<string, number> } {
+  const scores = new Map<string, number>();
+
+  const filteredProducts = products.filter((product) => {
+    if (preference.excludedSuppliers.includes(product.supplier)) {
+      return false;
+    }
+    return true;
+  });
+
+  filteredProducts.forEach((product) => {
+    let score = 1.0;
+
+    if (preference.preferredSuppliers.includes(product.supplier)) {
+      score *= preference.weightMultiplier;
+    }
+
+    const preferredIndex = preference.preferredSuppliers.indexOf(product.supplier);
+    if (preferredIndex >= 0) {
+      score += (preference.preferredSuppliers.length - preferredIndex) * 0.1;
+    }
+
+    scores.set(product.id, score);
+  });
+
+  const ranked = [...filteredProducts].sort((a, b) => {
+    const scoreA = scores.get(a.id) || 1.0;
+    const scoreB = scores.get(b.id) || 1.0;
+    return scoreB - scoreA;
+  });
+
+  return { ranked, scores };
+}
+
+export function filterByRegionalAvailability<T extends { supplier: string }>(
+  products: T[],
+  config: RegionalFilterConfig,
+): CrossModuleFilterResult<T> {
+  const appliedFilters: string[] = [`Regions: ${config.allowedRegions.join(", ")}`];
+  const filtered: T[] = [];
+  const excluded: { item: T; reason: string }[] = [];
+
+  if (config.requireLocalStock) {
+    appliedFilters.push("Requiring local stock");
+  }
+
+  if (config.maxLeadTimeDays !== undefined) {
+    appliedFilters.push(`Max lead time: ${config.maxLeadTimeDays} days`);
+  }
+
+  products.forEach((product) => {
+    const region = supplierRegion(product.supplier);
+    const leadTime = supplierLeadTime(product.supplier);
+    const localStock = hasLocalStock(product.supplier);
+
+    if (!config.allowedRegions.includes(region) && region !== "global") {
+      excluded.push({
+        item: product,
+        reason: `Supplier region (${region}) not in allowed regions`,
+      });
+      return;
+    }
+
+    if (config.requireLocalStock && !localStock) {
+      excluded.push({
+        item: product,
+        reason: "No local stock available",
+      });
+      return;
+    }
+
+    if (config.maxLeadTimeDays !== undefined && leadTime > config.maxLeadTimeDays) {
+      excluded.push({
+        item: product,
+        reason: `Lead time (${leadTime} days) exceeds maximum (${config.maxLeadTimeDays} days)`,
+      });
+      return;
+    }
+
+    filtered.push(product);
+  });
+
+  return { filtered, excluded, appliedFilters };
+}
+
+export function supplierInfo(supplierName: string): SupplierInfo | null {
+  return SUPPLIER_INFO[supplierName] || null;
+}
+
+export function allSuppliersByRegion(region: SupplierRegion): string[] {
+  return Object.entries(SUPPLIER_INFO)
+    .filter(([_, info]) => info.region === region || info.region === "global")
+    .map(([name]) => name);
+}
+
+export function allSuppliersByTier(tier: BudgetTier): string[] {
+  return Object.entries(SUPPLIER_INFO)
+    .filter(([_, info]) => info.tier === tier)
+    .map(([name]) => name);
+}
+
+export function assessPaintForTemperatureCycling(
+  product: PaintProduct,
+  config: TemperatureCyclingConfig,
+): TemperatureCyclingAssessment {
+  const concerns: string[] = [];
+  const recommendations: string[] = [];
+  let suitabilityScore = 100;
+
+  const deltaT = config.maxTempC - config.minTempC;
+
+  if (config.maxTempC > product.heatResistance.continuousC) {
+    suitabilityScore -= 40;
+    concerns.push(
+      `Max cycling temp (${config.maxTempC}°C) exceeds continuous rating (${product.heatResistance.continuousC}°C)`,
+    );
+  }
+
+  if (config.maxTempC > product.heatResistance.peakC) {
+    suitabilityScore -= 30;
+    concerns.push(`Max cycling temp exceeds peak rating (${product.heatResistance.peakC}°C)`);
+  }
+
+  if (deltaT > 100) {
+    suitabilityScore -= 20;
+    concerns.push(`Large temperature swing (${deltaT}°C) may cause coating stress`);
+    recommendations.push("Consider flexible coating system or stress-relief primer");
+  }
+
+  if (config.rampRateCPerMin > 5) {
+    suitabilityScore -= 15;
+    concerns.push("Rapid temperature changes may cause thermal shock");
+    recommendations.push("Implement controlled heating/cooling ramps if possible");
+  }
+
+  if (config.cyclesPerDay > 10) {
+    suitabilityScore -= 10;
+    concerns.push("High cycle frequency accelerates coating fatigue");
+    recommendations.push("Plan for more frequent inspection intervals");
+  }
+
+  if (config.environment === "wet" || config.environment === "steam") {
+    if (
+      product.heatResistance.immersionC !== null &&
+      config.maxTempC > product.heatResistance.immersionC
+    ) {
+      suitabilityScore -= 25;
+      concerns.push("Temperature exceeds immersion rating in wet/steam environment");
+    }
+    recommendations.push("Ensure coating is fully cured before wet cycling exposure");
+  }
+
+  if (config.environment === "chemical") {
+    suitabilityScore -= 10;
+    concerns.push("Chemical exposure combined with cycling increases degradation risk");
+    recommendations.push("Verify chemical compatibility at both temperature extremes");
+  }
+
+  if (product.genericType === "epoxy" || product.genericType === "epoxy-mio") {
+    if (deltaT > 80) {
+      recommendations.push(
+        "Consider polysiloxane or silicone for better thermal cycling resistance",
+      );
+    }
+  }
+
+  if (product.genericType === "high-temp-silicone") {
+    suitabilityScore += 10;
+    recommendations.push("Silicone coating well-suited for thermal cycling");
+  }
+
+  const thermalStressRating: "low" | "moderate" | "high" | "severe" =
+    suitabilityScore >= 80
+      ? "low"
+      : suitabilityScore >= 60
+        ? "moderate"
+        : suitabilityScore >= 40
+          ? "high"
+          : "severe";
+
+  return {
+    productId: product.id,
+    productName: product.name,
+    productType: "paint",
+    isSuitable: suitabilityScore >= 50,
+    suitabilityScore: Math.max(0, Math.min(100, suitabilityScore)),
+    thermalStressRating,
+    concerns,
+    recommendations,
+  };
+}
+
+export function assessRubberForTemperatureCycling(
+  product: RubberProduct,
+  config: TemperatureCyclingConfig,
+): TemperatureCyclingAssessment {
+  const concerns: string[] = [];
+  const recommendations: string[] = [];
+  let suitabilityScore = 100;
+
+  const deltaT = config.maxTempC - config.minTempC;
+
+  if (config.maxTempC > product.maxOperatingTempC) {
+    suitabilityScore -= 50;
+    concerns.push(
+      `Max cycling temp (${config.maxTempC}°C) exceeds max operating temp (${product.maxOperatingTempC}°C)`,
+    );
+  }
+
+  if (config.minTempC < product.minOperatingTempC) {
+    suitabilityScore -= 30;
+    concerns.push(
+      `Min cycling temp (${config.minTempC}°C) below min operating temp (${product.minOperatingTempC}°C)`,
+    );
+    recommendations.push("Low temperatures cause rubber embrittlement");
+  }
+
+  if (deltaT > 60) {
+    suitabilityScore -= 15;
+    concerns.push("Large temperature swing may cause adhesive bond stress");
+    recommendations.push("Verify adhesive system rated for thermal cycling");
+  }
+
+  if (config.rampRateCPerMin > 3) {
+    suitabilityScore -= 10;
+    concerns.push("Rapid temperature changes stress rubber-to-substrate bond");
+  }
+
+  if (config.cyclesPerDay > 20) {
+    suitabilityScore -= 15;
+    concerns.push("High cycle frequency accelerates rubber aging");
+    recommendations.push("Consider thicker lining for extended cycle life");
+  }
+
+  if (config.environment === "steam") {
+    if (
+      product.polymerBase !== "EPDM" &&
+      product.polymerBase !== "IIR" &&
+      product.polymerBase !== "BIIR"
+    ) {
+      suitabilityScore -= 25;
+      concerns.push("Steam environment requires EPDM or butyl rubber");
+      recommendations.push("Switch to EPDM compound for steam service");
+    }
+  }
+
+  if (product.polymerBase === "EPDM") {
+    suitabilityScore += 10;
+    recommendations.push("EPDM provides good thermal cycling resistance");
+  }
+
+  if (product.polymerBase === "NR" || product.polymerBase === "NR/SBR") {
+    if (config.maxTempC > 70) {
+      suitabilityScore -= 15;
+      concerns.push("Natural rubber degrades faster with thermal cycling above 70°C");
+    }
+  }
+
+  const thermalStressRating: "low" | "moderate" | "high" | "severe" =
+    suitabilityScore >= 80
+      ? "low"
+      : suitabilityScore >= 60
+        ? "moderate"
+        : suitabilityScore >= 40
+          ? "high"
+          : "severe";
+
+  return {
+    productId: product.id,
+    productName: product.name,
+    productType: "rubber",
+    isSuitable: suitabilityScore >= 50,
+    suitabilityScore: Math.max(0, Math.min(100, suitabilityScore)),
+    thermalStressRating,
+    concerns,
+    recommendations,
+  };
+}
+
+export function assessCeramicForTemperatureCycling(
+  product: CeramicProduct,
+  config: TemperatureCyclingConfig,
+): TemperatureCyclingAssessment {
+  const concerns: string[] = [];
+  const recommendations: string[] = [];
+  let suitabilityScore = 100;
+
+  const deltaT = config.maxTempC - config.minTempC;
+
+  if (config.maxTempC > product.maxOperatingTempC) {
+    suitabilityScore -= 50;
+    concerns.push(
+      `Max cycling temp (${config.maxTempC}°C) exceeds max operating temp (${product.maxOperatingTempC}°C)`,
+    );
+  }
+
+  const shockResistanceScore: Record<string, number> = {
+    poor: 1,
+    fair: 2,
+    good: 3,
+    excellent: 4,
+  };
+
+  const productShockScore = shockResistanceScore[product.thermalShockResistance];
+
+  if (deltaT > 200 && productShockScore < 3) {
+    suitabilityScore -= 30;
+    concerns.push("Large temperature swing with limited thermal shock resistance");
+    recommendations.push("Use silicon carbide or upgrade to better thermal shock resistant tile");
+  }
+
+  if (config.rampRateCPerMin > 10 && productShockScore < 3) {
+    suitabilityScore -= 25;
+    concerns.push("Rapid temperature changes may cause ceramic cracking");
+    recommendations.push("Implement controlled heating/cooling or use smaller tiles");
+  }
+
+  if (config.cyclesPerDay > 50) {
+    suitabilityScore -= 20;
+    concerns.push("Very high cycle frequency - ceramic fatigue likely");
+  }
+
+  if (productShockScore >= 3) {
+    suitabilityScore += 10;
+  }
+
+  if (product.material === "silicon-carbide") {
+    suitabilityScore += 15;
+    recommendations.push(
+      "Silicon carbide excellent for thermal cycling due to high thermal conductivity",
+    );
+  }
+
+  if (config.environment === "wet" || config.environment === "steam") {
+    concerns.push("Moisture ingress in tile pores can cause spalling during rapid heating");
+    recommendations.push("Ensure tiles are fully dried before thermal cycling");
+  }
+
+  if (product.compatibleAdhesives.includes("rubber-backing") && deltaT > 100) {
+    concerns.push("Rubber backing may fail under extreme thermal cycling");
+    recommendations.push("Consider ceramic cement adhesive for high delta-T applications");
+  }
+
+  recommendations.push("Use wider tile joints (4-5mm) to accommodate thermal expansion");
+  recommendations.push("Avoid constraining tiles - allow for expansion movement");
+
+  const thermalStressRating: "low" | "moderate" | "high" | "severe" =
+    suitabilityScore >= 80
+      ? "low"
+      : suitabilityScore >= 60
+        ? "moderate"
+        : suitabilityScore >= 40
+          ? "high"
+          : "severe";
+
+  return {
+    productId: product.id,
+    productName: product.name,
+    productType: "ceramic",
+    isSuitable: suitabilityScore >= 50,
+    suitabilityScore: Math.max(0, Math.min(100, suitabilityScore)),
+    thermalStressRating,
+    concerns,
+    recommendations,
+  };
+}
+
+export function rankProductsForTemperatureCycling<T extends { id: string; supplier: string }>(
+  assessments: TemperatureCyclingAssessment[],
+  products: T[],
+): T[] {
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
+  const sortedAssessments = [...assessments]
+    .filter((a) => a.isSuitable)
+    .sort((a, b) => b.suitabilityScore - a.suitabilityScore);
+
+  return sortedAssessments
+    .map((a) => productMap.get(a.productId))
+    .filter((p): p is T => p !== undefined);
 }
