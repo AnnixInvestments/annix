@@ -109,7 +109,11 @@ export class DeliveryService {
     await this.deliveryNoteRepo.remove(note);
   }
 
-  async uploadPhoto(companyId: number, id: number, file: Express.Multer.File): Promise<DeliveryNote> {
+  async uploadPhoto(
+    companyId: number,
+    id: number,
+    file: Express.Multer.File,
+  ): Promise<DeliveryNote> {
     const note = await this.findById(companyId, id);
     const result = await this.storageService.upload(file, "stock-control/deliveries");
     note.photoUrl = result.url;

@@ -26,6 +26,9 @@ export const BOQ_SECTION_TO_CAPABILITY: Record<string, string> = {
   // Surface Protection (coating, painting, galvanizing)
   surface_protection: "surface_protection",
   coating: "surface_protection",
+  external_coating: "surface_protection",
+  rubber_lining: "surface_protection",
+  ceramic_lining: "surface_protection",
 
   // HDPE Pipes
   hdpe_pipes: "hdpe",
@@ -69,7 +72,13 @@ export const CAPABILITY_TO_SECTIONS: Record<string, string[]> = {
     "fittings",
   ],
   fasteners_gaskets: ["bnw_sets", "gaskets", "fasteners"],
-  surface_protection: ["surface_protection", "coating"],
+  surface_protection: [
+    "surface_protection",
+    "coating",
+    "external_coating",
+    "rubber_lining",
+    "ceramic_lining",
+  ],
   hdpe: ["hdpe_pipes", "hdpe_fittings"],
   pvc: ["pvc_pipes", "pvc_fittings"],
   structural_steel: ["structural_steel", "steel_structures"],
@@ -100,6 +109,9 @@ export const SECTION_TITLES: Record<string, string> = {
   fasteners: "Fasteners",
   surface_protection: "Surface Protection",
   coating: "Coating",
+  external_coating: "External Coating",
+  rubber_lining: "Rubber Lining",
+  ceramic_lining: "Ceramic Lining",
   hdpe_pipes: "HDPE Pipes",
   hdpe_fittings: "HDPE Fittings",
   pvc_pipes: "PVC Pipes",

@@ -56,6 +56,9 @@ export interface ConsolidatedBoqData {
   bnwSets?: ConsolidatedItem[];
   gaskets?: ConsolidatedItem[];
   surfaceProtection?: ConsolidatedItem[];
+  externalCoating?: ConsolidatedItem[];
+  rubberLining?: ConsolidatedItem[];
+  ceramicLining?: ConsolidatedItem[];
   hdpePipes?: ConsolidatedItem[];
   pvcPipes?: ConsolidatedItem[];
   structuralSteel?: ConsolidatedItem[];
@@ -96,6 +99,9 @@ const DATA_KEY_TO_SECTION: Record<string, string> = {
   bnwSets: "bnw_sets",
   gaskets: "gaskets",
   surfaceProtection: "surface_protection",
+  externalCoating: "external_coating",
+  rubberLining: "rubber_lining",
+  ceramicLining: "ceramic_lining",
   hdpePipes: "hdpe_pipes",
   pvcPipes: "pvc_pipes",
   structuralSteel: "structural_steel",

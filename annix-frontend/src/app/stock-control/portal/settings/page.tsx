@@ -92,7 +92,9 @@ function CandidateThumbnail({
           onError={() => setFailed(true)}
         />
       ) : (
-        <div className={`${heightClass} w-full flex items-center justify-center bg-gray-100 rounded`}>
+        <div
+          className={`${heightClass} w-full flex items-center justify-center bg-gray-100 rounded`}
+        >
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-teal-500 border-t-transparent" />
         </div>
       )}
@@ -258,8 +260,14 @@ export default function StockControlSettingsPage() {
         : `https://${websiteUrl.trim()}`;
       const result = await stockControlApiClient.scrapeBranding(normalizedUrl);
 
-      if (result.logoCandidates.length === 0 && result.heroCandidates.length === 0 && !result.primaryColor) {
-        setBrandingError("Could not extract branding from this website. You can set colors and logo manually.");
+      if (
+        result.logoCandidates.length === 0 &&
+        result.heroCandidates.length === 0 &&
+        !result.primaryColor
+      ) {
+        setBrandingError(
+          "Could not extract branding from this website. You can set colors and logo manually.",
+        );
       } else {
         setLogoCandidates(result.logoCandidates);
         setHeroCandidates(result.heroCandidates);
@@ -608,8 +616,10 @@ export default function StockControlSettingsPage() {
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                   Extracting branding...
                 </>
+              ) : logoCandidates.length > 0 || heroCandidates.length > 0 ? (
+                "Re-extract Branding"
               ) : (
-                logoCandidates.length > 0 || heroCandidates.length > 0 ? "Re-extract Branding" : "Extract Branding"
+                "Extract Branding"
               )}
             </button>
 
@@ -660,7 +670,9 @@ export default function StockControlSettingsPage() {
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">Current logo</p>
-                  <p className="text-xs text-gray-500">Extract branding to choose a different logo</p>
+                  <p className="text-xs text-gray-500">
+                    Extract branding to choose a different logo
+                  </p>
                 </div>
               </div>
             )}
@@ -676,7 +688,9 @@ export default function StockControlSettingsPage() {
                     style={{ maxHeight: 160 }}
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Extract branding to choose a different image</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Extract branding to choose a different image
+                </p>
               </div>
             )}
 

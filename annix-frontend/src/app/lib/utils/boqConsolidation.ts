@@ -21,6 +21,20 @@ export interface ConsolidationInput {
     flangeStandardId?: number;
     flangePressureClassId?: number;
     flangeTypeCode?: string;
+    externalCoatingType?: string;
+    externalCoatingConfirmed?: boolean;
+    externalBlastingGrade?: string;
+    externalPrimerType?: string;
+    externalPrimerMicrons?: number;
+    externalIntermediateType?: string;
+    externalIntermediateMicrons?: number;
+    externalTopcoatType?: string;
+    externalTopcoatMicrons?: number;
+    internalLiningType?: string;
+    internalLiningConfirmed?: boolean;
+    internalRubberType?: string;
+    internalRubberThickness?: string;
+    internalCeramicType?: string;
   };
   masterData?: {
     flangeStandards?: { id: number; code: string }[];
@@ -134,7 +148,13 @@ function getBlankFlangeWeight(nbMm: number, pressureClass: string, flangeStandar
   return blankFlangeWeight(nbMm, pressureClass);
 }
 
-export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDataDto {
+interface ExtendedConsolidatedBoqData extends ConsolidatedBoqDataDto {
+  externalCoating?: ConsolidatedItemDto[];
+  rubberLining?: ConsolidatedItemDto[];
+  ceramicLining?: ConsolidatedItemDto[];
+}
+
+export function consolidateBoqData(input: ConsolidationInput): ExtendedConsolidatedBoqData {
   const { entries, globalSpecs, masterData } = input;
 
   const consolidatedPipes: Map<string, ConsolidatedItem> = new Map();
@@ -149,6 +169,13 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
   const consolidatedPumps: Map<string, ConsolidatedItem> = new Map();
   const consolidatedPumpParts: Map<string, ConsolidatedItem> = new Map();
   const consolidatedPumpSpares: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedExternalCoating: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedRubberLining: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedCeramicLining: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedSurfaceProtection: Map<string, ConsolidatedItem> = new Map();
+
+  const totalExternalAreaM2 = 0;
+  const totalInternalAreaM2 = 0;
 
   entries.forEach((entry, index) => {
     const itemNumber = index + 1;
@@ -670,6 +697,106 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
     }
   });
 
+  if (globalSpecs?.externalCoatingConfirmed && globalSpecs?.externalCoatingType) {
+    const totalDft =
+      (globalSpecs.externalPrimerMicrons || 0) +
+      (globalSpecs.externalIntermediateMicrons || 0) +
+      (globalSpecs.externalTopcoatMicrons || 0);
+
+    const coatingKey = `EXT_COAT_${globalSpecs.externalCoatingType}_${totalDft}`;
+    const description = `External Coating: ${globalSpecs.externalCoatingType} System, ${totalDft}um DFT, ${globalSpecs.externalBlastingGrade || "Sa 2.5"} prep`;
+
+    const coatingArea = Array.from(consolidatedBlankFlanges.values()).reduce(
+      (sum, item) => sum + (item.extAreaM2 || 0),
+      0,
+    );
+
+    consolidatedExternalCoating.set(coatingKey, {
+      description,
+      qty: 1,
+      unit: "m2",
+      weight: 0,
+      entries: [],
+      extAreaM2: coatingArea || totalExternalAreaM2,
+    });
+
+    consolidatedSurfaceProtection.set(coatingKey, {
+      description,
+      qty: 1,
+      unit: "m2",
+      weight: 0,
+      entries: [],
+      extAreaM2: coatingArea || totalExternalAreaM2,
+    });
+  }
+
+  if (globalSpecs?.internalLiningConfirmed && globalSpecs?.internalLiningType) {
+    const liningArea = Array.from(consolidatedBlankFlanges.values()).reduce(
+      (sum, item) => sum + (item.intAreaM2 || 0),
+      0,
+    );
+
+    if (globalSpecs.internalRubberType) {
+      const rubberKey = `RUBBER_${globalSpecs.internalRubberType}_${globalSpecs.internalRubberThickness || "6mm"}`;
+      const description = `Rubber Lining: ${globalSpecs.internalRubberType}, ${globalSpecs.internalRubberThickness || "6mm"} thickness`;
+
+      consolidatedRubberLining.set(rubberKey, {
+        description,
+        qty: 1,
+        unit: "m2",
+        weight: 0,
+        entries: [],
+        intAreaM2: liningArea || totalInternalAreaM2,
+      });
+
+      consolidatedSurfaceProtection.set(rubberKey, {
+        description,
+        qty: 1,
+        unit: "m2",
+        weight: 0,
+        entries: [],
+        intAreaM2: liningArea || totalInternalAreaM2,
+      });
+    }
+
+    if (globalSpecs.internalCeramicType) {
+      const ceramicKey = `CERAMIC_${globalSpecs.internalCeramicType}`;
+      const description = `Ceramic Lining: ${globalSpecs.internalCeramicType}`;
+
+      consolidatedCeramicLining.set(ceramicKey, {
+        description,
+        qty: 1,
+        unit: "m2",
+        weight: 0,
+        entries: [],
+        intAreaM2: liningArea || totalInternalAreaM2,
+      });
+
+      consolidatedSurfaceProtection.set(ceramicKey, {
+        description,
+        qty: 1,
+        unit: "m2",
+        weight: 0,
+        entries: [],
+        intAreaM2: liningArea || totalInternalAreaM2,
+      });
+    }
+
+    if (!globalSpecs.internalRubberType && !globalSpecs.internalCeramicType) {
+      const liningKey = `LINING_${globalSpecs.internalLiningType}`;
+      const description = `Internal Lining: ${globalSpecs.internalLiningType}`;
+
+      consolidatedSurfaceProtection.set(liningKey, {
+        description,
+        qty: 1,
+        unit: "m2",
+        weight: 0,
+        entries: [],
+        intAreaM2: liningArea || totalInternalAreaM2,
+      });
+    }
+  }
+
   const mapToDto = (items: Map<string, ConsolidatedItem>): ConsolidatedItemDto[] => {
     return Array.from(items.values()).map((item) => ({
       description: item.description,
@@ -709,5 +836,13 @@ export function consolidateBoqData(input: ConsolidationInput): ConsolidatedBoqDa
     pumps: consolidatedPumps.size > 0 ? mapToDto(consolidatedPumps) : undefined,
     pumpParts: consolidatedPumpParts.size > 0 ? mapToDto(consolidatedPumpParts) : undefined,
     pumpSpares: consolidatedPumpSpares.size > 0 ? mapToDto(consolidatedPumpSpares) : undefined,
+    surfaceProtection:
+      consolidatedSurfaceProtection.size > 0 ? mapToDto(consolidatedSurfaceProtection) : undefined,
+    externalCoating:
+      consolidatedExternalCoating.size > 0 ? mapToDto(consolidatedExternalCoating) : undefined,
+    rubberLining:
+      consolidatedRubberLining.size > 0 ? mapToDto(consolidatedRubberLining) : undefined,
+    ceramicLining:
+      consolidatedCeramicLining.size > 0 ? mapToDto(consolidatedCeramicLining) : undefined,
   };
 }

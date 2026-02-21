@@ -35,13 +35,27 @@ export class AddMultiTenancyToStockControl1793300000000 implements MigrationInte
       CREATE UNIQUE INDEX IF NOT EXISTS "IDX_sc_invitations_token" ON "stock_control_invitations" ("token")
     `);
 
-    await queryRunner.query(`ALTER TABLE "stock_control_users" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "stock_items" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "job_cards" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "delivery_notes" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "stock_movements" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "stock_allocations" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "delivery_note_items" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
+    await queryRunner.query(
+      `ALTER TABLE "stock_control_users" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "stock_items" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "job_cards" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "delivery_notes" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "stock_movements" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "stock_allocations" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "delivery_note_items" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`,
+    );
 
     const users = await queryRunner.query(
       `SELECT "id", "name", "branding_type", "website_url", "branding_authorized" FROM "stock_control_users" WHERE "company_id" IS NULL`,

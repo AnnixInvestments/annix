@@ -67,7 +67,12 @@ export class BrandingScraperService {
           list.push({ url, source, width, height });
         };
 
-        const logoCandidates: { url: string; source: string; width: number | null; height: number | null }[] = [];
+        const logoCandidates: {
+          url: string;
+          source: string;
+          width: number | null;
+          height: number | null;
+        }[] = [];
 
         const allImgs = Array.from(document.querySelectorAll<HTMLImageElement>("img"));
         allImgs
@@ -83,11 +88,15 @@ export class BrandingScraperService {
               id.includes("logo")
             );
           })
-          .forEach((img) => addCandidate(logoCandidates, img.src, "logo-attr", img.naturalWidth, img.naturalHeight));
+          .forEach((img) =>
+            addCandidate(logoCandidates, img.src, "logo-attr", img.naturalWidth, img.naturalHeight),
+          );
 
         Array.from(
           document.querySelectorAll<HTMLImageElement>("header img, nav img, .header img, .nav img"),
-        ).forEach((img) => addCandidate(logoCandidates, img.src, "header-img", img.naturalWidth, img.naturalHeight));
+        ).forEach((img) =>
+          addCandidate(logoCandidates, img.src, "header-img", img.naturalWidth, img.naturalHeight),
+        );
 
         const ogImage = document.querySelector<HTMLMetaElement>('meta[property="og:image"]');
         if (ogImage?.content) {
@@ -103,7 +112,12 @@ export class BrandingScraperService {
         const faviconUrl = new URL("/favicon.ico", window.location.origin).href;
         addCandidate(logoCandidates, faviconUrl, "favicon");
 
-        const heroCandidates: { url: string; source: string; width: number | null; height: number | null }[] = [];
+        const heroCandidates: {
+          url: string;
+          source: string;
+          width: number | null;
+          height: number | null;
+        }[] = [];
         const heroSeen = new Set<string>();
 
         const addHero = (
@@ -166,7 +180,12 @@ export class BrandingScraperService {
           if (header) {
             const computed = window.getComputedStyle(header);
             const bg = computed.backgroundColor;
-            if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent" && bg !== "rgb(255, 255, 255)") {
+            if (
+              bg &&
+              bg !== "rgba(0, 0, 0, 0)" &&
+              bg !== "transparent" &&
+              bg !== "rgb(255, 255, 255)"
+            ) {
               primaryColor = bg;
             }
           }
@@ -296,12 +315,17 @@ export class BrandingScraperService {
 
       return Buffer.from(await response.arrayBuffer());
     } catch (error) {
-      this.logger.warn(`Image download error for ${url}: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Image download error for ${url}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return null;
     }
   }
 
-  private async processAndStoreLogo(logoBuffer: Buffer | null, companyId: number): Promise<string | null> {
+  private async processAndStoreLogo(
+    logoBuffer: Buffer | null,
+    companyId: number,
+  ): Promise<string | null> {
     if (!logoBuffer || logoBuffer.length === 0) {
       this.logger.warn("No logo buffer to process");
       return null;
@@ -326,12 +350,17 @@ export class BrandingScraperService {
       this.logger.log(`Logo uploaded: ${result.url}`);
       return result.url;
     } catch (error) {
-      this.logger.error(`Logo processing failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error(
+        `Logo processing failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return null;
     }
   }
 
-  private async processAndStoreHeroImage(heroUrl: string | null, companyId: number): Promise<string | null> {
+  private async processAndStoreHeroImage(
+    heroUrl: string | null,
+    companyId: number,
+  ): Promise<string | null> {
     if (!heroUrl) {
       return null;
     }
@@ -360,7 +389,9 @@ export class BrandingScraperService {
       this.logger.log(`Hero image uploaded: ${result.url}`);
       return result.url;
     } catch (error) {
-      this.logger.warn(`Hero image processing failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Hero image processing failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return null;
     }
   }
@@ -423,10 +454,14 @@ export class BrandingScraperService {
       const [topColor] = sorted[0];
       const [r, g, b] = topColor.split(",").map(Number);
 
-      this.logger.log(`Dominant logo color: rgb(${r},${g},${b}) from ${colorCounts.size} color buckets`);
+      this.logger.log(
+        `Dominant logo color: rgb(${r},${g},${b}) from ${colorCounts.size} color buckets`,
+      );
       return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
     } catch (error) {
-      this.logger.warn(`Dominant color extraction failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Dominant color extraction failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return null;
     }
   }

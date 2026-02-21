@@ -175,7 +175,7 @@ export class StockControlAuthService {
   async forgotPassword(email: string) {
     const user = await this.userRepo.findOne({ where: { email } });
 
-    if (user && user.emailVerified) {
+    if (user?.emailVerified) {
       const resetToken = uuidv4();
       const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
 
@@ -186,7 +186,9 @@ export class StockControlAuthService {
       await this.emailService.sendStockControlPasswordResetEmail(email, resetToken);
     }
 
-    return { message: "If an account exists with that email, a password reset link has been sent." };
+    return {
+      message: "If an account exists with that email, a password reset link has been sent.",
+    };
   }
 
   async resetPassword(token: string, password: string) {

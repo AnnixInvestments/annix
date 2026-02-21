@@ -1,4 +1,16 @@
-import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import { ProcessBrandingSelectionDto } from "../dto/process-branding-selection.dto";
@@ -120,10 +132,7 @@ export class StockControlAuthController {
   @StockControlRoles("admin")
   @Post("set-branding")
   @ApiOperation({ summary: "Set branding preference for company" })
-  async setBranding(
-    @Req() req: any,
-    @Body() body: SetBrandingDto,
-  ) {
+  async setBranding(@Req() req: any, @Body() body: SetBrandingDto) {
     return this.authService.setBranding(
       req.user.companyId,
       body.brandingType,

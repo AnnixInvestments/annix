@@ -409,7 +409,6 @@ export interface GlobalSpecs {
   ecpServiceLife?: string;
   ecpCathodicProtection?: boolean;
 
-  showExternalCoatingProfile?: boolean;
   showMaterialTransferProfile?: boolean;
   surfaceProtectionConfirmed?: boolean;
 

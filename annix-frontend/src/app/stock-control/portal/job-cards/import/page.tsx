@@ -21,11 +21,38 @@ const JOB_CARD_FIELDS = [
 
 type MappingFieldKey = (typeof JOB_CARD_FIELDS)[number]["key"];
 
-const FIELD_COLORS: Record<string, { bg: string; border: string; text: string; header: string; badge: string }> = {
-  teal: { bg: "bg-teal-50", border: "border-teal-500", text: "text-teal-700", header: "bg-teal-100", badge: "bg-teal-600" },
-  blue: { bg: "bg-blue-50", border: "border-blue-500", text: "text-blue-700", header: "bg-blue-100", badge: "bg-blue-600" },
-  purple: { bg: "bg-purple-50", border: "border-purple-500", text: "text-purple-700", header: "bg-purple-100", badge: "bg-purple-600" },
-  amber: { bg: "bg-amber-50", border: "border-amber-500", text: "text-amber-700", header: "bg-amber-100", badge: "bg-amber-600" },
+const FIELD_COLORS: Record<
+  string,
+  { bg: string; border: string; text: string; header: string; badge: string }
+> = {
+  teal: {
+    bg: "bg-teal-50",
+    border: "border-teal-500",
+    text: "text-teal-700",
+    header: "bg-teal-100",
+    badge: "bg-teal-600",
+  },
+  blue: {
+    bg: "bg-blue-50",
+    border: "border-blue-500",
+    text: "text-blue-700",
+    header: "bg-blue-100",
+    badge: "bg-blue-600",
+  },
+  purple: {
+    bg: "bg-purple-50",
+    border: "border-purple-500",
+    text: "text-purple-700",
+    header: "bg-purple-100",
+    badge: "bg-purple-600",
+  },
+  amber: {
+    bg: "bg-amber-50",
+    border: "border-amber-500",
+    text: "text-amber-700",
+    header: "bg-amber-100",
+    badge: "bg-amber-600",
+  },
 };
 
 function applyMapping(
@@ -33,10 +60,18 @@ function applyMapping(
   columnMap: Record<MappingFieldKey, string>,
 ): JobCardImportRow[] {
   return rawRows.map((row) => ({
-    jobNumber: columnMap.jobNumber ? String(row[columnMap.jobNumber] ?? "").trim() || undefined : undefined,
-    jobName: columnMap.jobName ? String(row[columnMap.jobName] ?? "").trim() || undefined : undefined,
-    customerName: columnMap.customerName ? String(row[columnMap.customerName] ?? "").trim() || undefined : undefined,
-    description: columnMap.description ? String(row[columnMap.description] ?? "").trim() || undefined : undefined,
+    jobNumber: columnMap.jobNumber
+      ? String(row[columnMap.jobNumber] ?? "").trim() || undefined
+      : undefined,
+    jobName: columnMap.jobName
+      ? String(row[columnMap.jobName] ?? "").trim() || undefined
+      : undefined,
+    customerName: columnMap.customerName
+      ? String(row[columnMap.customerName] ?? "").trim() || undefined
+      : undefined,
+    description: columnMap.description
+      ? String(row[columnMap.description] ?? "").trim() || undefined
+      : undefined,
   }));
 }
 
@@ -91,8 +126,8 @@ export default function JobCardImportPage() {
 
       if (response.savedMapping) {
         const savedColumnMap = mappingToColumnMap(response.savedMapping);
-        const allHeadersPresent = [savedColumnMap.jobNumber, savedColumnMap.jobName].every(
-          (col) => response.headers.includes(col),
+        const allHeadersPresent = [savedColumnMap.jobNumber, savedColumnMap.jobName].every((col) =>
+          response.headers.includes(col),
         );
 
         if (allHeadersPresent) {
@@ -229,10 +264,7 @@ export default function JobCardImportPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
-        <Link
-          href="/stock-control/portal/job-cards"
-          className="text-gray-500 hover:text-gray-700"
-        >
+        <Link href="/stock-control/portal/job-cards" className="text-gray-500 hover:text-gray-700">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
@@ -477,25 +509,23 @@ export default function JobCardImportPage() {
                           isActive
                             ? `${colors.border} ${colors.bg} ring-2 ring-offset-1 ring-current ${colors.text}`
                             : isMapped
-                              ? `border-green-300 bg-green-50`
+                              ? "border-green-300 bg-green-50"
                               : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div
-                              className={`w-3 h-3 rounded-full ${colors.badge}`}
-                            />
-                            <span className="font-medium text-gray-900">
-                              {field.label}
-                            </span>
-                            {field.required && (
-                              <span className="text-red-500 text-xs">*</span>
-                            )}
+                            <div className={`w-3 h-3 rounded-full ${colors.badge}`} />
+                            <span className="font-medium text-gray-900">{field.label}</span>
+                            {field.required && <span className="text-red-500 text-xs">*</span>}
                           </div>
                           {isMapped ? (
                             <div className="flex items-center gap-1">
-                              <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <svg
+                                className="w-4 h-4 text-green-600"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
                                 <path
                                   fillRule="evenodd"
                                   d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
@@ -510,8 +540,18 @@ export default function JobCardImportPage() {
                                 className="text-gray-400 hover:text-red-500 p-0.5"
                                 title="Clear mapping"
                               >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
                                 </svg>
                               </button>
                             </div>
@@ -523,8 +563,18 @@ export default function JobCardImportPage() {
                         </div>
                         {isMapped && (
                           <div className="mt-1.5 text-xs text-green-700 flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M13 7l5 5m0 0l-5 5m5-5H6"
+                              />
                             </svg>
                             {columnMap[field.key]}
                           </div>

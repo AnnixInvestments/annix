@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   DashboardStats,
   RecentActivity,
@@ -11,7 +12,6 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useStockControlBranding } from "../../context/StockControlBrandingContext";
-import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 
 function formatZAR(value: number): string {
   return new Intl.NumberFormat("en-ZA", {
@@ -91,10 +91,7 @@ export default function StockControlDashboard() {
   return (
     <div className="space-y-6">
       {heroImageUrl ? (
-        <div
-          className="relative rounded-xl overflow-hidden shadow-lg"
-          style={{ minHeight: 180 }}
-        >
+        <div className="relative rounded-xl overflow-hidden shadow-lg" style={{ minHeight: 180 }}>
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: `url(${heroImageUrl})` }}

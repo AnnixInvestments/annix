@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard, JobCardStatus } from "../entities/job-card.entity";
+import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -126,7 +126,11 @@ export class JobCardService {
     });
   }
 
-  async uploadAllocationPhoto(companyId: number, allocationId: number, file: Express.Multer.File): Promise<StockAllocation> {
+  async uploadAllocationPhoto(
+    companyId: number,
+    allocationId: number,
+    file: Express.Multer.File,
+  ): Promise<StockAllocation> {
     const allocation = await this.allocationRepo.findOne({
       where: { id: allocationId, companyId },
       relations: ["stockItem"],

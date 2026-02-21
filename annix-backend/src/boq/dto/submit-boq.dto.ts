@@ -149,6 +149,27 @@ export class ConsolidatedBoqDataDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ConsolidatedItemDto)
+  externalCoating?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  rubberLining?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
+  ceramicLining?: ConsolidatedItemDto[];
+
+  @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConsolidatedItemDto)
   hdpePipes?: ConsolidatedItemDto[];
 
   @ApiPropertyOptional({ type: [ConsolidatedItemDto] })
