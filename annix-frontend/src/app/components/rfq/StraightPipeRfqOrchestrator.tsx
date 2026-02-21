@@ -903,6 +903,39 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       "Class D": 10, // ~150 psi = 10 bar
       "Class E": 17, // ~250 psi = 17 bar
       "Class F": 21, // ~300 psi = 21 bar
+      // BS 4504 explicit mappings (PN/flange type format)
+      "6/3": 6,
+      "10/3": 10,
+      "16/3": 16,
+      "25/3": 25,
+      "40/3": 40,
+      "64/3": 64,
+      "100/3": 100,
+      "160/3": 160,
+      "6/7": 6,
+      "10/7": 10,
+      "16/7": 16,
+      "25/7": 25,
+      "40/7": 40,
+      // PN prefix variants
+      PN6: 6,
+      PN10: 10,
+      PN16: 16,
+      PN25: 25,
+      PN40: 40,
+      PN64: 64,
+      PN100: 100,
+      PN160: 160,
+      "PN6/3": 6,
+      "PN10/3": 10,
+      "PN16/3": 16,
+      "PN25/3": 25,
+      "PN40/3": 40,
+      "PN6/7": 6,
+      "PN10/7": 10,
+      "PN16/7": 16,
+      "PN25/7": 25,
+      "PN40/7": 40,
     };
 
     // ASME Class to bar conversion (at ambient temperature ~38°C)
@@ -918,21 +951,28 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     };
 
     // Extract rating from designation and apply temperature derating
+    console.log(
+      "[PT-DEBUG] Processing pressure classes:",
+      pressureClasses.map((pc) => pc.designation),
+    );
     const classesWithRating = pressureClasses
       .map((pc) => {
         const designation = pc.designation?.trim();
         let ambientRating = 0;
 
-        // Check if it's a special letter-based designation (BS 10, AS 2129, AWWA)
-        if (specialMappings[designation]) {
+        // Check if it's a special letter-based designation (BS 10, AS 2129, AWWA, BS 4504)
+        if (designation && specialMappings[designation]) {
           ambientRating = specialMappings[designation];
+          console.log(`[PT-DEBUG] ${designation} -> specialMapping -> ${ambientRating} bar`);
         }
         // Check if it's ASME Class designation (75, 150, 300, etc.)
-        else if (asmeClassToBar[designation]) {
+        else if (designation && asmeClassToBar[designation]) {
           ambientRating = asmeClassToBar[designation];
+          console.log(`[PT-DEBUG] ${designation} -> asmeClassToBar -> ${ambientRating} bar`);
         }
         // Check for API 6A psi format (2000 psi, 5000 psi, etc.)
         else {
+          console.log(`[PT-DEBUG] ${designation} checking regex patterns...`);
           const psiMatch = designation?.match(/^(\d+)\s*psi$/i);
           if (psiMatch) {
             ambientRating = Math.round(parseInt(psiMatch[1], 10) * 0.0689);
@@ -983,7 +1023,23 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
       })
       .filter((pc) => pc.barRating > 0);
 
-    if (classesWithRating.length === 0) return null;
+    console.log(
+      "[PT-DEBUG] classesWithRating after mapping:",
+      classesWithRating.map((pc) => ({
+        designation: pc.designation,
+        barRating: pc.barRating,
+        ambientRating: pc.ambientRating,
+      })),
+    );
+
+    if (classesWithRating.length === 0) {
+      console.log("[PT-DEBUG] ERROR: No pressure classes with valid ratings!");
+      log.warn(
+        "No pressure classes with valid ratings found. Input classes:",
+        pressureClasses.map((pc) => pc.designation).join(", "),
+      );
+      return null;
+    }
 
     // Sort by bar rating ascending (ensure consistent ordering)
     classesWithRating.sort((a, b) => {
@@ -1181,9 +1237,16 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     temperatureCelsius?: number,
     materialGroup?: string,
   ) => {
+    console.log("[PT-DEBUG] fetchAndSelectPressureClass called with:", {
+      standardId,
+      workingPressureBar,
+      temperatureCelsius,
+      materialGroup,
+    });
     try {
       const { masterDataApi } = await import("@/app/lib/api/client");
       const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
+      console.log("[PT-DEBUG] Fetched classes:", classes);
 
       // Log what we got from the API
       const standardName =
@@ -1201,16 +1264,71 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         const standard = masterData.flangeStandards?.find((s: any) => s.id === standardId);
         const standardCode = standard?.code || String(standardId);
 
+        // DIRECT BS 4504/SABS 1123 HANDLING - bypass complex P/T logic
+        // These standards have multiple variants per pressure level (e.g., 10/1, 10/3, 10/5)
+        // The dropdown deduplicates by displayValue (numeric prefix), keeping the first after sort
+        // We must select the same ID that survives deduplication to match the dropdown
+        if (
+          standardCode === "BS 4504" ||
+          standardCode.includes("BS 4504") ||
+          standardCode === "SABS 1123" ||
+          standardCode.includes("SABS 1123")
+        ) {
+          console.log("[PT-DEBUG] BS 4504/SABS 1123 detected, using direct selection");
+          const targetPressure = workingPressureBar;
+
+          // Map designations to bar ratings and displayValues (matching dropdown logic)
+          const classesWithRatings = classes
+            .map((c: any) => {
+              const designation = c.designation?.trim() || "";
+              const match = designation.match(/^(?:PN)?(\d+)/i);
+              const barRating = match ? parseInt(match[1], 10) : 0;
+              const displayValue = designation.replace(/\/\d+$/, "");
+              return { ...c, barRating, displayValue };
+            })
+            .filter((c: any) => c.barRating > 0);
+
+          // Sort exactly like the dropdown does: by numeric value first, then by designation
+          classesWithRatings.sort((a: any, b: any) => {
+            if (a.barRating !== b.barRating) return a.barRating - b.barRating;
+            return (a.designation || "").localeCompare(b.designation || "");
+          });
+
+          // Deduplicate by displayValue - keep first ID for each (matching dropdown logic)
+          const seen = new Set<string>();
+          const deduplicatedClasses = classesWithRatings.filter((c: any) => {
+            if (seen.has(c.displayValue)) return false;
+            seen.add(c.displayValue);
+            return true;
+          });
+
+          console.log(
+            "[PT-DEBUG] Deduplicated classes:",
+            deduplicatedClasses.map((c: any) => `${c.designation}(ID ${c.id})=${c.barRating}bar`),
+          );
+
+          if (deduplicatedClasses.length > 0) {
+            // Find lowest class that can handle the pressure
+            const suitable = deduplicatedClasses.find((c: any) => c.barRating >= targetPressure);
+            const selected = suitable || deduplicatedClasses[deduplicatedClasses.length - 1];
+            console.log(
+              `[PT-DEBUG] SELECTED: ${selected.designation} (ID ${selected.id}) for ${targetPressure} bar`,
+            );
+            return selected.id;
+          }
+        }
+
         // Try P/T rating API for temperature-based selection - works for all standards with P-T data
         // The API will return null if no P-T data exists for this standard, triggering fallback
         if (temperatureCelsius !== undefined) {
           try {
             const ptMaterialGroup = materialGroup || "Carbon Steel A105 (Group 1.1)";
-            const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001"}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`,
-            );
+            const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001"}/flange-pt-ratings/recommended-class?standardId=${standardId}&workingPressureBar=${workingPressureBar}&temperatureCelsius=${temperatureCelsius}&materialGroup=${encodeURIComponent(ptMaterialGroup)}`;
+            log.debug(`P/T API call for ${standardCode}:`, apiUrl);
+            const response = await fetch(apiUrl);
             if (response.ok) {
               const text = await response.text();
+              log.debug(`P/T API response for ${standardCode}:`, text);
               if (text?.trim()) {
                 try {
                   const recommendedClassId = JSON.parse(text);
@@ -1223,36 +1341,90 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
                     return recommendedClassId;
                   } else if (recommendedClassId) {
                     log.debug(
-                      `P/T rating returned ID ${recommendedClassId} but it's not in the classes for ${standardCode}, falling back to calculation`,
+                      `P/T rating returned ID ${recommendedClassId} but it's not in the classes for ${standardCode} (available: ${classes.map((c: any) => `${c.id}:${c.designation}`).join(", ")}), falling back to calculation`,
+                    );
+                  } else {
+                    log.debug(
+                      `P/T API returned null for ${standardCode}, falling back to calculation`,
                     );
                   }
                 } catch {
-                  // Invalid JSON, fall through to fallback
+                  log.debug(`P/T API returned invalid JSON for ${standardCode}, falling back`);
                 }
+              } else {
+                log.debug(`P/T API returned empty response for ${standardCode}, falling back`);
               }
+            } else {
+              log.debug(
+                `P/T API returned status ${response.status} for ${standardCode}, falling back`,
+              );
             }
           } catch (ptError) {
             // Silently fall back to pressure-based calculation if P/T API fails
+            console.log(`[PT-DEBUG] P/T API error for ${standardCode}:`, ptError);
             log.debug(
-              `P/T rating API failed for ${standardCode}, using pressure-based calculation`,
+              `P/T rating API failed for ${standardCode}, using pressure-based calculation:`,
+              ptError,
             );
           }
         }
 
         // Use pressure-based calculation for all standards (with temperature derating if applicable)
+        console.log(
+          `[PT-DEBUG] Running fallback calculation for ${standardCode} with ${classes.length} classes:`,
+          classes.map((c: any) => c.designation),
+        );
+        log.debug(
+          `Running fallback calculation for ${standardCode} with ${classes.length} classes:`,
+          classes.map((c: any) => c.designation).join(", "),
+        );
         const recommended = getRecommendedPressureClass(
           workingPressureBar,
           classes,
           temperatureCelsius,
         );
         if (recommended) {
+          console.log(
+            `[PT-DEBUG] SELECTED: ${recommended.designation} (ID ${recommended.id}) for ${workingPressureBar} bar`,
+          );
           log.debug(
             `Pressure calculation: Selected ${recommended.designation} (ID ${recommended.id}) for ${standardCode} at ${workingPressureBar} bar - capacity: ${recommended.barRating?.toFixed(1) || recommended.ambientRating} bar`,
           );
           return recommended.id;
+        } else {
+          console.log(`[PT-DEBUG] Fallback calculation returned null for ${standardCode}`);
+          log.warn(`Fallback calculation returned null for ${standardCode}`);
+
+          // LAST RESORT: If calculation failed but we have classes, pick one based on working pressure
+          if (classes.length > 0) {
+            const targetPressure = workingPressureBar || 10;
+            // Extract numeric value from designations and find suitable class
+            const withRatings = classes
+              .map((c: any) => {
+                const match = c.designation?.match(/^(\d+)/);
+                const rating = match ? parseInt(match[1], 10) : 0;
+                const barRating = rating >= 500 ? rating / 100 : rating;
+                return { ...c, barRating };
+              })
+              .filter((c: any) => c.barRating > 0);
+
+            if (withRatings.length > 0) {
+              withRatings.sort((a: any, b: any) => a.barRating - b.barRating);
+              const suitable = withRatings.find((c: any) => c.barRating >= targetPressure);
+              const selected = suitable || withRatings[withRatings.length - 1];
+              console.log(
+                `[PT-DEBUG] LAST RESORT: Selected ${selected.designation} (ID ${selected.id})`,
+              );
+              return selected.id;
+            }
+          }
         }
       }
 
+      console.log(
+        `[PT-DEBUG] No recommendation found for standardId=${standardId}, returning null`,
+      );
+      log.debug(`No recommendation found for standardId=${standardId}, returning null`);
       return null;
     } catch (error) {
       // Use fallback pressure classes when backend is unavailable

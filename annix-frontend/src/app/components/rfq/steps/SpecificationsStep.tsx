@@ -1720,6 +1720,13 @@ export default function SpecificationsStep({
                                 steelSpec?.steelSpecName,
                               );
 
+                              console.log("[PT-DEBUG] handleFlangeStandardSelect called:", {
+                                standardId,
+                                workingPressureBar: globalSpecs?.workingPressureBar,
+                                workingTemperatureC: globalSpecs?.workingTemperatureC,
+                                materialGroup,
+                              });
+
                               try {
                                 if (standardId && globalSpecs?.workingPressureBar) {
                                   recommendedPressureClassId =
@@ -1729,17 +1736,75 @@ export default function SpecificationsStep({
                                       globalSpecs.workingTemperatureC,
                                       materialGroup,
                                     )) || undefined;
+                                  console.log(
+                                    "[PT-DEBUG] fetchAndSelectPressureClass returned:",
+                                    recommendedPressureClassId,
+                                  );
                                 } else if (standardId) {
+                                  console.log(
+                                    "[PT-DEBUG] No workingPressureBar, just fetching classes",
+                                  );
                                   await fetchAndSelectPressureClass(standardId);
                                 }
                               } catch (error) {
+                                console.log(
+                                  "[PT-DEBUG] Error in fetchAndSelectPressureClass:",
+                                  error,
+                                );
                                 log.warn("Pressure class fetch failed:", error);
                               }
 
-                              const newPressureClassId = standardChanged
+                              let newPressureClassId = standardChanged
                                 ? recommendedPressureClassId
                                 : recommendedPressureClassId || globalSpecs?.flangePressureClassId;
 
+                              // FALLBACK: If no class was selected but classes are available, pick the appropriate one
+                              if (!newPressureClassId && availablePressureClasses?.length > 0) {
+                                const targetPressure = globalSpecs?.workingPressureBar || 10;
+                                // Find the lowest class that can handle the working pressure
+                                const suitable = availablePressureClasses
+                                  .map((pc: any) => {
+                                    const match = pc.designation?.match(/^(\d+)/);
+                                    const rating = match ? parseInt(match[1], 10) : 0;
+                                    // Adjust for SABS 1123 large numbers (600=6bar, 1000=10bar)
+                                    const barRating = rating >= 500 ? rating / 100 : rating;
+                                    return { ...pc, barRating };
+                                  })
+                                  .filter((pc: any) => pc.barRating >= targetPressure)
+                                  .sort((a: any, b: any) => a.barRating - b.barRating);
+
+                                if (suitable.length > 0) {
+                                  newPressureClassId = suitable[0].id;
+                                  console.log(
+                                    "[PT-DEBUG] FALLBACK: Selected",
+                                    suitable[0].designation,
+                                    "for",
+                                    targetPressure,
+                                    "bar",
+                                  );
+                                } else if (availablePressureClasses.length > 0) {
+                                  // Just pick the highest if none are suitable
+                                  const sorted = [...availablePressureClasses].sort(
+                                    (a: any, b: any) => {
+                                      const aMatch = a.designation?.match(/^(\d+)/);
+                                      const bMatch = b.designation?.match(/^(\d+)/);
+                                      const aVal = aMatch ? parseInt(aMatch[1], 10) : 0;
+                                      const bVal = bMatch ? parseInt(bMatch[1], 10) : 0;
+                                      return bVal - aVal;
+                                    },
+                                  );
+                                  newPressureClassId = sorted[0].id;
+                                  console.log(
+                                    "[PT-DEBUG] FALLBACK: Selected highest",
+                                    sorted[0].designation,
+                                  );
+                                }
+                              }
+
+                              console.log(
+                                "[PT-DEBUG] Setting flangePressureClassId to:",
+                                newPressureClassId,
+                              );
                               onUpdateGlobalSpecs({
                                 ...globalSpecs,
                                 flangeStandardId: standardId,
@@ -1875,7 +1940,7 @@ export default function SpecificationsStep({
                                 const match = designation?.match(/^(\d+)/);
                                 return match ? parseInt(match[1], 10) : 0;
                               };
-                              return [...availablePressureClasses]
+                              const result = [...availablePressureClasses]
                                 .sort((a: any, b: any) => {
                                   const numA = extractNumeric(a.designation);
                                   const numB = extractNumeric(b.designation);
@@ -1890,28 +1955,36 @@ export default function SpecificationsStep({
                                   if (seen.has(pc.displayValue)) return false;
                                   seen.add(pc.displayValue);
                                   return true;
-                                })
-                                .map((pc: any) => {
-                                  const classInfo = pressureClassInfoMap.get(pc.id);
-                                  const hasPtData =
-                                    ptRecommendations &&
-                                    ptRecommendations.validPressureClasses.length > 0;
-                                  const suffix = classInfo
-                                    ? ptRecommendations?.recommendedPressureClassId === pc.id
-                                      ? " (Recommended)"
-                                      : !classInfo.isAdequate
-                                        ? " (Inadequate for P-T)"
-                                        : ""
-                                    : hasPtData
-                                      ? " (No P-T data)"
-                                      : "";
-                                  return (
-                                    <option key={pc.id} value={pc.id}>
-                                      {pc.displayValue}
-                                      {suffix}
-                                    </option>
-                                  );
                                 });
+                              console.log(
+                                "[PT-DEBUG] Dropdown options:",
+                                result.map((pc: any) => `${pc.displayValue}(ID ${pc.id})`),
+                              );
+                              console.log(
+                                "[PT-DEBUG] Selected value:",
+                                globalSpecs?.flangePressureClassId,
+                              );
+                              return result.map((pc: any) => {
+                                const classInfo = pressureClassInfoMap.get(pc.id);
+                                const hasPtData =
+                                  ptRecommendations &&
+                                  ptRecommendations.validPressureClasses.length > 0;
+                                const suffix = classInfo
+                                  ? ptRecommendations?.recommendedPressureClassId === pc.id
+                                    ? " (Recommended)"
+                                    : !classInfo.isAdequate
+                                      ? " (Inadequate for P-T)"
+                                      : ""
+                                  : hasPtData
+                                    ? " (No P-T data)"
+                                    : "";
+                                return (
+                                  <option key={pc.id} value={pc.id}>
+                                    {pc.displayValue}
+                                    {suffix}
+                                  </option>
+                                );
+                              });
                             })()}
                           </select>
                           {isPressureClassUnsuitable && (

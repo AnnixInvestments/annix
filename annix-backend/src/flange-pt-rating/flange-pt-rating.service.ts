@@ -117,7 +117,7 @@ export class FlangePtRatingService {
   async getMaxPressureAtTemperature(
     pressureClassId: number,
     temperatureCelsius: number,
-    materialGroup: string = "Carbon Steel A105",
+    materialGroup: string = "Carbon Steel A105 (Group 1.1)",
   ): Promise<number | null> {
     const ratings = await this.ptRatingRepo.find({
       where: { pressureClassId, materialGroup },
@@ -167,18 +167,24 @@ export class FlangePtRatingService {
     standardId: number,
     workingPressureBar: number,
     temperatureCelsius: number,
-    materialGroup: string = "Carbon Steel A105",
+    materialGroup: string = "Carbon Steel A105 (Group 1.1)",
   ): Promise<number | null> {
-    const ratings = await this.ptRatingRepo.find({
-      where: {
-        pressureClass: { standard: { id: standardId } },
-        materialGroup,
-      },
-      relations: ["pressureClass"],
-      order: { pressureClassId: "ASC", temperatureCelsius: "ASC" },
-    });
+    const ratings = await this.ptRatingRepo
+      .createQueryBuilder("rating")
+      .innerJoinAndSelect("rating.pressureClass", "pressureClass")
+      .innerJoin("pressureClass.standard", "standard")
+      .where("standard.id = :standardId", { standardId })
+      .andWhere("rating.materialGroup = :materialGroup", { materialGroup })
+      .orderBy("rating.pressureClassId", "ASC")
+      .addOrderBy("rating.temperatureCelsius", "ASC")
+      .getMany();
 
-    if (ratings.length === 0) return null;
+    if (ratings.length === 0) {
+      this.logger.warn(
+        `No P-T ratings found for standardId=${standardId}, materialGroup="${materialGroup}"`,
+      );
+      return null;
+    }
 
     // Group ratings by pressure class
     const ratingsByClass = new Map<number, FlangePtRating[]>();
@@ -240,14 +246,15 @@ export class FlangePtRatingService {
     materialGroup: string = "Carbon Steel A105 (Group 1.1)",
     currentPressureClassId?: number,
   ): Promise<PtRecommendationResult> {
-    const ratings = await this.ptRatingRepo.find({
-      where: {
-        pressureClass: { standard: { id: standardId } },
-        materialGroup,
-      },
-      relations: ["pressureClass", "pressureClass.standard"],
-      order: { pressureClassId: "ASC", temperatureCelsius: "ASC" },
-    });
+    const ratings = await this.ptRatingRepo
+      .createQueryBuilder("rating")
+      .innerJoinAndSelect("rating.pressureClass", "pressureClass")
+      .innerJoin("pressureClass.standard", "standard")
+      .where("standard.id = :standardId", { standardId })
+      .andWhere("rating.materialGroup = :materialGroup", { materialGroup })
+      .orderBy("rating.pressureClassId", "ASC")
+      .addOrderBy("rating.temperatureCelsius", "ASC")
+      .getMany();
 
     const ratingsByClass = new Map<number, FlangePtRating[]>();
     for (const rating of ratings) {

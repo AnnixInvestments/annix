@@ -77,7 +77,7 @@ export default function SupplierPortalLayout({ children }: { children: React.Rea
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = "/";
+    window.location.href = "/supplier/login";
   };
 
   if (isLoading) {

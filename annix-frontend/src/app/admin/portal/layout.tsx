@@ -81,7 +81,7 @@ function AdminNavigation() {
 
   const handleLogout = async () => {
     await logout();
-    window.location.href = "/";
+    window.location.href = "/admin/login";
   };
 
   return (

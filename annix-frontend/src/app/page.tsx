@@ -88,7 +88,7 @@ export default function HomePage() {
         {/* App Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {/* RFQ Platform Card */}
-          <Link href="/rfq-portal" className="group">
+          <Link href="/rfq-portal" target="_blank" rel="noopener noreferrer" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -120,7 +120,7 @@ export default function HomePage() {
           </Link>
 
           {/* AU Rubber App Card */}
-          <Link href="/au-rubber/login" className="group">
+          <Link href="/au-rubber/login" target="_blank" rel="noopener noreferrer" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-yellow-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-yellow-100 rounded-2xl text-yellow-600 mb-6 group-hover:bg-yellow-600 group-hover:text-white transition-colors">
@@ -187,7 +187,7 @@ export default function HomePage() {
           </a>
 
           {/* Annix Rep Card */}
-          <Link href="/annix-rep/setup" className="group">
+          <Link href="/annix-rep/setup" target="_blank" rel="noopener noreferrer" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-emerald-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 rounded-2xl text-emerald-600 mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
@@ -219,7 +219,12 @@ export default function HomePage() {
           </Link>
 
           {/* Stock Control Card */}
-          <Link href="/stock-control/login" className="group">
+          <Link
+            href="/stock-control/login"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group"
+          >
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-teal-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-teal-100 rounded-2xl text-teal-600 mb-6 group-hover:bg-teal-600 group-hover:text-white transition-colors">
