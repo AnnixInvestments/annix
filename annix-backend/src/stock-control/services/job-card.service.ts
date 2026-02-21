@@ -41,7 +41,7 @@ export class JobCardService {
   async findById(companyId: number, id: number): Promise<JobCard> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id, companyId },
-      relations: ["allocations", "allocations.stockItem"],
+      relations: ["allocations", "allocations.stockItem", "lineItems"],
     });
     if (!jobCard) {
       throw new NotFoundException("Job card not found");

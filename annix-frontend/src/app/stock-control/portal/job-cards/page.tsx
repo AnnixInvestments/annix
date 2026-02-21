@@ -34,7 +34,14 @@ export default function JobCardsPage() {
     jobName: "",
     customerName: "",
     description: "",
+    poNumber: "",
+    siteLocation: "",
+    contactPerson: "",
+    dueDate: "",
+    notes: "",
+    reference: "",
   });
+  const [showAdditionalDetails, setShowAdditionalDetails] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   const navigateWithFile = (file: File) => {
@@ -94,7 +101,7 @@ export default function JobCardsPage() {
         status: "draft",
       });
       setShowCreateForm(false);
-      setCreateForm({ jobNumber: "", jobName: "", customerName: "", description: "" });
+      setCreateForm({ jobNumber: "", jobName: "", customerName: "", description: "", poNumber: "", siteLocation: "", contactPerson: "", dueDate: "", notes: "", reference: "" });
       fetchJobCards();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to create job card"));
@@ -351,6 +358,86 @@ export default function JobCardsPage() {
                     rows={3}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                   />
+                </div>
+                <div className="border-t border-gray-200 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdditionalDetails(!showAdditionalDetails)}
+                    className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+                  >
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showAdditionalDetails ? "rotate-180" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Additional Details
+                  </button>
+                  {showAdditionalDetails && (
+                    <div className="mt-3 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">PO Number</label>
+                          <input
+                            type="text"
+                            value={createForm.poNumber}
+                            onChange={(e) => setCreateForm({ ...createForm, poNumber: e.target.value })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Reference</label>
+                          <input
+                            type="text"
+                            value={createForm.reference}
+                            onChange={(e) => setCreateForm({ ...createForm, reference: e.target.value })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Site / Location</label>
+                          <input
+                            type="text"
+                            value={createForm.siteLocation}
+                            onChange={(e) => setCreateForm({ ...createForm, siteLocation: e.target.value })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Contact Person</label>
+                          <input
+                            type="text"
+                            value={createForm.contactPerson}
+                            onChange={(e) => setCreateForm({ ...createForm, contactPerson: e.target.value })}
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Due Date</label>
+                        <input
+                          type="text"
+                          value={createForm.dueDate}
+                          onChange={(e) => setCreateForm({ ...createForm, dueDate: e.target.value })}
+                          placeholder="e.g. 2025-03-15"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Notes</label>
+                        <textarea
+                          value={createForm.notes}
+                          onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+                          rows={2}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="mt-6 flex justify-end space-x-3">

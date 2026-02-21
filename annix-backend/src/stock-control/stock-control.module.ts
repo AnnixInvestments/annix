@@ -17,6 +17,7 @@ import { DeliveryNote } from "./entities/delivery-note.entity";
 import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
 import { JobCard } from "./entities/job-card.entity";
 import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity";
+import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { StockAllocation } from "./entities/stock-allocation.entity";
 import { StockControlCompany } from "./entities/stock-control-company.entity";
 import { StockControlInvitation } from "./entities/stock-control-invitation.entity";
@@ -47,6 +48,7 @@ import { ReportsService } from "./services/reports.service";
       JobCard,
       StockAllocation,
       JobCardImportMapping,
+      JobCardLineItem,
       DeliveryNote,
       DeliveryNoteItem,
       StockMovement,

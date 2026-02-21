@@ -79,16 +79,37 @@ export interface StockItem {
   updatedAt: string;
 }
 
+export interface JobCardLineItem {
+  id: number;
+  jobCardId: number;
+  itemCode: string | null;
+  itemDescription: string | null;
+  itemNo: string | null;
+  quantity: number | null;
+  jtNo: string | null;
+  sortOrder: number;
+  companyId: number;
+  createdAt: string;
+}
+
 export interface JobCard {
   id: number;
   jobNumber: string;
   jobName: string;
   customerName: string | null;
   description: string | null;
+  poNumber: string | null;
+  siteLocation: string | null;
+  contactPerson: string | null;
+  dueDate: string | null;
+  notes: string | null;
+  reference: string | null;
+  customFields: Record<string, string> | null;
   status: string;
   createdAt: string;
   updatedAt: string;
   allocations?: StockAllocation[];
+  lineItems?: JobCardLineItem[];
 }
 
 export interface StockAllocation {
@@ -186,15 +207,54 @@ export interface ImportResult {
   errors: { row: number; message: string }[];
 }
 
+export interface FieldMapping {
+  column: number;
+  startRow: number;
+  endRow: number;
+}
+
+export interface CustomFieldMapping {
+  fieldName: string;
+  column: number;
+  startRow: number;
+  endRow: number;
+}
+
+export interface ImportMappingConfig {
+  jobNumber: FieldMapping | null;
+  jobName: FieldMapping | null;
+  customerName: FieldMapping | null;
+  description: FieldMapping | null;
+  poNumber: FieldMapping | null;
+  siteLocation: FieldMapping | null;
+  contactPerson: FieldMapping | null;
+  dueDate: FieldMapping | null;
+  notes: FieldMapping | null;
+  reference: FieldMapping | null;
+  customFields: CustomFieldMapping[];
+  lineItems: {
+    itemCode: FieldMapping | null;
+    itemDescription: FieldMapping | null;
+    itemNo: FieldMapping | null;
+    quantity: FieldMapping | null;
+    jtNo: FieldMapping | null;
+  };
+}
+
 export interface JobCardImportMapping {
   id: number;
   companyId: number;
-  jobNumberColumn: string;
-  jobNameColumn: string;
-  customerNameColumn: string | null;
-  descriptionColumn: string | null;
+  mappingConfig: ImportMappingConfig | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LineItemImportRow {
+  itemCode?: string;
+  itemDescription?: string;
+  itemNo?: string;
+  quantity?: string;
+  jtNo?: string;
 }
 
 export interface JobCardImportRow {
@@ -202,6 +262,14 @@ export interface JobCardImportRow {
   jobName?: string;
   customerName?: string;
   description?: string;
+  poNumber?: string;
+  siteLocation?: string;
+  contactPerson?: string;
+  dueDate?: string;
+  notes?: string;
+  reference?: string;
+  customFields?: Record<string, string>;
+  lineItems?: LineItemImportRow[];
 }
 
 export interface JobCardImportResult {
@@ -212,8 +280,7 @@ export interface JobCardImportResult {
 }
 
 export interface JobCardImportUploadResponse {
-  headers: string[];
-  rawRows: Record<string, unknown>[];
+  grid: string[][];
   savedMapping: JobCardImportMapping | null;
 }
 
@@ -795,13 +862,24 @@ class StockControlApiClient {
     formData.append("file", file);
 
     const url = `${this.baseURL}/stock-control/job-card-import/upload`;
-    const response = await fetch(url, {
+    const { Authorization } = this.headers();
+    let response = await fetch(url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
+      headers: { ...(Authorization ? { Authorization } : {}) },
       body: formData,
     });
+
+    if (response.status === 401 && this.refreshToken) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        const { Authorization: newAuth } = this.headers();
+        response = await fetch(url, {
+          method: "POST",
+          headers: { ...(newAuth ? { Authorization: newAuth } : {}) },
+          body: formData,
+        });
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -815,15 +893,10 @@ class StockControlApiClient {
     return this.request("/stock-control/job-card-import/mapping");
   }
 
-  async saveJobCardImportMapping(mapping: {
-    jobNumberColumn: string;
-    jobNameColumn: string;
-    customerNameColumn?: string | null;
-    descriptionColumn?: string | null;
-  }): Promise<JobCardImportMapping> {
+  async saveJobCardImportMapping(mappingConfig: ImportMappingConfig): Promise<JobCardImportMapping> {
     return this.request("/stock-control/job-card-import/mapping", {
       method: "POST",
-      body: JSON.stringify(mapping),
+      body: JSON.stringify({ mappingConfig }),
     });
   }
 

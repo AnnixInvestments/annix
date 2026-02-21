@@ -9,6 +9,40 @@ import {
 } from "typeorm";
 import { StockControlCompany } from "./stock-control-company.entity";
 
+export interface FieldMapping {
+  column: number;
+  startRow: number;
+  endRow: number;
+}
+
+export interface CustomFieldMapping {
+  fieldName: string;
+  column: number;
+  startRow: number;
+  endRow: number;
+}
+
+export interface ImportMappingConfig {
+  jobNumber: FieldMapping | null;
+  jobName: FieldMapping | null;
+  customerName: FieldMapping | null;
+  description: FieldMapping | null;
+  poNumber: FieldMapping | null;
+  siteLocation: FieldMapping | null;
+  contactPerson: FieldMapping | null;
+  dueDate: FieldMapping | null;
+  notes: FieldMapping | null;
+  reference: FieldMapping | null;
+  customFields: CustomFieldMapping[];
+  lineItems: {
+    itemCode: FieldMapping | null;
+    itemDescription: FieldMapping | null;
+    itemNo: FieldMapping | null;
+    quantity: FieldMapping | null;
+    jtNo: FieldMapping | null;
+  };
+}
+
 @Entity("job_card_import_mappings")
 export class JobCardImportMapping {
   @PrimaryGeneratedColumn()
@@ -21,17 +55,8 @@ export class JobCardImportMapping {
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
 
-  @Column({ name: "job_number_column", type: "varchar", length: 255 })
-  jobNumberColumn: string;
-
-  @Column({ name: "job_name_column", type: "varchar", length: 255 })
-  jobNameColumn: string;
-
-  @Column({ name: "customer_name_column", type: "varchar", length: 255, nullable: true })
-  customerNameColumn: string | null;
-
-  @Column({ name: "description_column", type: "varchar", length: 255, nullable: true })
-  descriptionColumn: string | null;
+  @Column({ name: "mapping_config", type: "jsonb", nullable: true })
+  mappingConfig: ImportMappingConfig | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

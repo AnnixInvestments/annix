@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type { JobCard, StockAllocation, StockItem } from "@/app/lib/api/stockControlApi";
+import type { JobCard, JobCardLineItem, StockAllocation, StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
@@ -252,9 +252,91 @@ export default function JobCardDetailPage() {
                 <dd className="mt-1 text-sm text-gray-900">{jobCard.description}</dd>
               </div>
             )}
+            {jobCard.poNumber && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">PO Number</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.poNumber}</dd>
+              </div>
+            )}
+            {jobCard.siteLocation && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Site / Location</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.siteLocation}</dd>
+              </div>
+            )}
+            {jobCard.contactPerson && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Contact Person</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.contactPerson}</dd>
+              </div>
+            )}
+            {jobCard.dueDate && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Due Date</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.dueDate}</dd>
+              </div>
+            )}
+            {jobCard.reference && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Reference</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.reference}</dd>
+              </div>
+            )}
+            {jobCard.notes && (
+              <div className="col-span-2">
+                <dt className="text-sm font-medium text-gray-500">Notes</dt>
+                <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{jobCard.notes}</dd>
+              </div>
+            )}
           </dl>
+          {jobCard.customFields && Object.keys(jobCard.customFields).length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <h4 className="text-sm font-medium text-gray-500 mb-3">Custom Fields</h4>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+                {Object.entries(jobCard.customFields).map(([key, value]) => (
+                  <div key={key}>
+                    <dt className="text-sm font-medium text-gray-500">{key}</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
         </div>
       </div>
+
+      {jobCard.lineItems && jobCard.lineItems.length > 0 && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Line Items</h3>
+            <span className="text-sm text-gray-500">{jobCard.lineItems.length} items</span>
+          </div>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Code</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item No</th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">JT No</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {jobCard.lineItems.map((li, idx) => (
+                <tr key={li.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{li.itemCode || "-"}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{li.itemDescription || "-"}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{li.itemNo || "-"}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{li.quantity ?? "-"}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{li.jtNo || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">

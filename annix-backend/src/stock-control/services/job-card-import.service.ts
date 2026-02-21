@@ -2,13 +2,33 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { JobCard, JobCardStatus } from "../entities/job-card.entity";
-import { JobCardImportMapping } from "../entities/job-card-import-mapping.entity";
+import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import {
+  JobCardImportMapping,
+  ImportMappingConfig,
+} from "../entities/job-card-import-mapping.entity";
+
+export interface LineItemImportRow {
+  itemCode?: string;
+  itemDescription?: string;
+  itemNo?: string;
+  quantity?: string;
+  jtNo?: string;
+}
 
 export interface JobCardImportRow {
   jobNumber?: string;
   jobName?: string;
   customerName?: string;
   description?: string;
+  poNumber?: string;
+  siteLocation?: string;
+  contactPerson?: string;
+  dueDate?: string;
+  notes?: string;
+  reference?: string;
+  customFields?: Record<string, string>;
+  lineItems?: LineItemImportRow[];
 }
 
 export interface JobCardImportResult {
@@ -25,6 +45,8 @@ export class JobCardImportService {
   constructor(
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(JobCardLineItem)
+    private readonly lineItemRepo: Repository<JobCardLineItem>,
     @InjectRepository(JobCardImportMapping)
     private readonly mappingRepo: Repository<JobCardImportMapping>,
   ) {}
@@ -32,7 +54,7 @@ export class JobCardImportService {
   async parseFile(
     buffer: Buffer,
     mimetype: string,
-  ): Promise<{ headers: string[]; rawRows: Record<string, unknown>[] }> {
+  ): Promise<{ grid: string[][] }> {
     const isExcel =
       mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
       mimetype === "application/vnd.ms-excel" ||
@@ -43,40 +65,22 @@ export class JobCardImportService {
       const workbook = xlsx.read(buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const rawRows = xlsx.utils.sheet_to_json<Record<string, unknown>>(worksheet);
-      const headers = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
-      return { headers, rawRows };
+      const raw = xlsx.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, defval: "" });
+      const grid = raw.map((row) =>
+        (row as unknown[]).map((cell) => (cell === null || cell === undefined ? "" : String(cell))),
+      );
+      return { grid };
     } else if (mimetype === "application/pdf") {
       const pdfParse = require("pdf-parse");
       const data = await pdfParse(buffer);
       const lines = data.text.split("\n").filter((line: string) => line.trim().length > 0);
-
-      if (lines.length === 0) {
-        return { headers: [], rawRows: [] };
-      }
-
-      const headerLine = lines[0];
-      const headers = headerLine.split(/\t|,|;/).map((h: string) => h.trim());
-
-      const rawRows = lines.slice(1).reduce(
-        (acc: Record<string, unknown>[], line: string) => {
-          const parts = line.split(/\t|,|;/).map((p: string) => p.trim());
-          if (parts.length >= 2 && parts[0]) {
-            const row: Record<string, unknown> = {};
-            headers.forEach((header: string, idx: number) => {
-              row[header] = parts[idx] || "";
-            });
-            return [...acc, row];
-          }
-          return acc;
-        },
-        [] as Record<string, unknown>[],
+      const grid = lines.map((line: string) =>
+        line.split(/\t|,|;/).map((cell: string) => cell.trim()),
       );
-
-      return { headers, rawRows };
+      return { grid };
     }
 
-    return { headers: [], rawRows: [] };
+    return { grid: [] };
   }
 
   async mapping(companyId: number): Promise<JobCardImportMapping | null> {
@@ -85,29 +89,18 @@ export class JobCardImportService {
 
   async saveMapping(
     companyId: number,
-    data: {
-      jobNumberColumn: string;
-      jobNameColumn: string;
-      customerNameColumn?: string | null;
-      descriptionColumn?: string | null;
-    },
+    config: ImportMappingConfig,
   ): Promise<JobCardImportMapping> {
     const existing = await this.mappingRepo.findOne({ where: { companyId } });
 
     if (existing) {
-      existing.jobNumberColumn = data.jobNumberColumn;
-      existing.jobNameColumn = data.jobNameColumn;
-      existing.customerNameColumn = data.customerNameColumn ?? null;
-      existing.descriptionColumn = data.descriptionColumn ?? null;
+      existing.mappingConfig = config;
       return this.mappingRepo.save(existing);
     }
 
     const mapping = this.mappingRepo.create({
       companyId,
-      jobNumberColumn: data.jobNumberColumn,
-      jobNameColumn: data.jobNameColumn,
-      customerNameColumn: data.customerNameColumn ?? null,
-      descriptionColumn: data.descriptionColumn ?? null,
+      mappingConfig: config,
     });
     return this.mappingRepo.save(mapping);
   }
@@ -138,15 +131,43 @@ export class JobCardImportService {
           continue;
         }
 
+        const customFields = row.customFields && Object.keys(row.customFields).length > 0
+          ? row.customFields
+          : null;
+
         const jobCard = this.jobCardRepo.create({
           jobNumber: row.jobNumber,
           jobName: row.jobName,
           customerName: row.customerName || null,
           description: row.description || null,
+          poNumber: row.poNumber || null,
+          siteLocation: row.siteLocation || null,
+          contactPerson: row.contactPerson || null,
+          dueDate: row.dueDate || null,
+          notes: row.notes || null,
+          reference: row.reference || null,
+          customFields,
           status: JobCardStatus.DRAFT,
           companyId,
         });
-        await this.jobCardRepo.save(jobCard);
+        const saved = await this.jobCardRepo.save(jobCard);
+
+        if (row.lineItems && row.lineItems.length > 0) {
+          const lineItemEntities = row.lineItems.map((li, idx) =>
+            this.lineItemRepo.create({
+              jobCardId: saved.id,
+              itemCode: li.itemCode || null,
+              itemDescription: li.itemDescription || null,
+              itemNo: li.itemNo || null,
+              quantity: li.quantity ? parseFloat(li.quantity) : null,
+              jtNo: li.jtNo || null,
+              sortOrder: idx,
+              companyId,
+            }),
+          );
+          await this.lineItemRepo.save(lineItemEntities);
+        }
+
         result.created++;
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
