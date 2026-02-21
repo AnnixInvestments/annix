@@ -5,7 +5,7 @@ export class CreateBookingLinksTables1773000000000 implements MigrationInterface
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE annix_rep_booking_links (
+      CREATE TABLE IF NOT EXISTS annix_rep_booking_links (
         id SERIAL PRIMARY KEY,
         user_id INT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
         slug UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
@@ -28,15 +28,15 @@ export class CreateBookingLinksTables1773000000000 implements MigrationInterface
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_booking_links_user ON annix_rep_booking_links(user_id)
+      CREATE INDEX IF NOT EXISTS idx_booking_links_user ON annix_rep_booking_links(user_id)
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_booking_links_slug ON annix_rep_booking_links(slug)
+      CREATE INDEX IF NOT EXISTS idx_booking_links_slug ON annix_rep_booking_links(slug)
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_booking_links_active ON annix_rep_booking_links(is_active) WHERE is_active = TRUE
+      CREATE INDEX IF NOT EXISTS idx_booking_links_active ON annix_rep_booking_links(is_active) WHERE is_active = TRUE
     `);
   }
 

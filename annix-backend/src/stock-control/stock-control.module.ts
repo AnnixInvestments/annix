@@ -24,6 +24,7 @@ import { StockMovement } from "./entities/stock-movement.entity";
 import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
+import { BrandingScraperService } from "./services/branding-scraper.service";
 import { DashboardService } from "./services/dashboard.service";
 import { DeliveryService } from "./services/delivery.service";
 import { ImportService } from "./services/import.service";
@@ -75,6 +76,7 @@ import { ReportsService } from "./services/reports.service";
     StockControlAuthGuard,
     StockControlRoleGuard,
     StockControlAuthService,
+    BrandingScraperService,
     StockControlInvitationService,
     InventoryService,
     JobCardService,

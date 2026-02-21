@@ -55,7 +55,6 @@ export class DeliveriesController {
     @Param("id") id: number,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const delivery = await this.deliveryService.findById(req.user.companyId, id);
-    return { deliveryId: delivery.id, filename: file.originalname, size: file.size };
+    return this.deliveryService.uploadPhoto(req.user.companyId, id, file);
   }
 }

@@ -15,12 +15,21 @@ export default function StockControlSettingsPage() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useStockControlAuth();
 
+  const [companyName, setCompanyName] = useState("");
+  const [companyNameSaving, setCompanyNameSaving] = useState(false);
+  const [companyNameSuccess, setCompanyNameSuccess] = useState(false);
+  const [companyNameError, setCompanyNameError] = useState("");
+
   const [brandingSelection, setBrandingSelection] = useState<BrandingSelection>("annix");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [brandingAuthorized, setBrandingAuthorized] = useState(false);
+  const [primaryColor, setPrimaryColor] = useState("#0d9488");
+  const [accentColor, setAccentColor] = useState("#2dd4bf");
   const [brandingError, setBrandingError] = useState("");
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [brandingSuccess, setBrandingSuccess] = useState(false);
+  const [scraping, setScraping] = useState(false);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
 
   const [teamMembers, setTeamMembers] = useState<StockControlTeamMember[]>([]);
   const [invitations, setInvitations] = useState<StockControlInvitation[]>([]);
@@ -38,8 +47,24 @@ export default function StockControlSettingsPage() {
       return;
     }
 
+    if (profile?.companyName) {
+      setCompanyName(profile.companyName);
+    }
+
     if (profile?.brandingType) {
       setBrandingSelection(profile.brandingType as BrandingSelection);
+    }
+
+    if (profile?.primaryColor) {
+      setPrimaryColor(profile.primaryColor);
+    }
+
+    if (profile?.accentColor) {
+      setAccentColor(profile.accentColor);
+    }
+
+    if (profile?.logoUrl) {
+      setLogoPreviewUrl(profile.logoUrl);
     }
 
     loadTeamData();
@@ -67,6 +92,64 @@ export default function StockControlSettingsPage() {
       return parsed.hostname.includes(".");
     } catch {
       return false;
+    }
+  };
+
+  const handleSaveCompanyName = async () => {
+    if (!companyName.trim()) {
+      setCompanyNameError("Please enter a company name.");
+      return;
+    }
+
+    setCompanyNameError("");
+    setCompanyNameSaving(true);
+    setCompanyNameSuccess(false);
+
+    try {
+      await stockControlApiClient.updateCompanyName(companyName.trim());
+      setCompanyNameSuccess(true);
+      await refreshProfile();
+    } catch (e) {
+      setCompanyNameError(e instanceof Error ? e.message : "Failed to update company name.");
+    } finally {
+      setCompanyNameSaving(false);
+    }
+  };
+
+  const handleExtractBranding = async () => {
+    if (!websiteUrl.trim()) {
+      setBrandingError("Please enter your website URL.");
+      return;
+    }
+    if (!isValidUrl(websiteUrl)) {
+      setBrandingError("Please enter a valid website URL.");
+      return;
+    }
+    if (!brandingAuthorized) {
+      setBrandingError("Please authorize ASCA to access your website for branding.");
+      return;
+    }
+
+    setBrandingError("");
+    setScraping(true);
+
+    try {
+      const normalizedUrl = websiteUrl.startsWith("http") ? websiteUrl.trim() : `https://${websiteUrl.trim()}`;
+      const result = await stockControlApiClient.scrapeBranding(normalizedUrl);
+
+      if (result.primaryColor) {
+        setPrimaryColor(result.primaryColor);
+      }
+      if (result.accentColor) {
+        setAccentColor(result.accentColor);
+      }
+      if (result.logoUrl) {
+        setLogoPreviewUrl(result.logoUrl);
+      }
+    } catch (e) {
+      setBrandingError(e instanceof Error ? e.message : "Failed to extract branding from website.");
+    } finally {
+      setScraping(false);
     }
   };
 
@@ -102,6 +185,9 @@ export default function StockControlSettingsPage() {
         brandingType: brandingSelection,
         websiteUrl: normalizedUrl,
         brandingAuthorized: brandingSelection === "custom" ? brandingAuthorized : undefined,
+        primaryColor: brandingSelection === "custom" ? primaryColor : undefined,
+        accentColor: brandingSelection === "custom" ? accentColor : undefined,
+        logoUrl: brandingSelection === "custom" ? (logoPreviewUrl ?? undefined) : undefined,
       });
 
       setBrandingSuccess(true);
@@ -181,6 +267,33 @@ export default function StockControlSettingsPage() {
   return (
     <div className="p-6 max-w-4xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Account Settings</h1>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Company Name</h2>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => {
+              setCompanyName(e.target.value);
+              setCompanyNameError("");
+              setCompanyNameSuccess(false);
+            }}
+            placeholder="Enter company name"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+          />
+          <button
+            type="button"
+            onClick={handleSaveCompanyName}
+            disabled={companyNameSaving}
+            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {companyNameSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
+        {companyNameError && <p className="mt-3 text-sm text-red-600">{companyNameError}</p>}
+        {companyNameSuccess && <p className="mt-3 text-sm text-green-600">Company name updated successfully.</p>}
+      </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Branding</h2>
@@ -308,6 +421,97 @@ export default function StockControlSettingsPage() {
                 for use within this application
               </span>
             </label>
+            <button
+              type="button"
+              onClick={handleExtractBranding}
+              disabled={scraping || !brandingAuthorized || !websiteUrl.trim()}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {scraping ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Extracting branding...
+                </>
+              ) : (
+                "Extract Branding"
+              )}
+            </button>
+            {logoPreviewUrl && (
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <img
+                  src={logoPreviewUrl}
+                  alt="Extracted logo"
+                  className="h-12 w-12 object-contain rounded"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">Logo extracted</p>
+                  <p className="text-xs text-gray-500 truncate">{logoPreviewUrl}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLogoPreviewUrl(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="primaryColor" className="block text-sm font-medium text-gray-700">
+                  Primary Color
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    id="primaryColor"
+                    type="color"
+                    value={primaryColor || "#0d9488"}
+                    onChange={(e) => {
+                      setPrimaryColor(e.target.value);
+                      setBrandingError("");
+                    }}
+                    className="h-10 w-10 rounded border border-gray-300 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={primaryColor || "#0d9488"}
+                    onChange={(e) => {
+                      setPrimaryColor(e.target.value);
+                      setBrandingError("");
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="accentColor" className="block text-sm font-medium text-gray-700">
+                  Accent Color
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    id="accentColor"
+                    type="color"
+                    value={accentColor || "#2dd4bf"}
+                    onChange={(e) => {
+                      setAccentColor(e.target.value);
+                      setBrandingError("");
+                    }}
+                    className="h-10 w-10 rounded border border-gray-300 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={accentColor || "#2dd4bf"}
+                    onChange={(e) => {
+                      setAccentColor(e.target.value);
+                      setBrandingError("");
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

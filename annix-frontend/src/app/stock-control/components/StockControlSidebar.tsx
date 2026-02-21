@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { corpId } from "@/app/lib/corpId";
+import { useStockControlBranding } from "../context/StockControlBrandingContext";
 
 interface NavItem {
   href: string;
@@ -111,7 +111,7 @@ export function StockControlSidebar() {
   const pathname = usePathname();
   const { user, logout } = useStockControlAuth();
 
-  const colors = corpId.colors.portal.stockControl;
+  const { colors } = useStockControlBranding();
 
   const visibleNavItems = allNavItems.filter((item) => {
     if (!item.roles) return true;

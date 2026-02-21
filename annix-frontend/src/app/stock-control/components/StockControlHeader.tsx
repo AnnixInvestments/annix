@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { corpId } from "@/app/lib/corpId";
+import { useStockControlBranding } from "../context/StockControlBrandingContext";
 
 interface StockControlHeaderProps {
   onSearch?: (query: string) => void;
@@ -14,7 +14,7 @@ export function StockControlHeader({ onSearch, lowStockCount = 0 }: StockControl
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const colors = corpId.colors.portal.stockControl;
+  const { colors, logoUrl } = useStockControlBranding();
   const { user, logout } = useStockControlAuth();
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,9 +45,13 @@ export function StockControlHeader({ onSearch, lowStockCount = 0 }: StockControl
       style={{ backgroundColor: colors.background }}
     >
       <div className="flex items-center">
-        <div className="text-2xl font-bold" style={{ color: colors.accent }}>
-          ASCA
-        </div>
+        {logoUrl ? (
+          <img src={logoUrl} alt="Company logo" className="h-10 w-10 object-contain rounded" />
+        ) : (
+          <div className="text-2xl font-bold" style={{ color: colors.accent }}>
+            ASCA
+          </div>
+        )}
         <span className="ml-2 text-white text-lg font-medium">Stock Control</span>
       </div>
 

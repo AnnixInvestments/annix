@@ -133,12 +133,20 @@ export class StockControlAuthService {
     user.emailVerificationExpires = null;
     await this.userRepo.save(user);
 
-    return {
+    const result: Record<string, unknown> = {
       message: "Email verified successfully. You can now sign in.",
       userId: user.id,
       email: user.email,
       needsBranding: !isInvitedUser,
     };
+
+    if (!isInvitedUser) {
+      const tokens = this.generateTokens(user);
+      result.accessToken = tokens.accessToken;
+      result.refreshToken = tokens.refreshToken;
+    }
+
+    return result;
   }
 
   async resendVerification(email: string) {
@@ -162,6 +170,43 @@ export class StockControlAuthService {
     await this.emailService.sendStockControlVerificationEmail(email, verificationToken);
 
     return { message: "Verification email resent. Please check your inbox." };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.userRepo.findOne({ where: { email } });
+
+    if (user && user.emailVerified) {
+      const resetToken = uuidv4();
+      const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
+
+      user.resetPasswordToken = resetToken;
+      user.resetPasswordExpires = resetExpires;
+      await this.userRepo.save(user);
+
+      await this.emailService.sendStockControlPasswordResetEmail(email, resetToken);
+    }
+
+    return { message: "If an account exists with that email, a password reset link has been sent." };
+  }
+
+  async resetPassword(token: string, password: string) {
+    const user = await this.userRepo.findOne({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordExpires: MoreThan(new Date()),
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException("Invalid or expired reset link. Please request a new one.");
+    }
+
+    user.passwordHash = await bcrypt.hash(password, 10);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await this.userRepo.save(user);
+
+    return { message: "Password reset successfully. You can now sign in with your new password." };
   }
 
   async login(email: string, password: string) {
@@ -210,6 +255,9 @@ export class StockControlAuthService {
       companyId: user.companyId,
       companyName: user.company?.name ?? null,
       brandingType: user.company?.brandingType ?? BrandingType.ANNIX,
+      primaryColor: user.company?.primaryColor ?? null,
+      accentColor: user.company?.accentColor ?? null,
+      logoUrl: user.company?.logoUrl ?? null,
       createdAt: user.createdAt,
     };
   }
@@ -249,6 +297,9 @@ export class StockControlAuthService {
     brandingType: string,
     websiteUrl?: string,
     brandingAuthorized?: boolean,
+    primaryColor?: string,
+    accentColor?: string,
+    logoUrl?: string,
   ) {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
     if (!company) {
@@ -260,9 +311,24 @@ export class StockControlAuthService {
     company.websiteUrl = brandingType === BrandingType.CUSTOM ? (websiteUrl ?? null) : null;
     company.brandingAuthorized =
       brandingType === BrandingType.CUSTOM ? (brandingAuthorized ?? false) : false;
+    company.primaryColor = brandingType === BrandingType.CUSTOM ? (primaryColor ?? null) : null;
+    company.accentColor = brandingType === BrandingType.CUSTOM ? (accentColor ?? null) : null;
+    company.logoUrl = brandingType === BrandingType.CUSTOM ? (logoUrl ?? null) : null;
     await this.companyRepo.save(company);
 
     return { message: "Branding preference saved successfully." };
+  }
+
+  async updateCompanyName(companyId: number, name: string) {
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    if (!company) {
+      throw new NotFoundException("Company not found");
+    }
+
+    company.name = name;
+    await this.companyRepo.save(company);
+
+    return { message: "Company name updated successfully." };
   }
 
   async teamMembers(companyId: number) {

@@ -4,9 +4,9 @@ export class AddEmailVerificationToStockControlUsers1793100000000 implements Mig
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "stock_control_users"
-      ADD COLUMN "email_verified" boolean NOT NULL DEFAULT false,
-      ADD COLUMN "email_verification_token" varchar(255),
-      ADD COLUMN "email_verification_expires" timestamptz
+      ADD COLUMN IF NOT EXISTS "email_verified" boolean NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "email_verification_token" varchar(255),
+      ADD COLUMN IF NOT EXISTS "email_verification_expires" timestamptz
     `);
   }
 

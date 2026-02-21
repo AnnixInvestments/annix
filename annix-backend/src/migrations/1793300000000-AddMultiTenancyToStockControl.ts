@@ -3,7 +3,7 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 export class AddMultiTenancyToStockControl1793300000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE "stock_control_companies" (
+      CREATE TABLE IF NOT EXISTS "stock_control_companies" (
         "id" SERIAL PRIMARY KEY,
         "name" VARCHAR(255) NOT NULL,
         "branding_type" VARCHAR(20) NOT NULL DEFAULT 'annix',
@@ -15,7 +15,7 @@ export class AddMultiTenancyToStockControl1793300000000 implements MigrationInte
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "stock_control_invitations" (
+      CREATE TABLE IF NOT EXISTS "stock_control_invitations" (
         "id" SERIAL PRIMARY KEY,
         "company_id" INTEGER NOT NULL,
         "invited_by_id" INTEGER NOT NULL,
@@ -32,19 +32,19 @@ export class AddMultiTenancyToStockControl1793300000000 implements MigrationInte
     `);
 
     await queryRunner.query(`
-      CREATE UNIQUE INDEX "IDX_sc_invitations_token" ON "stock_control_invitations" ("token")
+      CREATE UNIQUE INDEX IF NOT EXISTS "IDX_sc_invitations_token" ON "stock_control_invitations" ("token")
     `);
 
-    await queryRunner.query(`ALTER TABLE "stock_control_users" ADD "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "stock_items" ADD "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "job_cards" ADD "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "delivery_notes" ADD "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "stock_movements" ADD "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "stock_allocations" ADD "company_id" INTEGER`);
-    await queryRunner.query(`ALTER TABLE "delivery_note_items" ADD "company_id" INTEGER`);
+    await queryRunner.query(`ALTER TABLE "stock_control_users" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
+    await queryRunner.query(`ALTER TABLE "stock_items" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
+    await queryRunner.query(`ALTER TABLE "job_cards" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
+    await queryRunner.query(`ALTER TABLE "delivery_notes" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
+    await queryRunner.query(`ALTER TABLE "stock_movements" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
+    await queryRunner.query(`ALTER TABLE "stock_allocations" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
+    await queryRunner.query(`ALTER TABLE "delivery_note_items" ADD COLUMN IF NOT EXISTS "company_id" INTEGER`);
 
     const users = await queryRunner.query(
-      `SELECT "id", "name", "branding_type", "website_url", "branding_authorized" FROM "stock_control_users"`,
+      `SELECT "id", "name", "branding_type", "website_url", "branding_authorized" FROM "stock_control_users" WHERE "company_id" IS NULL`,
     );
 
     for (const user of users) {
@@ -94,19 +94,48 @@ export class AddMultiTenancyToStockControl1793300000000 implements MigrationInte
       );
     }
 
-    await queryRunner.query(
-      `ALTER TABLE "stock_control_users" ALTER COLUMN "company_id" SET NOT NULL`,
-    );
-    await queryRunner.query(`ALTER TABLE "stock_items" ALTER COLUMN "company_id" SET NOT NULL`);
-    await queryRunner.query(`ALTER TABLE "job_cards" ALTER COLUMN "company_id" SET NOT NULL`);
-    await queryRunner.query(`ALTER TABLE "delivery_notes" ALTER COLUMN "company_id" SET NOT NULL`);
-    await queryRunner.query(`ALTER TABLE "stock_movements" ALTER COLUMN "company_id" SET NOT NULL`);
-    await queryRunner.query(
-      `ALTER TABLE "stock_allocations" ALTER COLUMN "company_id" SET NOT NULL`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "delivery_note_items" ALTER COLUMN "company_id" SET NOT NULL`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "stock_control_users" ALTER COLUMN "company_id" SET NOT NULL;
+      EXCEPTION WHEN others THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "stock_items" ALTER COLUMN "company_id" SET NOT NULL;
+      EXCEPTION WHEN others THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "job_cards" ALTER COLUMN "company_id" SET NOT NULL;
+      EXCEPTION WHEN others THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "delivery_notes" ALTER COLUMN "company_id" SET NOT NULL;
+      EXCEPTION WHEN others THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "stock_movements" ALTER COLUMN "company_id" SET NOT NULL;
+      EXCEPTION WHEN others THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "stock_allocations" ALTER COLUMN "company_id" SET NOT NULL;
+      EXCEPTION WHEN others THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "delivery_note_items" ALTER COLUMN "company_id" SET NOT NULL;
+      EXCEPTION WHEN others THEN NULL;
+      END $$
+    `);
 
     await queryRunner.query(
       `ALTER TABLE "stock_items" DROP CONSTRAINT IF EXISTS "UQ_stock_items_sku"`,
@@ -133,36 +162,57 @@ export class AddMultiTenancyToStockControl1793300000000 implements MigrationInte
     );
 
     await queryRunner.query(
-      `CREATE UNIQUE INDEX "IDX_stock_items_company_sku" ON "stock_items" ("company_id", "sku")`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_stock_items_company_sku" ON "stock_items" ("company_id", "sku")`,
     );
     await queryRunner.query(
-      `CREATE UNIQUE INDEX "IDX_job_cards_company_job_number" ON "job_cards" ("company_id", "job_number")`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_job_cards_company_job_number" ON "job_cards" ("company_id", "job_number")`,
     );
     await queryRunner.query(
-      `CREATE UNIQUE INDEX "IDX_delivery_notes_company_delivery_number" ON "delivery_notes" ("company_id", "delivery_number")`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_delivery_notes_company_delivery_number" ON "delivery_notes" ("company_id", "delivery_number")`,
     );
 
-    await queryRunner.query(
-      `ALTER TABLE "stock_control_users" ADD CONSTRAINT "FK_sc_users_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "stock_items" ADD CONSTRAINT "FK_stock_items_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "job_cards" ADD CONSTRAINT "FK_job_cards_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "delivery_notes" ADD CONSTRAINT "FK_delivery_notes_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "stock_movements" ADD CONSTRAINT "FK_stock_movements_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "stock_allocations" ADD CONSTRAINT "FK_stock_allocations_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "delivery_note_items" ADD CONSTRAINT "FK_delivery_note_items_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "stock_control_users" ADD CONSTRAINT "FK_sc_users_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "stock_items" ADD CONSTRAINT "FK_stock_items_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "job_cards" ADD CONSTRAINT "FK_job_cards_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "delivery_notes" ADD CONSTRAINT "FK_delivery_notes_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "stock_movements" ADD CONSTRAINT "FK_stock_movements_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "stock_allocations" ADD CONSTRAINT "FK_stock_allocations_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "delivery_note_items" ADD CONSTRAINT "FK_delivery_note_items_company" FOREIGN KEY ("company_id") REFERENCES "stock_control_companies"("id") ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

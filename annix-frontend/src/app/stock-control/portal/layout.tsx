@@ -5,18 +5,21 @@ import React, { useEffect } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { StockControlHeader } from "../components/StockControlHeader";
 import { StockControlSidebar } from "../components/StockControlSidebar";
+import { StockControlBrandingProvider } from "../context/StockControlBrandingContext";
 
 function PortalContent({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen bg-gray-50">
-      <StockControlSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <StockControlHeader />
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">{children}</div>
-        </main>
+    <StockControlBrandingProvider>
+      <div className="flex h-screen bg-gray-50">
+        <StockControlSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <StockControlHeader />
+          <main className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-7xl mx-auto">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </StockControlBrandingProvider>
   );
 }
 

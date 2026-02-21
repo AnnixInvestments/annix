@@ -5,7 +5,7 @@ export class CreateAnonymousDraftsTable1780000000000 implements MigrationInterfa
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE "anonymous_drafts" (
+      CREATE TABLE IF NOT EXISTS "anonymous_drafts" (
         "id" SERIAL PRIMARY KEY,
         "recovery_token" VARCHAR(64) NOT NULL UNIQUE,
         "customer_email" VARCHAR(255),
@@ -27,15 +27,15 @@ export class CreateAnonymousDraftsTable1780000000000 implements MigrationInterfa
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_anonymous_drafts_recovery_token" ON "anonymous_drafts" ("recovery_token")
+      CREATE INDEX IF NOT EXISTS "IDX_anonymous_drafts_recovery_token" ON "anonymous_drafts" ("recovery_token")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_anonymous_drafts_customer_email" ON "anonymous_drafts" ("customer_email")
+      CREATE INDEX IF NOT EXISTS "IDX_anonymous_drafts_customer_email" ON "anonymous_drafts" ("customer_email")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_anonymous_drafts_expires_at" ON "anonymous_drafts" ("expires_at")
+      CREATE INDEX IF NOT EXISTS "IDX_anonymous_drafts_expires_at" ON "anonymous_drafts" ("expires_at")
     `);
   }
 

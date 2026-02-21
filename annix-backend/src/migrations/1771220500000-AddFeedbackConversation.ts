@@ -20,13 +20,19 @@ export class AddFeedbackConversation1771220500000 implements MigrationInterface 
       `ALTER TABLE "customer_feedback" DROP COLUMN IF EXISTS "github_issue_number"`,
     );
 
-    await queryRunner.query(
-      `ALTER TABLE "customer_feedback" ADD CONSTRAINT "FK_customer_feedback_conversation" FOREIGN KEY ("conversation_id") REFERENCES "conversation"("id") ON DELETE SET NULL ON UPDATE NO ACTION`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "customer_feedback" ADD CONSTRAINT "FK_customer_feedback_conversation" FOREIGN KEY ("conversation_id") REFERENCES "conversation"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
 
-    await queryRunner.query(
-      `ALTER TABLE "customer_feedback" ADD CONSTRAINT "FK_customer_feedback_assigned_to" FOREIGN KEY ("assigned_to_id") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE NO ACTION`,
-    );
+    await queryRunner.query(`
+      DO $$ BEGIN
+        ALTER TABLE "customer_feedback" ADD CONSTRAINT "FK_customer_feedback_assigned_to" FOREIGN KEY ("assigned_to_id") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

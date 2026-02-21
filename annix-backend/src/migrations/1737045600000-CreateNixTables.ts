@@ -5,19 +5,25 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TYPE "nix_extraction_status_enum" AS ENUM (
-        'pending', 'processing', 'needs_clarification', 'completed', 'failed'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "nix_extraction_status_enum" AS ENUM (
+          'pending', 'processing', 'needs_clarification', 'completed', 'failed'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "nix_document_type_enum" AS ENUM (
-        'pdf', 'excel', 'word', 'cad', 'solidworks', 'image', 'unknown'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "nix_document_type_enum" AS ENUM (
+          'pdf', 'excel', 'word', 'cad', 'solidworks', 'image', 'unknown'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "nix_extractions" (
+      CREATE TABLE IF NOT EXISTS "nix_extractions" (
         "id" SERIAL PRIMARY KEY,
         "document_name" VARCHAR NOT NULL,
         "document_path" VARCHAR NOT NULL,
@@ -44,6 +50,7 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
           ALTER TABLE "nix_extractions" ADD CONSTRAINT "fk_nix_extractions_user"
             FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL;
         END IF;
+      EXCEPTION WHEN duplicate_object THEN NULL;
       END $$
     `);
 
@@ -54,23 +61,30 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
           ALTER TABLE "nix_extractions" ADD CONSTRAINT "fk_nix_extractions_rfq"
             FOREIGN KEY ("rfq_id") REFERENCES "rfqs"("id") ON DELETE SET NULL;
         END IF;
+      EXCEPTION WHEN duplicate_object THEN NULL;
       END $$
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "nix_learning_type_enum" AS ENUM (
-        'extraction_pattern', 'relevance_rule', 'terminology', 'correction'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "nix_learning_type_enum" AS ENUM (
+          'extraction_pattern', 'relevance_rule', 'terminology', 'correction'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "nix_learning_source_enum" AS ENUM (
-        'admin_seeded', 'user_correction', 'aggregated', 'web_augmented'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "nix_learning_source_enum" AS ENUM (
+          'admin_seeded', 'user_correction', 'aggregated', 'web_augmented'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "nix_learning" (
+      CREATE TABLE IF NOT EXISTS "nix_learning" (
         "id" SERIAL PRIMARY KEY,
         "learning_type" "nix_learning_type_enum" NOT NULL,
         "source" "nix_learning_source_enum" DEFAULT 'user_correction',
@@ -89,7 +103,7 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "nix_user_preferences" (
+      CREATE TABLE IF NOT EXISTS "nix_user_preferences" (
         "id" SERIAL PRIMARY KEY,
         "user_id" INTEGER NOT NULL,
         "category" VARCHAR,
@@ -110,29 +124,39 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
           ALTER TABLE "nix_user_preferences" ADD CONSTRAINT "fk_nix_user_preferences_user"
             FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE;
         END IF;
+      EXCEPTION WHEN duplicate_object THEN NULL;
       END $$
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "nix_clarification_status_enum" AS ENUM (
-        'pending', 'answered', 'skipped', 'expired'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "nix_clarification_status_enum" AS ENUM (
+          'pending', 'answered', 'skipped', 'expired'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "nix_clarification_type_enum" AS ENUM (
-        'missing_info', 'ambiguous', 'confirmation', 'relevance'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "nix_clarification_type_enum" AS ENUM (
+          'missing_info', 'ambiguous', 'confirmation', 'relevance'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "nix_response_type_enum" AS ENUM (
-        'text', 'screenshot', 'document_reference', 'selection'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "nix_response_type_enum" AS ENUM (
+          'text', 'screenshot', 'document_reference', 'selection'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "nix_clarifications" (
+      CREATE TABLE IF NOT EXISTS "nix_clarifications" (
         "id" SERIAL PRIMARY KEY,
         "extraction_id" INTEGER,
         "user_id" INTEGER,
@@ -152,8 +176,11 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "nix_clarifications" ADD CONSTRAINT "fk_nix_clarifications_extraction"
-        FOREIGN KEY ("extraction_id") REFERENCES "nix_extractions"("id") ON DELETE CASCADE
+      DO $$ BEGIN
+        ALTER TABLE "nix_clarifications" ADD CONSTRAINT "fk_nix_clarifications_extraction"
+          FOREIGN KEY ("extraction_id") REFERENCES "nix_extractions"("id") ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
@@ -163,35 +190,36 @@ export class CreateNixTables1737045600000 implements MigrationInterface {
           ALTER TABLE "nix_clarifications" ADD CONSTRAINT "fk_nix_clarifications_user"
             FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL;
         END IF;
+      EXCEPTION WHEN duplicate_object THEN NULL;
       END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "idx_nix_extractions_user" ON "nix_extractions"("user_id")
+      CREATE INDEX IF NOT EXISTS "idx_nix_extractions_user" ON "nix_extractions"("user_id")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "idx_nix_extractions_rfq" ON "nix_extractions"("rfq_id")
+      CREATE INDEX IF NOT EXISTS "idx_nix_extractions_rfq" ON "nix_extractions"("rfq_id")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "idx_nix_extractions_status" ON "nix_extractions"("status")
+      CREATE INDEX IF NOT EXISTS "idx_nix_extractions_status" ON "nix_extractions"("status")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "idx_nix_learning_type" ON "nix_learning"("learning_type")
+      CREATE INDEX IF NOT EXISTS "idx_nix_learning_type" ON "nix_learning"("learning_type")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "idx_nix_learning_pattern" ON "nix_learning"("pattern_key")
+      CREATE INDEX IF NOT EXISTS "idx_nix_learning_pattern" ON "nix_learning"("pattern_key")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "idx_nix_clarifications_extraction" ON "nix_clarifications"("extraction_id")
+      CREATE INDEX IF NOT EXISTS "idx_nix_clarifications_extraction" ON "nix_clarifications"("extraction_id")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "idx_nix_clarifications_status" ON "nix_clarifications"("status")
+      CREATE INDEX IF NOT EXISTS "idx_nix_clarifications_status" ON "nix_clarifications"("status")
     `);
 
     console.log(

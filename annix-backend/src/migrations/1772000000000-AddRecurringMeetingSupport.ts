@@ -6,18 +6,24 @@ export class AddRecurringMeetingSupport1772000000000 implements MigrationInterfa
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE annix_rep_meetings
-      ADD COLUMN is_recurring BOOLEAN DEFAULT FALSE,
-      ADD COLUMN recurrence_rule VARCHAR(500),
-      ADD COLUMN recurring_parent_id INT REFERENCES annix_rep_meetings(id) ON DELETE SET NULL,
-      ADD COLUMN recurrence_exception_dates TEXT
+      ADD COLUMN IF NOT EXISTS is_recurring BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS recurrence_rule VARCHAR(500),
+      ADD COLUMN IF NOT EXISTS recurrence_exception_dates TEXT
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_meetings_recurring_parent ON annix_rep_meetings(recurring_parent_id)
+      DO $$ BEGIN
+        ALTER TABLE annix_rep_meetings ADD COLUMN recurring_parent_id INT REFERENCES annix_rep_meetings(id) ON DELETE SET NULL;
+      EXCEPTION WHEN duplicate_column THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_meetings_is_recurring ON annix_rep_meetings(is_recurring) WHERE is_recurring = TRUE
+      CREATE INDEX IF NOT EXISTS idx_meetings_recurring_parent ON annix_rep_meetings(recurring_parent_id)
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_meetings_is_recurring ON annix_rep_meetings(is_recurring) WHERE is_recurring = TRUE
     `);
   }
 

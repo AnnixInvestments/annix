@@ -15,7 +15,7 @@ interface StockControlAuthState {
 }
 
 interface StockControlAuthContextType extends StockControlAuthState {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -69,10 +69,11 @@ export function StockControlAuthProvider({ children }: { children: ReactNode }) 
     checkAuth();
   }, [checkAuth]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
+      stockControlApiClient.setRememberMe(rememberMe);
       const response = await stockControlApiClient.login({ email, password });
 
       const profile = await stockControlApiClient.currentUser();

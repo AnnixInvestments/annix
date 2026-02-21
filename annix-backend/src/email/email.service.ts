@@ -277,7 +277,58 @@ export class EmailService {
     });
   }
 
-  // Customer Portal Email Methods
+  async sendStockControlPasswordResetEmail(email: string, resetToken: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const resetLink = `${frontendUrl}/stock-control/reset-password?token=${resetToken}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Reset Your Password - ASCA Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #0d9488;">Reset Your Password</h1>
+          <p>We received a request to reset your password for ASCA Stock Control. Click the button below to set a new password.</p>
+          <p style="margin: 30px 0;">
+            <a href="${resetLink}"
+               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Reset Password
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${resetLink}</p>
+          <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not request a password reset, please ignore this email. Your password will remain unchanged.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Reset Your Password - ASCA Stock Control
+
+      We received a request to reset your password. Click here to set a new password:
+
+      ${resetLink}
+
+      This link will expire in 1 hour.
+
+      If you did not request a password reset, please ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "Reset Your Password - ASCA Stock Control",
+      html,
+      text,
+    });
+  }
 
   async sendStockControlInvitationEmail(
     email: string,

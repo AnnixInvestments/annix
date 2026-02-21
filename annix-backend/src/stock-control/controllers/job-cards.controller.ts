@@ -8,8 +8,11 @@ import {
   Put,
   Query,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
@@ -68,5 +71,16 @@ export class JobCardsController {
   @ApiOperation({ summary: "Allocations for a job card" })
   async allocations(@Req() req: any, @Param("id") id: number) {
     return this.jobCardService.allocationsByJobCard(req.user.companyId, id);
+  }
+
+  @Post(":id/allocations/:allocationId/photo")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload a photo for an allocation" })
+  async uploadAllocationPhoto(
+    @Req() req: any,
+    @Param("allocationId") allocationId: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.jobCardService.uploadAllocationPhoto(req.user.companyId, allocationId, file);
   }
 }

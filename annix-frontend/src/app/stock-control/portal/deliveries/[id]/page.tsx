@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 
 export default function DeliveryDetailPage() {
   const params = useParams();
@@ -14,6 +15,7 @@ export default function DeliveryDetailPage() {
   const [delivery, setDelivery] = useState<DeliveryNote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -31,6 +33,18 @@ export default function DeliveryDetailPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handlePhotoCapture = async (file: File) => {
+    try {
+      setIsUploading(true);
+      await stockControlApiClient.uploadDeliveryPhoto(deliveryId, file);
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to upload photo"));
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -119,20 +133,31 @@ export default function DeliveryDetailPage() {
         </div>
       </div>
 
-      {delivery.photoUrl && (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Photo</h3>
-          </div>
-          <div className="p-4">
-            <img
-              src={delivery.photoUrl}
-              alt={`Delivery ${delivery.deliveryNumber}`}
-              className="max-w-md rounded-lg object-cover"
-            />
-          </div>
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Photo</h3>
         </div>
-      )}
+        <div className="p-4">
+          {delivery.photoUrl ? (
+            <div className="space-y-3">
+              <img
+                src={delivery.photoUrl}
+                alt={`Delivery ${delivery.deliveryNumber}`}
+                className="max-w-md rounded-lg object-cover"
+              />
+              <PhotoCapture onCapture={handlePhotoCapture} currentPhotoUrl={delivery.photoUrl} />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {isUploading ? (
+                <p className="text-sm text-gray-500">Uploading photo...</p>
+              ) : (
+                <PhotoCapture onCapture={handlePhotoCapture} />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         <div className="px-4 py-5 sm:px-6 border-b border-gray-200">

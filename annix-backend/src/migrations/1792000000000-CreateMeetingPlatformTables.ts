@@ -5,25 +5,34 @@ export class CreateMeetingPlatformTables1792000000000 implements MigrationInterf
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TYPE "fieldflow_meeting_platform_enum" AS ENUM (
-        'zoom', 'teams', 'google_meet'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "fieldflow_meeting_platform_enum" AS ENUM (
+          'zoom', 'teams', 'google_meet'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "fieldflow_platform_connection_status_enum" AS ENUM (
-        'active', 'error', 'disconnected', 'token_expired'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "fieldflow_platform_connection_status_enum" AS ENUM (
+          'active', 'error', 'disconnected', 'token_expired'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TYPE "fieldflow_platform_recording_status_enum" AS ENUM (
-        'pending', 'downloading', 'downloaded', 'processing', 'transcribing', 'completed', 'failed', 'no_recording'
-      )
+      DO $$ BEGIN
+        CREATE TYPE "fieldflow_platform_recording_status_enum" AS ENUM (
+          'pending', 'downloading', 'downloaded', 'processing', 'transcribing', 'completed', 'failed', 'no_recording'
+        );
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "annix_rep_meeting_platform_connections" (
+      CREATE TABLE IF NOT EXISTS "annix_rep_meeting_platform_connections" (
         "id" SERIAL NOT NULL,
         "user_id" integer NOT NULL,
         "platform" "fieldflow_meeting_platform_enum" NOT NULL,
@@ -51,23 +60,26 @@ export class CreateMeetingPlatformTables1792000000000 implements MigrationInterf
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "annix_rep_meeting_platform_connections"
-      ADD CONSTRAINT "FK_annix_rep_meeting_platform_connections_user"
-      FOREIGN KEY ("user_id")
-      REFERENCES "user"("id")
-      ON DELETE CASCADE
+      DO $$ BEGIN
+        ALTER TABLE "annix_rep_meeting_platform_connections"
+        ADD CONSTRAINT "FK_annix_rep_meeting_platform_connections_user"
+        FOREIGN KEY ("user_id")
+        REFERENCES "user"("id")
+        ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_annix_rep_meeting_platform_connections_user" ON "annix_rep_meeting_platform_connections"("user_id")
+      CREATE INDEX IF NOT EXISTS "IDX_annix_rep_meeting_platform_connections_user" ON "annix_rep_meeting_platform_connections"("user_id")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_annix_rep_meeting_platform_connections_status" ON "annix_rep_meeting_platform_connections"("connection_status")
+      CREATE INDEX IF NOT EXISTS "IDX_annix_rep_meeting_platform_connections_status" ON "annix_rep_meeting_platform_connections"("connection_status")
     `);
 
     await queryRunner.query(`
-      CREATE TABLE "annix_rep_platform_meeting_records" (
+      CREATE TABLE IF NOT EXISTS "annix_rep_platform_meeting_records" (
         "id" SERIAL NOT NULL,
         "connection_id" integer NOT NULL,
         "meeting_id" integer NULL,
@@ -102,43 +114,49 @@ export class CreateMeetingPlatformTables1792000000000 implements MigrationInterf
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "annix_rep_platform_meeting_records"
-      ADD CONSTRAINT "FK_annix_rep_platform_meeting_records_connection"
-      FOREIGN KEY ("connection_id")
-      REFERENCES "annix_rep_meeting_platform_connections"("id")
-      ON DELETE CASCADE
+      DO $$ BEGIN
+        ALTER TABLE "annix_rep_platform_meeting_records"
+        ADD CONSTRAINT "FK_annix_rep_platform_meeting_records_connection"
+        FOREIGN KEY ("connection_id")
+        REFERENCES "annix_rep_meeting_platform_connections"("id")
+        ON DELETE CASCADE;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "annix_rep_platform_meeting_records"
-      ADD CONSTRAINT "FK_annix_rep_platform_meeting_records_meeting"
-      FOREIGN KEY ("meeting_id")
-      REFERENCES "annix_rep_meetings"("id")
-      ON DELETE SET NULL
+      DO $$ BEGIN
+        ALTER TABLE "annix_rep_platform_meeting_records"
+        ADD CONSTRAINT "FK_annix_rep_platform_meeting_records_meeting"
+        FOREIGN KEY ("meeting_id")
+        REFERENCES "annix_rep_meetings"("id")
+        ON DELETE SET NULL;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_annix_rep_platform_meeting_records_connection" ON "annix_rep_platform_meeting_records"("connection_id")
+      CREATE INDEX IF NOT EXISTS "IDX_annix_rep_platform_meeting_records_connection" ON "annix_rep_platform_meeting_records"("connection_id")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_annix_rep_platform_meeting_records_meeting" ON "annix_rep_platform_meeting_records"("meeting_id")
+      CREATE INDEX IF NOT EXISTS "IDX_annix_rep_platform_meeting_records_meeting" ON "annix_rep_platform_meeting_records"("meeting_id")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_annix_rep_platform_meeting_records_platform_meeting" ON "annix_rep_platform_meeting_records"("platform_meeting_id")
+      CREATE INDEX IF NOT EXISTS "IDX_annix_rep_platform_meeting_records_platform_meeting" ON "annix_rep_platform_meeting_records"("platform_meeting_id")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_annix_rep_platform_meeting_records_status" ON "annix_rep_platform_meeting_records"("recording_status")
+      CREATE INDEX IF NOT EXISTS "IDX_annix_rep_platform_meeting_records_status" ON "annix_rep_platform_meeting_records"("recording_status")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_annix_rep_platform_meeting_records_start_time" ON "annix_rep_platform_meeting_records"("start_time")
+      CREATE INDEX IF NOT EXISTS "IDX_annix_rep_platform_meeting_records_start_time" ON "annix_rep_platform_meeting_records"("start_time")
     `);
 
     await queryRunner.query(`
-      CREATE UNIQUE INDEX "UQ_annix_rep_platform_meeting_records_platform_id"
+      CREATE UNIQUE INDEX IF NOT EXISTS "UQ_annix_rep_platform_meeting_records_platform_id"
       ON "annix_rep_platform_meeting_records"("connection_id", "platform_meeting_id")
     `);
   }

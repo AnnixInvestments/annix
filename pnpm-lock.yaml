@@ -400,6 +400,13 @@ importers:
       ws:
         specifier: ^8.19.0
         version: 8.19.0
+    optionalDependencies:
+      naudiodon:
+        specifier: ^2.3.6
+        version: 2.3.6
+      systray2:
+        specifier: ^2.1.4
+        version: 2.1.4
     devDependencies:
       '@types/bcrypt':
         specifier: ^6.0.0
@@ -422,13 +429,6 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
-    optionalDependencies:
-      naudiodon:
-        specifier: ^2.3.6
-        version: 2.3.6
-      systray2:
-        specifier: ^2.1.4
-        version: 2.1.4
 
 packages:
 

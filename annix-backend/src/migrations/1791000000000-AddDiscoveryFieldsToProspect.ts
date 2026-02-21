@@ -6,18 +6,18 @@ export class AddDiscoveryFieldsToProspect1791000000000 implements MigrationInter
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE "annix_rep_prospects"
-      ADD COLUMN "discovery_source" character varying(50),
-      ADD COLUMN "discovered_at" TIMESTAMP,
-      ADD COLUMN "external_id" character varying(255)
+      ADD COLUMN IF NOT EXISTS "discovery_source" character varying(50),
+      ADD COLUMN IF NOT EXISTS "discovered_at" TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS "external_id" character varying(255)
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_annix_rep_prospects_discovery_source"
+      CREATE INDEX IF NOT EXISTS "IDX_annix_rep_prospects_discovery_source"
       ON "annix_rep_prospects" ("discovery_source")
     `);
 
     await queryRunner.query(`
-      CREATE INDEX "IDX_annix_rep_prospects_external_id"
+      CREATE INDEX IF NOT EXISTS "IDX_annix_rep_prospects_external_id"
       ON "annix_rep_prospects" ("external_id")
     `);
   }

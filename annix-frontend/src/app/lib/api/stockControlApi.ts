@@ -26,6 +26,9 @@ export interface StockControlUserProfile {
   companyId: number;
   companyName: string | null;
   brandingType: string;
+  primaryColor: string | null;
+  accentColor: string | null;
+  logoUrl: string | null;
   createdAt: string;
 }
 
@@ -190,6 +193,12 @@ export interface InvitationValidation {
   status?: string;
 }
 
+export interface ScrapedBranding {
+  logoUrl: string | null;
+  primaryColor: string | null;
+  accentColor: string | null;
+}
+
 const TOKEN_KEYS = {
   accessToken: "stockControlAccessToken",
   refreshToken: "stockControlRefreshToken",
@@ -199,20 +208,33 @@ class StockControlApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
+  private rememberMe: boolean = true;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
 
     if (typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken = localStorage.getItem(TOKEN_KEYS.refreshToken);
+      this.accessToken =
+        localStorage.getItem(TOKEN_KEYS.accessToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.accessToken);
+      this.refreshToken =
+        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
     }
+  }
+
+  setRememberMe(remember: boolean) {
+    this.rememberMe = remember;
   }
 
   private headers(): Record<string, string> {
     if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken = localStorage.getItem(TOKEN_KEYS.refreshToken);
+      this.accessToken =
+        localStorage.getItem(TOKEN_KEYS.accessToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.accessToken);
+      this.refreshToken =
+        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
     }
 
     const headers: Record<string, string> = {
@@ -230,8 +252,9 @@ class StockControlApiClient {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
     if (typeof window !== "undefined") {
-      localStorage.setItem(TOKEN_KEYS.accessToken, accessToken);
-      localStorage.setItem(TOKEN_KEYS.refreshToken, refreshToken);
+      const storage = this.rememberMe ? localStorage : sessionStorage;
+      storage.setItem(TOKEN_KEYS.accessToken, accessToken);
+      storage.setItem(TOKEN_KEYS.refreshToken, refreshToken);
     }
   }
 
@@ -241,13 +264,19 @@ class StockControlApiClient {
     if (typeof window !== "undefined") {
       localStorage.removeItem(TOKEN_KEYS.accessToken);
       localStorage.removeItem(TOKEN_KEYS.refreshToken);
+      sessionStorage.removeItem(TOKEN_KEYS.accessToken);
+      sessionStorage.removeItem(TOKEN_KEYS.refreshToken);
     }
   }
 
   isAuthenticated(): boolean {
     if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken = localStorage.getItem(TOKEN_KEYS.refreshToken);
+      this.accessToken =
+        localStorage.getItem(TOKEN_KEYS.accessToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.accessToken);
+      this.refreshToken =
+        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
     }
     return !!this.accessToken;
   }
@@ -323,7 +352,11 @@ class StockControlApiClient {
       const data = await response.json();
       this.accessToken = data.accessToken;
       if (typeof window !== "undefined") {
-        localStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
+        if (localStorage.getItem(TOKEN_KEYS.refreshToken)) {
+          localStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
+        } else {
+          sessionStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
+        }
       }
       return true;
     } catch {
@@ -358,17 +391,61 @@ class StockControlApiClient {
   async verifyEmail(
     token: string,
   ): Promise<{ message: string; userId: number; email: string; needsBranding: boolean }> {
-    return this.request(`/stock-control/auth/verify-email?token=${encodeURIComponent(token)}`);
+    const response = await this.request<{
+      message: string;
+      userId: number;
+      email: string;
+      needsBranding: boolean;
+      accessToken?: string;
+      refreshToken?: string;
+    }>(`/stock-control/auth/verify-email?token=${encodeURIComponent(token)}`);
+
+    if (response.accessToken && response.refreshToken) {
+      this.setTokens(response.accessToken, response.refreshToken);
+    }
+
+    return response;
+  }
+
+  async updateCompanyName(name: string): Promise<{ message: string }> {
+    return this.request("/stock-control/auth/company-name", {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  async scrapeBranding(websiteUrl: string): Promise<ScrapedBranding> {
+    return this.request("/stock-control/auth/scrape-branding", {
+      method: "POST",
+      body: JSON.stringify({ websiteUrl }),
+    });
   }
 
   async setBranding(data: {
     brandingType: string;
     websiteUrl?: string;
     brandingAuthorized?: boolean;
+    primaryColor?: string;
+    accentColor?: string;
+    logoUrl?: string;
   }): Promise<{ message: string }> {
     return this.request("/stock-control/auth/set-branding", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  }
+
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    return this.request("/stock-control/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, password: string): Promise<{ message: string }> {
+    return this.request("/stock-control/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
     });
   }
 
@@ -518,6 +595,27 @@ class StockControlApiClient {
     return this.request(`/stock-control/job-cards/${jobCardId}/allocations`);
   }
 
+  async uploadAllocationPhoto(jobCardId: number, allocationId: number, file: File): Promise<StockAllocation> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/photo`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
   async deliveryNotes(): Promise<DeliveryNote[]> {
     return this.request("/stock-control/deliveries");
   }
@@ -542,6 +640,27 @@ class StockControlApiClient {
 
   async deleteDeliveryNote(id: number): Promise<void> {
     return this.request(`/stock-control/deliveries/${id}`, { method: "DELETE" });
+  }
+
+  async uploadDeliveryPhoto(id: number, file: File): Promise<DeliveryNote> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/deliveries/${id}/photo`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${errorText}`);
+    }
+
+    return response.json();
   }
 
   async stockMovements(params?: {
@@ -590,7 +709,8 @@ class StockControlApiClient {
       throw new Error(`Import failed: ${errorText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    return data.rows ?? [];
   }
 
   async confirmImport(rows: unknown[]): Promise<ImportResult> {

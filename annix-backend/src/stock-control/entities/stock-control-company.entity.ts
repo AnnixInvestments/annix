@@ -28,6 +28,15 @@ export class StockControlCompany {
   @Column({ name: "branding_authorized", type: "boolean", default: false })
   brandingAuthorized: boolean;
 
+  @Column({ name: "primary_color", type: "varchar", length: 20, nullable: true })
+  primaryColor: string | null;
+
+  @Column({ name: "accent_color", type: "varchar", length: 20, nullable: true })
+  accentColor: string | null;
+
+  @Column({ name: "logo_url", type: "varchar", length: 500, nullable: true })
+  logoUrl: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

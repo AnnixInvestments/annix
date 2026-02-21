@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
@@ -17,6 +18,8 @@ export class DeliveryService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   async create(
@@ -104,5 +107,13 @@ export class DeliveryService {
   async remove(companyId: number, id: number): Promise<void> {
     const note = await this.findById(companyId, id);
     await this.deliveryNoteRepo.remove(note);
+  }
+
+  async uploadPhoto(companyId: number, id: number, file: Express.Multer.File): Promise<DeliveryNote> {
+    const note = await this.findById(companyId, id);
+    const result = await this.storageService.upload(file, "stock-control/deliveries");
+    note.photoUrl = result.url;
+    await this.deliveryNoteRepo.save(note);
+    return this.findById(companyId, id);
   }
 }

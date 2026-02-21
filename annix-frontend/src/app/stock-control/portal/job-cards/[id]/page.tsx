@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { JobCard, StockAllocation, StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -47,6 +48,7 @@ export default function JobCardDetailPage() {
   });
   const [isAllocating, setIsAllocating] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -81,6 +83,7 @@ export default function JobCardDetailPage() {
   const openAllocateModal = async () => {
     await fetchStockItems();
     setAllocateForm({ stockItemId: 0, quantityUsed: 1, notes: "" });
+    setCapturedFile(null);
     setShowAllocateModal(true);
   };
 
@@ -88,12 +91,16 @@ export default function JobCardDetailPage() {
     if (!allocateForm.stockItemId) return;
     try {
       setIsAllocating(true);
-      await stockControlApiClient.allocateStock(jobId, {
+      const allocation = await stockControlApiClient.allocateStock(jobId, {
         stockItemId: allocateForm.stockItemId,
         quantityUsed: allocateForm.quantityUsed,
         notes: allocateForm.notes || undefined,
       });
+      if (capturedFile) {
+        await stockControlApiClient.uploadAllocationPhoto(jobId, allocation.id, capturedFile);
+      }
       setShowAllocateModal(false);
+      setCapturedFile(null);
       fetchData();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to allocate stock"));
@@ -394,6 +401,13 @@ export default function JobCardDetailPage() {
                     onChange={(e) => setAllocateForm({ ...allocateForm, notes: e.target.value })}
                     rows={2}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
+                  <PhotoCapture
+                    onCapture={(file) => setCapturedFile(file)}
+                    currentPhotoUrl={capturedFile ? URL.createObjectURL(capturedFile) : undefined}
                   />
                 </div>
               </div>

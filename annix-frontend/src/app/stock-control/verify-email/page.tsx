@@ -55,7 +55,9 @@ function VerifyEmailContent() {
   };
 
   const handleContinue = async () => {
-    if (!brandingSelection) return;
+    if (!brandingSelection) {
+      return;
+    }
 
     if (brandingSelection === "custom") {
       if (!websiteUrl.trim()) {
@@ -83,10 +85,28 @@ function VerifyEmailContent() {
             : `https://${websiteUrl.trim()}`
           : undefined;
 
+      let scrapedLogoUrl: string | undefined;
+      let scrapedPrimaryColor: string | undefined;
+      let scrapedAccentColor: string | undefined;
+
+      if (brandingSelection === "custom" && normalizedUrl && brandingAuthorized) {
+        try {
+          const scraped = await stockControlApiClient.scrapeBranding(normalizedUrl);
+          scrapedLogoUrl = scraped.logoUrl ?? undefined;
+          scrapedPrimaryColor = scraped.primaryColor ?? undefined;
+          scrapedAccentColor = scraped.accentColor ?? undefined;
+        } catch {
+          // Scraping is best-effort; continue saving without scraped data
+        }
+      }
+
       await stockControlApiClient.setBranding({
         brandingType: brandingSelection,
         websiteUrl: normalizedUrl,
         brandingAuthorized: brandingSelection === "custom" ? brandingAuthorized : undefined,
+        primaryColor: scrapedPrimaryColor,
+        accentColor: scrapedAccentColor,
+        logoUrl: scrapedLogoUrl,
       });
 
       setStatus("complete");
@@ -295,7 +315,11 @@ function VerifyEmailContent() {
               disabled={!brandingSelection || saving}
               className="mt-6 w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? "Saving..." : "Continue"}
+              {saving && brandingSelection === "custom" && brandingAuthorized
+                ? "Analyzing your brand..."
+                : saving
+                  ? "Saving..."
+                  : "Continue"}
             </button>
           </div>
         )}

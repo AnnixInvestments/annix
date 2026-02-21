@@ -6,20 +6,20 @@ export class AddCalendarBufferSettings1771000000000 implements MigrationInterfac
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE annix_rep_rep_profiles
-      ADD COLUMN default_buffer_before_minutes INT DEFAULT 15,
-      ADD COLUMN default_buffer_after_minutes INT DEFAULT 15,
-      ADD COLUMN working_hours_start VARCHAR(5) DEFAULT '08:00',
-      ADD COLUMN working_hours_end VARCHAR(5) DEFAULT '17:00',
-      ADD COLUMN working_days VARCHAR(20) DEFAULT '1,2,3,4,5'
+      ADD COLUMN IF NOT EXISTS default_buffer_before_minutes INT DEFAULT 15,
+      ADD COLUMN IF NOT EXISTS default_buffer_after_minutes INT DEFAULT 15,
+      ADD COLUMN IF NOT EXISTS working_hours_start VARCHAR(5) DEFAULT '08:00',
+      ADD COLUMN IF NOT EXISTS working_hours_end VARCHAR(5) DEFAULT '17:00',
+      ADD COLUMN IF NOT EXISTS working_days VARCHAR(20) DEFAULT '1,2,3,4,5'
     `);
 
     await queryRunner.query(`
       ALTER TABLE annix_rep_calendar_connections
-      ADD COLUMN display_color VARCHAR(7) DEFAULT '#3B82F6'
+      ADD COLUMN IF NOT EXISTS display_color VARCHAR(7) DEFAULT '#3B82F6'
     `);
 
     await queryRunner.query(`
-      CREATE TABLE annix_rep_calendar_colors (
+      CREATE TABLE IF NOT EXISTS annix_rep_calendar_colors (
         id SERIAL PRIMARY KEY,
         user_id INT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
         color_type VARCHAR(50) NOT NULL,
@@ -30,7 +30,7 @@ export class AddCalendarBufferSettings1771000000000 implements MigrationInterfac
     `);
 
     await queryRunner.query(`
-      CREATE INDEX idx_calendar_colors_user ON annix_rep_calendar_colors(user_id)
+      CREATE INDEX IF NOT EXISTS idx_calendar_colors_user ON annix_rep_calendar_colors(user_id)
     `);
   }
 

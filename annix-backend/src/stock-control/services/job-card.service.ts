@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { JobCard } from "../entities/job-card.entity";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { JobCard, JobCardStatus } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -17,6 +18,8 @@ export class JobCardService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   async create(companyId: number, data: Partial<JobCard>): Promise<JobCard> {
@@ -121,5 +124,18 @@ export class JobCardService {
       relations: ["stockItem"],
       order: { createdAt: "DESC" },
     });
+  }
+
+  async uploadAllocationPhoto(companyId: number, allocationId: number, file: Express.Multer.File): Promise<StockAllocation> {
+    const allocation = await this.allocationRepo.findOne({
+      where: { id: allocationId, companyId },
+      relations: ["stockItem"],
+    });
+    if (!allocation) {
+      throw new NotFoundException("Allocation not found");
+    }
+    const result = await this.storageService.upload(file, "stock-control/allocations");
+    allocation.photoUrl = result.url;
+    return this.allocationRepo.save(allocation);
   }
 }

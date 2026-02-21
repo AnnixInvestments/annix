@@ -29,7 +29,7 @@ export default function StockControlLoginPage() {
     setError(null);
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       router.push("/stock-control/portal/dashboard");
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Login failed. Please try again.";
@@ -215,7 +215,15 @@ export default function StockControlLoginPage() {
               </div>
             </div>
 
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-2">
+              <p className="text-sm text-gray-600">
+                <Link
+                  href="/stock-control/forgot-password"
+                  className="font-medium text-teal-600 hover:text-teal-500"
+                >
+                  Forgot your password?
+                </Link>
+              </p>
               <p className="text-sm text-gray-600">
                 Don&apos;t have an account?{" "}
                 <Link
