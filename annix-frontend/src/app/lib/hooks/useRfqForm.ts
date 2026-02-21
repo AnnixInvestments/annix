@@ -409,6 +409,38 @@ export interface GlobalSpecs {
   ecpServiceLife?: string;
   ecpCathodicProtection?: boolean;
 
+  showExternalCoatingProfile?: boolean;
+  showMaterialTransferProfile?: boolean;
+  surfaceProtectionConfirmed?: boolean;
+
+  externalSubstrateType?: string;
+  externalApplicationMethod?: string;
+  externalApplicationLocation?: string;
+
+  internalCeramicType?: string;
+  internalHdpeMaterialGrade?: string;
+  internalPuThickness?: string;
+
+  mtpParticleSize?: string;
+  mtpParticleShape?: string;
+  mtpSpecificGravity?: string;
+  mtpHardnessClass?: string;
+  mtpSilicaContent?: string;
+  mtpPhRange?: string;
+  mtpChlorides?: string;
+  mtpTemperatureRange?: string;
+  mtpSolidsPercent?: string;
+  mtpVelocity?: string;
+  mtpImpactAngle?: string;
+  mtpEquipmentType?: string;
+  mtpImpactZones?: boolean;
+
+  applicationAmbientTempC?: number;
+  applicationHumidityPercent?: number;
+  applicationSteelTempC?: number;
+  calculatedSurfaceAreaM2?: number;
+  inspectionRequirements?: string[];
+
   showRecCustomColourInput?: boolean;
   recExternalTopcoatColour?: string;
   recCustomColourInput?: string;

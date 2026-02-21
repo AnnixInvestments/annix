@@ -17,6 +17,7 @@ import { BoltModule } from "./bolt/bolt.module";
 import { BoltMassModule } from "./bolt-mass/bolt-mass.module";
 import { BoqModule } from "./boq/boq.module";
 import { CoatingSpecificationModule } from "./coating-specification/coating-specification.module";
+import { SurfaceProtectionModule } from "./surface-protection/surface-protection.module";
 import typeormConfig from "./config/typeorm";
 import { CustomerModule } from "./customer/customer.module";
 import { DataValidationModule } from "./data-validation/data-validation.module";
@@ -136,6 +137,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     SupplierModule,
     MinesModule,
     CoatingSpecificationModule,
+    SurfaceProtectionModule,
     PipeSizingModule,
     StructuralSteelModule,
     HdpeModule,
