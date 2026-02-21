@@ -17,6 +17,7 @@ export type GenericType =
   | "epoxy-mastic"
   | "epoxy-phenolic"
   | "epoxy-glass-flake"
+  | "coal-tar-epoxy"
   | "polyurethane"
   | "polysiloxane"
   | "polyurea"

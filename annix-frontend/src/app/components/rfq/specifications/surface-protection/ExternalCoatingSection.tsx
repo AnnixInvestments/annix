@@ -347,7 +347,14 @@ export function ExternalCoatingSection({
                       onChange={(e) =>
                         onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpIso12944Category: e.target.value || undefined,
+                          ecpIso12944Category: (e.target.value || undefined) as
+                            | "C1"
+                            | "C2"
+                            | "C3"
+                            | "C4"
+                            | "C5"
+                            | "CX"
+                            | undefined,
                         })
                       }
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(
@@ -375,7 +382,11 @@ export function ExternalCoatingSection({
                       onChange={(e) =>
                         onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpMarineInfluence: e.target.value || undefined,
+                          ecpMarineInfluence: (e.target.value || undefined) as
+                            | "None"
+                            | "Coastal"
+                            | "Offshore"
+                            | undefined,
                         })
                       }
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(
@@ -400,7 +411,13 @@ export function ExternalCoatingSection({
                       onChange={(e) =>
                         onUpdateGlobalSpecs({
                           ...globalSpecs,
-                          ecpIndustrialPollution: e.target.value || undefined,
+                          ecpIndustrialPollution: (e.target.value || undefined) as
+                            | "None"
+                            | "Low"
+                            | "Moderate"
+                            | "High"
+                            | "Very High"
+                            | undefined,
                         })
                       }
                       className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-orange-500 ${autoFilledClass(
@@ -410,7 +427,7 @@ export function ExternalCoatingSection({
                       <option value="">Select...</option>
                       <option value="None">None / Rural</option>
                       <option value="Moderate">Moderate</option>
-                      <option value="Heavy">Heavy</option>
+                      <option value="High">High</option>
                     </select>
                   </div>
                 </div>

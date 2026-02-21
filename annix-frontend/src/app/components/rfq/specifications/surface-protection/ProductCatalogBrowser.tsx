@@ -40,11 +40,11 @@ export function ProductCatalogBrowser({
       paintProducts.forEach((p) => {
         products.push({
           id: p.id,
-          name: p.productName,
+          name: p.name,
           supplier: p.supplier,
           type: "paint",
           description: p.description || "",
-          maxTempC: p.maxServiceTempC,
+          maxTempC: p.heatResistance.continuousC,
           category: p.genericType,
         });
       });
@@ -54,11 +54,11 @@ export function ProductCatalogBrowser({
       rubberProducts.forEach((p) => {
         products.push({
           id: p.id,
-          name: p.productName,
+          name: p.name,
           supplier: p.supplier,
           type: "rubber",
-          description: `${p.polymerBase} - ${p.sansType ? `SANS 1198 Type ${p.sansType}` : "General purpose"}`,
-          maxTempC: p.maxServiceTempC,
+          description: `${p.polymerBase} - ${p.sans1198 ? `SANS 1198 Type ${p.sans1198.type}` : "General purpose"}`,
+          maxTempC: p.maxOperatingTempC,
           category: p.polymerBase,
         });
       });
@@ -68,11 +68,11 @@ export function ProductCatalogBrowser({
       ceramicProducts.forEach((p) => {
         products.push({
           id: p.id,
-          name: p.productName,
+          name: p.name,
           supplier: p.supplier,
           type: "ceramic",
-          description: `${p.material} - ${p.aluminaContent}% Al2O3`,
-          maxTempC: p.maxServiceTempC,
+          description: `${p.material} - ${p.aluminaContentPercent}% Al2O3`,
+          maxTempC: p.maxOperatingTempC,
           category: p.material,
         });
       });

@@ -84,9 +84,9 @@ export function SystemBuilderWizard({
   ) => {
     const layerData = {
       productId: product.id,
-      productName: product.productName,
+      productName: product.name,
       supplier: product.supplier,
-      dftMicrons: product.recommendedDftMicrons || 100,
+      dftMicrons: product.dft.typicalUm,
       coats: 1,
     };
 
@@ -143,11 +143,11 @@ export function SystemBuilderWizard({
               onClick={() => handleProductSelect(product, layer)}
             >
               <td className="px-2 py-2">
-                <div className="font-medium text-gray-900">{product.productName}</div>
+                <div className="font-medium text-gray-900">{product.name}</div>
                 <div className="text-gray-500 text-[10px]">{product.genericType}</div>
               </td>
               <td className="px-2 py-2 text-gray-700">{product.supplier}</td>
-              <td className="px-2 py-2 text-gray-700">{product.recommendedDftMicrons || "-"}um</td>
+              <td className="px-2 py-2 text-gray-700">{product.dft.typicalUm}um</td>
               <td className="px-2 py-2 text-center">
                 {selectedId === product.id ? (
                   <svg
