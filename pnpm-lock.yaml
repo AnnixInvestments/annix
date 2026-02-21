@@ -391,6 +391,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
+      nodemailer:
+        specifier: ^6.9.16
+        version: 6.10.1
       open:
         specifier: ^10.2.0
         version: 10.2.0
@@ -400,13 +403,6 @@ importers:
       ws:
         specifier: ^8.19.0
         version: 8.19.0
-    optionalDependencies:
-      naudiodon:
-        specifier: ^2.3.6
-        version: 2.3.6
-      systray2:
-        specifier: ^2.1.4
-        version: 2.1.4
     devDependencies:
       '@types/bcrypt':
         specifier: ^6.0.0
@@ -420,6 +416,9 @@ importers:
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.7
+      '@types/nodemailer':
+        specifier: ^6.4.17
+        version: 6.4.21
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
@@ -429,6 +428,13 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+    optionalDependencies:
+      naudiodon:
+        specifier: ^2.3.6
+        version: 2.3.6
+      systray2:
+        specifier: ^2.1.4
+        version: 2.1.4
 
 packages:
 
