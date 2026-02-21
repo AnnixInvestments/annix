@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { StockItem, StockMovement } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { formatDateZA } from "@/app/lib/datetime";
 
 function formatZAR(value: number): string {
@@ -429,7 +429,10 @@ export default function InventoryDetailPage() {
       {showAdjustModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowAdjustModal(false)}></div>
+            <div
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              onClick={() => setShowAdjustModal(false)}
+            ></div>
             <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Adjust Stock</h3>
               <div className="space-y-4">
@@ -437,7 +440,12 @@ export default function InventoryDetailPage() {
                   <label className="block text-sm font-medium text-gray-700">Movement Type</label>
                   <select
                     value={adjustForm.movementType}
-                    onChange={(e) => setAdjustForm({ ...adjustForm, movementType: e.target.value as "in" | "out" | "adjustment" })}
+                    onChange={(e) =>
+                      setAdjustForm({
+                        ...adjustForm,
+                        movementType: e.target.value as "in" | "out" | "adjustment",
+                      })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                   >
                     <option value="in">Stock In</option>
@@ -453,7 +461,9 @@ export default function InventoryDetailPage() {
                     type="number"
                     min={0}
                     value={adjustForm.quantity}
-                    onChange={(e) => setAdjustForm({ ...adjustForm, quantity: parseInt(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setAdjustForm({ ...adjustForm, quantity: parseInt(e.target.value, 10) || 0 })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                   />
                   {item && adjustForm.movementType !== "adjustment" && (

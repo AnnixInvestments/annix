@@ -1,8 +1,4 @@
-export type HdpeJoiningMethod =
-  | "butt_fusion"
-  | "electrofusion"
-  | "mechanical"
-  | "flanged_adaptor";
+export type HdpeJoiningMethod = "butt_fusion" | "electrofusion" | "mechanical" | "flanged_adaptor";
 
 export interface HdpeJoiningOption {
   value: HdpeJoiningMethod;
@@ -131,13 +127,10 @@ export const HDPE_FITTING_END_OPTIONS: HdpePipeEndOption[] = [
   },
 ];
 
-export const hdpeJoiningOptionByValue = (
-  value: HdpeJoiningMethod,
-): HdpeJoiningOption | null => HDPE_JOINING_OPTIONS.find((o) => o.value === value) ?? null;
+export const hdpeJoiningOptionByValue = (value: HdpeJoiningMethod): HdpeJoiningOption | null =>
+  HDPE_JOINING_OPTIONS.find((o) => o.value === value) ?? null;
 
-export const suitableJoiningMethodsForSize = (
-  outsideDiameterMm: number,
-): HdpeJoiningOption[] =>
+export const suitableJoiningMethodsForSize = (outsideDiameterMm: number): HdpeJoiningOption[] =>
   HDPE_JOINING_OPTIONS.filter(
     (opt) =>
       outsideDiameterMm >= opt.suitableForSizes.min &&

@@ -174,27 +174,17 @@ export const pvcWallThickness = (
   outsideDiameterMm: number,
   pressureClass: PvcPressureClass,
 ): number | null => {
-  const sizeData = PVC_WALL_THICKNESS_DATA.find(
-    (d) => d.outsideDiameterMm === outsideDiameterMm,
-  );
+  const sizeData = PVC_WALL_THICKNESS_DATA.find((d) => d.outsideDiameterMm === outsideDiameterMm);
   return sizeData?.wallThicknessByClass[pressureClass] ?? null;
 };
 
-export const availablePressureClassesForSize = (
-  outsideDiameterMm: number,
-): PvcPressureClass[] => {
-  const sizeData = PVC_WALL_THICKNESS_DATA.find(
-    (d) => d.outsideDiameterMm === outsideDiameterMm,
-  );
+export const availablePressureClassesForSize = (outsideDiameterMm: number): PvcPressureClass[] => {
+  const sizeData = PVC_WALL_THICKNESS_DATA.find((d) => d.outsideDiameterMm === outsideDiameterMm);
   if (!sizeData) return [];
-  return Object.keys(sizeData.wallThicknessByClass).map(
-    (k) => parseInt(k, 10) as PvcPressureClass,
-  );
+  return Object.keys(sizeData.wallThicknessByClass).map((k) => parseInt(k, 10) as PvcPressureClass);
 };
 
-export const recommendedPressureClassForPressure = (
-  pressureBar: number,
-): PvcPressureClass => {
+export const recommendedPressureClassForPressure = (pressureBar: number): PvcPressureClass => {
   const sortedClasses = [...PVC_PRESSURE_OPTIONS].sort((a, b) => a.value - b.value);
   const suitable = sortedClasses.find((c) => c.value >= pressureBar);
   return suitable?.value ?? 16;

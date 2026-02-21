@@ -35,7 +35,12 @@ export type ApplicationType =
 
 export type ThermalShockResistance = "poor" | "fair" | "good" | "excellent";
 
-export type AdhesiveType = "epoxy" | "polyurethane" | "ceramic-cement" | "sodium-silicate" | "rubber-backing";
+export type AdhesiveType =
+  | "epoxy"
+  | "polyurethane"
+  | "ceramic-cement"
+  | "sodium-silicate"
+  | "rubber-backing";
 
 export interface CeramicProduct {
   id: string;
@@ -77,7 +82,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "alumina-92",
     aluminaContentPercent: 92,
     zirconiaContentPercent: null,
-    description: "Standard grade 92% alumina ceramic tile for general wear protection. Good balance of wear resistance and cost-effectiveness.",
+    description:
+      "Standard grade 92% alumina ceramic tile for general wear protection. Good balance of wear resistance and cost-effectiveness.",
     typicalApplications: [
       "Chutes",
       "Hoppers",
@@ -116,7 +122,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "alumina-95",
     aluminaContentPercent: 95,
     zirconiaContentPercent: null,
-    description: "High grade 95% alumina ceramic tile with superior hardness and wear resistance for demanding applications.",
+    description:
+      "High grade 95% alumina ceramic tile with superior hardness and wear resistance for demanding applications.",
     typicalApplications: [
       "High-wear chutes",
       "Cyclone linings",
@@ -154,7 +161,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "alumina-92",
     aluminaContentPercent: 91,
     zirconiaContentPercent: null,
-    description: "High density ceramic composed of 90-92% microcrystalline alpha alumina with less than 2% silica. Highest density and lowest residual silica of any commercially available ceramic tile.",
+    description:
+      "High density ceramic composed of 90-92% microcrystalline alpha alumina with less than 2% silica. Highest density and lowest residual silica of any commercially available ceramic tile.",
     typicalApplications: [
       "Conveying systems",
       "Bulk material handling",
@@ -192,7 +200,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "alumina-96",
     aluminaContentPercent: 96,
     zirconiaContentPercent: null,
-    description: "Premium 96% alumina ceramic tile with exceptional hardness and compressive strength for the most demanding wear applications.",
+    description:
+      "Premium 96% alumina ceramic tile with exceptional hardness and compressive strength for the most demanding wear applications.",
     typicalApplications: [
       "Severe wear zones",
       "High-velocity material flow",
@@ -229,7 +238,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "zta",
     aluminaContentPercent: 85,
     zirconiaContentPercent: 15,
-    description: "Composite ceramic with zirconia grains in alumina matrix. Combines extreme abrasion resistance with increased impact resistance through stress-induced transformation toughening.",
+    description:
+      "Composite ceramic with zirconia grains in alumina matrix. Combines extreme abrasion resistance with increased impact resistance through stress-induced transformation toughening.",
     typicalApplications: [
       "Impact zones",
       "Transfer points",
@@ -270,7 +280,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "alumina-92",
     aluminaContentPercent: 92,
     zirconiaContentPercent: null,
-    description: "Alumina ceramic tile with integrated two-tone wear indicator insert for visual wear monitoring. Unique feature allows plant operators to timeously monitor wear on chute linings.",
+    description:
+      "Alumina ceramic tile with integrated two-tone wear indicator insert for visual wear monitoring. Unique feature allows plant operators to timeously monitor wear on chute linings.",
     typicalApplications: [
       "Chutes",
       "Transfer points",
@@ -307,7 +318,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "silicon-carbide",
     aluminaContentPercent: 0,
     zirconiaContentPercent: null,
-    description: "Reaction bonded silicon carbide ceramic with extreme hardness. 5-7x longer service life than alumina. Ideal for severe abrasion with coarse particles in mining applications.",
+    description:
+      "Reaction bonded silicon carbide ceramic with extreme hardness. 5-7x longer service life than alumina. Ideal for severe abrasion with coarse particles in mining applications.",
     typicalApplications: [
       "Cyclones",
       "Severe abrasion zones",
@@ -348,7 +360,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "alumina-92",
     aluminaContentPercent: 92,
     zirconiaContentPercent: null,
-    description: "High-performance alumina ceramic next to diamond in hardness, 12 times more wear-resistant than carbon steel with excellent corrosion resistance.",
+    description:
+      "High-performance alumina ceramic next to diamond in hardness, 12 times more wear-resistant than carbon steel with excellent corrosion resistance.",
     typicalApplications: [
       "Conveying systems",
       "Bulk material handling",
@@ -385,7 +398,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "alumina-99",
     aluminaContentPercent: 99,
     zirconiaContentPercent: null,
-    description: "Ultra-high purity 99% alumina ceramic tile for the most demanding wear applications. Maximum hardness and chemical resistance for severe service.",
+    description:
+      "Ultra-high purity 99% alumina ceramic tile for the most demanding wear applications. Maximum hardness and chemical resistance for severe service.",
     typicalApplications: [
       "Extreme wear zones",
       "High-velocity material flow",
@@ -424,7 +438,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "chrome-carbide",
     aluminaContentPercent: 0,
     zirconiaContentPercent: null,
-    description: "Chromium carbide overlay welded onto mild steel base plate. 35% chrome and 5.5% carbon provides extreme hardness. 20x wear resistance vs mild steel.",
+    description:
+      "Chromium carbide overlay welded onto mild steel base plate. 35% chrome and 5.5% carbon provides extreme hardness. 20x wear resistance vs mild steel.",
     typicalApplications: [
       "Chutes",
       "Hoppers",
@@ -466,7 +481,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "alumina-99",
     aluminaContentPercent: 99,
     zirconiaContentPercent: null,
-    description: "Premium grade 99% alumina ceramic liner with exceptional hardness and wear resistance. 266x wear resistance vs manganese steel.",
+    description:
+      "Premium grade 99% alumina ceramic liner with exceptional hardness and wear resistance. 266x wear resistance vs manganese steel.",
     typicalApplications: [
       "Mining equipment",
       "Coal handling",
@@ -505,7 +521,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "zta",
     aluminaContentPercent: 80,
     zirconiaContentPercent: 20,
-    description: "Premium grade Zirconia Toughened Alumina with 20% zirconia content for maximum impact resistance. Transformation toughening mechanism.",
+    description:
+      "Premium grade Zirconia Toughened Alumina with 20% zirconia content for maximum impact resistance. Transformation toughening mechanism.",
     typicalApplications: [
       "Heavy impact zones",
       "Transfer points",
@@ -544,7 +561,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "basalt",
     aluminaContentPercent: 0,
     zirconiaContentPercent: null,
-    description: "Cast basalt tile made from naturally occurring volcanic rock. Excellent chemical resistance and good wear properties at lower cost than alumina ceramics.",
+    description:
+      "Cast basalt tile made from naturally occurring volcanic rock. Excellent chemical resistance and good wear properties at lower cost than alumina ceramics.",
     typicalApplications: [
       "Conveyor chutes",
       "Hoppers",
@@ -585,7 +603,8 @@ export const ceramicProducts: CeramicProduct[] = [
     material: "tungsten-carbide",
     aluminaContentPercent: 0,
     zirconiaContentPercent: null,
-    description: "Sintered tungsten carbide tiles for extreme wear applications. Highest hardness and wear resistance available but brittle under impact.",
+    description:
+      "Sintered tungsten carbide tiles for extreme wear applications. Highest hardness and wear resistance available but brittle under impact.",
     typicalApplications: [
       "Fine particle high velocity erosion",
       "Slurry pump wear rings",
@@ -637,7 +656,9 @@ export function ceramicProductsForTemperature(tempC: number): CeramicProduct[] {
 }
 
 export function highImpactCeramicProducts(): CeramicProduct[] {
-  return ceramicProducts.filter((p) => p.impactResistance === "high" || p.impactResistance === "medium");
+  return ceramicProducts.filter(
+    (p) => p.impactResistance === "high" || p.impactResistance === "medium",
+  );
 }
 
 export function ceramicProductsByWearRating(

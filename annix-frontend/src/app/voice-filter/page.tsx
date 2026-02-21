@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useVoiceFilterAuth } from "@/app/context/VoiceFilterAuthContext";
-import { voiceFilterApi, VoiceFilterCalendarEvent } from "@/app/lib/api/voiceFilterApi";
+import { VoiceFilterCalendarEvent, voiceFilterApi } from "@/app/lib/api/voiceFilterApi";
 import { fromISO } from "@/app/lib/datetime";
 
 const MicrophoneIcon = () => (
@@ -70,28 +70,25 @@ export default function VoiceFilterPage() {
             >
               Back to Annix
             </Link>
-            {!isLoading && (
-              <>
-                {isAuthenticated && user ? (
-                  <div className="flex items-center gap-3 ml-2 pl-3 border-l border-white/20">
-                    <span className="text-sm text-[#71767b]">{user.email}</span>
-                    <button
-                      onClick={handleLogout}
-                      className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
-                    >
-                      Sign Out
-                    </button>
-                  </div>
-                ) : (
-                  <Link
-                    href="/voice-filter/login"
-                    className="px-4 py-1.5 text-sm bg-[#1d9bf0] text-white rounded-md hover:bg-[#1a8cd8] transition-colors ml-2"
+            {!isLoading &&
+              (isAuthenticated && user ? (
+                <div className="flex items-center gap-3 ml-2 pl-3 border-l border-white/20">
+                  <span className="text-sm text-[#71767b]">{user.email}</span>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
                   >
-                    Sign In
-                  </Link>
-                )}
-              </>
-            )}
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/voice-filter/login"
+                  className="px-4 py-1.5 text-sm bg-[#1d9bf0] text-white rounded-md hover:bg-[#1a8cd8] transition-colors ml-2"
+                >
+                  Sign In
+                </Link>
+              ))}
           </div>
         </div>
       </header>
@@ -212,7 +209,9 @@ export default function VoiceFilterPage() {
                       <span className="text-xs font-medium">
                         {startTime.toFormat("MMM").toUpperCase()}
                       </span>
-                      <span className="text-lg font-bold leading-none">{startTime.toFormat("d")}</span>
+                      <span className="text-lg font-bold leading-none">
+                        {startTime.toFormat("d")}
+                      </span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-white truncate">{event.title}</h3>

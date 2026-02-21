@@ -1,4 +1,13 @@
-export type PaintSupplier = "Jotun" | "Sigma" | "StonCor" | "Hempel" | "PPG" | "Carboline" | "International" | "Sherwin-Williams" | "Generic";
+export type PaintSupplier =
+  | "Jotun"
+  | "Sigma"
+  | "StonCor"
+  | "Hempel"
+  | "PPG"
+  | "Carboline"
+  | "International"
+  | "Sherwin-Williams"
+  | "Generic";
 
 export type GenericType =
   | "zinc-rich-epoxy"
@@ -90,7 +99,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Jotun",
     genericType: "zinc-rich-epoxy",
     productRole: "primer",
-    description: "Two component polyamide cured zinc rich epoxy coating with very high zinc dust content. Conforms to SSPC Paint 20 Level 2.",
+    description:
+      "Two component polyamide cured zinc rich epoxy coating with very high zinc dust content. Conforms to SSPC Paint 20 Level 2.",
     volumeSolidsPercent: 53,
     dft: { minUm: 25, maxUm: 125, typicalUm: 75 },
     spreadingRateM2PerL: null,
@@ -116,7 +126,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Jotun",
     genericType: "epoxy-mastic",
     productRole: "multi-purpose",
-    description: "Two component polyamine cured epoxy mastic coating. Surface tolerant, high solids, high build. Can be applied at sub-zero surface temperatures.",
+    description:
+      "Two component polyamine cured epoxy mastic coating. Surface tolerant, high solids, high build. Can be applied at sub-zero surface temperatures.",
     volumeSolidsPercent: 82,
     dft: { minUm: 150, maxUm: 300, typicalUm: 200 },
     spreadingRateM2PerL: null,
@@ -142,7 +153,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Jotun",
     genericType: "polyurethane",
     productRole: "topcoat",
-    description: "Two component aliphatic acrylic polyurethane coating with gloss finish and excellent gloss retention.",
+    description:
+      "Two component aliphatic acrylic polyurethane coating with gloss finish and excellent gloss retention.",
     volumeSolidsPercent: 63,
     dft: { minUm: 50, maxUm: 100, typicalUm: 60 },
     spreadingRateM2PerL: null,
@@ -160,7 +172,12 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["epoxy", "zinc-rich-epoxy", "epoxy-mastic", "polyurethane"],
     compatibleSubsequentCoats: [],
     tdsDate: "2014-08-01",
-    features: ["UV resistant", "High gloss retention", "Offshore suitable", "Food contact compliant"],
+    features: [
+      "UV resistant",
+      "High gloss retention",
+      "Offshore suitable",
+      "Food contact compliant",
+    ],
   },
   {
     id: "sigma-sigmacover-350",
@@ -168,7 +185,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Sigma",
     genericType: "epoxy",
     productRole: "multi-purpose",
-    description: "Two component high build polyamine cured epoxy primer/coating. Surface tolerant with excellent corrosion resistance.",
+    description:
+      "Two component high build polyamine cured epoxy primer/coating. Surface tolerant with excellent corrosion resistance.",
     volumeSolidsPercent: 72,
     dft: { minUm: 50, maxUm: 150, typicalUm: 125 },
     spreadingRateM2PerL: null,
@@ -194,7 +212,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "StonCor",
     genericType: "epoxy-mio",
     productRole: "primer",
-    description: "Zinc phosphate epoxy polyamide primer containing Micaceous Iron Oxide. Economical high build primer or intermediate coat.",
+    description:
+      "Zinc phosphate epoxy polyamide primer containing Micaceous Iron Oxide. Economical high build primer or intermediate coat.",
     volumeSolidsPercent: 50,
     dft: { minUm: 50, maxUm: 100, typicalUm: 75 },
     spreadingRateM2PerL: null,
@@ -220,7 +239,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Jotun",
     genericType: "epoxy-mio",
     productRole: "intermediate",
-    description: "Two component polyamide cured epoxy coating pigmented with Micaceous Iron Oxide. Fast drying with excellent barrier properties.",
+    description:
+      "Two component polyamide cured epoxy coating pigmented with Micaceous Iron Oxide. Fast drying with excellent barrier properties.",
     volumeSolidsPercent: 74,
     dft: { minUm: 75, maxUm: 250, typicalUm: 100 },
     spreadingRateM2PerL: null,
@@ -238,7 +258,12 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["zinc-rich-epoxy", "zinc-silicate", "epoxy"],
     compatibleSubsequentCoats: ["polyurethane", "epoxy", "polysiloxane"],
     tdsDate: "2014-08-01",
-    features: ["MIO pigmented", "Fast drying", "Low temperature application", "Excellent barrier properties"],
+    features: [
+      "MIO pigmented",
+      "Fast drying",
+      "Low temperature application",
+      "Excellent barrier properties",
+    ],
   },
   {
     id: "sigma-sigmazinc-109-hs",
@@ -246,7 +271,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Sigma",
     genericType: "zinc-rich-epoxy",
     productRole: "primer",
-    description: "Two component high solids zinc rich epoxy primer conforming to SSPC Paint 20 Level 2. For atmospheric exposure on steel.",
+    description:
+      "Two component high solids zinc rich epoxy primer conforming to SSPC Paint 20 Level 2. For atmospheric exposure on steel.",
     volumeSolidsPercent: 66,
     dft: { minUm: 60, maxUm: 150, typicalUm: 75 },
     spreadingRateM2PerL: null,
@@ -264,7 +290,12 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: [],
     compatibleSubsequentCoats: ["epoxy", "epoxy-mio", "polyurethane", "polysiloxane"],
     tdsDate: "2019-05-01",
-    features: ["High zinc content", "SSPC Paint 20 compliant", "Fast drying", "Excellent cathodic protection"],
+    features: [
+      "High zinc content",
+      "SSPC Paint 20 compliant",
+      "Fast drying",
+      "Excellent cathodic protection",
+    ],
   },
   {
     id: "stoncor-carbozinc-11",
@@ -272,7 +303,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "StonCor",
     genericType: "zinc-silicate",
     productRole: "primer",
-    description: "Single component moisture-cured inorganic zinc silicate primer. Exceptional heat and solvent resistance. Self-healing properties.",
+    description:
+      "Single component moisture-cured inorganic zinc silicate primer. Exceptional heat and solvent resistance. Self-healing properties.",
     volumeSolidsPercent: 62,
     dft: { minUm: 50, maxUm: 150, typicalUm: 75 },
     spreadingRateM2PerL: null,
@@ -290,7 +322,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: [],
     compatibleSubsequentCoats: ["epoxy", "epoxy-mio", "polyurethane", "polysiloxane"],
     tdsDate: "2020-01-01",
-    features: ["Inorganic zinc silicate", "Extreme heat resistance", "Self-healing", "Solvent resistant", "Weldable"],
+    features: [
+      "Inorganic zinc silicate",
+      "Extreme heat resistance",
+      "Self-healing",
+      "Solvent resistant",
+      "Weldable",
+    ],
   },
   {
     id: "stoncor-carboguard-890",
@@ -298,7 +336,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "StonCor",
     genericType: "epoxy-mastic",
     productRole: "multi-purpose",
-    description: "Highly chemical resistant cycloaliphatic amine epoxy mastic. Self-priming and surface tolerant. Suitable for immersion service.",
+    description:
+      "Highly chemical resistant cycloaliphatic amine epoxy mastic. Self-priming and surface tolerant. Suitable for immersion service.",
     volumeSolidsPercent: 75,
     dft: { minUm: 100, maxUm: 250, typicalUm: 150 },
     spreadingRateM2PerL: null,
@@ -316,7 +355,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["zinc-silicate", "zinc-rich-epoxy", "epoxy"],
     compatibleSubsequentCoats: ["epoxy", "polyurethane"],
     tdsDate: "2015-11-01",
-    features: ["Chemical resistant", "Surface tolerant", "Self-priming", "Immersion rated", "Very good abrasion resistance"],
+    features: [
+      "Chemical resistant",
+      "Surface tolerant",
+      "Self-priming",
+      "Immersion rated",
+      "Very good abrasion resistance",
+    ],
   },
   {
     id: "stoncor-carboguard-550",
@@ -324,7 +369,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "StonCor",
     genericType: "epoxy",
     productRole: "multi-purpose",
-    description: "Solvent-free epoxy polyamine tank lining. Self-priming with excellent adhesion, flexibility and abrasion resistance. Potable water approved.",
+    description:
+      "Solvent-free epoxy polyamine tank lining. Self-priming with excellent adhesion, flexibility and abrasion resistance. Potable water approved.",
     volumeSolidsPercent: 100,
     dft: { minUm: 250, maxUm: 500, typicalUm: 250 },
     spreadingRateM2PerL: null,
@@ -342,7 +388,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: [],
     compatibleSubsequentCoats: ["epoxy"],
     tdsDate: "2012-03-01",
-    features: ["Solvent-free", "Potable water approved", "Excellent abrasion resistance", "Tank lining", "Self-priming"],
+    features: [
+      "Solvent-free",
+      "Potable water approved",
+      "Excellent abrasion resistance",
+      "Tank lining",
+      "Self-priming",
+    ],
   },
   {
     id: "hempel-hempadur-45143",
@@ -350,7 +402,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Hempel",
     genericType: "epoxy",
     productRole: "multi-purpose",
-    description: "Two component polyamide adduct cured epoxy paint with good wetting properties and low water permeability. Self-priming, hard and tough coating with good abrasion and impact resistance.",
+    description:
+      "Two component polyamide adduct cured epoxy paint with good wetting properties and low water permeability. Self-priming, hard and tough coating with good abrasion and impact resistance.",
     volumeSolidsPercent: 60,
     dft: { minUm: 100, maxUm: 200, typicalUm: 150 },
     spreadingRateM2PerL: null,
@@ -368,7 +421,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["zinc-rich-epoxy", "zinc-silicate", "epoxy"],
     compatibleSubsequentCoats: ["polyurethane", "epoxy"],
     tdsDate: "2024-01-01",
-    features: ["Self-priming", "High build", "Seawater resistant", "Grain cargo approved", "Cold climate application"],
+    features: [
+      "Self-priming",
+      "High build",
+      "Seawater resistant",
+      "Grain cargo approved",
+      "Cold climate application",
+    ],
   },
   {
     id: "hempel-hempathane-hs-55610",
@@ -376,7 +435,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Hempel",
     genericType: "polyurethane",
     productRole: "topcoat",
-    description: "Two component high solids aliphatic acrylic polyurethane topcoat. Excellent gloss and colour retention with good chemical resistance.",
+    description:
+      "Two component high solids aliphatic acrylic polyurethane topcoat. Excellent gloss and colour retention with good chemical resistance.",
     volumeSolidsPercent: 62,
     dft: { minUm: 50, maxUm: 80, typicalUm: 60 },
     spreadingRateM2PerL: null,
@@ -394,7 +454,12 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["epoxy", "epoxy-mio", "zinc-rich-epoxy"],
     compatibleSubsequentCoats: [],
     tdsDate: "2024-01-01",
-    features: ["High solids", "Excellent gloss retention", "UV resistant", "Contains zinc phosphate"],
+    features: [
+      "High solids",
+      "Excellent gloss retention",
+      "UV resistant",
+      "Contains zinc phosphate",
+    ],
   },
   {
     id: "ppg-amercoat-385",
@@ -402,7 +467,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "PPG",
     genericType: "epoxy",
     productRole: "multi-purpose",
-    description: "Two component high build polyamide epoxy with high solids content. Forms a tough, abrasion-resistant, durable film for industrial and marine use.",
+    description:
+      "Two component high build polyamide epoxy with high solids content. Forms a tough, abrasion-resistant, durable film for industrial and marine use.",
     volumeSolidsPercent: 68,
     dft: { minUm: 100, maxUm: 200, typicalUm: 150 },
     spreadingRateM2PerL: null,
@@ -428,7 +494,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "PPG",
     genericType: "epoxy",
     productRole: "multi-purpose",
-    description: "Glass flake reinforced epoxy coating providing exceptional barrier protection. Excellent chemical and abrasion resistance for severe service.",
+    description:
+      "Glass flake reinforced epoxy coating providing exceptional barrier protection. Excellent chemical and abrasion resistance for severe service.",
     volumeSolidsPercent: 75,
     dft: { minUm: 150, maxUm: 350, typicalUm: 250 },
     spreadingRateM2PerL: null,
@@ -446,7 +513,12 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["zinc-rich-epoxy", "epoxy"],
     compatibleSubsequentCoats: ["epoxy", "polyurethane"],
     tdsDate: "2024-01-01",
-    features: ["Glass flake reinforced", "Exceptional barrier protection", "Chemical resistant", "Severe service"],
+    features: [
+      "Glass flake reinforced",
+      "Exceptional barrier protection",
+      "Chemical resistant",
+      "Severe service",
+    ],
   },
   {
     id: "carboline-carboguard-60",
@@ -454,7 +526,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Carboline",
     genericType: "epoxy",
     productRole: "multi-purpose",
-    description: "High solids versatile abrasion resistant chemical resistant epoxy. Can be used as primer, intermediate or self-priming finish over steel or inorganic zinc primers.",
+    description:
+      "High solids versatile abrasion resistant chemical resistant epoxy. Can be used as primer, intermediate or self-priming finish over steel or inorganic zinc primers.",
     volumeSolidsPercent: 73,
     dft: { minUm: 125, maxUm: 250, typicalUm: 175 },
     spreadingRateM2PerL: null,
@@ -472,7 +545,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["zinc-rich-epoxy", "zinc-silicate", "epoxy"],
     compatibleSubsequentCoats: ["polyurethane", "epoxy"],
     tdsDate: "2024-01-01",
-    features: ["High solids", "Abrasion resistant", "Chemical resistant", "MIO additive available", "Glass flake option"],
+    features: [
+      "High solids",
+      "Abrasion resistant",
+      "Chemical resistant",
+      "MIO additive available",
+      "Glass flake option",
+    ],
   },
   {
     id: "carboline-carbomastic-15",
@@ -480,7 +559,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Carboline",
     genericType: "epoxy-mastic",
     productRole: "multi-purpose",
-    description: "Aluminum pigmented low-stress high-solids mastic with lamellar aluminum pigment for superior barrier protection. Pioneer mastic coating with proven field history.",
+    description:
+      "Aluminum pigmented low-stress high-solids mastic with lamellar aluminum pigment for superior barrier protection. Pioneer mastic coating with proven field history.",
     volumeSolidsPercent: 72,
     dft: { minUm: 100, maxUm: 200, typicalUm: 125 },
     spreadingRateM2PerL: null,
@@ -498,7 +578,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["zinc-rich-epoxy", "zinc-silicate", "epoxy", "alkyd"],
     compatibleSubsequentCoats: ["polyurethane", "epoxy", "acrylic"],
     tdsDate: "2023-05-01",
-    features: ["Aluminum pigmented", "Lamellar barrier protection", "Surface tolerant", "Low stress", "Proven field history"],
+    features: [
+      "Aluminum pigmented",
+      "Lamellar barrier protection",
+      "Surface tolerant",
+      "Low stress",
+      "Proven field history",
+    ],
   },
   {
     id: "carboline-carbozinc-11-hs",
@@ -506,7 +592,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Carboline",
     genericType: "zinc-silicate",
     productRole: "primer",
-    description: "High solids single component moisture-cured inorganic zinc silicate primer. Exceptional heat and solvent resistance with self-healing properties.",
+    description:
+      "High solids single component moisture-cured inorganic zinc silicate primer. Exceptional heat and solvent resistance with self-healing properties.",
     volumeSolidsPercent: 68,
     dft: { minUm: 50, maxUm: 125, typicalUm: 75 },
     spreadingRateM2PerL: null,
@@ -524,7 +611,14 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: [],
     compatibleSubsequentCoats: ["epoxy", "epoxy-mio", "polyurethane"],
     tdsDate: "2024-01-01",
-    features: ["High solids", "Inorganic zinc silicate", "Extreme heat resistance", "Self-healing", "Weldable", "Solvent resistant"],
+    features: [
+      "High solids",
+      "Inorganic zinc silicate",
+      "Extreme heat resistance",
+      "Self-healing",
+      "Weldable",
+      "Solvent resistant",
+    ],
   },
   {
     id: "international-interthane-990",
@@ -532,7 +626,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "International",
     genericType: "polyurethane",
     productRole: "topcoat",
-    description: "Two component high gloss aliphatic acrylic polyurethane cosmetic finish. Capable of drying to low temperatures with excellent durability and aesthetics retention.",
+    description:
+      "Two component high gloss aliphatic acrylic polyurethane cosmetic finish. Capable of drying to low temperatures with excellent durability and aesthetics retention.",
     volumeSolidsPercent: 55,
     dft: { minUm: 50, maxUm: 75, typicalUm: 50 },
     spreadingRateM2PerL: null,
@@ -550,7 +645,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["epoxy", "epoxy-mio", "zinc-rich-epoxy"],
     compatibleSubsequentCoats: [],
     tdsDate: "2024-01-01",
-    features: ["High gloss", "Excellent colour retention", "Low temperature cure", "20+ year track record", "Extended recoat windows"],
+    features: [
+      "High gloss",
+      "Excellent colour retention",
+      "Low temperature cure",
+      "20+ year track record",
+      "Extended recoat windows",
+    ],
   },
   {
     id: "international-interzone-954",
@@ -558,7 +659,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "International",
     genericType: "epoxy",
     productRole: "multi-purpose",
-    description: "Two component low VOC high solids modified epoxy barrier coating. Single coat application with excellent cathodic disbondment resistance.",
+    description:
+      "Two component low VOC high solids modified epoxy barrier coating. Single coat application with excellent cathodic disbondment resistance.",
     volumeSolidsPercent: 80,
     dft: { minUm: 200, maxUm: 500, typicalUm: 350 },
     spreadingRateM2PerL: null,
@@ -576,7 +678,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["zinc-rich-epoxy", "epoxy"],
     compatibleSubsequentCoats: ["polyurethane", "epoxy"],
     tdsDate: "2024-01-01",
-    features: ["High solids", "Low VOC", "Single coat application", "Cathodic disbondment resistant", "Cures when immersed"],
+    features: [
+      "High solids",
+      "Low VOC",
+      "Single coat application",
+      "Cathodic disbondment resistant",
+      "Cures when immersed",
+    ],
   },
   {
     id: "international-interzone-954gf",
@@ -584,7 +692,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "International",
     genericType: "epoxy-glass-flake",
     productRole: "multi-purpose",
-    description: "High solids low VOC epoxy barrier coat reinforced with chemically resistant high aspect ratio lamellar glass flake for enhanced durability and abrasion protection.",
+    description:
+      "High solids low VOC epoxy barrier coat reinforced with chemically resistant high aspect ratio lamellar glass flake for enhanced durability and abrasion protection.",
     volumeSolidsPercent: 68,
     dft: { minUm: 300, maxUm: 500, typicalUm: 500 },
     spreadingRateM2PerL: null,
@@ -602,7 +711,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["zinc-rich-epoxy", "epoxy"],
     compatibleSubsequentCoats: ["polyurethane", "epoxy"],
     tdsDate: "2024-01-01",
-    features: ["Glass flake reinforced", "High abrasion resistance", "Low VOC", "Enhanced barrier protection", "Chemical resistant"],
+    features: [
+      "Glass flake reinforced",
+      "High abrasion resistance",
+      "Low VOC",
+      "Enhanced barrier protection",
+      "Chemical resistant",
+    ],
   },
   {
     id: "sherwin-williams-macropoxy-646",
@@ -610,7 +725,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Sherwin-Williams",
     genericType: "epoxy",
     productRole: "multi-purpose",
-    description: "High solids high build fast drying polyamide epoxy for steel and concrete protection. Semi-gloss finish with excellent abrasion resistance.",
+    description:
+      "High solids high build fast drying polyamide epoxy for steel and concrete protection. Semi-gloss finish with excellent abrasion resistance.",
     volumeSolidsPercent: 72,
     dft: { minUm: 100, maxUm: 250, typicalUm: 150 },
     spreadingRateM2PerL: null,
@@ -628,7 +744,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["zinc-rich-epoxy", "zinc-silicate", "epoxy"],
     compatibleSubsequentCoats: ["polyurethane", "epoxy"],
     tdsDate: "2024-01-01",
-    features: ["Fast drying", "High build", "Abrasion resistant", "Salt water immersion", "Class A slip coefficient"],
+    features: [
+      "Fast drying",
+      "High build",
+      "Abrasion resistant",
+      "Salt water immersion",
+      "Class A slip coefficient",
+    ],
   },
   {
     id: "sherwin-williams-macropoxy-646pw",
@@ -636,7 +758,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Sherwin-Williams",
     genericType: "epoxy",
     productRole: "multi-purpose",
-    description: "High solids high build fast drying polyamide epoxy classified to ANSI/NSF 61 for potable water tank linings.",
+    description:
+      "High solids high build fast drying polyamide epoxy classified to ANSI/NSF 61 for potable water tank linings.",
     volumeSolidsPercent: 72,
     dft: { minUm: 125, maxUm: 500, typicalUm: 250 },
     spreadingRateM2PerL: null,
@@ -654,7 +777,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: [],
     compatibleSubsequentCoats: [],
     tdsDate: "2024-01-01",
-    features: ["Potable water approved", "NSF 61 certified", "Tank lining", "High build", "Fast drying"],
+    features: [
+      "Potable water approved",
+      "NSF 61 certified",
+      "Tank lining",
+      "High build",
+      "Fast drying",
+    ],
   },
   {
     id: "sherwin-williams-macropoxy-400",
@@ -662,7 +791,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Sherwin-Williams",
     genericType: "zinc-rich-epoxy",
     productRole: "primer",
-    description: "Zinc phosphate epoxy primer with excellent corrosion protection. High solids formulation for atmospheric and immersion service.",
+    description:
+      "Zinc phosphate epoxy primer with excellent corrosion protection. High solids formulation for atmospheric and immersion service.",
     volumeSolidsPercent: 70,
     dft: { minUm: 75, maxUm: 275, typicalUm: 125 },
     spreadingRateM2PerL: null,
@@ -688,7 +818,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Generic",
     genericType: "polyurea",
     productRole: "multi-purpose",
-    description: "Fast-curing 100% solids aromatic polyurea coating. Spray-applied with 10-30 second gel time. Exceptional abrasion and chemical resistance.",
+    description:
+      "Fast-curing 100% solids aromatic polyurea coating. Spray-applied with 10-30 second gel time. Exceptional abrasion and chemical resistance.",
     volumeSolidsPercent: 100,
     dft: { minUm: 800, maxUm: 3000, typicalUm: 1500 },
     spreadingRateM2PerL: null,
@@ -706,7 +837,14 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["epoxy", "zinc-rich-epoxy"],
     compatibleSubsequentCoats: ["polyurea"],
     tdsDate: "2024-01-01",
-    features: ["100% solids", "10-30 second gel time", "Extreme abrasion resistance", "High elongation (500%+)", "Low temperature cure", "40 MPa tensile strength"],
+    features: [
+      "100% solids",
+      "10-30 second gel time",
+      "Extreme abrasion resistance",
+      "High elongation (500%+)",
+      "Low temperature cure",
+      "40 MPa tensile strength",
+    ],
   },
   {
     id: "generic-fbe-standard",
@@ -714,7 +852,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Generic",
     genericType: "fbe",
     productRole: "primer",
-    description: "Single layer fusion bonded epoxy coating for external pipeline protection. Factory applied powder coating per ISO 21809-2. Service temperature up to 90C.",
+    description:
+      "Single layer fusion bonded epoxy coating for external pipeline protection. Factory applied powder coating per ISO 21809-2. Service temperature up to 90C.",
     volumeSolidsPercent: 100,
     dft: { minUm: 350, maxUm: 500, typicalUm: 400 },
     spreadingRateM2PerL: null,
@@ -732,7 +871,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: [],
     compatibleSubsequentCoats: [],
     tdsDate: "2024-01-01",
-    features: ["Factory applied", "Powder coating", "Pipeline protection", "Cathodic protection compatible", "ISO 21809-2 compliant"],
+    features: [
+      "Factory applied",
+      "Powder coating",
+      "Pipeline protection",
+      "Cathodic protection compatible",
+      "ISO 21809-2 compliant",
+    ],
   },
   {
     id: "generic-3lpe",
@@ -740,7 +885,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Generic",
     genericType: "3lpe",
     productRole: "multi-purpose",
-    description: "Three layer polyethylene coating system: FBE primer, adhesive layer, and polyethylene topcoat. For buried pipeline protection per ISO 21809-1.",
+    description:
+      "Three layer polyethylene coating system: FBE primer, adhesive layer, and polyethylene topcoat. For buried pipeline protection per ISO 21809-1.",
     volumeSolidsPercent: 100,
     dft: { minUm: 1800, maxUm: 3000, typicalUm: 2500 },
     spreadingRateM2PerL: null,
@@ -758,7 +904,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: [],
     compatibleSubsequentCoats: [],
     tdsDate: "2024-01-01",
-    features: ["Factory applied", "Buried pipeline protection", "Mechanical damage resistant", "Cathodic protection compatible", "ISO 21809-1 compliant"],
+    features: [
+      "Factory applied",
+      "Buried pipeline protection",
+      "Mechanical damage resistant",
+      "Cathodic protection compatible",
+      "ISO 21809-1 compliant",
+    ],
   },
   {
     id: "jotun-hardtop-flexi",
@@ -766,7 +918,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Jotun",
     genericType: "polysiloxane",
     productRole: "topcoat",
-    description: "Two component chemically curing acrylic polysiloxane topcoat. High gloss finish with excellent colour and gloss retention. Isocyanate-free formulation.",
+    description:
+      "Two component chemically curing acrylic polysiloxane topcoat. High gloss finish with excellent colour and gloss retention. Isocyanate-free formulation.",
     volumeSolidsPercent: 65,
     dft: { minUm: 50, maxUm: 100, typicalUm: 75 },
     spreadingRateM2PerL: null,
@@ -784,7 +937,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["epoxy", "epoxy-mio", "zinc-rich-epoxy"],
     compatibleSubsequentCoats: [],
     tdsDate: "2024-01-01",
-    features: ["Isocyanate-free", "Excellent gloss retention", "Low VOC", "Flexible coating", "NORSOK approved"],
+    features: [
+      "Isocyanate-free",
+      "Excellent gloss retention",
+      "Low VOC",
+      "Flexible coating",
+      "NORSOK approved",
+    ],
   },
   {
     id: "jotun-hardtop-pro",
@@ -792,7 +951,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Jotun",
     genericType: "polysiloxane",
     productRole: "topcoat",
-    description: "Two component high solids acrylic polysiloxane coating. No isocyanates. High gloss with very good mechanical properties and chemical resistance.",
+    description:
+      "Two component high solids acrylic polysiloxane coating. No isocyanates. High gloss with very good mechanical properties and chemical resistance.",
     volumeSolidsPercent: 70,
     dft: { minUm: 50, maxUm: 150, typicalUm: 75 },
     spreadingRateM2PerL: null,
@@ -810,7 +970,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["epoxy", "epoxy-mio", "zinc-rich-epoxy"],
     compatibleSubsequentCoats: ["polysiloxane"],
     tdsDate: "2024-01-01",
-    features: ["Isocyanate-free", "High solids", "Extended gloss retention", "Fully recoatable", "Cures to 0C"],
+    features: [
+      "Isocyanate-free",
+      "High solids",
+      "Extended gloss retention",
+      "Fully recoatable",
+      "Cures to 0C",
+    ],
   },
   {
     id: "international-intertherm-50",
@@ -818,7 +984,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "International",
     genericType: "high-temp-silicone",
     productRole: "topcoat",
-    description: "Single component moisture curing silicone coating for high temperature service up to 540C. Multiple coats without heat curing.",
+    description:
+      "Single component moisture curing silicone coating for high temperature service up to 540C. Multiple coats without heat curing.",
     volumeSolidsPercent: 35,
     dft: { minUm: 25, maxUm: 75, typicalUm: 50 },
     spreadingRateM2PerL: null,
@@ -836,7 +1003,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: [],
     compatibleSubsequentCoats: ["high-temp-silicone"],
     tdsDate: "2024-01-01",
-    features: ["Extreme heat resistance (540C)", "Moisture curing", "No heat cure required", "Flare stacks", "Exhaust systems"],
+    features: [
+      "Extreme heat resistance (540C)",
+      "Moisture curing",
+      "No heat cure required",
+      "Flare stacks",
+      "Exhaust systems",
+    ],
   },
   {
     id: "generic-silicone-aluminum-400",
@@ -844,7 +1017,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Generic",
     genericType: "high-temp-silicone",
     productRole: "multi-purpose",
-    description: "Aluminum pigmented silicone coating for high temperature applications up to 400C continuous. Heat cure required for full properties.",
+    description:
+      "Aluminum pigmented silicone coating for high temperature applications up to 400C continuous. Heat cure required for full properties.",
     volumeSolidsPercent: 40,
     dft: { minUm: 25, maxUm: 50, typicalUm: 40 },
     spreadingRateM2PerL: null,
@@ -862,7 +1036,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: [],
     compatibleSubsequentCoats: [],
     tdsDate: "2024-01-01",
-    features: ["Heat resistant to 400C", "Aluminum pigmented", "Self-priming", "Boilers", "Exhaust stacks"],
+    features: [
+      "Heat resistant to 400C",
+      "Aluminum pigmented",
+      "Self-priming",
+      "Boilers",
+      "Exhaust stacks",
+    ],
   },
   {
     id: "generic-intumescent-water",
@@ -870,7 +1050,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Generic",
     genericType: "intumescent",
     productRole: "multi-purpose",
-    description: "Water-based intumescent coating for structural steel fire protection. Expands up to 50x DFT when exposed to fire. Interior use only.",
+    description:
+      "Water-based intumescent coating for structural steel fire protection. Expands up to 50x DFT when exposed to fire. Interior use only.",
     volumeSolidsPercent: 70,
     dft: { minUm: 500, maxUm: 2000, typicalUm: 1000 },
     spreadingRateM2PerL: null,
@@ -888,7 +1069,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["epoxy", "zinc-rich-epoxy"],
     compatibleSubsequentCoats: ["acrylic"],
     tdsDate: "2024-01-01",
-    features: ["Fire protection 1-2 hours", "Water-based", "Low VOC", "Interior use", "Expands 50x in fire"],
+    features: [
+      "Fire protection 1-2 hours",
+      "Water-based",
+      "Low VOC",
+      "Interior use",
+      "Expands 50x in fire",
+    ],
   },
   {
     id: "generic-intumescent-epoxy",
@@ -896,7 +1083,8 @@ export const paintProducts: PaintProduct[] = [
     supplier: "Generic",
     genericType: "intumescent",
     productRole: "multi-purpose",
-    description: "Epoxy-based intumescent coating for structural steel fire protection. Suitable for interior and exterior use. Higher film build per coat.",
+    description:
+      "Epoxy-based intumescent coating for structural steel fire protection. Suitable for interior and exterior use. Higher film build per coat.",
     volumeSolidsPercent: 75,
     dft: { minUm: 1000, maxUm: 5000, typicalUm: 2500 },
     spreadingRateM2PerL: null,
@@ -914,7 +1102,13 @@ export const paintProducts: PaintProduct[] = [
     compatiblePreviousCoats: ["epoxy", "zinc-rich-epoxy"],
     compatibleSubsequentCoats: ["epoxy", "polyurethane"],
     tdsDate: "2024-01-01",
-    features: ["Fire protection 2-3 hours", "Epoxy-based", "Interior/exterior", "High build", "Chemical resistant char"],
+    features: [
+      "Fire protection 2-3 hours",
+      "Epoxy-based",
+      "Interior/exterior",
+      "High build",
+      "Chemical resistant char",
+    ],
   },
 ];
 
@@ -938,7 +1132,7 @@ export function primersForEnvironment(category: CorrosivityCategory): PaintProdu
   return paintProducts.filter(
     (p) =>
       (p.productRole === "primer" || p.productRole === "multi-purpose") &&
-      p.corrosivityCategories.includes(category)
+      p.corrosivityCategories.includes(category),
   );
 }
 
@@ -946,7 +1140,7 @@ export function topcoatsForEnvironment(category: CorrosivityCategory): PaintProd
   return paintProducts.filter(
     (p) =>
       (p.productRole === "topcoat" || p.productRole === "multi-purpose") &&
-      p.corrosivityCategories.includes(category)
+      p.corrosivityCategories.includes(category),
   );
 }
 
@@ -962,7 +1156,7 @@ export function compatibleTopcoats(primer: PaintProduct): PaintProduct[] {
   return paintProducts.filter(
     (p) =>
       (p.productRole === "topcoat" || p.productRole === "multi-purpose") &&
-      primer.compatibleSubsequentCoats.includes(p.genericType)
+      primer.compatibleSubsequentCoats.includes(p.genericType),
   );
 }
 
@@ -970,6 +1164,6 @@ export function compatiblePrimers(topcoat: PaintProduct): PaintProduct[] {
   return paintProducts.filter(
     (p) =>
       (p.productRole === "primer" || p.productRole === "multi-purpose") &&
-      topcoat.compatiblePreviousCoats.includes(p.genericType)
+      topcoat.compatiblePreviousCoats.includes(p.genericType),
   );
 }

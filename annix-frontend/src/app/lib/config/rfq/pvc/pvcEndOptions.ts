@@ -133,13 +133,10 @@ export const PVC_FITTING_END_OPTIONS: PvcPipeEndOption[] = [
   },
 ];
 
-export const pvcJoiningOptionByValue = (
-  value: PvcJoiningMethod,
-): PvcJoiningOption | null => PVC_JOINING_OPTIONS.find((o) => o.value === value) ?? null;
+export const pvcJoiningOptionByValue = (value: PvcJoiningMethod): PvcJoiningOption | null =>
+  PVC_JOINING_OPTIONS.find((o) => o.value === value) ?? null;
 
-export const suitablePvcJoiningMethodsForSize = (
-  outsideDiameterMm: number,
-): PvcJoiningOption[] =>
+export const suitablePvcJoiningMethodsForSize = (outsideDiameterMm: number): PvcJoiningOption[] =>
   PVC_JOINING_OPTIONS.filter(
     (opt) =>
       outsideDiameterMm >= opt.suitableForSizes.min &&

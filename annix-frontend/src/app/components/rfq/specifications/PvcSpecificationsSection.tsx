@@ -2,12 +2,12 @@
 
 import React from "react";
 import {
+  PVC_JOINING_OPTIONS,
   PVC_MATERIALS,
   PVC_PRESSURE_OPTIONS,
-  PVC_JOINING_OPTIONS,
-  type PvcType,
-  type PvcPressureClass,
   type PvcJoiningMethod,
+  type PvcPressureClass,
+  type PvcType,
 } from "@/app/lib/config/rfq/pvc";
 import type { GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
 
@@ -47,7 +47,8 @@ export function PvcSpecificationsSection({
   };
 
   const selectedMaterial = PVC_MATERIALS.find((m) => m.id === globalSpecs.pvcType);
-  const isComplete = globalSpecs.pvcType && globalSpecs.pvcPressureClass && globalSpecs.pvcJoiningMethod;
+  const isComplete =
+    globalSpecs.pvcType && globalSpecs.pvcPressureClass && globalSpecs.pvcJoiningMethod;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -105,7 +106,10 @@ export function PvcSpecificationsSection({
           </select>
           {globalSpecs.pvcPressureClass && (
             <p className="mt-1 text-xs text-gray-500">
-              {PVC_PRESSURE_OPTIONS.find((o) => o.value === globalSpecs.pvcPressureClass)?.description}
+              {
+                PVC_PRESSURE_OPTIONS.find((o) => o.value === globalSpecs.pvcPressureClass)
+                  ?.description
+              }
             </p>
           )}
         </div>
@@ -128,7 +132,10 @@ export function PvcSpecificationsSection({
           </select>
           {globalSpecs.pvcJoiningMethod && (
             <p className="mt-1 text-xs text-gray-500">
-              {PVC_JOINING_OPTIONS.find((o) => o.value === globalSpecs.pvcJoiningMethod)?.description}
+              {
+                PVC_JOINING_OPTIONS.find((o) => o.value === globalSpecs.pvcJoiningMethod)
+                  ?.description
+              }
             </p>
           )}
         </div>
@@ -139,15 +146,11 @@ export function PvcSpecificationsSection({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
             <span className="text-gray-500">Density:</span>
-            <span className="ml-1 text-gray-900">
-              {selectedMaterial?.densityKgM3 ?? "-"} kg/m³
-            </span>
+            <span className="ml-1 text-gray-900">{selectedMaterial?.densityKgM3 ?? "-"} kg/m³</span>
           </div>
           <div>
             <span className="text-gray-500">Max Temp:</span>
-            <span className="ml-1 text-gray-900">
-              {selectedMaterial?.maxTemperatureC ?? "-"}°C
-            </span>
+            <span className="ml-1 text-gray-900">{selectedMaterial?.maxTemperatureC ?? "-"}°C</span>
           </div>
           <div>
             <span className="text-gray-500">Pressure Rating:</span>

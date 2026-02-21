@@ -4,19 +4,10 @@ import type {
   CureMethod,
   PolymerBase,
   RubberProduct,
-  SANS1198Classification,
   SANS1198Grade,
   SANS1198Type,
 } from "./rubberProducts";
-import {
-  bestAbrasionResistantProducts,
-  rubberProducts,
-  rubberProductsByHardness,
-  rubberProductsBySANS1198Grade,
-  rubberProductsBySANS1198Type,
-  rubberProductsForAbrasion,
-  rubberProductsForTemperature,
-} from "./rubberProducts";
+import { rubberProducts, rubberProductsForAbrasion } from "./rubberProducts";
 
 export interface SANS1198Requirements {
   type: SANS1198Type;
@@ -61,7 +52,13 @@ export interface CureMethodRecommendation {
 }
 
 export interface SubstrateCondition {
-  material: "carbon-steel" | "stainless-steel" | "cast-iron" | "concrete" | "fiberglass" | "aluminum";
+  material:
+    | "carbon-steel"
+    | "stainless-steel"
+    | "cast-iron"
+    | "concrete"
+    | "fiberglass"
+    | "aluminum";
   surfaceCondition: "new" | "corroded" | "previously-lined" | "contaminated";
   operatingTempC: number;
   immersionService: boolean;
@@ -183,7 +180,14 @@ function thicknessForApplication(
 export function recommendRubberLining(
   requirements: RubberLiningRequirements,
 ): RecommendedRubberLining {
-  const { abrasionType, maxOperatingTempC, impactAbsorption, sans1198Type, sans1198Grade, chemicalExposure } = requirements;
+  const {
+    abrasionType,
+    maxOperatingTempC,
+    impactAbsorption,
+    sans1198Type,
+    sans1198Grade,
+    chemicalExposure,
+  } = requirements;
 
   let candidates = rubberProductsForAbrasion(abrasionType);
 
@@ -219,7 +223,9 @@ export function recommendRubberLining(
     warnings.push("Oil exposure specified - verify rubber compatibility with specific oil type");
   }
   if (chemicalExposure?.acids) {
-    warnings.push("Acid exposure may require specialist rubber compound (IIR/Butyl or CSM/Hypalon)");
+    warnings.push(
+      "Acid exposure may require specialist rubber compound (IIR/Butyl or CSM/Hypalon)",
+    );
   }
   if (maxOperatingTempC && maxOperatingTempC > 70) {
     warnings.push("Operating temperature exceeds 70°C - consider EPDM or specialist compounds");
@@ -227,7 +233,9 @@ export function recommendRubberLining(
 
   const engineeringNotes: string[] = [];
   if (primary) {
-    engineeringNotes.push(`SANS 1198 Classification: Type ${primary.sans1198?.type} Grade ${primary.sans1198?.grade} Class ${primary.sans1198?.hardnessClass}`);
+    engineeringNotes.push(
+      `SANS 1198 Classification: Type ${primary.sans1198?.type} Grade ${primary.sans1198?.grade} Class ${primary.sans1198?.hardnessClass}`,
+    );
     engineeringNotes.push(`Abrasion loss: ${primary.abrasionLossMm3} mm³ (lower is better)`);
     engineeringNotes.push(`Tensile strength: ${primary.tensileMPa} MPa`);
     engineeringNotes.push(`Elongation: ${primary.elongationPercent}%`);
@@ -235,7 +243,9 @@ export function recommendRubberLining(
       engineeringNotes.push("Optimised for wet slurry abrasion - excellent for mineral processing");
     }
     if (primary.abrasionResistance === "dry") {
-      engineeringNotes.push("Optimised for dry abrasion - suitable for cyclones and dry material handling");
+      engineeringNotes.push(
+        "Optimised for dry abrasion - suitable for cyclones and dry material handling",
+      );
     }
   }
 
@@ -300,20 +310,118 @@ export function rubberProductByCompoundCode(code: string): RubberProduct | undef
 }
 
 const SANS1198_REQUIREMENTS: Record<string, SANS1198Requirements> = {
-  "1-A-35": { type: 1, grade: "A", hardnessClass: 35, minTensileMPa: 18, minElongationPercent: 450, maxAbrasionLossMm3: 150 },
-  "1-A-40": { type: 1, grade: "A", hardnessClass: 40, minTensileMPa: 18, minElongationPercent: 400, maxAbrasionLossMm3: 150 },
-  "1-A-50": { type: 1, grade: "A", hardnessClass: 50, minTensileMPa: 17, minElongationPercent: 350, maxAbrasionLossMm3: 180 },
-  "1-A-60": { type: 1, grade: "A", hardnessClass: 60, minTensileMPa: 15, minElongationPercent: 300, maxAbrasionLossMm3: 200 },
-  "1-A-70": { type: 1, grade: "A", hardnessClass: 70, minTensileMPa: 14, minElongationPercent: 250, maxAbrasionLossMm3: 250 },
-  "1-B-35": { type: 1, grade: "B", hardnessClass: 35, minTensileMPa: 14, minElongationPercent: 400, maxAbrasionLossMm3: 200 },
-  "1-B-40": { type: 1, grade: "B", hardnessClass: 40, minTensileMPa: 14, minElongationPercent: 350, maxAbrasionLossMm3: 200 },
-  "1-B-50": { type: 1, grade: "B", hardnessClass: 50, minTensileMPa: 12, minElongationPercent: 300, maxAbrasionLossMm3: 250 },
-  "1-B-60": { type: 1, grade: "B", hardnessClass: 60, minTensileMPa: 10, minElongationPercent: 250, maxAbrasionLossMm3: 300 },
-  "1-B-70": { type: 1, grade: "B", hardnessClass: 70, minTensileMPa: 9, minElongationPercent: 200, maxAbrasionLossMm3: 350 },
-  "2-A-50": { type: 2, grade: "A", hardnessClass: 50, minTensileMPa: 10, minElongationPercent: 350, maxAbrasionLossMm3: 250 },
-  "2-B-50": { type: 2, grade: "B", hardnessClass: 50, minTensileMPa: 7, minElongationPercent: 300, maxAbrasionLossMm3: 300 },
-  "2-C-50": { type: 2, grade: "C", hardnessClass: 50, minTensileMPa: 5, minElongationPercent: 250, maxAbrasionLossMm3: 350 },
-  "2-C-60": { type: 2, grade: "C", hardnessClass: 60, minTensileMPa: 5, minElongationPercent: 200, maxAbrasionLossMm3: 400 },
+  "1-A-35": {
+    type: 1,
+    grade: "A",
+    hardnessClass: 35,
+    minTensileMPa: 18,
+    minElongationPercent: 450,
+    maxAbrasionLossMm3: 150,
+  },
+  "1-A-40": {
+    type: 1,
+    grade: "A",
+    hardnessClass: 40,
+    minTensileMPa: 18,
+    minElongationPercent: 400,
+    maxAbrasionLossMm3: 150,
+  },
+  "1-A-50": {
+    type: 1,
+    grade: "A",
+    hardnessClass: 50,
+    minTensileMPa: 17,
+    minElongationPercent: 350,
+    maxAbrasionLossMm3: 180,
+  },
+  "1-A-60": {
+    type: 1,
+    grade: "A",
+    hardnessClass: 60,
+    minTensileMPa: 15,
+    minElongationPercent: 300,
+    maxAbrasionLossMm3: 200,
+  },
+  "1-A-70": {
+    type: 1,
+    grade: "A",
+    hardnessClass: 70,
+    minTensileMPa: 14,
+    minElongationPercent: 250,
+    maxAbrasionLossMm3: 250,
+  },
+  "1-B-35": {
+    type: 1,
+    grade: "B",
+    hardnessClass: 35,
+    minTensileMPa: 14,
+    minElongationPercent: 400,
+    maxAbrasionLossMm3: 200,
+  },
+  "1-B-40": {
+    type: 1,
+    grade: "B",
+    hardnessClass: 40,
+    minTensileMPa: 14,
+    minElongationPercent: 350,
+    maxAbrasionLossMm3: 200,
+  },
+  "1-B-50": {
+    type: 1,
+    grade: "B",
+    hardnessClass: 50,
+    minTensileMPa: 12,
+    minElongationPercent: 300,
+    maxAbrasionLossMm3: 250,
+  },
+  "1-B-60": {
+    type: 1,
+    grade: "B",
+    hardnessClass: 60,
+    minTensileMPa: 10,
+    minElongationPercent: 250,
+    maxAbrasionLossMm3: 300,
+  },
+  "1-B-70": {
+    type: 1,
+    grade: "B",
+    hardnessClass: 70,
+    minTensileMPa: 9,
+    minElongationPercent: 200,
+    maxAbrasionLossMm3: 350,
+  },
+  "2-A-50": {
+    type: 2,
+    grade: "A",
+    hardnessClass: 50,
+    minTensileMPa: 10,
+    minElongationPercent: 350,
+    maxAbrasionLossMm3: 250,
+  },
+  "2-B-50": {
+    type: 2,
+    grade: "B",
+    hardnessClass: 50,
+    minTensileMPa: 7,
+    minElongationPercent: 300,
+    maxAbrasionLossMm3: 300,
+  },
+  "2-C-50": {
+    type: 2,
+    grade: "C",
+    hardnessClass: 50,
+    minTensileMPa: 5,
+    minElongationPercent: 250,
+    maxAbrasionLossMm3: 350,
+  },
+  "2-C-60": {
+    type: 2,
+    grade: "C",
+    hardnessClass: 60,
+    minTensileMPa: 5,
+    minElongationPercent: 200,
+    maxAbrasionLossMm3: 400,
+  },
 };
 
 export function checkSANS1198Compliance(
@@ -330,12 +438,17 @@ export function checkSANS1198Compliance(
       standard: "SANS 1198:2013",
       type: targetType || 1,
       grade: targetGrade || "B",
-      hardnessClass: Math.round(product.hardnessShoreA / 10) * 10 as 35 | 40 | 50 | 60 | 70,
+      hardnessClass: (Math.round(product.hardnessShoreA / 10) * 10) as 35 | 40 | 50 | 60 | 70,
       checks: {
         tensileStrength: { required: 0, actual: product.tensileMPa, pass: false },
         elongation: { required: 0, actual: product.elongationPercent, pass: false },
         abrasionLoss: { required: 0, actual: product.abrasionLossMm3, pass: false },
-        hardness: { required: 0, actual: product.hardnessShoreA, tolerance: product.hardnessTolerance, pass: false },
+        hardness: {
+          required: 0,
+          actual: product.hardnessShoreA,
+          tolerance: product.hardnessTolerance,
+          pass: false,
+        },
       },
       failures: ["Product does not have SANS 1198 classification"],
       recommendations: ["Consider using a SANS 1198 certified compound for compliance"],
@@ -359,7 +472,12 @@ export function checkSANS1198Compliance(
         tensileStrength: { required: 0, actual: product.tensileMPa, pass: false },
         elongation: { required: 0, actual: product.elongationPercent, pass: false },
         abrasionLoss: { required: 0, actual: product.abrasionLossMm3, pass: false },
-        hardness: { required: hardnessClass, actual: product.hardnessShoreA, tolerance: product.hardnessTolerance, pass: false },
+        hardness: {
+          required: hardnessClass,
+          actual: product.hardnessShoreA,
+          tolerance: product.hardnessTolerance,
+          pass: false,
+        },
       },
       failures: [`No requirements found for Type ${type} Grade ${grade} Class ${hardnessClass}`],
       recommendations: ["Verify classification against SANS 1198:2013 Table 1"],
@@ -373,16 +491,30 @@ export function checkSANS1198Compliance(
     product.hardnessShoreA >= hardnessClass - product.hardnessTolerance &&
     product.hardnessShoreA <= hardnessClass + product.hardnessTolerance;
 
-  if (!tensilePass) failures.push(`Tensile strength ${product.tensileMPa} MPa below minimum ${requirements.minTensileMPa} MPa`);
-  if (!elongationPass) failures.push(`Elongation ${product.elongationPercent}% below minimum ${requirements.minElongationPercent}%`);
-  if (!abrasionPass) failures.push(`Abrasion loss ${product.abrasionLossMm3} mm³ exceeds maximum ${requirements.maxAbrasionLossMm3} mm³`);
-  if (!hardnessPass) failures.push(`Hardness ${product.hardnessShoreA} outside ${hardnessClass}±${product.hardnessTolerance} IRHD`);
+  if (!tensilePass)
+    failures.push(
+      `Tensile strength ${product.tensileMPa} MPa below minimum ${requirements.minTensileMPa} MPa`,
+    );
+  if (!elongationPass)
+    failures.push(
+      `Elongation ${product.elongationPercent}% below minimum ${requirements.minElongationPercent}%`,
+    );
+  if (!abrasionPass)
+    failures.push(
+      `Abrasion loss ${product.abrasionLossMm3} mm³ exceeds maximum ${requirements.maxAbrasionLossMm3} mm³`,
+    );
+  if (!hardnessPass)
+    failures.push(
+      `Hardness ${product.hardnessShoreA} outside ${hardnessClass}±${product.hardnessTolerance} IRHD`,
+    );
 
   if (grade === "A" && !tensilePass) {
     recommendations.push("Consider Grade B classification with lower tensile requirement");
   }
   if (!abrasionPass && product.abrasionLossMm3 < requirements.maxAbrasionLossMm3 * 1.2) {
-    recommendations.push("Marginal abrasion failure - consider increased thickness for equivalent wear life");
+    recommendations.push(
+      "Marginal abrasion failure - consider increased thickness for equivalent wear life",
+    );
   }
 
   return {
@@ -392,10 +524,27 @@ export function checkSANS1198Compliance(
     grade,
     hardnessClass,
     checks: {
-      tensileStrength: { required: requirements.minTensileMPa, actual: product.tensileMPa, pass: tensilePass },
-      elongation: { required: requirements.minElongationPercent, actual: product.elongationPercent, pass: elongationPass },
-      abrasionLoss: { required: requirements.maxAbrasionLossMm3, actual: product.abrasionLossMm3, pass: abrasionPass },
-      hardness: { required: hardnessClass, actual: product.hardnessShoreA, tolerance: product.hardnessTolerance, pass: hardnessPass },
+      tensileStrength: {
+        required: requirements.minTensileMPa,
+        actual: product.tensileMPa,
+        pass: tensilePass,
+      },
+      elongation: {
+        required: requirements.minElongationPercent,
+        actual: product.elongationPercent,
+        pass: elongationPass,
+      },
+      abrasionLoss: {
+        required: requirements.maxAbrasionLossMm3,
+        actual: product.abrasionLossMm3,
+        pass: abrasionPass,
+      },
+      hardness: {
+        required: hardnessClass,
+        actual: product.hardnessShoreA,
+        tolerance: product.hardnessTolerance,
+        pass: hardnessPass,
+      },
     },
     failures,
     recommendations,
@@ -417,7 +566,9 @@ export function checkSANS1201Compliance(
   const failures: string[] = [];
 
   if (cureMethod === "cold-vulcanization" && product.sans1198?.grade === "A") {
-    failures.push("Cold vulcanization not recommended for Grade A applications per SANS 1201 Clause 5.1");
+    failures.push(
+      "Cold vulcanization not recommended for Grade A applications per SANS 1201 Clause 5.1",
+    );
   }
 
   if (product.polymerBase === "PU") {
@@ -443,7 +594,8 @@ export function recommendCureMethod(geometry: EquipmentGeometry): CureMethodReco
     return {
       recommendedMethod: "autoclave",
       alternativeMethods: ["hot-press"],
-      rationale: "Autoclave curing provides highest bond strength and is preferred for removable equipment",
+      rationale:
+        "Autoclave curing provides highest bond strength and is preferred for removable equipment",
       requirements,
       warnings,
     };
@@ -476,7 +628,8 @@ export function recommendCureMethod(geometry: EquipmentGeometry): CureMethodReco
     return {
       recommendedMethod: "cold-vulcanization",
       alternativeMethods: [],
-      rationale: "Cold vulcanization required for complex geometry or field application where autoclave access is not possible",
+      rationale:
+        "Cold vulcanization required for complex geometry or field application where autoclave access is not possible",
       requirements,
       warnings,
     };
@@ -491,7 +644,8 @@ export function recommendCureMethod(geometry: EquipmentGeometry): CureMethodReco
 
   return {
     recommendedMethod,
-    alternativeMethods: recommendedMethod === "autoclave" ? ["hot-press", "cold-vulcanization"] : [],
+    alternativeMethods:
+      recommendedMethod === "autoclave" ? ["hot-press", "cold-vulcanization"] : [],
     rationale: geometry.canBeRemoved
       ? "Autoclave preferred for removable components"
       : "Cold vulcanization for fixed installations",
@@ -510,9 +664,9 @@ export function selectAdhesiveSystem(
     "carbon-steel": "chemosil",
     "stainless-steel": "cilbond",
     "cast-iron": "chemosil",
-    "concrete": "generic-rubber-adhesive",
-    "fiberglass": "cilbond",
-    "aluminum": "cilbond",
+    concrete: "generic-rubber-adhesive",
+    fiberglass: "cilbond",
+    aluminum: "cilbond",
   };
 
   const primaryAdhesive = adhesiveForSubstrate[substrate.material] || "chemosil";
@@ -526,9 +680,9 @@ export function selectAdhesiveSystem(
 
   let primerRequired = true;
   let applicationMethod = "Brush or spray application";
-  let potLifeHours = 8;
-  let openTimeMinutes = 30;
-  let cureConditions = "Autoclave cure at 140-155°C, 280-350 kPa";
+  const potLifeHours = 8;
+  const openTimeMinutes = 30;
+  const cureConditions = "Autoclave cure at 140-155°C, 280-350 kPa";
 
   if (substrate.surfaceCondition === "corroded") {
     warnings.push("Corroded substrate requires thorough blast cleaning to Sa 2.5 minimum");
@@ -612,8 +766,10 @@ export function estimateWearLife(
   }
 
   if (conditions.velocityMps > 5) {
-    severityMultiplier *= Math.pow(conditions.velocityMps / 3, 2);
-    factors.push(`High velocity (${conditions.velocityMps} m/s) - wear increases with velocity squared`);
+    severityMultiplier *= (conditions.velocityMps / 3) ** 2;
+    factors.push(
+      `High velocity (${conditions.velocityMps} m/s) - wear increases with velocity squared`,
+    );
   }
 
   if (conditions.impactAngleDegrees > 60) {
@@ -639,7 +795,8 @@ export function estimateWearLife(
     recommendations.push("Consider dry-abrasion optimized compound");
   }
 
-  const wearRateMmPerMonth = baseWearRate * severityMultiplier * (conditions.operatingHoursPerDay / 8);
+  const wearRateMmPerMonth =
+    baseWearRate * severityMultiplier * (conditions.operatingHoursPerDay / 8);
   const estimatedLifeMonths = liningThicknessMm / wearRateMmPerMonth;
 
   const variability = 0.3;

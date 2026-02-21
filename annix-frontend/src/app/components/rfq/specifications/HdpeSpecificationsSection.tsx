@@ -2,13 +2,12 @@
 
 import React from "react";
 import {
+  HDPE_JOINING_OPTIONS,
   HDPE_MATERIALS,
   HDPE_SDR_OPTIONS,
-  HDPE_PRESSURE_OPTIONS,
-  HDPE_JOINING_OPTIONS,
   type HdpeGrade,
-  type HdpeSdr,
   type HdpeJoiningMethod,
+  type HdpeSdr,
   hdpePressureRatingForSdr,
 } from "@/app/lib/config/rfq/hdpe";
 import type { GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
@@ -46,9 +45,8 @@ export function HdpeSpecificationsSection({
     onUpdateGlobalSpecs({
       ...globalSpecs,
       hdpeSdr: sdr,
-      hdpePressureRating: sdr && selectedGrade
-        ? `PN${hdpePressureRatingForSdr(sdr, selectedGrade)}`
-        : undefined,
+      hdpePressureRating:
+        sdr && selectedGrade ? `PN${hdpePressureRatingForSdr(sdr, selectedGrade)}` : undefined,
     });
   };
 
@@ -143,7 +141,10 @@ export function HdpeSpecificationsSection({
           </select>
           {globalSpecs.hdpeJoiningMethod && (
             <p className="mt-1 text-xs text-gray-500">
-              {HDPE_JOINING_OPTIONS.find((o) => o.value === globalSpecs.hdpeJoiningMethod)?.description}
+              {
+                HDPE_JOINING_OPTIONS.find((o) => o.value === globalSpecs.hdpeJoiningMethod)
+                  ?.description
+              }
             </p>
           )}
         </div>
@@ -167,7 +168,8 @@ export function HdpeSpecificationsSection({
           <div>
             <span className="text-gray-500">Min Design Stress:</span>
             <span className="ml-1 text-gray-900">
-              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.minDesignStress ?? "-"} MPa
+              {HDPE_MATERIALS.find((m) => m.id === globalSpecs.hdpeGrade)?.minDesignStress ?? "-"}{" "}
+              MPa
             </span>
           </div>
           <div>

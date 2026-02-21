@@ -18,13 +18,7 @@ export const PVC_MATERIALS: PvcMaterial[] = [
     description: "Standard rigid PVC for cold water and drainage applications",
     densityKgM3: 1400,
     maxTemperatureC: 60,
-    applications: [
-      "Cold water supply",
-      "Sewerage",
-      "Drainage",
-      "Irrigation",
-      "Chemical transport",
-    ],
+    applications: ["Cold water supply", "Sewerage", "Drainage", "Irrigation", "Chemical transport"],
   },
   {
     id: "cPVC",
@@ -44,8 +38,7 @@ export const PVC_MATERIALS: PvcMaterial[] = [
     id: "PVC_O",
     name: "PVC-O (Molecularly Oriented PVC)",
     code: "PVC-O",
-    description:
-      "High-performance oriented PVC with superior strength and impact resistance",
+    description: "High-performance oriented PVC with superior strength and impact resistance",
     densityKgM3: 1400,
     maxTemperatureC: 45,
     applications: [

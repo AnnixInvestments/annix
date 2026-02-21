@@ -595,7 +595,11 @@ class StockControlApiClient {
     return this.request(`/stock-control/job-cards/${jobCardId}/allocations`);
   }
 
-  async uploadAllocationPhoto(jobCardId: number, allocationId: number, file: File): Promise<StockAllocation> {
+  async uploadAllocationPhoto(
+    jobCardId: number,
+    allocationId: number,
+    file: File,
+  ): Promise<StockAllocation> {
     const formData = new FormData();
     formData.append("file", file);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { voiceFilterApi, VoiceFilterUser } from "../lib/api/voiceFilterApi";
+import { VoiceFilterUser, voiceFilterApi } from "../lib/api/voiceFilterApi";
 
 interface VoiceFilterAuthContextValue {
   isAuthenticated: boolean;

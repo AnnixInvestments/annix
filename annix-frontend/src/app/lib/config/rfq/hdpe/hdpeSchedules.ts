@@ -534,13 +534,8 @@ export const HDPE_WALL_THICKNESS_DATA: HdpeWallThickness[] = [
   },
 ];
 
-export const hdpeWallThickness = (
-  outsideDiameterMm: number,
-  sdr: HdpeSdr,
-): number | null => {
-  const sizeData = HDPE_WALL_THICKNESS_DATA.find(
-    (d) => d.outsideDiameterMm === outsideDiameterMm,
-  );
+export const hdpeWallThickness = (outsideDiameterMm: number, sdr: HdpeSdr): number | null => {
+  const sizeData = HDPE_WALL_THICKNESS_DATA.find((d) => d.outsideDiameterMm === outsideDiameterMm);
   return sizeData?.wallThicknessBySdr[sdr] ?? null;
 };
 

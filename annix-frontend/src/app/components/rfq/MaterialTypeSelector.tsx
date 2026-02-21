@@ -30,12 +30,7 @@ const MATERIAL_OPTIONS: MaterialOption[] = [
     borderColor: "border-blue-300",
     textColor: "text-blue-700",
     icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -53,9 +48,7 @@ const MATERIAL_OPTIONS: MaterialOption[] = [
     hoverColor: "hover:bg-gray-900",
     borderColor: "border-gray-700",
     textColor: "text-white",
-    icon: (
-      <span className="text-xs font-bold">PE</span>
-    ),
+    icon: <span className="text-xs font-bold">PE</span>,
   },
   {
     value: "pvc",
@@ -65,9 +58,7 @@ const MATERIAL_OPTIONS: MaterialOption[] = [
     hoverColor: "hover:bg-blue-500",
     borderColor: "border-blue-300",
     textColor: "text-white",
-    icon: (
-      <span className="text-xs font-bold">PVC</span>
-    ),
+    icon: <span className="text-xs font-bold">PVC</span>,
   },
 ];
 
@@ -106,12 +97,7 @@ export function MaterialTypeSelector({
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           <span
             className={`text-xs font-semibold ${disabled ? "text-gray-500" : material.textColor}`}
@@ -137,14 +123,8 @@ export function MaterialBadge({ material, onClear }: MaterialBadgeProps) {
     <div
       className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${option.bgColor} ${option.borderColor} border`}
     >
-      <span className={`text-xs font-semibold ${option.textColor}`}>
-        {option.shortLabel}
-      </span>
-      <button
-        type="button"
-        onClick={onClear}
-        className={`${option.textColor} hover:opacity-70`}
-      >
+      <span className={`text-xs font-semibold ${option.textColor}`}>{option.shortLabel}</span>
+      <button type="button" onClick={onClear} className={`${option.textColor} hover:opacity-70`}>
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
@@ -188,9 +168,7 @@ export function ItemTypeButtons({
         onClick={onAddPipe}
         disabled={disabled}
         className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-          disabled
-            ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-            : baseClasses
+          disabled ? "bg-gray-100 border-gray-300 cursor-not-allowed" : baseClasses
         }`}
       >
         <svg
@@ -199,16 +177,9 @@ export function ItemTypeButtons({
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
-        <span
-          className={`text-xs font-semibold ${disabled ? "text-gray-500" : textClass}`}
-        >
+        <span className={`text-xs font-semibold ${disabled ? "text-gray-500" : textClass}`}>
           Pipe
         </span>
       </button>
@@ -229,16 +200,9 @@ export function ItemTypeButtons({
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
-        <span
-          className={`text-xs font-semibold ${disabled ? "text-gray-500" : "text-purple-700"}`}
-        >
+        <span className={`text-xs font-semibold ${disabled ? "text-gray-500" : "text-purple-700"}`}>
           Bend
         </span>
       </button>
@@ -268,12 +232,7 @@ export function ItemTypeButtons({
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 4v16m8-8H4"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
         <span
           className={`text-xs font-semibold ${disabled || fittingsDisabled ? "text-gray-500" : "text-green-700"}`}

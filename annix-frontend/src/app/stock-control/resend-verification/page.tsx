@@ -30,7 +30,12 @@ export default function ResendVerificationPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-teal-500 mb-4">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-10 h-10 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -40,7 +45,9 @@ export default function ResendVerificationPage() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-white">Resend Verification</h1>
-          <p className="mt-2 text-xl text-teal-200">Enter your email to receive a new verification link</p>
+          <p className="mt-2 text-xl text-teal-200">
+            Enter your email to receive a new verification link
+          </p>
         </div>
       </div>
 
@@ -49,8 +56,18 @@ export default function ResendVerificationPage() {
           {submitted ? (
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-4">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
               <p className="text-gray-700">
@@ -98,13 +115,19 @@ export default function ResendVerificationPage() {
 
               <div className="text-center space-y-2">
                 <p className="text-sm text-gray-600">
-                  <Link href="/stock-control/login" className="font-medium text-teal-600 hover:text-teal-500">
+                  <Link
+                    href="/stock-control/login"
+                    className="font-medium text-teal-600 hover:text-teal-500"
+                  >
                     Back to Sign In
                   </Link>
                 </p>
                 <p className="text-sm text-gray-600">
                   Don&apos;t have an account?{" "}
-                  <Link href="/stock-control/register" className="font-medium text-teal-600 hover:text-teal-500">
+                  <Link
+                    href="/stock-control/register"
+                    className="font-medium text-teal-600 hover:text-teal-500"
+                  >
                     Register here
                   </Link>
                 </p>

@@ -1,12 +1,12 @@
 import type { CreateStraightPipeRfqDto, StraightPipeCalculationResult } from "@/app/lib/api/client";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
+import type { HdpeGrade, HdpeJoiningMethod, HdpeSdr } from "../config/rfq/hdpe";
+import type { PvcJoiningMethod, PvcPressureClass, PvcType } from "../config/rfq/pvc";
 import type {
   AirSaltContentResult,
   FloodRiskLevel,
   TimeOfWetnessResult,
 } from "../services/environmentalIntelligence";
-import type { HdpeGrade, HdpeJoiningMethod, HdpeSdr } from "../config/rfq/hdpe";
-import type { PvcJoiningMethod, PvcPressureClass, PvcType } from "../config/rfq/pvc";
 
 export type PipeMaterialType = "steel" | "hdpe" | "pvc";
 

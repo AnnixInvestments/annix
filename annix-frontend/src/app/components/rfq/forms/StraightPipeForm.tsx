@@ -542,8 +542,8 @@ function StraightPipeFormComponent({
                   </span>
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
-                  Detailed {entry.materialType.toUpperCase()} specifications will use the global settings configured in Step 2.
-                  Item-specific overrides coming soon.
+                  Detailed {entry.materialType.toUpperCase()} specifications will use the global
+                  settings configured in Step 2. Item-specific overrides coming soon.
                 </p>
               </div>
             )}

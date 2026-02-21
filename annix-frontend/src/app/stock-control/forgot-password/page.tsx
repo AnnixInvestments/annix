@@ -30,7 +30,12 @@ export default function ForgotPasswordPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-teal-500 mb-4">
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-10 h-10 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -49,12 +54,23 @@ export default function ForgotPasswordPage() {
           {submitted ? (
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-4">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <svg
+                  className="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               </div>
               <p className="text-gray-700">
-                If an account exists with that email, a password reset link has been sent. Please check your inbox.
+                If an account exists with that email, a password reset link has been sent. Please
+                check your inbox.
               </p>
               <Link
                 href="/stock-control/login"
@@ -97,7 +113,10 @@ export default function ForgotPasswordPage() {
               </button>
 
               <div className="text-center">
-                <Link href="/stock-control/login" className="text-sm font-medium text-teal-600 hover:text-teal-500">
+                <Link
+                  href="/stock-control/login"
+                  className="text-sm font-medium text-teal-600 hover:text-teal-500"
+                >
                   Back to Sign In
                 </Link>
               </div>

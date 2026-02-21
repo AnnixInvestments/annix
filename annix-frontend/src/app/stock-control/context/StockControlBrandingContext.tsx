@@ -46,7 +46,9 @@ function customColors(primaryColor: string, accentColor: string): BrandingColors
   };
 }
 
-const StockControlBrandingContext = createContext<StockControlBrandingContextType | undefined>(undefined);
+const StockControlBrandingContext = createContext<StockControlBrandingContextType | undefined>(
+  undefined,
+);
 
 export function StockControlBrandingProvider({ children }: { children: ReactNode }) {
   const { profile } = useStockControlAuth();

@@ -134,7 +134,9 @@ export default function StockControlSettingsPage() {
     setScraping(true);
 
     try {
-      const normalizedUrl = websiteUrl.startsWith("http") ? websiteUrl.trim() : `https://${websiteUrl.trim()}`;
+      const normalizedUrl = websiteUrl.startsWith("http")
+        ? websiteUrl.trim()
+        : `https://${websiteUrl.trim()}`;
       const result = await stockControlApiClient.scrapeBranding(normalizedUrl);
 
       if (result.primaryColor) {
@@ -292,7 +294,9 @@ export default function StockControlSettingsPage() {
           </button>
         </div>
         {companyNameError && <p className="mt-3 text-sm text-red-600">{companyNameError}</p>}
-        {companyNameSuccess && <p className="mt-3 text-sm text-green-600">Company name updated successfully.</p>}
+        {companyNameSuccess && (
+          <p className="mt-3 text-sm text-green-600">Company name updated successfully.</p>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
@@ -453,7 +457,12 @@ export default function StockControlSettingsPage() {
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>

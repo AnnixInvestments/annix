@@ -1,25 +1,25 @@
 export type {
-  PaintSupplier,
-  GenericType,
-  ProductRole,
   CorrosivityCategory,
-  OvercoatInterval,
   CuringTime,
+  GenericType,
+  OvercoatInterval,
   PaintProduct,
+  PaintSupplier,
+  ProductRole,
 } from "./paintProducts";
 
 export {
-  paintProducts,
-  productsBySupplier,
-  productsByRole,
-  productsByGenericType,
-  productsForCorrosivity,
-  primersForEnvironment,
-  topcoatsForEnvironment,
-  surfaceTolerantProducts,
-  productsForTemperature,
-  compatibleTopcoats,
   compatiblePrimers,
+  compatibleTopcoats,
+  paintProducts,
+  primersForEnvironment,
+  productsByGenericType,
+  productsByRole,
+  productsBySupplier,
+  productsForCorrosivity,
+  productsForTemperature,
+  surfaceTolerantProducts,
+  topcoatsForEnvironment,
 } from "./paintProducts";
 
 export type {
@@ -28,9 +28,9 @@ export type {
 } from "./paintSystemRecommendations";
 
 export {
+  highTempSystemRecommendation,
   recommendCoatingSystem,
   recommendPrimersForCategory,
   recommendTopcoatsForPrimer,
   systemDftSummary,
-  highTempSystemRecommendation,
 } from "./paintSystemRecommendations";

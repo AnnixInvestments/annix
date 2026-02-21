@@ -11,8 +11,13 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") ?? "/voice-filter";
-  const { isAuthenticated, isLoading: authLoading, login, register, oauthLogin } =
-    useVoiceFilterAuth();
+  const {
+    isAuthenticated,
+    isLoading: authLoading,
+    login,
+    register,
+    oauthLogin,
+  } = useVoiceFilterAuth();
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");

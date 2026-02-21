@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { HdpeSpecificationsSection } from "@/app/components/rfq/specifications/HdpeSpecificationsSection";
+import { PvcSpecificationsSection } from "@/app/components/rfq/specifications/PvcSpecificationsSection";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
@@ -30,8 +32,6 @@ import {
 import { usePtRecommendations } from "@/app/lib/hooks/usePtRecommendations";
 import { log } from "@/app/lib/logger";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
-import { HdpeSpecificationsSection } from "@/app/components/rfq/specifications/HdpeSpecificationsSection";
-import { PvcSpecificationsSection } from "@/app/components/rfq/specifications/PvcSpecificationsSection";
 
 interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -7051,7 +7051,9 @@ export default function SpecificationsStep({
         {showHdpePipes && (
           <div className="space-y-3">
             <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
-              <span className="w-8 h-8 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center font-semibold">PE</span>
+              <span className="w-8 h-8 rounded-full bg-gray-900 text-white text-xs flex items-center justify-center font-semibold">
+                PE
+              </span>
               <h3 className="text-xl font-bold text-gray-900">HDPE Pipes & Fittings</h3>
               {globalSpecs?.hdpeSpecsConfirmed && (
                 <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
@@ -7081,9 +7083,7 @@ export default function SpecificationsStep({
                         {globalSpecs?.hdpeGrade ?? "PE100"}
                       </span>
                       <span className="text-gray-600 mx-2">|</span>
-                      <span className="text-gray-700">
-                        SDR {globalSpecs?.hdpeSdr ?? "-"}
-                      </span>
+                      <span className="text-gray-700">SDR {globalSpecs?.hdpeSdr ?? "-"}</span>
                       <span className="text-gray-600 mx-2">|</span>
                       <span className="text-gray-700">
                         {globalSpecs?.hdpeJoiningMethod?.replace(/_/g, " ") ?? "-"}
@@ -7092,7 +7092,9 @@ export default function SpecificationsStep({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, hdpeSpecsConfirmed: false })}
+                    onClick={() =>
+                      onUpdateGlobalSpecs({ ...globalSpecs, hdpeSpecsConfirmed: false })
+                    }
                     className="px-3 py-1 text-xs font-medium text-green-700 hover:text-green-800 hover:underline"
                   >
                     Edit
@@ -7109,11 +7111,19 @@ export default function SpecificationsStep({
                   <button
                     type="button"
                     onClick={() => {
-                      if (globalSpecs?.hdpeGrade && globalSpecs?.hdpeSdr && globalSpecs?.hdpeJoiningMethod) {
+                      if (
+                        globalSpecs?.hdpeGrade &&
+                        globalSpecs?.hdpeSdr &&
+                        globalSpecs?.hdpeJoiningMethod
+                      ) {
                         onUpdateGlobalSpecs({ ...globalSpecs, hdpeSpecsConfirmed: true });
                       }
                     }}
-                    disabled={!globalSpecs?.hdpeGrade || !globalSpecs?.hdpeSdr || !globalSpecs?.hdpeJoiningMethod}
+                    disabled={
+                      !globalSpecs?.hdpeGrade ||
+                      !globalSpecs?.hdpeSdr ||
+                      !globalSpecs?.hdpeJoiningMethod
+                    }
                     className="px-4 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Confirm HDPE Specifications
@@ -7128,7 +7138,9 @@ export default function SpecificationsStep({
         {showPvcPipes && (
           <div className="space-y-3">
             <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
-              <span className="w-8 h-8 rounded-full bg-blue-400 text-white text-xs flex items-center justify-center font-semibold">PVC</span>
+              <span className="w-8 h-8 rounded-full bg-blue-400 text-white text-xs flex items-center justify-center font-semibold">
+                PVC
+              </span>
               <h3 className="text-xl font-bold text-gray-900">PVC Pipes & Fittings</h3>
               {globalSpecs?.pvcSpecsConfirmed && (
                 <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
@@ -7169,7 +7181,9 @@ export default function SpecificationsStep({
                   </div>
                   <button
                     type="button"
-                    onClick={() => onUpdateGlobalSpecs({ ...globalSpecs, pvcSpecsConfirmed: false })}
+                    onClick={() =>
+                      onUpdateGlobalSpecs({ ...globalSpecs, pvcSpecsConfirmed: false })
+                    }
                     className="px-3 py-1 text-xs font-medium text-green-700 hover:text-green-800 hover:underline"
                   >
                     Edit
@@ -7186,11 +7200,19 @@ export default function SpecificationsStep({
                   <button
                     type="button"
                     onClick={() => {
-                      if (globalSpecs?.pvcType && globalSpecs?.pvcPressureClass && globalSpecs?.pvcJoiningMethod) {
+                      if (
+                        globalSpecs?.pvcType &&
+                        globalSpecs?.pvcPressureClass &&
+                        globalSpecs?.pvcJoiningMethod
+                      ) {
                         onUpdateGlobalSpecs({ ...globalSpecs, pvcSpecsConfirmed: true });
                       }
                     }}
-                    disabled={!globalSpecs?.pvcType || !globalSpecs?.pvcPressureClass || !globalSpecs?.pvcJoiningMethod}
+                    disabled={
+                      !globalSpecs?.pvcType ||
+                      !globalSpecs?.pvcPressureClass ||
+                      !globalSpecs?.pvcJoiningMethod
+                    }
                     className="px-4 py-2 bg-blue-400 text-white font-semibold rounded-lg hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Confirm PVC Specifications

@@ -33,7 +33,12 @@ export type AbrasionResistance = "wet-slurry" | "dry" | "general";
 
 export type CureMethod = "autoclave" | "cold-vulcanization" | "factory-vulcanized" | "hot-press";
 
-export type AdhesiveSystem = "chemosil" | "cilbond" | "megum" | "thixon" | "generic-rubber-adhesive";
+export type AdhesiveSystem =
+  | "chemosil"
+  | "cilbond"
+  | "megum"
+  | "thixon"
+  | "generic-rubber-adhesive";
 
 export interface SANS1198Classification {
   type: SANS1198Type;
@@ -83,7 +88,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "REMA TIP TOP",
     polymerBase: "NR",
     colour: "Pink",
-    description: "A premium quality low modulus pink natural rubber with exceptional resistance to wet slurry abrasion.",
+    description:
+      "A premium quality low modulus pink natural rubber with exceptional resistance to wet slurry abrasion.",
     typicalUses: [
       "Lining of tanks",
       "Chutes",
@@ -92,11 +98,7 @@ export const rubberProducts: RubberProduct[] = [
       "Valves",
       "Wet abrasion applications",
     ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidising agents",
-    ],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidising agents"],
     hardnessShoreA: 40,
     hardnessTolerance: 5,
     maxOperatingTempC: 70,
@@ -132,22 +134,13 @@ export const rubberProducts: RubberProduct[] = [
     polymerBase: "NR",
     colour: "Green",
     description: "Green natural rubber with good resistance to abrasion.",
-    typicalUses: [
-      "Lining of tanks",
-      "Launders",
-      "Chutes",
-      "General abrasion applications",
-    ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidising agents",
-    ],
+    typicalUses: ["Lining of tanks", "Launders", "Chutes", "General abrasion applications"],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidising agents"],
     hardnessShoreA: 40,
     hardnessTolerance: 5,
     maxOperatingTempC: 70,
     minOperatingTempC: -30,
-    density: 1.00,
+    density: 1.0,
     tensileMPa: 20,
     elongationPercent: 600,
     abrasionLossMm3: 180,
@@ -162,11 +155,7 @@ export const rubberProducts: RubberProduct[] = [
     antiStatic: false,
     thicknessRange: { minMm: 3, maxMm: 25 },
     revisionDate: "2020-01-10",
-    features: [
-      "Good abrasion resistance",
-      "SANS 1198 Type 1 Grade A compliant",
-      "General purpose",
-    ],
+    features: ["Good abrasion resistance", "SANS 1198 Type 1 Grade A compliant", "General purpose"],
   },
   {
     id: "rema-sr1078-black-nr",
@@ -176,7 +165,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "REMA TIP TOP",
     polymerBase: "NR",
     colour: "Black",
-    description: "A premium quality black natural rubber with exceptional resistance to wet slurry abrasion.",
+    description:
+      "A premium quality black natural rubber with exceptional resistance to wet slurry abrasion.",
     typicalUses: [
       "Lining of tanks",
       "Chutes",
@@ -185,11 +175,7 @@ export const rubberProducts: RubberProduct[] = [
       "Valves",
       "Wet abrasion applications",
     ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidising agents",
-    ],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidising agents"],
     hardnessShoreA: 35,
     hardnessTolerance: 5,
     maxOperatingTempC: 70,
@@ -224,7 +210,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "REMA TIP TOP",
     polymerBase: "NR/SBR",
     colour: "Yellow",
-    description: "Yellow natural and styrene butadiene rubber blend with superior resistance to dry abrasion.",
+    description:
+      "Yellow natural and styrene butadiene rubber blend with superior resistance to dry abrasion.",
     typicalUses: [
       "Lining of tanks",
       "Chutes",
@@ -234,10 +221,7 @@ export const rubberProducts: RubberProduct[] = [
       "Cyclones",
       "Dry abrasion applications",
     ],
-    limitations: [
-      "Oils",
-      "Greases",
-    ],
+    limitations: ["Oils", "Greases"],
     hardnessShoreA: 40,
     hardnessTolerance: 5,
     maxOperatingTempC: 70,
@@ -272,7 +256,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "AU Industries",
     polymerBase: "NR",
     colour: "Black",
-    description: "Steam cured 40 shore black natural rubber ideal for general-purpose lining. Exceptional for wet slurry abrasion applications.",
+    description:
+      "Steam cured 40 shore black natural rubber ideal for general-purpose lining. Exceptional for wet slurry abrasion applications.",
     typicalUses: [
       "Lining of tanks",
       "Chutes",
@@ -282,12 +267,7 @@ export const rubberProducts: RubberProduct[] = [
       "Hoses",
       "Wet slurry abrasion",
     ],
-    limitations: [
-      "Oils",
-      "Acids",
-      "Hydrocarbon solvents",
-      "Strong oxidizing agents",
-    ],
+    limitations: ["Oils", "Acids", "Hydrocarbon solvents", "Strong oxidizing agents"],
     hardnessShoreA: 40,
     hardnessTolerance: 5,
     maxOperatingTempC: 70,
@@ -322,7 +302,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "AU Industries",
     polymerBase: "NR",
     colour: "Black",
-    description: "Steam cured 60 shore black natural rubber. Silica reinforced for cut and tear resistance in coarse abrasive sharp particle slurries.",
+    description:
+      "Steam cured 60 shore black natural rubber. Silica reinforced for cut and tear resistance in coarse abrasive sharp particle slurries.",
     typicalUses: [
       "Lining of tanks",
       "Chutes",
@@ -332,12 +313,7 @@ export const rubberProducts: RubberProduct[] = [
       "Hoses",
       "Coarse particle slurries",
     ],
-    limitations: [
-      "Oils",
-      "Acids",
-      "Hydrocarbon solvents",
-      "Strong oxidizing agents",
-    ],
+    limitations: ["Oils", "Acids", "Hydrocarbon solvents", "Strong oxidizing agents"],
     hardnessShoreA: 60,
     hardnessTolerance: 5,
     maxOperatingTempC: 70,
@@ -372,7 +348,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "AU Industries",
     polymerBase: "NBR-BR",
     colour: "Black",
-    description: "Steam cured Nitrile-Butadiene blend for oil, fuel and hydrocarbon resistance with good abrasion resistance.",
+    description:
+      "Steam cured Nitrile-Butadiene blend for oil, fuel and hydrocarbon resistance with good abrasion resistance.",
     typicalUses: [
       "Lining of tanks",
       "Chutes",
@@ -382,12 +359,7 @@ export const rubberProducts: RubberProduct[] = [
       "Hoses",
       "Oil/fuel exposure applications",
     ],
-    limitations: [
-      "Phenols",
-      "Ketones",
-      "Carboxylates acid",
-      "Nitrogen derivatives",
-    ],
+    limitations: ["Phenols", "Ketones", "Carboxylates acid", "Nitrogen derivatives"],
     hardnessShoreA: 50,
     hardnessTolerance: 5,
     maxOperatingTempC: 120,
@@ -422,7 +394,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "AU Industries",
     polymerBase: "BIIR",
     colour: "Black",
-    description: "Steam cured Bromobutyl rubber for chemical resistance. Excellent for mineral acids, aqueous solutions, saltwater and polar solvents. Low gas permeability.",
+    description:
+      "Steam cured Bromobutyl rubber for chemical resistance. Excellent for mineral acids, aqueous solutions, saltwater and polar solvents. Low gas permeability.",
     typicalUses: [
       "Lining of pipes",
       "Tanks",
@@ -431,12 +404,7 @@ export const rubberProducts: RubberProduct[] = [
       "Hoses",
       "Chemical resistance applications",
     ],
-    limitations: [
-      "Oils",
-      "Greases",
-      "Some solvents",
-      "Limited abrasion resistance",
-    ],
+    limitations: ["Oils", "Greases", "Some solvents", "Limited abrasion resistance"],
     hardnessShoreA: 50,
     hardnessTolerance: 5,
     maxOperatingTempC: 120,
@@ -472,7 +440,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "S&N Rubber",
     polymerBase: "NR/SBR",
     colour: "Black",
-    description: "Premium quality black NR/SBR based compound with exceptional wet slurry abrasion resistance.",
+    description:
+      "Premium quality black NR/SBR based compound with exceptional wet slurry abrasion resistance.",
     typicalUses: [
       "Lining of pipes",
       "Tanks",
@@ -481,11 +450,7 @@ export const rubberProducts: RubberProduct[] = [
       "Valves",
       "Wet abrasion applications",
     ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidizing agents",
-    ],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidizing agents"],
     hardnessShoreA: 35,
     hardnessTolerance: 5,
     maxOperatingTempC: 70,
@@ -521,19 +486,10 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "S&N Rubber",
     polymerBase: "BIIR",
     colour: "Black",
-    description: "Bromobutyl compound (BIIR) for chemical resistance with limited abrasion resistance. Resists polar solvents, mineral acids, bases and aqueous phases.",
-    typicalUses: [
-      "Lining of tanks",
-      "Chutes",
-      "Pipes",
-      "Chemical resistance applications",
-    ],
-    limitations: [
-      "Oils",
-      "Grease",
-      "Solvents",
-      "Limited abrasion resistance",
-    ],
+    description:
+      "Bromobutyl compound (BIIR) for chemical resistance with limited abrasion resistance. Resists polar solvents, mineral acids, bases and aqueous phases.",
+    typicalUses: ["Lining of tanks", "Chutes", "Pipes", "Chemical resistance applications"],
+    limitations: ["Oils", "Grease", "Solvents", "Limited abrasion resistance"],
     hardnessShoreA: 50,
     hardnessTolerance: 5,
     maxOperatingTempC: 120,
@@ -568,19 +524,10 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Weir Minerals",
     polymerBase: "NR",
     colour: "Red",
-    description: "Premium wear resistant uncured natural rubber for fine slurry applications. Uses Linatex formulation principles for superior wear performance.",
-    typicalUses: [
-      "Pipelines",
-      "Chutes",
-      "Tank linings",
-      "Hoses",
-      "Fine slurry applications",
-    ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidizing agents",
-    ],
+    description:
+      "Premium wear resistant uncured natural rubber for fine slurry applications. Uses Linatex formulation principles for superior wear performance.",
+    typicalUses: ["Pipelines", "Chutes", "Tank linings", "Hoses", "Fine slurry applications"],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidizing agents"],
     hardnessShoreA: 40,
     hardnessTolerance: 5,
     maxOperatingTempC: 70,
@@ -616,7 +563,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Impilo",
     polymerBase: "NR",
     colour: "Black",
-    description: "Excellent grade chemical cure 40 Shore A natural rubber for moderate to aggressive wet/slurry abrasion and wear applications.",
+    description:
+      "Excellent grade chemical cure 40 Shore A natural rubber for moderate to aggressive wet/slurry abrasion and wear applications.",
     typicalUses: [
       "Lining of tanks",
       "Launders",
@@ -625,11 +573,7 @@ export const rubberProducts: RubberProduct[] = [
       "Chutes",
       "Wet/slurry abrasion",
     ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidizing agents",
-    ],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidizing agents"],
     hardnessShoreA: 40,
     hardnessTolerance: 10,
     maxOperatingTempC: 70,
@@ -664,20 +608,10 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Truco",
     polymerBase: "NR",
     colour: "Pink",
-    description: "95% pure natural rubber with exceptional wet slurry abrasion resistance. Premium latex compound for severe wet abrasion applications.",
-    typicalUses: [
-      "Chutes",
-      "Pipes",
-      "Cyclones",
-      "Skirts",
-      "Scrapers",
-      "Wet slurry applications",
-    ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidising agents",
-    ],
+    description:
+      "95% pure natural rubber with exceptional wet slurry abrasion resistance. Premium latex compound for severe wet abrasion applications.",
+    typicalUses: ["Chutes", "Pipes", "Cyclones", "Skirts", "Scrapers", "Wet slurry applications"],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidising agents"],
     hardnessShoreA: 35,
     hardnessTolerance: 5,
     maxOperatingTempC: 80,
@@ -713,7 +647,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Truco",
     polymerBase: "NR",
     colour: "Black",
-    description: "High natural rubber content compound with good abrasion resistance for general lining applications.",
+    description:
+      "High natural rubber content compound with good abrasion resistance for general lining applications.",
     typicalUses: [
       "Chutes",
       "Pipes",
@@ -722,16 +657,12 @@ export const rubberProducts: RubberProduct[] = [
       "Scrapers",
       "General abrasion applications",
     ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidising agents",
-    ],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidising agents"],
     hardnessShoreA: 40,
     hardnessTolerance: 5,
     maxOperatingTempC: 80,
     minOperatingTempC: -40,
-    density: 1.00,
+    density: 1.0,
     tensileMPa: 15,
     elongationPercent: 650,
     abrasionLossMm3: 150,
@@ -761,7 +692,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Truco",
     polymerBase: "NR/SBR",
     colour: "Black",
-    description: "Silica-reinforced NR/SBR blend with excellent resistance to cutting and slashing by dry, sharp-edged particles. Heavy-duty compound for severe dry abrasion.",
+    description:
+      "Silica-reinforced NR/SBR blend with excellent resistance to cutting and slashing by dry, sharp-edged particles. Heavy-duty compound for severe dry abrasion.",
     typicalUses: [
       "Screen decks",
       "Chutes",
@@ -769,10 +701,7 @@ export const rubberProducts: RubberProduct[] = [
       "Dry abrasion applications",
       "Sharp particle handling",
     ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-    ],
+    limitations: ["Oils", "Hydrocarbon solvents"],
     hardnessShoreA: 70,
     hardnessTolerance: 5,
     maxOperatingTempC: 80,
@@ -808,19 +737,10 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Truco",
     polymerBase: "NR",
     colour: "Pink",
-    description: "Premium latex rubber with exceptional abrasion resistance for fine material in wet conditions. Low specific gravity for reduced weight.",
-    typicalUses: [
-      "Cyclones",
-      "Pipes",
-      "Chutes",
-      "Fine wet slurry handling",
-      "Pump linings",
-    ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidising agents",
-    ],
+    description:
+      "Premium latex rubber with exceptional abrasion resistance for fine material in wet conditions. Low specific gravity for reduced weight.",
+    typicalUses: ["Cyclones", "Pipes", "Chutes", "Fine wet slurry handling", "Pump linings"],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidising agents"],
     hardnessShoreA: 36,
     hardnessTolerance: 3,
     maxOperatingTempC: 70,
@@ -856,7 +776,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Truco",
     polymerBase: "EPDM",
     colour: "Black",
-    description: "EPDM rubber for hot water, steam and chemical resistance. Excellent ozone and weathering resistance. Not suitable for oil or hydrocarbon exposure.",
+    description:
+      "EPDM rubber for hot water, steam and chemical resistance. Excellent ozone and weathering resistance. Not suitable for oil or hydrocarbon exposure.",
     typicalUses: [
       "Hot water systems",
       "Steam applications",
@@ -864,12 +785,7 @@ export const rubberProducts: RubberProduct[] = [
       "Weather exposed applications",
       "Outdoor installations",
     ],
-    limitations: [
-      "Oils",
-      "Fuels",
-      "Hydrocarbon solvents",
-      "Aromatic compounds",
-    ],
+    limitations: ["Oils", "Fuels", "Hydrocarbon solvents", "Aromatic compounds"],
     hardnessShoreA: 70,
     hardnessTolerance: 5,
     maxOperatingTempC: 130,
@@ -905,19 +821,15 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Truco",
     polymerBase: "IIR",
     colour: "Black",
-    description: "Butyl rubber with excellent chemical and acid resistance. High temperature capability up to 140°C. Low gas permeability.",
+    description:
+      "Butyl rubber with excellent chemical and acid resistance. High temperature capability up to 140°C. Low gas permeability.",
     typicalUses: [
       "Chemical tanks",
       "Acid storage",
       "Gas barrier applications",
       "High temperature chemical exposure",
     ],
-    limitations: [
-      "Oils",
-      "Fuels",
-      "Hydrocarbon solvents",
-      "Limited abrasion resistance",
-    ],
+    limitations: ["Oils", "Fuels", "Hydrocarbon solvents", "Limited abrasion resistance"],
     hardnessShoreA: 60,
     hardnessTolerance: 5,
     maxOperatingTempC: 140,
@@ -953,19 +865,10 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Zenith",
     polymerBase: "NR",
     colour: "Black",
-    description: "Premium resistance to abrasion with excellent tensile strength and high elasticity. High grade natural rubber for slurry chutes, pipes, tanks, and cyclones.",
-    typicalUses: [
-      "Slurry chutes",
-      "Pipes",
-      "Tanks",
-      "Cyclones",
-      "Wet abrasion applications",
-    ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidising agents",
-    ],
+    description:
+      "Premium resistance to abrasion with excellent tensile strength and high elasticity. High grade natural rubber for slurry chutes, pipes, tanks, and cyclones.",
+    typicalUses: ["Slurry chutes", "Pipes", "Tanks", "Cyclones", "Wet abrasion applications"],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidising agents"],
     hardnessShoreA: 40,
     hardnessTolerance: 5,
     maxOperatingTempC: 90,
@@ -1001,7 +904,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Zenith",
     polymerBase: "NR",
     colour: "Black",
-    description: "Abrasion resistant rubber compounded from high grade natural rubber for best resistance to cut, wear and abrasion. Sustained performance for industrial applications.",
+    description:
+      "Abrasion resistant rubber compounded from high grade natural rubber for best resistance to cut, wear and abrasion. Sustained performance for industrial applications.",
     typicalUses: [
       "Chutes",
       "Conveyors",
@@ -1009,16 +913,12 @@ export const rubberProducts: RubberProduct[] = [
       "Transfer points",
       "Dry abrasion applications",
     ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-      "Strong oxidising agents",
-    ],
+    limitations: ["Oils", "Hydrocarbon solvents", "Strong oxidising agents"],
     hardnessShoreA: 60,
     hardnessTolerance: 5,
     maxOperatingTempC: 90,
     minOperatingTempC: -50,
-    density: 1.10,
+    density: 1.1,
     tensileMPa: 18,
     elongationPercent: 500,
     abrasionLossMm3: 150,
@@ -1049,7 +949,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Zenith",
     polymerBase: "NR/SBR",
     colour: "Black",
-    description: "NR/SBR blend providing superior resilience, tensile, elongation, good low temperature flexibility and excellent adhesion to fabric and metals.",
+    description:
+      "NR/SBR blend providing superior resilience, tensile, elongation, good low temperature flexibility and excellent adhesion to fabric and metals.",
     typicalUses: [
       "General purpose seals",
       "Gaskets",
@@ -1057,10 +958,7 @@ export const rubberProducts: RubberProduct[] = [
       "Packing materials",
       "Vibration dampeners",
     ],
-    limitations: [
-      "Oils",
-      "Hydrocarbon solvents",
-    ],
+    limitations: ["Oils", "Hydrocarbon solvents"],
     hardnessShoreA: 65,
     hardnessTolerance: 5,
     maxOperatingTempC: 80,
@@ -1096,7 +994,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Generic",
     polymerBase: "FKM",
     colour: "Black",
-    description: "Fluoroelastomer (Viton type) with outstanding resistance to oils, fuels, and chemicals. Excellent high temperature performance up to 200°C continuous.",
+    description:
+      "Fluoroelastomer (Viton type) with outstanding resistance to oils, fuels, and chemicals. Excellent high temperature performance up to 200°C continuous.",
     typicalUses: [
       "Chemical processing equipment",
       "Fuel system seals",
@@ -1146,7 +1045,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Generic",
     polymerBase: "FKM",
     colour: "Black",
-    description: "Softer fluoroelastomer grade for sealing applications requiring flexibility while maintaining chemical resistance.",
+    description:
+      "Softer fluoroelastomer grade for sealing applications requiring flexibility while maintaining chemical resistance.",
     typicalUses: [
       "O-rings and seals",
       "Gaskets",
@@ -1196,7 +1096,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Generic",
     polymerBase: "FKM",
     colour: "Brown",
-    description: "Hard fluoroelastomer grade for extreme temperature applications up to 250°C with excellent compression set resistance.",
+    description:
+      "Hard fluoroelastomer grade for extreme temperature applications up to 250°C with excellent compression set resistance.",
     typicalUses: [
       "High temperature seals",
       "Engine components",
@@ -1215,7 +1116,7 @@ export const rubberProducts: RubberProduct[] = [
     hardnessTolerance: 5,
     maxOperatingTempC: 250,
     minOperatingTempC: -10,
-    density: 1.90,
+    density: 1.9,
     tensileMPa: 12,
     elongationPercent: 150,
     abrasionLossMm3: 120,
@@ -1246,7 +1147,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Generic",
     polymerBase: "PU",
     colour: "Natural/Amber",
-    description: "High performance cast polyurethane with exceptional abrasion resistance. Ester-based for superior mechanical properties.",
+    description:
+      "High performance cast polyurethane with exceptional abrasion resistance. Ester-based for superior mechanical properties.",
     typicalUses: [
       "Chute and hopper linings",
       "Conveyor belt scrapers",
@@ -1295,7 +1197,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Generic",
     polymerBase: "PU",
     colour: "Natural/Amber",
-    description: "Flexible polyurethane elastomer for applications requiring resilience and impact absorption.",
+    description:
+      "Flexible polyurethane elastomer for applications requiring resilience and impact absorption.",
     typicalUses: [
       "Impact pads",
       "Vibration dampeners",
@@ -1344,7 +1247,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Generic",
     polymerBase: "PU",
     colour: "Natural/Amber",
-    description: "Very hard polyurethane for severe sliding abrasion applications. Excellent cut and gouge resistance.",
+    description:
+      "Very hard polyurethane for severe sliding abrasion applications. Excellent cut and gouge resistance.",
     typicalUses: [
       "Liner plates for high wear zones",
       "Mill linings",
@@ -1393,14 +1297,9 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Rubber Inc",
     polymerBase: "NR",
     colour: "Black",
-    description: "Premium natural rubber compound with excellent wet slurry abrasion resistance. Autoclave cured for maximum bond strength.",
-    typicalUses: [
-      "Pipe linings",
-      "Chute linings",
-      "Pump linings",
-      "Valve linings",
-      "Tank linings",
-    ],
+    description:
+      "Premium natural rubber compound with excellent wet slurry abrasion resistance. Autoclave cured for maximum bond strength.",
+    typicalUses: ["Pipe linings", "Chute linings", "Pump linings", "Valve linings", "Tank linings"],
     limitations: [
       "Oils and solvents",
       "Ozone degradation",
@@ -1442,7 +1341,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Rubber Inc",
     polymerBase: "NR/SBR",
     colour: "Black",
-    description: "Heavy duty NR/SBR blend for dry abrasion and cut resistance. Silica reinforced for coarse particle applications.",
+    description:
+      "Heavy duty NR/SBR blend for dry abrasion and cut resistance. Silica reinforced for coarse particle applications.",
     typicalUses: [
       "Cyclone linings",
       "Screen decks",
@@ -1491,7 +1391,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Rubber Inc",
     polymerBase: "NR",
     colour: "Black",
-    description: "Cold vulcanising natural rubber for field application where autoclave curing is not possible. Chemical cure system.",
+    description:
+      "Cold vulcanising natural rubber for field application where autoclave curing is not possible. Chemical cure system.",
     typicalUses: [
       "Field repairs",
       "On-site lining",
@@ -1509,7 +1410,7 @@ export const rubberProducts: RubberProduct[] = [
     hardnessTolerance: 5,
     maxOperatingTempC: 70,
     minOperatingTempC: -30,
-    density: 1.10,
+    density: 1.1,
     tensileMPa: 16,
     elongationPercent: 550,
     abrasionLossMm3: 170,
@@ -1520,7 +1421,11 @@ export const rubberProducts: RubberProduct[] = [
     recommendedCureMethod: "cold-vulcanization",
     compatibleAdhesives: ["chemosil", "generic-rubber-adhesive"],
     minimumBendRadiusMm: 40,
-    substrateRequirements: ["Sa 2.5 blast", "Anchor pattern 50-75 micron", "Apply within 4 hours of blasting"],
+    substrateRequirements: [
+      "Sa 2.5 blast",
+      "Anchor pattern 50-75 micron",
+      "Apply within 4 hours of blasting",
+    ],
     antiStatic: false,
     thicknessRange: { minMm: 2, maxMm: 15 },
     revisionDate: "2024-01-01",
@@ -1540,7 +1445,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Generic",
     polymerBase: "NR",
     colour: "Black",
-    description: "Conductive natural rubber compound for applications requiring static dissipation. Carbon black loaded for conductivity.",
+    description:
+      "Conductive natural rubber compound for applications requiring static dissipation. Carbon black loaded for conductivity.",
     typicalUses: [
       "Explosive handling areas",
       "Dust collection systems",
@@ -1589,7 +1495,8 @@ export const rubberProducts: RubberProduct[] = [
     supplier: "Generic",
     polymerBase: "NR/SBR",
     colour: "Black",
-    description: "Conductive NR/SBR blend combining static dissipation with improved abrasion resistance for industrial applications.",
+    description:
+      "Conductive NR/SBR blend combining static dissipation with improved abrasion resistance for industrial applications.",
     typicalUses: [
       "Coal handling",
       "Mining conveyors",
@@ -1597,11 +1504,7 @@ export const rubberProducts: RubberProduct[] = [
       "Solvent handling",
       "Hazardous material transfer",
     ],
-    limitations: [
-      "Oils and solvents",
-      "UV exposure",
-      "Temperatures above 75°C",
-    ],
+    limitations: ["Oils and solvents", "UV exposure", "Temperatures above 75°C"],
     hardnessShoreA: 60,
     hardnessTolerance: 5,
     maxOperatingTempC: 75,

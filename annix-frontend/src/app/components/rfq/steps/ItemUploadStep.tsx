@@ -62,9 +62,9 @@ import {
   ValveForm,
 } from "@/app/components/rfq/forms";
 import {
-  MaterialTypeSelector,
-  MaterialBadge,
   ItemTypeButtons,
+  MaterialBadge,
+  MaterialTypeSelector,
 } from "@/app/components/rfq/MaterialTypeSelector";
 import type { PipeMaterialType } from "@/app/lib/hooks/useRfqForm";
 
@@ -407,8 +407,10 @@ export default function ItemUploadStep({
   const selectedPipeMaterials = requiredProducts.filter((p) => PIPE_MATERIALS.includes(p));
   const [activeMaterial, setActiveMaterial] = useState<PipeMaterialType | null>(
     selectedPipeMaterials.length === 1
-      ? (selectedPipeMaterials[0] === "fabricated_steel" ? "steel" : selectedPipeMaterials[0] as PipeMaterialType)
-      : null
+      ? selectedPipeMaterials[0] === "fabricated_steel"
+        ? "steel"
+        : (selectedPipeMaterials[0] as PipeMaterialType)
+      : null,
   );
 
   // Authentication status for unregistered customer restrictions
@@ -1389,7 +1391,9 @@ export default function ItemUploadStep({
     const currentMaterial: PipeMaterialType | null = hasMultipleMaterials
       ? activeMaterial
       : selectedPipeMaterials.length === 1
-        ? (selectedPipeMaterials[0] === "fabricated_steel" ? "steel" : selectedPipeMaterials[0] as PipeMaterialType)
+        ? selectedPipeMaterials[0] === "fabricated_steel"
+          ? "steel"
+          : (selectedPipeMaterials[0] as PipeMaterialType)
         : null;
 
     return (
@@ -1397,196 +1401,215 @@ export default function ItemUploadStep({
         className="flex gap-2 items-center flex-wrap"
         data-nix-target={insertAtStart ? "add-item-section-top" : undefined}
       >
-        {hasPipeMaterials && (
-          <>
-            {hasMultipleMaterials && !activeMaterial ? (
-              <MaterialTypeSelector
-                selectedMaterials={requiredProducts}
-                onSelectMaterial={(material) => setActiveMaterial(material)}
+        {hasPipeMaterials &&
+          (hasMultipleMaterials && !activeMaterial ? (
+            <MaterialTypeSelector
+              selectedMaterials={requiredProducts}
+              onSelectMaterial={(material) => setActiveMaterial(material)}
+              disabled={!canAddMoreItems}
+            />
+          ) : currentMaterial ? (
+            <div className="flex gap-2 items-center">
+              {hasMultipleMaterials && (
+                <MaterialBadge material={currentMaterial} onClear={() => setActiveMaterial(null)} />
+              )}
+              <ItemTypeButtons
+                material={currentMaterial}
+                onAddPipe={() => {
+                  if (!canAddMoreItems) {
+                    showRestrictionPopup("itemLimit")({} as React.MouseEvent);
+                    return;
+                  }
+                  handleAddPipe(currentMaterial, insertAtStart);
+                }}
+                onAddBend={() => {
+                  if (!canAddMoreItems) {
+                    showRestrictionPopup("itemLimit")({} as React.MouseEvent);
+                    return;
+                  }
+                  onAddBendEntry(undefined, insertAtStart, currentMaterial);
+                }}
+                onAddFitting={() => {
+                  if (isUnregisteredCustomer) {
+                    showRestrictionPopup("fittings")({} as React.MouseEvent);
+                    return;
+                  }
+                  onAddFittingEntry(undefined, insertAtStart, currentMaterial);
+                }}
                 disabled={!canAddMoreItems}
+                fittingsDisabled={isUnregisteredCustomer}
               />
-            ) : currentMaterial ? (
-              <div className="flex gap-2 items-center">
-                {hasMultipleMaterials && (
-                  <MaterialBadge
-                    material={currentMaterial}
-                    onClear={() => setActiveMaterial(null)}
-                  />
-                )}
-                <ItemTypeButtons
-                  material={currentMaterial}
-                  onAddPipe={() => {
-                    if (!canAddMoreItems) {
-                      showRestrictionPopup("itemLimit")({} as React.MouseEvent);
-                      return;
-                    }
-                    handleAddPipe(currentMaterial, insertAtStart);
-                  }}
-                  onAddBend={() => {
-                    if (!canAddMoreItems) {
-                      showRestrictionPopup("itemLimit")({} as React.MouseEvent);
-                      return;
-                    }
-                    onAddBendEntry(undefined, insertAtStart, currentMaterial);
-                  }}
-                  onAddFitting={() => {
-                    if (isUnregisteredCustomer) {
-                      showRestrictionPopup("fittings")({} as React.MouseEvent);
-                      return;
-                    }
-                    onAddFittingEntry(undefined, insertAtStart, currentMaterial);
-                  }}
-                  disabled={!canAddMoreItems}
-                  fittingsDisabled={isUnregisteredCustomer}
-                />
-              </div>
-            ) : null}
-          </>
+            </div>
+          ) : null)}
+        {requiredProducts.includes("pipe_steel_work") && onAddPipeSteelWorkEntry && (
+          <button
+            onClick={() => onAddPipeSteelWorkEntry(undefined, insertAtStart)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 rounded-md border border-orange-300 transition-colors"
+          >
+            <svg
+              className="w-4 h-4 text-orange-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span className="text-xs font-semibold text-orange-700">Steel Work</span>
+          </button>
         )}
-      {requiredProducts.includes("pipe_steel_work") && onAddPipeSteelWorkEntry && (
-        <button
-          onClick={() => onAddPipeSteelWorkEntry(undefined, insertAtStart)}
-          className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 hover:bg-orange-200 rounded-md border border-orange-300 transition-colors"
-        >
-          <svg
-            className="w-4 h-4 text-orange-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {requiredProducts.includes("expansion_joint") && onAddExpansionJointEntry && (
+          <button
+            onClick={() => onAddExpansionJointEntry(undefined, insertAtStart)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span className="text-xs font-semibold text-orange-700">Steel Work</span>
-        </button>
-      )}
-      {requiredProducts.includes("expansion_joint") && onAddExpansionJointEntry && (
-        <button
-          onClick={() => onAddExpansionJointEntry(undefined, insertAtStart)}
-          className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 hover:bg-purple-200 rounded-md border border-purple-300 transition-colors"
-        >
-          <svg
-            className="w-4 h-4 text-purple-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span className="text-xs font-semibold text-purple-700">Expansion Joint</span>
-        </button>
-      )}
-      {requiredProducts.includes("valves_meters_instruments") && onAddValveEntry && (
-        <button
-          onClick={
-            !canAddMoreItems
-              ? showRestrictionPopup("itemLimit")
-              : () => onAddValveEntry(undefined, insertAtStart)
-          }
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-            !canAddMoreItems
-              ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-              : "bg-teal-100 hover:bg-teal-200 border-teal-300"
-          }`}
-        >
-          {!canAddMoreItems && (
-            <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            <svg
+              className="w-4 h-4 text-purple-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
-                fillRule="evenodd"
-                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                clipRule="evenodd"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
               />
             </svg>
-          )}
-          <svg
-            className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-teal-600"}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+            <span className="text-xs font-semibold text-purple-700">Expansion Joint</span>
+          </button>
+        )}
+        {requiredProducts.includes("valves_meters_instruments") && onAddValveEntry && (
+          <button
+            onClick={
+              !canAddMoreItems
+                ? showRestrictionPopup("itemLimit")
+                : () => onAddValveEntry(undefined, insertAtStart)
+            }
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+              !canAddMoreItems
+                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                : "bg-teal-100 hover:bg-teal-200 border-teal-300"
+            }`}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span
-            className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-teal-700"}`}
-          >
-            Valve
-          </span>
-        </button>
-      )}
-      {requiredProducts.includes("valves_meters_instruments") && onAddInstrumentEntry && (
-        <button
-          onClick={
-            !canAddMoreItems
-              ? showRestrictionPopup("itemLimit")
-              : () => onAddInstrumentEntry(undefined, insertAtStart)
-          }
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-            !canAddMoreItems
-              ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-              : "bg-cyan-100 hover:bg-cyan-200 border-cyan-300"
-          }`}
-        >
-          {!canAddMoreItems && (
-            <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            {!canAddMoreItems && (
+              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+            <svg
+              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-teal-600"}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
-                fillRule="evenodd"
-                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                clipRule="evenodd"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
               />
             </svg>
-          )}
-          <svg
-            className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-cyan-600"}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+            <span
+              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-teal-700"}`}
+            >
+              Valve
+            </span>
+          </button>
+        )}
+        {requiredProducts.includes("valves_meters_instruments") && onAddInstrumentEntry && (
+          <button
+            onClick={
+              !canAddMoreItems
+                ? showRestrictionPopup("itemLimit")
+                : () => onAddInstrumentEntry(undefined, insertAtStart)
+            }
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+              !canAddMoreItems
+                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                : "bg-cyan-100 hover:bg-cyan-200 border-cyan-300"
+            }`}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span
-            className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-cyan-700"}`}
-          >
-            Instrument
-          </span>
-        </button>
-      )}
-      {requiredProducts.includes("pumps") && onAddPumpEntry && (
-        <button
-          onClick={
-            !canAddMoreItems
-              ? showRestrictionPopup("itemLimit")
-              : () => onAddPumpEntry(undefined, insertAtStart)
-          }
-          className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
-            !canAddMoreItems
-              ? "bg-gray-100 border-gray-300 cursor-not-allowed"
-              : "bg-indigo-100 hover:bg-indigo-200 border-indigo-300"
-          }`}
-        >
-          {!canAddMoreItems && (
-            <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+            {!canAddMoreItems && (
+              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+            <svg
+              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-cyan-600"}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
-                fillRule="evenodd"
-                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                clipRule="evenodd"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
               />
             </svg>
-          )}
-          <svg
-            className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-indigo-600"}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+            <span
+              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-cyan-700"}`}
+            >
+              Instrument
+            </span>
+          </button>
+        )}
+        {requiredProducts.includes("pumps") && onAddPumpEntry && (
+          <button
+            onClick={
+              !canAddMoreItems
+                ? showRestrictionPopup("itemLimit")
+                : () => onAddPumpEntry(undefined, insertAtStart)
+            }
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-md border transition-colors ${
+              !canAddMoreItems
+                ? "bg-gray-100 border-gray-300 cursor-not-allowed"
+                : "bg-indigo-100 hover:bg-indigo-200 border-indigo-300"
+            }`}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          <span
-            className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-indigo-700"}`}
-          >
-            Pump
-          </span>
-        </button>
-      )}
-    </div>
+            {!canAddMoreItems && (
+              <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            )}
+            <svg
+              className={`w-4 h-4 ${!canAddMoreItems ? "text-gray-400" : "text-indigo-600"}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            <span
+              className={`text-xs font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-indigo-700"}`}
+            >
+              Pump
+            </span>
+          </button>
+        )}
+      </div>
     );
   };
 

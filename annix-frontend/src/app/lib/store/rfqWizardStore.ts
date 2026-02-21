@@ -159,9 +159,21 @@ interface RfqWizardActions {
   ) => void;
   updateGlobalSpecs: (specs: GlobalSpecs) => void;
 
-  addStraightPipeEntry: (description?: string, insertAtStart?: boolean, materialType?: PipeMaterialType) => string;
-  addBendEntry: (description?: string, insertAtStart?: boolean, materialType?: PipeMaterialType) => string;
-  addFittingEntry: (description?: string, insertAtStart?: boolean, materialType?: PipeMaterialType) => string;
+  addStraightPipeEntry: (
+    description?: string,
+    insertAtStart?: boolean,
+    materialType?: PipeMaterialType,
+  ) => string;
+  addBendEntry: (
+    description?: string,
+    insertAtStart?: boolean,
+    materialType?: PipeMaterialType,
+  ) => string;
+  addFittingEntry: (
+    description?: string,
+    insertAtStart?: boolean,
+    materialType?: PipeMaterialType,
+  ) => string;
   addPipeSteelWorkEntry: (description?: string, insertAtStart?: boolean) => string;
   addExpansionJointEntry: (description?: string, insertAtStart?: boolean) => string;
   addValveEntry: (description?: string, insertAtStart?: boolean) => string;

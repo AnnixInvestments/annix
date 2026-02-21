@@ -111,10 +111,7 @@ function isCompatibleSequence(primer: PaintProduct, next: PaintProduct): boolean
   return primer.compatibleSubsequentCoats.includes(next.genericType);
 }
 
-function filterByTemperature(
-  products: PaintProduct[],
-  tempC: number | undefined,
-): PaintProduct[] {
+function filterByTemperature(products: PaintProduct[], tempC: number | undefined): PaintProduct[] {
   if (tempC === undefined || tempC === null) return products;
   return products.filter((p) => p.heatResistance.continuousC >= tempC);
 }
@@ -148,8 +145,7 @@ function findIntermediates(
   const suitableProducts = productsForCorrosivity(category);
   const intermediates = suitableProducts.filter(
     (p) =>
-      p.productRole === "intermediate" ||
-      (p.productRole === "multi-purpose" && p.id !== primer.id),
+      p.productRole === "intermediate" || (p.productRole === "multi-purpose" && p.id !== primer.id),
   );
   const compatible = intermediates.filter((p) => isCompatibleSequence(primer, p));
   return filterByTemperature(compatible, tempC);
@@ -207,7 +203,9 @@ export function recommendCoatingSystem(
 ): RecommendedCoatingSystem {
   const { corrosivityCategory, operatingTempC, surfaceTolerant, uvExposure } = requirements;
 
-  const primers = sortByPreference(findPrimers(corrosivityCategory, operatingTempC, surfaceTolerant));
+  const primers = sortByPreference(
+    findPrimers(corrosivityCategory, operatingTempC, surfaceTolerant),
+  );
   const primer = primers[0] || null;
 
   if (!primer) {
@@ -223,7 +221,9 @@ export function recommendCoatingSystem(
     };
   }
 
-  const intermediates = sortByPreference(findIntermediates(corrosivityCategory, primer, operatingTempC));
+  const intermediates = sortByPreference(
+    findIntermediates(corrosivityCategory, primer, operatingTempC),
+  );
   const intermediate = intermediates[0] || null;
 
   const lastCoatBeforeTopcoat = intermediate || primer;
@@ -336,13 +336,15 @@ const SURFACE_PREP_STANDARDS: Record<string, SurfacePrepStandard> = {
     iso8501: "Sa 3",
     sspcSp: "SP 5",
     nace: "NACE No. 1",
-    description: "White metal blast cleaning - complete removal of all rust, mill scale, and coatings",
+    description:
+      "White metal blast cleaning - complete removal of all rust, mill scale, and coatings",
   },
   "Sa 2.5": {
     iso8501: "Sa 2½",
     sspcSp: "SP 10",
     nace: "NACE No. 2",
-    description: "Near-white metal blast cleaning - at least 95% of surface free of visible residue",
+    description:
+      "Near-white metal blast cleaning - at least 95% of surface free of visible residue",
   },
   "Sa 2": {
     iso8501: "Sa 2",
@@ -506,7 +508,8 @@ export function calculateISO12944Durability(
   };
 
   const immersionBonus = immersionType && immersionType !== "none" ? 100 : 0;
-  const minimumDft = minimumDftByCategory[corrosivityCategory][expectedServiceLife] + immersionBonus;
+  const minimumDft =
+    minimumDftByCategory[corrosivityCategory][expectedServiceLife] + immersionBonus;
 
   const coatsForDft = (dft: number): number => {
     if (dft <= 160) return 2;
@@ -563,9 +566,9 @@ export function calculateCureSchedule(input: CureScheduleInput): CureScheduleRes
     const referenceTempC = 23;
     const diff = referenceTempC - targetTemp;
     if (diff > 0) {
-      return Math.pow(2, diff / 10);
+      return 2 ** (diff / 10);
     }
-    return Math.pow(0.7, Math.abs(diff) / 10);
+    return 0.7 ** (Math.abs(diff) / 10);
   };
 
   const humidityFactor = (rh: number): number => {
@@ -587,10 +590,14 @@ export function calculateCureSchedule(input: CureScheduleInput): CureScheduleRes
   const combinedFactor = tFactor * hFactor * aFactor;
 
   if (ambientTempC < product.applicationTemp.minAirC) {
-    warnings.push(`Temperature ${ambientTempC}°C is below minimum application temperature ${product.applicationTemp.minAirC}°C`);
+    warnings.push(
+      `Temperature ${ambientTempC}°C is below minimum application temperature ${product.applicationTemp.minAirC}°C`,
+    );
   }
   if (ambientTempC > product.applicationTemp.maxAirC) {
-    warnings.push(`Temperature ${ambientTempC}°C exceeds maximum application temperature ${product.applicationTemp.maxAirC}°C`);
+    warnings.push(
+      `Temperature ${ambientTempC}°C exceeds maximum application temperature ${product.applicationTemp.maxAirC}°C`,
+    );
   }
   if (relativeHumidityPercent > 85) {
     warnings.push("High humidity (>85%) may cause surface defects and extended cure times");
@@ -615,7 +622,7 @@ export function calculateCoverage(input: CoverageCalculation): CoverageResult {
   const { product, surfaceAreaM2, targetDftUm, lossFactor } = input;
   const notes: string[] = [];
 
-  const theoreticalCoverage = (product.volumeSolidsPercent / 100) * 1000 / targetDftUm;
+  const theoreticalCoverage = ((product.volumeSolidsPercent / 100) * 1000) / targetDftUm;
 
   const practicalCoverage = theoreticalCoverage * (1 - lossFactor);
 
@@ -628,7 +635,7 @@ export function calculateCoverage(input: CoverageCalculation): CoverageResult {
 
   notes.push(`Based on ${product.volumeSolidsPercent}% volume solids`);
   notes.push(`Loss factor ${(lossFactor * 100).toFixed(0)}% applied for application method`);
-  notes.push(`Additional 10% waste allowance included`);
+  notes.push("Additional 10% waste allowance included");
 
   if (targetDftUm > product.dft.maxUm) {
     notes.push(`Target DFT exceeds single coat maximum - ${coatsNeeded} coats required`);
@@ -648,14 +655,16 @@ export function calculateCoverage(input: CoverageCalculation): CoverageResult {
   };
 }
 
-export function validateMultiCoatCompatibility(
-  coats: PaintProduct[],
-): CompatibilityValidation {
+export function validateMultiCoatCompatibility(coats: PaintProduct[]): CompatibilityValidation {
   const issues: string[] = [];
   const warnings: string[] = [];
 
   if (coats.length < 2) {
-    return { isCompatible: true, issues: [], warnings: ["Single coat system - no compatibility check needed"] };
+    return {
+      isCompatible: true,
+      issues: [],
+      warnings: ["Single coat system - no compatibility check needed"],
+    };
   }
 
   for (let i = 0; i < coats.length - 1; i++) {
@@ -664,14 +673,12 @@ export function validateMultiCoatCompatibility(
 
     if (!currentCoat.compatibleSubsequentCoats.includes(nextCoat.genericType)) {
       issues.push(
-        `${currentCoat.name} (${currentCoat.genericType}) is not compatible with ${nextCoat.name} (${nextCoat.genericType})`
+        `${currentCoat.name} (${currentCoat.genericType}) is not compatible with ${nextCoat.name} (${nextCoat.genericType})`,
       );
     }
 
     if (!nextCoat.compatiblePreviousCoats.includes(currentCoat.genericType)) {
-      issues.push(
-        `${nextCoat.name} cannot be applied over ${currentCoat.genericType}`
-      );
+      issues.push(`${nextCoat.name} cannot be applied over ${currentCoat.genericType}`);
     }
   }
 
@@ -680,7 +687,7 @@ export function validateMultiCoatCompatibility(
   const maxTemp = Math.max(...tempRatings);
   if (maxTemp - minTemp > 50) {
     warnings.push(
-      `Temperature ratings vary significantly (${minTemp}°C to ${maxTemp}°C) - system limited to ${minTemp}°C`
+      `Temperature ratings vary significantly (${minTemp}°C to ${maxTemp}°C) - system limited to ${minTemp}°C`,
     );
   }
 
@@ -705,7 +712,7 @@ export function validateMultiCoatCompatibility(
 export function checkOvercoatWindow(input: OvercoatWindow): OvercoatWindowResult {
   const { product, previousCoatAgeHours, ambientTempC } = input;
 
-  const tempFactor = Math.pow(2, (23 - ambientTempC) / 10);
+  const tempFactor = 2 ** ((23 - ambientTempC) / 10);
   const adjustedMinHours = product.curingAt23C.overcoatMinHours * tempFactor;
 
   const isEpoxy = product.genericType.includes("epoxy");

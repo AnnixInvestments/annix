@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useVoiceFilterAuth } from "@/app/context/VoiceFilterAuthContext";
-import { voiceFilterApi, VoiceFilterCalendarProvider } from "@/app/lib/api/voiceFilterApi";
+import { VoiceFilterCalendarProvider, voiceFilterApi } from "@/app/lib/api/voiceFilterApi";
 import { formatRelative } from "@/app/lib/datetime";
 
 const BackIcon = () => (
