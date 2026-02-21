@@ -236,8 +236,18 @@ function sendJson(res: ServerResponse, status: number, data: unknown): void {
 function setTokenCookie(res: ServerResponse, token: string): void {
   res.setHeader(
     "Set-Cookie",
-    `vf_token=${token}; HttpOnly; Path=/; SameSite=Strict; Max-Age=604800`,
+    `vf_token=${token}; HttpOnly; Path=/; SameSite=None; Secure; Max-Age=604800`,
   );
+}
+
+function setCorsHeaders(res: ServerResponse, req: IncomingMessage): void {
+  const origin = req.headers.origin;
+  if (origin === "http://localhost:3000" || origin === "http://localhost:47823") {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
 }
 
 function clearTokenCookie(res: ServerResponse): void {
@@ -1090,6 +1100,14 @@ export async function startGuiServer(openBrowser: boolean = true): Promise<void>
 
   const server = createServer((req, res) => {
     const url = req.url ?? "/";
+
+    setCorsHeaders(res, req);
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
 
     if (url === "/login") {
       serveLoginHtml(req, res);

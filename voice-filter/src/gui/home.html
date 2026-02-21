@@ -552,8 +552,19 @@
             var now = new Date();
             var isToday = start.toDateString() === now.toDateString();
             var isTomorrow = start.toDateString() === new Date(now.getTime() + 86400000).toDateString();
+            var daysUntil = Math.floor((start.getTime() - now.getTime()) / 86400000);
+            var isThisWeek = daysUntil >= 0 && daysUntil < 7;
 
-            var dayStr = isToday ? 'Today' : (isTomorrow ? 'Tomorrow' : start.toLocaleDateString('en-US', { weekday: 'short' }));
+            var dayStr;
+            if (isToday) {
+              dayStr = 'TODAY';
+            } else if (isTomorrow) {
+              dayStr = 'TOMORROW';
+            } else if (isThisWeek) {
+              dayStr = start.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+            } else {
+              dayStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+            }
             var timeStr = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
             html += '<div class="upcoming-event" onclick="goToMeeting(\'' + (event.meetingUrl || '') + '\')">';
