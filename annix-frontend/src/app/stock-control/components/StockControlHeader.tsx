@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { useStockControlBranding } from "../context/StockControlBrandingContext";
 
 interface StockControlHeaderProps {
