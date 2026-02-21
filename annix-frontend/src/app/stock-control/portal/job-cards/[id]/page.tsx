@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type { JobCard, JobCardLineItem, StockAllocation, StockItem } from "@/app/lib/api/stockControlApi";
+import type { JobCard, StockAllocation, StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
@@ -314,23 +314,63 @@ export default function JobCardDetailPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Code</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item No</th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">JT No</th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  #
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Item Code
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Description
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Item No
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Quantity
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  JT No
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {jobCard.lineItems.map((li, idx) => (
                 <tr key={li.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{li.itemCode || "-"}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">{li.itemDescription || "-"}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{li.itemNo || "-"}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">{li.quantity ?? "-"}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{li.jtNo || "-"}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                    {li.itemCode || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                    {li.itemDescription || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {li.itemNo || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                    {li.quantity ?? "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {li.jtNo || "-"}
+                  </td>
                 </tr>
               ))}
             </tbody>

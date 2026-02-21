@@ -30,8 +30,12 @@ export class AddExtendedJobCardFields1793700000000 implements MigrationInterface
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX "idx_job_card_line_items_job_card_id" ON "job_card_line_items" ("job_card_id")`);
-    await queryRunner.query(`CREATE INDEX "idx_job_card_line_items_company_id" ON "job_card_line_items" ("company_id")`);
+    await queryRunner.query(
+      `CREATE INDEX "idx_job_card_line_items_job_card_id" ON "job_card_line_items" ("job_card_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "idx_job_card_line_items_company_id" ON "job_card_line_items" ("company_id")`,
+    );
 
     await queryRunner.query(`
       ALTER TABLE "job_card_import_mappings"
@@ -62,10 +66,16 @@ export class AddExtendedJobCardFields1793700000000 implements MigrationInterface
       )
     `);
 
-    await queryRunner.query(`ALTER TABLE "job_card_import_mappings" DROP COLUMN "job_number_column"`);
+    await queryRunner.query(
+      `ALTER TABLE "job_card_import_mappings" DROP COLUMN "job_number_column"`,
+    );
     await queryRunner.query(`ALTER TABLE "job_card_import_mappings" DROP COLUMN "job_name_column"`);
-    await queryRunner.query(`ALTER TABLE "job_card_import_mappings" DROP COLUMN "customer_name_column"`);
-    await queryRunner.query(`ALTER TABLE "job_card_import_mappings" DROP COLUMN "description_column"`);
+    await queryRunner.query(
+      `ALTER TABLE "job_card_import_mappings" DROP COLUMN "customer_name_column"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "job_card_import_mappings" DROP COLUMN "description_column"`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
