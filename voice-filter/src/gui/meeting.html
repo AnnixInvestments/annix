@@ -372,6 +372,9 @@
     var timerInterval = null;
     var currentUser = null;
 
+    var calendarEvent = null;
+    var pendingCalendarAttendees = [];
+
     fetch("/api/user")
       .then(function(res) { return res.json(); })
       .then(function(data) {
@@ -382,6 +385,47 @@
       .catch(function(err) {
         console.error("Failed to fetch user info:", err);
       });
+
+    function loadCalendarEventFromUrl() {
+      var params = new URLSearchParams(window.location.search);
+      var eventId = params.get("calendarEventId");
+      if (!eventId) return;
+
+      fetch("/api/calendar/events/" + eventId)
+        .then(function(res) {
+          if (!res.ok) throw new Error("Event not found");
+          return res.json();
+        })
+        .then(function(event) {
+          calendarEvent = event;
+          meetingTitleInput.value = event.title || "";
+          if (event.attendees && event.attendees.length > 0) {
+            pendingCalendarAttendees = event.attendees
+              .filter(function(a) { return !a.self && !a.organizer; })
+              .map(function(a) {
+                return { name: a.name || a.email.split("@")[0], title: "" };
+              });
+          }
+          var info = document.createElement("div");
+          info.className = "calendar-event-info";
+          info.innerHTML = '<div style="background:#1c1f23;border:1px solid #2f3336;border-radius:8px;padding:12px;margin-bottom:16px;">' +
+            '<div style="font-size:12px;color:#00ba7c;margin-bottom:4px;">📅 From Calendar</div>' +
+            '<div style="font-size:13px;color:#71767b;">' +
+            new Date(event.startTime).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) +
+            '</div>' +
+            (event.attendees && event.attendees.length > 0 ? '<div style="font-size:12px;color:#71767b;margin-top:4px;">👥 ' + event.attendees.length + ' attendees will be auto-added</div>' : '') +
+            '</div>';
+          var setupContent = document.querySelector("#view-setup .card-content");
+          if (setupContent && !document.querySelector(".calendar-event-info")) {
+            setupContent.insertBefore(info, setupContent.firstChild);
+          }
+        })
+        .catch(function(err) {
+          console.error("Failed to load calendar event:", err);
+        });
+    }
+
+    loadCalendarEventFromUrl();
 
     function send(type, data) {
       if (ws.readyState === WebSocket.OPEN) {
@@ -650,6 +694,14 @@
         if (currentUser && currentUser.email) {
           var hostName = currentUser.name || currentUser.email.split("@")[0];
           send("meeting-add-attendee", { name: hostName, title: "Host", isHost: true });
+        }
+        if (pendingCalendarAttendees.length > 0) {
+          pendingCalendarAttendees.forEach(function(attendee, index) {
+            setTimeout(function() {
+              send("meeting-add-attendee", { name: attendee.name, title: attendee.title });
+            }, (index + 1) * 100);
+          });
+          pendingCalendarAttendees = [];
         }
       } else if (type === "meeting-attendee-added") {
         attendees.push(data.attendee);

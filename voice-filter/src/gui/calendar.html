@@ -148,12 +148,36 @@
       border-radius: 4px;
       color: #e7e9ea;
     }
+    .event-attendees {
+      font-size: 12px;
+      color: #71767b;
+      margin-top: 8px;
+    }
+    .event-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
     .event-meeting-link {
       color: #1d9bf0;
       text-decoration: none;
       font-size: 13px;
     }
     .event-meeting-link:hover { text-decoration: underline; }
+    .event-voice-meeting {
+      color: #00ba7c;
+      text-decoration: none;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: rgba(0, 186, 124, 0.1);
+      border-radius: 16px;
+      transition: background 0.2s;
+    }
+    .event-voice-meeting:hover { background: rgba(0, 186, 124, 0.2); }
     .empty-state {
       text-align: center;
       padding: 48px 24px;
@@ -443,9 +467,15 @@
               html += '<span class="event-meta-item">📍 ' + escapeHtml(event.location) + '</span>';
             }
             html += '</div>';
+            if (event.attendees && event.attendees.length > 0) {
+              html += '<div class="event-attendees">👥 ' + event.attendees.length + ' attendee' + (event.attendees.length > 1 ? 's' : '') + '</div>';
+            }
+            html += '<div class="event-actions">';
             if (event.meetingUrl) {
               html += '<a href="' + event.meetingUrl + '" target="_blank" class="event-meeting-link">Join Meeting →</a>';
             }
+            html += '<a href="/meeting.html?calendarEventId=' + event.id + '" class="event-voice-meeting">🎙️ Start Voice Meeting</a>';
+            html += '</div>';
             html += '</div>';
             html += '</div>';
           });

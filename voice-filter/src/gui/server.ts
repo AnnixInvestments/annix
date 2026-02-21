@@ -495,6 +495,7 @@ function handleApiCalendarUpcoming(req: IncomingMessage, res: ServerResponse): v
       endTime: e.end_time,
       meetingUrl: e.meeting_url,
       location: e.location,
+      attendees: e.attendees ? JSON.parse(e.attendees) : [],
     }));
 
     sendJson(res, 200, { events: mapped });
