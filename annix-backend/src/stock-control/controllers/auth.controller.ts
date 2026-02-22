@@ -15,6 +15,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import { ProcessBrandingSelectionDto } from "../dto/process-branding-selection.dto";
 import { SetBrandingDto } from "../dto/set-branding.dto";
+import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
@@ -143,6 +144,22 @@ export class StockControlAuthController {
       body.logoUrl,
       body.heroImageUrl,
     );
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Patch("company-details")
+  @ApiOperation({ summary: "Update company details" })
+  async updateCompanyDetails(@Req() req: any, @Body() body: UpdateCompanyDetailsDto) {
+    return this.authService.updateCompanyDetails(req.user.companyId, body);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Patch("company-name")
+  @ApiOperation({ summary: "Update company name (legacy)" })
+  async updateCompanyName(@Req() req: any, @Body() body: { name: string }) {
+    return this.authService.updateCompanyDetails(req.user.companyId, { name: body.name });
   }
 
   @UseGuards(StockControlAuthGuard)

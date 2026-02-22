@@ -119,9 +119,18 @@ export default function StockControlSettingsPage() {
   const { user, profile, refreshProfile } = useStockControlAuth();
 
   const [companyName, setCompanyName] = useState("");
-  const [companyNameSaving, setCompanyNameSaving] = useState(false);
-  const [companyNameSuccess, setCompanyNameSuccess] = useState(false);
-  const [companyNameError, setCompanyNameError] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [vatNumber, setVatNumber] = useState("");
+  const [streetAddress, setStreetAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [province, setProvince] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [phone, setPhone] = useState("");
+  const [companyEmail, setCompanyEmail] = useState("");
+  const [companyWebsite, setCompanyWebsite] = useState("");
+  const [detailsSaving, setDetailsSaving] = useState(false);
+  const [detailsSuccess, setDetailsSuccess] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
 
   const [brandingSelection, setBrandingSelection] = useState<BrandingSelection>("annix");
   const [websiteUrl, setWebsiteUrl] = useState("");
@@ -177,6 +186,33 @@ export default function StockControlSettingsPage() {
     if (profile?.companyName) {
       setCompanyName(profile.companyName);
     }
+    if (profile?.registrationNumber) {
+      setRegistrationNumber(profile.registrationNumber);
+    }
+    if (profile?.vatNumber) {
+      setVatNumber(profile.vatNumber);
+    }
+    if (profile?.streetAddress) {
+      setStreetAddress(profile.streetAddress);
+    }
+    if (profile?.city) {
+      setCity(profile.city);
+    }
+    if (profile?.province) {
+      setProvince(profile.province);
+    }
+    if (profile?.postalCode) {
+      setPostalCode(profile.postalCode);
+    }
+    if (profile?.phone) {
+      setPhone(profile.phone);
+    }
+    if (profile?.companyEmail) {
+      setCompanyEmail(profile.companyEmail);
+    }
+    if (profile?.websiteUrl) {
+      setCompanyWebsite(profile.websiteUrl);
+    }
 
     if (profile?.brandingType) {
       setBrandingSelection(profile.brandingType as BrandingSelection);
@@ -209,24 +245,35 @@ export default function StockControlSettingsPage() {
     }
   };
 
-  const handleSaveCompanyName = async () => {
+  const handleSaveCompanyDetails = async () => {
     if (!companyName.trim()) {
-      setCompanyNameError("Please enter a company name.");
+      setDetailsError("Company name is required.");
       return;
     }
 
-    setCompanyNameError("");
-    setCompanyNameSaving(true);
-    setCompanyNameSuccess(false);
+    setDetailsError("");
+    setDetailsSaving(true);
+    setDetailsSuccess(false);
 
     try {
-      await stockControlApiClient.updateCompanyName(companyName.trim());
-      setCompanyNameSuccess(true);
+      await stockControlApiClient.updateCompanyDetails({
+        name: companyName.trim(),
+        registrationNumber: registrationNumber.trim() || undefined,
+        vatNumber: vatNumber.trim() || undefined,
+        streetAddress: streetAddress.trim() || undefined,
+        city: city.trim() || undefined,
+        province: province || undefined,
+        postalCode: postalCode.trim() || undefined,
+        phone: phone.trim() || undefined,
+        email: companyEmail.trim() || undefined,
+        websiteUrl: companyWebsite.trim() || undefined,
+      });
+      setDetailsSuccess(true);
       await refreshProfile();
     } catch (e) {
-      setCompanyNameError(e instanceof Error ? e.message : "Failed to update company name.");
+      setDetailsError(e instanceof Error ? e.message : "Failed to update company details.");
     } finally {
-      setCompanyNameSaving(false);
+      setDetailsSaving(false);
     }
   };
 
@@ -451,32 +498,191 @@ export default function StockControlSettingsPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Account Settings</h1>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Company Name</h2>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
-            value={companyName}
-            onChange={(e) => {
-              setCompanyName(e.target.value);
-              setCompanyNameError("");
-              setCompanyNameSuccess(false);
-            }}
-            placeholder="Enter company name"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
-          />
-          <button
-            type="button"
-            onClick={handleSaveCompanyName}
-            disabled={companyNameSaving}
-            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {companyNameSaving ? "Saving..." : "Save"}
-          </button>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Company Details</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
+              Company Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="companyName"
+              type="text"
+              value={companyName}
+              onChange={(e) => {
+                setCompanyName(e.target.value);
+                setDetailsError("");
+                setDetailsSuccess(false);
+              }}
+              placeholder="Enter company name"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="registrationNumber" className="block text-sm font-medium text-gray-700">
+              Registration Number
+            </label>
+            <input
+              id="registrationNumber"
+              type="text"
+              value={registrationNumber}
+              onChange={(e) => {
+                setRegistrationNumber(e.target.value);
+                setDetailsSuccess(false);
+              }}
+              placeholder="e.g. 2020/123456/07"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="vatNumber" className="block text-sm font-medium text-gray-700">
+              VAT Number
+            </label>
+            <input
+              id="vatNumber"
+              type="text"
+              value={vatNumber}
+              onChange={(e) => {
+                setVatNumber(e.target.value);
+                setDetailsSuccess(false);
+              }}
+              placeholder="e.g. 4123456789"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="streetAddress" className="block text-sm font-medium text-gray-700">
+              Street Address
+            </label>
+            <input
+              id="streetAddress"
+              type="text"
+              value={streetAddress}
+              onChange={(e) => {
+                setStreetAddress(e.target.value);
+                setDetailsSuccess(false);
+              }}
+              placeholder="Enter street address"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+              City
+            </label>
+            <input
+              id="city"
+              type="text"
+              value={city}
+              onChange={(e) => {
+                setCity(e.target.value);
+                setDetailsSuccess(false);
+              }}
+              placeholder="Enter city"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="province" className="block text-sm font-medium text-gray-700">
+              Province
+            </label>
+            <select
+              id="province"
+              value={province}
+              onChange={(e) => {
+                setProvince(e.target.value);
+                setDetailsSuccess(false);
+              }}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            >
+              <option value="">Select province</option>
+              <option value="Eastern Cape">Eastern Cape</option>
+              <option value="Free State">Free State</option>
+              <option value="Gauteng">Gauteng</option>
+              <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+              <option value="Limpopo">Limpopo</option>
+              <option value="Mpumalanga">Mpumalanga</option>
+              <option value="North West">North West</option>
+              <option value="Northern Cape">Northern Cape</option>
+              <option value="Western Cape">Western Cape</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700">
+              Postal Code
+            </label>
+            <input
+              id="postalCode"
+              type="text"
+              value={postalCode}
+              onChange={(e) => {
+                setPostalCode(e.target.value);
+                setDetailsSuccess(false);
+              }}
+              placeholder="e.g. 2000"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="companyPhone" className="block text-sm font-medium text-gray-700">
+              Phone
+            </label>
+            <input
+              id="companyPhone"
+              type="tel"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                setDetailsSuccess(false);
+              }}
+              placeholder="e.g. 011 123 4567"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="companyEmail" className="block text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <input
+              id="companyEmail"
+              type="email"
+              value={companyEmail}
+              onChange={(e) => {
+                setCompanyEmail(e.target.value);
+                setDetailsSuccess(false);
+              }}
+              placeholder="info@company.co.za"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="companyWebsite" className="block text-sm font-medium text-gray-700">
+              Website
+            </label>
+            <input
+              id="companyWebsite"
+              type="url"
+              value={companyWebsite}
+              onChange={(e) => {
+                setCompanyWebsite(e.target.value);
+                setDetailsSuccess(false);
+              }}
+              placeholder="https://company.co.za"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 text-sm"
+            />
+          </div>
         </div>
-        {companyNameError && <p className="mt-3 text-sm text-red-600">{companyNameError}</p>}
-        {companyNameSuccess && (
-          <p className="mt-3 text-sm text-green-600">Company name updated successfully.</p>
+        {detailsError && <p className="mt-4 text-sm text-red-600">{detailsError}</p>}
+        {detailsSuccess && (
+          <p className="mt-4 text-sm text-green-600">Company details updated successfully.</p>
         )}
+        <button
+          type="button"
+          onClick={handleSaveCompanyDetails}
+          disabled={detailsSaving}
+          className="mt-4 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {detailsSaving ? "Saving..." : "Save Company Details"}
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">

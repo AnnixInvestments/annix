@@ -30,7 +30,29 @@ export interface StockControlUserProfile {
   accentColor: string | null;
   logoUrl: string | null;
   heroImageUrl: string | null;
+  registrationNumber: string | null;
+  vatNumber: string | null;
+  streetAddress: string | null;
+  city: string | null;
+  province: string | null;
+  postalCode: string | null;
+  phone: string | null;
+  companyEmail: string | null;
+  websiteUrl: string | null;
   createdAt: string;
+}
+
+export interface CompanyDetailsUpdate {
+  name?: string;
+  registrationNumber?: string;
+  vatNumber?: string;
+  streetAddress?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  phone?: string;
+  email?: string;
+  websiteUrl?: string;
 }
 
 export interface StockControlCompany {
@@ -520,11 +542,15 @@ class StockControlApiClient {
     return response;
   }
 
-  async updateCompanyName(name: string): Promise<{ message: string }> {
-    return this.request("/stock-control/auth/company-name", {
+  async updateCompanyDetails(details: CompanyDetailsUpdate): Promise<{ message: string }> {
+    return this.request("/stock-control/auth/company-details", {
       method: "PATCH",
-      body: JSON.stringify({ name }),
+      body: JSON.stringify(details),
     });
+  }
+
+  async updateCompanyName(name: string): Promise<{ message: string }> {
+    return this.updateCompanyDetails({ name });
   }
 
   async scrapeBranding(websiteUrl: string): Promise<ScrapedBrandingCandidates> {

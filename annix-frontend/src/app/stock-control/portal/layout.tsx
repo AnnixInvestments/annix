@@ -5,7 +5,33 @@ import React, { useEffect } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { StockControlHeader } from "../components/StockControlHeader";
 import { StockControlSidebar } from "../components/StockControlSidebar";
-import { StockControlBrandingProvider } from "../context/StockControlBrandingContext";
+import {
+  StockControlBrandingProvider,
+  useStockControlBranding,
+} from "../context/StockControlBrandingContext";
+
+function MainContent({ children }: { children: React.ReactNode }) {
+  const { heroImageUrl } = useStockControlBranding();
+
+  return (
+    <main
+      className="flex-1 overflow-y-auto p-6 relative"
+      style={
+        heroImageUrl
+          ? {
+              backgroundImage: `url(${heroImageUrl})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundAttachment: "fixed",
+            }
+          : undefined
+      }
+    >
+      {heroImageUrl ? <div className="absolute inset-0 bg-black/30 pointer-events-none" /> : null}
+      <div className="relative max-w-7xl mx-auto">{children}</div>
+    </main>
+  );
+}
 
 function PortalContent({ children }: { children: React.ReactNode }) {
   return (
@@ -14,9 +40,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
         <StockControlSidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <StockControlHeader />
-          <main className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-7xl mx-auto">{children}</div>
-          </main>
+          <MainContent>{children}</MainContent>
         </div>
       </div>
     </StockControlBrandingProvider>

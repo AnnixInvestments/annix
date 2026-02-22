@@ -13,6 +13,7 @@ import { MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
+import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
 import {
   StockControlInvitation,
   StockControlInvitationStatus,
@@ -271,6 +272,15 @@ export class StockControlAuthService {
       accentColor: user.company?.accentColor ?? null,
       logoUrl: user.company?.logoUrl ?? null,
       heroImageUrl: user.company?.heroImageUrl ?? null,
+      registrationNumber: user.company?.registrationNumber ?? null,
+      vatNumber: user.company?.vatNumber ?? null,
+      streetAddress: user.company?.streetAddress ?? null,
+      city: user.company?.city ?? null,
+      province: user.company?.province ?? null,
+      postalCode: user.company?.postalCode ?? null,
+      phone: user.company?.phone ?? null,
+      companyEmail: user.company?.email ?? null,
+      websiteUrl: user.company?.websiteUrl ?? null,
       createdAt: user.createdAt,
     };
   }
@@ -334,16 +344,26 @@ export class StockControlAuthService {
     return { message: "Branding preference saved successfully." };
   }
 
-  async updateCompanyName(companyId: number, name: string) {
+  async updateCompanyDetails(companyId: number, dto: UpdateCompanyDetailsDto) {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
     if (!company) {
       throw new NotFoundException("Company not found");
     }
 
-    company.name = name;
+    if (dto.name !== undefined) company.name = dto.name;
+    if (dto.registrationNumber !== undefined) company.registrationNumber = dto.registrationNumber;
+    if (dto.vatNumber !== undefined) company.vatNumber = dto.vatNumber;
+    if (dto.streetAddress !== undefined) company.streetAddress = dto.streetAddress;
+    if (dto.city !== undefined) company.city = dto.city;
+    if (dto.province !== undefined) company.province = dto.province;
+    if (dto.postalCode !== undefined) company.postalCode = dto.postalCode;
+    if (dto.phone !== undefined) company.phone = dto.phone;
+    if (dto.email !== undefined) company.email = dto.email;
+    if (dto.websiteUrl !== undefined) company.websiteUrl = dto.websiteUrl;
+
     await this.companyRepo.save(company);
 
-    return { message: "Company name updated successfully." };
+    return { message: "Company details updated successfully." };
   }
 
   async teamMembers(companyId: number) {
