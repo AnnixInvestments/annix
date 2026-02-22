@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import { Attachment, Message } from "@/app/lib/api/messagingApi";
 import { fromISO } from "@/app/lib/datetime";
 import { MessageBubble } from "./MessageBubble";
@@ -14,7 +14,7 @@ interface ConversationThreadProps {
   onDownloadAttachment?: (attachment: Attachment) => void;
 }
 
-export function ConversationThread({
+function ConversationThreadComponent({
   messages,
   currentUserId,
   onLoadMore,
@@ -57,7 +57,7 @@ export function ConversationThread({
     );
   }
 
-  const groupedMessages = groupMessagesByDate(messages);
+  const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
 
   return (
     <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4">
@@ -128,3 +128,5 @@ function groupMessagesByDate(messages: Message[]): { date: string; messages: Mes
     messages: msgs,
   }));
 }
+
+export const ConversationThread = memo(ConversationThreadComponent);
