@@ -14,6 +14,7 @@ export interface LineItemImportRow {
   itemNo?: string;
   quantity?: string;
   jtNo?: string;
+  m2?: number;
 }
 
 export interface JobCardImportRow {
@@ -36,6 +37,7 @@ export interface JobCardImportResult {
   created: number;
   skipped: number;
   errors: { row: number; message: string }[];
+  createdJobCardIds: number[];
 }
 
 @Injectable()
@@ -105,6 +107,7 @@ export class JobCardImportService {
       created: 0,
       skipped: 0,
       errors: [],
+      createdJobCardIds: [],
     };
 
     for (let i = 0; i < rows.length; i++) {
@@ -154,6 +157,7 @@ export class JobCardImportService {
               itemNo: li.itemNo || null,
               quantity: li.quantity ? parseFloat(li.quantity) : null,
               jtNo: li.jtNo || null,
+              m2: li.m2 ?? null,
               sortOrder: idx,
               companyId,
             }),
@@ -162,6 +166,7 @@ export class JobCardImportService {
         }
 
         result.created++;
+        result.createdJobCardIds.push(saved.id);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         result.errors.push({ row: i + 1, message });

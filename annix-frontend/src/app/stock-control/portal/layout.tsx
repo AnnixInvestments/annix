@@ -15,11 +15,11 @@ function MainContent({ children }: { children: React.ReactNode }) {
 
   return (
     <main
-      className="flex-1 overflow-y-auto p-6 relative"
+      className="flex-1 overflow-y-auto p-6"
       style={
         heroImageUrl
           ? {
-              backgroundImage: `url(${heroImageUrl})`,
+              backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url(${heroImageUrl})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
               backgroundAttachment: "fixed",
@@ -27,8 +27,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
           : undefined
       }
     >
-      {heroImageUrl ? <div className="absolute inset-0 bg-black/30 pointer-events-none" /> : null}
-      <div className="relative max-w-7xl mx-auto">{children}</div>
+      <div className="max-w-7xl mx-auto">{children}</div>
     </main>
   );
 }

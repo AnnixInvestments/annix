@@ -98,6 +98,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
   exports: [
     NixService,
     NixChatService,
+    NixItemParserService,
     NixValidationService,
     AiChatService,
     AiExtractionService,

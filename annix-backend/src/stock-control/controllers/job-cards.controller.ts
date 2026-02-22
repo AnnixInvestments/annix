@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Post,
   Put,
@@ -16,13 +17,21 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { JobCardService } from "../services/job-card.service";
+import { RequisitionService } from "../services/requisition.service";
 
 @ApiTags("Stock Control - Job Cards")
 @Controller("stock-control/job-cards")
 @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
 export class JobCardsController {
-  constructor(private readonly jobCardService: JobCardService) {}
+  private readonly logger = new Logger(JobCardsController.name);
+
+  constructor(
+    private readonly jobCardService: JobCardService,
+    private readonly coatingAnalysisService: CoatingAnalysisService,
+    private readonly requisitionService: RequisitionService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "List job cards with optional status filter" })
@@ -47,7 +56,18 @@ export class JobCardsController {
   @Put(":id")
   @ApiOperation({ summary: "Update a job card" })
   async update(@Req() req: any, @Param("id") id: number, @Body() body: any) {
-    return this.jobCardService.update(req.user.companyId, id, body);
+    const result = await this.jobCardService.update(req.user.companyId, id, body);
+
+    if (body.status === "active") {
+      try {
+        await this.requisitionService.createFromJobCard(req.user.companyId, id, req.user.name);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        this.logger.error(`Failed to create requisition for job card ${id}: ${message}`);
+      }
+    }
+
+    return result;
   }
 
   @StockControlRoles("manager", "admin")
@@ -55,6 +75,18 @@ export class JobCardsController {
   @ApiOperation({ summary: "Delete a job card" })
   async remove(@Req() req: any, @Param("id") id: number) {
     return this.jobCardService.remove(req.user.companyId, id);
+  }
+
+  @Get(":id/coating-analysis")
+  @ApiOperation({ summary: "Coating analysis for a job card" })
+  async coatingAnalysis(@Req() req: any, @Param("id") id: number) {
+    return this.coatingAnalysisService.findByJobCard(req.user.companyId, id);
+  }
+
+  @Post(":id/coating-analysis")
+  @ApiOperation({ summary: "Trigger coating analysis for a job card" })
+  async triggerCoatingAnalysis(@Req() req: any, @Param("id") id: number) {
+    return this.coatingAnalysisService.analyseJobCard(id, req.user.companyId);
   }
 
   @Post(":id/allocate")

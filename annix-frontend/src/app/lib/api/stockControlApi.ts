@@ -145,6 +145,44 @@ export interface StockAllocation {
   jobCard?: JobCard;
 }
 
+export interface CoatDetail {
+  product: string;
+  genericType: string | null;
+  area: "external" | "internal";
+  minDftUm: number;
+  maxDftUm: number;
+  solidsByVolumePercent: number;
+  coverageM2PerLiter: number;
+  litersRequired: number;
+}
+
+export interface StockAssessmentItem {
+  product: string;
+  stockItemId: number | null;
+  stockItemName: string | null;
+  currentStock: number;
+  required: number;
+  unit: string;
+  sufficient: boolean;
+}
+
+export interface CoatingAnalysis {
+  id: number;
+  jobCardId: number;
+  applicationType: string | null;
+  surfacePrep: string | null;
+  extM2: number;
+  intM2: number;
+  coats: CoatDetail[];
+  stockAssessment: StockAssessmentItem[];
+  rawNotes: string | null;
+  status: string;
+  error: string | null;
+  analysedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface DeliveryNote {
   id: number;
   deliveryNumber: string;
@@ -174,6 +212,33 @@ export interface StockMovement {
   createdBy: string | null;
   createdAt: string;
   stockItem?: StockItem;
+}
+
+export interface RequisitionItem {
+  id: number;
+  requisitionId: number;
+  stockItemId: number | null;
+  productName: string;
+  area: string | null;
+  litresRequired: number;
+  packSizeLitres: number;
+  packsToOrder: number;
+  companyId: number;
+  stockItem: StockItem | null;
+}
+
+export interface Requisition {
+  id: number;
+  requisitionNumber: string;
+  jobCardId: number;
+  status: string;
+  notes: string | null;
+  createdBy: string | null;
+  companyId: number;
+  createdAt: string;
+  updatedAt: string;
+  jobCard?: JobCard;
+  items: RequisitionItem[];
 }
 
 export interface DashboardStats {
@@ -277,6 +342,21 @@ export interface LineItemImportRow {
   itemNo?: string;
   quantity?: string;
   jtNo?: string;
+  m2?: number;
+}
+
+export interface M2Result {
+  description: string;
+  totalM2: number | null;
+  externalM2: number | null;
+  internalM2: number | null;
+  parsedDiameterMm: number | null;
+  parsedLengthM: number | null;
+  parsedFlangeConfig: string | null;
+  parsedSchedule: string | null;
+  parsedItemType: string | null;
+  confidence: number;
+  error: string | null;
 }
 
 export interface JobCardImportRow {
@@ -304,6 +384,7 @@ export interface JobCardImportResult {
 export interface JobCardImportUploadResponse {
   grid: string[][];
   savedMapping: JobCardImportMapping | null;
+  documentNumber: string | null;
 }
 
 export interface InvitationValidation {
@@ -754,6 +835,17 @@ class StockControlApiClient {
     return this.request(`/stock-control/job-cards/${jobCardId}/allocations`);
   }
 
+  async jobCardCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis | null> {
+    const result = await this.request<CoatingAnalysis | Record<string, never>>(`/stock-control/job-cards/${jobCardId}/coating-analysis`);
+    return result && "id" in result ? (result as CoatingAnalysis) : null;
+  }
+
+  async triggerCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis`, {
+      method: "POST",
+    });
+  }
+
   async uploadAllocationPhoto(
     jobCardId: number,
     allocationId: number,
@@ -928,6 +1020,13 @@ class StockControlApiClient {
     });
   }
 
+  async calculateM2(descriptions: string[]): Promise<M2Result[]> {
+    return this.request("/stock-control/job-card-import/calculate-m2", {
+      method: "POST",
+      body: JSON.stringify({ descriptions }),
+    });
+  }
+
   async confirmJobCardImport(rows: JobCardImportRow[]): Promise<JobCardImportResult> {
     return this.request("/stock-control/job-card-import/confirm", {
       method: "POST",
@@ -973,6 +1072,25 @@ class StockControlApiClient {
           .join("&")
       : "";
     return this.request(`/stock-control/reports/movement-history${query}`);
+  }
+
+  async requisitions(): Promise<Requisition[]> {
+    return this.request("/stock-control/requisitions");
+  }
+
+  async requisitionById(id: number): Promise<Requisition> {
+    return this.request(`/stock-control/requisitions/${id}`);
+  }
+
+  async updateRequisitionItem(
+    reqId: number,
+    itemId: number,
+    data: { packSizeLitres: number },
+  ): Promise<RequisitionItem> {
+    return this.request(`/stock-control/requisitions/${reqId}/items/${itemId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
   }
 }
 

@@ -1,0 +1,293 @@
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import type { Requisition } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { formatDateZA } from "@/app/lib/datetime";
+
+function statusBadgeColor(status: string): string {
+  const colors: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-800",
+    approved: "bg-blue-100 text-blue-800",
+    ordered: "bg-purple-100 text-purple-800",
+    received: "bg-green-100 text-green-800",
+    cancelled: "bg-red-100 text-red-800",
+  };
+  return colors[status.toLowerCase()] || "bg-gray-100 text-gray-800";
+}
+
+export default function RequisitionDetailPage() {
+  const params = useParams();
+  const reqId = Number(params.id);
+
+  const [requisition, setRequisition] = useState<Requisition | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editPackSize, setEditPackSize] = useState<number>(20);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await stockControlApiClient.requisitionById(reqId);
+      setRequisition(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to load requisition"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [reqId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleEditPackSize = (itemId: number, currentPackSize: number) => {
+    setEditingItemId(itemId);
+    setEditPackSize(Number(currentPackSize));
+  };
+
+  const handleSavePackSize = async (itemId: number) => {
+    if (editPackSize <= 0) return;
+    try {
+      setIsSaving(true);
+      await stockControlApiClient.updateRequisitionItem(reqId, itemId, {
+        packSizeLitres: editPackSize,
+      });
+      setEditingItemId(null);
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to update pack size"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItemId(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading requisition...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !requisition) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
+          <p className="text-gray-600">{error?.message || "Requisition not found"}</p>
+          <Link
+            href="/stock-control/portal/requisitions"
+            className="mt-4 inline-block text-teal-600 hover:text-teal-800"
+          >
+            Back to Requisitions
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Link
+            href="/stock-control/portal/requisitions"
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </Link>
+          <div>
+            <div className="flex items-center space-x-3">
+              <h1 className="text-2xl font-bold text-gray-900">{requisition.requisitionNumber}</h1>
+              <span
+                className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${statusBadgeColor(requisition.status)}`}
+              >
+                {requisition.status}
+              </span>
+            </div>
+            {requisition.jobCard && (
+              <p className="mt-1 text-sm text-gray-500">
+                Job Card:{" "}
+                <Link
+                  href={`/stock-control/portal/job-cards/${requisition.jobCardId}`}
+                  className="text-teal-700 hover:text-teal-900"
+                >
+                  {requisition.jobCard.jobNumber} - {requisition.jobCard.jobName}
+                </Link>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Details</h3>
+        </div>
+        <div className="px-4 py-5 sm:px-6">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-6">
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Created By</dt>
+              <dd className="mt-1 text-sm text-gray-900">{requisition.createdBy || "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Created</dt>
+              <dd className="mt-1 text-sm text-gray-900">{formatDateZA(requisition.createdAt)}</dd>
+            </div>
+            {requisition.notes && (
+              <div className="col-span-2">
+                <dt className="text-sm font-medium text-gray-500">Notes</dt>
+                <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+                  {requisition.notes}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      </div>
+
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Requisition Items</h3>
+          <span className="text-sm text-gray-500">{requisition.items.length} item(s)</span>
+        </div>
+        {requisition.items.length === 0 ? (
+          <div className="text-center py-12">
+            <h3 className="text-sm font-medium text-gray-900">No items</h3>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Product Name
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Area
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Litres Req.
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Pack Size (L)
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Packs to Order
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Stock Match
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {requisition.items.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {item.productName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 capitalize">
+                    {item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : item.area || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                    {Number(item.litresRequired).toFixed(1)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                    {editingItemId === item.id ? (
+                      <div className="flex items-center justify-end space-x-2">
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={editPackSize}
+                          onChange={(e) => setEditPackSize(parseFloat(e.target.value) || 1)}
+                          className="w-20 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSavePackSize(item.id);
+                            if (e.key === "Escape") handleCancelEdit();
+                          }}
+                        />
+                        <button
+                          onClick={() => handleSavePackSize(item.id)}
+                          disabled={isSaving}
+                          className="text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleEditPackSize(item.id, item.packSizeLitres)}
+                        className="text-gray-900 hover:text-teal-700 cursor-pointer"
+                        title="Click to edit pack size"
+                      >
+                        {Number(item.packSizeLitres).toFixed(0)}L
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                    {item.packsToOrder}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {item.stockItem ? (
+                      <span className="text-gray-700">{item.stockItem.name}</span>
+                    ) : (
+                      <span className="text-amber-600 italic">Not in inventory</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}

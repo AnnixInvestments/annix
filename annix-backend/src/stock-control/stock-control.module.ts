@@ -3,6 +3,9 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
+import { NixModule } from "../nix/nix.module";
+import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
@@ -13,6 +16,10 @@ import { JobCardImportController } from "./controllers/job-card-import.controlle
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
 import { ReportsController } from "./controllers/reports.controller";
+import { RequisitionsController } from "./controllers/requisitions.controller";
+import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
+import { Requisition } from "./entities/requisition.entity";
+import { RequisitionItem } from "./entities/requisition-item.entity";
 import { DeliveryNote } from "./entities/delivery-note.entity";
 import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
 import { JobCard } from "./entities/job-card.entity";
@@ -28,6 +35,7 @@ import { StockControlAuthGuard } from "./guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "./guards/stock-control-role.guard";
 import { StockControlAuthService } from "./services/auth.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
+import { CoatingAnalysisService } from "./services/coating-analysis.service";
 import { DashboardService } from "./services/dashboard.service";
 import { DeliveryService } from "./services/delivery.service";
 import { ImportService } from "./services/import.service";
@@ -35,8 +43,10 @@ import { InventoryService } from "./services/inventory.service";
 import { StockControlInvitationService } from "./services/invitation.service";
 import { JobCardService } from "./services/job-card.service";
 import { JobCardImportService } from "./services/job-card-import.service";
+import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
 import { ReportsService } from "./services/reports.service";
+import { RequisitionService } from "./services/requisition.service";
 
 @Module({
   imports: [
@@ -52,6 +62,9 @@ import { ReportsService } from "./services/reports.service";
       DeliveryNote,
       DeliveryNoteItem,
       StockMovement,
+      JobCardCoatingAnalysis,
+      Requisition,
+      RequisitionItem,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -66,6 +79,9 @@ import { ReportsService } from "./services/reports.service";
         fileSize: 10 * 1024 * 1024,
       },
     }),
+    NixModule,
+    NbOdLookupModule,
+    PipeScheduleModule,
   ],
   controllers: [
     StockControlAuthController,
@@ -78,6 +94,7 @@ import { ReportsService } from "./services/reports.service";
     DashboardController,
     ReportsController,
     InvitationController,
+    RequisitionsController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -91,8 +108,11 @@ import { ReportsService } from "./services/reports.service";
     MovementService,
     ImportService,
     JobCardImportService,
+    M2CalculationService,
+    CoatingAnalysisService,
     DashboardService,
     ReportsService,
+    RequisitionService,
   ],
 })
 export class StockControlModule {}

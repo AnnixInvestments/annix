@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type {
   ImportMappingConfig,
   JobCardImportMapping,
   JobCardImportResult,
   JobCardImportRow,
+  M2Result,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { consumePendingImportFile } from "./pending-file";
@@ -258,8 +259,10 @@ function extractMappedRows(
   if (hasLineItems) {
     const grouped = new Map<
       string,
-      { meta: Record<string, string>; lines: Record<string, string>[] }
+      { meta: Record<string, string>; notesList: string[]; lines: Record<string, string>[] }
     >();
+
+    let lastJobNumber = "";
 
     Array.from({ length: maxRow - minRow + 1 }, (_, i) => minRow + i).forEach((r) => {
       const gridRow = grid[r] ?? [];
@@ -267,51 +270,72 @@ function extractMappedRows(
         const region = regions[key];
         return region ? (gridRow[region.col] ?? "").trim() : "";
       };
+      const metaCellVal = (key: string): string => {
+        const region = regions[key];
+        if (!region) return "";
+        if (r >= region.startRow && r <= region.endRow) {
+          return (gridRow[region.col] ?? "").trim();
+        }
+        return ((grid[region.startRow] ?? [])[region.col] ?? "").trim();
+      };
 
-      const jobNumber = cellVal("jobNumber");
-      if (!jobNumber) return;
+      const jobNumberRegion = regions["jobNumber"];
+      const inJobNumberRange =
+        jobNumberRegion && r >= jobNumberRegion.startRow && r <= jobNumberRegion.endRow;
+      const jobNumber = inJobNumberRange ? cellVal("jobNumber") : "";
 
-      if (!grouped.has(jobNumber)) {
-        const meta: Record<string, string> = {};
-        ALL_FIELDS.filter((f) => !LINE_ITEM_KEYS.has(f.key)).forEach((f) => {
-          const val = cellVal(f.key);
-          if (val) meta[f.key] = val;
-        });
+      if (jobNumber) {
+        lastJobNumber = jobNumber;
 
-        const cfValues: Record<string, string> = {};
-        customFields.forEach((cf) => {
-          const cfRegion = customRegions[cf.id];
-          if (cfRegion) {
-            const val = (gridRow[cfRegion.col] ?? "").trim();
-            if (val) cfValues[cf.fieldName] = val;
-          }
-        });
+        if (!grouped.has(jobNumber)) {
+          const meta: Record<string, string> = {};
+          ALL_FIELDS.filter((f) => !LINE_ITEM_KEYS.has(f.key)).forEach((f) => {
+            const val = metaCellVal(f.key);
+            if (val) meta[f.key] = val;
+          });
 
-        grouped.set(jobNumber, {
-          meta: { ...meta, customFieldsJson: JSON.stringify(cfValues) },
-          lines: [],
-        });
+          const cfValues: Record<string, string> = {};
+          customFields.forEach((cf) => {
+            const cfRegion = customRegions[cf.id];
+            if (cfRegion) {
+              const val = (gridRow[cfRegion.col] ?? "").trim();
+              if (val) cfValues[cf.fieldName] = val;
+            }
+          });
+
+          grouped.set(jobNumber, {
+            meta: { ...meta, customFieldsJson: JSON.stringify(cfValues) },
+            notesList: meta.notes ? [meta.notes] : [],
+            lines: [],
+          });
+        }
       }
+
+      if (!lastJobNumber || !grouped.has(lastJobNumber)) return;
 
       const lineItem: Record<string, string> = {};
       let hasAnyLineData = false;
       Array.from(LINE_ITEM_KEYS).forEach((key) => {
-        const val = cellVal(key);
-        if (val) {
-          lineItem[key] = val;
-          hasAnyLineData = true;
+        const region = regions[key];
+        if (region && r >= region.startRow && r <= region.endRow) {
+          const val = (gridRow[region.col] ?? "").trim();
+          if (val) {
+            lineItem[key] = val;
+            hasAnyLineData = true;
+          }
         }
       });
 
       if (hasAnyLineData) {
-        grouped.get(jobNumber)!.lines.push(lineItem);
+        grouped.get(lastJobNumber)!.lines.push(lineItem);
       }
     });
 
-    return Array.from(grouped.entries()).map(([, { meta, lines }]) => {
+    return Array.from(grouped.entries()).map(([, { meta, notesList, lines }]) => {
       const cfParsed = meta.customFieldsJson
         ? (JSON.parse(meta.customFieldsJson) as Record<string, string>)
         : undefined;
+      const combinedNotes = notesList.length > 0 ? notesList.join("\n") : undefined;
       return {
         jobNumber: meta.jobNumber,
         jobName: meta.jobName,
@@ -321,7 +345,7 @@ function extractMappedRows(
         siteLocation: meta.siteLocation,
         contactPerson: meta.contactPerson,
         dueDate: meta.dueDate,
-        notes: meta.notes,
+        notes: combinedNotes,
         reference: meta.reference,
         customFields: cfParsed && Object.keys(cfParsed).length > 0 ? cfParsed : undefined,
         lineItems: lines.length > 0 ? lines : undefined,
@@ -505,6 +529,10 @@ export default function JobCardImportPage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [customFieldInput, setCustomFieldInput] = useState("");
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+  const [m2Results, setM2Results] = useState<Record<string, M2Result>>({});
+  const [isCalculatingM2, setIsCalculatingM2] = useState(false);
+  const [manualM2, setManualM2] = useState<Record<string, number>>({});
+  const [documentNumber, setDocumentNumber] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasCheckedPending = useRef(false);
 
@@ -516,6 +544,7 @@ export default function JobCardImportPage() {
       setIsUploading(true);
       const response = await stockControlApiClient.uploadJobCardImportFile(selectedFile);
       setGrid(response.grid);
+      setDocumentNumber(response.documentNumber);
 
       if (response.savedMapping?.mappingConfig && response.grid.length > 1) {
         const {
@@ -529,8 +558,10 @@ export default function JobCardImportPage() {
           setRegions(savedRegions);
           setCustomFields(savedCf);
           setCustomRegions(savedCfRegions);
-          setMappedRows(extractMappedRows(response.grid, savedRegions, savedCf, savedCfRegions));
+          const rows = extractMappedRows(response.grid, savedRegions, savedCf, savedCfRegions);
+          setMappedRows(rows);
           setStep("preview");
+          calculateM2ForRows(rows);
         } else {
           setRegions(savedRegions);
           setCustomFields(savedCf);
@@ -553,6 +584,30 @@ export default function JobCardImportPage() {
     const pending = consumePendingImportFile();
     if (pending) {
       handleFileSelect(pending);
+    }
+  }, []);
+
+  const calculateM2ForRows = useCallback(async (rows: JobCardImportRow[]) => {
+    const descriptions = rows.flatMap(
+      (r) =>
+        r.lineItems
+          ?.map((li) => li.itemDescription)
+          .filter((d): d is string => Boolean(d)) ?? [],
+    );
+    if (descriptions.length === 0) return;
+
+    setIsCalculatingM2(true);
+    try {
+      const results = await stockControlApiClient.calculateM2(descriptions);
+      const resultsMap: Record<string, M2Result> = {};
+      results.forEach((r) => {
+        resultsMap[r.description] = r;
+      });
+      setM2Results(resultsMap);
+    } catch {
+      setM2Results({});
+    } finally {
+      setIsCalculatingM2(false);
     }
   }, []);
 
@@ -675,8 +730,10 @@ export default function JobCardImportPage() {
       setError(null);
       const config = regionsToMappingConfig(regions, customFields, customRegions);
       await stockControlApiClient.saveJobCardImportMapping(config);
-      setMappedRows(extractMappedRows(grid, regions, customFields, customRegions));
+      const rows = extractMappedRows(grid, regions, customFields, customRegions);
+      setMappedRows(rows);
       setStep("preview");
+      calculateM2ForRows(rows);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save mapping");
     } finally {
@@ -688,7 +745,19 @@ export default function JobCardImportPage() {
     try {
       setIsConfirming(true);
       setError(null);
-      const importResult = await stockControlApiClient.confirmJobCardImport(mappedRows);
+      const rowsWithM2 = mappedRows.map((row, rowIdx) => ({
+        ...row,
+        reference: row.reference || documentNumber || null,
+        lineItems: row.lineItems?.map((li, liIdx) => {
+          const manualKey = `${rowIdx}-${liIdx}`;
+          const manualVal = manualM2[manualKey];
+          if (manualVal != null) return { ...li, m2: manualVal };
+          const m2r = li.itemDescription ? m2Results[li.itemDescription] : null;
+          const autoM2 = m2r?.externalM2 ?? m2r?.totalM2;
+          return autoM2 != null ? { ...li, m2: autoM2 } : li;
+        }),
+      }));
+      const importResult = await stockControlApiClient.confirmJobCardImport(rowsWithM2);
       setResult(importResult);
       setStep("result");
     } catch (err) {
@@ -713,6 +782,10 @@ export default function JobCardImportPage() {
     setError(null);
     setCollapsedGroups({});
     setExpandedJobs(new Set());
+    setM2Results({});
+    setIsCalculatingM2(false);
+    setManualM2({});
+    setDocumentNumber(null);
   };
 
   const maxCols = grid.reduce((max, row) => Math.max(max, row.length), 0);
@@ -1279,7 +1352,14 @@ export default function JobCardImportPage() {
           <div className="bg-white shadow rounded-lg overflow-hidden">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
               <div>
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Import Preview</h3>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">
+                  Import Preview
+                  {documentNumber && (
+                    <span className="ml-2 text-sm font-normal text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
+                      Doc: {documentNumber}
+                    </span>
+                  )}
+                </h3>
                 <p className="mt-1 text-sm text-gray-500">
                   {file?.name} - {mappedRows.length} job card{mappedRows.length !== 1 ? "s" : ""}
                   {hasAnyLineItems ? " (with line items)" : ""}
@@ -1377,13 +1457,13 @@ export default function JobCardImportPage() {
                         row.siteLocation ? `Site: ${row.siteLocation}` : null,
                         row.contactPerson ? `Contact: ${row.contactPerson}` : null,
                         row.dueDate ? `Due: ${row.dueDate}` : null,
+                        row.notes && !regions["notes"] ? `Notes: ${row.notes}` : null,
                         row.reference ? `Ref: ${row.reference}` : null,
                       ].filter(Boolean);
 
                       return (
-                        <>
+                        <Fragment key={index}>
                           <tr
-                            key={index}
                             className={missingRequired ? "bg-red-50" : "hover:bg-gray-50"}
                           >
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
@@ -1428,45 +1508,135 @@ export default function JobCardImportPage() {
                               <td className="px-4 py-3 text-sm text-gray-500">-</td>
                             ) : null}
                           </tr>
-                          {isExpanded &&
-                            row.lineItems &&
-                            row.lineItems.map((li, liIdx) => (
-                              <tr key={`${index}-li-${liIdx}`} className="bg-gray-50">
-                                <td className="px-4 py-2 text-xs text-gray-400"></td>
-                                <td colSpan={hasLineItemMapped ? 5 : 4} className="px-4 py-2">
-                                  <div className="flex gap-4 text-xs text-gray-600">
-                                    {li.itemCode && (
-                                      <span>
-                                        Code: <span className="font-medium">{li.itemCode}</span>
-                                      </span>
-                                    )}
-                                    {li.itemDescription && (
-                                      <span>
-                                        Desc:{" "}
-                                        <span className="font-medium">{li.itemDescription}</span>
-                                      </span>
-                                    )}
-                                    {li.itemNo && (
-                                      <span>
-                                        No: <span className="font-medium">{li.itemNo}</span>
-                                      </span>
-                                    )}
-                                    {li.quantity && (
-                                      <span>
-                                        Qty: <span className="font-medium">{li.quantity}</span>
-                                      </span>
-                                    )}
-                                    {li.jtNo && (
-                                      <span>
-                                        JT: <span className="font-medium">{li.jtNo}</span>
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                {Array.from(DETAIL_META_KEYS).some((k) => regions[k]) && <td></td>}
-                              </tr>
-                            ))}
-                        </>
+                          {isExpanded && row.lineItems && row.lineItems.length > 0 && (
+                            <tr className="bg-gray-50">
+                              <td className="p-0"></td>
+                              <td
+                                colSpan={
+                                  4 +
+                                  (hasLineItemMapped ? 1 : 0) +
+                                  (Array.from(DETAIL_META_KEYS).some((k) => regions[k]) ? 1 : 0)
+                                }
+                                className="p-0"
+                              >
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="bg-gray-100 border-b border-gray-200">
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold text-gray-500 uppercase w-20">
+                                        Code
+                                      </th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold text-gray-500 uppercase">
+                                        Description
+                                      </th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold text-gray-500 uppercase w-32">
+                                        Item No
+                                      </th>
+                                      <th className="px-3 py-1.5 text-right text-[10px] font-semibold text-gray-500 uppercase w-14">
+                                        Qty
+                                      </th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold text-gray-500 uppercase w-24">
+                                        JT No
+                                      </th>
+                                      <th className="px-3 py-1.5 text-right text-[10px] font-semibold text-gray-500 uppercase w-20">
+                                        m&sup2;
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-100">
+                                    {row.lineItems.map((li, liIdx) => {
+                                      const m2r = li.itemDescription
+                                        ? m2Results[li.itemDescription]
+                                        : null;
+                                      return (
+                                        <tr key={liIdx} className="hover:bg-gray-100/50">
+                                          <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
+                                            {li.itemCode || "-"}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-xs text-gray-900 font-medium">
+                                            {li.itemDescription || "-"}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
+                                            {li.itemNo || "-"}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-xs text-gray-600 text-right whitespace-nowrap">
+                                            {li.quantity || "-"}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
+                                            {li.jtNo || "-"}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-xs text-right whitespace-nowrap">
+                                            {isCalculatingM2 ? (
+                                              <span className="inline-block w-3 h-3 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+                                            ) : (() => {
+                                              const manualKey = `${index}-${liIdx}`;
+                                              const manualVal = manualM2[manualKey];
+                                              const autoVal = m2r?.externalM2 ?? m2r?.totalM2;
+                                              const displayVal = manualVal ?? autoVal;
+                                              return displayVal != null ? (
+                                                <span
+                                                  className={`font-medium cursor-pointer ${manualVal != null ? "text-blue-700" : "text-teal-700"}`}
+                                                  title={manualVal != null ? "Manual override — click to edit" : "Auto-calculated — click to override"}
+                                                  onClick={() => {
+                                                    const input = prompt("Enter m² value:", displayVal.toFixed(2));
+                                                    if (input !== null) {
+                                                      const parsed = parseFloat(input);
+                                                      if (!isNaN(parsed) && parsed >= 0) {
+                                                        setManualM2((prev) => ({ ...prev, [manualKey]: parsed }));
+                                                      }
+                                                    }
+                                                  }}
+                                                >
+                                                  {displayVal.toFixed(2)}
+                                                </span>
+                                              ) : (
+                                                <input
+                                                  type="number"
+                                                  step="0.01"
+                                                  min="0"
+                                                  placeholder="m²"
+                                                  className="w-16 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-400"
+                                                  onBlur={(e) => {
+                                                    const parsed = parseFloat(e.target.value);
+                                                    if (!isNaN(parsed) && parsed >= 0) {
+                                                      setManualM2((prev) => ({ ...prev, [manualKey]: parsed }));
+                                                    }
+                                                  }}
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                      (e.target as HTMLInputElement).blur();
+                                                    }
+                                                  }}
+                                                />
+                                              );
+                                            })()}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </td>
+                            </tr>
+                          )}
+                          {regions["notes"] && row.notes && (
+                            <tr className="bg-fuchsia-50">
+                              <td className="px-4 py-2 text-xs text-gray-400"></td>
+                              <td
+                                colSpan={
+                                  4 +
+                                  (hasLineItemMapped ? 1 : 0) +
+                                  (Array.from(DETAIL_META_KEYS).some((k) => regions[k]) ? 1 : 0)
+                                }
+                                className="px-4 py-2"
+                              >
+                                <div className="text-xs">
+                                  <span className="font-semibold text-fuchsia-700">Notes: </span>
+                                  <span className="text-gray-700 whitespace-pre-wrap">{row.notes}</span>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
                     })}
                   </tbody>

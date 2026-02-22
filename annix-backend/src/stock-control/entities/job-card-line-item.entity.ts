@@ -40,6 +40,9 @@ export class JobCardLineItem {
   @Column({ name: "jt_no", type: "varchar", length: 100, nullable: true })
   jtNo: string | null;
 
+  @Column({ name: "m2", type: "numeric", precision: 12, scale: 4, nullable: true })
+  m2: number | null;
+
   @Column({ name: "sort_order", type: "int", default: 0 })
   sortOrder: number;
 

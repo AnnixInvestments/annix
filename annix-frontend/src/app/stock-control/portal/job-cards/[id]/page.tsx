@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type { JobCard, StockAllocation, StockItem } from "@/app/lib/api/stockControlApi";
+import type {
+  CoatingAnalysis,
+  JobCard,
+  Requisition,
+  StockAllocation,
+  StockItem,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
@@ -37,6 +43,8 @@ export default function JobCardDetailPage() {
 
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
   const [allocations, setAllocations] = useState<StockAllocation[]>([]);
+  const [coatingAnalysis, setCoatingAnalysis] = useState<CoatingAnalysis | null>(null);
+  const [requisition, setRequisition] = useState<Requisition | null>(null);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -48,6 +56,7 @@ export default function JobCardDetailPage() {
   });
   const [isAllocating, setIsAllocating] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isAnalysing, setIsAnalysing] = useState(false);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -60,6 +69,19 @@ export default function JobCardDetailPage() {
       setJobCard(jobData);
       setAllocations(Array.isArray(allocationsData) ? allocationsData : []);
       setError(null);
+
+      stockControlApiClient
+        .jobCardCoatingAnalysis(jobId)
+        .then((data) => setCoatingAnalysis(data))
+        .catch(() => setCoatingAnalysis(null));
+
+      stockControlApiClient
+        .requisitions()
+        .then((reqs) => {
+          const match = reqs.find((r) => r.jobCardId === jobId && r.status !== "cancelled");
+          setRequisition(match ?? null);
+        })
+        .catch(() => setRequisition(null));
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load job card"));
     } finally {
@@ -106,6 +128,18 @@ export default function JobCardDetailPage() {
       setError(err instanceof Error ? err : new Error("Failed to allocate stock"));
     } finally {
       setIsAllocating(false);
+    }
+  };
+
+  const handleRunAnalysis = async () => {
+    try {
+      setIsAnalysing(true);
+      const result = await stockControlApiClient.triggerCoatingAnalysis(jobId);
+      setCoatingAnalysis(result && "id" in result ? result : null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Coating analysis failed"));
+    } finally {
+      setIsAnalysing(false);
     }
   };
 
@@ -289,6 +323,153 @@ export default function JobCardDetailPage() {
               </div>
             )}
           </dl>
+          {coatingAnalysis && coatingAnalysis.status === "analysed" && coatingAnalysis.coats.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center space-x-2 mb-4">
+                <h4 className="text-sm font-medium text-gray-900">Coating Specification</h4>
+                <span className="text-xs text-gray-400 italic">extracted by Nix</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4 text-sm">
+                {coatingAnalysis.applicationType && (
+                  <div>
+                    <span className="font-medium text-gray-500">Application: </span>
+                    <span className="text-gray-900 capitalize">{coatingAnalysis.applicationType}</span>
+                  </div>
+                )}
+                {coatingAnalysis.surfacePrep && (
+                  <div>
+                    <span className="font-medium text-gray-500">Surface Prep: </span>
+                    <span className="text-gray-900 capitalize">{coatingAnalysis.surfacePrep.replace(/_/g, " ")}</span>
+                  </div>
+                )}
+                {coatingAnalysis.extM2 > 0 && (
+                  <div>
+                    <span className="font-medium text-gray-500">Ext m&#178;: </span>
+                    <span className="text-gray-900">{Number(coatingAnalysis.extM2).toFixed(2)}</span>
+                  </div>
+                )}
+                {coatingAnalysis.intM2 > 0 && (
+                  <div>
+                    <span className="font-medium text-gray-500">Int m&#178;: </span>
+                    <span className="text-gray-900">{Number(coatingAnalysis.intM2).toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 pr-4 font-medium text-gray-500">Area</th>
+                    <th className="text-left py-2 pr-4 font-medium text-gray-500">Product</th>
+                    <th className="text-right py-2 pr-4 font-medium text-gray-500">DFT (&#181;m)</th>
+                    <th className="text-right py-2 pr-4 font-medium text-gray-500">Coverage (m&#178;/L)</th>
+                    <th className="text-right py-2 font-medium text-gray-500">Litres Req.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coatingAnalysis.coats.map((coat, idx) => (
+                    <tr key={idx} className="border-b border-gray-100">
+                      <td className="py-2 pr-4 text-gray-600 capitalize">{coat.area === "external" ? "Ext" : "Int"}</td>
+                      <td className="py-2 pr-4 text-gray-900 font-medium">{coat.product}</td>
+                      <td className="py-2 pr-4 text-right text-gray-900">{coat.minDftUm}-{coat.maxDftUm}</td>
+                      <td className="py-2 pr-4 text-right text-gray-900">{coat.coverageM2PerLiter}</td>
+                      <td className="py-2 text-right font-semibold text-gray-900">{coat.litersRequired}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {coatingAnalysis.stockAssessment.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Stock Assessment</h5>
+                  <div className="space-y-1">
+                    {coatingAnalysis.stockAssessment.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700">{item.product}</span>
+                        <div className="flex items-center space-x-3">
+                          {item.stockItemId ? (
+                            <>
+                              <span className="text-gray-500">
+                                {item.currentStock} / {item.required} {item.unit}
+                              </span>
+                              <span
+                                className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                                  item.sufficient
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {item.sufficient ? "OK" : "Short"}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs text-amber-600 italic">Not in inventory</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {coatingAnalysis && coatingAnalysis.status === "pending" && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center space-x-2 text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-teal-600"></div>
+                <span>Nix is analysing the coating specification...</span>
+              </div>
+            </div>
+          )}
+          {coatingAnalysis && coatingAnalysis.status === "failed" && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-red-600">
+                  Coating analysis failed: {coatingAnalysis.error || "Unknown error"}
+                </div>
+                <button
+                  onClick={handleRunAnalysis}
+                  disabled={isAnalysing}
+                  className="text-sm text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                >
+                  {isAnalysing ? "Analysing..." : "Retry"}
+                </button>
+              </div>
+            </div>
+          )}
+          {!coatingAnalysis && jobCard.notes && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">No coating analysis available</span>
+                <button
+                  onClick={handleRunAnalysis}
+                  disabled={isAnalysing}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  {isAnalysing ? "Analysing..." : "Run Coating Analysis"}
+                </button>
+              </div>
+            </div>
+          )}
+          {requisition && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700">Requisition</span>
+                </div>
+                <Link
+                  href={`/stock-control/portal/requisitions/${requisition.id}`}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100"
+                >
+                  {requisition.requisitionNumber}
+                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          )}
           {jobCard.customFields && Object.keys(jobCard.customFields).length > 0 && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <h4 className="text-sm font-medium text-gray-500 mb-3">Custom Fields</h4>
