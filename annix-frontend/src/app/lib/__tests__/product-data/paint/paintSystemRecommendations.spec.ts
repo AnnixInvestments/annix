@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import type { CorrosivityCategory, PaintProduct } from "@product-data/paint/paintProducts";
 import { paintProducts } from "@product-data/paint/paintProducts";
 import type {
@@ -25,6 +24,7 @@ import {
   systemDftSummary,
   validateMultiCoatCompatibility,
 } from "@product-data/paint/paintSystemRecommendations";
+import { describe, expect, it } from "vitest";
 
 describe("paintSystemRecommendations", () => {
   describe("recommendCoatingSystem", () => {

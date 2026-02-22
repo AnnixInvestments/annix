@@ -1,9 +1,9 @@
 "use client";
 
+import { CODING_TYPES, CodingType } from "@product-data/rubber/codingTypes";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { type RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
-import { CODING_TYPES, CodingType } from "@product-data/rubber/codingTypes";
 import {
   useDeleteRubberCoding,
   useRubberCodings,

@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
   calculateSystemCurve,
   findOperatingPoint,
@@ -8,6 +7,7 @@ import {
   PumpCurve,
   SystemCurveParams,
 } from "@product-data/pumps/calculations";
+import { useMemo, useState } from "react";
 import { PumpCurveChart } from "./PumpCurveChart";
 
 interface SystemCurveOverlayProps {

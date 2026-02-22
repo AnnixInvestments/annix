@@ -590,9 +590,7 @@ export default function JobCardImportPage() {
   const calculateM2ForRows = useCallback(async (rows: JobCardImportRow[]) => {
     const descriptions = rows.flatMap(
       (r) =>
-        r.lineItems
-          ?.map((li) => li.itemDescription)
-          .filter((d): d is string => Boolean(d)) ?? [],
+        r.lineItems?.map((li) => li.itemDescription).filter((d): d is string => Boolean(d)) ?? [],
     );
     if (descriptions.length === 0) return;
 
@@ -1463,9 +1461,7 @@ export default function JobCardImportPage() {
 
                       return (
                         <Fragment key={index}>
-                          <tr
-                            className={missingRequired ? "bg-red-50" : "hover:bg-gray-50"}
-                          >
+                          <tr className={missingRequired ? "bg-red-50" : "hover:bg-gray-50"}>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                               {index + 1}
                             </td>
@@ -1567,48 +1563,63 @@ export default function JobCardImportPage() {
                                           <td className="px-3 py-1.5 text-xs text-right whitespace-nowrap">
                                             {isCalculatingM2 ? (
                                               <span className="inline-block w-3 h-3 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
-                                            ) : (() => {
-                                              const manualKey = `${index}-${liIdx}`;
-                                              const manualVal = manualM2[manualKey];
-                                              const autoVal = m2r?.externalM2 ?? m2r?.totalM2;
-                                              const displayVal = manualVal ?? autoVal;
-                                              return displayVal != null ? (
-                                                <span
-                                                  className={`font-medium cursor-pointer ${manualVal != null ? "text-blue-700" : "text-teal-700"}`}
-                                                  title={manualVal != null ? "Manual override — click to edit" : "Auto-calculated — click to override"}
-                                                  onClick={() => {
-                                                    const input = prompt("Enter m² value:", displayVal.toFixed(2));
-                                                    if (input !== null) {
-                                                      const parsed = parseFloat(input);
-                                                      if (!isNaN(parsed) && parsed >= 0) {
-                                                        setManualM2((prev) => ({ ...prev, [manualKey]: parsed }));
+                                            ) : (
+                                              (() => {
+                                                const manualKey = `${index}-${liIdx}`;
+                                                const manualVal = manualM2[manualKey];
+                                                const autoVal = m2r?.externalM2 ?? m2r?.totalM2;
+                                                const displayVal = manualVal ?? autoVal;
+                                                return displayVal != null ? (
+                                                  <span
+                                                    className={`font-medium cursor-pointer ${manualVal != null ? "text-blue-700" : "text-teal-700"}`}
+                                                    title={
+                                                      manualVal != null
+                                                        ? "Manual override — click to edit"
+                                                        : "Auto-calculated — click to override"
+                                                    }
+                                                    onClick={() => {
+                                                      const input = prompt(
+                                                        "Enter m² value:",
+                                                        displayVal.toFixed(2),
+                                                      );
+                                                      if (input !== null) {
+                                                        const parsed = parseFloat(input);
+                                                        if (!Number.isNaN(parsed) && parsed >= 0) {
+                                                          setManualM2((prev) => ({
+                                                            ...prev,
+                                                            [manualKey]: parsed,
+                                                          }));
+                                                        }
                                                       }
-                                                    }
-                                                  }}
-                                                >
-                                                  {displayVal.toFixed(2)}
-                                                </span>
-                                              ) : (
-                                                <input
-                                                  type="number"
-                                                  step="0.01"
-                                                  min="0"
-                                                  placeholder="m²"
-                                                  className="w-16 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-400"
-                                                  onBlur={(e) => {
-                                                    const parsed = parseFloat(e.target.value);
-                                                    if (!isNaN(parsed) && parsed >= 0) {
-                                                      setManualM2((prev) => ({ ...prev, [manualKey]: parsed }));
-                                                    }
-                                                  }}
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === "Enter") {
-                                                      (e.target as HTMLInputElement).blur();
-                                                    }
-                                                  }}
-                                                />
-                                              );
-                                            })()}
+                                                    }}
+                                                  >
+                                                    {displayVal.toFixed(2)}
+                                                  </span>
+                                                ) : (
+                                                  <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    placeholder="m²"
+                                                    className="w-16 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-400"
+                                                    onBlur={(e) => {
+                                                      const parsed = parseFloat(e.target.value);
+                                                      if (!Number.isNaN(parsed) && parsed >= 0) {
+                                                        setManualM2((prev) => ({
+                                                          ...prev,
+                                                          [manualKey]: parsed,
+                                                        }));
+                                                      }
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                      if (e.key === "Enter") {
+                                                        (e.target as HTMLInputElement).blur();
+                                                      }
+                                                    }}
+                                                  />
+                                                );
+                                              })()
+                                            )}
                                           </td>
                                         </tr>
                                       );
@@ -1631,7 +1642,9 @@ export default function JobCardImportPage() {
                               >
                                 <div className="text-xs">
                                   <span className="font-semibold text-fuchsia-700">Notes: </span>
-                                  <span className="text-gray-700 whitespace-pre-wrap">{row.notes}</span>
+                                  <span className="text-gray-700 whitespace-pre-wrap">
+                                    {row.notes}
+                                  </span>
                                 </div>
                               </td>
                             </tr>

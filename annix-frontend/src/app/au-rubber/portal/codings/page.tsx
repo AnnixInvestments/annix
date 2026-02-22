@@ -1,10 +1,10 @@
 "use client";
 
+import { CODING_TYPES, CodingType } from "@product-data/rubber/codingTypes";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
-import { CODING_TYPES, CodingType } from "@product-data/rubber/codingTypes";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { ITEMS_PER_PAGE, Pagination, TableLoadingState } from "../../components/TableComponents";

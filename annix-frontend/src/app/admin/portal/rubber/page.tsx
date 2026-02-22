@@ -1,8 +1,8 @@
 "use client";
 
+import { RUBBER_ORDER_STATUS, statusColor, statusLabel } from "@product-data/rubber/orderStatus";
 import Link from "next/link";
 import { useState } from "react";
-import { RUBBER_ORDER_STATUS, statusColor, statusLabel } from "@product-data/rubber/orderStatus";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useRubberCompanies, useRubberOrders, useRubberProducts } from "@/app/lib/query/hooks";
 

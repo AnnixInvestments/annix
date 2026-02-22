@@ -1,9 +1,5 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { SmartNotesDropdown } from "@/app/components/rfq/selectors/SmartNotesDropdown";
-import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
-import { Select } from "@/app/components/ui/Select";
 import {
   ACCURACY_CLASS_OPTIONS,
   CABLE_ENTRY_OPTIONS,
@@ -22,6 +18,10 @@ import {
   getInstrumentsByCategory,
   InstrumentCategory,
 } from "@product-data/valves-instruments/instrumentTypes";
+import { useEffect, useMemo, useState } from "react";
+import { SmartNotesDropdown } from "@/app/components/rfq/selectors/SmartNotesDropdown";
+import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
+import { Select } from "@/app/components/ui/Select";
 
 export interface InstrumentFormProps {
   entry: any;

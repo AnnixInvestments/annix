@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   calculateLifecycleCost,
   compareLifecycleCosts,
@@ -6,6 +5,7 @@ import {
   LifecycleCostInputs,
   PumpQuote,
 } from "@product-data/pumps/pumpComparison";
+import { describe, expect, it } from "vitest";
 
 const createMockQuote = (overrides: Partial<PumpQuote> = {}): PumpQuote => ({
   supplierId: 1,

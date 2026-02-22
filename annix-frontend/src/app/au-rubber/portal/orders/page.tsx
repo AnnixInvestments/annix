@@ -1,11 +1,11 @@
 "use client";
 
+import { ORDER_STATUS_OPTIONS, statusColor } from "@product-data/rubber/orderStatus";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberOrderDto } from "@/app/lib/api/rubberPortalApi";
-import { ORDER_STATUS_OPTIONS, statusColor } from "@product-data/rubber/orderStatus";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";

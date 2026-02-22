@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
 import {
   API_610_PUMP_TYPES,
   PUMP_MANUFACTURERS,
@@ -9,6 +7,8 @@ import {
   PUMP_SPECIFICATIONS,
   PUMP_TYPES,
 } from "@product-data/pumps";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {

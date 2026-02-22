@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
   calculateNpshAvailable,
   checkNpshMargin,
   NpshCalculationParams,
 } from "@product-data/pumps/calculations";
+import { useMemo, useState } from "react";
 
 interface NpshCalculatorProps {
   npshRequired?: number;

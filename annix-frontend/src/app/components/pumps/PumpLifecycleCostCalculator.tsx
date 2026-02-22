@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
   calculateLifecycleCost,
   LifecycleCostInputs,
   LifecycleCostResult,
 } from "@product-data/pumps/pumpComparison";
+import { useMemo, useState } from "react";
 
 interface PumpLifecycleCostCalculatorProps {
   initialInputs?: Partial<LifecycleCostInputs>;

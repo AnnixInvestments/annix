@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   fieldLabel,
   isFieldRequired,
@@ -6,6 +5,7 @@ import {
   requiredFieldsForServiceType,
   validatePumpForm,
 } from "@product-data/pumps/formValidation";
+import { describe, expect, it } from "vitest";
 
 describe("formValidation", () => {
   describe("validatePumpForm", () => {

@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { PUMP_MANUFACTURERS, PUMPS_MODULE, SA_PUMP_SUPPLIERS } from "@product-data/pumps";
+import Link from "next/link";
 
 interface StatCard {
   title: string;

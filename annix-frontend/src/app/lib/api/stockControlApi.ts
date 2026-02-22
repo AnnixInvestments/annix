@@ -369,7 +369,7 @@ export interface JobCardImportRow {
   contactPerson?: string;
   dueDate?: string;
   notes?: string;
-  reference?: string;
+  reference?: string | null;
   customFields?: Record<string, string>;
   lineItems?: LineItemImportRow[];
 }
@@ -836,7 +836,9 @@ class StockControlApiClient {
   }
 
   async jobCardCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis | null> {
-    const result = await this.request<CoatingAnalysis | Record<string, never>>(`/stock-control/job-cards/${jobCardId}/coating-analysis`);
+    const result = await this.request<CoatingAnalysis | Record<string, never>>(
+      `/stock-control/job-cards/${jobCardId}/coating-analysis`,
+    );
     return result && "id" in result ? (result as CoatingAnalysis) : null;
   }
 

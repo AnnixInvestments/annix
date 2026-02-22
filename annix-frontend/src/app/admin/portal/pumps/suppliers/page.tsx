@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
   PARTS_SUPPLIERS,
   PUMP_MANUFACTURERS,
   PUMP_STANDARDS,
   SA_PUMP_SUPPLIERS,
 } from "@product-data/pumps";
+import { useMemo, useState } from "react";
 import { Breadcrumb } from "../components/Breadcrumb";
 
 type TabId = "manufacturers" | "sa_suppliers" | "parts_suppliers" | "standards";

@@ -1,9 +1,5 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { SmartNotesDropdown } from "@/app/components/rfq/selectors/SmartNotesDropdown";
-import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
-import { Select } from "@/app/components/ui/Select";
 import {
   ACTUATOR_TYPE_OPTIONS,
   BODY_MATERIAL_OPTIONS,
@@ -26,6 +22,10 @@ import {
   VALVE_TYPES,
   ValveCategory,
 } from "@product-data/valves-instruments/valveTypes";
+import { useEffect, useMemo, useState } from "react";
+import { SmartNotesDropdown } from "@/app/components/rfq/selectors/SmartNotesDropdown";
+import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
+import { Select } from "@/app/components/ui/Select";
 
 export interface ValveFormProps {
   entry: any;

@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import type { CorrosivityCategory, GenericType } from "@product-data/paint/paintProducts";
 import type {
   ISO12944Part2Environment,
@@ -45,6 +44,7 @@ import {
   validatePotableWaterCompliance,
   vocLimitsForRegion,
 } from "@product-data/paint/standardsValidation";
+import { describe, expect, it } from "vitest";
 
 describe("standardsValidation", () => {
   describe("ISO 12944 Validation", () => {

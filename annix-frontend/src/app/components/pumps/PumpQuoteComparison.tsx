@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
   comparePumpQuotes,
   PumpComparisonResult,
   PumpQuote,
 } from "@product-data/pumps/pumpComparison";
+import { useMemo, useState } from "react";
 
 interface PumpQuoteComparisonProps {
   quotes: PumpQuote[];

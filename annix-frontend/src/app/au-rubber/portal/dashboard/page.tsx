@@ -1,5 +1,6 @@
 "use client";
 
+import { RUBBER_ORDER_STATUS, statusColor, statusLabel } from "@product-data/rubber/orderStatus";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
@@ -8,7 +9,6 @@ import type {
   RubberOrderDto,
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
-import { RUBBER_ORDER_STATUS, statusColor, statusLabel } from "@product-data/rubber/orderStatus";
 import { formatDateZA } from "@/app/lib/datetime";
 
 interface StatusCount {

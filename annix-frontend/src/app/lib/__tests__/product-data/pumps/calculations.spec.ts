@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   calculateAffinityLawsDiameter,
   calculateAffinityLawsSpeed,
@@ -28,6 +27,7 @@ import {
   viscosityConversions,
   waterVaporPressure,
 } from "@product-data/pumps/calculations";
+import { describe, expect, it } from "vitest";
 
 describe("Flow Rate Conversions", () => {
   describe("flowConversions object", () => {

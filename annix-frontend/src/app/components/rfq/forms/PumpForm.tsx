@@ -1,17 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Api610SelectionWizard,
-  MaterialCompatibilityChecker,
-  PumpSelectionWizard,
-} from "@/app/components/pumps";
-import {
-  formatNotesForDisplay,
-  SmartNotesDropdown,
-} from "@/app/components/rfq/selectors/SmartNotesDropdown";
-import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
-import { Select } from "@/app/components/ui/Select";
 import {
   BASEPLATE_OPTIONS,
   CERTIFICATION_OPTIONS,
@@ -44,6 +32,18 @@ import {
   validatePumpForm,
 } from "@product-data/pumps/formValidation";
 import type { SelectionCriteria, SelectionResult } from "@product-data/pumps/pumpSelectionGuide";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Api610SelectionWizard,
+  MaterialCompatibilityChecker,
+  PumpSelectionWizard,
+} from "@/app/components/pumps";
+import {
+  formatNotesForDisplay,
+  SmartNotesDropdown,
+} from "@/app/components/rfq/selectors/SmartNotesDropdown";
+import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
+import { Select } from "@/app/components/ui/Select";
 
 export interface PumpFormProps {
   entry: any;

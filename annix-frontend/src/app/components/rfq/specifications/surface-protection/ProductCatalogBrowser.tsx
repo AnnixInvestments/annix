@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
 import { ceramicProducts } from "@product-data/ceramic/ceramicProducts";
 import { paintProducts } from "@product-data/paint/paintProducts";
 import { rubberProducts } from "@product-data/rubber/rubberProducts";
+import React, { useMemo, useState } from "react";
 
 type ProductType = "paint" | "rubber" | "ceramic" | "all";
 type PriceCategory = "economy" | "standard" | "premium" | "all";

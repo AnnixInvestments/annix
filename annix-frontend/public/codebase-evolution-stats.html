@@ -218,19 +218,63 @@
       padding: 24px;
       box-shadow: var(--shadow);
     }
+    .chart-card-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 8px; margin-bottom: 4px;
+    }
     .chart-card-title {
       font-size: 15px; font-weight: 600; color: var(--text);
-      margin-bottom: 4px;
     }
+    .chart-expand-btn {
+      flex-shrink: 0; background: none; border: 1px solid var(--border);
+      color: var(--muted); border-radius: 6px; width: 28px; height: 28px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .chart-expand-btn:hover { background: var(--surface-2); color: var(--text); }
+    .chart-expand-btn svg { width: 14px; height: 14px; }
     .chart-card-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
     .chart-wrap { position: relative; }
     .chart-wrap.tall { height: 260px; }
     .chart-wrap.medium { height: 220px; }
     .chart-wrap.small { height: 200px; }
 
+    /* ── Chart modal overlay ─────────────────────────────── */
+    #chartModal {
+      display: none; position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.72); backdrop-filter: blur(3px);
+      align-items: center; justify-content: center;
+    }
+    #chartModal.active { display: flex; }
+    .chart-modal-box {
+      background: var(--surface); border-radius: var(--radius);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      display: flex; flex-direction: column;
+      width: min(92vw, 1100px); height: min(84vh, 700px);
+      padding: 20px; position: relative; overflow: hidden;
+    }
+    .chart-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; flex-shrink: 0;
+    }
+    .chart-modal-title {
+      font-size: 15px; font-weight: 600; color: var(--text);
+    }
+    .chart-modal-close {
+      background: var(--surface-2); border: 1px solid var(--border);
+      border-radius: 8px; width: 32px; height: 32px; cursor: pointer;
+      color: var(--text); display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0;
+    }
+    .chart-modal-close:hover { background: var(--border); }
+    .chart-modal-canvas-wrap {
+      flex: 1; min-height: 0; position: relative;
+    }
+    #modalCanvas { position: absolute; inset: 0; }
+
     /* ── Contributor bars ───────────────────────────────── */
     .contrib-list { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
-    .contrib-item {}
+    .contrib-item { display: block; }
     .contrib-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .contrib-name { font-size: 13px; font-weight: 600; color: var(--text); }
     .contrib-count { font-size: 12px; color: var(--muted); }
@@ -295,7 +339,7 @@
       padding: 24px;
       font-size: 13px;
     }
-    footer strong { color: rgba(255,255,255,0.8); }
+    footer.page-footer > strong { color: rgba(255,255,255,0.8); }
 
     /* ── Cost comparison ────────────────────────────────── */
     .cost-grid {
@@ -388,6 +432,20 @@
 </head>
 <body>
 
+<div id="chartModal">
+  <div class="chart-modal-box">
+    <div class="chart-modal-header">
+      <div class="chart-modal-title" id="modalTitle"></div>
+      <button class="chart-modal-close" onclick="collapseChart()" title="Close">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="chart-modal-canvas-wrap">
+      <canvas id="modalCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
 <nav class="sticky-nav">
   <div class="sticky-nav-inner">
     <div class="brand">
@@ -471,7 +529,12 @@
     <h2 class="section-title"><span class="dot"></span>Commit Activity</h2>
     <div class="chart-grid-2">
       <div class="chart-card">
-        <div class="chart-card-title">Weekly commits — team timeline (Dec 17 – present)</div>
+        <div class="chart-card-header">
+          <div class="chart-card-title">Weekly commits — team timeline (Dec 17 – present)</div>
+          <button class="chart-expand-btn" onclick="expandChart(this)" title="Expand chart">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
+          </button>
+        </div>
         <div class="chart-card-sub">All commits are Nick &amp; Andy's · dashed line marks repo migration to AnnixInvestments org (12 Feb)</div>
         <div class="chart-wrap tall">
           <canvas id="monthlyChart"></canvas>
@@ -528,16 +591,14 @@
 
       <div class="cost-card">
         <div class="cost-label">Tyto Ltd — Vendor phase</div>
-        <div class="cost-headline">~$100K</div>
-        <div class="cost-sub">Estimated actual cost · Aug – Dec 2025</div>
+        <div class="cost-headline">Fixed price</div>
+        <div class="cost-sub">External contract · Aug – Dec 2025</div>
         <div class="cost-row"><span>Duration</span><strong>~4 months</strong></div>
-        <div class="cost-row"><span>Team size</span><strong>2–3 developers</strong></div>
+        <div class="cost-row"><span>Team size</span><strong>External vendor team</strong></div>
         <div class="cost-row"><span>Lines of code</span><strong>28,358</strong></div>
         <div class="cost-row"><span>Commits</span><strong>~100</strong></div>
         <div class="cost-row"><span>LOC / day</span><strong>~236</strong></div>
-        <div class="cost-row"><span>Est. dev-hours</span><strong>~1,280</strong></div>
-        <div class="cost-row"><span>Cost per LOC</span><strong>~$3.50</strong></div>
-        <div class="cost-row"><span>Rate basis</span><strong>$80–$100 / hr × 2 devs</strong></div>
+        <div class="cost-row"><span>Contract type</span><strong>Fixed price</strong></div>
       </div>
 
       <div class="cost-divider">
@@ -548,35 +609,35 @@
 
       <div class="cost-card highlight">
         <div class="cost-label">Nick + Andy + AI — Team phase</div>
-        <div class="cost-headline orange">~$75K</div>
-        <div class="cost-sub">Estimated actual cost · Dec 17 2025 – present</div>
+        <div class="cost-headline orange">~R9,250</div>
+        <div class="cost-sub">~$500 USD cash outlay · Dec 17 2025 – present</div>
         <div class="cost-row"><span>Duration</span><strong>10 weeks</strong></div>
-        <div class="cost-row"><span>Team size</span><strong>2 developers + AI</strong></div>
+        <div class="cost-row"><span>Team size</span><strong>2 owner-developers + AI</strong></div>
         <div class="cost-row"><span>Lines of code added</span><strong>443,000</strong></div>
         <div class="cost-row"><span>Commits</span><strong>892</strong></div>
         <div class="cost-row"><span>LOC / day</span><strong>~6,300</strong></div>
-        <div class="cost-row"><span>Est. dev-hours</span><strong>~800</strong></div>
-        <div class="cost-row"><span>Cost per LOC</span><strong>~$0.17</strong></div>
-        <div class="cost-row"><span>Rate basis</span><strong>$80–$100 / hr × 2 devs</strong></div>
+        <div class="cost-row"><span>AI tooling</span><strong>Claude Max subscription</strong></div>
+        <div class="cost-row"><span>Cash cost per LOC</span><strong>R0.02 / $0.001</strong></div>
+        <div class="cost-row"><span>Incl. dev time (market rate)</span><strong>~R1.4M / $75K</strong></div>
       </div>
 
     </div>
 
     <div class="value-callout">
       <div>
-        <div class="value-stat-num">$5M+</div>
-        <div class="value-stat-lbl">Traditional equivalent value</div>
-        <div class="value-stat-sub">443K LOC at 40 LOC/dev/day × $150K/yr</div>
+        <div class="value-stat-num">5 devs · 3 yrs</div>
+        <div class="value-stat-lbl">Traditional human equivalent</div>
+        <div class="value-stat-sub">443K LOC at 40 lines/dev/day needs ~3 years with a 5-person team</div>
       </div>
       <div>
-        <div class="value-stat-num">~67×</div>
-        <div class="value-stat-lbl">ROI on team spend</div>
-        <div class="value-stat-sub">$5M value delivered for ~$75K actual cost</div>
+        <div class="value-stat-num">R41M / $2.25M</div>
+        <div class="value-stat-lbl">Traditional team cost</div>
+        <div class="value-stat-sub">5 devs × 3 yrs × $150K/yr vs R9,250 / $500 cash AI spend</div>
       </div>
       <div>
-        <div class="value-stat-num">20¢</div>
-        <div class="value-stat-lbl">Cost per line of code</div>
-        <div class="value-stat-sub">vs $3.50/line in the vendor phase</div>
+        <div class="value-stat-num">~4,500×</div>
+        <div class="value-stat-lbl">Cash cost advantage</div>
+        <div class="value-stat-sub">R41M traditional vs R9,250 actual · same output · 18× faster delivery</div>
       </div>
     </div>
   </section>
@@ -586,21 +647,36 @@
     <h2 class="section-title"><span class="dot"></span>Codebase Composition</h2>
     <div class="chart-grid-3">
       <div class="chart-card">
-        <div class="chart-card-title">Codebase growth over time</div>
+        <div class="chart-card-header">
+          <div class="chart-card-title">Codebase growth over time</div>
+          <button class="chart-expand-btn" onclick="expandChart(this)" title="Expand chart">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
+          </button>
+        </div>
         <div class="chart-card-sub">Cumulative LOC · team started Dec 17 on a 28K vendor base</div>
         <div class="chart-wrap tall">
           <canvas id="growthChart"></canvas>
         </div>
       </div>
       <div class="chart-card">
-        <div class="chart-card-title">Frontend vs Backend</div>
+        <div class="chart-card-header">
+          <div class="chart-card-title">Frontend vs Backend</div>
+          <button class="chart-expand-btn" onclick="expandChart(this)" title="Expand chart">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
+          </button>
+        </div>
         <div class="chart-card-sub">TypeScript lines of code</div>
         <div class="chart-wrap medium">
           <canvas id="splitChart"></canvas>
         </div>
       </div>
       <div class="chart-card">
-        <div class="chart-card-title">File distribution</div>
+        <div class="chart-card-header">
+          <div class="chart-card-title">File distribution</div>
+          <button class="chart-expand-btn" onclick="expandChart(this)" title="Expand chart">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
+          </button>
+        </div>
         <div class="chart-card-sub">By type across the monorepo</div>
         <div class="chart-wrap medium">
           <canvas id="filesChart"></canvas>
@@ -704,7 +780,7 @@
 
 </main>
 
-<footer>
+<footer class="page-footer">
   Generated <strong>22 Feb 2026</strong> · <strong>AnnixInvestments/annix</strong> · Built with Chart.js
 </footer>
 
@@ -828,7 +904,7 @@
       ...baseOptions(),
       scales: {
         x: { grid: { color: gridColor() }, ticks: { color: textColor() } },
-        y: { grid: { color: gridColor() }, ticks: { color: textColor(), callback: v => (v/1000).toFixed(0)+'K' } },
+        y: { grid: { color: gridColor() }, ticks: { color: textColor(), callback: v => `${(v/1000).toFixed(0)}K` } },
       },
     },
   });
@@ -876,6 +952,50 @@
       },
     },
   });
+
+  let modalChart = null;
+
+  function expandChart(btn) {
+    const card = btn.closest('.chart-card');
+    const sourceCanvas = card.querySelector('canvas');
+    const sourceChart = Chart.getChart(sourceCanvas);
+    if (!sourceChart) return;
+
+    const title = card.querySelector('.chart-card-title')?.textContent ?? '';
+    document.getElementById('modalTitle').textContent = title;
+
+    const modal = document.getElementById('chartModal');
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+
+    const modalCanvas = document.getElementById('modalCanvas');
+    if (modalChart) { modalChart.destroy(); modalChart = null; }
+
+    const cfg = sourceChart.config;
+    const opts = JSON.parse(JSON.stringify(cfg.options ?? {}));
+    opts.responsive = true;
+    opts.maintainAspectRatio = false;
+
+    modalChart = new Chart(modalCanvas, {
+      type: cfg.type,
+      data: JSON.parse(JSON.stringify(cfg.data)),
+      options: opts,
+      plugins: cfg.plugins,
+    });
+  }
+
+  function collapseChart() {
+    const modal = document.getElementById('chartModal');
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    if (modalChart) { modalChart.destroy(); modalChart = null; }
+  }
+
+  document.getElementById('chartModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('chartModal')) collapseChart();
+  });
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') collapseChart(); });
 
   function updateChartThemes() {
     [weeklyChart, growthChart, splitChart, filesChart].forEach(chart => {

@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
   APPLICATION_PROFILES,
   SelectionCriteria,
   SelectionResult,
   selectPumpType,
 } from "@product-data/pumps/pumpSelectionGuide";
+import { useMemo, useState } from "react";
 
 interface PumpSelectionWizardProps {
   onComplete?: (result: SelectionResult, criteria: SelectionCriteria) => void;

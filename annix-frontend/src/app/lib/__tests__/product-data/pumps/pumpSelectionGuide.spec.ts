@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   APPLICATION_PROFILES,
   applicationLabel,
@@ -7,6 +6,7 @@ import {
   SelectionCriteria,
   selectPumpType,
 } from "@product-data/pumps/pumpSelectionGuide";
+import { describe, expect, it } from "vitest";
 
 describe("Pump Selection Guide", () => {
   describe("APPLICATION_PROFILES", () => {

@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
   Api610PumpCategory,
   Api610SelectionCriteria,
@@ -8,6 +7,7 @@ import {
   api610CategoryDescription,
   selectApi610PumpType,
 } from "@product-data/pumps/api610Classification";
+import { useMemo, useState } from "react";
 
 interface Api610SelectionWizardProps {
   onComplete?: (result: Api610SelectionResult, criteria: Api610SelectionCriteria) => void;
