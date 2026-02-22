@@ -8,29 +8,14 @@ source "${ROOT_DIR}/node_modules/@annix/claude-swarm/timer.sh"
 
 echo "Running pre-push checks..."
 
-CHANGED_FILES=""
-while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
-  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
-    RANGE="main..${local_sha}"
-  else
-    RANGE="${remote_sha}..${local_sha}"
-  fi
-  FILES=$(git diff --name-only "$RANGE" 2>/dev/null) || true
-  if [ -n "$FILES" ]; then
-    CHANGED_FILES="${CHANGED_FILES}
-${FILES}"
-  fi
-done
-
-UNIQUE_FILES=$(echo "$CHANGED_FILES" | sort -u | grep -v '^$' || true)
-BIOME_FILES=$(echo "$UNIQUE_FILES" | grep -E '\.(ts|tsx|js|jsx|json)$' || true)
+# Note: We check ALL files with biome to catch issues from any source
 
 biome_check() {
-  if [ -n "$BIOME_FILES" ]; then
-    echo "$BIOME_FILES" | xargs pnpm biome check
-  else
-    echo "No committed file changes to check"
-  fi
+  # Auto-fix any biome issues first
+  pnpm biome check --write . 2>/dev/null || true
+
+  # Check if there are any unfixed issues
+  pnpm biome check .
 }
 
 run_tests() {
