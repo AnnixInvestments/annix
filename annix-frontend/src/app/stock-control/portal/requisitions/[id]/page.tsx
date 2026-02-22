@@ -224,7 +224,11 @@ export default function RequisitionDetailPage() {
                     {item.productName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 capitalize">
-                    {item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : item.area || "-"}
+                    {item.area === "external"
+                      ? "Ext"
+                      : item.area === "internal"
+                        ? "Int"
+                        : item.area || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                     {Number(item.litresRequired).toFixed(1)}
@@ -249,16 +253,36 @@ export default function RequisitionDetailPage() {
                           disabled={isSaving}
                           className="text-teal-600 hover:text-teal-800 disabled:text-gray-400"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                         </button>
                         <button
                           onClick={handleCancelEdit}
                           className="text-gray-400 hover:text-gray-600"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         </button>
                       </div>

@@ -1,10 +1,4 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Requisition } from "./requisition.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockItem } from "./stock-item.entity";
@@ -17,7 +11,11 @@ export class RequisitionItem {
   @Column({ name: "requisition_id" })
   requisitionId: number;
 
-  @ManyToOne(() => Requisition, (req) => req.items, { onDelete: "CASCADE" })
+  @ManyToOne(
+    () => Requisition,
+    (req) => req.items,
+    { onDelete: "CASCADE" },
+  )
   @JoinColumn({ name: "requisition_id" })
   requisition: Requisition;
 

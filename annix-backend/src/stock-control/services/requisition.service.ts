@@ -1,10 +1,10 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Not, Equal, Repository } from "typeorm";
+import { Equal, Not, Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
-import { RequisitionItem } from "../entities/requisition-item.entity";
 import { Requisition, RequisitionStatus } from "../entities/requisition.entity";
+import { RequisitionItem } from "../entities/requisition-item.entity";
 
 const DEFAULT_PACK_SIZE = 20;
 
@@ -46,7 +46,9 @@ export class RequisitionService {
     });
 
     if (!analysis || analysis.coats.length === 0) {
-      this.logger.log(`No coating analysis or coats for job card ${jobCardId}, skipping requisition`);
+      this.logger.log(
+        `No coating analysis or coats for job card ${jobCardId}, skipping requisition`,
+      );
       return null;
     }
 
@@ -68,9 +70,7 @@ export class RequisitionService {
     });
     const saved = await this.requisitionRepo.save(requisition);
 
-    const stockAssessmentMap = new Map(
-      analysis.stockAssessment.map((sa) => [sa.product, sa]),
-    );
+    const stockAssessmentMap = new Map(analysis.stockAssessment.map((sa) => [sa.product, sa]));
 
     const items = analysis.coats.map((coat) => {
       const assessment = stockAssessmentMap.get(coat.product);

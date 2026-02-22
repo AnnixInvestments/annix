@@ -72,8 +72,7 @@ export class M2CalculationService {
     const nbMatch = description.match(NB_PATTERN);
     const diameterMm = nbMatch ? parseInt(nbMatch[1], 10) : null;
 
-    const itemType =
-      ITEM_TYPE_PATTERNS.find((it) => it.pattern.test(description))?.type ?? null;
+    const itemType = ITEM_TYPE_PATTERNS.find((it) => it.pattern.test(description))?.type ?? null;
 
     let lengthMm: number | null = null;
 
@@ -97,8 +96,7 @@ export class M2CalculationService {
     const schedMatch = description.match(SCHEDULE_PATTERN);
     const schedule = schedMatch ? `Sch ${schedMatch[1]}` : null;
 
-    const flangeConfig =
-      FLANGE_PATTERNS.find((fp) => fp.pattern.test(description))?.config ?? null;
+    const flangeConfig = FLANGE_PATTERNS.find((fp) => fp.pattern.test(description))?.config ?? null;
 
     return { diameterMm, lengthMm, flangeConfig, schedule, itemType };
   }
@@ -170,11 +168,12 @@ export class M2CalculationService {
           parsedSchedule: schedule,
           parsedItemType: itemType,
           confidence,
-          error: !diameterMm && !lengthM
-            ? "Could not parse diameter or length"
-            : !diameterMm
-              ? "Could not parse diameter"
-              : "Could not parse length",
+          error:
+            !diameterMm && !lengthM
+              ? "Could not parse diameter or length"
+              : !diameterMm
+                ? "Could not parse diameter"
+                : "Could not parse length",
         };
       }
 

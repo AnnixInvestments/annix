@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Put,
-  Req,
-  UseGuards,
-} from "@nestjs/common";
+import { Body, Controller, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";

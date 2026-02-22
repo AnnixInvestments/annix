@@ -1,9 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
-import { now } from "../../lib/datetime";
 import {
   CoatDetail,
   CoatingAnalysisStatus,
@@ -97,11 +97,13 @@ export class CoatingAnalysisService {
       where: { jobCardId, companyId },
     });
 
-    const analysis = existing ?? this.analysisRepo.create({
-      jobCardId,
-      companyId,
-      status: CoatingAnalysisStatus.PENDING,
-    });
+    const analysis =
+      existing ??
+      this.analysisRepo.create({
+        jobCardId,
+        companyId,
+        status: CoatingAnalysisStatus.PENDING,
+      });
 
     if (!existing) {
       await this.analysisRepo.save(analysis);
@@ -167,7 +169,10 @@ export class CoatingAnalysisService {
     }
   }
 
-  async findByJobCard(companyId: number, jobCardId: number): Promise<JobCardCoatingAnalysis | null> {
+  async findByJobCard(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<JobCardCoatingAnalysis | null> {
     return this.analysisRepo.findOne({
       where: { jobCardId, companyId },
     });
@@ -214,9 +219,8 @@ export class CoatingAnalysisService {
     const midDftUm = (coat.minDftUm + coat.maxDftUm) / 2;
     const solidsDecimal = (coat.solidsByVolumePercent || DEFAULT_SOLIDS_BY_VOLUME) / 100;
     const coverageM2PerLiter = midDftUm > 0 ? (1000 / midDftUm) * solidsDecimal : 0;
-    const litersRequired = coverageM2PerLiter > 0
-      ? Math.ceil((totalM2 / coverageM2PerLiter) * 10) / 10
-      : 0;
+    const litersRequired =
+      coverageM2PerLiter > 0 ? Math.ceil((totalM2 / coverageM2PerLiter) * 10) / 10 : 0;
 
     return {
       product: coat.product,
