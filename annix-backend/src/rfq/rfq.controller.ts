@@ -46,8 +46,7 @@ import {
   RfqResponseDto,
   StraightPipeCalculationResultDto,
 } from "./dto/rfq-response.dto";
-import { RfqStatus } from "./entities/rfq.entity";
-import { Rfq } from "./entities/rfq.entity";
+import { Rfq, RfqStatus } from "./entities/rfq.entity";
 import { RfqService } from "./rfq.service";
 
 @ApiTags("RFQ")
@@ -580,10 +579,25 @@ export class RfqController {
     summary: "Get paginated RFQs",
     description: "Get paginated list of RFQs with filtering and search",
   })
-  @ApiQuery({ name: "page", required: false, type: Number, description: "Page number (default: 1)" })
-  @ApiQuery({ name: "limit", required: false, type: Number, description: "Items per page (default: 20, max: 100)" })
+  @ApiQuery({
+    name: "page",
+    required: false,
+    type: Number,
+    description: "Page number (default: 1)",
+  })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    description: "Items per page (default: 20, max: 100)",
+  })
   @ApiQuery({ name: "status", required: false, enum: RfqStatus, description: "Filter by status" })
-  @ApiQuery({ name: "search", required: false, type: String, description: "Search by project name or RFQ number" })
+  @ApiQuery({
+    name: "search",
+    required: false,
+    type: String,
+    description: "Search by project name or RFQ number",
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: "Paginated RFQs retrieved successfully",
@@ -602,7 +616,8 @@ export class RfqController {
   @Get()
   @ApiOperation({
     summary: "Get all RFQs (deprecated)",
-    description: "Get all RFQs created by the authenticated user. Use GET /rfq/list for pagination.",
+    description:
+      "Get all RFQs created by the authenticated user. Use GET /rfq/list for pagination.",
     deprecated: true,
   })
   @ApiResponse({
