@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Not, Repository } from "typeorm";
 import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
@@ -1279,6 +1286,36 @@ export class RfqService {
     }
 
     return rfq;
+  }
+
+  async verifyRfqOwnership(rfqId: number, userId: number): Promise<void> {
+    const rfq = await this.rfqRepository.findOne({
+      where: { id: rfqId },
+      relations: ["createdBy"],
+    });
+
+    if (!rfq) {
+      throw new NotFoundException(`RFQ with ID ${rfqId} not found`);
+    }
+
+    if (rfq.createdBy?.id !== userId) {
+      throw new ForbiddenException("You do not have access to this RFQ");
+    }
+  }
+
+  async verifyDocumentOwnership(documentId: number, userId: number): Promise<void> {
+    const document = await this.rfqDocumentRepository.findOne({
+      where: { id: documentId },
+      relations: ["rfq", "rfq.createdBy"],
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${documentId} not found`);
+    }
+
+    if (document.rfq?.createdBy?.id !== userId) {
+      throw new ForbiddenException("You do not have access to this document");
+    }
   }
 
   async calculateBendRequirements(dto: CreateBendRfqDto): Promise<BendCalculationResultDto> {

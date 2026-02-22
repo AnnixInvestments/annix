@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   HttpStatus,
   Param,
@@ -24,6 +25,7 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import { Request, Response } from "express";
 import { CustomerAuthGuard } from "../customer/guards/customer-auth.guard";
 import { BendCalculationResultDto } from "./dto/bend-calculation-result.dto";
@@ -775,6 +777,8 @@ export class RfqController {
   // ==================== RFQ by ID (must come after /drafts routes) ====================
 
   @Get(":id")
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: "Get RFQ by ID",
     description: "Get detailed RFQ information including all items and calculations",
@@ -788,13 +792,25 @@ export class RfqController {
     status: HttpStatus.NOT_FOUND,
     description: "RFQ not found",
   })
-  async getRfqById(@Param("id") id: number): Promise<Rfq> {
-    return this.rfqService.findRfqById(id);
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: "User does not have access to this RFQ",
+  })
+  async getRfqById(@Param("id") id: number, @Req() req: Request): Promise<Rfq> {
+    const userId = (req as any).customer?.userId;
+    const rfq = await this.rfqService.findRfqById(id);
+    if (rfq.createdBy?.id !== userId) {
+      throw new ForbiddenException("You do not have access to this RFQ");
+    }
+    return rfq;
   }
 
   // ==================== Document Endpoints ====================
 
   @Post(":id/documents")
+  @UseGuards(CustomerAuthGuard, ThrottlerGuard)
+  @ApiBearerAuth()
+  @Throttle({ upload: { ttl: 60000, limit: 10 } })
   @UseInterceptors(
     FileInterceptor("file", {
       limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
@@ -803,7 +819,7 @@ export class RfqController {
   @ApiOperation({
     summary: "Upload document to RFQ",
     description:
-      "Upload a document file (PDF, Excel, Word, etc.) to an RFQ. Maximum 10 documents per RFQ, 50MB per file.",
+      "Upload a document file (PDF, Excel, Word, etc.) to an RFQ. Maximum 10 documents per RFQ, 50MB per file. Rate limited to 10 uploads per minute.",
   })
   @ApiConsumes("multipart/form-data")
   @ApiParam({ name: "id", description: "RFQ ID", type: Number })
@@ -834,14 +850,23 @@ export class RfqController {
     status: HttpStatus.NOT_FOUND,
     description: "RFQ not found",
   })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: "User does not have access to this RFQ",
+  })
   async uploadDocument(
     @Param("id", ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
   ): Promise<RfqDocumentResponseDto> {
+    const userId = (req as any).customer?.userId;
+    await this.rfqService.verifyRfqOwnership(id, userId);
     return this.rfqService.uploadDocument(id, file);
   }
 
   @Get(":id/documents")
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: "Get all documents for RFQ",
     description: "Retrieve list of all documents attached to an RFQ",
@@ -856,11 +881,22 @@ export class RfqController {
     status: HttpStatus.NOT_FOUND,
     description: "RFQ not found",
   })
-  async getDocuments(@Param("id", ParseIntPipe) id: number): Promise<RfqDocumentResponseDto[]> {
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: "User does not have access to this RFQ",
+  })
+  async getDocuments(
+    @Param("id", ParseIntPipe) id: number,
+    @Req() req: Request,
+  ): Promise<RfqDocumentResponseDto[]> {
+    const userId = (req as any).customer?.userId;
+    await this.rfqService.verifyRfqOwnership(id, userId);
     return this.rfqService.getDocuments(id);
   }
 
   @Get("documents/:documentId/download")
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: "Download document",
     description: "Download a specific document by its ID",
@@ -882,10 +918,17 @@ export class RfqController {
     status: HttpStatus.NOT_FOUND,
     description: "Document not found",
   })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: "User does not have access to this document",
+  })
   async downloadDocument(
     @Param("documentId", ParseIntPipe) documentId: number,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
+    const userId = (req as any).customer?.userId;
+    await this.rfqService.verifyDocumentOwnership(documentId, userId);
     const { buffer, document } = await this.rfqService.downloadDocument(documentId);
 
     res.set({
@@ -898,6 +941,8 @@ export class RfqController {
   }
 
   @Delete("documents/:documentId")
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: "Delete document",
     description: "Delete a document from an RFQ",
@@ -911,9 +956,16 @@ export class RfqController {
     status: HttpStatus.NOT_FOUND,
     description: "Document not found",
   })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: "User does not have access to this document",
+  })
   async deleteDocument(
     @Param("documentId", ParseIntPipe) documentId: number,
+    @Req() req: Request,
   ): Promise<{ message: string }> {
+    const userId = (req as any).customer?.userId;
+    await this.rfqService.verifyDocumentOwnership(documentId, userId);
     await this.rfqService.deleteDocument(documentId);
     return { message: "Document deleted successfully" };
   }

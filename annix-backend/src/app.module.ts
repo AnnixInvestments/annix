@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
+import { ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "./admin/admin.module";
 import { AngleRangeModule } from "./angle-range/angle-range.module";
@@ -87,6 +88,20 @@ import { WorkflowModule } from "./workflow/workflow.module";
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: "default",
+          ttl: 60000,
+          limit: 100,
+        },
+        {
+          name: "upload",
+          ttl: 60000,
+          limit: 10,
+        },
+      ],
+    }),
     TypeOrmModule.forRoot(typeormConfig()),
     AuthSharedModule,
     SteelSpecificationModule,

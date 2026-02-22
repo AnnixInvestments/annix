@@ -11,12 +11,12 @@ async function bootstrap() {
   const uploadDir = process.env.UPLOAD_DIR || path.resolve(__dirname, "..", "..", "uploads");
   app.useStaticAssets(uploadDir, { prefix: "/api/files/" });
 
+  const isProduction = process.env.NODE_ENV === "production";
   const corsOrigins = [
-    "http://localhost:3000",
-    "http://localhost:3001",
+    ...(isProduction ? [] : ["http://localhost:3000", "http://localhost:3001"]),
     ...(process.env.CORS_ORIGINS?.split(",").map((o) => o.trim()) ?? []),
     process.env.FRONTEND_URL,
-  ].filter((o): o is string => Boolean(o));
+  ].filter((o): o is string => typeof o === "string" && o.startsWith("http"));
 
   app.enableCors({
     origin: corsOrigins,
