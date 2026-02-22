@@ -4,13 +4,13 @@ import { isNumber } from "es-toolkit/compat";
 import Link from "next/link";
 import React, { useCallback, useEffect, useState } from "react";
 import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
-import AddMineModal from "@/app/components/rfq/AddMineModal";
+import AddMineModal from "@/app/components/rfq/modals/AddMineModal";
 import {
   AutoFilledDisplay,
   AutoFilledInput,
   AutoFilledSelect,
-} from "@/app/components/rfq/AutoFilledField";
-import RfqDocumentUpload from "@/app/components/rfq/RfqDocumentUpload";
+} from "@/app/components/rfq/shared/AutoFilledField";
+import RfqDocumentUpload from "@/app/components/rfq/uploads/RfqDocumentUpload";
 import { useToast } from "@/app/components/Toast";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
@@ -76,19 +76,11 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 export type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
 
-interface ProjectDetailsStepProps {
-  onShowNixPopup?: () => void;
-  onStopUsingNix?: () => void;
-  onProcessWithNix?: () => void;
-  isNixProcessing?: boolean;
-}
-
-export default function ProjectDetailsStep({
-  onShowNixPopup,
-  onStopUsingNix,
-  onProcessWithNix,
-  isNixProcessing,
-}: ProjectDetailsStepProps) {
+export default function ProjectDetailsStep() {
+  const nixShowPopup = useRfqWizardStore((s) => s.nixShowPopup);
+  const nixStopUsing = useRfqWizardStore((s) => s.nixStopUsing);
+  const nixProcessDocuments = useRfqWizardStore((s) => s.nixProcessDocuments);
+  const isNixProcessing = useRfqWizardStore((s) => s.isNixProcessing);
   const rfqData = useRfqWizardStore((s) => s.rfqData) as any;
   const errors = useRfqWizardStore((s) => s.validationErrors);
   const pendingDocuments = useRfqWizardStore((s) => s.pendingDocuments);
@@ -849,10 +841,10 @@ export default function ProjectDetailsStep({
     const nixProjectTypes = ["phase1", "retender", "feasibility"];
     const isNixType = nixProjectTypes.includes(rfqData.projectType as string);
 
-    if (isNixType && onShowNixPopup && !rfqData.useNix) {
-      onShowNixPopup();
+    if (isNixType && nixShowPopup && !rfqData.useNix) {
+      nixShowPopup();
     }
-  }, [rfqData.projectType, rfqData.useNix, onShowNixPopup]);
+  }, [rfqData.projectType, rfqData.useNix, nixShowPopup]);
 
   // Fallback slurry profiles by commodity when API is unavailable
   const fallbackSlurryProfiles: Record<string, any> = {
@@ -1677,10 +1669,10 @@ export default function ProjectDetailsStep({
                 </p>
               </div>
             </div>
-            {onStopUsingNix && (
+            {nixStopUsing && (
               <button
                 type="button"
-                onClick={onStopUsingNix}
+                onClick={nixStopUsing}
                 className="text-sm text-orange-700 hover:text-orange-900 underline font-medium"
               >
                 Stop using Nix
@@ -1890,18 +1882,18 @@ export default function ProjectDetailsStep({
                       const nixProjectTypes = ["phase1", "retender", "feasibility"];
                       if (
                         nixProjectTypes.includes(selectedType) &&
-                        onShowNixPopup &&
+                        nixShowPopup &&
                         !rfqData.nixPopupShown
                       ) {
                         log.debug("🤖 Triggering Nix popup from onChange");
-                        onShowNixPopup();
+                        nixShowPopup();
                       } else if (
                         !nixProjectTypes.includes(selectedType) &&
                         useNix &&
-                        onStopUsingNix
+                        nixStopUsing
                       ) {
                         log.debug("🤖 Disabling Nix - switched to non-Nix project type");
-                        onStopUsingNix();
+                        nixStopUsing();
                       }
                     }}
                     className="sr-only"
@@ -2242,9 +2234,7 @@ export default function ProjectDetailsStep({
                         setShowNoDocumentsPopup(true);
                       } else {
                         setDocumentsConfirmed(true);
-                        if (onProcessWithNix) {
-                          onProcessWithNix();
-                        }
+                        nixProcessDocuments(showToast);
                       }
                     }}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold flex items-center gap-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"

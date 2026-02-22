@@ -1,10 +1,16 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import type { PipeDimension } from "@/app/lib/api/client";
 
-interface ScheduleOption {
-  id?: number;
-  scheduleNumber?: string;
-  wallThicknessMm?: number;
+export interface ScheduleData {
+  id: number;
+  scheduleDesignation?: string;
+  scheduleNumber?: number;
+  wallThicknessMm: number;
+  massKgm?: number;
+  internalDiameterMm?: number;
+  nominalOutsideDiameter?: PipeDimension["nominalOutsideDiameter"];
+  steelSpecification?: PipeDimension["steelSpecification"];
 }
 
 interface PressureClassOption {
@@ -18,7 +24,7 @@ interface BendOptions {
 }
 
 interface RfqUiState {
-  availableSchedulesMap: Record<string, ScheduleOption[]>;
+  availableSchedulesMap: Record<string, ScheduleData[]>;
   pressureClassesByStandard: Record<number, PressureClassOption[]>;
   availablePressureClasses: PressureClassOption[];
   bendOptionsCache: Record<string, BendOptions>;
@@ -31,8 +37,8 @@ interface RfqUiState {
 interface RfqUiActions {
   setAvailableSchedulesMap: (
     mapOrUpdater:
-      | Record<string, ScheduleOption[]>
-      | ((prev: Record<string, ScheduleOption[]>) => Record<string, ScheduleOption[]>),
+      | Record<string, ScheduleData[]>
+      | ((prev: Record<string, ScheduleData[]>) => Record<string, ScheduleData[]>),
   ) => void;
   setPressureClassesByStandard: (
     mapOrUpdater:
@@ -130,8 +136,7 @@ export const useRfqUiStore = create<RfqUiStore>()(
 
       clearValidationErrors: () => set({ validationErrors: {} }, false, "clearValidationErrors"),
 
-      setIsSubmitting: (submitting) =>
-        set({ isSubmitting: submitting }, false, "setIsSubmitting"),
+      setIsSubmitting: (submitting) => set({ isSubmitting: submitting }, false, "setIsSubmitting"),
 
       setShowCloseConfirmation: (show) =>
         set({ showCloseConfirmation: show }, false, "setShowCloseConfirmation"),

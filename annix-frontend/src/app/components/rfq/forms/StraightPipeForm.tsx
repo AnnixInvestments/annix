@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { ClosureLengthSelector } from "@/app/components/rfq/ClosureLengthSelector";
-import { MaterialSuitabilityWarning } from "@/app/components/rfq/MaterialSuitabilityWarning";
-import { formatNotesForDisplay, SmartNotesDropdown } from "@/app/components/rfq/SmartNotesDropdown";
-import { SpigotConfigurationSection } from "@/app/components/rfq/SpigotConfigurationSection";
-import SplitPaneLayout from "@/app/components/rfq/SplitPaneLayout";
+import { SpigotConfigurationSection } from "@/app/components/rfq/sections/SpigotConfigurationSection";
+import { ClosureLengthSelector } from "@/app/components/rfq/selectors/ClosureLengthSelector";
+import {
+  formatNotesForDisplay,
+  SmartNotesDropdown,
+} from "@/app/components/rfq/selectors/SmartNotesDropdown";
+import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
+import { MaterialSuitabilityWarning } from "@/app/components/rfq/warnings/MaterialSuitabilityWarning";
 import { Select } from "@/app/components/ui/Select";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
 import {

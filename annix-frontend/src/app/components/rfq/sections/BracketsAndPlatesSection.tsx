@@ -10,8 +10,8 @@ import {
   recalculatePlateEntry,
   summarizeBracketsAndPlates,
 } from "@/app/lib/utils/bracketCalculations";
-import BracketForm from "./forms/BracketForm";
-import CompensationPlateForm from "./forms/CompensationPlateForm";
+import BracketForm from "../forms/BracketForm";
+import CompensationPlateForm from "../forms/CompensationPlateForm";
 
 interface BracketsAndPlatesSectionProps {
   initialBrackets?: BracketEntry[];

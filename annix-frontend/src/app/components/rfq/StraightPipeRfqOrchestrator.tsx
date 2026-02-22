@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { GuidedHighlight } from "@/app/components/rfq/GuidedHighlight";
+import { GuidedHighlight } from "@/app/components/rfq/shared/GuidedHighlight";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { useToast } from "@/app/components/Toast";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
@@ -3401,14 +3401,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     if (rfqData.useNix) {
       switch (currentStep) {
         case 1:
-          return (
-            <ProjectDetailsStep
-              onShowNixPopup={nixShowPopup}
-              onStopUsingNix={nixStopUsing}
-              onProcessWithNix={() => nixProcessDocuments(showToast)}
-              isNixProcessing={isNixProcessing}
-            />
-          );
+          return <ProjectDetailsStep />;
         case 2:
           return (
             <ItemUploadStep
@@ -3438,7 +3431,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     } else {
       switch (currentStep) {
         case 1:
-          return <ProjectDetailsStep onShowNixPopup={nixShowPopup} onStopUsingNix={nixStopUsing} />;
+          return <ProjectDetailsStep />;
         case 2:
           return <SpecificationsStep fetchAndSelectPressureClass={fetchAndSelectPressureClass} />;
         case 3:

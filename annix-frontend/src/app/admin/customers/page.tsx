@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Pagination } from "@/app/components/ui/Pagination";
-import { StatusBadge } from "@/app/components/ui/StatusBadge";
 import type { CustomerAccountStatus } from "@/app/lib/api/adminApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { useDebouncedValue } from "@/app/lib/hooks/useDebouncedValue";
 import { useAdminCustomers } from "@/app/lib/query/hooks";
+import { CustomerRow } from "../components/CustomerRow";
 
 export default function AdminCustomersPage() {
   const [page, setPage] = useState(1);
@@ -14,16 +13,11 @@ export default function AdminCustomersPage() {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<CustomerAccountStatus | "">("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [search]);
+    setPage(1);
+  }, [debouncedSearch]);
 
   const customersQuery = useAdminCustomers({
     search: debouncedSearch || undefined,
@@ -148,70 +142,7 @@ export default function AdminCustomersPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {customers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {customer.firstName} {customer.lastName}
-                        </div>
-                        <div className="text-sm text-gray-500">{customer.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-900">{customer.companyName}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <StatusBadge status={customer.accountStatus} />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {customer.deviceBound ? (
-                        <span className="inline-flex items-center text-green-600">
-                          <svg
-                            className="w-4 h-4 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          Bound
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center text-gray-400">
-                          <svg
-                            className="w-4 h-4 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                          Not Bound
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDateZA(customer.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link
-                        href={`/admin/customers/${customer.id}`}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        View Details
-                      </Link>
-                    </td>
-                  </tr>
+                  <CustomerRow key={customer.id} customer={customer} />
                 ))}
               </tbody>
             </table>

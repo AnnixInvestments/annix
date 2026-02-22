@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { AutoDimensionSpacingConfig, calculateAutoSpacing } from "./DimensionComponents";
+import { AutoDimensionSpacingConfig, calculateAutoSpacing } from "./shared/DimensionComponents";
 
 describe("DimensionComponents", () => {
   describe("calculateAutoSpacing", () => {

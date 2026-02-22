@@ -1,4 +1,10 @@
-import type { CreateStraightPipeRfqDto, StraightPipeCalculationResult } from "@/app/lib/api/client";
+import type {
+  BendCalculationResult,
+  CreateStraightPipeRfqDto,
+  PipeDimension,
+  PumpCalculationResult,
+  StraightPipeCalculationResult,
+} from "@/app/lib/api/client";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import type { HdpeGrade, HdpeJoiningMethod, HdpeSdr } from "../config/rfq/hdpe";
 import type { PvcJoiningMethod, PvcPressureClass, PvcType } from "../config/rfq/pvc";
@@ -25,7 +31,7 @@ export interface StraightPipeEntry {
   isScheduleOverridden?: boolean;
   minimumSchedule?: string;
   minimumWallThickness?: number;
-  availableUpgrades?: any[];
+  availableUpgrades?: PipeDimension[];
   hasFlangeOverride?: boolean;
   flangeOverrideConfirmed?: boolean;
 }
@@ -65,7 +71,7 @@ export interface BendEntry {
     workingTemperatureC?: number;
     useGlobalFlangeSpecs?: boolean;
   };
-  calculation?: any;
+  calculation?: BendCalculationResult;
   calculationError?: string | null;
   notes?: string;
 }
@@ -96,7 +102,7 @@ export interface FittingEntry {
     workingPressureBar?: number;
     workingTemperatureC?: number;
   };
-  calculation?: any;
+  calculation?: Record<string, unknown>;
   calculationError?: string | null;
   notes?: string;
 }
@@ -121,7 +127,7 @@ export interface PipeSteelWorkEntry {
     workingPressureBar?: number;
     workingTemperatureC?: number;
   };
-  calculation?: any;
+  calculation?: Record<string, unknown>;
   calculationError?: string | null;
   notes?: string;
 }
@@ -158,7 +164,7 @@ export interface ExpansionJointEntry {
     workingPressureBar?: number;
     workingTemperatureC?: number;
   };
-  calculation?: any;
+  calculation?: Record<string, unknown>;
   calculationError?: string | null;
   totalWeightKg?: number;
   notes?: string;
@@ -194,7 +200,7 @@ export interface ValveEntry {
     unitCostFromSupplier?: number;
     markupPercentage?: number;
   };
-  calculation?: any;
+  calculation?: Record<string, unknown>;
   calculationError?: string | null;
   notes?: string;
 }
@@ -227,7 +233,7 @@ export interface InstrumentEntry {
     unitCostFromSupplier?: number;
     markupPercentage?: number;
   };
-  calculation?: any;
+  calculation?: Record<string, unknown>;
   calculationError?: string | null;
   notes?: string;
 }
@@ -265,7 +271,7 @@ export interface PumpEntry {
     unitCostFromSupplier?: number;
     markupPercentage?: number;
   };
-  calculation?: any;
+  calculation?: PumpCalculationResult;
   calculationError?: string | null;
   notes?: string;
 }

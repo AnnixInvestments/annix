@@ -4,17 +4,17 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 
-const Pipe3DPreview = dynamic(() => import("@/app/components/rfq/Pipe3DPreview"), {
+const Pipe3DPreview = dynamic(() => import("@/app/components/rfq/previews/Pipe3DPreview"), {
   ssr: false,
   loading: () => <PreviewPlaceholder label="Loading Pipe Preview..." />,
 });
 
-const CSGBend3DPreview = dynamic(() => import("@/app/components/rfq/CSGBend3DPreview"), {
+const CSGBend3DPreview = dynamic(() => import("@/app/components/rfq/previews/CSGBend3DPreview"), {
   ssr: false,
   loading: () => <PreviewPlaceholder label="Loading Bend Preview..." />,
 });
 
-const Tee3DPreview = dynamic(() => import("@/app/components/rfq/Tee3DPreview"), {
+const Tee3DPreview = dynamic(() => import("@/app/components/rfq/previews/Tee3DPreview"), {
   ssr: false,
   loading: () => <PreviewPlaceholder label="Loading Tee Preview..." />,
 });

@@ -53,7 +53,12 @@ interface NixActions {
   nixOpenChatPanel: () => void;
   nixCloseChatPanel: () => void;
   nixSetChatSessionId: (sessionId: number | null) => void;
-  nixSetChatPanelGeometry: (geometry: { x: number; y: number; width: number; height: number }) => void;
+  nixSetChatPanelGeometry: (geometry: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => void;
 
   nixStartGuidedMode: () => void;
   nixEndGuidedMode: () => void;

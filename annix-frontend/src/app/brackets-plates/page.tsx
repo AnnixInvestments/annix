@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import BracketsAndPlatesSection from "@/app/components/rfq/BracketsAndPlatesSection";
+import BracketsAndPlatesSection from "@/app/components/rfq/sections/BracketsAndPlatesSection";
 import { BracketEntry, CompensationPlateEntry } from "@/app/lib/config/rfq/bracketsAndPlates";
 import {
   formatCurrency,

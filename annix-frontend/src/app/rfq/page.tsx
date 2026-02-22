@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import UnifiedMultiStepRfqForm from "@/app/components/rfq/UnifiedMultiStepRfqForm";
+import UnifiedMultiStepRfqForm from "@/app/components/rfq/forms/UnifiedMultiStepRfqForm";
 import { CustomerAuthProvider } from "@/app/context/CustomerAuthContext";
 import { log } from "@/app/lib/logger";
 

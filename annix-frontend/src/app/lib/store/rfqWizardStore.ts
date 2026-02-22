@@ -22,12 +22,32 @@ import type {
 } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
 import { type NixClarificationDto, type NixExtractedItem, nixApi } from "@/app/lib/nix";
+import type { ScheduleData } from "@/app/lib/store/rfqUiStore";
 import type { ItemIssue } from "@/app/lib/utils/itemDiagnostics";
 import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
 
 export interface PendingDocument {
   file: File;
   id: string;
+}
+
+interface PressureClassOption {
+  id: number;
+  designation: string;
+}
+
+export interface LocalDraftRfqData extends Record<string, unknown> {
+  projectName?: string;
+  customerEmail?: string;
+  requiredProducts?: string[];
+}
+
+export interface LocalDraftData {
+  rfqData?: LocalDraftRfqData;
+  globalSpecs?: GlobalSpecs;
+  entries?: PipeItem[];
+  currentStep?: number;
+  lastSaved?: string | number;
 }
 
 export interface DraftFormData {
@@ -98,9 +118,9 @@ interface RfqWizardState {
   masterData: MasterData;
   isLoadingMasterData: boolean;
 
-  availableSchedulesMap: Record<string, any[]>;
-  pressureClassesByStandard: Record<number, any[]>;
-  availablePressureClasses: any[];
+  availableSchedulesMap: Record<string, ScheduleData[]>;
+  pressureClassesByStandard: Record<number, PressureClassOption[]>;
+  availablePressureClasses: PressureClassOption[];
   bendOptionsCache: Record<string, { nominalBores: number[]; degrees: number[] }>;
 
   validationErrors: Record<string, string>;
@@ -143,7 +163,7 @@ interface RfqWizardState {
   isSavingDraft: boolean;
   isLoadingDraft: boolean;
   showDraftRestorePrompt: boolean;
-  pendingLocalDraft: any;
+  pendingLocalDraft: LocalDraftData | null;
   showSaveProgressDialog: boolean;
   isSavingProgress: boolean;
   saveProgressStep: "confirm" | "success";
@@ -193,10 +213,10 @@ interface RfqWizardActions {
   prevStep: () => void;
   resetForm: () => void;
   restoreFromDraft: (draft: {
-    formData?: Record<string, any>;
+    formData?: Record<string, unknown>;
     globalSpecs?: GlobalSpecs;
     requiredProducts?: string[];
-    straightPipeEntries?: any[];
+    straightPipeEntries?: PipeItem[] | Record<string, unknown>[];
     currentStep?: number;
   }) => void;
 
@@ -204,12 +224,16 @@ interface RfqWizardActions {
   setIsLoadingMasterData: (loading: boolean) => void;
 
   setAvailableSchedulesMap: (
-    mapOrUpdater: Record<string, any[]> | ((prev: Record<string, any[]>) => Record<string, any[]>),
+    mapOrUpdater:
+      | Record<string, ScheduleData[]>
+      | ((prev: Record<string, ScheduleData[]>) => Record<string, ScheduleData[]>),
   ) => void;
   setPressureClassesByStandard: (
-    mapOrUpdater: Record<number, any[]> | ((prev: Record<number, any[]>) => Record<number, any[]>),
+    mapOrUpdater:
+      | Record<number, PressureClassOption[]>
+      | ((prev: Record<number, PressureClassOption[]>) => Record<number, PressureClassOption[]>),
   ) => void;
-  setAvailablePressureClasses: (classes: any[]) => void;
+  setAvailablePressureClasses: (classes: PressureClassOption[]) => void;
   setBendOptionsCache: (
     cacheOrUpdater:
       | Record<string, { nominalBores: number[]; degrees: number[] }>
@@ -281,7 +305,7 @@ interface RfqWizardActions {
   setIsSavingDraft: (saving: boolean) => void;
   setIsLoadingDraft: (loading: boolean) => void;
   setShowDraftRestorePrompt: (show: boolean) => void;
-  setPendingLocalDraft: (draft: any) => void;
+  setPendingLocalDraft: (draft: LocalDraftData | null) => void;
   setHasCheckedLocalDraft: (checked: boolean) => void;
   setHasProcessedRecoveryToken: (processed: boolean) => void;
   draftOpenSaveProgressDialog: () => void;
@@ -1003,30 +1027,30 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           const formData = draft.formData || {};
 
           const restored: RfqFormData = {
-            projectName: formData.projectName ?? "",
-            projectType: formData.projectType,
-            description: formData.description ?? "",
-            customerName: formData.customerName ?? "",
-            customerEmail: formData.customerEmail ?? "",
-            customerPhone: formData.customerPhone ?? "",
-            requiredDate: formData.requiredDate ?? addDaysFromNowISODate(30),
+            projectName: String(formData.projectName ?? ""),
+            projectType: formData.projectType as string | undefined,
+            description: String(formData.description ?? ""),
+            customerName: String(formData.customerName ?? ""),
+            customerEmail: String(formData.customerEmail ?? ""),
+            customerPhone: String(formData.customerPhone ?? ""),
+            requiredDate: String(formData.requiredDate ?? addDaysFromNowISODate(30)),
             requiredProducts: draft.requiredProducts ?? [],
-            notes: formData.notes ?? "",
+            notes: String(formData.notes ?? ""),
             latitude: formData.latitude !== undefined ? Number(formData.latitude) : undefined,
             longitude: formData.longitude !== undefined ? Number(formData.longitude) : undefined,
-            siteAddress: formData.siteAddress,
-            region: formData.region,
-            country: formData.country,
-            mineId: formData.mineId,
-            mineName: formData.mineName,
-            skipDocuments: formData.skipDocuments,
-            useNix: formData.useNix ?? false,
-            nixPopupShown: formData.nixPopupShown ?? false,
+            siteAddress: formData.siteAddress as string | undefined,
+            region: formData.region as string | undefined,
+            country: formData.country as string | undefined,
+            mineId: formData.mineId as number | undefined,
+            mineName: formData.mineName as string | undefined,
+            skipDocuments: formData.skipDocuments as boolean | undefined,
+            useNix: Boolean(formData.useNix ?? false),
+            nixPopupShown: Boolean(formData.nixPopupShown ?? false),
             globalSpecs: draft.globalSpecs ?? {},
-            items: draft.straightPipeEntries ?? [],
+            items: (draft.straightPipeEntries ?? []) as PipeItem[],
             straightPipeEntries: (draft.straightPipeEntries ?? []).filter(
-              (e: any) => e.itemType === "straight_pipe" || !e.itemType,
-            ),
+              (e) => (e as PipeItem).itemType === "straight_pipe" || !(e as PipeItem).itemType,
+            ) as StraightPipeEntry[],
           };
 
           log.debug("restoreFromDraft:", JSON.stringify(restored, null, 2));

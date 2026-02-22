@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ClosureLengthSelector } from "@/app/components/rfq/ClosureLengthSelector";
-import { MaterialSuitabilityWarning } from "@/app/components/rfq/MaterialSuitabilityWarning";
-import { formatNotesForDisplay, SmartNotesDropdown } from "@/app/components/rfq/SmartNotesDropdown";
-import SplitPaneLayout from "@/app/components/rfq/SplitPaneLayout";
-import { TangentExtensionsSection } from "@/app/components/rfq/TangentExtensionsSection";
-import { WorkingConditionsSection } from "@/app/components/rfq/WorkingConditionsSection";
+import { TangentExtensionsSection } from "@/app/components/rfq/sections/TangentExtensionsSection";
+import { WorkingConditionsSection } from "@/app/components/rfq/sections/WorkingConditionsSection";
+import { ClosureLengthSelector } from "@/app/components/rfq/selectors/ClosureLengthSelector";
+import {
+  formatNotesForDisplay,
+  SmartNotesDropdown,
+} from "@/app/components/rfq/selectors/SmartNotesDropdown";
+import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
+import { MaterialSuitabilityWarning } from "@/app/components/rfq/warnings/MaterialSuitabilityWarning";
 import { Select } from "@/app/components/ui/Select";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useBendCalculations } from "@/app/hooks/useBendCalculations";

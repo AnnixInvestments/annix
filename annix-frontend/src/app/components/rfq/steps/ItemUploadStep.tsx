@@ -26,30 +26,33 @@ import {
 } from "@/app/lib/utils/pipeCalculations";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 
-const Pipe3DPreview = dynamic(() => import("@/app/components/rfq/Pipe3DPreview"), {
+const Pipe3DPreview = dynamic(() => import("@/app/components/rfq/previews/Pipe3DPreview"), {
   ssr: false,
   loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
 });
-const Bend3DPreview = dynamic(() => import("@/app/components/rfq/CSGBend3DPreview"), {
+const Bend3DPreview = dynamic(() => import("@/app/components/rfq/previews/CSGBend3DPreview"), {
   ssr: false,
   loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
 });
-const Tee3DPreview = dynamic(() => import("@/app/components/rfq/Tee3DPreview"), {
+const Tee3DPreview = dynamic(() => import("@/app/components/rfq/previews/Tee3DPreview"), {
   ssr: false,
   loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
 });
-const Lateral3DPreview = dynamic(() => import("@/app/components/rfq/Lateral3DPreview"), {
+const Lateral3DPreview = dynamic(() => import("@/app/components/rfq/previews/Lateral3DPreview"), {
   ssr: false,
   loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
 });
-const Reducer3DPreview = dynamic(() => import("@/app/components/rfq/Reducer3DPreview"), {
+const Reducer3DPreview = dynamic(() => import("@/app/components/rfq/previews/Reducer3DPreview"), {
   ssr: false,
   loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
 });
-const OffsetBend3DPreview = dynamic(() => import("@/app/components/rfq/OffsetBend3DPreview"), {
-  ssr: false,
-  loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
-});
+const OffsetBend3DPreview = dynamic(
+  () => import("@/app/components/rfq/previews/OffsetBend3DPreview"),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 bg-slate-100 rounded-md animate-pulse mb-4" />,
+  },
+);
 
 import {
   BendForm,
@@ -65,7 +68,7 @@ import {
   ItemTypeButtons,
   MaterialBadge,
   MaterialTypeSelector,
-} from "@/app/components/rfq/MaterialTypeSelector";
+} from "@/app/components/rfq/selectors/MaterialTypeSelector";
 import type { PipeMaterialType } from "@/app/lib/hooks/useRfqForm";
 
 interface ItemWrapperProps {

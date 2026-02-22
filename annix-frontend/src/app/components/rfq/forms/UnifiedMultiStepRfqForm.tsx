@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import StraightPipeRfqOrchestrator from "./StraightPipeRfqOrchestrator";
+import StraightPipeRfqOrchestrator from "../StraightPipeRfqOrchestrator";
 
 interface Props {
   onSuccess: (rfqId: string) => void;

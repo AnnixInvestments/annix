@@ -13,6 +13,7 @@ interface AutoFilledInputProps {
   readOnly?: boolean;
   disabled?: boolean;
   className?: string;
+  error?: string | null;
 }
 
 interface AutoFilledSelectProps {
@@ -23,6 +24,7 @@ interface AutoFilledSelectProps {
   children: React.ReactNode;
   disabled?: boolean;
   className?: string;
+  error?: string | null;
 }
 
 /**
@@ -43,6 +45,7 @@ export function AutoFilledInput({
   readOnly = false,
   disabled = false,
   className = "",
+  error,
 }: AutoFilledInputProps) {
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
 
@@ -50,7 +53,6 @@ export function AutoFilledInput({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newValue = e.target.value;
 
-      // Mark as edited if it was auto-filled
       if (isAutoFilled && !hasBeenEdited) {
         setHasBeenEdited(true);
         onOverride?.();
@@ -65,15 +67,17 @@ export function AutoFilledInput({
     [type, onChange, onOverride, isAutoFilled, hasBeenEdited],
   );
 
-  // Determine if we should show auto-filled styling
   const showAutoFilledStyle = isAutoFilled && !hasBeenEdited;
+  const hasError = Boolean(error);
 
   const baseClasses =
     "w-full px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-gray-900 text-sm";
 
-  const borderClasses = showAutoFilledStyle
-    ? "border-2 border-green-500 focus:ring-green-500 focus:border-green-500"
-    : "border border-gray-300 focus:ring-blue-500 focus:border-blue-500";
+  const borderClasses = hasError
+    ? "border-2 border-red-500 focus:ring-red-500 focus:border-red-500"
+    : showAutoFilledStyle
+      ? "border-2 border-green-500 focus:ring-green-500 focus:border-green-500"
+      : "border border-gray-300 focus:ring-blue-500 focus:border-blue-500";
 
   const textClasses = showAutoFilledStyle ? "font-bold" : "";
 
@@ -89,9 +93,22 @@ export function AutoFilledInput({
         step={step}
         readOnly={readOnly}
         disabled={disabled}
+        aria-invalid={hasError}
         className={`${baseClasses} ${borderClasses} ${textClasses} ${bgClasses} ${className}`}
       />
-      {showAutoFilledStyle && (
+      {hasError && (
+        <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {error}
+        </p>
+      )}
+      {!hasError && showAutoFilledStyle && (
         <p className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path
@@ -122,6 +139,7 @@ export function AutoFilledSelect({
   children,
   disabled = false,
   className = "",
+  error,
 }: AutoFilledSelectProps) {
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
 
@@ -129,7 +147,6 @@ export function AutoFilledSelect({
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const newValue = e.target.value;
 
-      // Mark as edited if it was auto-filled
       if (isAutoFilled && !hasBeenEdited) {
         setHasBeenEdited(true);
         onOverride?.();
@@ -140,15 +157,17 @@ export function AutoFilledSelect({
     [onChange, onOverride, isAutoFilled, hasBeenEdited],
   );
 
-  // Determine if we should show auto-filled styling
   const showAutoFilledStyle = isAutoFilled && !hasBeenEdited;
+  const hasError = Boolean(error);
 
   const baseClasses =
     "w-full px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-gray-900 text-sm";
 
-  const borderClasses = showAutoFilledStyle
-    ? "border-2 border-green-500 focus:ring-green-500 focus:border-green-500"
-    : "border border-gray-300 focus:ring-blue-500 focus:border-blue-500";
+  const borderClasses = hasError
+    ? "border-2 border-red-500 focus:ring-red-500 focus:border-red-500"
+    : showAutoFilledStyle
+      ? "border-2 border-green-500 focus:ring-green-500 focus:border-green-500"
+      : "border border-gray-300 focus:ring-blue-500 focus:border-blue-500";
 
   const textClasses = showAutoFilledStyle ? "font-bold" : "";
 
@@ -160,11 +179,24 @@ export function AutoFilledSelect({
         value={value || ""}
         onChange={handleChange}
         disabled={disabled}
+        aria-invalid={hasError}
         className={`${baseClasses} ${borderClasses} ${textClasses} ${disabledClasses} ${className}`}
       >
         {children}
       </select>
-      {showAutoFilledStyle && (
+      {hasError && (
+        <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {error}
+        </p>
+      )}
+      {!hasError && showAutoFilledStyle && (
         <p className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path
