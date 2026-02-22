@@ -64,7 +64,7 @@ export const voiceFilterApi = {
   },
 
   oauthUrl: (provider: string): string => {
-    return `/api/voice-filter/oauth/${provider}`;
+    return `/api/auth/oauth/${provider}?returnUrl=/voice-filter`;
   },
 
   calendarProviders: async (): Promise<{ providers: VoiceFilterCalendarProvider[] }> => {
@@ -116,6 +116,6 @@ export const voiceFilterApi = {
   },
 
   calendarOauthUrl: (provider: string): string => {
-    return `/api/voice-filter/oauth/${provider}`;
+    return `/api/auth/oauth/${provider}?returnUrl=/voice-filter/calendar&mode=connect`;
   },
 };

@@ -157,8 +157,7 @@ export default function VoiceFilterCalendarPage() {
   }, [isAuthenticated, authLoading, loadProviders]);
 
   const handleConnect = (provider: string) => {
-    const returnUrl = encodeURIComponent(window.location.href);
-    window.location.href = `${voiceFilterApi.calendarOauthUrl(provider)}?returnUrl=${returnUrl}`;
+    window.location.href = voiceFilterApi.calendarOauthUrl(provider);
   };
 
   const handleSync = async (provider: string) => {

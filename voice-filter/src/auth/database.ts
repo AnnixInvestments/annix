@@ -249,6 +249,20 @@ export function oauthTokens(userId: number): Record<string, string> {
   return JSON.parse(user.oauth_tokens);
 }
 
+export function removeOAuthToken(userId: number, service: string): void {
+  const database = ensureDb();
+  const user = findUserById(userId);
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const tokens: Record<string, string> = user.oauth_tokens ? JSON.parse(user.oauth_tokens) : {};
+  delete tokens[service];
+
+  const stmt = database.prepare("UPDATE users SET oauth_tokens = ? WHERE id = ?");
+  stmt.run(JSON.stringify(tokens), userId);
+}
+
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }

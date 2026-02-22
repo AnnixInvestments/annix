@@ -1,12 +1,15 @@
-# OAuth Setup Guide for Voice Filter
+# OAuth Setup Guide for Annix Platform
 
 ## Architecture Overview
 
-Voice Filter uses a split architecture for OAuth:
-- **OAuth initiation and callbacks**: Handled by Next.js API routes on port 3000
-- **Token exchange and user management**: Handled by voice-filter backend on port 47823
+Annix Platform uses a unified OAuth system for all apps:
+- **OAuth initiation**: `/api/auth/oauth/{provider}?returnUrl=/your-app-path`
+- **OAuth callback**: `/api/auth/oauth/callback` (single callback for ALL Annix apps)
+- **Token exchange**: Handled by backend on port 47823
 
-This means all OAuth redirect URIs point to `http://localhost:3000/api/voice-filter/oauth/callback`.
+**All Annix apps share ONE callback URL**: `http://localhost:3000/api/auth/oauth/callback`
+
+Configure this single URL in each OAuth provider - it works for voice-filter, and any future Annix apps.
 
 ## Quick Links
 - Google: https://console.cloud.google.com/apis/credentials
@@ -30,7 +33,7 @@ This means all OAuth redirect URIs point to `http://localhost:3000/api/voice-fil
 5. Back to Credentials → Create OAuth client ID:
    - Application type: **Web application**
    - Name: "Voice Filter"
-   - Authorized redirect URIs: `http://localhost:3000/api/voice-filter/oauth/callback`
+   - Authorized redirect URIs: `http://localhost:3000/api/auth/oauth/callback`
 6. Copy the **Client ID** and **Client Secret**
 
 ---
@@ -42,7 +45,7 @@ This means all OAuth redirect URIs point to `http://localhost:3000/api/voice-fil
 3. Fill in:
    - Name: "Voice Filter"
    - Supported account types: **"Accounts in any organizational directory and personal Microsoft accounts"**
-   - Redirect URI: Select **Web** → `http://localhost:3000/api/voice-filter/oauth/callback`
+   - Redirect URI: Select **Web** → `http://localhost:3000/api/auth/oauth/callback`
 4. Click **Register**
 5. On the Overview page, copy the **Application (client) ID**
 6. Go to **"Certificates & secrets"** in left menu
@@ -62,7 +65,7 @@ This means all OAuth redirect URIs point to `http://localhost:3000/api/voice-fil
    - App Name: "Voice Filter"
    - App Type: User-managed
 5. In the app settings:
-   - Redirect URL: `http://localhost:3000/api/voice-filter/oauth/callback`
+   - Redirect URL: `http://localhost:3000/api/auth/oauth/callback`
    - Add Scopes: `user:read:email` (for basic user info)
 6. Copy the **Client ID** and **Client Secret**
 
@@ -96,7 +99,7 @@ Apple Sign In requires an Apple Developer account ($99/year).
 8. Click **Configure** next to Sign in with Apple:
    - Primary App ID: Select your App ID from Step 1
    - Domains: `localhost`
-   - Return URLs: `http://localhost:3000/api/voice-filter/oauth/callback`
+   - Return URLs: `http://localhost:3000/api/auth/oauth/callback`
 9. Click **Save** then **Continue** then **Save**
 
 ### Step 3: Create a Key

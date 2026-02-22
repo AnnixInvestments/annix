@@ -19,9 +19,11 @@ import {
   findUserById,
   initDatabase,
   oauthTokens,
+  removeOAuthToken,
   postMeetingJobById,
   postMeetingJobByCalendarEvent,
   postMeetingJobsByUser,
+  saveOAuthToken,
   updatePostMeetingJob,
   verifyPassword,
 } from "../auth/database.js";
@@ -317,7 +319,15 @@ function clearTokenCookie(res: ServerResponse): void {
 }
 
 function authenticatedUserId(req: IncomingMessage): number | null {
-  const token = extractTokenFromCookie(req.headers.cookie);
+  let token = extractTokenFromCookie(req.headers.cookie);
+
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.slice(7);
+    }
+  }
+
   if (!token) {
     return null;
   }
@@ -398,6 +408,7 @@ async function handleApiOAuthExchange(req: IncomingMessage, res: ServerResponse)
     const provider = typeof body.provider === "string" ? body.provider : "";
     const code = typeof body.code === "string" ? body.code : "";
     const redirectUri = typeof body.redirectUri === "string" ? body.redirectUri : undefined;
+    const mode = typeof body.mode === "string" ? body.mode : "login";
 
     if (!provider || !code) {
       sendJson(res, 400, { error: "Provider and code are required." });
@@ -422,6 +433,22 @@ async function handleApiOAuthExchange(req: IncomingMessage, res: ServerResponse)
 
     if (!result) {
       sendJson(res, 401, { error: "OAuth exchange failed." });
+      return;
+    }
+
+    if (mode === "connect") {
+      const userId = authenticatedUserId(req);
+      if (!userId) {
+        sendJson(res, 401, { error: "Not authenticated. Please log in first." });
+        return;
+      }
+
+      saveOAuthToken(userId, provider, result.accessToken);
+      if (result.refreshToken) {
+        saveOAuthToken(userId, `${provider}_refresh`, result.refreshToken);
+      }
+
+      sendJson(res, 200, { success: true, provider });
       return;
     }
 
@@ -669,6 +696,26 @@ function handleApiCalendarSyncStatus(req: IncomingMessage, res: ServerResponse):
   });
 
   sendJson(res, 200, { status: statusObj });
+}
+
+function handleApiCalendarDisconnect(
+  req: IncomingMessage,
+  res: ServerResponse,
+  provider: string,
+): void {
+  const userId = authenticatedUserId(req);
+  if (!userId) {
+    sendJson(res, 401, { error: "Not authenticated." });
+    return;
+  }
+
+  try {
+    removeOAuthToken(userId, provider);
+    sendJson(res, 200, { success: true });
+  } catch (error) {
+    console.error("Calendar disconnect error:", error);
+    sendJson(res, 500, { error: "Failed to disconnect calendar" });
+  }
 }
 
 function handleApiPostMeetingJobs(req: IncomingMessage, res: ServerResponse): void {
@@ -1494,6 +1541,9 @@ export async function startGuiServer(): Promise<void> {
       handleApiCalendarSync(req, res);
     } else if (url === "/api/calendar/sync-status" && req.method === "GET") {
       handleApiCalendarSyncStatus(req, res);
+    } else if (url.startsWith("/api/calendar/disconnect/") && req.method === "POST") {
+      const provider = url.replace("/api/calendar/disconnect/", "");
+      handleApiCalendarDisconnect(req, res, provider);
     } else if (url === "/api/post-meeting/jobs" && req.method === "GET") {
       handleApiPostMeetingJobs(req, res);
     } else if (url.match(/^\/api\/post-meeting\/jobs\/\d+$/) && req.method === "GET") {
