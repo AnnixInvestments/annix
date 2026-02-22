@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Pagination } from "@/app/components/ui/Pagination";
+import { StatusBadge } from "@/app/components/ui/StatusBadge";
+import type { CustomerAccountStatus } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAdminCustomers } from "@/app/lib/query/hooks";
 
@@ -10,12 +13,8 @@ export default function AdminCustomersPage() {
   const limit = 20;
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<CustomerAccountStatus | "">("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  useEffect(() => {
-    document.title = "Annix Admin";
-  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -28,7 +27,7 @@ export default function AdminCustomersPage() {
 
   const customersQuery = useAdminCustomers({
     search: debouncedSearch || undefined,
-    status: (statusFilter || undefined) as any,
+    status: statusFilter || undefined,
     page,
     limit,
   });
@@ -42,21 +41,6 @@ export default function AdminCustomersPage() {
       ? customersQuery.error.message
       : "Failed to load customers"
     : null;
-
-  const getStatusBadgeClass = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-        return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "suspended":
-        return "bg-red-100 text-red-800";
-      case "deactivated":
-        return "bg-gray-100 text-gray-600";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
 
   return (
     <div className="p-6 space-y-6">
@@ -88,7 +72,7 @@ export default function AdminCustomersPage() {
             <select
               value={statusFilter}
               onChange={(e) => {
-                setStatusFilter(e.target.value);
+                setStatusFilter(e.target.value as CustomerAccountStatus | "");
                 setPage(1);
               }}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -177,11 +161,7 @@ export default function AdminCustomersPage() {
                       <span className="text-sm text-gray-900">{customer.companyName}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(customer.accountStatus)}`}
-                      >
-                        {customer.accountStatus}
-                      </span>
+                      <StatusBadge status={customer.accountStatus} />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {customer.deviceBound ? (
@@ -236,80 +216,7 @@ export default function AdminCustomersPage() {
               </tbody>
             </table>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                <div className="flex-1 flex justify-between sm:hidden">
-                  <button
-                    onClick={() => setPage(Math.max(1, page - 1))}
-                    disabled={page === 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => setPage(Math.min(totalPages, page + 1))}
-                    disabled={page === totalPages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      Showing page <span className="font-medium">{page}</span> of{" "}
-                      <span className="font-medium">{totalPages}</span>
-                    </p>
-                  </div>
-                  <div>
-                    <nav
-                      className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-                      aria-label="Pagination"
-                    >
-                      <button
-                        onClick={() => setPage(Math.max(1, page - 1))}
-                        disabled={page === 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        <svg
-                          className="h-5 w-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 19l-7-7 7-7"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => setPage(Math.min(totalPages, page + 1))}
-                        disabled={page === totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        <svg
-                          className="h-5 w-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </button>
-                    </nav>
-                  </div>
-                </div>
-              </div>
-            )}
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
           </>
         )}
       </div>

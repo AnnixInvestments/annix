@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
 
 const CheckIcon = () => (
   <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -10,10 +9,6 @@ const CheckIcon = () => (
 );
 
 export default function PricingPage() {
-  useEffect(() => {
-    document.title = "Annix Pricing";
-  }, []);
-
   const customerTiers = [
     {
       name: "Pay Per RFQ",

@@ -792,7 +792,7 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Company Size</label>
           <select
             value={company.companySize || ""}
-            onChange={(e) => handleCompanyChange("companySize", e.target.value as any)}
+            onChange={(e) => handleCompanyChange("companySize", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">Select size</option>

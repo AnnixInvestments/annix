@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
+import { ErrorBoundary } from "@/app/components/ui/ErrorBoundary";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { NixAssistant } from "@/app/lib/nix";
@@ -103,7 +104,9 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
       <CustomerNavigation />
       <RemoteAccessNotificationBanner />
       <main className="py-6">
-        <div className="w-full px-4 sm:px-6 lg:px-8">{children}</div>
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
       </main>
       <FeedbackWidget />
       <NixAssistant

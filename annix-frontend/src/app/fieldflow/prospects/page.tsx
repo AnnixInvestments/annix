@@ -15,6 +15,7 @@ import type {
   CreateProspectDto,
   ImportProspectRow,
   Prospect,
+  ProspectPriority,
   ProspectStatus,
 } from "@/app/lib/api/annixRepApi";
 import {
@@ -524,7 +525,9 @@ function CreateProspectModal({
                 </label>
                 <select
                   value={formData.priority}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, priority: e.target.value as ProspectPriority })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                 >
                   <option value="low">Low</option>

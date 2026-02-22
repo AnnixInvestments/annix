@@ -7,6 +7,7 @@ import type {
   CreateRecurringMeetingDto,
   Meeting,
   MeetingStatus,
+  MeetingType,
   RecurrenceOptions,
 } from "@/app/lib/api/annixRepApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -270,7 +271,9 @@ function CreateMeetingModal({
               </label>
               <select
                 value={formData.meetingType}
-                onChange={(e) => setFormData({ ...formData, meetingType: e.target.value as any })}
+                onChange={(e) =>
+                  setFormData({ ...formData, meetingType: e.target.value as MeetingType })
+                }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
               >
                 <option value="in_person">In Person</option>

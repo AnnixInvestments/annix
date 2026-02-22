@@ -177,8 +177,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
           : null,
         profile,
       }));
-    } catch {
-      // Silent fail - profile refresh is not critical
+    } catch (error) {
+      log.debug("[CustomerAuth] Profile refresh failed (non-critical)", error);
     }
   };
 

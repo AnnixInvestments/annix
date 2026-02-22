@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
+import { ErrorBoundary } from "@/app/components/ui/ErrorBoundary";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { NixAssistant } from "@/app/lib/nix";
@@ -98,7 +99,9 @@ export default function SupplierPortalLayout({ children }: { children: React.Rea
       <RemoteAccessNotificationBanner />
 
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
-        <main className="w-full">{children}</main>
+        <main className="w-full">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </main>
       </div>
       <NixAssistant
         context="supplier"

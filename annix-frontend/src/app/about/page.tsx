@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const Pipe3DPreview = dynamic(() => import("@/app/components/rfq/Pipe3DPreview"), {
   ssr: false,
@@ -68,10 +68,6 @@ const sampleTeeData = {
 
 export default function AboutPage() {
   const [activePreview, setActivePreview] = useState<"pipe" | "bend" | "tee">("bend");
-
-  useEffect(() => {
-    document.title = "About Annix - Industrial Pipeline Quoting Platform";
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">

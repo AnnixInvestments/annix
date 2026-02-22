@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import PortalToolbar from "@/app/components/PortalToolbar";
+import { ErrorBoundary } from "@/app/components/ui/ErrorBoundary";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { LayoutProvider } from "@/app/context/LayoutContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
@@ -109,7 +110,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <AdminNavigation />
       <main className="py-6">
-        <div className="w-full px-4 sm:px-6 lg:px-8">{children}</div>
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
       </main>
       <NixAssistant
         context="admin"
