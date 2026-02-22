@@ -101,7 +101,18 @@ export default function JobCardsPage() {
         status: "draft",
       });
       setShowCreateForm(false);
-      setCreateForm({ jobNumber: "", jobName: "", customerName: "", description: "", poNumber: "", siteLocation: "", contactPerson: "", dueDate: "", notes: "", reference: "" });
+      setCreateForm({
+        jobNumber: "",
+        jobName: "",
+        customerName: "",
+        description: "",
+        poNumber: "",
+        siteLocation: "",
+        contactPerson: "",
+        dueDate: "",
+        notes: "",
+        reference: "",
+      });
       fetchJobCards();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to create job card"));
@@ -371,7 +382,12 @@ export default function JobCardsPage() {
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
                     </svg>
                     Additional Details
                   </button>
@@ -379,40 +395,56 @@ export default function JobCardsPage() {
                     <div className="mt-3 space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">PO Number</label>
+                          <label className="block text-sm font-medium text-gray-700">
+                            PO Number
+                          </label>
                           <input
                             type="text"
                             value={createForm.poNumber}
-                            onChange={(e) => setCreateForm({ ...createForm, poNumber: e.target.value })}
+                            onChange={(e) =>
+                              setCreateForm({ ...createForm, poNumber: e.target.value })
+                            }
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Reference</label>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Reference
+                          </label>
                           <input
                             type="text"
                             value={createForm.reference}
-                            onChange={(e) => setCreateForm({ ...createForm, reference: e.target.value })}
+                            onChange={(e) =>
+                              setCreateForm({ ...createForm, reference: e.target.value })
+                            }
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                           />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Site / Location</label>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Site / Location
+                          </label>
                           <input
                             type="text"
                             value={createForm.siteLocation}
-                            onChange={(e) => setCreateForm({ ...createForm, siteLocation: e.target.value })}
+                            onChange={(e) =>
+                              setCreateForm({ ...createForm, siteLocation: e.target.value })
+                            }
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700">Contact Person</label>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Contact Person
+                          </label>
                           <input
                             type="text"
                             value={createForm.contactPerson}
-                            onChange={(e) => setCreateForm({ ...createForm, contactPerson: e.target.value })}
+                            onChange={(e) =>
+                              setCreateForm({ ...createForm, contactPerson: e.target.value })
+                            }
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                           />
                         </div>
@@ -422,7 +454,9 @@ export default function JobCardsPage() {
                         <input
                           type="text"
                           value={createForm.dueDate}
-                          onChange={(e) => setCreateForm({ ...createForm, dueDate: e.target.value })}
+                          onChange={(e) =>
+                            setCreateForm({ ...createForm, dueDate: e.target.value })
+                          }
                           placeholder="e.g. 2025-03-15"
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                         />

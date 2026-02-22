@@ -2,11 +2,11 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { JobCard, JobCardStatus } from "../entities/job-card.entity";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import {
-  JobCardImportMapping,
   ImportMappingConfig,
+  JobCardImportMapping,
 } from "../entities/job-card-import-mapping.entity";
+import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 
 export interface LineItemImportRow {
   itemCode?: string;
@@ -51,10 +51,7 @@ export class JobCardImportService {
     private readonly mappingRepo: Repository<JobCardImportMapping>,
   ) {}
 
-  async parseFile(
-    buffer: Buffer,
-    mimetype: string,
-  ): Promise<{ grid: string[][] }> {
+  async parseFile(buffer: Buffer, mimetype: string): Promise<{ grid: string[][] }> {
     const isExcel =
       mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
       mimetype === "application/vnd.ms-excel" ||
@@ -87,10 +84,7 @@ export class JobCardImportService {
     return this.mappingRepo.findOne({ where: { companyId } });
   }
 
-  async saveMapping(
-    companyId: number,
-    config: ImportMappingConfig,
-  ): Promise<JobCardImportMapping> {
+  async saveMapping(companyId: number, config: ImportMappingConfig): Promise<JobCardImportMapping> {
     const existing = await this.mappingRepo.findOne({ where: { companyId } });
 
     if (existing) {
@@ -131,9 +125,8 @@ export class JobCardImportService {
           continue;
         }
 
-        const customFields = row.customFields && Object.keys(row.customFields).length > 0
-          ? row.customFields
-          : null;
+        const customFields =
+          row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
 
         const jobCard = this.jobCardRepo.create({
           jobNumber: row.jobNumber,

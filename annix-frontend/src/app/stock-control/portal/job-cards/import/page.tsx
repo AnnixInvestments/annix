@@ -28,11 +28,35 @@ const FIELD_GROUPS: { key: string; label: string; fields: FieldDef[] }[] = [
     fields: [
       { key: "jobNumber", label: "Job Number", required: true, color: "teal", group: "details" },
       { key: "jobName", label: "Job Name", required: true, color: "blue", group: "details" },
-      { key: "customerName", label: "Customer Name", required: false, color: "purple", group: "details" },
-      { key: "description", label: "Description", required: false, color: "amber", group: "details" },
+      {
+        key: "customerName",
+        label: "Customer Name",
+        required: false,
+        color: "purple",
+        group: "details",
+      },
+      {
+        key: "description",
+        label: "Description",
+        required: false,
+        color: "amber",
+        group: "details",
+      },
       { key: "poNumber", label: "PO Number", required: false, color: "rose", group: "details" },
-      { key: "siteLocation", label: "Site / Location", required: false, color: "cyan", group: "details" },
-      { key: "contactPerson", label: "Contact Person", required: false, color: "lime", group: "details" },
+      {
+        key: "siteLocation",
+        label: "Site / Location",
+        required: false,
+        color: "cyan",
+        group: "details",
+      },
+      {
+        key: "contactPerson",
+        label: "Contact Person",
+        required: false,
+        color: "lime",
+        group: "details",
+      },
       { key: "dueDate", label: "Due Date", required: false, color: "orange", group: "details" },
       { key: "notes", label: "Notes", required: false, color: "fuchsia", group: "details" },
       { key: "reference", label: "Reference", required: false, color: "sky", group: "details" },
@@ -42,8 +66,20 @@ const FIELD_GROUPS: { key: string; label: string; fields: FieldDef[] }[] = [
     key: "lineItems",
     label: "Line Item Columns",
     fields: [
-      { key: "itemCode", label: "Item Code", required: false, color: "emerald", group: "lineItems" },
-      { key: "itemDescription", label: "Item Description", required: false, color: "violet", group: "lineItems" },
+      {
+        key: "itemCode",
+        label: "Item Code",
+        required: false,
+        color: "emerald",
+        group: "lineItems",
+      },
+      {
+        key: "itemDescription",
+        label: "Item Description",
+        required: false,
+        color: "violet",
+        group: "lineItems",
+      },
       { key: "itemNo", label: "Item No", required: false, color: "pink", group: "lineItems" },
       { key: "quantity", label: "Quantity", required: false, color: "indigo", group: "lineItems" },
       { key: "jtNo", label: "JT No", required: false, color: "stone", group: "lineItems" },
@@ -65,31 +101,143 @@ interface CustomFieldDef {
   color: string;
 }
 
-const FIELD_COLORS: Record<string, { bg: string; border: string; text: string; headerBg: string; badge: string }> = {
-  teal: { bg: "bg-teal-50", border: "border-teal-500", text: "text-teal-700", headerBg: "bg-teal-100", badge: "bg-teal-600" },
-  blue: { bg: "bg-blue-50", border: "border-blue-500", text: "text-blue-700", headerBg: "bg-blue-100", badge: "bg-blue-600" },
-  purple: { bg: "bg-purple-50", border: "border-purple-500", text: "text-purple-700", headerBg: "bg-purple-100", badge: "bg-purple-600" },
-  amber: { bg: "bg-amber-50", border: "border-amber-500", text: "text-amber-700", headerBg: "bg-amber-100", badge: "bg-amber-600" },
-  rose: { bg: "bg-rose-50", border: "border-rose-500", text: "text-rose-700", headerBg: "bg-rose-100", badge: "bg-rose-600" },
-  cyan: { bg: "bg-cyan-50", border: "border-cyan-500", text: "text-cyan-700", headerBg: "bg-cyan-100", badge: "bg-cyan-600" },
-  lime: { bg: "bg-lime-50", border: "border-lime-500", text: "text-lime-700", headerBg: "bg-lime-100", badge: "bg-lime-600" },
-  orange: { bg: "bg-orange-50", border: "border-orange-500", text: "text-orange-700", headerBg: "bg-orange-100", badge: "bg-orange-600" },
-  fuchsia: { bg: "bg-fuchsia-50", border: "border-fuchsia-500", text: "text-fuchsia-700", headerBg: "bg-fuchsia-100", badge: "bg-fuchsia-600" },
-  sky: { bg: "bg-sky-50", border: "border-sky-500", text: "text-sky-700", headerBg: "bg-sky-100", badge: "bg-sky-600" },
-  emerald: { bg: "bg-emerald-50", border: "border-emerald-500", text: "text-emerald-700", headerBg: "bg-emerald-100", badge: "bg-emerald-600" },
-  violet: { bg: "bg-violet-50", border: "border-violet-500", text: "text-violet-700", headerBg: "bg-violet-100", badge: "bg-violet-600" },
-  pink: { bg: "bg-pink-50", border: "border-pink-500", text: "text-pink-700", headerBg: "bg-pink-100", badge: "bg-pink-600" },
-  indigo: { bg: "bg-indigo-50", border: "border-indigo-500", text: "text-indigo-700", headerBg: "bg-indigo-100", badge: "bg-indigo-600" },
-  stone: { bg: "bg-stone-50", border: "border-stone-500", text: "text-stone-700", headerBg: "bg-stone-100", badge: "bg-stone-600" },
-  red: { bg: "bg-red-50", border: "border-red-500", text: "text-red-700", headerBg: "bg-red-100", badge: "bg-red-600" },
-  yellow: { bg: "bg-yellow-50", border: "border-yellow-500", text: "text-yellow-700", headerBg: "bg-yellow-100", badge: "bg-yellow-600" },
+const FIELD_COLORS: Record<
+  string,
+  { bg: string; border: string; text: string; headerBg: string; badge: string }
+> = {
+  teal: {
+    bg: "bg-teal-50",
+    border: "border-teal-500",
+    text: "text-teal-700",
+    headerBg: "bg-teal-100",
+    badge: "bg-teal-600",
+  },
+  blue: {
+    bg: "bg-blue-50",
+    border: "border-blue-500",
+    text: "text-blue-700",
+    headerBg: "bg-blue-100",
+    badge: "bg-blue-600",
+  },
+  purple: {
+    bg: "bg-purple-50",
+    border: "border-purple-500",
+    text: "text-purple-700",
+    headerBg: "bg-purple-100",
+    badge: "bg-purple-600",
+  },
+  amber: {
+    bg: "bg-amber-50",
+    border: "border-amber-500",
+    text: "text-amber-700",
+    headerBg: "bg-amber-100",
+    badge: "bg-amber-600",
+  },
+  rose: {
+    bg: "bg-rose-50",
+    border: "border-rose-500",
+    text: "text-rose-700",
+    headerBg: "bg-rose-100",
+    badge: "bg-rose-600",
+  },
+  cyan: {
+    bg: "bg-cyan-50",
+    border: "border-cyan-500",
+    text: "text-cyan-700",
+    headerBg: "bg-cyan-100",
+    badge: "bg-cyan-600",
+  },
+  lime: {
+    bg: "bg-lime-50",
+    border: "border-lime-500",
+    text: "text-lime-700",
+    headerBg: "bg-lime-100",
+    badge: "bg-lime-600",
+  },
+  orange: {
+    bg: "bg-orange-50",
+    border: "border-orange-500",
+    text: "text-orange-700",
+    headerBg: "bg-orange-100",
+    badge: "bg-orange-600",
+  },
+  fuchsia: {
+    bg: "bg-fuchsia-50",
+    border: "border-fuchsia-500",
+    text: "text-fuchsia-700",
+    headerBg: "bg-fuchsia-100",
+    badge: "bg-fuchsia-600",
+  },
+  sky: {
+    bg: "bg-sky-50",
+    border: "border-sky-500",
+    text: "text-sky-700",
+    headerBg: "bg-sky-100",
+    badge: "bg-sky-600",
+  },
+  emerald: {
+    bg: "bg-emerald-50",
+    border: "border-emerald-500",
+    text: "text-emerald-700",
+    headerBg: "bg-emerald-100",
+    badge: "bg-emerald-600",
+  },
+  violet: {
+    bg: "bg-violet-50",
+    border: "border-violet-500",
+    text: "text-violet-700",
+    headerBg: "bg-violet-100",
+    badge: "bg-violet-600",
+  },
+  pink: {
+    bg: "bg-pink-50",
+    border: "border-pink-500",
+    text: "text-pink-700",
+    headerBg: "bg-pink-100",
+    badge: "bg-pink-600",
+  },
+  indigo: {
+    bg: "bg-indigo-50",
+    border: "border-indigo-500",
+    text: "text-indigo-700",
+    headerBg: "bg-indigo-100",
+    badge: "bg-indigo-600",
+  },
+  stone: {
+    bg: "bg-stone-50",
+    border: "border-stone-500",
+    text: "text-stone-700",
+    headerBg: "bg-stone-100",
+    badge: "bg-stone-600",
+  },
+  red: {
+    bg: "bg-red-50",
+    border: "border-red-500",
+    text: "text-red-700",
+    headerBg: "bg-red-100",
+    badge: "bg-red-600",
+  },
+  yellow: {
+    bg: "bg-yellow-50",
+    border: "border-yellow-500",
+    text: "text-yellow-700",
+    headerBg: "bg-yellow-100",
+    badge: "bg-yellow-600",
+  },
 };
 
 const CUSTOM_FIELD_COLORS = ["red", "yellow", "cyan", "lime", "fuchsia", "sky", "orange", "violet"];
 
 const LINE_ITEM_KEYS = new Set(["itemCode", "itemDescription", "itemNo", "quantity", "jtNo"]);
 
-const DETAIL_META_KEYS = new Set(["poNumber", "siteLocation", "contactPerson", "dueDate", "notes", "reference"]);
+const DETAIL_META_KEYS = new Set([
+  "poNumber",
+  "siteLocation",
+  "contactPerson",
+  "dueDate",
+  "notes",
+  "reference",
+]);
 
 function extractMappedRows(
   grid: string[][],
@@ -97,10 +245,9 @@ function extractMappedRows(
   customFields: CustomFieldDef[],
   customRegions: Record<string, CellRegion | null>,
 ): JobCardImportRow[] {
-  const allRegions = [
-    ...Object.values(regions),
-    ...Object.values(customRegions),
-  ].filter(Boolean) as CellRegion[];
+  const allRegions = [...Object.values(regions), ...Object.values(customRegions)].filter(
+    Boolean,
+  ) as CellRegion[];
   if (allRegions.length === 0) return [];
 
   const minRow = Math.min(...allRegions.map((r) => r.startRow));
@@ -109,7 +256,10 @@ function extractMappedRows(
   const hasLineItems = Array.from(LINE_ITEM_KEYS).some((k) => regions[k] !== null);
 
   if (hasLineItems) {
-    const grouped = new Map<string, { meta: Record<string, string>; lines: Record<string, string>[] }>();
+    const grouped = new Map<
+      string,
+      { meta: Record<string, string>; lines: Record<string, string>[] }
+    >();
 
     Array.from({ length: maxRow - minRow + 1 }, (_, i) => minRow + i).forEach((r) => {
       const gridRow = grid[r] ?? [];
@@ -137,7 +287,10 @@ function extractMappedRows(
           }
         });
 
-        grouped.set(jobNumber, { meta: { ...meta, customFieldsJson: JSON.stringify(cfValues) }, lines: [] });
+        grouped.set(jobNumber, {
+          meta: { ...meta, customFieldsJson: JSON.stringify(cfValues) },
+          lines: [],
+        });
       }
 
       const lineItem: Record<string, string> = {};
@@ -156,7 +309,9 @@ function extractMappedRows(
     });
 
     return Array.from(grouped.entries()).map(([, { meta, lines }]) => {
-      const cfParsed = meta.customFieldsJson ? JSON.parse(meta.customFieldsJson) as Record<string, string> : undefined;
+      const cfParsed = meta.customFieldsJson
+        ? (JSON.parse(meta.customFieldsJson) as Record<string, string>)
+        : undefined;
       return {
         jobNumber: meta.jobNumber,
         jobName: meta.jobName,
@@ -209,7 +364,11 @@ function extractMappedRows(
 function savedMappingToRegions(
   mapping: JobCardImportMapping,
   grid: string[][],
-): { regions: Record<string, CellRegion | null>; customFields: CustomFieldDef[]; customRegions: Record<string, CellRegion | null> } {
+): {
+  regions: Record<string, CellRegion | null>;
+  customFields: CustomFieldDef[];
+  customRegions: Record<string, CellRegion | null>;
+} {
   const config = mapping.mappingConfig;
   if (!config) {
     return { regions: emptyRegions(), customFields: [], customRegions: {} };
@@ -217,7 +376,9 @@ function savedMappingToRegions(
 
   const lastRow = grid.length - 1;
 
-  const toRegion = (fm: { column: number; startRow: number; endRow: number } | null): CellRegion | null => {
+  const toRegion = (
+    fm: { column: number; startRow: number; endRow: number } | null,
+  ): CellRegion | null => {
     if (!fm) return null;
     return { col: fm.column, startRow: fm.startRow, endRow: Math.min(fm.endRow, lastRow) };
   };
@@ -357,8 +518,11 @@ export default function JobCardImportPage() {
       setGrid(response.grid);
 
       if (response.savedMapping?.mappingConfig && response.grid.length > 1) {
-        const { regions: savedRegions, customFields: savedCf, customRegions: savedCfRegions } =
-          savedMappingToRegions(response.savedMapping, response.grid);
+        const {
+          regions: savedRegions,
+          customFields: savedCf,
+          customRegions: savedCfRegions,
+        } = savedMappingToRegions(response.savedMapping, response.grid);
         const hasRequired = savedRegions.jobNumber !== null && savedRegions.jobName !== null;
 
         if (hasRequired) {
@@ -417,13 +581,14 @@ export default function JobCardImportPage() {
     }
   };
 
-  const dragRegion = dragStart && dragEnd
-    ? {
-        col: dragStart.col,
-        startRow: Math.min(dragStart.row, dragEnd.row),
-        endRow: Math.max(dragStart.row, dragEnd.row),
-      }
-    : null;
+  const dragRegion =
+    dragStart && dragEnd
+      ? {
+          col: dragStart.col,
+          startRow: Math.min(dragStart.row, dragEnd.row),
+          endRow: Math.max(dragStart.row, dragEnd.row),
+        }
+      : null;
 
   const isCellInDrag = useCallback(
     (row: number, col: number): boolean => {
@@ -464,9 +629,7 @@ export default function JobCardImportPage() {
     const allFieldKeys = [...ALL_FIELDS.map((f) => f.key), ...customFields.map((cf) => cf.id)];
     const currentIndex = allFieldKeys.indexOf(field);
     const allAssigned = { ...regions, ...customRegions, [field]: newRegion };
-    const nextUnassigned = allFieldKeys.find(
-      (k, i) => i > currentIndex && !allAssigned[k],
-    );
+    const nextUnassigned = allFieldKeys.find((k, i) => i > currentIndex && !allAssigned[k]);
     setActiveField(nextUnassigned ?? null);
 
     setDragStart(null);
@@ -486,7 +649,10 @@ export default function JobCardImportPage() {
     if (!name) return;
     const id = `custom_${Date.now()}`;
     const colorIdx = customFields.length % CUSTOM_FIELD_COLORS.length;
-    setCustomFields([...customFields, { id, fieldName: name, color: CUSTOM_FIELD_COLORS[colorIdx] }]);
+    setCustomFields([
+      ...customFields,
+      { id, fieldName: name, color: CUSTOM_FIELD_COLORS[colorIdx] },
+    ]);
     setCustomRegions({ ...customRegions, [id]: null });
     setCustomFieldInput("");
   };
@@ -550,7 +716,16 @@ export default function JobCardImportPage() {
   };
 
   const maxCols = grid.reduce((max, row) => Math.max(max, row.length), 0);
-  const allFieldDefs = [...ALL_FIELDS, ...customFields.map((cf) => ({ key: cf.id, label: cf.fieldName, color: cf.color, required: false, group: "custom" as const }))];
+  const allFieldDefs = [
+    ...ALL_FIELDS,
+    ...customFields.map((cf) => ({
+      key: cf.id,
+      label: cf.fieldName,
+      color: cf.color,
+      required: false,
+      group: "custom" as const,
+    })),
+  ];
   const mappedCount = allFieldDefs.filter((f) => {
     if (isCustomField(f.key)) return customRegions[f.key] !== null;
     return regions[f.key] !== null;
@@ -576,7 +751,12 @@ export default function JobCardImportPage() {
       <div className="flex items-center space-x-4">
         <Link href="/stock-control/portal/job-cards" className="text-gray-500 hover:text-gray-700">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </Link>
         <div>
@@ -590,8 +770,18 @@ export default function JobCardImportPage() {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex">
-            <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-5 h-5 text-red-600 mr-2 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <p className="text-sm text-red-700">{error}</p>
           </div>
@@ -626,11 +816,25 @@ export default function JobCardImportPage() {
                 </div>
               ) : (
                 <>
-                  <svg className="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  <svg
+                    className="mx-auto h-16 w-16 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
                   </svg>
-                  <p className="mt-4 text-lg font-medium text-gray-900">Drop your file here, or click to browse</p>
-                  <p className="mt-2 text-sm text-gray-500">Supports Excel (.xlsx, .xls), PDF, and CSV files</p>
+                  <p className="mt-4 text-lg font-medium text-gray-900">
+                    Drop your file here, or click to browse
+                  </p>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Supports Excel (.xlsx, .xls), PDF, and CSV files
+                  </p>
                 </>
               )}
             </div>
@@ -643,8 +847,18 @@ export default function JobCardImportPage() {
           <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-teal-600 to-teal-700">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7" />
+                <svg
+                  className="w-6 h-6 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7"
+                  />
                 </svg>
               </div>
               <div>
@@ -655,10 +869,17 @@ export default function JobCardImportPage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-sm text-white/80">{mappedCount} / {allFieldDefs.length} fields mapped</div>
+              <div className="text-sm text-white/80">
+                {mappedCount} / {allFieldDefs.length} fields mapped
+              </div>
               <button onClick={resetImport} className="text-white/80 hover:text-white p-1">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -669,7 +890,12 @@ export default function JobCardImportPage() {
               <div className="px-4 py-3 bg-gray-800 text-white flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
                   </svg>
                   <span className="text-sm font-medium">{file?.name}</span>
                   <span className="text-xs text-gray-400">({grid.length} rows)</span>
@@ -718,12 +944,20 @@ export default function JobCardImportPage() {
                         </td>
                         {Array.from({ length: maxCols }, (_, colIdx) => {
                           const value = row[colIdx] ?? "";
-                          const assigned = fieldForCell(rowIdx, colIdx, regions, customFields, customRegions);
+                          const assigned = fieldForCell(
+                            rowIdx,
+                            colIdx,
+                            regions,
+                            customFields,
+                            customRegions,
+                          );
                           const inDrag = isCellInDrag(rowIdx, colIdx);
                           const colors = assigned ? FIELD_COLORS[assigned.color] : null;
                           const isClickable = activeField !== null;
                           const activeColors = activeField
-                            ? FIELD_COLORS[allFieldDefs.find((f) => f.key === activeField)?.color ?? "teal"]
+                            ? FIELD_COLORS[
+                                allFieldDefs.find((f) => f.key === activeField)?.color ?? "teal"
+                              ]
                             : null;
 
                           return (
@@ -767,17 +1001,26 @@ export default function JobCardImportPage() {
                   return (
                     <div key={group.key}>
                       <button
-                        onClick={() => setCollapsedGroups({ ...collapsedGroups, [group.key]: !isCollapsed })}
+                        onClick={() =>
+                          setCollapsedGroups({ ...collapsedGroups, [group.key]: !isCollapsed })
+                        }
                         className="flex items-center justify-between w-full text-left mb-2"
                       >
-                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">{group.label}</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          {group.label}
+                        </span>
                         <svg
                           className={`w-4 h-4 text-gray-400 transition-transform ${isCollapsed ? "" : "rotate-180"}`}
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 9l-7 7-7-7"
+                          />
                         </svg>
                       </button>
                       {!isCollapsed && (
@@ -805,31 +1048,57 @@ export default function JobCardImportPage() {
                                   <div className="flex items-center gap-2">
                                     <div className={`w-3 h-3 rounded-full ${colors.badge}`} />
                                     <span className="font-medium text-gray-900">{field.label}</span>
-                                    {field.required && <span className="text-red-500 text-xs">*</span>}
+                                    {field.required && (
+                                      <span className="text-red-500 text-xs">*</span>
+                                    )}
                                   </div>
                                   {isMapped ? (
                                     <div className="flex items-center gap-1">
-                                      <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      <svg
+                                        className="w-4 h-4 text-green-600"
+                                        fill="currentColor"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                          clipRule="evenodd"
+                                        />
                                       </svg>
                                       <span
                                         role="button"
-                                        onClick={(e) => { e.stopPropagation(); handleClearField(field.key); }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleClearField(field.key);
+                                        }}
                                         className="text-gray-400 hover:text-red-500 p-0.5 cursor-pointer"
                                         title="Clear selection"
                                       >
-                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        <svg
+                                          className="w-3.5 h-3.5"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                          />
                                         </svg>
                                       </span>
                                     </div>
                                   ) : isActive ? (
-                                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-200 text-gray-600">SELECTING</span>
+                                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-200 text-gray-600">
+                                      SELECTING
+                                    </span>
                                   ) : null}
                                 </div>
                                 {isMapped && region && (
                                   <div className="mt-1.5 text-xs text-green-700">
-                                    Column {String.fromCharCode(65 + region.col)}, Rows {region.startRow + 1}-{region.endRow + 1}
+                                    Column {String.fromCharCode(65 + region.col)}, Rows{" "}
+                                    {region.startRow + 1}-{region.endRow + 1}
                                   </div>
                                 )}
                                 {isActive && !isMapped && (
@@ -848,14 +1117,18 @@ export default function JobCardImportPage() {
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Custom Fields</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Custom Fields
+                    </span>
                   </div>
                   <div className="flex gap-2 mb-2">
                     <input
                       type="text"
                       value={customFieldInput}
                       onChange={(e) => setCustomFieldInput(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") handleAddCustomField(); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAddCustomField();
+                      }}
                       placeholder="Field name..."
                       className="flex-1 text-sm border border-gray-300 rounded-md px-2 py-1.5 focus:border-teal-500 focus:ring-teal-500"
                     />
@@ -894,40 +1167,77 @@ export default function JobCardImportPage() {
                             </div>
                             <div className="flex items-center gap-1">
                               {isMapped && (
-                                <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                <svg
+                                  className="w-4 h-4 text-green-600"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
                                 </svg>
                               )}
                               {isMapped && (
                                 <span
                                   role="button"
-                                  onClick={(e) => { e.stopPropagation(); handleClearField(cf.id); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleClearField(cf.id);
+                                  }}
                                   className="text-gray-400 hover:text-red-500 p-0.5 cursor-pointer"
                                   title="Clear selection"
                                 >
-                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  <svg
+                                    className="w-3.5 h-3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M6 18L18 6M6 6l12 12"
+                                    />
                                   </svg>
                                 </span>
                               )}
                               <span
                                 role="button"
-                                onClick={(e) => { e.stopPropagation(); handleRemoveCustomField(cf.id); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveCustomField(cf.id);
+                                }}
                                 className="text-gray-400 hover:text-red-500 p-0.5 cursor-pointer"
                                 title="Remove field"
                               >
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
                                 </svg>
                               </span>
                               {isActive && !isMapped && (
-                                <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-200 text-gray-600">SELECTING</span>
+                                <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-200 text-gray-600">
+                                  SELECTING
+                                </span>
                               )}
                             </div>
                           </div>
                           {isMapped && region && (
                             <div className="mt-1.5 text-xs text-green-700">
-                              Column {String.fromCharCode(65 + region.col)}, Rows {region.startRow + 1}-{region.endRow + 1}
+                              Column {String.fromCharCode(65 + region.col)}, Rows{" "}
+                              {region.startRow + 1}-{region.endRow + 1}
                             </div>
                           )}
                         </div>
@@ -993,7 +1303,9 @@ export default function JobCardImportPage() {
                   disabled={isConfirming || mappedRows.length === 0}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isConfirming ? "Importing..." : `Confirm Import (${mappedRows.length} job cards)`}
+                  {isConfirming
+                    ? "Importing..."
+                    : `Confirm Import (${mappedRows.length} job cards)`}
                 </button>
               </div>
             </div>
@@ -1007,16 +1319,51 @@ export default function JobCardImportPage() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Row</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Number</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Name</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                      <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Row
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Job Number
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Job Name
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Customer
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Description
+                      </th>
                       {hasLineItemMapped && (
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line Items</th>
+                        <th
+                          scope="col"
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Line Items
+                        </th>
                       )}
                       {Array.from(DETAIL_META_KEYS).some((k) => regions[k]) && (
-                        <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Extra</th>
+                        <th
+                          scope="col"
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Extra
+                        </th>
                       )}
                     </tr>
                   </thead>
@@ -1035,16 +1382,29 @@ export default function JobCardImportPage() {
 
                       return (
                         <>
-                          <tr key={index} className={missingRequired ? "bg-red-50" : "hover:bg-gray-50"}>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
-                            <td className={`px-4 py-3 whitespace-nowrap text-sm ${!row.jobNumber ? "text-red-500 font-medium" : "text-gray-900"}`}>
+                          <tr
+                            key={index}
+                            className={missingRequired ? "bg-red-50" : "hover:bg-gray-50"}
+                          >
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {index + 1}
+                            </td>
+                            <td
+                              className={`px-4 py-3 whitespace-nowrap text-sm ${!row.jobNumber ? "text-red-500 font-medium" : "text-gray-900"}`}
+                            >
                               {row.jobNumber || "Missing"}
                             </td>
-                            <td className={`px-4 py-3 whitespace-nowrap text-sm ${!row.jobName ? "text-red-500 font-medium" : "text-gray-900"}`}>
+                            <td
+                              className={`px-4 py-3 whitespace-nowrap text-sm ${!row.jobName ? "text-red-500 font-medium" : "text-gray-900"}`}
+                            >
                               {row.jobName || "Missing"}
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{row.customerName || "-"}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">{row.description || "-"}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                              {row.customerName || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
+                              {row.description || "-"}
+                            </td>
                             {hasLineItemMapped && (
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                                 {lineCount > 0 ? (
@@ -1052,9 +1412,12 @@ export default function JobCardImportPage() {
                                     onClick={() => toggleJobExpanded(row.jobNumber ?? "")}
                                     className="text-teal-600 hover:text-teal-800 font-medium"
                                   >
-                                    {lineCount} item{lineCount !== 1 ? "s" : ""} {isExpanded ? "[-]" : "[+]"}
+                                    {lineCount} item{lineCount !== 1 ? "s" : ""}{" "}
+                                    {isExpanded ? "[-]" : "[+]"}
                                   </button>
-                                ) : "-"}
+                                ) : (
+                                  "-"
+                                )}
                               </td>
                             )}
                             {extraFields.length > 0 ? (
@@ -1065,21 +1428,44 @@ export default function JobCardImportPage() {
                               <td className="px-4 py-3 text-sm text-gray-500">-</td>
                             ) : null}
                           </tr>
-                          {isExpanded && row.lineItems && row.lineItems.map((li, liIdx) => (
-                            <tr key={`${index}-li-${liIdx}`} className="bg-gray-50">
-                              <td className="px-4 py-2 text-xs text-gray-400"></td>
-                              <td colSpan={hasLineItemMapped ? 5 : 4} className="px-4 py-2">
-                                <div className="flex gap-4 text-xs text-gray-600">
-                                  {li.itemCode && <span>Code: <span className="font-medium">{li.itemCode}</span></span>}
-                                  {li.itemDescription && <span>Desc: <span className="font-medium">{li.itemDescription}</span></span>}
-                                  {li.itemNo && <span>No: <span className="font-medium">{li.itemNo}</span></span>}
-                                  {li.quantity && <span>Qty: <span className="font-medium">{li.quantity}</span></span>}
-                                  {li.jtNo && <span>JT: <span className="font-medium">{li.jtNo}</span></span>}
-                                </div>
-                              </td>
-                              {Array.from(DETAIL_META_KEYS).some((k) => regions[k]) && <td></td>}
-                            </tr>
-                          ))}
+                          {isExpanded &&
+                            row.lineItems &&
+                            row.lineItems.map((li, liIdx) => (
+                              <tr key={`${index}-li-${liIdx}`} className="bg-gray-50">
+                                <td className="px-4 py-2 text-xs text-gray-400"></td>
+                                <td colSpan={hasLineItemMapped ? 5 : 4} className="px-4 py-2">
+                                  <div className="flex gap-4 text-xs text-gray-600">
+                                    {li.itemCode && (
+                                      <span>
+                                        Code: <span className="font-medium">{li.itemCode}</span>
+                                      </span>
+                                    )}
+                                    {li.itemDescription && (
+                                      <span>
+                                        Desc:{" "}
+                                        <span className="font-medium">{li.itemDescription}</span>
+                                      </span>
+                                    )}
+                                    {li.itemNo && (
+                                      <span>
+                                        No: <span className="font-medium">{li.itemNo}</span>
+                                      </span>
+                                    )}
+                                    {li.quantity && (
+                                      <span>
+                                        Qty: <span className="font-medium">{li.quantity}</span>
+                                      </span>
+                                    )}
+                                    {li.jtNo && (
+                                      <span>
+                                        JT: <span className="font-medium">{li.jtNo}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                {Array.from(DETAIL_META_KEYS).some((k) => regions[k]) && <td></td>}
+                              </tr>
+                            ))}
                         </>
                       );
                     })}

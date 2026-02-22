@@ -39,10 +39,7 @@ export class JobCardImportController {
 
   @Post("mapping")
   @ApiOperation({ summary: "Save column mapping for job card import" })
-  async saveMapping(
-    @Body() body: { mappingConfig: ImportMappingConfig },
-    @Req() req: any,
-  ) {
+  async saveMapping(@Body() body: { mappingConfig: ImportMappingConfig }, @Req() req: any) {
     return this.jobCardImportService.saveMapping(req.user.companyId, body.mappingConfig);
   }
 

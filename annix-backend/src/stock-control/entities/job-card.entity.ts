@@ -73,7 +73,10 @@ export class JobCard {
   )
   allocations: StockAllocation[];
 
-  @OneToMany(() => JobCardLineItem, (li) => li.jobCard)
+  @OneToMany(
+    () => JobCardLineItem,
+    (li) => li.jobCard,
+  )
   lineItems: JobCardLineItem[];
 
   @CreateDateColumn({ name: "created_at" })

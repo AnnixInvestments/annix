@@ -17,7 +17,11 @@ export class JobCardLineItem {
   @Column({ name: "job_card_id" })
   jobCardId: number;
 
-  @ManyToOne(() => JobCard, (jc) => jc.lineItems, { onDelete: "CASCADE" })
+  @ManyToOne(
+    () => JobCard,
+    (jc) => jc.lineItems,
+    { onDelete: "CASCADE" },
+  )
   @JoinColumn({ name: "job_card_id" })
   jobCard: JobCard;
 

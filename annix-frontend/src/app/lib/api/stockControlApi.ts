@@ -893,7 +893,9 @@ class StockControlApiClient {
     return this.request("/stock-control/job-card-import/mapping");
   }
 
-  async saveJobCardImportMapping(mappingConfig: ImportMappingConfig): Promise<JobCardImportMapping> {
+  async saveJobCardImportMapping(
+    mappingConfig: ImportMappingConfig,
+  ): Promise<JobCardImportMapping> {
     return this.request("/stock-control/job-card-import/mapping", {
       method: "POST",
       body: JSON.stringify({ mappingConfig }),
