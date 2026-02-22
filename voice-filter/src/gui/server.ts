@@ -1,8 +1,7 @@
 import "dotenv/config";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { join } from "node:path";
-import open from "open";
+import jwt from "jsonwebtoken";
 import { type WebSocket, WebSocketServer } from "ws";
 import {
   AudioCapture,
@@ -53,6 +52,122 @@ interface OAuthConfig {
   scopes: string[];
 }
 
+interface AppleOAuthConfig {
+  clientId: string;
+  teamId: string;
+  keyId: string;
+  privateKeyPath: string | null;
+  authUrl: string;
+  tokenUrl: string;
+  scopes: string[];
+}
+
+const APPLE_OAUTH_CONFIG: AppleOAuthConfig = {
+  clientId: process.env.APPLE_CLIENT_ID ?? "",
+  teamId: process.env.APPLE_TEAM_ID ?? "",
+  keyId: process.env.APPLE_KEY_ID ?? "",
+  privateKeyPath: process.env.APPLE_PRIVATE_KEY_PATH ?? null,
+  authUrl: "https://appleid.apple.com/auth/authorize",
+  tokenUrl: "https://appleid.apple.com/auth/token",
+  scopes: ["name", "email"],
+};
+
+function appleClientSecret(): string | null {
+  const config = APPLE_OAUTH_CONFIG;
+  if (!config.clientId || !config.teamId || !config.keyId || !config.privateKeyPath) {
+    return null;
+  }
+
+  if (!existsSync(config.privateKeyPath)) {
+    console.error("Apple private key file not found:", config.privateKeyPath);
+    return null;
+  }
+
+  const privateKey = readFileSync(config.privateKeyPath, "utf-8");
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: config.teamId,
+    iat: now,
+    exp: now + 86400 * 180,
+    aud: "https://appleid.apple.com",
+    sub: config.clientId,
+  };
+
+  return jwt.sign(payload, privateKey, {
+    algorithm: "ES256",
+    header: {
+      alg: "ES256",
+      kid: config.keyId,
+    },
+  });
+}
+
+async function exchangeAppleCode(
+  code: string,
+  customRedirectUri?: string,
+): Promise<{
+  accessToken: string;
+  refreshToken: string | null;
+  email: string;
+  oauthId: string;
+} | null> {
+  const config = APPLE_OAUTH_CONFIG;
+  const clientSecret = appleClientSecret();
+  if (!clientSecret) {
+    console.error("Failed to generate Apple client secret");
+    return null;
+  }
+
+  const tokenBody = new URLSearchParams({
+    client_id: config.clientId,
+    client_secret: clientSecret,
+    code,
+    grant_type: "authorization_code",
+    redirect_uri: customRedirectUri ?? OAUTH_REDIRECT_URI,
+  });
+
+  const tokenRes = await fetch(config.tokenUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: tokenBody.toString(),
+  });
+
+  if (!tokenRes.ok) {
+    console.error("Apple token exchange failed:", await tokenRes.text());
+    return null;
+  }
+
+  const tokenData = (await tokenRes.json()) as {
+    access_token: string;
+    refresh_token?: string;
+    id_token: string;
+  };
+
+  const idTokenParts = tokenData.id_token.split(".");
+  if (idTokenParts.length !== 3) {
+    console.error("Invalid Apple id_token format");
+    return null;
+  }
+
+  const payload = JSON.parse(Buffer.from(idTokenParts[1], "base64").toString()) as {
+    sub: string;
+    email?: string;
+  };
+
+  if (!payload.email) {
+    console.error("No email in Apple id_token");
+    return null;
+  }
+
+  return {
+    accessToken: tokenData.access_token,
+    refreshToken: tokenData.refresh_token ?? null,
+    email: payload.email,
+    oauthId: payload.sub,
+  };
+}
+
 const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID ?? "",
@@ -80,26 +195,10 @@ const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
   },
 };
 
-function oauthAuthUrl(configKey: string, state: string): string | null {
-  const config = OAUTH_CONFIGS[configKey];
-  if (!config || !config.clientId) {
-    return null;
-  }
-
-  const params = new URLSearchParams({
-    client_id: config.clientId,
-    redirect_uri: OAUTH_REDIRECT_URI,
-    response_type: "code",
-    scope: config.scopes.join(" "),
-    state: state,
-  });
-
-  return `${config.authUrl}?${params.toString()}`;
-}
-
 async function exchangeOAuthCode(
   provider: string,
   code: string,
+  customRedirectUri?: string,
 ): Promise<{
   accessToken: string;
   refreshToken: string | null;
@@ -116,7 +215,7 @@ async function exchangeOAuthCode(
     client_secret: config.clientSecret,
     code,
     grant_type: "authorization_code",
-    redirect_uri: OAUTH_REDIRECT_URI,
+    redirect_uri: customRedirectUri ?? OAUTH_REDIRECT_URI,
   });
 
   const tokenRes = await fetch(config.tokenUrl, {
@@ -175,53 +274,6 @@ let meetingSession: MeetingSession | null = null;
 let detectedDevice: { id: number; name: string } | null = null;
 let wsClient: WebSocket | null = null;
 
-function serveHomeHtml(_req: IncomingMessage, res: ServerResponse): void {
-  const htmlPath = join(import.meta.dirname, "home.html");
-  const html = readFileSync(htmlPath, "utf-8");
-  res.writeHead(200, { "Content-Type": "text/html" });
-  res.end(html);
-}
-
-function serveFilterHtml(_req: IncomingMessage, res: ServerResponse): void {
-  const htmlPath = join(import.meta.dirname, "index.html");
-  const html = readFileSync(htmlPath, "utf-8");
-  res.writeHead(200, { "Content-Type": "text/html" });
-  res.end(html);
-}
-
-function serveMiniHtml(_req: IncomingMessage, res: ServerResponse): void {
-  const htmlPath = join(import.meta.dirname, "mini.html");
-  const html = readFileSync(htmlPath, "utf-8");
-  res.writeHead(200, { "Content-Type": "text/html" });
-  res.end(html);
-}
-
-function serveMeetingHtml(_req: IncomingMessage, res: ServerResponse): void {
-  const htmlPath = join(import.meta.dirname, "meeting.html");
-  const html = readFileSync(htmlPath, "utf-8");
-  res.writeHead(200, { "Content-Type": "text/html" });
-  res.end(html);
-}
-
-function serveLoginHtml(_req: IncomingMessage, res: ServerResponse): void {
-  const htmlPath = join(import.meta.dirname, "login.html");
-  const html = readFileSync(htmlPath, "utf-8");
-  res.writeHead(200, {
-    "Content-Type": "text/html",
-    "Cache-Control": "no-cache, no-store, must-revalidate",
-    Pragma: "no-cache",
-    Expires: "0",
-  });
-  res.end(html);
-}
-
-function serveCalendarHtml(_req: IncomingMessage, res: ServerResponse): void {
-  const htmlPath = join(import.meta.dirname, "calendar.html");
-  const html = readFileSync(htmlPath, "utf-8");
-  res.writeHead(200, { "Content-Type": "text/html" });
-  res.end(html);
-}
-
 function parseJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -262,11 +314,6 @@ function setCorsHeaders(res: ServerResponse, req: IncomingMessage): void {
 
 function clearTokenCookie(res: ServerResponse): void {
   res.setHeader("Set-Cookie", "vf_token=; HttpOnly; Path=/; SameSite=Strict; Max-Age=0");
-}
-
-function redirectTo(res: ServerResponse, location: string): void {
-  res.writeHead(302, { Location: location });
-  res.end();
 }
 
 function authenticatedUserId(req: IncomingMessage): number | null {
@@ -343,6 +390,55 @@ async function handleApiLogin(req: IncomingMessage, res: ServerResponse): Promis
 function handleApiLogout(_req: IncomingMessage, res: ServerResponse): void {
   clearTokenCookie(res);
   sendJson(res, 200, { success: true });
+}
+
+async function handleApiOAuthExchange(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  try {
+    const body = await parseJsonBody(req);
+    const provider = typeof body.provider === "string" ? body.provider : "";
+    const code = typeof body.code === "string" ? body.code : "";
+    const redirectUri = typeof body.redirectUri === "string" ? body.redirectUri : undefined;
+
+    if (!provider || !code) {
+      sendJson(res, 400, { error: "Provider and code are required." });
+      return;
+    }
+
+    let result: {
+      accessToken: string;
+      refreshToken: string | null;
+      email: string;
+      oauthId: string;
+    } | null = null;
+
+    if (provider === "apple") {
+      result = await exchangeAppleCode(code, redirectUri);
+    } else if (["google", "microsoft", "zoom"].includes(provider)) {
+      result = await exchangeOAuthCode(provider, code, redirectUri);
+    } else {
+      sendJson(res, 400, { error: "Invalid OAuth provider." });
+      return;
+    }
+
+    if (!result) {
+      sendJson(res, 401, { error: "OAuth exchange failed." });
+      return;
+    }
+
+    const user = findOrCreateOAuthUser(
+      result.email,
+      provider,
+      result.oauthId,
+      result.accessToken,
+      result.refreshToken,
+    );
+    const token = signToken(user.id);
+
+    sendJson(res, 200, { token, user: { id: user.id, email: user.email, provider } });
+  } catch (error) {
+    console.error("OAuth exchange error:", error);
+    sendJson(res, 500, { error: "OAuth exchange failed." });
+  }
 }
 
 function handleApiCheckCredentials(req: IncomingMessage, res: ServerResponse): void {
@@ -1320,7 +1416,7 @@ function handleMessage(message: string): void {
   }
 }
 
-export async function startGuiServer(openBrowser: boolean = true): Promise<void> {
+export async function startGuiServer(): Promise<void> {
   initDatabase();
   initCalendarService();
 
@@ -1351,11 +1447,6 @@ export async function startGuiServer(openBrowser: boolean = true): Promise<void>
       return;
     }
 
-    if (url === "/login") {
-      serveLoginHtml(req, res);
-      return;
-    }
-
     if (url === "/api/register" && req.method === "POST") {
       handleApiRegister(req, res);
       return;
@@ -1371,108 +1462,14 @@ export async function startGuiServer(openBrowser: boolean = true): Promise<void>
       return;
     }
 
-    if (url.startsWith("/oauth/") && !url.includes("/callback")) {
-      const provider = url.replace("/oauth/", "");
-      console.log("OAuth request for provider:", provider);
-      if (["google", "microsoft", "teams", "zoom"].includes(provider)) {
-        const configKey = provider === "teams" ? "microsoft" : provider;
-        const config = OAUTH_CONFIGS[configKey];
-        console.log("OAuth config clientId exists:", !!config.clientId);
-        if (!config.clientId) {
-          const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
-          console.log("Showing error page - not configured");
-          res.writeHead(200, { "Content-Type": "text/html" });
-          res.end(`<!DOCTYPE html>
-<html><head><title>OAuth Not Configured</title>
-<style>
-body { font-family: sans-serif; background: #0f1419; color: #e7e9ea; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-.card { background: #16181c; border: 1px solid #f4212e; border-radius: 16px; padding: 32px; max-width: 400px; text-align: center; }
-h1 { color: #f4212e; margin-bottom: 16px; }
-p { color: #71767b; line-height: 1.6; }
-a { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #1d9bf0; color: white; text-decoration: none; border-radius: 9999px; }
-a:hover { background: #1a8cd8; }
-code { background: #2f3336; padding: 2px 6px; border-radius: 4px; }
-</style></head>
-<body><div class="card">
-<h1>${providerName} Not Configured</h1>
-<p>To enable ${providerName} sign-in, add your OAuth credentials to the <code>.env</code> file in the voice-filter folder.</p>
-<p>You need: <code>${configKey.toUpperCase()}_CLIENT_ID</code> and <code>${configKey.toUpperCase()}_CLIENT_SECRET</code></p>
-<a href="/login">Back to Login</a>
-</div></body></html>`);
-          return;
-        }
-        const state = Math.random().toString(36).substring(2, 15);
-        const authUrl = oauthAuthUrl(configKey, `${provider}:${state}`);
-        if (authUrl) {
-          redirectTo(res, authUrl);
-        } else {
-          sendJson(res, 500, { error: "Failed to generate OAuth URL" });
-        }
-        return;
-      }
-    }
-
-    if (url.startsWith("/oauth/callback")) {
-      console.log("OAuth callback received");
-      const urlObj = new URL(url, `http://localhost:${PORT}`);
-      const code = urlObj.searchParams.get("code");
-      const state = urlObj.searchParams.get("state");
-      const error = urlObj.searchParams.get("error");
-      const errorDescription = urlObj.searchParams.get("error_description");
-
-      console.log("OAuth callback params - code:", !!code, "state:", state, "error:", error);
-
-      if (error) {
-        console.error("OAuth error:", error, errorDescription);
-        redirectTo(res, `/login?error=${encodeURIComponent(error)}`);
-        return;
-      }
-
-      if (!code || !state) {
-        console.error("Missing code or state in OAuth callback");
-        redirectTo(res, "/login?error=missing_code");
-        return;
-      }
-
-      const [provider] = state.split(":");
-      console.log("OAuth provider from state:", provider);
-      if (!["google", "microsoft", "teams", "zoom"].includes(provider)) {
-        console.error("Invalid OAuth provider:", provider);
-        redirectTo(res, "/login?error=invalid_provider");
-        return;
-      }
-
-      const configKey = provider === "teams" ? "microsoft" : provider;
-      console.log("Exchanging OAuth code for provider:", configKey);
-      exchangeOAuthCode(configKey, code)
-        .then((result) => {
-          console.log("OAuth exchange result:", result ? "success" : "failed", result?.email);
-          if (!result) {
-            redirectTo(res, "/login?error=oauth_failed");
-            return;
-          }
-
-          const user = findOrCreateOAuthUser(
-            result.email,
-            provider,
-            result.oauthId,
-            result.accessToken,
-            result.refreshToken,
-          );
-          const token = signToken(user.id);
-          setTokenCookie(res, token);
-          redirectTo(res, "/home");
-        })
-        .catch((err) => {
-          console.error("OAuth callback error:", err);
-          redirectTo(res, "/login?error=oauth_error");
-        });
+    if (url === "/api/oauth/exchange" && req.method === "POST") {
+      handleApiOAuthExchange(req, res);
       return;
     }
 
     const userId = authenticatedUserId(req);
     if (!userId) {
-      redirectTo(res, "/login");
+      sendJson(res, 401, { error: "Not authenticated" });
       return;
     }
 
@@ -1512,19 +1509,8 @@ code { background: #2f3336; padding: 2px 6px; border-radius: 4px; }
       handleApiPostMeetingCancel(req, res, jobId);
     } else if (url === "/api/post-meeting/status" && req.method === "GET") {
       handleApiPostMeetingStatus(req, res);
-    } else if (url === "/" || url === "/home") {
-      serveHomeHtml(req, res);
-    } else if (url === "/filter" || url === "/index.html") {
-      serveFilterHtml(req, res);
-    } else if (url === "/mini") {
-      serveMiniHtml(req, res);
-    } else if (url === "/meeting") {
-      serveMeetingHtml(req, res);
-    } else if (url === "/calendar") {
-      serveCalendarHtml(req, res);
     } else {
-      res.writeHead(404);
-      res.end("Not found");
+      sendJson(res, 404, { error: "Not found" });
     }
   });
 
@@ -1551,11 +1537,7 @@ code { background: #2f3336; padding: 2px 6px; border-radius: 4px; }
   });
 
   server.listen(PORT, () => {
-    console.log(`Voice Filter UI running at http://localhost:${PORT}`);
-    if (openBrowser) {
-      console.log("Opening browser...");
-      open(`http://localhost:${PORT}`);
-    }
+    console.log(`Voice Filter API server running at http://localhost:${PORT}`);
   });
 
   process.on("SIGINT", () => {

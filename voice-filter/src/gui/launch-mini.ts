@@ -1,15 +1,15 @@
 import open from "open";
 import { startGuiServer } from "./server.js";
 
-const BASE_URL = "http://localhost:47823";
+const FRONTEND_URL = "http://localhost:3000/voice-filter";
 
 async function launchMini(): Promise<void> {
-  await startGuiServer(false);
+  await startGuiServer();
 
-  await open(BASE_URL, {
+  await open(FRONTEND_URL, {
     app: {
       name: "chrome",
-      arguments: [`--app=${BASE_URL}`, "--window-size=420,600", "--window-position=100,100"],
+      arguments: [`--app=${FRONTEND_URL}`, "--window-size=420,600", "--window-position=100,100"],
     },
   });
 }
