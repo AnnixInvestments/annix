@@ -1,4 +1,48 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsEnum, IsNumber, IsOptional, IsString, Max, Min } from "class-validator";
+import { RfqStatus } from "../entities/rfq.entity";
+
+export class RfqPaginationQueryDto {
+  @ApiPropertyOptional({
+    description: "Page number (1-indexed)",
+    example: 1,
+    default: 1,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  @Type(() => Number)
+  page?: number = 1;
+
+  @ApiPropertyOptional({
+    description: "Items per page",
+    example: 20,
+    default: 20,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Min(1)
+  @Max(100)
+  @Type(() => Number)
+  limit?: number = 20;
+
+  @ApiPropertyOptional({
+    description: "Filter by status",
+    enum: RfqStatus,
+  })
+  @IsEnum(RfqStatus)
+  @IsOptional()
+  status?: RfqStatus;
+
+  @ApiPropertyOptional({
+    description: "Search by project name or RFQ number",
+    example: "pipeline",
+  })
+  @IsString()
+  @IsOptional()
+  search?: string;
+}
 
 export class StraightPipeCalculationResultDto {
   @ApiProperty({
@@ -110,4 +154,27 @@ export class RfqResponseDto {
 
   @ApiProperty({ description: "Number of items in this RFQ" })
   itemCount: number;
+}
+
+export class PaginatedRfqResponseDto {
+  @ApiProperty({ description: "List of RFQs", type: [RfqResponseDto] })
+  items: RfqResponseDto[];
+
+  @ApiProperty({ description: "Total number of items", example: 150 })
+  total: number;
+
+  @ApiProperty({ description: "Current page number", example: 1 })
+  page: number;
+
+  @ApiProperty({ description: "Items per page", example: 20 })
+  limit: number;
+
+  @ApiProperty({ description: "Total number of pages", example: 8 })
+  totalPages: number;
+
+  @ApiProperty({ description: "Whether there is a next page", example: true })
+  hasNextPage: boolean;
+
+  @ApiProperty({ description: "Whether there is a previous page", example: false })
+  hasPreviousPage: boolean;
 }

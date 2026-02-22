@@ -25,7 +25,9 @@ import { RfqItem } from "./entities/rfq-item.entity";
 import { RfqSequence } from "./entities/rfq-sequence.entity";
 import { StraightPipeRfq } from "./entities/straight-pipe-rfq.entity";
 import { ValveRfq } from "./entities/valve-rfq.entity";
+import { DataSource } from "typeorm";
 import { RfqService } from "./rfq.service";
+import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 
 describe("RfqService", () => {
   let service: RfqService;
@@ -286,6 +288,31 @@ describe("RfqService", () => {
         },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: EmailService, useValue: mockEmailService },
+        {
+          provide: ReferenceDataCacheService,
+          useValue: {
+            nbNpsLookupByNb: jest.fn(),
+            steelSpecificationById: jest.fn(),
+            pipeDimensionsByNb: jest.fn(),
+            pipeDimensionByNbAndSchedule: jest.fn(),
+            pipeDimensionByNbAndWallThickness: jest.fn(),
+            flangeDimensionsByNb: jest.fn(),
+            flangeDimension: jest.fn(),
+            refreshCache: jest.fn(),
+            cacheStats: jest.fn(),
+          },
+        },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn((callback) =>
+              callback({
+                create: jest.fn().mockReturnValue({}),
+                save: jest.fn().mockResolvedValue({ id: 1 }),
+              }),
+            ),
+          },
+        },
       ],
     }).compile();
 

@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
   Req,
   Res,
   UploadedFile,
@@ -22,6 +23,7 @@ import {
   ApiConsumes,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
@@ -38,7 +40,13 @@ import { CreateUnifiedRfqDto } from "./dto/create-unified-rfq.dto";
 import { PumpCalculationResultDto } from "./dto/pump-calculation-result.dto";
 import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
-import { RfqResponseDto, StraightPipeCalculationResultDto } from "./dto/rfq-response.dto";
+import {
+  PaginatedRfqResponseDto,
+  RfqPaginationQueryDto,
+  RfqResponseDto,
+  StraightPipeCalculationResultDto,
+} from "./dto/rfq-response.dto";
+import { RfqStatus } from "./entities/rfq.entity";
 import { Rfq } from "./entities/rfq.entity";
 import { RfqService } from "./rfq.service";
 
@@ -567,10 +575,35 @@ export class RfqController {
     return this.rfqService.createPumpRfq(dto, userId);
   }
 
+  @Get("list")
+  @ApiOperation({
+    summary: "Get paginated RFQs",
+    description: "Get paginated list of RFQs with filtering and search",
+  })
+  @ApiQuery({ name: "page", required: false, type: Number, description: "Page number (default: 1)" })
+  @ApiQuery({ name: "limit", required: false, type: Number, description: "Items per page (default: 20, max: 100)" })
+  @ApiQuery({ name: "status", required: false, enum: RfqStatus, description: "Filter by status" })
+  @ApiQuery({ name: "search", required: false, type: String, description: "Search by project name or RFQ number" })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Paginated RFQs retrieved successfully",
+    type: PaginatedRfqResponseDto,
+  })
+  @UseGuards(CustomerAuthGuard)
+  @ApiBearerAuth()
+  async listRfqs(
+    @Query() query: RfqPaginationQueryDto,
+    @Req() req: Request,
+  ): Promise<PaginatedRfqResponseDto> {
+    const userId = (req as any).customer?.userId;
+    return this.rfqService.findAllRfqsPaginated(query, userId);
+  }
+
   @Get()
   @ApiOperation({
-    summary: "Get all RFQs",
-    description: "Get all RFQs created by the authenticated user",
+    summary: "Get all RFQs (deprecated)",
+    description: "Get all RFQs created by the authenticated user. Use GET /rfq/list for pagination.",
+    deprecated: true,
   })
   @ApiResponse({
     status: HttpStatus.OK,

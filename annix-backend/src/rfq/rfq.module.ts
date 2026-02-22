@@ -32,6 +32,7 @@ import { StraightPipeRfq } from "./entities/straight-pipe-rfq.entity";
 import { ValveRfq } from "./entities/valve-rfq.entity";
 import { RfqController } from "./rfq.controller";
 import { RfqService } from "./rfq.service";
+import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 
 @Module({
   imports: [
@@ -71,7 +72,7 @@ import { RfqService } from "./rfq.service";
     }),
   ],
   controllers: [RfqController, AnonymousDraftController],
-  providers: [RfqService, AnonymousDraftService],
-  exports: [RfqService, AnonymousDraftService],
+  providers: [RfqService, AnonymousDraftService, ReferenceDataCacheService],
+  exports: [RfqService, AnonymousDraftService, ReferenceDataCacheService],
 })
 export class RfqModule {}

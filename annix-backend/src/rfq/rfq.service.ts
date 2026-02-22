@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Not, Repository } from "typeorm";
+import { DataSource, ILike, In, Not, Repository } from "typeorm";
 import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
 import { Boq } from "../boq/entities/boq.entity";
 import { BoqSupplierAccess, SupplierBoqStatus } from "../boq/entities/boq-supplier-access.entity";
@@ -31,7 +31,12 @@ import { CreateUnifiedRfqDto } from "./dto/create-unified-rfq.dto";
 import { PumpCalculationResultDto } from "./dto/pump-calculation-result.dto";
 import { RfqDocumentResponseDto } from "./dto/rfq-document.dto";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
-import { RfqResponseDto, StraightPipeCalculationResultDto } from "./dto/rfq-response.dto";
+import {
+  PaginatedRfqResponseDto,
+  RfqPaginationQueryDto,
+  RfqResponseDto,
+  StraightPipeCalculationResultDto,
+} from "./dto/rfq-response.dto";
 import { BendRfq } from "./entities/bend-rfq.entity";
 import {
   BellowsJointType,
@@ -66,6 +71,7 @@ import {
   ValveFailPosition,
   ValveRfq,
 } from "./entities/valve-rfq.entity";
+import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 
 // Maximum number of documents allowed per RFQ
 const MAX_DOCUMENTS_PER_RFQ = 10;
@@ -124,6 +130,8 @@ export class RfqService {
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
     private emailService: EmailService,
+    private referenceDataCache: ReferenceDataCacheService,
+    private dataSource: DataSource,
   ) {}
 
   async nextRfqNumber(): Promise<string> {
@@ -173,14 +181,12 @@ export class RfqService {
     dto: CreateStraightPipeRfqWithItemDto["straightPipe"],
   ): Promise<StraightPipeCalculationResultDto> {
     // Find pipe dimensions based on NB and schedule/wall thickness
-    let pipeDimension: PipeDimension | null = null;
-    let steelSpec: SteelSpecification | null = null;
+    let pipeDimension: PipeDimension | null | undefined = null;
+    let steelSpec: SteelSpecification | null | undefined = null;
 
-    // Get steel specification if provided
+    // Get steel specification from cache if provided
     if (dto.steelSpecificationId) {
-      steelSpec = await this.steelSpecRepository.findOne({
-        where: { id: dto.steelSpecificationId },
-      });
+      steelSpec = this.referenceDataCache.steelSpecificationById(dto.steelSpecificationId);
       if (!steelSpec) {
         throw new NotFoundException(
           `Steel specification with ID ${dto.steelSpecificationId} not found`,
@@ -208,27 +214,20 @@ export class RfqService {
       return scheduleNumber;
     };
 
-    // Find pipe dimension based on schedule type
+    // Find pipe dimension from cache based on schedule type
     if (dto.scheduleType === ScheduleType.SCHEDULE && dto.scheduleNumber) {
       const normalizedSchedule = normalizeScheduleNumber(dto.scheduleNumber);
-
-      pipeDimension = await this.pipeDimensionRepository.findOne({
-        where: {
-          nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalBoreMm },
-          schedule_designation: normalizedSchedule,
-          ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
-        },
-        relations: ["nominalOutsideDiameter", "steelSpecification"],
-      });
+      pipeDimension = this.referenceDataCache.pipeDimensionByNbAndSchedule(
+        dto.nominalBoreMm,
+        normalizedSchedule,
+        steelSpec?.id,
+      );
     } else if (dto.scheduleType === ScheduleType.WALL_THICKNESS && dto.wallThicknessMm) {
-      pipeDimension = await this.pipeDimensionRepository.findOne({
-        where: {
-          nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalBoreMm },
-          wall_thickness_mm: dto.wallThicknessMm,
-          ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
-        },
-        relations: ["nominalOutsideDiameter", "steelSpecification"],
-      });
+      pipeDimension = this.referenceDataCache.pipeDimensionByNbAndWallThickness(
+        dto.nominalBoreMm,
+        dto.wallThicknessMm,
+        steelSpec?.id,
+      );
     }
 
     if (!pipeDimension) {
@@ -242,10 +241,8 @@ export class RfqService {
       );
     }
 
-    // Get NB-NPS lookup for outside diameter
-    const nbNpsLookup = await this.nbNpsLookupRepository.findOne({
-      where: { nb_mm: dto.nominalBoreMm },
-    });
+    // Get NB-NPS lookup from cache
+    const nbNpsLookup = this.referenceDataCache.nbNpsLookupByNb(dto.nominalBoreMm);
 
     if (!nbNpsLookup) {
       throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalBoreMm}NB`);
@@ -314,15 +311,12 @@ export class RfqService {
 
     if (dto.flangeStandardId && dto.flangePressureClassId) {
       try {
-        // Find the appropriate flange dimension
-        const flangeDimension = await this.flangeDimensionRepository.findOne({
-          where: {
-            nominalOutsideDiameter: { nominal_diameter_mm: dto.nominalBoreMm },
-            standard: { id: dto.flangeStandardId },
-            pressureClass: { id: dto.flangePressureClassId },
-          },
-          relations: ["bolt", "nominalOutsideDiameter"],
-        });
+        // Find the appropriate flange dimension from cache
+        const flangeDimension = this.referenceDataCache.flangeDimension(
+          dto.nominalBoreMm,
+          dto.flangeStandardId,
+          dto.flangePressureClassId,
+        );
 
         if (flangeDimension) {
           // Calculate flange weight
@@ -400,69 +394,70 @@ export class RfqService {
     // Find user (optional - for when authentication is implemented)
     const user = await this.userRepository.findOne({ where: { id: userId } }).catch(() => null);
 
-    // Calculate requirements first
+    // Calculate requirements first (outside transaction as it doesn't modify DB)
     const calculation = await this.calculateStraightPipeRequirements(dto.straightPipe);
 
-    // Generate RFQ number
+    // Generate RFQ number (outside transaction to avoid sequence issues)
     const rfqNumber = await this.nextRfqNumber();
 
-    // Create RFQ
-    const rfq = this.rfqRepository.create({
-      ...dto.rfq,
-      rfqNumber,
-      status: dto.rfq.status || RfqStatus.DRAFT,
-      totalWeightKg: calculation.totalSystemWeight,
-      ...(user && { createdBy: user }),
-    });
+    // Get steel spec from cache if needed
+    const steelSpec = dto.straightPipe.steelSpecificationId
+      ? this.referenceDataCache.steelSpecificationById(dto.straightPipe.steelSpecificationId)
+      : null;
 
-    const savedRfq: Rfq = await this.rfqRepository.save(rfq);
-
-    // Create RFQ Item
-    const rfqItem = this.rfqItemRepository.create({
-      lineNumber: 1,
-      description: dto.itemDescription,
-      itemType: RfqItemType.STRAIGHT_PIPE,
-      quantity: calculation.calculatedPipeCount,
-      weightPerUnitKg: calculation.totalSystemWeight / calculation.calculatedPipeCount,
-      totalWeightKg: calculation.totalSystemWeight,
-      notes: dto.itemNotes,
-      rfq: savedRfq,
-    });
-
-    const savedRfqItem: RfqItem = await this.rfqItemRepository.save(rfqItem);
-
-    // Create Straight Pipe RFQ with calculated values
-    const straightPipeRfq = this.straightPipeRfqRepository.create({
-      ...dto.straightPipe,
-      rfqItem: savedRfqItem,
-      calculatedOdMm: calculation.outsideDiameterMm,
-      calculatedWtMm: calculation.wallThicknessMm,
-      pipeWeightPerMeterKg: calculation.pipeWeightPerMeter,
-      totalPipeWeightKg: calculation.totalPipeWeight,
-      calculatedPipeCount: calculation.calculatedPipeCount,
-      calculatedTotalLengthM: calculation.calculatedTotalLength,
-      numberOfFlanges: calculation.numberOfFlanges,
-      numberOfButtWelds: calculation.numberOfButtWelds,
-      totalButtWeldLengthM: calculation.totalButtWeldLength,
-      numberOfFlangeWelds: calculation.numberOfFlangeWelds,
-      totalFlangeWeldLengthM: calculation.totalFlangeWeldLength,
-    });
-
-    // Set relationships if provided
-    if (dto.straightPipe.steelSpecificationId) {
-      const steelSpec = await this.steelSpecRepository.findOne({
-        where: { id: dto.straightPipe.steelSpecificationId },
+    // Use transaction for all RFQ creation steps
+    const savedRfqId = await this.dataSource.transaction(async (manager) => {
+      // Create RFQ
+      const rfq = manager.create(Rfq, {
+        ...dto.rfq,
+        rfqNumber,
+        status: dto.rfq.status || RfqStatus.DRAFT,
+        totalWeightKg: calculation.totalSystemWeight,
+        ...(user && { createdBy: user }),
       });
-      if (steelSpec) {
-        straightPipeRfq.steelSpecification = steelSpec;
-      }
-    }
 
-    await this.straightPipeRfqRepository.save(straightPipeRfq);
+      const savedRfq = await manager.save(rfq);
 
-    // Reload RFQ with relations
+      // Create RFQ Item
+      const rfqItem = manager.create(RfqItem, {
+        lineNumber: 1,
+        description: dto.itemDescription,
+        itemType: RfqItemType.STRAIGHT_PIPE,
+        quantity: calculation.calculatedPipeCount,
+        weightPerUnitKg: calculation.totalSystemWeight / calculation.calculatedPipeCount,
+        totalWeightKg: calculation.totalSystemWeight,
+        notes: dto.itemNotes,
+        rfq: savedRfq,
+      });
+
+      const savedRfqItem = await manager.save(rfqItem);
+
+      // Create Straight Pipe RFQ with calculated values
+      const straightPipeRfq = manager.create(StraightPipeRfq, {
+        ...dto.straightPipe,
+        rfqItem: savedRfqItem,
+        calculatedOdMm: calculation.outsideDiameterMm,
+        calculatedWtMm: calculation.wallThicknessMm,
+        pipeWeightPerMeterKg: calculation.pipeWeightPerMeter,
+        totalPipeWeightKg: calculation.totalPipeWeight,
+        calculatedPipeCount: calculation.calculatedPipeCount,
+        calculatedTotalLengthM: calculation.calculatedTotalLength,
+        numberOfFlanges: calculation.numberOfFlanges,
+        numberOfButtWelds: calculation.numberOfButtWelds,
+        totalButtWeldLengthM: calculation.totalButtWeldLength,
+        numberOfFlangeWelds: calculation.numberOfFlangeWelds,
+        totalFlangeWeldLengthM: calculation.totalFlangeWeldLength,
+        ...(steelSpec && { steelSpecification: steelSpec }),
+      });
+
+      await manager.save(straightPipeRfq);
+
+      return savedRfq.id;
+    });
+
+    // Reload RFQ with relations (outside transaction)
     const finalRfq = await this.rfqRepository.findOne({
-      where: { id: savedRfq.id },
+      where: { id: savedRfqId },
       relations: ["items", "items.straightPipeDetails"],
     });
 
@@ -1237,8 +1232,84 @@ export class RfqService {
     return { rfq: finalRfq!, itemsUpdated: lineNumber };
   }
 
+  async findAllRfqsPaginated(
+    query: RfqPaginationQueryDto,
+    userId?: number,
+  ): Promise<PaginatedRfqResponseDto> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const whereConditions: Record<string, unknown> = {};
+
+    if (query.status) {
+      whereConditions.status = query.status;
+    }
+
+    if (query.search) {
+      const searchConditions = [
+        { ...whereConditions, projectName: ILike(`%${query.search}%`) },
+        { ...whereConditions, rfqNumber: ILike(`%${query.search}%`) },
+      ];
+
+      const [rfqs, total] = await this.rfqRepository.findAndCount({
+        where: searchConditions,
+        relations: ["items"],
+        order: { createdAt: "DESC" },
+        skip,
+        take: limit,
+      });
+
+      return this.buildPaginatedResponse(rfqs, total, page, limit);
+    }
+
+    const [rfqs, total] = await this.rfqRepository.findAndCount({
+      where: whereConditions,
+      relations: ["items"],
+      order: { createdAt: "DESC" },
+      skip,
+      take: limit,
+    });
+
+    return this.buildPaginatedResponse(rfqs, total, page, limit);
+  }
+
+  private buildPaginatedResponse(
+    rfqs: Rfq[],
+    total: number,
+    page: number,
+    limit: number,
+  ): PaginatedRfqResponseDto {
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      items: rfqs.map((rfq) => ({
+        id: rfq.id,
+        rfqNumber: rfq.rfqNumber,
+        projectName: rfq.projectName,
+        description: rfq.description,
+        customerName: rfq.customerName,
+        customerEmail: rfq.customerEmail,
+        customerPhone: rfq.customerPhone,
+        requiredDate: rfq.requiredDate,
+        status: rfq.status,
+        notes: rfq.notes,
+        totalWeightKg: rfq.totalWeightKg,
+        totalCost: rfq.totalCost,
+        createdAt: rfq.createdAt,
+        updatedAt: rfq.updatedAt,
+        itemCount: rfq.items?.length || 0,
+      })),
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    };
+  }
+
   async findAllRfqs(userId?: number): Promise<RfqResponseDto[]> {
-    // For now, ignore userId filtering since created_by_id column doesn't exist
     const rfqs = await this.rfqRepository.find({
       relations: ["items"],
       order: { createdAt: "DESC" },
