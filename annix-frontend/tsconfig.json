@@ -20,7 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@product-data/*": ["../annix-backend/src/product-data/*"]
+      "@product-data/*": ["./product-data/*"]
     }
   },
   "include": [
