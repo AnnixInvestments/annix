@@ -64,7 +64,3 @@ timed_step "frontend build" pnpm run build
 print_timing_summary
 
 echo "Pre-push checks passed!"
-
-(sleep 5 && gh workflow run deploy.yml --repo AnnixInvestments/annix --ref main 2>/dev/null) &
-disown
-echo "Deploy workflow will trigger after push completes"
