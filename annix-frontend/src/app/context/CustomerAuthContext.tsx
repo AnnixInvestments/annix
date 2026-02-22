@@ -26,6 +26,7 @@ interface CustomerAuthContextType extends CustomerAuthState {
     password: string,
     deviceFingerprint: string,
     browserInfo?: Record<string, any>,
+    rememberMe?: boolean,
   ) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -110,10 +111,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     password: string,
     deviceFingerprint: string,
     browserInfo?: Record<string, any>,
+    rememberMe?: boolean,
   ) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
+      customerApiClient.setRememberMe(rememberMe ?? true);
       const response = await customerApiClient.login({
         email,
         password,

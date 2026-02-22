@@ -49,6 +49,28 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+let annixRepRememberMe = true;
+
+export function setAnnixRepRememberMe(remember: boolean) {
+  annixRepRememberMe = remember;
+}
+
+function annixRepTokenStorage(): Storage {
+  return annixRepRememberMe ? localStorage : sessionStorage;
+}
+
+function readAnnixRepToken(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(key) ?? sessionStorage.getItem(key);
+}
+
+function clearAnnixRepTokens() {
+  localStorage.removeItem("annixRepAccessToken");
+  localStorage.removeItem("annixRepRefreshToken");
+  sessionStorage.removeItem("annixRepAccessToken");
+  sessionStorage.removeItem("annixRepRefreshToken");
+}
+
 export const annixRepAuthApi = {
   register: async (dto: AnnixRepRegisterDto): Promise<AnnixRepAuthResponse> => {
     const response = await fetch(`${API_URL}/annix-rep/auth/register`, {
@@ -59,8 +81,9 @@ export const annixRepAuthApi = {
       body: JSON.stringify(dto),
     });
     const data = await handleResponse<AnnixRepAuthResponse>(response);
-    localStorage.setItem("annixRepAccessToken", data.accessToken);
-    localStorage.setItem("annixRepRefreshToken", data.refreshToken);
+    const storage = annixRepTokenStorage();
+    storage.setItem("annixRepAccessToken", data.accessToken);
+    storage.setItem("annixRepRefreshToken", data.refreshToken);
     return data;
   },
 
@@ -73,25 +96,25 @@ export const annixRepAuthApi = {
       body: JSON.stringify(dto),
     });
     const data = await handleResponse<AnnixRepAuthResponse>(response);
-    localStorage.setItem("annixRepAccessToken", data.accessToken);
-    localStorage.setItem("annixRepRefreshToken", data.refreshToken);
+    const storage = annixRepTokenStorage();
+    storage.setItem("annixRepAccessToken", data.accessToken);
+    storage.setItem("annixRepRefreshToken", data.refreshToken);
     return data;
   },
 
   logout: async (): Promise<void> => {
-    const token = localStorage.getItem("annixRepAccessToken");
+    const token = readAnnixRepToken("annixRepAccessToken");
     if (token) {
       await fetch(`${API_URL}/annix-rep/auth/logout`, {
         method: "POST",
         headers: annixRepAuthHeaders(),
       }).catch(() => {});
     }
-    localStorage.removeItem("annixRepAccessToken");
-    localStorage.removeItem("annixRepRefreshToken");
+    clearAnnixRepTokens();
   },
 
   refresh: async (): Promise<AnnixRepAuthResponse | null> => {
-    const refreshToken = localStorage.getItem("annixRepRefreshToken");
+    const refreshToken = readAnnixRepToken("annixRepRefreshToken");
     if (!refreshToken) {
       return null;
     }
@@ -106,18 +129,21 @@ export const annixRepAuthApi = {
       });
 
       if (!response.ok) {
-        localStorage.removeItem("annixRepAccessToken");
-        localStorage.removeItem("annixRepRefreshToken");
+        clearAnnixRepTokens();
         return null;
       }
 
       const data = await response.json();
-      localStorage.setItem("annixRepAccessToken", data.accessToken);
-      localStorage.setItem("annixRepRefreshToken", data.refreshToken);
+      if (localStorage.getItem("annixRepRefreshToken")) {
+        localStorage.setItem("annixRepAccessToken", data.accessToken);
+        localStorage.setItem("annixRepRefreshToken", data.refreshToken);
+      } else {
+        sessionStorage.setItem("annixRepAccessToken", data.accessToken);
+        sessionStorage.setItem("annixRepRefreshToken", data.refreshToken);
+      }
       return data;
     } catch {
-      localStorage.removeItem("annixRepAccessToken");
-      localStorage.removeItem("annixRepRefreshToken");
+      clearAnnixRepTokens();
       return null;
     }
   },
@@ -138,7 +164,6 @@ export const annixRepAuthApi = {
   },
 
   isAuthenticated: (): boolean => {
-    if (typeof window === "undefined") return false;
-    return !!localStorage.getItem("annixRepAccessToken");
+    return !!readAnnixRepToken("annixRepAccessToken");
   },
 };

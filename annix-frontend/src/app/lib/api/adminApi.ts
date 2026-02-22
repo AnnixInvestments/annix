@@ -396,21 +396,29 @@ class AdminApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
+  private rememberMe: boolean = true;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
 
-    // Load tokens from storage
     if (typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem("adminAccessToken");
-      this.refreshToken = localStorage.getItem("adminRefreshToken");
+      this.accessToken =
+        localStorage.getItem("adminAccessToken") ?? sessionStorage.getItem("adminAccessToken");
+      this.refreshToken =
+        localStorage.getItem("adminRefreshToken") ?? sessionStorage.getItem("adminRefreshToken");
     }
+  }
+
+  setRememberMe(remember: boolean) {
+    this.rememberMe = remember;
   }
 
   private getHeaders(): Record<string, string> {
     if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem("adminAccessToken");
-      this.refreshToken = localStorage.getItem("adminRefreshToken");
+      this.accessToken =
+        localStorage.getItem("adminAccessToken") ?? sessionStorage.getItem("adminAccessToken");
+      this.refreshToken =
+        localStorage.getItem("adminRefreshToken") ?? sessionStorage.getItem("adminRefreshToken");
     }
 
     const headers: Record<string, string> = {
@@ -428,8 +436,9 @@ class AdminApiClient {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
     if (typeof window !== "undefined") {
-      localStorage.setItem("adminAccessToken", accessToken);
-      localStorage.setItem("adminRefreshToken", refreshToken);
+      const storage = this.rememberMe ? localStorage : sessionStorage;
+      storage.setItem("adminAccessToken", accessToken);
+      storage.setItem("adminRefreshToken", refreshToken);
     }
   }
 
@@ -439,13 +448,17 @@ class AdminApiClient {
     if (typeof window !== "undefined") {
       localStorage.removeItem("adminAccessToken");
       localStorage.removeItem("adminRefreshToken");
+      sessionStorage.removeItem("adminAccessToken");
+      sessionStorage.removeItem("adminRefreshToken");
     }
   }
 
   isAuthenticated(): boolean {
     if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem("adminAccessToken");
-      this.refreshToken = localStorage.getItem("adminRefreshToken");
+      this.accessToken =
+        localStorage.getItem("adminAccessToken") ?? sessionStorage.getItem("adminAccessToken");
+      this.refreshToken =
+        localStorage.getItem("adminRefreshToken") ?? sessionStorage.getItem("adminRefreshToken");
     }
     return !!this.accessToken;
   }
@@ -521,7 +534,11 @@ class AdminApiClient {
       const data = await response.json();
       this.accessToken = data.accessToken;
       if (typeof window !== "undefined") {
-        localStorage.setItem("adminAccessToken", data.accessToken);
+        if (localStorage.getItem("adminRefreshToken")) {
+          localStorage.setItem("adminAccessToken", data.accessToken);
+        } else {
+          sessionStorage.setItem("adminAccessToken", data.accessToken);
+        }
       }
       return true;
     } catch {

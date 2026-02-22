@@ -60,7 +60,8 @@ export const getAuthHeaders = (): Record<string, string> => {
 
 export const annixRepAuthHeaders = (): Record<string, string> => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("annixRepAccessToken");
+    const token =
+      localStorage.getItem("annixRepAccessToken") ?? sessionStorage.getItem("annixRepAccessToken");
     if (token) {
       return {
         Authorization: `Bearer ${token}`,

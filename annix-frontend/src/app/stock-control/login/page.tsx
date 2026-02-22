@@ -9,10 +9,20 @@ export default function StockControlLoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading: authLoading } = useStockControlAuth();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("stockControlRememberedEmail") || "";
+    }
+    return "";
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("stockControlRememberMe") === "true";
+    }
+    return false;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +40,15 @@ export default function StockControlLoginPage() {
 
     try {
       await login(email, password, rememberMe);
+
+      if (rememberMe) {
+        localStorage.setItem("stockControlRememberedEmail", email);
+        localStorage.setItem("stockControlRememberMe", "true");
+      } else {
+        localStorage.removeItem("stockControlRememberedEmail");
+        localStorage.removeItem("stockControlRememberMe");
+      }
+
       router.push("/stock-control/portal/dashboard");
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Login failed. Please try again.";

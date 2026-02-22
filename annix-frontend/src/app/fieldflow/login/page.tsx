@@ -18,9 +18,16 @@ function LoginPageContent() {
   const { isAuthenticated, isLoading: authLoading, login } = useAnnixRepAuth();
   const { data: profileStatus, isLoading: profileLoading } = useRepProfileStatus();
 
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: "",
+  const [formData, setFormData] = useState<LoginFormData>(() => ({
+    email:
+      typeof window !== "undefined" ? localStorage.getItem("fieldflowRememberedEmail") || "" : "",
     password: "",
+  }));
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("fieldflowRememberMe") === "true";
+    }
+    return false;
   });
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,10 +54,21 @@ function LoginPageContent() {
     setIsSubmitting(true);
 
     try {
-      await login({
-        email: formData.email,
-        password: formData.password,
-      });
+      await login(
+        {
+          email: formData.email,
+          password: formData.password,
+        },
+        rememberMe,
+      );
+
+      if (rememberMe) {
+        localStorage.setItem("fieldflowRememberedEmail", formData.email);
+        localStorage.setItem("fieldflowRememberMe", "true");
+      } else {
+        localStorage.removeItem("fieldflowRememberedEmail");
+        localStorage.removeItem("fieldflowRememberMe");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -134,6 +152,22 @@ function LoginPageContent() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-slate-700 dark:text-white"
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center mt-2">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                >
+                  Remember me
+                </label>
               </div>
 
               <button

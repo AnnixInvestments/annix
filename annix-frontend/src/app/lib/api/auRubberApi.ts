@@ -50,20 +50,33 @@ class AuRubberApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
+  private rememberMe: boolean = true;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
 
     if (typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken = localStorage.getItem(TOKEN_KEYS.refreshToken);
+      this.accessToken =
+        localStorage.getItem(TOKEN_KEYS.accessToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.accessToken);
+      this.refreshToken =
+        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
     }
+  }
+
+  setRememberMe(remember: boolean) {
+    this.rememberMe = remember;
   }
 
   private headers(): Record<string, string> {
     if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken = localStorage.getItem(TOKEN_KEYS.refreshToken);
+      this.accessToken =
+        localStorage.getItem(TOKEN_KEYS.accessToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.accessToken);
+      this.refreshToken =
+        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
     }
 
     const headers: Record<string, string> = {
@@ -81,8 +94,9 @@ class AuRubberApiClient {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
     if (typeof window !== "undefined") {
-      localStorage.setItem(TOKEN_KEYS.accessToken, accessToken);
-      localStorage.setItem(TOKEN_KEYS.refreshToken, refreshToken);
+      const storage = this.rememberMe ? localStorage : sessionStorage;
+      storage.setItem(TOKEN_KEYS.accessToken, accessToken);
+      storage.setItem(TOKEN_KEYS.refreshToken, refreshToken);
     }
   }
 
@@ -92,13 +106,19 @@ class AuRubberApiClient {
     if (typeof window !== "undefined") {
       localStorage.removeItem(TOKEN_KEYS.accessToken);
       localStorage.removeItem(TOKEN_KEYS.refreshToken);
+      sessionStorage.removeItem(TOKEN_KEYS.accessToken);
+      sessionStorage.removeItem(TOKEN_KEYS.refreshToken);
     }
   }
 
   isAuthenticated(): boolean {
     if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken = localStorage.getItem(TOKEN_KEYS.refreshToken);
+      this.accessToken =
+        localStorage.getItem(TOKEN_KEYS.accessToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.accessToken);
+      this.refreshToken =
+        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
+        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
     }
     return !!this.accessToken;
   }
@@ -174,7 +194,11 @@ class AuRubberApiClient {
       const data = await response.json();
       this.accessToken = data.accessToken;
       if (typeof window !== "undefined") {
-        localStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
+        if (localStorage.getItem(TOKEN_KEYS.refreshToken)) {
+          localStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
+        } else {
+          sessionStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
+        }
       }
       return true;
     } catch {

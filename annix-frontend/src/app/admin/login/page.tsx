@@ -9,10 +9,20 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading: authLoading } = useAdminAuth();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("adminRememberedEmail") || "";
+    }
+    return "";
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("adminRememberMe") === "true";
+    }
+    return false;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +40,16 @@ export default function AdminLoginPage() {
     setError(null);
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
+
+      if (rememberMe) {
+        localStorage.setItem("adminRememberedEmail", email);
+        localStorage.setItem("adminRememberMe", "true");
+      } else {
+        localStorage.removeItem("adminRememberedEmail");
+        localStorage.removeItem("adminRememberMe");
+      }
+
       router.push("/admin/portal/dashboard");
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Login failed. Please try again.";

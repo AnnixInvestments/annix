@@ -78,7 +78,7 @@ function CustomerLoginContent() {
     setResendSuccess(false);
 
     try {
-      await login(email, password, fingerprint, browserInfo || undefined);
+      await login(email, password, fingerprint, browserInfo || undefined, rememberMe);
 
       if (rememberMe) {
         localStorage.setItem("customerRememberedEmail", email);

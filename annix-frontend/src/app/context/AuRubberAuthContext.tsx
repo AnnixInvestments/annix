@@ -11,7 +11,7 @@ interface AuRubberAuthState {
 }
 
 interface AuRubberAuthContextType extends AuRubberAuthState {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -66,10 +66,11 @@ export function AuRubberAuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
+      auRubberApiClient.setRememberMe(rememberMe);
       const response = await auRubberApiClient.login({ email, password });
 
       const profile = await auRubberApiClient.currentUser();

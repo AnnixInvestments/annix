@@ -157,15 +157,23 @@ class CustomerApiClient {
   private baseURL: string;
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
+  private rememberMe: boolean = true;
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
 
-    // Load tokens from storage
     if (typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem("customerAccessToken");
-      this.refreshToken = localStorage.getItem("customerRefreshToken");
+      this.accessToken =
+        localStorage.getItem("customerAccessToken") ??
+        sessionStorage.getItem("customerAccessToken");
+      this.refreshToken =
+        localStorage.getItem("customerRefreshToken") ??
+        sessionStorage.getItem("customerRefreshToken");
     }
+  }
+
+  setRememberMe(remember: boolean) {
+    this.rememberMe = remember;
   }
 
   private getHeaders(): Record<string, string> {
@@ -173,13 +181,14 @@ class CustomerApiClient {
       "Content-Type": "application/json",
     };
 
-    // Always get fresh token from localStorage to handle race conditions
     let token = this.accessToken;
     if (typeof window !== "undefined") {
-      const storedToken = localStorage.getItem("customerAccessToken");
+      const storedToken =
+        localStorage.getItem("customerAccessToken") ??
+        sessionStorage.getItem("customerAccessToken");
       if (storedToken) {
         token = storedToken;
-        this.accessToken = storedToken; // Sync instance
+        this.accessToken = storedToken;
       }
     }
 
@@ -187,7 +196,6 @@ class CustomerApiClient {
       headers["Authorization"] = `Bearer ${token}`;
     }
 
-    // Include device fingerprint on all authenticated requests
     const fingerprint = getStoredFingerprint();
     if (fingerprint) {
       headers["x-device-fingerprint"] = fingerprint;
@@ -200,8 +208,9 @@ class CustomerApiClient {
     this.accessToken = accessToken;
     this.refreshToken = refreshToken;
     if (typeof window !== "undefined") {
-      localStorage.setItem("customerAccessToken", accessToken);
-      localStorage.setItem("customerRefreshToken", refreshToken);
+      const storage = this.rememberMe ? localStorage : sessionStorage;
+      storage.setItem("customerAccessToken", accessToken);
+      storage.setItem("customerRefreshToken", refreshToken);
     }
   }
 
@@ -211,18 +220,21 @@ class CustomerApiClient {
     if (typeof window !== "undefined") {
       localStorage.removeItem("customerAccessToken");
       localStorage.removeItem("customerRefreshToken");
+      sessionStorage.removeItem("customerAccessToken");
+      sessionStorage.removeItem("customerRefreshToken");
     }
   }
 
   isAuthenticated(): boolean {
-    // Always check localStorage directly to avoid stale token issues
-    // This handles race conditions where the singleton was created before tokens were stored
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("customerAccessToken");
+      const token =
+        localStorage.getItem("customerAccessToken") ??
+        sessionStorage.getItem("customerAccessToken");
       if (token && !this.accessToken) {
-        // Sync the instance with localStorage
         this.accessToken = token;
-        this.refreshToken = localStorage.getItem("customerRefreshToken");
+        this.refreshToken =
+          localStorage.getItem("customerRefreshToken") ??
+          sessionStorage.getItem("customerRefreshToken");
       }
       return !!token;
     }
@@ -336,10 +348,11 @@ class CustomerApiClient {
   }
 
   async refreshAccessToken(): Promise<boolean> {
-    // Get refresh token from localStorage to avoid stale instance value
     let refreshToken = this.refreshToken;
     if (typeof window !== "undefined") {
-      refreshToken = localStorage.getItem("customerRefreshToken");
+      refreshToken =
+        localStorage.getItem("customerRefreshToken") ??
+        sessionStorage.getItem("customerRefreshToken");
     }
 
     if (!refreshToken) return false;
@@ -362,7 +375,17 @@ class CustomerApiClient {
       const newRefreshToken = data.refresh_token || data.refreshToken;
 
       if (accessToken && newRefreshToken) {
-        this.setTokens(accessToken, newRefreshToken);
+        this.accessToken = accessToken;
+        this.refreshToken = newRefreshToken;
+        if (typeof window !== "undefined") {
+          if (localStorage.getItem("customerRefreshToken")) {
+            localStorage.setItem("customerAccessToken", accessToken);
+            localStorage.setItem("customerRefreshToken", newRefreshToken);
+          } else {
+            sessionStorage.setItem("customerAccessToken", accessToken);
+            sessionStorage.setItem("customerRefreshToken", newRefreshToken);
+          }
+        }
         return true;
       }
 
@@ -671,7 +694,10 @@ class CustomerDocumentApi {
 
   private async fetchDocumentBlob(id: number): Promise<{ blob: Blob; filename: string }> {
     const token =
-      typeof window !== "undefined" ? localStorage.getItem("customerAccessToken") : null;
+      typeof window !== "undefined"
+        ? (localStorage.getItem("customerAccessToken") ??
+          sessionStorage.getItem("customerAccessToken"))
+        : null;
     const url = `${this.client["baseURL"]}/customer/documents/${id}/download`;
 
     const response = await fetch(url, {

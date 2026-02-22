@@ -11,10 +11,20 @@ export default function SupplierLoginPage() {
   const { login } = useSupplierAuth();
   const { fingerprint, browserInfo, isLoading: isFingerprintLoading } = useDeviceFingerprint();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("supplierRememberedEmail") || "";
+    }
+    return "";
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("supplierRememberMe") === "true";
+    }
+    return false;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +41,15 @@ export default function SupplierLoginPage() {
 
     try {
       await login(email, password, fingerprint, browserInfo ?? undefined, rememberMe);
+
+      if (rememberMe) {
+        localStorage.setItem("supplierRememberedEmail", email);
+        localStorage.setItem("supplierRememberMe", "true");
+      } else {
+        localStorage.removeItem("supplierRememberedEmail");
+        localStorage.removeItem("supplierRememberMe");
+      }
+
       router.push("/supplier/portal/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

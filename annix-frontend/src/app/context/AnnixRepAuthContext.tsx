@@ -7,13 +7,14 @@ import {
   AnnixRepLoginDto,
   AnnixRepRegisterDto,
   annixRepAuthApi,
+  setAnnixRepRememberMe,
 } from "../lib/api/annixRepAuthApi";
 
 interface AnnixRepAuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: AnnixRepAuthUser | null;
-  login: (dto: AnnixRepLoginDto) => Promise<AnnixRepAuthResponse>;
+  login: (dto: AnnixRepLoginDto, rememberMe?: boolean) => Promise<AnnixRepAuthResponse>;
   register: (dto: AnnixRepRegisterDto) => Promise<AnnixRepAuthResponse>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -72,17 +73,21 @@ export function AnnixRepAuthProvider({ children }: { children: React.ReactNode }
     initAuth();
   }, [refreshProfile]);
 
-  const login = useCallback(async (dto: AnnixRepLoginDto): Promise<AnnixRepAuthResponse> => {
-    const response = await annixRepAuthApi.login(dto);
-    setUser({
-      userId: response.userId,
-      email: response.email,
-      firstName: response.firstName,
-      lastName: response.lastName,
-      setupCompleted: response.setupCompleted ?? false,
-    });
-    return response;
-  }, []);
+  const login = useCallback(
+    async (dto: AnnixRepLoginDto, rememberMe?: boolean): Promise<AnnixRepAuthResponse> => {
+      setAnnixRepRememberMe(rememberMe ?? true);
+      const response = await annixRepAuthApi.login(dto);
+      setUser({
+        userId: response.userId,
+        email: response.email,
+        firstName: response.firstName,
+        lastName: response.lastName,
+        setupCompleted: response.setupCompleted ?? false,
+      });
+      return response;
+    },
+    [],
+  );
 
   const register = useCallback(async (dto: AnnixRepRegisterDto): Promise<AnnixRepAuthResponse> => {
     const response = await annixRepAuthApi.register(dto);

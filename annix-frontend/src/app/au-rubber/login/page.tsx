@@ -9,10 +9,20 @@ export default function AuRubberLoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading: authLoading } = useAuRubberAuth();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("auRubberRememberedEmail") || "";
+    }
+    return "";
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("auRubberRememberMe") === "true";
+    }
+    return false;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +39,16 @@ export default function AuRubberLoginPage() {
     setError(null);
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
+
+      if (rememberMe) {
+        localStorage.setItem("auRubberRememberedEmail", email);
+        localStorage.setItem("auRubberRememberMe", "true");
+      } else {
+        localStorage.removeItem("auRubberRememberedEmail");
+        localStorage.removeItem("auRubberRememberMe");
+      }
+
       router.push("/au-rubber/portal/dashboard");
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : "Login failed. Please try again.";
