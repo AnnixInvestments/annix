@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import { useRepProfileStatus } from "@/app/lib/query/hooks";
 
@@ -11,8 +11,10 @@ interface LoginFormData {
   password: string;
 }
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get("redirect");
   const { isAuthenticated, isLoading: authLoading, login } = useAnnixRepAuth();
   const { data: profileStatus, isLoading: profileLoading } = useRepProfileStatus();
 
@@ -29,13 +31,15 @@ export default function LoginPage() {
     }
 
     if (isAuthenticated) {
-      if (profileStatus?.setupCompleted) {
+      if (redirectPath) {
+        router.replace(redirectPath);
+      } else if (profileStatus?.setupCompleted) {
         router.replace("/annix-rep");
       } else {
         router.replace("/annix-rep/setup");
       }
     }
-  }, [isAuthenticated, authLoading, profileLoading, profileStatus, router]);
+  }, [isAuthenticated, authLoading, profileLoading, profileStatus, router, redirectPath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,5 +169,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

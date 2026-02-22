@@ -48,6 +48,14 @@ export class User {
   @Column({ nullable: true })
   salt: string;
 
+  @ApiProperty({ description: "OAuth provider (google, microsoft, zoom)" })
+  @Column({ nullable: true })
+  oauthProvider?: string;
+
+  @ApiProperty({ description: "OAuth provider user ID" })
+  @Column({ nullable: true })
+  oauthId?: string;
+
   @ApiProperty({ description: "User account status", example: "active" })
   @Column({ default: "active" })
   status: string;

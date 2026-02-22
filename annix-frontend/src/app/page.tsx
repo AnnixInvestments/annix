@@ -151,12 +151,7 @@ export default function HomePage() {
           </Link>
 
           {/* Voice Filter Card */}
-          <a
-            href="http://localhost:47823"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group"
-          >
+          <Link href="/voice-filter" target="_blank" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-100 rounded-2xl text-cyan-600 mb-6 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
@@ -184,7 +179,7 @@ export default function HomePage() {
                 </span>
               </div>
             </div>
-          </a>
+          </Link>
 
           {/* Annix Rep Card */}
           <Link href="/annix-rep/setup" target="_blank" rel="noopener noreferrer" className="group">

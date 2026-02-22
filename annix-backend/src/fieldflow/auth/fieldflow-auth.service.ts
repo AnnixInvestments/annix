@@ -16,6 +16,7 @@ import {
   AnnixRepRegisterDto,
 } from "./dto";
 import { AnnixRepSession } from "./entities";
+import { OAuthLoginProvider, OAuthProvider } from "./oauth-login.provider";
 
 export interface AnnixRepJwtPayload {
   sub: number;
@@ -40,6 +41,7 @@ export class AnnixRepAuthService {
     private readonly repProfileRepo: Repository<RepProfile>,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
+    private readonly oauthProvider: OAuthLoginProvider,
   ) {}
 
   async register(
@@ -317,5 +319,112 @@ export class AnnixRepAuthService {
         invalidationReason: reason,
       },
     );
+  }
+
+  isOAuthProviderConfigured(provider: OAuthProvider): boolean {
+    return this.oauthProvider.isProviderConfigured(provider);
+  }
+
+  oauthAuthorizationUrl(
+    provider: OAuthProvider,
+    redirectUri: string,
+    state: string,
+  ): string | null {
+    return this.oauthProvider.authorizationUrl(provider, redirectUri, state);
+  }
+
+  async oauthLogin(
+    provider: OAuthProvider,
+    code: string,
+    redirectUri: string,
+    clientIp: string,
+    userAgent: string,
+  ): Promise<AnnixRepAuthResponseDto> {
+    const result = await this.oauthProvider.exchangeCode(provider, code, redirectUri);
+
+    if (!result) {
+      throw new UnauthorizedException("OAuth authentication failed");
+    }
+
+    let user = await this.userRepo.findOne({
+      where: { email: result.email },
+      relations: ["roles"],
+    });
+
+    let annixRepRole = await this.userRoleRepo.findOne({
+      where: { name: "annixRep" },
+    });
+    if (!annixRepRole) {
+      annixRepRole = this.userRoleRepo.create({ name: "annixRep" });
+      annixRepRole = await this.userRoleRepo.save(annixRepRole);
+    }
+
+    if (!user) {
+      user = this.userRepo.create({
+        username: result.email,
+        email: result.email,
+        password: "",
+        firstName: result.firstName || result.email.split("@")[0],
+        lastName: result.lastName || "",
+        roles: [annixRepRole],
+        oauthProvider: provider,
+        oauthId: result.oauthId,
+      });
+      user = await this.userRepo.save(user);
+      this.logger.log(`Created new OAuth user: ${result.email} via ${provider}`);
+    } else {
+      const hasAnnixRepRole = user.roles?.some((role) => role.name === "annixRep");
+      if (!hasAnnixRepRole) {
+        user.roles = [...(user.roles || []), annixRepRole];
+        await this.userRepo.save(user);
+      }
+
+      if (!user.oauthProvider) {
+        user.oauthProvider = provider;
+        user.oauthId = result.oauthId;
+        await this.userRepo.save(user);
+      }
+    }
+
+    await this.invalidateAllUserSessions(user.id, SessionInvalidationReason.NEW_LOGIN);
+
+    const sessionToken = uuidv4();
+    const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
+
+    const session = this.sessionRepo.create({
+      userId: user.id,
+      sessionToken,
+      ipAddress: clientIp,
+      userAgent,
+      isActive: true,
+      expiresAt,
+      lastActivity: now().toJSDate(),
+    });
+    await this.sessionRepo.save(session);
+
+    const payload: AnnixRepJwtPayload = {
+      sub: user.id,
+      email: user.email,
+      type: "annixRep",
+      sessionToken,
+      annixRepUserId: user.id,
+    };
+
+    const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
+
+    const repProfile = await this.repProfileRepo.findOne({
+      where: { userId: user.id },
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: 3600,
+      userId: user.id,
+      email: user.email,
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      setupCompleted: repProfile?.setupCompleted ?? false,
+    };
   }
 }

@@ -9,11 +9,18 @@ import { AnnixRepSession } from "./entities";
 import { AnnixRepAuthController } from "./fieldflow-auth.controller";
 import { AnnixRepAuthService } from "./fieldflow-auth.service";
 import { AnnixRepAuthGuard, TeamRoleGuard } from "./guards";
+import { OAuthLoginProvider } from "./oauth-login.provider";
 
 @Module({
   imports: [TypeOrmModule.forFeature([AnnixRepSession, User, UserRole, RepProfile, TeamMember])],
   controllers: [AnnixRepAuthController],
-  providers: [AnnixRepAuthService, AnnixRepAuthGuard, TeamService, TeamRoleGuard],
+  providers: [
+    AnnixRepAuthService,
+    AnnixRepAuthGuard,
+    TeamService,
+    TeamRoleGuard,
+    OAuthLoginProvider,
+  ],
   exports: [AnnixRepAuthService, AnnixRepAuthGuard, TeamService, TeamRoleGuard],
 })
 export class AnnixRepAuthModule {}
