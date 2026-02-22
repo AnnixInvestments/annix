@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ArSteelWarningBanner } from "@/app/components/rfq/warnings/ArSteelWarningBanner";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
+import { ArSteelWarningBanner } from "@/app/components/rfq/warnings/ArSteelWarningBanner";
 import { materialValidationApi, type ValidPressureClassInfo } from "@/app/lib/api/client";
 import {
   checkMaterialSuitability,

@@ -12,8 +12,8 @@ import * as bcrypt from "bcrypt";
 import { MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
-import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
+import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
 import {
   StockControlInvitation,
   StockControlInvitationStatus,

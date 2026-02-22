@@ -6,7 +6,10 @@ import {
   MaterialCompatibilityChecker,
   PumpSelectionWizard,
 } from "@/app/components/pumps";
-import { formatNotesForDisplay, SmartNotesDropdown } from "@/app/components/rfq/selectors/SmartNotesDropdown";
+import {
+  formatNotesForDisplay,
+  SmartNotesDropdown,
+} from "@/app/components/rfq/selectors/SmartNotesDropdown";
 import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
 import { Select } from "@/app/components/ui/Select";
 import {
