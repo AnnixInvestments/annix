@@ -16,9 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(
-      new URL("/voice-filter/login?error=missing_code", FRONTEND_URL),
-    );
+    return NextResponse.redirect(new URL("/voice-filter/login?error=missing_code", FRONTEND_URL));
   }
 
   const [provider] = state.split(":");
@@ -42,9 +40,7 @@ export async function GET(request: NextRequest) {
     if (!exchangeResponse.ok) {
       const errorData = await exchangeResponse.json().catch(() => ({}));
       console.error("OAuth exchange failed:", errorData);
-      return NextResponse.redirect(
-        new URL("/voice-filter/login?error=oauth_failed", FRONTEND_URL),
-      );
+      return NextResponse.redirect(new URL("/voice-filter/login?error=oauth_failed", FRONTEND_URL));
     }
 
     const result = (await exchangeResponse.json()) as { token: string };
@@ -63,9 +59,7 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (err) {
     console.error("OAuth callback error:", err);
-    return NextResponse.redirect(
-      new URL("/voice-filter/login?error=oauth_error", FRONTEND_URL),
-    );
+    return NextResponse.redirect(new URL("/voice-filter/login?error=oauth_error", FRONTEND_URL));
   }
 }
 
@@ -82,9 +76,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(
-      new URL("/voice-filter/login?error=missing_code", FRONTEND_URL),
-    );
+    return NextResponse.redirect(new URL("/voice-filter/login?error=missing_code", FRONTEND_URL));
   }
 
   const [provider] = state.split(":");
@@ -108,9 +100,7 @@ export async function POST(request: NextRequest) {
     if (!exchangeResponse.ok) {
       const errorData = await exchangeResponse.json().catch(() => ({}));
       console.error("Apple OAuth exchange failed:", errorData);
-      return NextResponse.redirect(
-        new URL("/voice-filter/login?error=oauth_failed", FRONTEND_URL),
-      );
+      return NextResponse.redirect(new URL("/voice-filter/login?error=oauth_failed", FRONTEND_URL));
     }
 
     const result = (await exchangeResponse.json()) as { token: string };
@@ -129,8 +119,6 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (err) {
     console.error("Apple OAuth callback error:", err);
-    return NextResponse.redirect(
-      new URL("/voice-filter/login?error=oauth_error", FRONTEND_URL),
-    );
+    return NextResponse.redirect(new URL("/voice-filter/login?error=oauth_error", FRONTEND_URL));
   }
 }

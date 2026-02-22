@@ -76,10 +76,7 @@ export async function GET(
 
   if (provider === "apple") {
     if (!APPLE_CONFIG.clientId) {
-      return NextResponse.json(
-        { error: "Apple OAuth is not configured" },
-        { status: 503 },
-      );
+      return NextResponse.json({ error: "Apple OAuth is not configured" }, { status: 503 });
     }
     const state = crypto.randomUUID();
     const authUrl = appleAuthUrl(`apple:${state}`);
@@ -94,10 +91,7 @@ export async function GET(
     const config = OAUTH_CONFIGS[configKey];
 
     if (!config?.clientId) {
-      return NextResponse.json(
-        { error: `${provider} OAuth is not configured` },
-        { status: 503 },
-      );
+      return NextResponse.json({ error: `${provider} OAuth is not configured` }, { status: 503 });
     }
 
     const state = crypto.randomUUID();
