@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { ThrottlerGuard } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CustomerAuthGuard } from "../customer/guards/customer-auth.guard";
 import { now } from "../lib/datetime";
@@ -76,6 +77,8 @@ describe("RfqController - Pump Endpoints", () => {
       .overrideGuard(SupplierAuthGuard)
       .useValue(mockGuard)
       .overrideGuard(JwtAuthGuard)
+      .useValue(mockGuard)
+      .overrideGuard(ThrottlerGuard)
       .useValue(mockGuard)
       .compile();
 
