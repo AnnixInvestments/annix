@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { memo, useCallback } from "react";
 import type { RubberOrderDto } from "@/app/lib/api/rubberPortalApi";
-import { statusColor } from "@/app/lib/config/rubber/orderStatus";
+import { statusColor } from "@product-data/rubber/orderStatus";
 import { formatDateZA } from "@/app/lib/datetime";
 
 interface OrderRowProps {

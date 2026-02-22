@@ -5,7 +5,7 @@ import {
   comparePumpQuotes,
   PumpComparisonResult,
   PumpQuote,
-} from "@/app/lib/config/pumps/pumpComparison";
+} from "@product-data/pumps/pumpComparison";
 
 interface PumpQuoteComparisonProps {
   quotes: PumpQuote[];

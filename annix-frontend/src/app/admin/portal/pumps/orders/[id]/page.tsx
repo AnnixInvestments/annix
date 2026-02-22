@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { PUMP_SPECIFICATIONS, PUMP_TYPES, PUMPS_MODULE } from "@/app/lib/config/pumps";
+import { PUMP_SPECIFICATIONS, PUMP_TYPES, PUMPS_MODULE } from "@product-data/pumps";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
 interface MockPumpOrderDetail {

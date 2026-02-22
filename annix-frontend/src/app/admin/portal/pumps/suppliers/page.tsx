@@ -6,7 +6,7 @@ import {
   PUMP_MANUFACTURERS,
   PUMP_STANDARDS,
   SA_PUMP_SUPPLIERS,
-} from "@/app/lib/config/pumps";
+} from "@product-data/pumps";
 import { Breadcrumb } from "../components/Breadcrumb";
 
 type TabId = "manufacturers" | "sa_suppliers" | "parts_suppliers" | "standards";

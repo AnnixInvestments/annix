@@ -6,7 +6,7 @@ import {
   pumpTypeLabel,
   SelectionCriteria,
   selectPumpType,
-} from "./pumpSelectionGuide";
+} from "@product-data/pumps/pumpSelectionGuide";
 
 describe("Pump Selection Guide", () => {
   describe("APPLICATION_PROFILES", () => {

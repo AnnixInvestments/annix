@@ -5,7 +5,7 @@ import {
   PumpFormData,
   requiredFieldsForServiceType,
   validatePumpForm,
-} from "./formValidation";
+} from "@product-data/pumps/formValidation";
 
 describe("formValidation", () => {
   describe("validatePumpForm", () => {

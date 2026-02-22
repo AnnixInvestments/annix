@@ -6,7 +6,7 @@ import {
   SelectionCriteria,
   SelectionResult,
   selectPumpType,
-} from "@/app/lib/config/pumps/pumpSelectionGuide";
+} from "@product-data/pumps/pumpSelectionGuide";
 
 interface PumpSelectionWizardProps {
   onComplete?: (result: SelectionResult, criteria: SelectionCriteria) => void;

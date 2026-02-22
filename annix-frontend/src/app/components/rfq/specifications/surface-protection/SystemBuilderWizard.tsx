@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { paintProducts } from "@/app/lib/config/paint/paintProducts";
+import { paintProducts } from "@product-data/paint/paintProducts";
 import type { GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
 
 type WizardStep = "primer" | "intermediate" | "topcoat" | "review";

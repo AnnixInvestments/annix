@@ -27,7 +27,7 @@ import {
   selectNextMotorSize,
   viscosityConversions,
   waterVaporPressure,
-} from "./calculations";
+} from "@product-data/pumps/calculations";
 
 describe("Flow Rate Conversions", () => {
   describe("flowConversions object", () => {

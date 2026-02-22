@@ -17,12 +17,12 @@ import {
   CalloffStatus,
   calloffStatusColor,
   calloffStatusLabel,
-} from "@/app/lib/config/rubber/calloffStatus";
+} from "@product-data/rubber/calloffStatus";
 import {
   LENGTH_OPTIONS,
   THICKNESS_OPTIONS,
   WIDTH_OPTIONS,
-} from "@/app/lib/config/rubber/dimensions";
+} from "@product-data/rubber/dimensions";
 import {
   isTerminalStatus,
   ORDER_STATUS_OPTIONS,
@@ -30,7 +30,7 @@ import {
   statusColor,
   statusLabel,
   validNextStatuses,
-} from "@/app/lib/config/rubber/orderStatus";
+} from "@product-data/rubber/orderStatus";
 import { formatDateTimeZA, formatDateZA, fromMillis, nowMillis } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import { CalloffInput } from "../components/CalloffInput";

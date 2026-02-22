@@ -5,7 +5,7 @@ import {
   CALLOFF_STATUS,
   CALLOFF_STATUS_OPTIONS,
   CalloffStatus,
-} from "@/app/lib/config/rubber/calloffStatus";
+} from "@product-data/rubber/calloffStatus";
 
 interface CalloffInputProps {
   maxQuantity: number;

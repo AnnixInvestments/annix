@@ -20,12 +20,12 @@ import {
   TRIM_MATERIAL_OPTIONS,
   VALVE_CERTIFICATIONS,
   VALVE_SIZE_OPTIONS,
-} from "@/app/lib/config/valves-instruments/valveSpecifications";
+} from "@product-data/valves-instruments/valveSpecifications";
 import {
   getValveByValue,
   VALVE_TYPES,
   ValveCategory,
-} from "@/app/lib/config/valves-instruments/valveTypes";
+} from "@product-data/valves-instruments/valveTypes";
 
 export interface ValveFormProps {
   entry: any;

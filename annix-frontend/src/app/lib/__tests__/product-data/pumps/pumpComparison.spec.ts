@@ -5,7 +5,7 @@ import {
   comparePumpQuotes,
   LifecycleCostInputs,
   PumpQuote,
-} from "./pumpComparison";
+} from "@product-data/pumps/pumpComparison";
 
 const createMockQuote = (overrides: Partial<PumpQuote> = {}): PumpQuote => ({
   supplierId: 1,

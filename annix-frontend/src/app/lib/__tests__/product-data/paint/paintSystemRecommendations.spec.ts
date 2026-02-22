@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { CorrosivityCategory, PaintProduct } from "./paintProducts";
-import { paintProducts } from "./paintProducts";
+import type { CorrosivityCategory, PaintProduct } from "@product-data/paint/paintProducts";
+import { paintProducts } from "@product-data/paint/paintProducts";
 import type {
   CoatingSystemRequirements,
   CoverageCalculation,
   CureScheduleInput,
   ISO12944Environment,
   OvercoatWindow,
-} from "./paintSystemRecommendations";
+} from "@product-data/paint/paintSystemRecommendations";
 import {
   allNORSOKSystems,
   allSurfacePrepStandards,
@@ -24,7 +24,7 @@ import {
   surfacePrepForCorrosivity,
   systemDftSummary,
   validateMultiCoatCompatibility,
-} from "./paintSystemRecommendations";
+} from "@product-data/paint/paintSystemRecommendations";
 
 describe("paintSystemRecommendations", () => {
   describe("recommendCoatingSystem", () => {

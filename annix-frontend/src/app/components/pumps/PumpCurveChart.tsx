@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PumpCurve, PumpCurvePoint, SystemCurvePoint } from "@/app/lib/config/pumps/calculations";
+import { PumpCurve, PumpCurvePoint, SystemCurvePoint } from "@product-data/pumps/calculations";
 
 interface PumpCurveChartProps {
   pumpCurve: PumpCurve;

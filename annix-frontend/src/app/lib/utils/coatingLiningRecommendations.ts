@@ -1,6 +1,6 @@
-import type { CeramicProduct } from "@/app/lib/config/ceramic/ceramicProducts";
-import type { PaintProduct } from "@/app/lib/config/paint/paintProducts";
-import type { RubberProduct } from "@/app/lib/config/rubber/rubberProducts";
+import type { CeramicProduct } from "@product-data/ceramic/ceramicProducts";
+import type { PaintProduct } from "@product-data/paint/paintProducts";
+import type { RubberProduct } from "@product-data/rubber/rubberProducts";
 
 export interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -576,7 +576,7 @@ export type {
   TileLayoutGeometry,
   TileLayoutResult,
   TileShape,
-} from "@/app/lib/config/ceramic";
+} from "@product-data/ceramic";
 export {
   allCeramicProducts,
   bestCeramicForImpactZones,
@@ -602,12 +602,12 @@ export {
   recommendForImpactZones,
   recommendForSlidingAbrasion,
   selectCeramicAdhesive,
-} from "@/app/lib/config/ceramic";
+} from "@product-data/ceramic";
 export type {
   CorrosivityCategory,
   PaintProduct,
   PaintSupplier,
-} from "@/app/lib/config/paint/paintProducts";
+} from "@product-data/paint/paintProducts";
 export {
   compatiblePrimers,
   compatibleTopcoats,
@@ -617,7 +617,7 @@ export {
   productsForTemperature,
   surfaceTolerantProducts,
   topcoatsForEnvironment,
-} from "@/app/lib/config/paint/paintProducts";
+} from "@product-data/paint/paintProducts";
 export type {
   CoatingSystemRequirements,
   CompatibilityValidation,
@@ -634,7 +634,7 @@ export type {
   OvercoatWindowResult,
   RecommendedCoatingSystem,
   SurfacePrepStandard,
-} from "@/app/lib/config/paint/paintSystemRecommendations";
+} from "@product-data/paint/paintSystemRecommendations";
 export {
   allNORSOKSystems,
   allSurfacePrepStandards,
@@ -651,7 +651,7 @@ export {
   surfacePrepForCorrosivity,
   systemDftSummary,
   validateMultiCoatCompatibility,
-} from "@/app/lib/config/paint/paintSystemRecommendations";
+} from "@product-data/paint/paintSystemRecommendations";
 export type {
   AbrasionResistance,
   AdhesiveRecommendation,
@@ -673,7 +673,7 @@ export type {
   ThicknessOptimization,
   WearConditions,
   WearLifeEstimate,
-} from "@/app/lib/config/rubber";
+} from "@product-data/rubber";
 export {
   allRubberProducts,
   bestAbrasionResistantProducts,
@@ -699,7 +699,7 @@ export {
   rubberProductsForAbrasion,
   rubberProductsForTemperature,
   selectAdhesiveSystem,
-} from "@/app/lib/config/rubber";
+} from "@product-data/rubber";
 
 export type BudgetTier = "economy" | "standard" | "premium";
 

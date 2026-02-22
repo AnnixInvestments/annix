@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { PumpCurve } from "@/app/lib/config/pumps/calculations";
+import { PumpCurve } from "@product-data/pumps/calculations";
 
 interface OperatingRangeValidatorProps {
   pumpCurve: PumpCurve;

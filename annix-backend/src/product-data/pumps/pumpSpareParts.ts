@@ -1,6 +1,6 @@
 // Pumps & Pump Parts Module - Spare Parts Configuration
 
-import { nowISO } from "@/app/lib/datetime";
+import { nowISO } from "../../lib/datetime";
 
 export interface SparePartCategory {
   value: string;

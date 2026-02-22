@@ -33,17 +33,17 @@ import {
   PUMPS_MODULE,
   PumpCategory,
   SPARE_PARTS_KITS,
-} from "@/app/lib/config/pumps";
+} from "@product-data/pumps";
 import type {
   Api610SelectionCriteria,
   Api610SelectionResult,
-} from "@/app/lib/config/pumps/api610Classification";
+} from "@product-data/pumps/api610Classification";
 import {
   type PumpFormData,
   type ValidationResult,
   validatePumpForm,
-} from "@/app/lib/config/pumps/formValidation";
-import type { SelectionCriteria, SelectionResult } from "@/app/lib/config/pumps/pumpSelectionGuide";
+} from "@product-data/pumps/formValidation";
+import type { SelectionCriteria, SelectionResult } from "@product-data/pumps/pumpSelectionGuide";
 
 export interface PumpFormProps {
   entry: any;

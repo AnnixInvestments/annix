@@ -5,7 +5,7 @@ import {
   calculateLifecycleCost,
   LifecycleCostInputs,
   LifecycleCostResult,
-} from "@/app/lib/config/pumps/pumpComparison";
+} from "@product-data/pumps/pumpComparison";
 
 interface PumpLifecycleCostCalculatorProps {
   initialInputs?: Partial<LifecycleCostInputs>;

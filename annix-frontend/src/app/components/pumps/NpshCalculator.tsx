@@ -5,7 +5,7 @@ import {
   calculateNpshAvailable,
   checkNpshMargin,
   NpshCalculationParams,
-} from "@/app/lib/config/pumps/calculations";
+} from "@product-data/pumps/calculations";
 
 interface NpshCalculatorProps {
   npshRequired?: number;

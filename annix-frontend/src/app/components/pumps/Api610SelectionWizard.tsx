@@ -7,7 +7,7 @@ import {
   Api610SelectionResult,
   api610CategoryDescription,
   selectApi610PumpType,
-} from "@/app/lib/config/pumps/api610Classification";
+} from "@product-data/pumps/api610Classification";
 
 interface Api610SelectionWizardProps {
   onComplete?: (result: Api610SelectionResult, criteria: Api610SelectionCriteria) => void;

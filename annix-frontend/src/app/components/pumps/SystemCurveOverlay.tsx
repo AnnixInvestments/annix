@@ -7,7 +7,7 @@ import {
   interpolatePumpCurve,
   PumpCurve,
   SystemCurveParams,
-} from "@/app/lib/config/pumps/calculations";
+} from "@product-data/pumps/calculations";
 import { PumpCurveChart } from "./PumpCurveChart";
 
 interface SystemCurveOverlayProps {

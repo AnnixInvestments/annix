@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { PUMPS_MODULE } from "@/app/lib/config/pumps";
+import { PUMPS_MODULE } from "@product-data/pumps";
 import { Breadcrumb } from "../components/Breadcrumb";
 
 type SortColumn = "orderNumber" | "customer" | "serviceType" | "status" | "createdAt";

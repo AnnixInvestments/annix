@@ -1,5 +1,5 @@
-import type { CalloffStatus } from "@/app/lib/config/rubber/calloffStatus";
-import type { StatusHistoryEvent } from "@/app/lib/config/rubber/orderStatus";
+import type { CalloffStatus } from "@product-data/rubber/calloffStatus";
+import type { StatusHistoryEvent } from "@product-data/rubber/orderStatus";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export interface RubberProductCodingDto {

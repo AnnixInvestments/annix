@@ -16,12 +16,12 @@ import {
   POWER_SUPPLY_OPTIONS,
   PROCESS_CONNECTION_OPTIONS,
   WETTED_PARTS_MATERIAL_OPTIONS,
-} from "@/app/lib/config/valves-instruments/instrumentSpecifications";
+} from "@product-data/valves-instruments/instrumentSpecifications";
 import {
   getInstrumentByValue,
   getInstrumentsByCategory,
   InstrumentCategory,
-} from "@/app/lib/config/valves-instruments/instrumentTypes";
+} from "@product-data/valves-instruments/instrumentTypes";
 
 export interface InstrumentFormProps {
   entry: any;

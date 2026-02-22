@@ -8,7 +8,7 @@ import type {
   RubberOrderDto,
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
-import { RUBBER_ORDER_STATUS, statusColor, statusLabel } from "@/app/lib/config/rubber/orderStatus";
+import { RUBBER_ORDER_STATUS, statusColor, statusLabel } from "@product-data/rubber/orderStatus";
 import { formatDateZA } from "@/app/lib/datetime";
 
 interface StatusCount {

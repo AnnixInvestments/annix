@@ -8,7 +8,7 @@ import {
   PUMP_PRICING_TIERS,
   PUMP_SPECIFICATIONS,
   PUMP_TYPES,
-} from "@/app/lib/config/pumps";
+} from "@product-data/pumps";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
