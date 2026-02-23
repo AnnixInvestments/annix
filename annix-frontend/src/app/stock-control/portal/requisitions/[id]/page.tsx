@@ -3,17 +3,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { keys } from "es-toolkit/compat";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Requisition } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
-import {
-  useCompleteBackgroundStep,
-  useCompleteRequisitionStep,
-  useRequisitionDetail,
-  useUpdateRequisitionItem,
-} from "@/app/lib/query/hooks";
-import { stockControlKeys } from "@/app/lib/query/keys";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -40,14 +35,19 @@ export default function RequisitionDetailPage() {
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editPackSize, setEditPackSize] = useState<number>(20);
+  const [isSaving, setIsSaving] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
-  const [pendingReorderQty, setPendingReorderQty] = useState<Map<number, string>>(new Map());
-  const [pendingReqNumber, setPendingReqNumber] = useState<Map<number, string>>(new Map());
-  const [error, setError] = useState<string | null>(null);
-  const [isAccepting, setIsAccepting] = useState(false);
-  const [savingRowId, setSavingRowId] = useState<number | null>(null);
-  const [savedRows, setSavedRows] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const { data: requisition, isLoading, error: fetchError } = useRequisitionDetail(reqId);
   const updateItem = useUpdateRequisitionItem(reqId);
@@ -88,168 +88,31 @@ export default function RequisitionDetailPage() {
     setEditingItemId(null);
   };
 
-  const handleReorderQtyChange = (itemId: number, value: string) => {
-    setPendingReorderQty((prev) => new Map(prev).set(itemId, value));
-  };
-
-  const handleReorderQtyBlur = (itemId: number) => {
-    const value = pendingReorderQty.get(itemId);
-    if (value === undefined) return;
-
-    const item = requisition?.items.find((i) => i.id === itemId);
-    const currentValue = item?.reorderQty != null ? item.reorderQty.toString() : "";
-    if (value === currentValue) return;
-
-    const reorderQty = value === "" ? null : parseInt(value, 10);
-    updateItem.mutate(
-      { itemId, data: { reorderQty } },
-      {
-        onError: (err) => {
-          setError(err instanceof Error ? err.message : "Failed to update reorder qty");
-        },
-      },
-    );
-  };
-
-  const handleReqNumberChange = (itemId: number, value: string) => {
-    setPendingReqNumber((prev) => new Map(prev).set(itemId, value));
-  };
-
-  const handleReqNumberBlur = (itemId: number) => {
-    const value = pendingReqNumber.get(itemId);
-    if (value === undefined) return;
-
-    const item = requisition?.items.find((i) => i.id === itemId);
-    const rawReqNum = item ? item.reqNumber : "";
-    const currentValue = rawReqNum ? rawReqNum : "";
-    if (value === currentValue) return;
-
-    const reqNumber = value === "" ? null : value;
-    updateItem.mutate(
-      { itemId, data: { reqNumber } },
-      {
-        onError: (err) => {
-          setError(err instanceof Error ? err.message : "Failed to update req number");
-        },
-      },
-    );
-  };
-
-  const reorderQtyValue = (itemId: number, dbValue: number | null): string => {
-    const pending = pendingReorderQty.get(itemId);
-    return pending !== undefined ? pending : dbValue != null ? dbValue.toString() : "";
-  };
-
-  const reqNumberValue = (itemId: number, dbValue: string | null): string => {
-    const pending = pendingReqNumber.get(itemId);
-    return pending !== undefined ? pending : dbValue || "";
-  };
-
-  const handleSaveRow = async (itemId: number) => {
-    if (!requisition) return;
-    const item = requisition.items.find((i) => i.id === itemId);
-    if (!item) return;
-
-    setSavingRowId(itemId);
-    setError(null);
-
-    const reorderVal = pendingReorderQty.get(itemId);
-    const reqNumVal = pendingReqNumber.get(itemId);
-
-    const payload: Record<string, unknown> = {};
-
-    if (reorderVal !== undefined) {
-      payload.reorderQty = reorderVal === "" ? null : parseInt(reorderVal, 10);
-    }
-
-    if (reqNumVal !== undefined) {
-      payload.reqNumber = reqNumVal === "" ? null : reqNumVal;
-    }
-
-    if (keys(payload).length === 0) {
-      setSavingRowId(null);
-      setSavedRows((prev) => new Set(prev).add(itemId));
-      setTimeout(() => {
-        setSavedRows((prev) => {
-          const next = new Set(prev);
-          next.delete(itemId);
-          return next;
-        });
-      }, 2000);
-      return;
-    }
-
-    try {
-      await updateItem.mutateAsync({ itemId, data: payload });
-      await queryClient.invalidateQueries({
-        queryKey: stockControlKeys.requisitions.detail(reqId),
-      });
-      setPendingReorderQty((prev) => {
-        const next = new Map(prev);
-        next.delete(itemId);
-        return next;
-      });
-      setPendingReqNumber((prev) => {
-        const next = new Map(prev);
-        next.delete(itemId);
-        return next;
-      });
-      setSavingRowId(null);
-      setSavedRows((prev) => new Set(prev).add(itemId));
-      setTimeout(() => {
-        setSavedRows((prev) => {
-          const next = new Set(prev);
-          next.delete(itemId);
-          return next;
-        });
-      }, 2000);
-    } catch (err) {
-      setSavingRowId(null);
-      setError(err instanceof Error ? err.message : "Failed to save");
-    }
-  };
-
   const exportColumns = [
     { header: "Product Name", accessorKey: "productName" },
     { header: "Area", accessorKey: "area" },
     { header: "Litres Req.", accessorKey: "litresRequired" },
     { header: "Pack Size (L)", accessorKey: "packSizeLitres" },
     { header: "Packs to Order", accessorKey: "packsToOrder" },
-    { header: "Reorder Qty", accessorKey: "reorderQty" },
-    { header: "Req Number", accessorKey: "reqNumber" },
     { header: "Stock Match", accessorKey: "stockMatch" },
   ];
 
-  const exportData = () => {
-    const items = requisition ? requisition.items : [];
-    return items.map((item) => {
-      const itemArea = item.area;
-      const areaDisplay =
-        itemArea === "external"
-          ? "Ext"
-          : itemArea === "internal"
-            ? "Int"
-            : itemArea
-              ? itemArea
-              : "-";
-      return {
-        productName: item.productName,
-        area: areaDisplay,
-        litresRequired: Number(item.litresRequired).toFixed(1),
-        packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
-        packsToOrder: item.packsToOrder,
-        reorderQty: item.reorderQty != null ? item.reorderQty : "-",
-        reqNumber: item.reqNumber ? item.reqNumber : "-",
-        stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
-      };
-    });
-  };
+  const exportData = () =>
+    (requisition?.items ?? []).map((item) => ({
+      productName: item.productName,
+      area:
+        item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : (item.area || "-"),
+      litresRequired: Number(item.litresRequired).toFixed(1),
+      packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
+      packsToOrder: item.packsToOrder,
+      stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
+    }));
 
   const exportMetadata = () => ({
-    Requisition: requisition ? requisition.requisitionNumber : "",
-    Status: requisition ? requisition.status : "",
-    "Created By": requisition ? (requisition.createdBy ? requisition.createdBy : "-") : "-",
-    Created: requisition ? formatDateZA(requisition.createdAt) : "",
+    "Requisition": requisition?.requisitionNumber ?? "",
+    "Status": requisition?.status ?? "",
+    "Created By": requisition?.createdBy ?? "-",
+    "Created": requisition ? formatDateZA(requisition.createdAt) : "",
     ...(requisition?.jobCard
       ? { "Job Card": `${requisition.jobCard.jobNumber} - ${requisition.jobCard.jobName}` }
       : {}),
@@ -271,46 +134,6 @@ export default function RequisitionDetailPage() {
     }
     setShowExportMenu(false);
   };
-
-  const completeStepAndReturn = async () => {
-    if (!fromJobCard || !requisition) return;
-    try {
-      setIsAccepting(true);
-      setError(null);
-      if (completeStep) {
-        await completeBackgroundStepMutation.mutateAsync({
-          jobCardId: Number(fromJobCard),
-          stepKey: completeStep,
-          notes: "Requisition reviewed and accepted",
-        });
-      } else {
-        await completeRequisitionStepMutation.mutateAsync(Number(fromJobCard));
-      }
-      router.push(`/stock-control/portal/job-cards/${fromJobCard}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to complete requisition step");
-      setIsAccepting(false);
-    }
-  };
-
-  const handlePrintAndReturn = () => {
-    window.print();
-    const onAfterPrint = () => {
-      window.removeEventListener("afterprint", onAfterPrint);
-      completeStepAndReturn();
-    };
-    window.addEventListener("afterprint", onAfterPrint);
-  };
-
-  const handleAcceptAndReturn = () => {
-    if (isOrderPlacement) {
-      handlePrintAndReturn();
-    } else {
-      completeStepAndReturn();
-    }
-  };
-
-  const isSaving = updateItem.isPending;
 
   if (isLoading) {
     return (
@@ -516,6 +339,75 @@ export default function RequisitionDetailPage() {
               </div>
             )}
           </div>
+        </div>
+        <div className="relative" ref={exportMenuRef}>
+          <button
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            Export
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          {showExportMenu && (
+            <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+              <div className="py-1">
+                <button
+                  onClick={() => handleExport("excel")}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <svg
+                    className="w-4 h-4 mr-3 text-green-600"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                  </svg>
+                  Excel (.xlsx)
+                </button>
+                <button
+                  onClick={() => handleExport("word")}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <svg
+                    className="w-4 h-4 mr-3 text-blue-600"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                  </svg>
+                  Word (.docx)
+                </button>
+                <button
+                  onClick={() => handleExport("pdf")}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <svg
+                    className="w-4 h-4 mr-3 text-red-600"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                  </svg>
+                  PDF (.pdf)
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -11,7 +11,6 @@ import {
   TextRun,
   WidthType,
 } from "docx";
-import { toPairs as entries } from "es-toolkit/compat";
 import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -98,7 +97,7 @@ export function exportToPDF(
 
   if (metadata) {
     doc.setFontSize(10);
-    entries(metadata).forEach(([key, value]) => {
+    Object.entries(metadata).forEach(([key, value]) => {
       doc.text(`${key}: ${value}`, 14, startY);
       startY += 6;
     });
@@ -106,12 +105,7 @@ export function exportToPDF(
   }
 
   const headers = columns.map((col) => col.header);
-  const rows = data.map((row) =>
-    columns.map((col) => {
-      const rawAccessorKey5 = row[col.accessorKey];
-      return String(rawAccessorKey5 || "");
-    }),
-  );
+  const rows = data.map((row) => columns.map((col) => String(row[col.accessorKey] ?? "")));
 
   autoTable(doc, {
     head: [headers],
@@ -148,18 +142,17 @@ export async function exportToWord(
   const tableRows = data.map(
     (row) =>
       new TableRow({
-        children: columns.map((col) => {
-          const rawAccessorKey6 = row[col.accessorKey];
-
-          return new TableCell({
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: String(rawAccessorKey6 || ""), size: 20 })],
-              }),
-            ],
-            borders: cellBorders(),
-          });
-        }),
+        children: columns.map(
+          (col) =>
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: String(row[col.accessorKey] ?? ""), size: 20 })],
+                }),
+              ],
+              borders: cellBorders(),
+            }),
+        ),
       }),
   );
 
@@ -172,7 +165,7 @@ export async function exportToWord(
   }
 
   if (metadata) {
-    entries(metadata).forEach(([key, value]) => {
+    Object.entries(metadata).forEach(([key, value]) => {
       docChildren.push(
         new Paragraph({
           children: [new TextRun({ text: `${key}: `, bold: true }), new TextRun({ text: value })],
