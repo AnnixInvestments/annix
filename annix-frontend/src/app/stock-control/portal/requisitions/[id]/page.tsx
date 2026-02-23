@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Requisition } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -28,6 +29,18 @@ export default function RequisitionDetailPage() {
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editPackSize, setEditPackSize] = useState<number>(20);
   const [isSaving, setIsSaving] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -69,6 +82,53 @@ export default function RequisitionDetailPage() {
 
   const handleCancelEdit = () => {
     setEditingItemId(null);
+  };
+
+  const exportColumns = [
+    { header: "Product Name", accessorKey: "productName" },
+    { header: "Area", accessorKey: "area" },
+    { header: "Litres Req.", accessorKey: "litresRequired" },
+    { header: "Pack Size (L)", accessorKey: "packSizeLitres" },
+    { header: "Packs to Order", accessorKey: "packsToOrder" },
+    { header: "Stock Match", accessorKey: "stockMatch" },
+  ];
+
+  const exportData = () =>
+    (requisition?.items ?? []).map((item) => ({
+      productName: item.productName,
+      area:
+        item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : (item.area || "-"),
+      litresRequired: Number(item.litresRequired).toFixed(1),
+      packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
+      packsToOrder: item.packsToOrder,
+      stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
+    }));
+
+  const exportMetadata = () => ({
+    "Requisition": requisition?.requisitionNumber ?? "",
+    "Status": requisition?.status ?? "",
+    "Created By": requisition?.createdBy ?? "-",
+    "Created": requisition ? formatDateZA(requisition.createdAt) : "",
+    ...(requisition?.jobCard
+      ? { "Job Card": `${requisition.jobCard.jobNumber} - ${requisition.jobCard.jobName}` }
+      : {}),
+  });
+
+  const handleExport = (format: "excel" | "word" | "pdf") => {
+    if (!requisition) return;
+    const data = exportData();
+    const filename = requisition.requisitionNumber;
+    const title = `Requisition ${requisition.requisitionNumber}`;
+    const meta = exportMetadata();
+
+    if (format === "excel") {
+      exportToExcel(data, exportColumns, filename, "Requisition");
+    } else if (format === "pdf") {
+      exportToPDF(data, exportColumns, filename, title, meta);
+    } else if (format === "word") {
+      exportToWord(data, exportColumns, filename, title, meta);
+    }
+    setShowExportMenu(false);
   };
 
   if (isLoading) {
@@ -137,6 +197,75 @@ export default function RequisitionDetailPage() {
               </p>
             )}
           </div>
+        </div>
+        <div className="relative" ref={exportMenuRef}>
+          <button
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              />
+            </svg>
+            Export
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+          {showExportMenu && (
+            <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+              <div className="py-1">
+                <button
+                  onClick={() => handleExport("excel")}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <svg
+                    className="w-4 h-4 mr-3 text-green-600"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                  </svg>
+                  Excel (.xlsx)
+                </button>
+                <button
+                  onClick={() => handleExport("word")}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <svg
+                    className="w-4 h-4 mr-3 text-blue-600"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                  </svg>
+                  Word (.docx)
+                </button>
+                <button
+                  onClick={() => handleExport("pdf")}
+                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <svg
+                    className="w-4 h-4 mr-3 text-red-600"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                  </svg>
+                  PDF (.pdf)
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
