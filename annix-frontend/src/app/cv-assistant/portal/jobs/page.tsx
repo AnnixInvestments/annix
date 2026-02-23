@@ -120,18 +120,25 @@ export default function JobsPage() {
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{job.title}</div>
                       {job.description && (
-                        <div className="text-sm text-gray-500 truncate max-w-xs">{job.description}</div>
+                        <div className="text-sm text-gray-500 truncate max-w-xs">
+                          {job.description}
+                        </div>
                       )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {job.requiredSkills.slice(0, 3).map((skill, i) => (
-                          <span key={i} className="inline-flex px-2 py-0.5 text-xs bg-violet-100 text-violet-700 rounded">
+                          <span
+                            key={i}
+                            className="inline-flex px-2 py-0.5 text-xs bg-violet-100 text-violet-700 rounded"
+                          >
                             {skill}
                           </span>
                         ))}
                         {job.requiredSkills.length > 3 && (
-                          <span className="text-xs text-gray-500">+{job.requiredSkills.length - 3}</span>
+                          <span className="text-xs text-gray-500">
+                            +{job.requiredSkills.length - 3}
+                          </span>
                         )}
                       </div>
                     </td>
@@ -141,7 +148,9 @@ export default function JobsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(job.status)}`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(job.status)}`}
+                      >
                         {job.status}
                       </span>
                     </td>
@@ -234,8 +243,12 @@ function JobFormModal({
   const [minExperience, setMinExperience] = useState(job?.minExperienceYears?.toString() || "");
   const [education, setEducation] = useState(job?.requiredEducation || "");
   const [autoReject, setAutoReject] = useState(job?.autoRejectEnabled || false);
-  const [rejectThreshold, setRejectThreshold] = useState(job?.autoRejectThreshold?.toString() || "30");
-  const [acceptThreshold, setAcceptThreshold] = useState(job?.autoAcceptThreshold?.toString() || "80");
+  const [rejectThreshold, setRejectThreshold] = useState(
+    job?.autoRejectThreshold?.toString() || "30",
+  );
+  const [acceptThreshold, setAcceptThreshold] = useState(
+    job?.autoAcceptThreshold?.toString() || "80",
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -245,7 +258,10 @@ function JobFormModal({
     const data = {
       title,
       description: description || undefined,
-      requiredSkills: skillsInput.split(",").map((s) => s.trim()).filter(Boolean),
+      requiredSkills: skillsInput
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
       minExperienceYears: minExperience ? parseInt(minExperience, 10) : undefined,
       requiredEducation: education || undefined,
       autoRejectEnabled: autoReject,

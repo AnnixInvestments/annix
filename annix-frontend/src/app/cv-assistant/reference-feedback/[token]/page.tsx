@@ -72,13 +72,24 @@ export default function ReferenceFeedbackPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-8 h-8 text-red-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Invalid Link</h1>
           <p className="text-gray-600">
-            This feedback link is invalid or has expired. Please contact the recruiter for a new link.
+            This feedback link is invalid or has expired. Please contact the recruiter for a new
+            link.
           </p>
         </div>
       </div>
@@ -90,13 +101,24 @@ export default function ReferenceFeedbackPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-8 h-8 text-green-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h1>
           <p className="text-gray-600">
-            Your feedback has been submitted successfully. We appreciate you taking the time to provide this reference.
+            Your feedback has been submitted successfully. We appreciate you taking the time to
+            provide this reference.
           </p>
         </div>
       </div>
@@ -109,14 +131,25 @@ export default function ReferenceFeedbackPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-violet-100 rounded-2xl mb-4">
-              <svg className="w-8 h-8 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              <svg
+                className="w-8 h-8 text-violet-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                />
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900">Reference Feedback</h1>
             <p className="text-gray-600 mt-2">
               {referenceName && `Hi ${referenceName}, `}please provide your feedback for{" "}
-              <strong>{candidateName}</strong> applying for the <strong>{jobTitle}</strong> position.
+              <strong>{candidateName}</strong> applying for the <strong>{jobTitle}</strong>{" "}
+              position.
             </p>
           </div>
 
@@ -183,7 +216,8 @@ export default function ReferenceFeedbackPage() {
             </button>
 
             <p className="text-xs text-gray-500 text-center">
-              Your feedback is confidential and will only be used for employment evaluation purposes.
+              Your feedback is confidential and will only be used for employment evaluation
+              purposes.
             </p>
           </form>
         </div>

@@ -89,7 +89,10 @@ export default function SettingsPage() {
       });
       setTestResult(result);
     } catch (error) {
-      setTestResult({ success: false, error: error instanceof Error ? error.message : "Test failed" });
+      setTestResult({
+        success: false,
+        error: error instanceof Error ? error.message : "Test failed",
+      });
     } finally {
       setIsTesting(false);
     }
@@ -188,7 +191,10 @@ export default function SettingsPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              IMAP Password {settings?.imapConfigured && <span className="text-gray-400">(leave blank to keep current)</span>}
+              IMAP Password{" "}
+              {settings?.imapConfigured && (
+                <span className="text-gray-400">(leave blank to keep current)</span>
+              )}
             </label>
             <input
               type="password"
@@ -200,7 +206,9 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">From Email Address</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              From Email Address
+            </label>
             <input
               type="email"
               value={emailFromAddress}
@@ -211,10 +219,14 @@ export default function SettingsPage() {
           </div>
 
           {testResult && (
-            <div className={`px-4 py-3 rounded-lg text-sm ${
-              testResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
-            }`}>
-              {testResult.success ? "Connection successful!" : `Connection failed: ${testResult.error}`}
+            <div
+              className={`px-4 py-3 rounded-lg text-sm ${
+                testResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+              }`}
+            >
+              {testResult.success
+                ? "Connection successful!"
+                : `Connection failed: ${testResult.error}`}
             </div>
           )}
 

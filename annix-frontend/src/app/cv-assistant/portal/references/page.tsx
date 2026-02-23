@@ -123,11 +123,14 @@ export default function ReferencesPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {(ref as CandidateReference & { candidate?: { name: string } }).candidate?.name || "-"}
+                        {(ref as CandidateReference & { candidate?: { name: string } }).candidate
+                          ?.name || "-"}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(ref.status)}`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(ref.status)}`}
+                      >
                         {ref.status}
                       </span>
                     </td>
@@ -136,7 +139,10 @@ export default function ReferencesPage() {
                     </td>
                     <td className="px-6 py-4">
                       {ref.feedbackText ? (
-                        <p className="text-sm text-gray-600 max-w-xs truncate" title={ref.feedbackText}>
+                        <p
+                          className="text-sm text-gray-600 max-w-xs truncate"
+                          title={ref.feedbackText}
+                        >
                           {ref.feedbackText}
                         </p>
                       ) : (

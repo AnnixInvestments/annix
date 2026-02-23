@@ -80,7 +80,12 @@ export default function CandidatesPage() {
           className="inline-flex items-center px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+            />
           </svg>
           Upload CV
         </button>
@@ -96,7 +101,9 @@ export default function CandidatesPage() {
           >
             <option value="all">All Jobs</option>
             {jobs.map((job) => (
-              <option key={job.id} value={job.id}>{job.title}</option>
+              <option key={job.id} value={job.id}>
+                {job.title}
+              </option>
             ))}
           </select>
         </div>
@@ -154,19 +161,28 @@ export default function CandidatesPage() {
                 candidates.map((candidate) => (
                   <tr key={candidate.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{candidate.name || "Unknown"}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {candidate.name || "Unknown"}
+                      </div>
                       <div className="text-sm text-gray-500">{candidate.email || "-"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{candidate.jobPosting?.title || "-"}</div>
+                      <div className="text-sm text-gray-900">
+                        {candidate.jobPosting?.title || "-"}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {candidate.matchScore !== null ? (
                         <div className="flex items-center">
-                          <span className={`text-sm font-bold ${
-                            candidate.matchScore >= 80 ? "text-green-600" :
-                            candidate.matchScore >= 50 ? "text-yellow-600" : "text-red-600"
-                          }`}>
+                          <span
+                            className={`text-sm font-bold ${
+                              candidate.matchScore >= 80
+                                ? "text-green-600"
+                                : candidate.matchScore >= 50
+                                  ? "text-yellow-600"
+                                  : "text-red-600"
+                            }`}
+                          >
                             {candidate.matchScore}%
                           </span>
                         </div>
@@ -178,12 +194,18 @@ export default function CandidatesPage() {
                       {candidate.matchAnalysis ? (
                         <div className="flex flex-wrap gap-1">
                           {candidate.matchAnalysis.skillsMatched.slice(0, 2).map((skill, i) => (
-                            <span key={i} className="inline-flex px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
+                            <span
+                              key={i}
+                              className="inline-flex px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded"
+                            >
                               {skill}
                             </span>
                           ))}
                           {candidate.matchAnalysis.skillsMissing.slice(0, 1).map((skill, i) => (
-                            <span key={i} className="inline-flex px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded">
+                            <span
+                              key={i}
+                              className="inline-flex px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded"
+                            >
                               {skill}
                             </span>
                           ))}
@@ -193,7 +215,9 @@ export default function CandidatesPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(candidate.status)}`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColor(candidate.status)}`}
+                      >
                         {candidate.status.replace(/_/g, " ")}
                       </span>
                     </td>
@@ -201,15 +225,17 @@ export default function CandidatesPage() {
                       <div className="flex items-center justify-end space-x-2">
                         {candidate.status !== "accepted" && candidate.status !== "rejected" && (
                           <>
-                            {candidate.status !== "shortlisted" && candidate.status !== "reference_check" && (
-                              <button
-                                onClick={() => handleAction(candidate.id, "shortlist")}
-                                className="text-green-600 hover:text-green-700"
-                              >
-                                Shortlist
-                              </button>
-                            )}
-                            {(candidate.status === "shortlisted" || candidate.status === "reference_check") && (
+                            {candidate.status !== "shortlisted" &&
+                              candidate.status !== "reference_check" && (
+                                <button
+                                  onClick={() => handleAction(candidate.id, "shortlist")}
+                                  className="text-green-600 hover:text-green-700"
+                                >
+                                  Shortlist
+                                </button>
+                              )}
+                            {(candidate.status === "shortlisted" ||
+                              candidate.status === "reference_check") && (
                               <button
                                 onClick={() => handleAction(candidate.id, "accept")}
                                 className="text-emerald-600 hover:text-emerald-700"
@@ -309,9 +335,13 @@ function UploadCvModal({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             >
               <option value="">Select a job...</option>
-              {jobs.filter((j) => j.status === "active").map((job) => (
-                <option key={job.id} value={job.id}>{job.title}</option>
-              ))}
+              {jobs
+                .filter((j) => j.status === "active")
+                .map((job) => (
+                  <option key={job.id} value={job.id}>
+                    {job.title}
+                  </option>
+                ))}
             </select>
           </div>
 
