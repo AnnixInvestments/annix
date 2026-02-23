@@ -551,8 +551,57 @@ export default function JobCardsPage() {
             <p className="mt-1 text-sm text-gray-500">Create a new job card to get started.</p>
           </div>
         ) : (
-          <>
-            <div className="sm:hidden divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Job Number
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  JC Number
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Page
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Job Name
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Customer
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Created
+                </th>
+                <th scope="col" className="relative px-6 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
               {jobCards.map((job) => (
                 <div
                   key={job.id}
@@ -567,53 +616,46 @@ export default function JobCardsPage() {
                       {job.jobNumber}
                       {job.jtDnNumber ? ` / ${job.jtDnNumber}` : ""}
                     </Link>
-                    <StatusBadge status={job.status} />
-                  </div>
-                  <p className="text-sm text-gray-900 truncate">{job.jobName}</p>
-                  {job.customerName ? (
-                    <p className="text-xs text-gray-500 mt-1 truncate">{job.customerName}</p>
-                  ) : null}
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-gray-400">{formatDateZA(job.createdAt)}</span>
-                    <div className="flex items-center gap-2">
-                      {job.parentJobCardId ? (
-                        <span className="inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 text-indigo-600">
-                          Delivery
-                        </span>
-                      ) : null}
-                      {job.cpoId ? (
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                          CPO
-                        </span>
-                      ) : null}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmDelete({ id: job.id, jobNumber: job.jobNumber });
-                        }}
-                        disabled={deletingId === job.id}
-                        className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-                      >
-                        {deletingId === job.id ? (
-                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            />
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {job.jcNumber || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {job.pageNumber || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {job.jobName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {job.customerName || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(job.status)}`}
+                    >
+                      {job.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDateZA(job.createdAt)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(job.id, job.jobNumber);
+                      }}
+                      disabled={deletingId === job.id}
+                      className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                      title="Delete job card"
+                    >
+                      {deletingId === job.id ? (
+                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                           >

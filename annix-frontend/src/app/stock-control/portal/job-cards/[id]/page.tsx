@@ -737,14 +737,388 @@ export default function JobCardDetailPage() {
         </div>
       </div>
 
-      {actions.downloadError && (
-        <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-md px-4 py-3">
-          <p className="text-sm text-red-700">{actions.downloadError}</p>
-          <button
-            onClick={() => actions.setDownloadError(null)}
-            className="text-red-500 hover:text-red-700 ml-4"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Job Card Details</h3>
+        </div>
+        <div className="px-4 py-5 sm:px-6">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-6">
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Job Number</dt>
+              <dd className="mt-1 text-sm text-gray-900">{jobCard.jobNumber}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">JC Number</dt>
+              <dd className="mt-1 text-sm text-gray-900">{jobCard.jcNumber || "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Page Number</dt>
+              <dd className="mt-1 text-sm text-gray-900">{jobCard.pageNumber || "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Job Name</dt>
+              <dd className="mt-1 text-sm text-gray-900">{jobCard.jobName}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Customer</dt>
+              <dd className="mt-1 text-sm text-gray-900">{jobCard.customerName || "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Status</dt>
+              <dd className="mt-1">
+                <span
+                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(jobCard.status)}`}
+                >
+                  {jobCard.status}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Created</dt>
+              <dd className="mt-1 text-sm text-gray-900">{formatDateZA(jobCard.createdAt)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
+              <dd className="mt-1 text-sm text-gray-900">{formatDateZA(jobCard.updatedAt)}</dd>
+            </div>
+            {jobCard.description && (
+              <div className="col-span-2">
+                <dt className="text-sm font-medium text-gray-500">Description</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.description}</dd>
+              </div>
+            )}
+            {jobCard.poNumber && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">PO Number</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.poNumber}</dd>
+              </div>
+            )}
+            {jobCard.siteLocation && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Site / Location</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.siteLocation}</dd>
+              </div>
+            )}
+            {jobCard.contactPerson && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Contact Person</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.contactPerson}</dd>
+              </div>
+            )}
+            {jobCard.dueDate && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Due Date</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.dueDate}</dd>
+              </div>
+            )}
+            {jobCard.reference && (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Reference</dt>
+                <dd className="mt-1 text-sm text-gray-900">{jobCard.reference}</dd>
+              </div>
+            )}
+            {jobCard.notes && (
+              <div className="col-span-2">
+                <dt className="text-sm font-medium text-gray-500">Notes</dt>
+                <dd className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{jobCard.notes}</dd>
+              </div>
+            )}
+          </dl>
+          {coatingAnalysis &&
+            coatingAnalysis.status === "analysed" &&
+            coatingAnalysis.coats.length > 0 && (
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex items-center space-x-2 mb-4">
+                  <h4 className="text-sm font-medium text-gray-900">Coating Specification</h4>
+                  <span className="text-xs text-gray-400 italic">extracted by Nix</span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4 text-sm">
+                  {coatingAnalysis.applicationType && (
+                    <div>
+                      <span className="font-medium text-gray-500">Application: </span>
+                      <span className="text-gray-900 capitalize">
+                        {coatingAnalysis.applicationType}
+                      </span>
+                    </div>
+                  )}
+                  {coatingAnalysis.surfacePrep && (
+                    <div>
+                      <span className="font-medium text-gray-500">Surface Prep: </span>
+                      <span className="text-gray-900 capitalize">
+                        {coatingAnalysis.surfacePrep.replace(/_/g, " ")}
+                      </span>
+                    </div>
+                  )}
+                  {coatingAnalysis.extM2 > 0 && (
+                    <div>
+                      <span className="font-medium text-gray-500">Ext m&#178;: </span>
+                      <span className="text-gray-900">
+                        {Number(coatingAnalysis.extM2).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {coatingAnalysis.intM2 > 0 && (
+                    <div>
+                      <span className="font-medium text-gray-500">Int m&#178;: </span>
+                      <span className="text-gray-900">
+                        {Number(coatingAnalysis.intM2).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 pr-4 font-medium text-gray-500">Area</th>
+                      <th className="text-left py-2 pr-4 font-medium text-gray-500">Product</th>
+                      <th className="text-right py-2 pr-4 font-medium text-gray-500">
+                        DFT (&#181;m)
+                      </th>
+                      <th className="text-right py-2 pr-4 font-medium text-gray-500">
+                        Coverage (m&#178;/L)
+                      </th>
+                      <th className="text-right py-2 font-medium text-gray-500">Litres Req.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {coatingAnalysis.coats.map((coat, idx) => (
+                      <tr key={idx} className="border-b border-gray-100">
+                        <td className="py-2 pr-4 text-gray-600 capitalize">
+                          {coat.area === "external" ? "Ext" : "Int"}
+                        </td>
+                        <td className="py-2 pr-4 text-gray-900 font-medium">{coat.product}</td>
+                        <td className="py-2 pr-4 text-right text-gray-900">
+                          {coat.minDftUm}-{coat.maxDftUm}
+                        </td>
+                        <td className="py-2 pr-4 text-right text-gray-900">
+                          {coat.coverageM2PerLiter}
+                        </td>
+                        <td className="py-2 text-right font-semibold text-gray-900">
+                          {coat.litersRequired}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {coatingAnalysis.stockAssessment.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                      Stock Assessment
+                    </h5>
+                    <div className="space-y-1">
+                      {coatingAnalysis.stockAssessment.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700">{item.product}</span>
+                          <div className="flex items-center space-x-3">
+                            {item.stockItemId ? (
+                              <>
+                                <span className="text-gray-500">
+                                  {item.currentStock} / {item.required} {item.unit}
+                                </span>
+                                <span
+                                  className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                                    item.sufficient
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}
+                                >
+                                  {item.sufficient ? "OK" : "Short"}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-xs text-amber-600 italic">
+                                Not in inventory
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          {coatingAnalysis && coatingAnalysis.status === "pending" && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center space-x-2 text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-teal-600"></div>
+                <span>Nix is analysing the coating specification...</span>
+              </div>
+            </div>
+          )}
+          {coatingAnalysis && coatingAnalysis.status === "failed" && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-red-600">
+                  Coating analysis failed: {coatingAnalysis.error || "Unknown error"}
+                </div>
+                <button
+                  onClick={handleRunAnalysis}
+                  disabled={isAnalysing}
+                  className="text-sm text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                >
+                  {isAnalysing ? "Analysing..." : "Retry"}
+                </button>
+              </div>
+            </div>
+          )}
+          {!coatingAnalysis && jobCard.notes && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">No coating analysis available</span>
+                <button
+                  onClick={handleRunAnalysis}
+                  disabled={isAnalysing}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  {isAnalysing ? "Analysing..." : "Run Coating Analysis"}
+                </button>
+              </div>
+            </div>
+          )}
+          {requisition && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <svg
+                    className="w-4 h-4 text-teal-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                    />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700">Requisition</span>
+                </div>
+                <Link
+                  href={`/stock-control/portal/requisitions/${requisition.id}`}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100"
+                >
+                  {requisition.requisitionNumber}
+                  <svg
+                    className="w-4 h-4 ml-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Link>
+              </div>
+            </div>
+          )}
+          {jobCard.customFields && Object.keys(jobCard.customFields).length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <h4 className="text-sm font-medium text-gray-500 mb-3">Custom Fields</h4>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+                {Object.entries(jobCard.customFields).map(([key, value]) => (
+                  <div key={key}>
+                    <dt className="text-sm font-medium text-gray-500">{key}</dt>
+                    <dd className="mt-1 text-sm text-gray-900">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {jobCard.lineItems && jobCard.lineItems.length > 0 && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Line Items</h3>
+            <span className="text-sm text-gray-500">{jobCard.lineItems.length} items</span>
+          </div>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  #
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Item Code
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Description
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Item No
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Quantity
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  JT No
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {jobCard.lineItems.map((li, idx) => (
+                <tr key={li.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{idx + 1}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                    {li.itemCode || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                    {li.itemDescription || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {li.itemNo || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                    {li.quantity ?? "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {li.jtNo || "-"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Stock Allocations</h3>
+          <span className="text-sm text-gray-500">{allocations.length} allocations</span>
+        </div>
+        {allocations.length === 0 ? (
+          <div className="text-center py-12">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
