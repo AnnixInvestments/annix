@@ -78,6 +78,25 @@ function AnnixRepIcon() {
   );
 }
 
+function CvAssistantIcon() {
+  return (
+    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M15 3v5a1 1 0 001 1h5"
+      />
+    </svg>
+  );
+}
+
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
@@ -233,6 +252,41 @@ export default function HomePage() {
                   Manage stock items, job allocations, deliveries, and inventory tracking with ASCA.
                 </p>
                 <span className="inline-flex items-center text-teal-600 font-semibold group-hover:translate-x-1 transition-transform">
+                  Login
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/cv-assistant/login"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group"
+          >
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-violet-400 hover:shadow-xl transition-all duration-300 h-full">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-violet-100 rounded-2xl text-violet-600 mb-6 group-hover:bg-violet-600 group-hover:text-white transition-colors">
+                  <CvAssistantIcon />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">CV Assistant</h3>
+                <p className="text-gray-600 mb-6">
+                  AI-powered candidate screening and reference checking for recruitment teams.
+                </p>
+                <span className="inline-flex items-center text-violet-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Login
                   <svg
                     className="w-5 h-5 ml-2"

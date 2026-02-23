@@ -19,6 +19,7 @@ import { BoltMassModule } from "./bolt-mass/bolt-mass.module";
 import { BoqModule } from "./boq/boq.module";
 import { CoatingSpecificationModule } from "./coating-specification/coating-specification.module";
 import typeormConfig from "./config/typeorm";
+import { CvAssistantModule } from "./cv-assistant/cv-assistant.module";
 import { CustomerModule } from "./customer/customer.module";
 import { DataValidationModule } from "./data-validation/data-validation.module";
 import { DrawingsModule } from "./drawings/drawings.module";
@@ -178,6 +179,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     ReducerCalculatorModule,
     AnnixRepModule,
     StockControlModule,
+    CvAssistantModule,
   ],
   controllers: [AppController, BendDimensionController],
   providers: [AppService, BendDimensionService],

@@ -1675,4 +1675,312 @@ This is an automated notification from the Annix test site.
       text,
     });
   }
+
+  async sendCvAssistantVerificationEmail(
+    email: string,
+    verificationToken: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const verificationLink = `${frontendUrl}/cv-assistant/verify-email?token=${verificationToken}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Verify Your Email - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #8B5CF6;">Welcome to CV Assistant</h1>
+          <p>Thank you for registering. Please verify your email address to complete your registration and start screening candidates.</p>
+          <p style="margin: 30px 0;">
+            <a href="${verificationLink}"
+               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Verify Email Address
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${verificationLink}</p>
+          <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not register for a CV Assistant account, please ignore this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Welcome to CV Assistant
+
+      Thank you for registering. Please verify your email address to complete your registration.
+
+      Click here to verify: ${verificationLink}
+
+      This link will expire in 24 hours.
+
+      If you did not register for a CV Assistant account, please ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "Verify Your Email - CV Assistant",
+      html,
+      text,
+    });
+  }
+
+  async sendCvAssistantPasswordResetEmail(email: string, resetToken: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const resetLink = `${frontendUrl}/cv-assistant/reset-password?token=${resetToken}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Reset Your Password - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #8B5CF6;">Reset Your Password</h1>
+          <p>We received a request to reset your password for CV Assistant. Click the button below to set a new password.</p>
+          <p style="margin: 30px 0;">
+            <a href="${resetLink}"
+               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Reset Password
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${resetLink}</p>
+          <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            If you did not request a password reset, please ignore this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const text = `
+      Reset Your Password - CV Assistant
+
+      We received a request to reset your password. Click here to set a new password:
+
+      ${resetLink}
+
+      This link will expire in 1 hour.
+
+      If you did not request a password reset, please ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "Reset Your Password - CV Assistant",
+      html,
+      text,
+    });
+  }
+
+  async sendCvAssistantRejectionEmail(
+    email: string,
+    candidateName: string,
+    jobTitle: string,
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Application Update - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #333;">Application Update</h1>
+          <p>Dear ${candidateName},</p>
+          <p>Thank you for your interest in the <strong>${jobTitle}</strong> position and for taking the time to apply.</p>
+          <p>After careful consideration of your application, we regret to inform you that we will not be moving forward with your candidacy at this time.</p>
+          <p>We appreciate your interest in our company and wish you the best in your job search.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated message. Please do not reply to this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Application Update - ${jobTitle}`,
+      html,
+    });
+  }
+
+  async sendCvAssistantShortlistEmail(
+    email: string,
+    candidateName: string,
+    jobTitle: string,
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Great News About Your Application - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #16a34a;">Great News!</h1>
+          <p>Dear ${candidateName},</p>
+          <p>We are pleased to inform you that your application for the <strong>${jobTitle}</strong> position has been shortlisted!</p>
+          <p>Your qualifications and experience have impressed our team, and we would like to learn more about you.</p>
+          <p>A member of our team will be in touch shortly to discuss the next steps in the recruitment process.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated message. Please do not reply to this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Great News About Your Application - ${jobTitle}`,
+      html,
+    });
+  }
+
+  async sendCvAssistantAcceptanceEmail(
+    email: string,
+    candidateName: string,
+    jobTitle: string,
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Congratulations - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #16a34a;">Congratulations!</h1>
+          <p>Dear ${candidateName},</p>
+          <p>We are thrilled to inform you that you have been selected for the <strong>${jobTitle}</strong> position!</p>
+          <p>Our team was impressed by your qualifications and we believe you will be a great addition to our organization.</p>
+          <p>A member of our team will contact you shortly with details about the next steps and offer letter.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated message. Please do not reply to this email.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Congratulations - ${jobTitle}`,
+      html,
+    });
+  }
+
+  async sendCvAssistantReferenceRequestEmail(
+    email: string,
+    referenceName: string,
+    candidateName: string,
+    jobTitle: string,
+    feedbackToken: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const feedbackLink = `${frontendUrl}/cv-assistant/reference-feedback/${feedbackToken}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Reference Request - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #8B5CF6;">Reference Request</h1>
+          <p>Dear ${referenceName},</p>
+          <p><strong>${candidateName}</strong> has applied for the position of <strong>${jobTitle}</strong> and has listed you as a reference.</p>
+          <p>We would greatly appreciate if you could take a few minutes to provide feedback about your experience working with ${candidateName}.</p>
+          <p style="margin: 30px 0;">
+            <a href="${feedbackLink}"
+               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Provide Feedback
+            </a>
+          </p>
+          <p>Or copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${feedbackLink}</p>
+          <p style="color: #666; font-size: 14px;">This link will expire in 7 days.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            Your feedback is confidential and will only be used for employment evaluation purposes.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Reference Request for ${candidateName} - ${jobTitle}`,
+      html,
+    });
+  }
+
+  async sendCvAssistantReferenceReminderEmail(
+    email: string,
+    referenceName: string,
+    candidateName: string,
+    jobTitle: string,
+    feedbackToken: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const feedbackLink = `${frontendUrl}/cv-assistant/reference-feedback/${feedbackToken}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Reference Request Reminder - CV Assistant</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #f59e0b;">Friendly Reminder</h1>
+          <p>Dear ${referenceName},</p>
+          <p>This is a friendly reminder that <strong>${candidateName}</strong> has listed you as a reference for the <strong>${jobTitle}</strong> position.</p>
+          <p>We would greatly appreciate if you could take a few minutes to provide your feedback.</p>
+          <p style="margin: 30px 0;">
+            <a href="${feedbackLink}"
+               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Provide Feedback
+            </a>
+          </p>
+          <p style="color: #666; font-size: 14px;">This link will expire soon.</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            Your feedback is confidential and will only be used for employment evaluation purposes.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `Reminder: Reference Request for ${candidateName} - ${jobTitle}`,
+      html,
+    });
+  }
 }
