@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const nextConfig: NextConfig = {
-  output: process.env.NODE_ENV === "production" ? "standalone" : undefined,
+  output: "standalone",
+  outputFileTracingRoot: path.join(__dirname, ".."),
   transpilePackages: ["@annix/product-data"],
 
   async rewrites() {

@@ -34,11 +34,11 @@ RUN addgroup --system --gid 1001 nodejs \
 USER nextjs
 
 WORKDIR /app
-COPY --from=builder /app/annix-frontend/public ./public
+COPY --from=builder /app/annix-frontend/public ./annix-frontend/public
 COPY --from=builder --chown=nextjs:nodejs /app/annix-frontend/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/annix-frontend/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/annix-frontend/.next/static ./annix-frontend/.next/static
 
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", "annix-frontend/server.js"]
