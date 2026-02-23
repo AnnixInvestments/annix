@@ -59,7 +59,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-optional
+        run: pnpm install --frozen-lockfile --no-optional
 
       - name: Run Biome check
         run: pnpm biome check .
