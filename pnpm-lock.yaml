@@ -74,9 +74,6 @@ importers:
       '@nestjs/typeorm':
         specifier: ^11.0.0
         version: 11.0.0(@nestjs/common@11.1.12(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.12)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28(better-sqlite3@12.6.2)(pg@8.17.1)(ts-node@10.9.2(@types/node@22.19.7)(typescript@5.9.3)))
-      '@types/mailparser':
-        specifier: ^3.4.6
-        version: 3.4.6
       '@types/pdf-parse':
         specifier: ^1.1.5
         version: 1.1.5
@@ -91,7 +88,7 @@ importers:
         version: 0.14.3
       dotenv:
         specifier: ^17.2.3
-        version: 17.2.3
+        version: 17.3.1
       es-toolkit:
         specifier: ^1.43.0
         version: 1.44.0
@@ -174,12 +171,18 @@ importers:
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6
+      '@types/imap-simple':
+        specifier: ^4.2.10
+        version: 4.2.10
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
       '@types/luxon':
         specifier: ^3.7.1
         version: 3.7.1
+      '@types/mailparser':
+        specifier: ^3.4.6
+        version: 3.4.6
       '@types/multer':
         specifier: ^2.0.0
         version: 2.0.0
@@ -3154,6 +3157,12 @@ packages:
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
+  '@types/imap-simple@4.2.10':
+    resolution: {integrity: sha512-ZLITvpfY4+oPtH3z7axYRGJqOB/9M6cb4ye8eEydOlgXZuJFX0z9l+hxzXgrFDnWKwxH39ZPCT4bGIFUKSJ52g==}
+
+  '@types/imap@0.8.43':
+    resolution: {integrity: sha512-POPoqrDax9mxM2N4ITZYCWaFtg1ORVfzJe4S7xwSh9aHawdEb7FwWTJYiAhzIvWp7DM+6BajnzYOwZ1BUrqtow==}
+
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
 
@@ -4414,10 +4423,6 @@ packages:
 
   dotenv@16.6.1:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
-    engines: {node: '>=12'}
-
-  dotenv@17.2.3:
-    resolution: {integrity: sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w==}
     engines: {node: '>=12'}
 
   dotenv@17.3.1:
@@ -11456,6 +11461,15 @@ snapshots:
 
   '@types/http-errors@2.0.5': {}
 
+  '@types/imap-simple@4.2.10':
+    dependencies:
+      '@types/imap': 0.8.43
+      '@types/node': 22.19.7
+
+  '@types/imap@0.8.43':
+    dependencies:
+      '@types/node': 22.19.7
+
   '@types/istanbul-lib-coverage@2.0.6': {}
 
   '@types/istanbul-lib-report@3.0.3':
@@ -12760,8 +12774,6 @@ snapshots:
   dotenv@16.4.7: {}
 
   dotenv@16.6.1: {}
-
-  dotenv@17.2.3: {}
 
   dotenv@17.3.1: {}
 
