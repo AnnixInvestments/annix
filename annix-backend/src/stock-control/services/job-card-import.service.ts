@@ -19,6 +19,8 @@ export interface LineItemImportRow {
 
 export interface JobCardImportRow {
   jobNumber?: string;
+  jcNumber?: string;
+  pageNumber?: string;
   jobName?: string;
   customerName?: string;
   description?: string;
@@ -119,20 +121,13 @@ export class JobCardImportService {
       }
 
       try {
-        const existing = await this.jobCardRepo.findOne({
-          where: { jobNumber: row.jobNumber, companyId },
-        });
-
-        if (existing) {
-          result.skipped++;
-          continue;
-        }
-
         const customFields =
           row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
 
         const jobCard = this.jobCardRepo.create({
           jobNumber: row.jobNumber,
+          jcNumber: row.jcNumber || null,
+          pageNumber: row.pageNumber || null,
           jobName: row.jobName,
           customerName: row.customerName || null,
           description: row.description || null,
