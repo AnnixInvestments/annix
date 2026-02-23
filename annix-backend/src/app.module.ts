@@ -41,6 +41,7 @@ import { FlangeTypeModule } from "./flange-type/flange-type.module";
 import { FlangeTypeWeightModule } from "./flange-type-weight/flange-type-weight.module";
 import { GasketWeightModule } from "./gasket-weight/gasket-weight.module";
 import { HdpeModule } from "./hdpe/hdpe.module";
+import { MaterialCertificationModule } from "./material-certification/material-certification.module";
 import { MaterialValidationModule } from "./material-validation/material-validation.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { MinesModule } from "./mines/mines.module";
@@ -136,6 +137,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     WeldJointEfficiencyModule,
     WeldThicknessModule,
     MaterialValidationModule,
+    MaterialCertificationModule,
     GasketWeightModule,
     PipeEndConfigurationModule,
     BendCenterToFaceModule,
