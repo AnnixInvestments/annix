@@ -62,7 +62,7 @@ import {
   sabs62AvailableAngles,
   sabs62CFInterpolated,
 } from "@/app/lib/utils/sabs62CfData";
-import { groupSteelSpecifications } from "@/app/lib/utils/steelSpecGroups";
+import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 
 export interface BendFormProps {
@@ -224,6 +224,7 @@ function BendFormComponent({
       const wasOldSABS719 = oldSpecName.includes("SABS 719") || oldSpecName.includes("SANS 719");
 
       const specTypeChanged = isNewSABS719 !== wasOldSABS719;
+      const clearPslFields = !isApi5LSpec(newSpecName);
       const updatedEntry: any = {
         ...entry,
         specs: {
@@ -237,6 +238,16 @@ function BendFormComponent({
           numberOfSegments: specTypeChanged ? undefined : entry.specs?.numberOfSegments,
           centerToFaceMm: specTypeChanged ? undefined : entry.specs?.centerToFaceMm,
           bendRadiusMm: specTypeChanged ? undefined : entry.specs?.bendRadiusMm,
+          ...(clearPslFields
+            ? {
+                pslLevel: null,
+                cvnTestTemperatureC: null,
+                cvnAverageJoules: null,
+                cvnMinimumJoules: null,
+                heatNumber: null,
+                mtcReference: null,
+              }
+            : {}),
         },
       };
       updatedEntry.description = generateItemDescription(updatedEntry);
@@ -648,6 +659,255 @@ function BendFormComponent({
                 })
               }
             />
+            {/* PSL Level and CVN Fields - Only for API 5L specs */}
+            {(() => {
+              const steelSpecId =
+                entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+              const steelSpecName =
+                masterData.steelSpecs?.find((s: any) => s.id === steelSpecId)?.steelSpecName || "";
+              const showPslFields = isApi5LSpec(steelSpecName);
+              const pslLevel = entry.specs?.pslLevel;
+              const showCvnFields = pslLevel === "PSL2";
+
+              if (!showPslFields) return null;
+
+              return (
+                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                  <h5 className="text-xs font-semibold text-amber-800 mb-2">API 5L Specification Level</h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">PSL Level *</label>
+                      <select
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                        value={pslLevel || ""}
+                        onChange={(e) => {
+                          const newPslLevel = e.target.value || null;
+                          const updates: any = {
+                            specs: {
+                              ...entry.specs,
+                              pslLevel: newPslLevel,
+                            },
+                          };
+                          if (newPslLevel !== "PSL2") {
+                            updates.specs.cvnTestTemperatureC = null;
+                            updates.specs.cvnAverageJoules = null;
+                            updates.specs.cvnMinimumJoules = null;
+                          }
+                          onUpdateEntry(entry.id, updates);
+                        }}
+                      >
+                        <option value="">Select PSL level...</option>
+                        <option value="PSL1">PSL1 - Standard</option>
+                        <option value="PSL2">PSL2 - Enhanced (with CVN testing)</option>
+                      </select>
+                    </div>
+                    {showCvnFields && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">CVN Test Temp (°C) *</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                            value={entry.specs?.cvnTestTemperatureC ?? ""}
+                            onChange={(e) =>
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  cvnTestTemperatureC: e.target.value ? Number(e.target.value) : null,
+                                },
+                              })
+                            }
+                            placeholder="-46"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">CVN Avg (J) *</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                            value={entry.specs?.cvnAverageJoules ?? ""}
+                            onChange={(e) =>
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  cvnAverageJoules: e.target.value ? Number(e.target.value) : null,
+                                },
+                              })
+                            }
+                            placeholder="27"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">CVN Min (J) *</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                            value={entry.specs?.cvnMinimumJoules ?? ""}
+                            onChange={(e) =>
+                              onUpdateEntry(entry.id, {
+                                specs: {
+                                  ...entry.specs,
+                                  cvnMinimumJoules: e.target.value ? Number(e.target.value) : null,
+                                },
+                              })
+                            }
+                            placeholder="20"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {/* Traceability fields */}
+                  <div className="mt-2 pt-2 border-t border-amber-200">
+                    <h5 className="text-xs font-semibold text-amber-800 mb-2">Traceability (Optional)</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Heat Number</label>
+                        <input
+                          type="text"
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                          value={entry.specs?.heatNumber || ""}
+                          onChange={(e) =>
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                heatNumber: e.target.value || null,
+                              },
+                            })
+                          }
+                          placeholder="Enter heat number"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">MTC Reference</label>
+                        <input
+                          type="text"
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                          value={entry.specs?.mtcReference || ""}
+                          onChange={(e) =>
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                mtcReference: e.target.value || null,
+                              },
+                            })
+                          }
+                          placeholder="Enter MTC reference"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* NACE/Sour Service Compliance */}
+                  <div className="mt-2 pt-2 border-t border-amber-200">
+                    <h5 className="text-xs font-semibold text-amber-800 mb-2">
+                      NACE/Sour Service Compliance (Optional)
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`nace-compliant-${entry.id}`}
+                          checked={entry.specs?.naceCompliant || false}
+                          onChange={(e) =>
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                naceCompliant: e.target.checked || null,
+                              },
+                            })
+                          }
+                          className="w-4 h-4"
+                        />
+                        <label
+                          htmlFor={`nace-compliant-${entry.id}`}
+                          className="text-xs font-medium text-gray-700"
+                        >
+                          NACE MR0175 Compliant
+                        </label>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          H2S Zone
+                        </label>
+                        <select
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                          value={entry.specs?.h2sZone || ""}
+                          onChange={(e) =>
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                h2sZone: e.target.value ? Number(e.target.value) : null,
+                              },
+                            })
+                          }
+                        >
+                          <option value="">Not specified</option>
+                          <option value="1">Zone 1 (Severe)</option>
+                          <option value="2">Zone 2 (Moderate)</option>
+                          <option value="3">Zone 3 (Mild)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Max Hardness (HRC)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          max="70"
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
+                          value={entry.specs?.maxHardnessHrc ?? ""}
+                          onChange={(e) =>
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                maxHardnessHrc: e.target.value ? Number(e.target.value) : null,
+                              },
+                            })
+                          }
+                          placeholder="≤22 for sour"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`ssc-tested-${entry.id}`}
+                          checked={entry.specs?.sscTested || false}
+                          onChange={(e) =>
+                            onUpdateEntry(entry.id, {
+                              specs: {
+                                ...entry.specs,
+                                sscTested: e.target.checked || null,
+                              },
+                            })
+                          }
+                          className="w-4 h-4"
+                        />
+                        <label
+                          htmlFor={`ssc-tested-${entry.id}`}
+                          className="text-xs font-medium text-gray-700"
+                        >
+                          SSC Tested
+                        </label>
+                      </div>
+                    </div>
+                    {/* Sour service validation warning */}
+                    {entry.specs?.naceCompliant &&
+                      entry.specs?.maxHardnessHrc &&
+                      entry.specs.maxHardnessHrc > 22 && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                          Sour service materials require hardness ≤22 HRC per NACE MR0175
+                        </div>
+                      )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Conditional Bend Layout - SABS 719 vs SABS 62 */}
             {(() => {

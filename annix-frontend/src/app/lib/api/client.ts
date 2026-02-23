@@ -57,6 +57,18 @@ export interface CreateStraightPipeRfqDto {
   flangeStandardId?: number;
   flangePressureClassId?: number;
   flangeTypeCode?: string; // SABS 1123 flange type code (/1 to /9)
+  pslLevel?: "PSL1" | "PSL2" | null;
+  cvnTestTemperatureC?: number;
+  cvnAverageJoules?: number;
+  cvnMinimumJoules?: number;
+  heatNumber?: string;
+  mtcReference?: string;
+  ndtCoveragePct?: number;
+  lotNumber?: string;
+  naceCompliant?: boolean;
+  h2sZone?: 1 | 2 | 3 | null;
+  maxHardnessHrc?: number;
+  sscTested?: boolean;
 }
 
 export interface PipeEndConfiguration {
@@ -122,6 +134,18 @@ export interface UnifiedRfqItemDto {
     useGlobalFlangeSpecs?: boolean;
     flangeStandardId?: number;
     flangePressureClassId?: number;
+    pslLevel?: "PSL1" | "PSL2" | null;
+    cvnTestTemperatureC?: number;
+    cvnAverageJoules?: number;
+    cvnMinimumJoules?: number;
+    heatNumber?: string;
+    mtcReference?: string;
+    ndtCoveragePct?: number;
+    lotNumber?: string;
+    naceCompliant?: boolean;
+    h2sZone?: 1 | 2 | 3 | null;
+    maxHardnessHrc?: number;
+    sscTested?: boolean;
   };
   fitting?: {
     nominalDiameterMm: number;
@@ -140,6 +164,18 @@ export interface UnifiedRfqItemDto {
     workingPressureBar?: number;
     workingTemperatureC?: number;
     calculationData?: Record<string, any>;
+    pslLevel?: "PSL1" | "PSL2" | null;
+    cvnTestTemperatureC?: number;
+    cvnAverageJoules?: number;
+    cvnMinimumJoules?: number;
+    heatNumber?: string;
+    mtcReference?: string;
+    ndtCoveragePct?: number;
+    lotNumber?: string;
+    naceCompliant?: boolean;
+    h2sZone?: 1 | 2 | 3 | null;
+    maxHardnessHrc?: number;
+    sscTested?: boolean;
   };
 }
 

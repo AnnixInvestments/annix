@@ -226,6 +226,60 @@ export class StraightPipeRfq {
   })
   totalFlangeWeldLengthM?: number;
 
+  @ApiProperty({ description: "PSL level (PSL1 or PSL2) for API 5L specs", required: false })
+  @Column({ name: "psl_level", type: "varchar", length: 10, nullable: true })
+  pslLevel?: string;
+
+  @ApiProperty({ description: "CVN test temperature in Celsius", required: false })
+  @Column({
+    name: "cvn_test_temperature_c",
+    type: "decimal",
+    precision: 5,
+    scale: 1,
+    nullable: true,
+  })
+  cvnTestTemperatureC?: number;
+
+  @ApiProperty({ description: "CVN average impact energy in Joules", required: false })
+  @Column({ name: "cvn_average_joules", type: "decimal", precision: 6, scale: 1, nullable: true })
+  cvnAverageJoules?: number;
+
+  @ApiProperty({ description: "CVN minimum impact energy in Joules", required: false })
+  @Column({ name: "cvn_minimum_joules", type: "decimal", precision: 6, scale: 1, nullable: true })
+  cvnMinimumJoules?: number;
+
+  @ApiProperty({ description: "Heat number for traceability", required: false })
+  @Column({ name: "heat_number", type: "varchar", length: 50, nullable: true })
+  heatNumber?: string;
+
+  @ApiProperty({ description: "Material Test Certificate reference", required: false })
+  @Column({ name: "mtc_reference", type: "varchar", length: 100, nullable: true })
+  mtcReference?: string;
+
+  @ApiProperty({ description: "NDT coverage percentage (100% for PSL2)", required: false })
+  @Column({ name: "ndt_coverage_pct", type: "decimal", precision: 5, scale: 2, nullable: true })
+  ndtCoveragePct?: number;
+
+  @ApiProperty({ description: "Lot number for traceability", required: false })
+  @Column({ name: "lot_number", type: "varchar", length: 50, nullable: true })
+  lotNumber?: string;
+
+  @ApiProperty({ description: "NACE MR0175/ISO 15156 compliance", required: false })
+  @Column({ name: "nace_compliant", type: "boolean", nullable: true })
+  naceCompliant?: boolean;
+
+  @ApiProperty({ description: "H2S zone (1, 2, or 3) for sour service", required: false })
+  @Column({ name: "h2s_zone", type: "integer", nullable: true })
+  h2sZone?: number;
+
+  @ApiProperty({ description: "Maximum hardness in HRC (<=22 for sour service)", required: false })
+  @Column({ name: "max_hardness_hrc", type: "decimal", precision: 4, scale: 1, nullable: true })
+  maxHardnessHrc?: number;
+
+  @ApiProperty({ description: "Sulfide Stress Cracking tested", required: false })
+  @Column({ name: "ssc_tested", type: "boolean", nullable: true })
+  sscTested?: boolean;
+
   // Relationships
   @ApiProperty({ description: "Parent RFQ item", type: () => RfqItem })
   @OneToOne(

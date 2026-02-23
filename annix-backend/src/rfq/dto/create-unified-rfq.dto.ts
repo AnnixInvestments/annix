@@ -8,6 +8,7 @@ import {
   IsString,
   ValidateNested,
 } from "class-validator";
+import { NaceRequiresHardnessLimit, Psl2RequiresCvn } from "../../shared/validators";
 import { CreateRfqDto } from "./create-rfq.dto";
 
 export class UnifiedStraightPipeDto {
@@ -75,6 +76,68 @@ export class UnifiedStraightPipeDto {
   @IsOptional()
   @IsNumber()
   flangePressureClassId?: number;
+
+  @ApiProperty({ description: "PSL level (PSL1 or PSL2) for API 5L specs", required: false })
+  @IsOptional()
+  @IsString()
+  @Psl2RequiresCvn()
+  pslLevel?: string;
+
+  @ApiProperty({ description: "CVN test temperature in Celsius", required: false })
+  @IsOptional()
+  @IsNumber()
+  cvnTestTemperatureC?: number;
+
+  @ApiProperty({ description: "CVN average impact energy in Joules", required: false })
+  @IsOptional()
+  @IsNumber()
+  cvnAverageJoules?: number;
+
+  @ApiProperty({ description: "CVN minimum impact energy in Joules", required: false })
+  @IsOptional()
+  @IsNumber()
+  cvnMinimumJoules?: number;
+
+  @ApiProperty({ description: "Heat number for traceability", required: false })
+  @IsOptional()
+  @IsString()
+  heatNumber?: string;
+
+  @ApiProperty({ description: "Material Test Certificate reference", required: false })
+  @IsOptional()
+  @IsString()
+  mtcReference?: string;
+
+  @ApiProperty({ description: "NDT coverage percentage (100% for PSL2)", required: false })
+  @IsOptional()
+  @IsNumber()
+  ndtCoveragePct?: number;
+
+  @ApiProperty({ description: "Lot number for traceability", required: false })
+  @IsOptional()
+  @IsString()
+  lotNumber?: string;
+
+  @ApiProperty({ description: "NACE MR0175/ISO 15156 compliance", required: false })
+  @IsOptional()
+  @IsBoolean()
+  naceCompliant?: boolean;
+
+  @ApiProperty({ description: "H2S zone (1, 2, or 3) for sour service", required: false })
+  @IsOptional()
+  @IsNumber()
+  h2sZone?: number;
+
+  @ApiProperty({ description: "Maximum hardness in HRC (<=22 for sour service)", required: false })
+  @IsOptional()
+  @IsNumber()
+  @NaceRequiresHardnessLimit()
+  maxHardnessHrc?: number;
+
+  @ApiProperty({ description: "Sulfide Stress Cracking tested", required: false })
+  @IsOptional()
+  @IsBoolean()
+  sscTested?: boolean;
 }
 
 export class UnifiedBendDto {
@@ -190,6 +253,68 @@ export class UnifiedBendDto {
   @IsOptional()
   @IsNumber()
   flangePressureClassId?: number;
+
+  @ApiProperty({ description: "PSL level (PSL1 or PSL2) for API 5L specs", required: false })
+  @IsOptional()
+  @IsString()
+  @Psl2RequiresCvn()
+  pslLevel?: string;
+
+  @ApiProperty({ description: "CVN test temperature in Celsius", required: false })
+  @IsOptional()
+  @IsNumber()
+  cvnTestTemperatureC?: number;
+
+  @ApiProperty({ description: "CVN average impact energy in Joules", required: false })
+  @IsOptional()
+  @IsNumber()
+  cvnAverageJoules?: number;
+
+  @ApiProperty({ description: "CVN minimum impact energy in Joules", required: false })
+  @IsOptional()
+  @IsNumber()
+  cvnMinimumJoules?: number;
+
+  @ApiProperty({ description: "Heat number for traceability", required: false })
+  @IsOptional()
+  @IsString()
+  heatNumber?: string;
+
+  @ApiProperty({ description: "Material Test Certificate reference", required: false })
+  @IsOptional()
+  @IsString()
+  mtcReference?: string;
+
+  @ApiProperty({ description: "NDT coverage percentage (100% for PSL2)", required: false })
+  @IsOptional()
+  @IsNumber()
+  ndtCoveragePct?: number;
+
+  @ApiProperty({ description: "Lot number for traceability", required: false })
+  @IsOptional()
+  @IsString()
+  lotNumber?: string;
+
+  @ApiProperty({ description: "NACE MR0175/ISO 15156 compliance", required: false })
+  @IsOptional()
+  @IsBoolean()
+  naceCompliant?: boolean;
+
+  @ApiProperty({ description: "H2S zone (1, 2, or 3) for sour service", required: false })
+  @IsOptional()
+  @IsNumber()
+  h2sZone?: number;
+
+  @ApiProperty({ description: "Maximum hardness in HRC (<=22 for sour service)", required: false })
+  @IsOptional()
+  @IsNumber()
+  @NaceRequiresHardnessLimit()
+  maxHardnessHrc?: number;
+
+  @ApiProperty({ description: "Sulfide Stress Cracking tested", required: false })
+  @IsOptional()
+  @IsBoolean()
+  sscTested?: boolean;
 }
 
 export class UnifiedExpansionJointDto {
@@ -386,6 +511,68 @@ export class UnifiedFittingDto {
   })
   @IsOptional()
   calculationData?: Record<string, any>;
+
+  @ApiProperty({ description: "PSL level (PSL1 or PSL2) for API 5L specs", required: false })
+  @IsOptional()
+  @IsString()
+  @Psl2RequiresCvn()
+  pslLevel?: string;
+
+  @ApiProperty({ description: "CVN test temperature in Celsius", required: false })
+  @IsOptional()
+  @IsNumber()
+  cvnTestTemperatureC?: number;
+
+  @ApiProperty({ description: "CVN average impact energy in Joules", required: false })
+  @IsOptional()
+  @IsNumber()
+  cvnAverageJoules?: number;
+
+  @ApiProperty({ description: "CVN minimum impact energy in Joules", required: false })
+  @IsOptional()
+  @IsNumber()
+  cvnMinimumJoules?: number;
+
+  @ApiProperty({ description: "Heat number for traceability", required: false })
+  @IsOptional()
+  @IsString()
+  heatNumber?: string;
+
+  @ApiProperty({ description: "Material Test Certificate reference", required: false })
+  @IsOptional()
+  @IsString()
+  mtcReference?: string;
+
+  @ApiProperty({ description: "NDT coverage percentage (100% for PSL2)", required: false })
+  @IsOptional()
+  @IsNumber()
+  ndtCoveragePct?: number;
+
+  @ApiProperty({ description: "Lot number for traceability", required: false })
+  @IsOptional()
+  @IsString()
+  lotNumber?: string;
+
+  @ApiProperty({ description: "NACE MR0175/ISO 15156 compliance", required: false })
+  @IsOptional()
+  @IsBoolean()
+  naceCompliant?: boolean;
+
+  @ApiProperty({ description: "H2S zone (1, 2, or 3) for sour service", required: false })
+  @IsOptional()
+  @IsNumber()
+  h2sZone?: number;
+
+  @ApiProperty({ description: "Maximum hardness in HRC (<=22 for sour service)", required: false })
+  @IsOptional()
+  @IsNumber()
+  @NaceRequiresHardnessLimit()
+  maxHardnessHrc?: number;
+
+  @ApiProperty({ description: "Sulfide Stress Cracking tested", required: false })
+  @IsOptional()
+  @IsBoolean()
+  sscTested?: boolean;
 }
 
 export class UnifiedPumpDto {

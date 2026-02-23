@@ -88,3 +88,7 @@ export const groupSteelSpecifications = (specs: SteelSpec[]): SelectOptionGroup[
 
   return groups;
 };
+
+export const isApi5LSpec = (specName: string): boolean => {
+  return specName.toUpperCase().includes("API 5L");
+};
