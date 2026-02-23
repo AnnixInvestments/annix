@@ -1054,6 +1054,7 @@ export default function StockControlSettingsPage() {
                           className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-teal-500 focus:border-teal-500"
                         >
                           <option value="storeman">Storeman</option>
+                          <option value="accounts">Accounts</option>
                           <option value="manager">Manager</option>
                           <option value="admin">Admin</option>
                         </select>

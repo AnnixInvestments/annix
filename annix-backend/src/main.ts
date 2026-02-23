@@ -8,7 +8,7 @@ import { AppModule } from "./app.module";
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  const uploadDir = process.env.UPLOAD_DIR || path.resolve(__dirname, "..", "..", "uploads");
+  const uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
   app.useStaticAssets(uploadDir, { prefix: "/api/files/" });
 
   const isProduction = process.env.NODE_ENV === "production";
