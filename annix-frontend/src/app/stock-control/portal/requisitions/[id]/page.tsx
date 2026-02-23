@@ -84,52 +84,31 @@ export default function RequisitionDetailPage() {
     setEditingItemId(null);
   };
 
-  const isReorder = requisition?.source === "reorder";
-
-  const exportColumns = isReorder
-    ? [
-        { header: "Product Name", accessorKey: "productName" },
-        { header: "Qty Required", accessorKey: "quantityRequired" },
-        { header: "Stock Match", accessorKey: "stockMatch" },
-      ]
-    : [
-        { header: "Product Name", accessorKey: "productName" },
-        { header: "Area", accessorKey: "area" },
-        { header: "Litres Req.", accessorKey: "litresRequired" },
-        { header: "Pack Size (L)", accessorKey: "packSizeLitres" },
-        { header: "Packs to Order", accessorKey: "packsToOrder" },
-        { header: "Stock Match", accessorKey: "stockMatch" },
-      ];
+  const exportColumns = [
+    { header: "Product Name", accessorKey: "productName" },
+    { header: "Area", accessorKey: "area" },
+    { header: "Litres Req.", accessorKey: "litresRequired" },
+    { header: "Pack Size (L)", accessorKey: "packSizeLitres" },
+    { header: "Packs to Order", accessorKey: "packsToOrder" },
+    { header: "Stock Match", accessorKey: "stockMatch" },
+  ];
 
   const exportData = () =>
-    (requisition?.items ?? []).map((item) =>
-      isReorder
-        ? {
-            productName: item.productName,
-            quantityRequired: item.quantityRequired ?? "-",
-            stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
-          }
-        : {
-            productName: item.productName,
-            area:
-              item.area === "external"
-                ? "Ext"
-                : item.area === "internal"
-                  ? "Int"
-                  : item.area || "-",
-            litresRequired: Number(item.litresRequired).toFixed(1),
-            packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
-            packsToOrder: item.packsToOrder,
-            stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
-          },
-    );
+    (requisition?.items ?? []).map((item) => ({
+      productName: item.productName,
+      area:
+        item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : (item.area || "-"),
+      litresRequired: Number(item.litresRequired).toFixed(1),
+      packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
+      packsToOrder: item.packsToOrder,
+      stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
+    }));
 
   const exportMetadata = () => ({
-    Requisition: requisition?.requisitionNumber ?? "",
-    Type: isReorder ? "Low Stock Reorder" : "Job Card",
-    Status: requisition?.status ?? "",
+    "Requisition": requisition?.requisitionNumber ?? "",
+    "Status": requisition?.status ?? "",
     "Created By": requisition?.createdBy ?? "-",
-    Created: requisition ? formatDateZA(requisition.createdAt) : "",
+    "Created": requisition ? formatDateZA(requisition.createdAt) : "",
     ...(requisition?.jobCard
       ? { "Job Card": `${requisition.jobCard.jobNumber} - ${requisition.jobCard.jobName}` }
       : {}),

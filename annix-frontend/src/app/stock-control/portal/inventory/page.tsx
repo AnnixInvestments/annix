@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  ImportResult,
-  ImportUploadResponse,
-  InventoryColumnMapping,
-  StockControlLocation,
-  StockItem,
-} from "@/app/lib/api/stockControlApi";
+import type { ImportResult, StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 function formatZAR(value: number): string {
@@ -81,113 +75,12 @@ export default function InventoryPage() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [importStep, setImportStep] = useState<
-    "idle" | "parsing" | "preview" | "importing" | "result"
-  >("idle");
+  const [importStep, setImportStep] = useState<"idle" | "parsing" | "preview" | "importing" | "result">("idle");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<Record<string, unknown>[]>([]);
-  const [importHeaders, setImportHeaders] = useState<string[]>([]);
-  const [importRawRows, setImportRawRows] = useState<string[][]>([]);
-  const [importMapping, setImportMapping] = useState<InventoryColumnMapping | null>(null);
-  const [importFormat, setImportFormat] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [isPrintingLabels, setIsPrintingLabels] = useState(false);
-  const [editingMinLevelId, setEditingMinLevelId] = useState<number | null>(null);
-  const [editingMinLevelValue, setEditingMinLevelValue] = useState<number>(0);
-  const [showPrintDropdown, setShowPrintDropdown] = useState(false);
-  const [printPreviewItems, setPrintPreviewItems] = useState<StockItem[] | null>(null);
-  const printDropdownRef = useRef<HTMLDivElement>(null);
   const dragCounterRef = useRef(0);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (printDropdownRef.current && !printDropdownRef.current.contains(event.target as Node)) {
-        setShowPrintDropdown(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const allItems = (): StockItem[] => {
-    if (viewMode === "grouped") {
-      return groupedData.flatMap((g) => g.items);
-    }
-    return items;
-  };
-
-  const handlePrintStockList = (mode: "all" | "selected") => {
-    setShowPrintDropdown(false);
-    const itemsToPrint =
-      mode === "selected" ? allItems().filter((item) => selectedIds.has(item.id)) : allItems();
-    setPrintPreviewItems(itemsToPrint);
-  };
-
-  const handlePrintPreviewPrint = () => {
-    window.print();
-  };
-
-  const closePrintPreview = () => {
-    setPrintPreviewItems(null);
-  };
-
-  const toggleSelectItem = (id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    const pageIds = items.map((item) => item.id);
-    const allSelected = pageIds.every((id) => selectedIds.has(id));
-    if (allSelected) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        pageIds.forEach((id) => next.delete(id));
-        return next;
-      });
-    } else {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        pageIds.forEach((id) => next.add(id));
-        return next;
-      });
-    }
-  };
-
-  const handlePrintSelected = async () => {
-    if (selectedIds.size === 0) return;
-    try {
-      setIsPrintingLabels(true);
-      await stockControlApiClient.downloadBatchLabelsPdf({ ids: [...selectedIds] });
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to download labels"));
-    } finally {
-      setIsPrintingLabels(false);
-    }
-  };
-
-  const handlePrintAll = async () => {
-    try {
-      setIsPrintingLabels(true);
-      await stockControlApiClient.downloadBatchLabelsPdf({
-        search: search || undefined,
-        category: categoryFilter || undefined,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to download labels"));
-    } finally {
-      setIsPrintingLabels(false);
-    }
-  };
 
   const fetchItems = useCallback(async () => {
     try {
@@ -381,22 +274,8 @@ export default function InventoryPage() {
     setImportStep("parsing");
 
     try {
-      const response: ImportUploadResponse =
-        await stockControlApiClient.uploadImportFile(droppedFile);
-      setImportFormat(response.format);
-
-      if (response.format === "excel" && response.headers && response.rawRows) {
-        setImportHeaders(response.headers);
-        setImportRawRows(response.rawRows);
-        setImportMapping(response.mapping ?? null);
-        setParsedRows([]);
-      } else {
-        setParsedRows((response.rows as Record<string, unknown>[]) ?? []);
-        setImportHeaders([]);
-        setImportRawRows([]);
-        setImportMapping(null);
-      }
-
+      const rows = await stockControlApiClient.uploadImportFile(droppedFile);
+      setParsedRows(rows as Record<string, unknown>[]);
       setImportStep("preview");
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Failed to parse file");
@@ -408,96 +287,7 @@ export default function InventoryPage() {
     try {
       setImportStep("importing");
       setImportError(null);
-
-      const buildFallbackMapping = (headers: string[]): InventoryColumnMapping => {
-        const mapping: InventoryColumnMapping = {
-          sku: null,
-          name: null,
-          description: null,
-          category: null,
-          unitOfMeasure: null,
-          costPerUnit: null,
-          quantity: null,
-          minStockLevel: null,
-          location: null,
-        };
-        headers.forEach((header, idx) => {
-          const h = header.toLowerCase().trim();
-          if (/product.?code|sku|code|item.?code|part.?no/.test(h)) {
-            mapping.sku = idx;
-          } else if (/stock.?count|qty|quantity|soh|on.?hand|count/.test(h)) {
-            mapping.quantity = idx;
-          } else if (/r\/p|unit.?price|cost|price.?per/.test(h)) {
-            mapping.costPerUnit = idx;
-          } else if (/min|minimum|reorder/.test(h)) {
-            mapping.minStockLevel = idx;
-          } else if (/location|loc|warehouse/.test(h)) {
-            mapping.location = idx;
-          } else if (/category|cat|group/.test(h)) {
-            mapping.category = idx;
-          } else if (/unit.?of|uom|measure/.test(h)) {
-            mapping.unitOfMeasure = idx;
-          }
-        });
-        if (mapping.name === null) {
-          const mappedIndices = new Set(
-            Object.values(mapping).filter((v): v is number => v !== null),
-          );
-          if (!mappedIndices.has(0)) {
-            mapping.name = 0;
-          }
-        }
-        return mapping;
-      };
-
-      let effectiveMapping = importMapping;
-      let dataRows = importRawRows;
-
-      if (importFormat === "excel") {
-        const headersEmpty = importHeaders.every((h) => h.trim() === "");
-        if (headersEmpty && importRawRows.length > 0) {
-          effectiveMapping = buildFallbackMapping(importRawRows[0]);
-          dataRows = importRawRows.slice(1);
-        } else if (effectiveMapping && Object.values(effectiveMapping).every((v) => v === null)) {
-          effectiveMapping = buildFallbackMapping(importHeaders);
-        }
-      }
-
-      const rowsToImport =
-        importFormat === "excel" && effectiveMapping
-          ? dataRows
-              .filter((row) => !isImportRowBlank(row) && !isImportSectionTitle(row))
-              .map((row) => {
-                const cellAt = (idx: number | null): string | undefined => {
-                  if (idx === null || idx < 0 || idx >= row.length) {
-                    return undefined;
-                  }
-                  const val = row[idx].trim();
-                  return val === "" ? undefined : val;
-                };
-                const numAt = (idx: number | null): number | undefined => {
-                  const val = cellAt(idx);
-                  if (val === undefined) {
-                    return undefined;
-                  }
-                  const num = Number(val);
-                  return Number.isNaN(num) ? undefined : num;
-                };
-                return {
-                  sku: cellAt(effectiveMapping.sku),
-                  name: cellAt(effectiveMapping.name),
-                  description: cellAt(effectiveMapping.description),
-                  category: cellAt(effectiveMapping.category),
-                  unitOfMeasure: cellAt(effectiveMapping.unitOfMeasure),
-                  costPerUnit: numAt(effectiveMapping.costPerUnit),
-                  quantity: numAt(effectiveMapping.quantity),
-                  minStockLevel: numAt(effectiveMapping.minStockLevel),
-                  location: cellAt(effectiveMapping.location),
-                };
-              })
-          : parsedRows;
-
-      const result = await stockControlApiClient.confirmImport(rowsToImport);
+      const result = await stockControlApiClient.confirmImport(parsedRows);
       setImportResult(result);
       setImportStep("result");
     } catch (err) {
@@ -510,10 +300,6 @@ export default function InventoryPage() {
     setImportStep("idle");
     setImportFile(null);
     setParsedRows([]);
-    setImportHeaders([]);
-    setImportRawRows([]);
-    setImportMapping(null);
-    setImportFormat(null);
     setImportResult(null);
     setImportError(null);
     fetchItems();
@@ -589,11 +375,7 @@ export default function InventoryPage() {
                 <div>
                   <h3 className="text-lg font-medium text-gray-900">Import Preview</h3>
                   <p className="text-sm text-gray-500">
-                    {importFile?.name} -{" "}
-                    {importFormat === "excel"
-                      ? importRawRows.filter((r) => !isImportRowBlank(r)).length
-                      : parsedRows.length}{" "}
-                    rows parsed
+                    {importFile?.name} - {parsedRows.length} rows parsed
                   </p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -605,129 +387,49 @@ export default function InventoryPage() {
                   </button>
                   <button
                     onClick={handleConfirmImport}
-                    disabled={
-                      importFormat === "excel"
-                        ? importRawRows.length === 0
-                        : parsedRows.length === 0
-                    }
+                    disabled={parsedRows.length === 0}
                     className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
                   >
-                    Confirm Import (
-                    {importFormat === "excel"
-                      ? importRawRows.filter((r) => !isImportRowBlank(r)).length
-                      : parsedRows.length}{" "}
-                    rows)
+                    Confirm Import ({parsedRows.length} rows)
                   </button>
                 </div>
               </div>
-              {importMapping && (
-                <div className="mx-6 mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-700">
-                    AI mapped columns:{" "}
-                    {Object.entries(importMapping)
-                      .filter(([, v]) => v !== null)
-                      .map(([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`)
-                      .join(", ") || "No columns mapped"}
-                  </p>
-                </div>
-              )}
               {importError && (
                 <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
                   <p className="text-sm text-red-700">{importError}</p>
                 </div>
               )}
               <div className="overflow-x-auto max-h-96">
-                {importFormat === "excel" ? (
-                  (() => {
-                    const headersEmpty = importHeaders.every((h) => h.trim() === "");
-                    const effectiveHeaders = headersEmpty
-                      ? (importRawRows[0] ?? [])
-                      : importHeaders;
-                    const effectiveDataRows = headersEmpty ? importRawRows.slice(1) : importRawRows;
-                    return (
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                              Row
-                            </th>
-                            {effectiveHeaders.map((header, idx) => (
-                              <th
-                                key={idx}
-                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                              >
-                                {header}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {effectiveDataRows
-                            .filter((row) => !isImportRowBlank(row))
-                            .map((row, rowIdx) => {
-                              const sectionTitle = isImportSectionTitle(row);
-                              return (
-                                <tr
-                                  key={rowIdx}
-                                  className={sectionTitle ? "bg-gray-100" : "hover:bg-gray-50"}
-                                >
-                                  <td className="px-4 py-3 text-sm text-gray-500">{rowIdx + 1}</td>
-                                  {effectiveHeaders.map((header, colIdx) => {
-                                    const cell = row[colIdx] ?? "";
-                                    const displayValue =
-                                      sectionTitle && (cell.trim() === "0" || cell.trim() === "")
-                                        ? ""
-                                        : isRandColumn(header) && !sectionTitle
-                                          ? formatRandCell(cell)
-                                          : cell;
-                                    return (
-                                      <td
-                                        key={colIdx}
-                                        className={`px-4 py-3 text-sm text-gray-900 ${sectionTitle ? "font-bold" : ""}`}
-                                      >
-                                        {displayValue}
-                                      </td>
-                                    );
-                                  })}
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                    );
-                  })()
-                ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0 z-10">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                          Row
-                        </th>
-                        {parsedRows.length > 0 &&
-                          Object.keys(parsedRows[0]).map((header) => (
-                            <th
-                              key={header}
-                              className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                            >
-                              {header}
-                            </th>
-                          ))}
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Row
+                      </th>
+                      {parsedRows.length > 0 &&
+                        Object.keys(parsedRows[0]).map((header) => (
+                          <th
+                            key={header}
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                          >
+                            {header}
+                          </th>
+                        ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {parsedRows.map((row, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
+                        {Object.keys(parsedRows[0]).map((header) => (
+                          <td key={header} className="px-4 py-3 text-sm text-gray-900">
+                            {String(row[header] ?? "")}
+                          </td>
+                        ))}
                       </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {parsedRows.map((row, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
-                          {Object.keys(parsedRows[0]).map((header) => (
-                            <td key={header} className="px-4 py-3 text-sm text-gray-900">
-                              {String(row[header] ?? "")}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
