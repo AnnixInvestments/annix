@@ -1,7 +1,14 @@
-"use client";
+import type { Metadata } from "next";
+import StockControlLayoutClient from "./StockControlLayoutClient";
 
-import { StockControlAuthProvider } from "@/app/context/StockControlAuthContext";
+export const metadata: Metadata = {
+  title: {
+    template: "%s | Annix Stock Control",
+    default: "Annix Stock Control",
+  },
+  description: "Annix stock control and inventory management",
+};
 
 export default function StockControlLayout({ children }: { children: React.ReactNode }) {
-  return <StockControlAuthProvider>{children}</StockControlAuthProvider>;
+  return <StockControlLayoutClient>{children}</StockControlLayoutClient>;
 }

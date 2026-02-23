@@ -1,7 +1,14 @@
-"use client";
+import type { Metadata } from "next";
+import AuRubberLayoutClient from "./AuRubberLayoutClient";
 
-import { AuRubberAuthProvider } from "@/app/context/AuRubberAuthContext";
+export const metadata: Metadata = {
+  title: {
+    template: "%s | AU Rubber",
+    default: "AU Rubber",
+  },
+  description: "AU Rubber product management",
+};
 
 export default function AuRubberLayout({ children }: { children: React.ReactNode }) {
-  return <AuRubberAuthProvider>{children}</AuRubberAuthProvider>;
+  return <AuRubberLayoutClient>{children}</AuRubberLayoutClient>;
 }

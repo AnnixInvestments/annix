@@ -1,18 +1,14 @@
-"use client";
+import type { Metadata } from "next";
+import CustomerLayoutClient from "./CustomerLayoutClient";
 
-import { useEffect } from "react";
-import { CustomerAuthProvider } from "@/app/context/CustomerAuthContext";
+export const metadata: Metadata = {
+  title: {
+    template: "%s | Annix Customer",
+    default: "Annix Customer",
+  },
+  description: "Annix customer portal for RFQ management",
+};
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    document.title = "Annix Customer";
-  }, []);
-
-  return (
-    <CustomerAuthProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-        {children}
-      </div>
-    </CustomerAuthProvider>
-  );
+  return <CustomerLayoutClient>{children}</CustomerLayoutClient>;
 }

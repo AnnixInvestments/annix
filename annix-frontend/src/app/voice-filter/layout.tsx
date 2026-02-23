@@ -1,7 +1,14 @@
-"use client";
+import type { Metadata } from "next";
+import VoiceFilterLayoutClient from "./VoiceFilterLayoutClient";
 
-import { VoiceFilterAuthProvider } from "@/app/context/VoiceFilterAuthContext";
+export const metadata: Metadata = {
+  title: {
+    template: "%s | Annix Voice Filter",
+    default: "Annix Voice Filter",
+  },
+  description: "Annix voice filter and call management",
+};
 
 export default function VoiceFilterLayout({ children }: { children: React.ReactNode }) {
-  return <VoiceFilterAuthProvider>{children}</VoiceFilterAuthProvider>;
+  return <VoiceFilterLayoutClient>{children}</VoiceFilterLayoutClient>;
 }
