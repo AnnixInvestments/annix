@@ -12,9 +12,8 @@ async function bootstrap() {
     bodyParser: false,
   });
 
-  app.use(cookieParser());
-  app.useBodyParser("json", { limit: "10mb" });
-  app.useBodyParser("urlencoded", { limit: "10mb", extended: true });
+  const uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
+  app.useStaticAssets(uploadDir, { prefix: "/api/files/" });
 
   const isProduction = process.env.NODE_ENV === "production";
 
