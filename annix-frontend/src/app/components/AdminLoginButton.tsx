@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { adminApiClient, AdminUserProfile } from "@/app/lib/api/adminApi";
+import { useEffect, useState } from "react";
+import { AdminUserProfile, adminApiClient } from "@/app/lib/api/adminApi";
 
 interface AdminLoginModalProps {
   isOpen: boolean;

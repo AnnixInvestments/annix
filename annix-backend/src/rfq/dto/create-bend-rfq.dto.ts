@@ -287,4 +287,28 @@ export class CreateBendRfqDto {
   @Min(0)
   @Max(1)
   carbonEquivalent?: number;
+
+  @ApiProperty({ description: "Hydrotest pressure multiplier (default 1.5)", required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  hydrotestPressureMultiplier?: number;
+
+  @ApiProperty({ description: "Hydrotest hold time in minutes (default 10)", required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  hydrotestHoldMin?: number;
+
+  @ApiProperty({
+    description: "NDT methods required (RT, UT, MT, PT, VT)",
+    required: false,
+    example: ["RT", "UT"],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  ndtMethods?: string[];
 }

@@ -247,6 +247,28 @@ export class FittingRfq {
   @Column({ name: "carbon_equivalent", type: "decimal", precision: 4, scale: 3, nullable: true })
   carbonEquivalent?: number;
 
+  @ApiProperty({ description: "Hydrotest pressure multiplier (default 1.5)", required: false })
+  @Column({
+    name: "hydrotest_pressure_multiplier",
+    type: "decimal",
+    precision: 3,
+    scale: 2,
+    nullable: true,
+  })
+  hydrotestPressureMultiplier?: number;
+
+  @ApiProperty({ description: "Hydrotest hold time in minutes (default 10)", required: false })
+  @Column({ name: "hydrotest_hold_min", type: "int", nullable: true })
+  hydrotestHoldMin?: number;
+
+  @ApiProperty({
+    description: "NDT methods required (RT, UT, MT, PT, VT)",
+    required: false,
+    example: ["RT", "UT"],
+  })
+  @Column({ name: "ndt_methods", type: "json", nullable: true })
+  ndtMethods?: string[];
+
   @OneToOne(
     () => RfqItem,
     (rfqItem) => rfqItem.fittingDetails,

@@ -178,6 +178,27 @@ export class UnifiedStraightPipeDto {
   @IsOptional()
   @IsNumber()
   carbonEquivalent?: number;
+
+  @ApiProperty({ description: "Hydrotest pressure multiplier (default 1.5)", required: false })
+  @IsOptional()
+  @IsNumber()
+  hydrotestPressureMultiplier?: number;
+
+  @ApiProperty({ description: "Hydrotest hold time in minutes (default 10)", required: false })
+  @IsOptional()
+  @IsNumber()
+  hydrotestHoldMin?: number;
+
+  @ApiProperty({ description: "NDT methods required (RT, UT, MT, PT, VT)", required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  ndtMethods?: string[];
+
+  @ApiProperty({ description: "Length type (SRL, DRL, Custom)", required: false })
+  @IsOptional()
+  @IsString()
+  lengthType?: string;
 }
 
 export class UnifiedBendDto {
@@ -395,6 +416,22 @@ export class UnifiedBendDto {
   @IsOptional()
   @IsNumber()
   carbonEquivalent?: number;
+
+  @ApiProperty({ description: "Hydrotest pressure multiplier (default 1.5)", required: false })
+  @IsOptional()
+  @IsNumber()
+  hydrotestPressureMultiplier?: number;
+
+  @ApiProperty({ description: "Hydrotest hold time in minutes (default 10)", required: false })
+  @IsOptional()
+  @IsNumber()
+  hydrotestHoldMin?: number;
+
+  @ApiProperty({ description: "NDT methods required (RT, UT, MT, PT, VT)", required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  ndtMethods?: string[];
 }
 
 export class UnifiedExpansionJointDto {
@@ -693,6 +730,22 @@ export class UnifiedFittingDto {
   @IsOptional()
   @IsNumber()
   carbonEquivalent?: number;
+
+  @ApiProperty({ description: "Hydrotest pressure multiplier (default 1.5)", required: false })
+  @IsOptional()
+  @IsNumber()
+  hydrotestPressureMultiplier?: number;
+
+  @ApiProperty({ description: "Hydrotest hold time in minutes (default 10)", required: false })
+  @IsOptional()
+  @IsNumber()
+  hydrotestHoldMin?: number;
+
+  @ApiProperty({ description: "NDT methods required (RT, UT, MT, PT, VT)", required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  ndtMethods?: string[];
 }
 
 export class UnifiedPumpDto {

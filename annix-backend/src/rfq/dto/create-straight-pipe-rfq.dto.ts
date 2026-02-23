@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
+  IsArray,
   IsBoolean,
   IsEnum,
   IsInt,
@@ -246,4 +247,35 @@ export class CreateStraightPipeRfqDto {
   @Max(1)
   @Type(() => Number)
   carbonEquivalent?: number;
+
+  @ApiProperty({ description: "Hydrotest pressure multiplier (default 1.5)", required: false })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  hydrotestPressureMultiplier?: number;
+
+  @ApiProperty({ description: "Hydrotest hold time in minutes (default 10)", required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(1440)
+  @Type(() => Number)
+  hydrotestHoldMin?: number;
+
+  @ApiProperty({
+    description: "NDT methods required (RT, UT, MT, PT, VT)",
+    required: false,
+    example: ["RT", "UT"],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  ndtMethods?: string[];
+
+  @ApiProperty({ description: "Length type (SRL, DRL, Custom)", required: false })
+  @IsOptional()
+  @IsString()
+  lengthType?: string;
 }

@@ -1129,6 +1129,85 @@ class AdminApiClient {
       method: "POST",
     });
   }
+
+  async conversations(
+    filters?: ConversationFilterDto,
+  ): Promise<{ conversations: ConversationSummaryDto[]; total: number }> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.type) params.append("type", filters.type);
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.page) params.append("page", filters.page.toString());
+    if (filters?.limit) params.append("limit", filters.limit.toString());
+
+    const queryString = params.toString();
+    return this.request<{ conversations: ConversationSummaryDto[]; total: number }>(
+      `/admin/messaging/conversations${queryString ? `?${queryString}` : ""}`,
+    );
+  }
+
+  async conversationDetail(conversationId: number): Promise<ConversationDetailDto> {
+    return this.request<ConversationDetailDto>(`/admin/messaging/conversations/${conversationId}`);
+  }
+
+  async conversationMessages(
+    conversationId: number,
+    pagination?: MessagePaginationDto,
+  ): Promise<{ messages: MessageDto[]; hasMore: boolean }> {
+    const params = new URLSearchParams();
+    if (pagination?.before) params.append("before", pagination.before.toString());
+    if (pagination?.limit) params.append("limit", pagination.limit.toString());
+
+    const queryString = params.toString();
+    return this.request<{ messages: MessageDto[]; hasMore: boolean }>(
+      `/admin/messaging/conversations/${conversationId}/messages${queryString ? `?${queryString}` : ""}`,
+    );
+  }
+
+  async sendMessage(conversationId: number, dto: SendMessageDto): Promise<MessageDto> {
+    return this.request<MessageDto>(`/admin/messaging/conversations/${conversationId}/messages`, {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async broadcasts(
+    filters?: BroadcastFilterDto,
+  ): Promise<{ broadcasts: BroadcastDetailDto[]; total: number }> {
+    const params = new URLSearchParams();
+    if (filters?.status) params.append("status", filters.status);
+    if (filters?.targetAudience) params.append("targetAudience", filters.targetAudience);
+    if (filters?.page) params.append("page", filters.page.toString());
+    if (filters?.limit) params.append("limit", filters.limit.toString());
+
+    const queryString = params.toString();
+    return this.request<{ broadcasts: BroadcastDetailDto[]; total: number }>(
+      `/admin/messaging/broadcasts${queryString ? `?${queryString}` : ""}`,
+    );
+  }
+
+  async broadcastDetail(broadcastId: number): Promise<BroadcastDetailDto> {
+    return this.request<BroadcastDetailDto>(`/admin/messaging/broadcasts/${broadcastId}`);
+  }
+
+  async createBroadcast(dto: CreateBroadcastDto): Promise<BroadcastDetailDto> {
+    return this.request<BroadcastDetailDto>("/admin/messaging/broadcasts", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async responseMetrics(filters?: MetricsFilterDto): Promise<ResponseMetricsSummaryDto> {
+    const params = new URLSearchParams();
+    if (filters?.dateFrom) params.append("dateFrom", filters.dateFrom);
+    if (filters?.dateTo) params.append("dateTo", filters.dateTo);
+    if (filters?.userType) params.append("userType", filters.userType);
+
+    const queryString = params.toString();
+    return this.request<ResponseMetricsSummaryDto>(
+      `/admin/messaging/response-metrics${queryString ? `?${queryString}` : ""}`,
+    );
+  }
 }
 
 export interface NixUploadResponse {
@@ -1270,6 +1349,116 @@ export interface PaginatedReferenceData {
   page: number;
   limit: number;
   totalPages: number;
+}
+
+export interface ConversationFilterDto {
+  status?: string;
+  type?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ConversationParticipant {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  type: "customer" | "supplier" | "admin";
+}
+
+export interface ConversationSummaryDto {
+  id: number;
+  subject: string;
+  type: "direct" | "group";
+  status: "active" | "archived" | "closed";
+  participants: ConversationParticipant[];
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  unreadCount: number;
+  createdAt: string;
+}
+
+export interface ConversationDetailDto extends ConversationSummaryDto {
+  relatedEntityType?: string;
+  relatedEntityId?: number;
+}
+
+export interface MessageAttachment {
+  id: number;
+  filename: string;
+  mimeType: string;
+  size: number;
+  url?: string;
+}
+
+export interface MessageDto {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  senderName: string;
+  senderType: "customer" | "supplier" | "admin";
+  content: string;
+  attachments: MessageAttachment[];
+  readBy: number[];
+  createdAt: string;
+}
+
+export interface MessagePaginationDto {
+  before?: number;
+  limit?: number;
+}
+
+export interface SendMessageDto {
+  content: string;
+  attachmentIds?: number[];
+}
+
+export interface BroadcastFilterDto {
+  status?: string;
+  targetAudience?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface BroadcastDetailDto {
+  id: number;
+  title: string;
+  content: string;
+  targetAudience: "all" | "customers" | "suppliers" | "admins";
+  status: "draft" | "scheduled" | "sent" | "cancelled";
+  scheduledAt: string | null;
+  sentAt: string | null;
+  readCount: number;
+  totalRecipients: number;
+  createdBy: {
+    id: number;
+    firstName: string;
+    lastName: string;
+  };
+  createdAt: string;
+}
+
+export interface CreateBroadcastDto {
+  title: string;
+  content: string;
+  targetAudience: "all" | "customers" | "suppliers" | "admins";
+  scheduledAt?: string;
+}
+
+export interface MetricsFilterDto {
+  dateFrom?: string;
+  dateTo?: string;
+  userType?: string;
+}
+
+export interface ResponseMetricsSummaryDto {
+  averageResponseTimeMinutes: number;
+  medianResponseTimeMinutes: number;
+  totalConversations: number;
+  totalMessages: number;
+  slaComplianceRate: number;
+  responsesByDay: { date: string; count: number }[];
 }
 
 export const adminApiClient = new AdminApiClient();
