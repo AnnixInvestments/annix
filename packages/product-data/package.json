@@ -1,0 +1,13 @@
+{
+  "name": "@annix/product-data",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./ceramic": "./ceramic/index.ts",
+    "./paint": "./paint/index.ts",
+    "./pumps": "./pumps/index.ts",
+    "./rubber": "./rubber/index.ts",
+    "./valves-instruments": "./valves-instruments/index.ts"
+  }
+}

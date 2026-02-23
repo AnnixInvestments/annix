@@ -2,6 +2,7 @@ packages:
   - annix-backend
   - annix-frontend
   - voice-filter
+  - packages/*
 
 onlyBuiltDependencies:
   - '@annix/claude-swarm'

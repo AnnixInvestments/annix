@@ -219,6 +219,9 @@ importers:
 
   annix-frontend:
     dependencies:
+      '@annix/product-data':
+        specifier: workspace:*
+        version: link:../packages/product-data
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -374,6 +377,8 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@20.19.30)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/product-data: {}
+
   voice-filter:
     dependencies:
       '@aws-sdk/client-voice-id':
@@ -406,13 +411,6 @@ importers:
       ws:
         specifier: ^8.19.0
         version: 8.19.0
-    optionalDependencies:
-      naudiodon:
-        specifier: ^2.3.6
-        version: 2.3.6
-      systray2:
-        specifier: ^2.1.4
-        version: 2.1.4
     devDependencies:
       '@types/bcrypt':
         specifier: ^6.0.0
@@ -438,6 +436,13 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+    optionalDependencies:
+      naudiodon:
+        specifier: ^2.3.6
+        version: 2.3.6
+      systray2:
+        specifier: ^2.1.4
+        version: 2.1.4
 
 packages:
 

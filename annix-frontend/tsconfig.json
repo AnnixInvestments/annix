@@ -20,7 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@product-data/*": ["./product-data/*"]
+      "@product-data/*": ["../packages/product-data/*"]
     }
   },
   "include": [
