@@ -673,10 +673,14 @@ function BendFormComponent({
 
               return (
                 <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
-                  <h5 className="text-xs font-semibold text-amber-800 mb-2">API 5L Specification Level</h5>
+                  <h5 className="text-xs font-semibold text-amber-800 mb-2">
+                    API 5L Specification Level
+                  </h5>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">PSL Level *</label>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        PSL Level *
+                      </label>
                       <select
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
                         value={pslLevel || ""}
@@ -704,7 +708,9 @@ function BendFormComponent({
                     {showCvnFields && (
                       <>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">CVN Test Temp (°C) *</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            CVN Test Temp (°C) *
+                          </label>
                           <input
                             type="number"
                             step="0.1"
@@ -714,7 +720,9 @@ function BendFormComponent({
                               onUpdateEntry(entry.id, {
                                 specs: {
                                   ...entry.specs,
-                                  cvnTestTemperatureC: e.target.value ? Number(e.target.value) : null,
+                                  cvnTestTemperatureC: e.target.value
+                                    ? Number(e.target.value)
+                                    : null,
                                 },
                               })
                             }
@@ -722,7 +730,9 @@ function BendFormComponent({
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">CVN Avg (J) *</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            CVN Avg (J) *
+                          </label>
                           <input
                             type="number"
                             step="0.1"
@@ -741,7 +751,9 @@ function BendFormComponent({
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">CVN Min (J) *</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            CVN Min (J) *
+                          </label>
                           <input
                             type="number"
                             step="0.1"
@@ -764,10 +776,14 @@ function BendFormComponent({
                   </div>
                   {/* Traceability fields */}
                   <div className="mt-2 pt-2 border-t border-amber-200">
-                    <h5 className="text-xs font-semibold text-amber-800 mb-2">Traceability (Optional)</h5>
+                    <h5 className="text-xs font-semibold text-amber-800 mb-2">
+                      Traceability (Optional)
+                    </h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Heat Number</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Heat Number
+                        </label>
                         <input
                           type="text"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"
@@ -784,7 +800,9 @@ function BendFormComponent({
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">MTC Reference</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          MTC Reference
+                        </label>
                         <input
                           type="text"
                           className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs"

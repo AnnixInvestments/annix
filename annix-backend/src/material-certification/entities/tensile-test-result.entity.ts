@@ -29,7 +29,13 @@ export class TensileTestResult {
   elongationPct?: number;
 
   @ApiProperty({ description: "Reduction of area percentage", example: 50 })
-  @Column({ name: "reduction_of_area_pct", type: "decimal", precision: 5, scale: 2, nullable: true })
+  @Column({
+    name: "reduction_of_area_pct",
+    type: "decimal",
+    precision: 5,
+    scale: 2,
+    nullable: true,
+  })
   reductionOfAreaPct?: number;
 
   @ApiProperty({ description: "Test temperature in Celsius", example: 20 })

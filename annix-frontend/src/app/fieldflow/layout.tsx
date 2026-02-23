@@ -6,7 +6,8 @@ export const metadata: Metadata = {
     template: "%s | Annix Rep",
     default: "Annix Rep",
   },
-  description: "Mobile-first sales field assistant with smart prospecting, calendar sync, and meeting recording",
+  description:
+    "Mobile-first sales field assistant with smart prospecting, calendar sync, and meeting recording",
 };
 
 export default function AnnixRepLayout({ children }: { children: React.ReactNode }) {

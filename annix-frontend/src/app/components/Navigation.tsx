@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import AdminLoginButton from "./AdminLoginButton";
 import AmixLogo from "./AmixLogo";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -114,6 +115,7 @@ export default function Navigation() {
           </div>
 
           <div className="flex items-center gap-3">
+            {showHomeNav && <AdminLoginButton />}
             <ThemeToggle />
           </div>
         </div>

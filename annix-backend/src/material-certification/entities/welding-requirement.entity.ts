@@ -52,7 +52,13 @@ export class WeldingRequirement {
   pwhtTempMaxC?: number;
 
   @ApiProperty({ description: "PWHT hold time in hours per inch of thickness", example: 1 })
-  @Column({ name: "pwht_hold_hrs_per_inch", type: "decimal", precision: 4, scale: 2, nullable: true })
+  @Column({
+    name: "pwht_hold_hrs_per_inch",
+    type: "decimal",
+    precision: 4,
+    scale: 2,
+    nullable: true,
+  })
   pwhtHoldHrsPerInch?: number;
 
   @ApiProperty({ description: "Minimum PWHT hold time in hours", example: 0.25 })
@@ -68,7 +74,13 @@ export class WeldingRequirement {
   coolingRateMaxCPerHr?: number;
 
   @ApiProperty({ description: "Thickness threshold for mandatory PWHT in mm", example: 19 })
-  @Column({ name: "pwht_thickness_threshold_mm", type: "decimal", precision: 6, scale: 2, nullable: true })
+  @Column({
+    name: "pwht_thickness_threshold_mm",
+    type: "decimal",
+    precision: 6,
+    scale: 2,
+    nullable: true,
+  })
   pwhtThicknessThresholdMm?: number;
 
   @ApiProperty({ description: "Recommended filler metal AWS classification", example: "E7018" })
