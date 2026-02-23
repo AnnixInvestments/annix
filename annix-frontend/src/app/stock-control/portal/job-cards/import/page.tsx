@@ -28,6 +28,14 @@ const FIELD_GROUPS: { key: string; label: string; fields: FieldDef[] }[] = [
     label: "Job Card Details",
     fields: [
       { key: "jobNumber", label: "Job Number", required: true, color: "teal", group: "details" },
+      { key: "jcNumber", label: "JC Number", required: false, color: "slate", group: "details" },
+      {
+        key: "pageNumber",
+        label: "Page Number",
+        required: false,
+        color: "zinc",
+        group: "details",
+      },
       { key: "jobName", label: "Job Name", required: true, color: "blue", group: "details" },
       {
         key: "customerName",
@@ -225,6 +233,20 @@ const FIELD_COLORS: Record<
     headerBg: "bg-yellow-100",
     badge: "bg-yellow-600",
   },
+  slate: {
+    bg: "bg-slate-50",
+    border: "border-slate-500",
+    text: "text-slate-700",
+    headerBg: "bg-slate-100",
+    badge: "bg-slate-600",
+  },
+  zinc: {
+    bg: "bg-zinc-50",
+    border: "border-zinc-500",
+    text: "text-zinc-700",
+    headerBg: "bg-zinc-100",
+    badge: "bg-zinc-600",
+  },
 };
 
 const CUSTOM_FIELD_COLORS = ["red", "yellow", "cyan", "lime", "fuchsia", "sky", "orange", "violet"];
@@ -338,6 +360,8 @@ function extractMappedRows(
       const combinedNotes = notesList.length > 0 ? notesList.join("\n") : undefined;
       return {
         jobNumber: meta.jobNumber,
+        jcNumber: meta.jcNumber,
+        pageNumber: meta.pageNumber,
         jobName: meta.jobName,
         customerName: meta.customerName,
         description: meta.description,
@@ -371,6 +395,8 @@ function extractMappedRows(
 
     return {
       jobNumber: cellVal("jobNumber"),
+      jcNumber: cellVal("jcNumber"),
+      pageNumber: cellVal("pageNumber"),
       jobName: cellVal("jobName"),
       customerName: cellVal("customerName"),
       description: cellVal("description"),
@@ -409,6 +435,8 @@ function savedMappingToRegions(
 
   const regions: Record<string, CellRegion | null> = {
     jobNumber: toRegion(config.jobNumber),
+    jcNumber: toRegion(config.jcNumber ?? null),
+    pageNumber: toRegion(config.pageNumber ?? null),
     jobName: toRegion(config.jobName),
     customerName: toRegion(config.customerName),
     description: toRegion(config.description),
@@ -457,6 +485,8 @@ function regionsToMappingConfig(
 
   return {
     jobNumber: toFieldMapping(regions.jobNumber),
+    jcNumber: toFieldMapping(regions.jcNumber),
+    pageNumber: toFieldMapping(regions.pageNumber),
     jobName: toFieldMapping(regions.jobName),
     customerName: toFieldMapping(regions.customerName),
     description: toFieldMapping(regions.description),
@@ -1413,6 +1443,18 @@ export default function JobCardImportPage() {
                         scope="col"
                         className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
+                        JC Number
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Page
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
                         Job Name
                       </th>
                       <th
@@ -1470,6 +1512,12 @@ export default function JobCardImportPage() {
                             >
                               {row.jobNumber || "Missing"}
                             </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {row.jcNumber || "-"}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                              {row.pageNumber || "-"}
+                            </td>
                             <td
                               className={`px-4 py-3 whitespace-nowrap text-sm ${!row.jobName ? "text-red-500 font-medium" : "text-gray-900"}`}
                             >
@@ -1509,7 +1557,7 @@ export default function JobCardImportPage() {
                               <td className="p-0"></td>
                               <td
                                 colSpan={
-                                  4 +
+                                  6 +
                                   (hasLineItemMapped ? 1 : 0) +
                                   (Array.from(DETAIL_META_KEYS).some((k) => regions[k]) ? 1 : 0)
                                 }
@@ -1634,7 +1682,7 @@ export default function JobCardImportPage() {
                               <td className="px-4 py-2 text-xs text-gray-400"></td>
                               <td
                                 colSpan={
-                                  4 +
+                                  6 +
                                   (hasLineItemMapped ? 1 : 0) +
                                   (Array.from(DETAIL_META_KEYS).some((k) => regions[k]) ? 1 : 0)
                                 }

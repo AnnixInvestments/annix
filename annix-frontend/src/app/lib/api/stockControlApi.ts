@@ -117,6 +117,8 @@ export interface JobCardLineItem {
 export interface JobCard {
   id: number;
   jobNumber: string;
+  jcNumber: string | null;
+  pageNumber: string | null;
   jobName: string;
   customerName: string | null;
   description: string | null;
@@ -309,6 +311,8 @@ export interface CustomFieldMapping {
 
 export interface ImportMappingConfig {
   jobNumber: FieldMapping | null;
+  jcNumber: FieldMapping | null;
+  pageNumber: FieldMapping | null;
   jobName: FieldMapping | null;
   customerName: FieldMapping | null;
   description: FieldMapping | null;
@@ -361,6 +365,8 @@ export interface M2Result {
 
 export interface JobCardImportRow {
   jobNumber?: string;
+  jcNumber?: string;
+  pageNumber?: string;
   jobName?: string;
   customerName?: string;
   description?: string;

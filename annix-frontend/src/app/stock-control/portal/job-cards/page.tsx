@@ -31,6 +31,8 @@ export default function JobCardsPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [createForm, setCreateForm] = useState({
     jobNumber: "",
+    jcNumber: "",
+    pageNumber: "",
     jobName: "",
     customerName: "",
     description: "",
@@ -104,6 +106,8 @@ export default function JobCardsPage() {
       setShowCreateForm(false);
       setCreateForm({
         jobNumber: "",
+        jcNumber: "",
+        pageNumber: "",
         jobName: "",
         customerName: "",
         description: "",
@@ -280,6 +284,18 @@ export default function JobCardsPage() {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
+                  JC Number
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Page
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Job Name
                 </th>
                 <th
@@ -319,6 +335,12 @@ export default function JobCardsPage() {
                     >
                       {job.jobNumber}
                     </Link>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {job.jcNumber || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {job.pageNumber || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {job.jobName}
@@ -412,6 +434,26 @@ export default function JobCardsPage() {
                       type="text"
                       value={createForm.jobName}
                       onChange={(e) => setCreateForm({ ...createForm, jobName: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">JC Number</label>
+                    <input
+                      type="text"
+                      value={createForm.jcNumber}
+                      onChange={(e) => setCreateForm({ ...createForm, jcNumber: e.target.value })}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Page Number</label>
+                    <input
+                      type="text"
+                      value={createForm.pageNumber}
+                      onChange={(e) => setCreateForm({ ...createForm, pageNumber: e.target.value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                     />
                   </div>

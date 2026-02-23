@@ -24,6 +24,8 @@ export interface CustomFieldMapping {
 
 export interface ImportMappingConfig {
   jobNumber: FieldMapping | null;
+  jcNumber: FieldMapping | null;
+  pageNumber: FieldMapping | null;
   jobName: FieldMapping | null;
   customerName: FieldMapping | null;
   description: FieldMapping | null;

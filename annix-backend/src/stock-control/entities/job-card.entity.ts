@@ -27,6 +27,12 @@ export class JobCard {
   @Column({ name: "job_number", type: "varchar", length: 100 })
   jobNumber: string;
 
+  @Column({ name: "jc_number", type: "varchar", length: 100, nullable: true })
+  jcNumber: string | null;
+
+  @Column({ name: "page_number", type: "varchar", length: 50, nullable: true })
+  pageNumber: string | null;
+
   @Column({ name: "job_name", type: "varchar", length: 255 })
   jobName: string;
 

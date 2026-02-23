@@ -255,6 +255,14 @@ export default function JobCardDetailPage() {
               <dd className="mt-1 text-sm text-gray-900">{jobCard.jobNumber}</dd>
             </div>
             <div>
+              <dt className="text-sm font-medium text-gray-500">JC Number</dt>
+              <dd className="mt-1 text-sm text-gray-900">{jobCard.jcNumber || "-"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-medium text-gray-500">Page Number</dt>
+              <dd className="mt-1 text-sm text-gray-900">{jobCard.pageNumber || "-"}</dd>
+            </div>
+            <div>
               <dt className="text-sm font-medium text-gray-500">Job Name</dt>
               <dd className="mt-1 text-sm text-gray-900">{jobCard.jobName}</dd>
             </div>
