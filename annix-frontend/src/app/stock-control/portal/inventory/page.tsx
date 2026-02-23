@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import type { StockItem } from "@/app/lib/api/stockControlApi";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ImportResult, StockItem } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 function formatZAR(value: number): string {
@@ -37,6 +37,13 @@ export default function InventoryPage() {
     location: "",
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [importStep, setImportStep] = useState<"idle" | "parsing" | "preview" | "importing" | "result">("idle");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [parsedRows, setParsedRows] = useState<Record<string, unknown>[]>([]);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const dragCounterRef = useRef(0);
 
   const fetchItems = useCallback(async () => {
     try {
@@ -138,6 +145,77 @@ export default function InventoryPage() {
     }
   };
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    dragCounterRef.current = 0;
+    const droppedFile = e.dataTransfer.files[0];
+    if (!droppedFile) return;
+
+    const validExtensions = [".xlsx", ".xls", ".csv", ".pdf"];
+    const extension = droppedFile.name.toLowerCase().slice(droppedFile.name.lastIndexOf("."));
+    if (!validExtensions.includes(extension)) {
+      setImportError("Unsupported file type. Please use Excel, CSV, or PDF files.");
+      setImportStep("idle");
+      return;
+    }
+
+    setImportFile(droppedFile);
+    setImportError(null);
+    setImportStep("parsing");
+
+    try {
+      const rows = await stockControlApiClient.uploadImportFile(droppedFile);
+      setParsedRows(rows as Record<string, unknown>[]);
+      setImportStep("preview");
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Failed to parse file");
+      setImportStep("idle");
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    try {
+      setImportStep("importing");
+      setImportError(null);
+      const result = await stockControlApiClient.confirmImport(parsedRows);
+      setImportResult(result);
+      setImportStep("result");
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Failed to import data");
+      setImportStep("preview");
+    }
+  };
+
+  const dismissImport = () => {
+    setImportStep("idle");
+    setImportFile(null);
+    setParsedRows([]);
+    setImportResult(null);
+    setImportError(null);
+    fetchItems();
+  };
+
   if (isLoading && items.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-96">
@@ -161,7 +239,196 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div
+      className="space-y-6 relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {isDragging && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm pointer-events-none">
+          <div className="bg-white rounded-2xl shadow-2xl p-12 text-center border-2 border-dashed border-teal-500">
+            <svg
+              className="mx-auto h-16 w-16 text-teal-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <p className="mt-4 text-lg font-semibold text-gray-900">Drop file to import</p>
+            <p className="mt-1 text-sm text-gray-500">Excel, CSV, or PDF</p>
+          </div>
+        </div>
+      )}
+
+      {importStep === "parsing" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/75">
+          <div className="bg-white rounded-lg shadow-xl p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+            <p className="mt-4 text-gray-700 font-medium">Parsing {importFile?.name}...</p>
+          </div>
+        </div>
+      )}
+
+      {importStep === "preview" && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-start justify-center min-h-screen px-4 py-8">
+            <div className="fixed inset-0 bg-gray-500/75" onClick={dismissImport}></div>
+            <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Import Preview</h3>
+                  <p className="text-sm text-gray-500">
+                    {importFile?.name} - {parsedRows.length} rows parsed
+                  </p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={dismissImport}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmImport}
+                    disabled={parsedRows.length === 0}
+                    className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+                  >
+                    Confirm Import ({parsedRows.length} rows)
+                  </button>
+                </div>
+              </div>
+              {importError && (
+                <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-700">{importError}</p>
+                </div>
+              )}
+              <div className="overflow-x-auto max-h-96">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        Row
+                      </th>
+                      {parsedRows.length > 0 &&
+                        Object.keys(parsedRows[0]).map((header) => (
+                          <th
+                            key={header}
+                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                          >
+                            {header}
+                          </th>
+                        ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {parsedRows.map((row, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-500">{index + 1}</td>
+                        {Object.keys(parsedRows[0]).map((header) => (
+                          <td key={header} className="px-4 py-3 text-sm text-gray-900">
+                            {String(row[header] ?? "")}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importStep === "importing" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/75">
+          <div className="bg-white rounded-lg shadow-xl p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
+            <p className="mt-4 text-gray-700 font-medium">Importing items...</p>
+          </div>
+        </div>
+      )}
+
+      {importStep === "result" && importResult && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-gray-500/75" onClick={dismissImport}></div>
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Import Complete</h3>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-green-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-green-700">{importResult.created}</div>
+                  <div className="text-sm text-green-600">Created</div>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-700">{importResult.updated}</div>
+                  <div className="text-sm text-blue-600">Updated</div>
+                </div>
+                <div className="bg-red-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-red-700">
+                    {importResult.errors.length}
+                  </div>
+                  <div className="text-sm text-red-600">Errors</div>
+                </div>
+              </div>
+              {importResult.errors.length > 0 && (
+                <div className="bg-red-50 rounded-lg p-4 mb-4 max-h-40 overflow-y-auto space-y-1">
+                  {importResult.errors.map((err, index) => (
+                    <div key={index} className="text-sm text-red-700">
+                      <span className="font-medium">Row {err.row}:</span> {err.message}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={dismissImport}
+                className="w-full px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {importError && importStep === "idle" && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center">
+            <svg
+              className="w-5 h-5 text-red-600 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <p className="text-sm text-red-700">{importError}</p>
+          </div>
+          <button onClick={() => setImportError(null)} className="text-red-400 hover:text-red-600">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
