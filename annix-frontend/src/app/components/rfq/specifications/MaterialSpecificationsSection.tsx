@@ -5,12 +5,6 @@ import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { ArSteelWarningBanner } from "@/app/components/rfq/warnings/ArSteelWarningBanner";
 import { materialValidationApi, type ValidPressureClassInfo } from "@/app/lib/api/client";
 import {
-  checkMaterialSuitability,
-  materialLimits as getMaterialLimits,
-  isWearResistantSteel,
-  type MaterialLimits,
-} from "@/app/lib/config/rfq";
-import {
   ASME_B16_5_FLANGE_TYPES,
   ASME_B16_47_SERIES_A_FLANGE_TYPES,
   ASME_B16_47_SERIES_B_FLANGE_TYPES,
@@ -19,6 +13,12 @@ import {
   SABS_1123_FLANGE_TYPES,
 } from "@/app/lib/hooks/useFlangeWeights";
 import { log } from "@/app/lib/logger";
+import {
+  checkSuitabilityFromCache,
+  findMaterialLimits,
+  isWearResistant,
+  useAllMaterialLimits,
+} from "@/app/lib/query/hooks";
 
 const isSteelSpecAllowedForUnregistered = (specName: string): boolean => {
   const name = specName.toLowerCase();
@@ -47,13 +47,21 @@ const isFlangeStandardAllowedForUnregistered = (standardCode: string): boolean =
   );
 };
 
+interface MaterialWarningLimits {
+  minTempC: number;
+  maxTempC: number;
+  maxPressureBar: number;
+  type: string;
+  notes?: string;
+}
+
 export interface MaterialWarning {
   show: boolean;
   specName: string;
   specId: number | undefined;
   warnings: string[];
   recommendation?: string;
-  limits?: MaterialLimits;
+  limits?: MaterialWarningLimits;
 }
 
 export interface PTRecommendations {
@@ -106,6 +114,7 @@ export function MaterialSpecificationsSection({
   showRestrictionPopup,
   onMaterialWarning,
 }: MaterialSpecificationsSectionProps) {
+  const { data: allLimits } = useAllMaterialLimits();
   const [steelSpecDropdownOpen, setSteelSpecDropdownOpen] = useState(false);
   const steelSpecDropdownRef = useRef<HTMLDivElement>(null);
   const [flangeStandardDropdownOpen, setFlangeStandardDropdownOpen] = useState(false);
@@ -180,7 +189,9 @@ export function MaterialSpecificationsSection({
 
   const isSpecSuitable = (specName: string): boolean => {
     if (!globalSpecs?.workingPressureBar && !globalSpecs?.workingTemperatureC) return true;
-    const suitability = checkMaterialSuitability(
+    if (!allLimits) return true;
+    const suitability = checkSuitabilityFromCache(
+      allLimits,
       specName,
       globalSpecs?.workingTemperatureC,
       globalSpecs?.workingPressureBar,
@@ -188,10 +199,11 @@ export function MaterialSpecificationsSection({
     return suitability.isSuitable;
   };
 
-  const getLimitsText = (specName: string): string => {
-    const limits = getMaterialLimits(specName);
+  const limitsText = (specName: string): string => {
+    if (!allLimits) return "";
+    const limits = findMaterialLimits(allLimits, specName);
     if (!limits) return "";
-    return ` [Max ${limits.maxTempC}°C]`;
+    return ` [Max ${limits.maxTemperatureCelsius}°C]`;
   };
 
   const handleSpecSelect = async (specId: number) => {
@@ -366,9 +378,8 @@ export function MaterialSpecificationsSection({
     (s) => s.id === globalSpecs?.steelSpecificationId,
   );
   const selectedSteelSpecName = selectedSteelSpec?.steelSpecName;
-  const isArSteelSelected = selectedSteelSpecName
-    ? isWearResistantSteel(selectedSteelSpecName)
-    : false;
+  const isArSteelSelected =
+    selectedSteelSpecName && allLimits ? isWearResistant(allLimits, selectedSteelSpecName) : false;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3">
@@ -490,7 +501,7 @@ export function MaterialSpecificationsSection({
                         >
                           <span>
                             {spec.steelSpecName}
-                            {getLimitsText(spec.steelSpecName)} - NOT SUITABLE
+                            {limitsText(spec.steelSpecName)} - NOT SUITABLE
                           </span>
                           {isRestricted && (
                             <svg
@@ -522,7 +533,9 @@ export function MaterialSpecificationsSection({
                 (s) => s.id === globalSpecs.steelSpecificationId,
               );
               if (!currentSpec) return null;
-              const suitability = checkMaterialSuitability(
+              if (!allLimits) return null;
+              const suitability = checkSuitabilityFromCache(
+                allLimits,
                 currentSpec.steelSpecName,
                 globalSpecs?.workingTemperatureC,
                 globalSpecs?.workingPressureBar,

@@ -3,7 +3,6 @@ export * from "./constants";
 export * from "./expansionJointOptions";
 export * from "./flangeWeights";
 export * from "./materialGroupMapping";
-export * from "./materialLimits";
 export * from "./pipeEndOptions";
 export * from "./pipeSchedules";
 export * from "./reducerSizes";

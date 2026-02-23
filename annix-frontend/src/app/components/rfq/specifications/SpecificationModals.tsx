@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import type { MaterialLimits } from "@/app/lib/config/rfq";
+
+interface MaterialWarningLimits {
+  minTempC: number;
+  maxTempC: number;
+  maxPressureBar: number;
+  type: string;
+  notes?: string;
+}
 
 export interface MaterialWarning {
   show: boolean;
@@ -9,7 +16,7 @@ export interface MaterialWarning {
   specId: number | undefined;
   warnings: string[];
   recommendation?: string;
-  limits?: MaterialLimits;
+  limits?: MaterialWarningLimits;
 }
 
 export interface ConfirmationWarning {
