@@ -208,6 +208,38 @@ export class BendRfq {
   @Column({ name: "ssc_tested", type: "boolean", nullable: true })
   sscTested?: boolean;
 
+  @ApiProperty({ description: "Manufacturing process (Seamless, ERW, SAW, LSAW)", required: false })
+  @Column({ name: "manufacturing_process", type: "varchar", length: 20, nullable: true })
+  manufacturingProcess?: string;
+
+  @ApiProperty({ description: "Delivery condition (As-Rolled, Normalized, Q&T)", required: false })
+  @Column({ name: "delivery_condition", type: "varchar", length: 20, nullable: true })
+  deliveryCondition?: string;
+
+  @ApiProperty({ description: "Bevel angle in degrees (default 37.5°)", required: false })
+  @Column({ name: "bevel_angle_deg", type: "decimal", precision: 4, scale: 1, nullable: true })
+  bevelAngleDeg?: number;
+
+  @ApiProperty({ description: "Root face dimension in mm (default 1.6mm)", required: false })
+  @Column({ name: "root_face_mm", type: "decimal", precision: 4, scale: 2, nullable: true })
+  rootFaceMm?: number;
+
+  @ApiProperty({ description: "Root gap dimension in mm (1.6-3.2mm range)", required: false })
+  @Column({ name: "root_gap_mm", type: "decimal", precision: 4, scale: 2, nullable: true })
+  rootGapMm?: number;
+
+  @ApiProperty({ description: "UNS number (e.g., K03006 for A106 Gr.B)", required: false })
+  @Column({ name: "uns_number", type: "varchar", length: 10, nullable: true })
+  unsNumber?: string;
+
+  @ApiProperty({ description: "Specified Minimum Yield Strength in MPa", required: false })
+  @Column({ name: "smys_mpa", type: "decimal", precision: 6, scale: 1, nullable: true })
+  smysMpa?: number;
+
+  @ApiProperty({ description: "Carbon equivalent for weldability (Ceq ≤0.43)", required: false })
+  @Column({ name: "carbon_equivalent", type: "decimal", precision: 4, scale: 3, nullable: true })
+  carbonEquivalent?: number;
+
   // Relationship to RfqItem
   @OneToOne(
     () => RfqItem,

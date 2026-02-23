@@ -192,4 +192,58 @@ export class CreateStraightPipeRfqDto {
   @IsOptional()
   @IsBoolean()
   sscTested?: boolean;
+
+  @ApiProperty({ description: "Manufacturing process (Seamless, ERW, SAW, LSAW)", required: false })
+  @IsOptional()
+  @IsString()
+  manufacturingProcess?: string;
+
+  @ApiProperty({ description: "Delivery condition (As-Rolled, Normalized, Q&T)", required: false })
+  @IsOptional()
+  @IsString()
+  deliveryCondition?: string;
+
+  @ApiProperty({ description: "Bevel angle in degrees (default 37.5°)", required: false })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 1 })
+  @Min(0)
+  @Max(90)
+  @Type(() => Number)
+  bevelAngleDeg?: number;
+
+  @ApiProperty({ description: "Root face dimension in mm (default 1.6mm)", required: false })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(10)
+  @Type(() => Number)
+  rootFaceMm?: number;
+
+  @ApiProperty({ description: "Root gap dimension in mm (1.6-3.2mm range)", required: false })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @Max(10)
+  @Type(() => Number)
+  rootGapMm?: number;
+
+  @ApiProperty({ description: "UNS number (e.g., K03006 for A106 Gr.B)", required: false })
+  @IsOptional()
+  @IsString()
+  unsNumber?: string;
+
+  @ApiProperty({ description: "Specified Minimum Yield Strength in MPa", required: false })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 1 })
+  @Min(0)
+  @Type(() => Number)
+  smysMpa?: number;
+
+  @ApiProperty({ description: "Carbon equivalent for weldability (Ceq ≤0.43)", required: false })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0)
+  @Max(1)
+  @Type(() => Number)
+  carbonEquivalent?: number;
 }
