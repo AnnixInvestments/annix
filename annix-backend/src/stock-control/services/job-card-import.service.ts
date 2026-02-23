@@ -126,11 +126,8 @@ export class JobCardImportService {
         const customFields =
           row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
 
-        const existing = await this.jobCardRepo.findOne({
-          where: { jobNumber: row.jobNumber, companyId },
-        });
-
-        const fieldValues = {
+        const jobCard = this.jobCardRepo.create({
+          jobNumber: row.jobNumber,
           jcNumber: row.jcNumber || null,
           pageNumber: row.pageNumber || null,
           jobName: row.jobName,
