@@ -1,6 +1,6 @@
 "use client";
 
-import { PUMP_SPECIFICATIONS, PUMP_TYPES, PUMPS_MODULE } from "@product-data/pumps";
+import { PUMP_SPECIFICATIONS, PUMP_TYPES, PUMPS_MODULE } from "@annix/product-data/pumps";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Breadcrumb } from "../../components/Breadcrumb";

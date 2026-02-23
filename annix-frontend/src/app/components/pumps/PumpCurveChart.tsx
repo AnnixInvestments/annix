@@ -1,6 +1,10 @@
 "use client";
 
-import { PumpCurve, PumpCurvePoint, SystemCurvePoint } from "@product-data/pumps/calculations";
+import {
+  PumpCurve,
+  PumpCurvePoint,
+  SystemCurvePoint,
+} from "@annix/product-data/pumps/calculations";
 import { useMemo, useState } from "react";
 
 interface PumpCurveChartProps {

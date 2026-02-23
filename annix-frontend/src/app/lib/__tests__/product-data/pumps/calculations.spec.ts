@@ -26,7 +26,7 @@ import {
   selectNextMotorSize,
   viscosityConversions,
   waterVaporPressure,
-} from "@product-data/pumps/calculations";
+} from "@annix/product-data/pumps/calculations";
 import { describe, expect, it } from "vitest";
 
 describe("Flow Rate Conversions", () => {

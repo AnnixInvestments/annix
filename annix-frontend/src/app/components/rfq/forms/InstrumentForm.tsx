@@ -12,12 +12,12 @@ import {
   POWER_SUPPLY_OPTIONS,
   PROCESS_CONNECTION_OPTIONS,
   WETTED_PARTS_MATERIAL_OPTIONS,
-} from "@product-data/valves-instruments/instrumentSpecifications";
+} from "@annix/product-data/valves-instruments/instrumentSpecifications";
 import {
   getInstrumentByValue,
   getInstrumentsByCategory,
   InstrumentCategory,
-} from "@product-data/valves-instruments/instrumentTypes";
+} from "@annix/product-data/valves-instruments/instrumentTypes";
 import { useEffect, useMemo, useState } from "react";
 import { SmartNotesDropdown } from "@/app/components/rfq/selectors/SmartNotesDropdown";
 import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";

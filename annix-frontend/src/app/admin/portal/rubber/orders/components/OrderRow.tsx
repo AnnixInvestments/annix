@@ -1,6 +1,6 @@
 "use client";
 
-import { statusColor } from "@product-data/rubber/orderStatus";
+import { statusColor } from "@annix/product-data/rubber/orderStatus";
 import Link from "next/link";
 import { memo, useCallback } from "react";
 import type { RubberOrderDto } from "@/app/lib/api/rubberPortalApi";

@@ -5,7 +5,7 @@ import {
   pumpTypeLabel,
   SelectionCriteria,
   selectPumpType,
-} from "@product-data/pumps/pumpSelectionGuide";
+} from "@annix/product-data/pumps/pumpSelectionGuide";
 import { describe, expect, it } from "vitest";
 
 describe("Pump Selection Guide", () => {

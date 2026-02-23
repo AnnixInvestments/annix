@@ -2,11 +2,16 @@ FROM node:24-slim AS builder
 
 WORKDIR /usr/src/app
 
-COPY annix-backend/package.json annix-backend/pnpm-lock.yaml* ./
-RUN corepack enable pnpm && pnpm install
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/product-data/package.json ./packages/product-data/
+COPY annix-backend/package.json ./annix-backend/
+RUN corepack enable pnpm && pnpm install --filter annix-backend --frozen-lockfile
 
-COPY annix-backend/ .
-RUN corepack enable pnpm && pnpm run build
+COPY packages/product-data/ ./packages/product-data/
+COPY annix-backend/ ./annix-backend/
+
+WORKDIR /usr/src/app/annix-backend
+RUN pnpm run build
 
 FROM node:24-slim AS docs-collector
 
@@ -22,13 +27,17 @@ FROM node:24-slim AS runner
 
 WORKDIR /usr/src/app
 
-COPY annix-backend/package.json annix-backend/pnpm-lock.yaml* ./
-RUN corepack enable pnpm && pnpm install --prod && pnpm add -D ts-node typescript
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/product-data/package.json ./packages/product-data/
+COPY annix-backend/package.json ./annix-backend/
+RUN corepack enable pnpm && pnpm install --filter annix-backend --frozen-lockfile
 
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/src/config/data-source.ts ./src/config/data-source.ts
-COPY --from=builder /usr/src/app/src/migrations ./src/migrations
-COPY --from=builder /usr/src/app/tsconfig.json ./tsconfig.json
+WORKDIR /usr/src/app/annix-backend
+
+COPY --from=builder /usr/src/app/annix-backend/dist ./dist
+COPY --from=builder /usr/src/app/annix-backend/src/config/data-source.ts ./src/config/data-source.ts
+COPY --from=builder /usr/src/app/annix-backend/src/migrations ./src/migrations
+COPY --from=builder /usr/src/app/annix-backend/tsconfig.json ./tsconfig.json
 
 COPY --from=docs-collector /usr/src/docs ./project-docs
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { PUMP_MANUFACTURERS, PUMP_PRICING_TIERS, PUMP_TYPES } from "@product-data/pumps";
+import { PUMP_MANUFACTURERS, PUMP_PRICING_TIERS, PUMP_TYPES } from "@annix/product-data/pumps";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Breadcrumb } from "../components/Breadcrumb";

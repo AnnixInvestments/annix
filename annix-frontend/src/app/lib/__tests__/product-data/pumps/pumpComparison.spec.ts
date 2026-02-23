@@ -4,7 +4,7 @@ import {
   comparePumpQuotes,
   LifecycleCostInputs,
   PumpQuote,
-} from "@product-data/pumps/pumpComparison";
+} from "@annix/product-data/pumps/pumpComparison";
 import { describe, expect, it } from "vitest";
 
 const createMockQuote = (overrides: Partial<PumpQuote> = {}): PumpQuote => ({

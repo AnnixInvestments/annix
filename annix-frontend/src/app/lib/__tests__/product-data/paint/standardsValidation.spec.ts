@@ -1,4 +1,4 @@
-import type { CorrosivityCategory, GenericType } from "@product-data/paint/paintProducts";
+import type { CorrosivityCategory, GenericType } from "@annix/product-data/paint/paintProducts";
 import type {
   ISO12944Part2Environment,
   ISO12944Part3Design,
@@ -8,7 +8,7 @@ import type {
   ISO12944Part7Execution,
   ISO12944Part8NewWork,
   ISO12944Part9Maintenance,
-} from "@product-data/paint/standardsValidation";
+} from "@annix/product-data/paint/standardsValidation";
 import {
   allASNZS2312Systems,
   allASNZS4680Grades,
@@ -43,7 +43,7 @@ import {
   validateISO12944Part9,
   validatePotableWaterCompliance,
   vocLimitsForRegion,
-} from "@product-data/paint/standardsValidation";
+} from "@annix/product-data/paint/standardsValidation";
 import { describe, expect, it } from "vitest";
 
 describe("standardsValidation", () => {

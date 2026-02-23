@@ -1,18 +1,20 @@
-app = 'annix-frontend'
+app = 'annix-backend-test'
 primary_region = 'jnb'
 
 [build]
-  dockerfile = 'Dockerfile'
-  [build.args]
-    NEXT_PUBLIC_API_URL = 'https://annix-backend.fly.dev'
+  dockerfile = 'Dockerfile.backend'
+
+[deploy]
+  release_command = 'npx ts-node --project tsconfig.json --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run'
+  release_command_timeout = '40m'
 
 [env]
   NODE_ENV = 'production'
-  PORT = '3000'
-  NEXT_PUBLIC_API_URL = 'https://annix-backend.fly.dev'
+  PORT = '4000'
+  FRONTEND_URL = 'https://annix-frontend-test.fly.dev'
 
 [http_service]
-  internal_port = 3000
+  internal_port = 4000
   force_https = true
   auto_stop_machines = 'stop'
   auto_start_machines = true
@@ -25,7 +27,7 @@ primary_region = 'jnb'
     interval = '30s'
     method = 'GET'
     path = '/'
-    port = 3000
+    port = 4000
     timeout = '10s'
     type = 'http'
 

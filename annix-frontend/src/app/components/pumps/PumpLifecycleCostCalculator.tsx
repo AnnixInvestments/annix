@@ -4,7 +4,7 @@ import {
   calculateLifecycleCost,
   LifecycleCostInputs,
   LifecycleCostResult,
-} from "@product-data/pumps/pumpComparison";
+} from "@annix/product-data/pumps/pumpComparison";
 import { useMemo, useState } from "react";
 
 interface PumpLifecycleCostCalculatorProps {

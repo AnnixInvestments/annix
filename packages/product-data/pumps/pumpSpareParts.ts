@@ -1,6 +1,6 @@
 // Pumps & Pump Parts Module - Spare Parts Configuration
 
-import { now } from "@/app/lib/datetime";
+const currentIsoDate = (): string => new Date().toISOString().split("T")[0] ?? "";
 
 export interface SparePartCategory {
   value: string;
@@ -166,7 +166,7 @@ export const createOemCrossReference = (
   partType,
   compatibility,
   notes,
-  verifiedDate: now().toISODate() ?? "",
+  verifiedDate: currentIsoDate(),
 });
 
 // ============================================

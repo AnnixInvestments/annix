@@ -1,6 +1,6 @@
 "use client";
 
-import { PumpCurve } from "@product-data/pumps/calculations";
+import { PumpCurve } from "@annix/product-data/pumps/calculations";
 import { useMemo } from "react";
 
 interface OperatingRangeValidatorProps {

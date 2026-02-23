@@ -4,7 +4,7 @@ import {
   comparePumpQuotes,
   PumpComparisonResult,
   PumpQuote,
-} from "@product-data/pumps/pumpComparison";
+} from "@annix/product-data/pumps/pumpComparison";
 import { useMemo, useState } from "react";
 
 interface PumpQuoteComparisonProps {

@@ -1,8 +1,8 @@
 "use client";
 
-import { ceramicProducts } from "@product-data/ceramic/ceramicProducts";
-import { paintProducts } from "@product-data/paint/paintProducts";
-import { rubberProducts } from "@product-data/rubber/rubberProducts";
+import { ceramicProducts } from "@annix/product-data/ceramic/ceramicProducts";
+import { paintProducts } from "@annix/product-data/paint/paintProducts";
+import { rubberProducts } from "@annix/product-data/rubber/rubberProducts";
 import React, { useMemo, useState } from "react";
 
 type ProductType = "paint" | "rubber" | "ceramic" | "all";

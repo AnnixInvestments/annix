@@ -16,12 +16,12 @@ import {
   TRIM_MATERIAL_OPTIONS,
   VALVE_CERTIFICATIONS,
   VALVE_SIZE_OPTIONS,
-} from "@product-data/valves-instruments/valveSpecifications";
+} from "@annix/product-data/valves-instruments/valveSpecifications";
 import {
   getValveByValue,
   VALVE_TYPES,
   ValveCategory,
-} from "@product-data/valves-instruments/valveTypes";
+} from "@annix/product-data/valves-instruments/valveTypes";
 import { useEffect, useMemo, useState } from "react";
 import { SmartNotesDropdown } from "@/app/components/rfq/selectors/SmartNotesDropdown";
 import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";

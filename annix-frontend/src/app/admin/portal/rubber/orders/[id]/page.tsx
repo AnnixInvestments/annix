@@ -6,15 +6,19 @@ import {
   CalloffStatus,
   calloffStatusColor,
   calloffStatusLabel,
-} from "@product-data/rubber/calloffStatus";
-import { LENGTH_OPTIONS, THICKNESS_OPTIONS, WIDTH_OPTIONS } from "@product-data/rubber/dimensions";
+} from "@annix/product-data/rubber/calloffStatus";
+import {
+  LENGTH_OPTIONS,
+  THICKNESS_OPTIONS,
+  WIDTH_OPTIONS,
+} from "@annix/product-data/rubber/dimensions";
 import {
   isTerminalStatus,
   STATUS_LABELS,
   statusColor,
   statusLabel,
   validNextStatuses,
-} from "@product-data/rubber/orderStatus";
+} from "@annix/product-data/rubber/orderStatus";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";

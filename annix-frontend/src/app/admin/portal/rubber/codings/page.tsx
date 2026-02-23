@@ -1,6 +1,6 @@
 "use client";
 
-import { CODING_TYPES, CodingType } from "@product-data/rubber/codingTypes";
+import { CODING_TYPES, CodingType } from "@annix/product-data/rubber/codingTypes";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { type RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";

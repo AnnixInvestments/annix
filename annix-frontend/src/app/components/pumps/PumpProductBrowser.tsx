@@ -1,6 +1,6 @@
 "use client";
 
-import { SelectionResult } from "@product-data/pumps/pumpSelectionGuide";
+import { SelectionResult } from "@annix/product-data/pumps/pumpSelectionGuide";
 import { useCallback, useMemo, useState } from "react";
 import { Api610SelectionWizard } from "./Api610SelectionWizard";
 import { PumpProductCard, PumpProductCardData } from "./PumpProductCard";

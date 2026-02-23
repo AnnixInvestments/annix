@@ -1,6 +1,6 @@
-import type { CeramicProduct } from "@product-data/ceramic/ceramicProducts";
-import type { PaintProduct } from "@product-data/paint/paintProducts";
-import type { RubberProduct } from "@product-data/rubber/rubberProducts";
+import type { CeramicProduct } from "@annix/product-data/ceramic/ceramicProducts";
+import type { PaintProduct } from "@annix/product-data/paint/paintProducts";
+import type { RubberProduct } from "@annix/product-data/rubber/rubberProducts";
 
 export interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -576,7 +576,7 @@ export type {
   TileLayoutGeometry,
   TileLayoutResult,
   TileShape,
-} from "@product-data/ceramic";
+} from "@annix/product-data/ceramic";
 export {
   allCeramicProducts,
   bestCeramicForImpactZones,
@@ -602,12 +602,12 @@ export {
   recommendForImpactZones,
   recommendForSlidingAbrasion,
   selectCeramicAdhesive,
-} from "@product-data/ceramic";
+} from "@annix/product-data/ceramic";
 export type {
   CorrosivityCategory,
   PaintProduct,
   PaintSupplier,
-} from "@product-data/paint/paintProducts";
+} from "@annix/product-data/paint/paintProducts";
 export {
   compatiblePrimers,
   compatibleTopcoats,
@@ -617,7 +617,7 @@ export {
   productsForTemperature,
   surfaceTolerantProducts,
   topcoatsForEnvironment,
-} from "@product-data/paint/paintProducts";
+} from "@annix/product-data/paint/paintProducts";
 export type {
   CoatingSystemRequirements,
   CompatibilityValidation,
@@ -634,7 +634,7 @@ export type {
   OvercoatWindowResult,
   RecommendedCoatingSystem,
   SurfacePrepStandard,
-} from "@product-data/paint/paintSystemRecommendations";
+} from "@annix/product-data/paint/paintSystemRecommendations";
 export {
   allNORSOKSystems,
   allSurfacePrepStandards,
@@ -651,7 +651,7 @@ export {
   surfacePrepForCorrosivity,
   systemDftSummary,
   validateMultiCoatCompatibility,
-} from "@product-data/paint/paintSystemRecommendations";
+} from "@annix/product-data/paint/paintSystemRecommendations";
 export type {
   AbrasionResistance,
   AdhesiveRecommendation,
@@ -673,7 +673,7 @@ export type {
   ThicknessOptimization,
   WearConditions,
   WearLifeEstimate,
-} from "@product-data/rubber";
+} from "@annix/product-data/rubber";
 export {
   allRubberProducts,
   bestAbrasionResistantProducts,
@@ -699,7 +699,7 @@ export {
   rubberProductsForAbrasion,
   rubberProductsForTemperature,
   selectAdhesiveSystem,
-} from "@product-data/rubber";
+} from "@annix/product-data/rubber";
 
 export type BudgetTier = "economy" | "standard" | "premium";
 

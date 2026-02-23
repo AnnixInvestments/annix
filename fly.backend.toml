@@ -1,18 +1,17 @@
-app = 'annix-backend-test'
+app = 'annix-backend'
 primary_region = 'jnb'
 
 [build]
-  dockerfile = '../Dockerfile.backend'
-  context = '..'
+  dockerfile = 'Dockerfile.backend'
 
 [deploy]
-  release_command = 'npx ts-node --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run'
+  release_command = 'npx ts-node --project tsconfig.json --transpile-only ./node_modules/typeorm/cli -d ./src/config/data-source.ts migration:run'
   release_command_timeout = '40m'
 
 [env]
   NODE_ENV = 'production'
   PORT = '4000'
-  FRONTEND_URL = 'https://annix-frontend-test.fly.dev'
+  FRONTEND_URL = 'https://annix-frontend.fly.dev'
 
 [http_service]
   internal_port = 4000

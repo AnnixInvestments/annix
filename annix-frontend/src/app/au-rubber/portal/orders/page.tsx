@@ -1,6 +1,6 @@
 "use client";
 
-import { ORDER_STATUS_OPTIONS, statusColor } from "@product-data/rubber/orderStatus";
+import { ORDER_STATUS_OPTIONS, statusColor } from "@annix/product-data/rubber/orderStatus";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";

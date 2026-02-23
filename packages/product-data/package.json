@@ -1,13 +1,18 @@
 {
   "name": "@annix/product-data",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": {
-    "./ceramic": "./ceramic/index.ts",
-    "./paint": "./paint/index.ts",
     "./pumps": "./pumps/index.ts",
+    "./pumps/*": "./pumps/*.ts",
+    "./paint": "./paint/index.ts",
+    "./paint/*": "./paint/*.ts",
     "./rubber": "./rubber/index.ts",
-    "./valves-instruments": "./valves-instruments/index.ts"
+    "./rubber/*": "./rubber/*.ts",
+    "./ceramic": "./ceramic/index.ts",
+    "./ceramic/*": "./ceramic/*.ts",
+    "./valves-instruments": "./valves-instruments/index.ts",
+    "./valves-instruments/*": "./valves-instruments/*.ts"
   }
 }

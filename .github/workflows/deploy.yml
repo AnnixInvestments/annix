@@ -84,18 +84,15 @@ jobs:
         environment: ${{ fromJson(needs.set-environments.outputs.matrix) }}
         include:
           - environment: prod
-            config: annix-backend/fly.toml
+            config: fly.backend.toml
           - environment: test
-            config: annix-backend/fly.test.toml
+            config: fly.backend.test.toml
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Copy root lockfile to backend
-        run: cp pnpm-lock.yaml annix-backend/
 
       - name: Deploy Backend to Fly.io (${{ matrix.environment }})
         run: |
@@ -120,21 +117,15 @@ jobs:
         environment: ${{ fromJson(needs.set-environments.outputs.matrix) }}
         include:
           - environment: prod
-            config: fly.toml
+            config: fly.frontend.toml
           - environment: test
-            config: fly.test.toml
-    defaults:
-      run:
-        working-directory: annix-frontend
+            config: fly.frontend.test.toml
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Copy root lockfile to frontend
-        run: cp ../pnpm-lock.yaml .
 
       - name: Deploy Frontend to Fly.io (${{ matrix.environment }})
         run: |

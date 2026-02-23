@@ -6,7 +6,7 @@ import {
   interpolatePumpCurve,
   PumpCurve,
   SystemCurveParams,
-} from "@product-data/pumps/calculations";
+} from "@annix/product-data/pumps/calculations";
 import { useMemo, useState } from "react";
 import { PumpCurveChart } from "./PumpCurveChart";
 

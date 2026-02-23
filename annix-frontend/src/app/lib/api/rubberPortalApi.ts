@@ -1,5 +1,5 @@
-import type { CalloffStatus } from "@product-data/rubber/calloffStatus";
-import type { StatusHistoryEvent } from "@product-data/rubber/orderStatus";
+import type { CalloffStatus } from "@annix/product-data/rubber/calloffStatus";
+import type { StatusHistoryEvent } from "@annix/product-data/rubber/orderStatus";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export interface RubberProductCodingDto {

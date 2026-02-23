@@ -1,6 +1,6 @@
 "use client";
 
-import { CODING_TYPES, CodingType } from "@product-data/rubber/codingTypes";
+import { CODING_TYPES, CodingType } from "@annix/product-data/rubber/codingTypes";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";

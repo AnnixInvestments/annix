@@ -4,7 +4,7 @@ import {
   PumpFormData,
   requiredFieldsForServiceType,
   validatePumpForm,
-} from "@product-data/pumps/formValidation";
+} from "@annix/product-data/pumps/formValidation";
 import { describe, expect, it } from "vitest";
 
 describe("formValidation", () => {

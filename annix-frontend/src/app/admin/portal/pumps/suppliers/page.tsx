@@ -5,7 +5,7 @@ import {
   PUMP_MANUFACTURERS,
   PUMP_STANDARDS,
   SA_PUMP_SUPPLIERS,
-} from "@product-data/pumps";
+} from "@annix/product-data/pumps";
 import { useMemo, useState } from "react";
 import { Breadcrumb } from "../components/Breadcrumb";
 

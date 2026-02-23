@@ -6,7 +6,7 @@ import {
   PUMP_PRICING_TIERS,
   PUMP_SPECIFICATIONS,
   PUMP_TYPES,
-} from "@product-data/pumps";
+} from "@annix/product-data/pumps";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Breadcrumb } from "../../components/Breadcrumb";

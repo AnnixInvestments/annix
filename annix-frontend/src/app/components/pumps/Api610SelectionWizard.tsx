@@ -6,7 +6,7 @@ import {
   Api610SelectionResult,
   api610CategoryDescription,
   selectApi610PumpType,
-} from "@product-data/pumps/api610Classification";
+} from "@annix/product-data/pumps/api610Classification";
 import { useMemo, useState } from "react";
 
 interface Api610SelectionWizardProps {

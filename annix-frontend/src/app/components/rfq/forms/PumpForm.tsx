@@ -21,17 +21,20 @@ import {
   PUMPS_MODULE,
   PumpCategory,
   SPARE_PARTS_KITS,
-} from "@product-data/pumps";
+} from "@annix/product-data/pumps";
 import type {
   Api610SelectionCriteria,
   Api610SelectionResult,
-} from "@product-data/pumps/api610Classification";
+} from "@annix/product-data/pumps/api610Classification";
 import {
   type PumpFormData,
   type ValidationResult,
   validatePumpForm,
-} from "@product-data/pumps/formValidation";
-import type { SelectionCriteria, SelectionResult } from "@product-data/pumps/pumpSelectionGuide";
+} from "@annix/product-data/pumps/formValidation";
+import type {
+  SelectionCriteria,
+  SelectionResult,
+} from "@annix/product-data/pumps/pumpSelectionGuide";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Api610SelectionWizard,

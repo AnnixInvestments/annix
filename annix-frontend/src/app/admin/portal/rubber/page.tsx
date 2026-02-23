@@ -1,6 +1,10 @@
 "use client";
 
-import { RUBBER_ORDER_STATUS, statusColor, statusLabel } from "@product-data/rubber/orderStatus";
+import {
+  RUBBER_ORDER_STATUS,
+  statusColor,
+  statusLabel,
+} from "@annix/product-data/rubber/orderStatus";
 import Link from "next/link";
 import { useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";

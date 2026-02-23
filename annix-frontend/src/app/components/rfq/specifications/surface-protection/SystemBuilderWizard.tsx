@@ -1,6 +1,6 @@
 "use client";
 
-import { paintProducts } from "@product-data/paint/paintProducts";
+import { paintProducts } from "@annix/product-data/paint/paintProducts";
 import React, { useState } from "react";
 import type { GlobalSpecs } from "@/app/lib/hooks/useRfqForm";
 

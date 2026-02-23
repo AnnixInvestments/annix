@@ -5,7 +5,7 @@ import {
   SelectionCriteria,
   SelectionResult,
   selectPumpType,
-} from "@product-data/pumps/pumpSelectionGuide";
+} from "@annix/product-data/pumps/pumpSelectionGuide";
 import { useMemo, useState } from "react";
 
 interface PumpSelectionWizardProps {
