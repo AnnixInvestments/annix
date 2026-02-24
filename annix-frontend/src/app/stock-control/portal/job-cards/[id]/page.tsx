@@ -87,13 +87,18 @@ export default function JobCardDetailPage() {
   const [allocations, setAllocations] = useState<StockAllocation[]>([]);
   const [requisition, setRequisition] = useState<Requisition | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [backgroundSteps, setBackgroundSteps] = useState<BackgroundStepStatus[]>([]);
-  const [controlPlans, setControlPlans] = useState<QcControlPlanRecord[]>([]);
-  const [deliveryJobCards, setDeliveryJobCards] = useState<JobCard[]>([]);
-  const [adjacentIds, setAdjacentIds] = useState<{
-    previousId: number | null;
-    nextId: number | null;
-  }>({ previousId: null, nextId: null });
+  const [error, setError] = useState<Error | null>(null);
+  const [showAllocateModal, setShowAllocateModal] = useState(false);
+  const [allocateForm, setAllocateForm] = useState({
+    stockItemId: 0,
+    quantityUsed: 1,
+    notes: "",
+  });
+  const [isAllocating, setIsAllocating] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [isDownloadingQr, setIsDownloadingQr] = useState(false);
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -400,10 +405,27 @@ export default function JobCardDetailPage() {
     await actions.handlePlaceRequisition(router);
   };
 
-  const handleSaveNotes = async (editedNotes: string) => {
-    const jobCardNotes = jobCard?.notes;
-    const originalNotes = jobCardNotes ? jobCardNotes : null;
-    await actions.handleSaveNotes(editedNotes, originalNotes);
+  const handlePrintQr = async () => {
+    try {
+      setIsDownloadingQr(true);
+      await stockControlApiClient.downloadJobCardQrPdf(jobId);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to download job card PDF"));
+    } finally {
+      setIsDownloadingQr(false);
+    }
+  };
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    try {
+      setIsUpdatingStatus(true);
+      await stockControlApiClient.updateJobCard(jobId, { status: newStatus });
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to update status"));
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   if (isLoading) {
@@ -557,151 +579,23 @@ export default function JobCardDetailPage() {
             <p className="mt-1 text-sm text-gray-500">{jobCard.jobName}</p>
           </div>
         </div>
-        {workflowStatus && (
-          <WorkflowActionsBar
-            jobId={jobId}
-            currentStep={currentStep}
-            canApprove={workflow.canApprove}
-            canAcceptDraft={workflow.canAcceptDraft}
-            isAdminView={isAdminView}
-            isQualityUser={workflow.isQualityUser}
-            specsNeedReview={specsNeedReview}
-            prevStepBgPending={workflow.prevStepBgPending}
-            currentStepBgPending={workflow.currentStepBgPending}
-            currentStepBlueBgPending={currentStepBlueBgPending}
-            hasBlueLineTasks={hasBlueLineTasks}
-            fgActionAssignedToOther={workflow.fgActionAssignedToOther}
-            currentStepActionCompleted={currentStepActionCompleted}
-            currentStepActionLabel={currentStepActionLabel}
-            receptionIsPending={workflow.receptionIsPending}
-            qcpsNeedApproval={qcpsNeedApproval}
-            rubberPlanPending={rubberPlanPending}
-            userPendingBgSteps={workflow.userPendingBgSteps}
-            bgStepError={actions.bgStepError}
-            completingStepKey={actions.completingStepKey}
-            isDownloadingQr={actions.isDownloadingQr}
-            isUpdatingStatus={actions.isUpdatingStatus}
-            isCompletingFgAction={actions.isCompletingFgAction}
-            isUploadingReadyPhoto={false}
-            isConfirmingIssuance={actions.isConfirmingIssuance}
-            isProcessingDecision={actions.isProcessingDecision}
-            hasAllocations={hasAllocations}
-            hasUnissuedAllocations={hasUnissuedAllocations}
-            hasReadyPhoto={hasReadyPhoto}
-            batchesSaved={batchesSaved}
-            finalPhotosSaved={actions.finalPhotosSaved}
-            jobFileGateSatisfied={jobFileGateSatisfied}
-            docUploadGateSatisfied={docUploadGateSatisfied}
-            requisition={requisition}
-            coatingAnalysis={coating.coatingAnalysis}
-            phase2ActionLabel={workflow.currentStepPhaseInfo.phase2ActionLabel}
-            adminBlockedFromStep={workflow.adminBlockedFromStep}
-            isReceptionStep={workflow.isReceptionStep}
-            isRequisitionStep={workflow.isRequisitionStep}
-            isReqAuthStep={workflow.isReqAuthStep}
-            isOrderPlacementStep={workflow.isOrderPlacementStep}
-            isStockAllocStep={workflow.isStockAllocStep}
-            isReadyStep={workflow.isReadyStep}
-            isQaReviewStep={workflow.isQaReviewStep}
-            isQcRepairsStep={workflow.isQcRepairsStep}
-            isQaFinalCheckStep={workflow.isQaFinalCheckStep}
-            isInspectionBookingStep={workflow.isInspectionBookingStep}
-            isDataBookStep={workflow.isDataBookStep}
-            isJobFileReviewStep={workflow.isJobFileReviewStep}
-            isDocUploadStep={workflow.isDocUploadStep}
-            onPrintQr={actions.handlePrintQr}
-            onCompleteFgAction={actions.handleCompleteFgAction}
-            onCompleteBackgroundStep={actions.handleCompleteBackgroundStep}
-            onOpenApprovalModal={actions.openApprovalModal}
-            onDraftAccepted={actions.handleDraftAccepted}
-            onConfirmIssuance={handleConfirmIssuance}
-            onShowReadyPhotoModal={() => setShowReadyPhotoModal(true)}
-            onShowInspectionModal={() => setShowInspectionModal(true)}
-            onTabChange={handleTabChange}
-            onScrollToElement={scrollToElementId}
-            onDismissBgStepError={() => actions.setBgStepError(null)}
-          />
-        )}
-        <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-          <div className="inline-flex rounded-md shadow-sm">
-            {adjacentIds.previousId ? (
-              <Link
-                href={`/stock-control/portal/job-cards/${adjacentIds.previousId}`}
-                className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-l-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                <svg
-                  className="w-4 h-4 mr-1.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-                Previous JC
-              </Link>
-            ) : (
-              <span className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-200 rounded-l-md text-sm font-medium text-gray-300 bg-gray-50 cursor-not-allowed">
-                <svg
-                  className="w-4 h-4 mr-1.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-                Previous JC
-              </span>
-            )}
-            {adjacentIds.nextId ? (
-              <Link
-                href={`/stock-control/portal/job-cards/${adjacentIds.nextId}`}
-                className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-l-0 border-gray-300 rounded-r-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Next JC
-                <svg
-                  className="w-4 h-4 ml-1.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </Link>
-            ) : (
-              <span className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-l-0 border-gray-200 rounded-r-md text-sm font-medium text-gray-300 bg-gray-50 cursor-not-allowed">
-                Next JC
-                <svg
-                  className="w-4 h-4 ml-1.5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </span>
-            )}
-          </div>
-          {jobCard.status.toLowerCase() !== "draft" && !workflow.receptionIsPending && (
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handlePrintQr}
+            disabled={isDownloadingQr}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+              />
+            </svg>
+            {isDownloadingQr ? "Generating..." : "Print QR"}
+          </button>
+          {transitions.map((transition) => (
             <button
               onClick={actions.handlePrintQr}
               disabled={actions.isDownloadingQr}

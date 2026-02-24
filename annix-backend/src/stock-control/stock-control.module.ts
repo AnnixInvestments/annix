@@ -10,15 +10,7 @@ import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixLearning } from "../nix/entities/nix-learning.entity";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
-import { Company } from "../platform/entities/company.entity";
-import { RubberProductCoding } from "../rubber-lining/entities/rubber-product-coding.entity";
-import { RubberRollStock } from "../rubber-lining/entities/rubber-roll-stock.entity";
-import { RubberLiningModule } from "../rubber-lining/rubber-lining.module";
-import { SageExportModule } from "../sage-export/sage-export.module";
-import { SharedModule } from "../shared/shared.module";
-import { StaffLeaveModule } from "../staff-leave/staff-leave.module";
-import { StorageModule } from "../storage/storage.module";
-import { User } from "../user/entities/user.entity";
+import { QrCodeController } from "./controllers/qr-code.controller";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { CertificateController } from "./controllers/certificate.controller";
 import { ChatController } from "./controllers/chat.controller";
@@ -155,6 +147,7 @@ import { JobCardWorkflowService } from "./services/job-card-workflow.service";
 import { JobFileService } from "./services/job-file.service";
 import { LookupService } from "./services/lookup.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
+import { QrCodeService } from "./services/qr-code.service";
 import { MovementService } from "./services/movement.service";
 import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
@@ -299,18 +292,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     InvitationController,
     QrCodeController,
     RequisitionsController,
-    SearchController,
-    StaffController,
-    WorkflowController,
-    SignatureController,
-    InvoicesController,
-    SupplierController,
-    CpoController,
-    GlossaryController,
-    CertificateController,
-    SupplierDocumentController,
-    ChatController,
-    ReconciliationController,
+    QrCodeController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -336,47 +318,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     QrCodeService,
     ReportsService,
     RequisitionService,
-    StaffService,
-    ItemIdentificationService,
-    LookupService,
-    SignatureService,
-    WebPushService,
-    WorkflowAssignmentService,
-    WorkflowNotificationService,
-    JobCardWorkflowService,
-    DispatchService,
-    DispatchCdnService,
-    DispatchLoadPhotoService,
-    JobCardPdfService,
-    JobCardVersionService,
-    DrawingExtractionService,
-    InvoiceExtractionService,
-    InvoiceService,
-    PriceHistoryService,
-    CompanyRoleService,
-    ActionPermissionService,
-    RbacConfigService,
-    SageInvoiceAdapterService,
-    SearchService,
-    CpoService,
-    GlossaryService,
-    CertificateService,
-    CertificateAnalysisService,
-    SupplierDocumentService,
-    DataBookPdfService,
-    ChatService,
-    WorkflowStepConfigService,
-    BackgroundStepService,
-    QaProcessService,
-    InspectionBookingService,
-    ScEmailAdapterService,
-    JobFileService,
-    ReconciliationDocumentService,
-    ReconciliationExtractionService,
-    ReconciliationService,
-    RubberCuttingTrainingService,
-    StockAllocationService,
-    SageJcDumpService,
+    QrCodeService,
   ],
   exports: [StockControlAuthService],
 })
