@@ -1,0 +1,223 @@
+import { MigrationInterface, QueryRunner } from "typeorm";
+
+export class CreateGussetConfigurationTable1778100000000 implements MigrationInterface {
+  name = "CreateGussetConfigurationTable1778100000000";
+
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS gusset_configurations (
+        id SERIAL PRIMARY KEY,
+        dn_min INT NOT NULL,
+        dn_max INT NOT NULL,
+        pressure_class_min INT,
+        pressure_class_max INT,
+        gusset_count INT NOT NULL,
+        thickness_mm DECIMAL(5,1) NOT NULL,
+        placement_type VARCHAR(20) NOT NULL DEFAULT 'HEEL_ONLY',
+        heel_offset_mm DECIMAL(6,1) NOT NULL DEFAULT 100.0,
+        gusset_angle_degrees DECIMAL(4,1) NOT NULL DEFAULT 45.0,
+        symmetry_spacing_degrees DECIMAL(5,1) NOT NULL DEFAULT 90.0,
+        material_grade VARCHAR(10) NOT NULL DEFAULT 'A36',
+        allowable_stress_mpa DECIMAL(6,1) NOT NULL DEFAULT 250.0,
+        weld_type VARCHAR(20) NOT NULL DEFAULT 'FILLET',
+        weld_electrode VARCHAR(10) NOT NULL DEFAULT 'E7018',
+        preheat_temp_c INT,
+        pwht_required BOOLEAN NOT NULL DEFAULT FALSE,
+        notes VARCHAR(255)
+      )
+    `);
+
+    const configurations = [
+      {
+        dnMin: 50,
+        dnMax: 100,
+        pressureClassMin: null,
+        pressureClassMax: 150,
+        gussetCount: 2,
+        thicknessMm: 6.0,
+        placementType: "HEEL_ONLY",
+        heelOffsetMm: 50.0,
+        materialGrade: "A36",
+        weldType: "FILLET",
+        preheatTempC: null,
+        pwhtRequired: false,
+        notes: "Small bore, low pressure - basic rigidity",
+      },
+      {
+        dnMin: 100,
+        dnMax: 200,
+        pressureClassMin: null,
+        pressureClassMax: 150,
+        gussetCount: 2,
+        thicknessMm: 8.0,
+        placementType: "HEEL_ONLY",
+        heelOffsetMm: 75.0,
+        materialGrade: "A36",
+        weldType: "FILLET",
+        preheatTempC: null,
+        pwhtRequired: false,
+        notes: "Standard low pressure application",
+      },
+      {
+        dnMin: 100,
+        dnMax: 200,
+        pressureClassMin: 150,
+        pressureClassMax: 300,
+        gussetCount: 2,
+        thicknessMm: 10.0,
+        placementType: "HEEL_ONLY",
+        heelOffsetMm: 75.0,
+        materialGrade: "A36",
+        weldType: "FILLET",
+        preheatTempC: 100,
+        pwhtRequired: false,
+        notes: "Medium pressure - vibration damping",
+      },
+      {
+        dnMin: 250,
+        dnMax: 350,
+        pressureClassMin: null,
+        pressureClassMax: 150,
+        gussetCount: 4,
+        thicknessMm: 12.0,
+        placementType: "SYMMETRICAL",
+        heelOffsetMm: 100.0,
+        materialGrade: "A36",
+        weldType: "FILLET",
+        preheatTempC: 100,
+        pwhtRequired: false,
+        notes: "Medium bore - symmetrical placement",
+      },
+      {
+        dnMin: 250,
+        dnMax: 350,
+        pressureClassMin: 150,
+        pressureClassMax: 300,
+        gussetCount: 4,
+        thicknessMm: 14.0,
+        placementType: "SYMMETRICAL",
+        heelOffsetMm: 100.0,
+        materialGrade: "A36",
+        weldType: "FILLET",
+        preheatTempC: 150,
+        pwhtRequired: false,
+        notes: "Medium bore, medium pressure - thrust resistance",
+      },
+      {
+        dnMin: 400,
+        dnMax: 500,
+        pressureClassMin: null,
+        pressureClassMax: 150,
+        gussetCount: 4,
+        thicknessMm: 14.0,
+        placementType: "SYMMETRICAL",
+        heelOffsetMm: 120.0,
+        materialGrade: "A36",
+        weldType: "FILLET",
+        preheatTempC: 150,
+        pwhtRequired: false,
+        notes: "Large bore, low pressure",
+      },
+      {
+        dnMin: 400,
+        dnMax: 500,
+        pressureClassMin: 150,
+        pressureClassMax: 300,
+        gussetCount: 4,
+        thicknessMm: 16.0,
+        placementType: "SYMMETRICAL",
+        heelOffsetMm: 120.0,
+        materialGrade: "A36",
+        weldType: "FULL_PENETRATION",
+        preheatTempC: 150,
+        pwhtRequired: true,
+        notes: "Large bore, medium pressure - enhanced thrust resistance",
+      },
+      {
+        dnMin: 600,
+        dnMax: 700,
+        pressureClassMin: null,
+        pressureClassMax: 150,
+        gussetCount: 4,
+        thicknessMm: 18.0,
+        placementType: "FULL_COVERAGE",
+        heelOffsetMm: 150.0,
+        materialGrade: "A36",
+        weldType: "FULL_PENETRATION",
+        preheatTempC: 150,
+        pwhtRequired: true,
+        notes: "Extra large bore - full coverage required",
+      },
+      {
+        dnMin: 600,
+        dnMax: 700,
+        pressureClassMin: 150,
+        pressureClassMax: 300,
+        gussetCount: 6,
+        thicknessMm: 20.0,
+        placementType: "FULL_COVERAGE",
+        heelOffsetMm: 150.0,
+        materialGrade: "A36",
+        weldType: "FULL_PENETRATION",
+        preheatTempC: 200,
+        pwhtRequired: true,
+        notes: "Extra large bore, medium pressure - seismic/thermal stability",
+      },
+      {
+        dnMin: 750,
+        dnMax: 900,
+        pressureClassMin: null,
+        pressureClassMax: 300,
+        gussetCount: 6,
+        thicknessMm: 22.0,
+        placementType: "FULL_COVERAGE",
+        heelOffsetMm: 150.0,
+        materialGrade: "A36",
+        weldType: "FULL_PENETRATION",
+        preheatTempC: 200,
+        pwhtRequired: true,
+        notes: "Very large bore - extreme loads, requires braces",
+      },
+      {
+        dnMin: 1000,
+        dnMax: 1200,
+        pressureClassMin: null,
+        pressureClassMax: 300,
+        gussetCount: 6,
+        thicknessMm: 25.0,
+        placementType: "FULL_COVERAGE",
+        heelOffsetMm: 150.0,
+        materialGrade: "A36",
+        weldType: "FULL_PENETRATION",
+        preheatTempC: 200,
+        pwhtRequired: true,
+        notes: "Maximum size - full structural support with braces",
+      },
+    ];
+
+    for (const config of configurations) {
+      await queryRunner.query(`
+        INSERT INTO gusset_configurations (
+          dn_min, dn_max, pressure_class_min, pressure_class_max,
+          gusset_count, thickness_mm, placement_type, heel_offset_mm,
+          gusset_angle_degrees, symmetry_spacing_degrees,
+          material_grade, allowable_stress_mpa, weld_type, weld_electrode,
+          preheat_temp_c, pwht_required, notes
+        ) VALUES (
+          ${config.dnMin}, ${config.dnMax},
+          ${config.pressureClassMin ?? "NULL"}, ${config.pressureClassMax ?? "NULL"},
+          ${config.gussetCount}, ${config.thicknessMm}, '${config.placementType}', ${config.heelOffsetMm},
+          45.0, 90.0,
+          '${config.materialGrade}', 250.0, '${config.weldType}', 'E7018',
+          ${config.preheatTempC ?? "NULL"}, ${config.pwhtRequired}, '${config.notes}'
+        )
+      `);
+    }
+
+    console.log("Gusset configuration table created and seeded with reference data.");
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE IF EXISTS gusset_configurations`);
+  }
+}
