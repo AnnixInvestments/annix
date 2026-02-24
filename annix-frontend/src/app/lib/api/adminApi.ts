@@ -1208,6 +1208,53 @@ class AdminApiClient {
       `/admin/messaging/response-metrics${queryString ? `?${queryString}` : ""}`,
     );
   }
+
+  async rbacApps(): Promise<RbacApp[]> {
+    return this.request<RbacApp[]>("/admin/rbac/apps");
+  }
+
+  async rbacAppDetails(code: string): Promise<RbacAppDetail> {
+    return this.request<RbacAppDetail>(`/admin/rbac/apps/${encodeURIComponent(code)}`);
+  }
+
+  async rbacUsersWithAccess(appCode: string): Promise<RbacUserAccess[]> {
+    return this.request<RbacUserAccess[]>(
+      `/admin/rbac/apps/${encodeURIComponent(appCode)}/users`,
+    );
+  }
+
+  async rbacSearchUsers(query: string): Promise<RbacSearchUser[]> {
+    return this.request<RbacSearchUser[]>(
+      `/admin/rbac/users/search?q=${encodeURIComponent(query)}`,
+    );
+  }
+
+  async rbacAssignAccess(userId: number, dto: AssignUserAccessDto): Promise<RbacUserAccess> {
+    return this.request<RbacUserAccess>(`/admin/rbac/users/${userId}/access`, {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async rbacUpdateAccess(accessId: number, dto: UpdateUserAccessDto): Promise<RbacUserAccess> {
+    return this.request<RbacUserAccess>(`/admin/rbac/access/${accessId}`, {
+      method: "PATCH",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async rbacRevokeAccess(accessId: number): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/admin/rbac/access/${accessId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async rbacInviteUser(dto: InviteUserDto): Promise<InviteUserResponse> {
+    return this.request<InviteUserResponse>("/admin/rbac/invite", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
 }
 
 export interface NixUploadResponse {
@@ -1459,6 +1506,98 @@ export interface ResponseMetricsSummaryDto {
   totalMessages: number;
   slaComplianceRate: number;
   responsesByDay: { date: string; count: number }[];
+}
+
+export interface RbacApp {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RbacAppPermission {
+  id: number;
+  appId: number;
+  code: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+}
+
+export interface RbacAppRole {
+  id: number;
+  appId: number;
+  code: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+}
+
+export interface RbacAppDetail extends RbacApp {
+  permissions: RbacAppPermission[];
+  roles: RbacAppRole[];
+}
+
+export interface RbacUserAccess {
+  id: number;
+  userId: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  appCode: string;
+  roleCode: string | null;
+  roleName: string | null;
+  useCustomPermissions: boolean;
+  permissionCodes: string[] | null;
+  permissionCount: number | null;
+  grantedAt: string;
+  expiresAt: string | null;
+  grantedById: number | null;
+}
+
+export interface RbacSearchUser {
+  id: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+export interface AssignUserAccessDto {
+  appCode: string;
+  roleCode?: string | null;
+  useCustomPermissions?: boolean;
+  permissionCodes?: string[];
+  expiresAt?: string | null;
+}
+
+export interface UpdateUserAccessDto {
+  roleCode?: string | null;
+  useCustomPermissions?: boolean;
+  permissionCodes?: string[];
+  expiresAt?: string | null;
+}
+
+export interface InviteUserDto {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  appCode: string;
+  roleCode?: string | null;
+  useCustomPermissions?: boolean;
+  permissionCodes?: string[];
+  expiresAt?: string | null;
+}
+
+export interface InviteUserResponse {
+  userId: number;
+  email: string;
+  accessId: number;
+  isNewUser: boolean;
+  message: string;
 }
 
 export const adminApiClient = new AdminApiClient();

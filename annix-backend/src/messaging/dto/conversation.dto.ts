@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsEnum,
@@ -92,6 +93,7 @@ export class ConversationFilterDto {
     example: 1,
     default: 1,
   })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   page?: number;
@@ -101,6 +103,7 @@ export class ConversationFilterDto {
     example: 20,
     default: 20,
   })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   limit?: number;

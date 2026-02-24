@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsDateString,
@@ -101,6 +102,7 @@ export class BroadcastFilterDto {
     example: 1,
     default: 1,
   })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   page?: number;
@@ -110,6 +112,7 @@ export class BroadcastFilterDto {
     example: 20,
     default: 20,
   })
+  @Type(() => Number)
   @IsNumber()
   @IsOptional()
   limit?: number;

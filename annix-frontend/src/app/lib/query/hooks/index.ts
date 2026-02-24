@@ -33,6 +33,16 @@ export {
   useUpdateReferenceData,
 } from "./admin/useReferenceData";
 export {
+  useRbacApps,
+  useRbacAppDetails,
+  useRbacAssignAccess,
+  useRbacInviteUser,
+  useRbacRevokeAccess,
+  useRbacSearchUsers,
+  useRbacUpdateAccess,
+  useRbacUsersWithAccess,
+} from "./admin/useRbac";
+export {
   useCreateRubberOrder,
   useDeleteRubberCoding,
   useDeleteRubberCompany,

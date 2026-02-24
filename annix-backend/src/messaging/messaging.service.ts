@@ -223,6 +223,74 @@ export class MessagingService {
     return { conversations: summaries, total };
   }
 
+  async allConversationsForAdmin(
+    filters: ConversationFilterDto,
+  ): Promise<{ conversations: ConversationSummaryDto[]; total: number }> {
+    const page = filters.page || 1;
+    const limit = filters.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.conversationRepo.createQueryBuilder("c");
+
+    if (filters.isArchived !== undefined) {
+      queryBuilder.andWhere("c.isArchived = :isArchived", {
+        isArchived: filters.isArchived,
+      });
+    }
+
+    if (filters.relatedEntityType) {
+      queryBuilder.andWhere("c.relatedEntityType = :relatedEntityType", {
+        relatedEntityType: filters.relatedEntityType,
+      });
+    }
+
+    if (filters.relatedEntityId) {
+      queryBuilder.andWhere("c.relatedEntityId = :relatedEntityId", {
+        relatedEntityId: filters.relatedEntityId,
+      });
+    }
+
+    queryBuilder.orderBy("c.lastMessageAt", "DESC", "NULLS LAST").skip(skip).take(limit);
+
+    const [conversations, total] = await queryBuilder.getManyAndCount();
+
+    const summaries = await Promise.all(conversations.map((c) => this.conversationToSummaryAdmin(c)));
+
+    return { conversations: summaries, total };
+  }
+
+  private async conversationToSummaryAdmin(
+    conversation: Conversation,
+  ): Promise<ConversationSummaryDto> {
+    const participants = await this.participantRepo.find({
+      where: { conversationId: conversation.id, isActive: true },
+      relations: ["user"],
+    });
+
+    const unreadCount = 0;
+
+    const lastMessage = await this.messageRepo.findOne({
+      where: { conversationId: conversation.id, isDeleted: false },
+      order: { sentAt: "DESC" },
+    });
+
+    return {
+      id: conversation.id,
+      subject: conversation.subject,
+      conversationType: conversation.conversationType,
+      relatedEntityType: conversation.relatedEntityType,
+      relatedEntityId: conversation.relatedEntityId,
+      unreadCount,
+      lastMessagePreview: lastMessage?.content?.substring(0, 100) ?? null,
+      lastMessageAt: lastMessage?.sentAt ?? null,
+      participantNames: participants.map(
+        (p) => `${p.user?.firstName || ""} ${p.user?.lastName || ""}`.trim() || p.user?.email || "",
+      ),
+      isArchived: conversation.isArchived,
+      createdAt: conversation.createdAt,
+    };
+  }
+
   async conversationDetail(conversationId: number, userId: number): Promise<ConversationDetailDto> {
     const participant = await this.participantRepo.findOne({
       where: { conversationId, userId, isActive: true },

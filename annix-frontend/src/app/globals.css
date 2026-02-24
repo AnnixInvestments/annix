@@ -54,10 +54,10 @@ body {
 
 /* Dark mode overrides for common elements */
 .dark {
-  /* Form inputs */
-  input,
-  select,
-  textarea {
+  /* Form inputs - exclude those with explicit text-gray-900 class */
+  input:not(.text-gray-900):not([class*="text-gray-900"]),
+  select:not(.text-gray-900):not([class*="text-gray-900"]),
+  textarea:not(.text-gray-900):not([class*="text-gray-900"]) {
     background-color: var(--input-bg);
     border-color: var(--input-border);
     color: var(--foreground);
@@ -228,6 +228,25 @@ body {
   -webkit-text-fill-color: white !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
   caret-color: white !important;
+}
+
+/* Ensure modal inputs always have dark text on white background */
+input.text-gray-900,
+input[class*="text-gray-900"] {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+}
+
+input.text-gray-900:-webkit-autofill,
+input.text-gray-900:-webkit-autofill:hover,
+input.text-gray-900:-webkit-autofill:focus,
+input[class*="text-gray-900"]:-webkit-autofill,
+input[class*="text-gray-900"]:-webkit-autofill:hover,
+input[class*="text-gray-900"]:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px white inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
 }
 
 /* Global input hover effects */

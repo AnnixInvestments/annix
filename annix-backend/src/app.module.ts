@@ -60,6 +60,7 @@ import { PublicModule } from "./public/public.module";
 import { PumpOrderModule } from "./pump-order/pump-order.module";
 import { PumpProductModule } from "./pump-product/pump-product.module";
 import { PvcModule } from "./pvc/pvc.module";
+import { RbacModule } from "./rbac/rbac.module";
 import { ReducerCalculatorModule } from "./reducer-calculator/reducer-calculator.module";
 import { RemoteAccessModule } from "./remote-access/remote-access.module";
 import { RetainingRingWeightModule } from "./retaining-ring-weight/retaining-ring-weight.module";
@@ -161,6 +162,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     HdpeModule,
     PvcModule,
     AdminModule,
+    RbacModule,
     NixModule,
     RubberLiningModule,
     PipeSteelWorkModule,

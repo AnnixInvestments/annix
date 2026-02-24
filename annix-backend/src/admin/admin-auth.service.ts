@@ -34,10 +34,11 @@ export class AdminAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<AdminLoginResponseDto> {
-    const user = await this.userRepo.findOne({
-      where: { email: loginDto.email },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo
+      .createQueryBuilder("user")
+      .leftJoinAndSelect("user.roles", "roles")
+      .where("LOWER(user.email) = LOWER(:email)", { email: loginDto.email })
+      .getOne();
 
     if (!user) {
       await this.auditService.log({

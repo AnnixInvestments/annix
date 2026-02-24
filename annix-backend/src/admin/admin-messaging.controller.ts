@@ -55,11 +55,9 @@ export class AdminMessagingController {
     description: "Conversations retrieved",
   })
   async conversations(
-    @Req() req: Request,
     @Query() filters: ConversationFilterDto,
   ): Promise<{ conversations: ConversationSummaryDto[]; total: number }> {
-    const userId = req["user"].id;
-    return this.messagingService.conversationsForUser(userId, filters);
+    return this.messagingService.allConversationsForAdmin(filters);
   }
 
   @Post("conversations")

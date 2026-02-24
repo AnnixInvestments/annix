@@ -13,6 +13,7 @@ export { messagingKeys } from "./messagingKeys";
 export type { NixSessionQueryParams } from "./nixKeys";
 export { nixKeys } from "./nixKeys";
 export { publicKeys } from "./publicKeys";
+export { rbacKeys } from "./rbacKeys";
 export { referenceDataKeys } from "./referenceDataKeys";
 export type { ReviewQueryParams } from "./reviewKeys";
 export { reviewKeys } from "./reviewKeys";
