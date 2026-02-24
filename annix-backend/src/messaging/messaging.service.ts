@@ -259,6 +259,85 @@ export class MessagingService {
     return { conversations: summaries, total };
   }
 
+  async conversationDetailForAdmin(conversationId: number): Promise<ConversationDetailDto> {
+    const conversation = await this.conversationRepo.findOne({
+      where: { id: conversationId },
+      relations: ["participants", "participants.user"],
+    });
+
+    if (!conversation) {
+      throw new NotFoundException("Conversation not found");
+    }
+
+    const messages = await this.messagesForConversationAdmin(conversationId, { limit: 50 });
+
+    const summary = await this.conversationToSummaryAdmin(conversation);
+
+    const participantDtos = conversation.participants
+      .filter((p) => p.isActive)
+      .map((p) => this.participantToDto(p));
+
+    return {
+      ...summary,
+      participants: participantDtos,
+      messages: messages.messages,
+    };
+  }
+
+  async messagesForConversationAdmin(
+    conversationId: number,
+    pagination: MessagePaginationDto,
+  ): Promise<{ messages: MessageDto[]; hasMore: boolean }> {
+    const conversation = await this.conversationRepo.findOne({
+      where: { id: conversationId },
+    });
+
+    if (!conversation) {
+      throw new NotFoundException("Conversation not found");
+    }
+
+    const limit = pagination.limit || 50;
+
+    const queryBuilder = this.messageRepo
+      .createQueryBuilder("m")
+      .leftJoinAndSelect("m.sender", "sender")
+      .leftJoinAndSelect("m.attachments", "attachments")
+      .leftJoinAndSelect("m.readReceipts", "receipts")
+      .where("m.conversationId = :conversationId", { conversationId })
+      .andWhere("m.isDeleted = false");
+
+    if (pagination.beforeId) {
+      queryBuilder.andWhere("m.id < :beforeId", {
+        beforeId: pagination.beforeId,
+      });
+    }
+
+    if (pagination.afterId) {
+      queryBuilder.andWhere("m.id > :afterId", { afterId: pagination.afterId });
+    }
+
+    queryBuilder.orderBy("m.sentAt", "DESC").take(limit + 1);
+
+    const messages = await queryBuilder.getMany();
+
+    const hasMore = messages.length > limit;
+    const resultMessages = hasMore ? messages.slice(0, limit) : messages;
+
+    const messageDtos = resultMessages
+      .map((m) =>
+        this.messageToDto(
+          m,
+          m.sender?.firstName || "Unknown",
+          m.sender?.lastName || "",
+          m.attachments,
+          m.readReceipts,
+        ),
+      )
+      .reverse();
+
+    return { messages: messageDtos, hasMore };
+  }
+
   private async conversationToSummaryAdmin(
     conversation: Conversation,
   ): Promise<ConversationSummaryDto> {

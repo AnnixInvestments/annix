@@ -82,11 +82,9 @@ export class AdminMessagingController {
     description: "Conversation retrieved",
   })
   async conversation(
-    @Req() req: Request,
     @Param("id", ParseIntPipe) conversationId: number,
   ): Promise<ConversationDetailDto> {
-    const userId = req["user"].id;
-    return this.messagingService.conversationDetail(conversationId, userId);
+    return this.messagingService.conversationDetailForAdmin(conversationId);
   }
 
   @Get("conversations/:id/messages")
@@ -97,12 +95,10 @@ export class AdminMessagingController {
     description: "Messages retrieved",
   })
   async messages(
-    @Req() req: Request,
     @Param("id", ParseIntPipe) conversationId: number,
     @Query() pagination: MessagePaginationDto,
   ): Promise<{ messages: MessageDto[]; hasMore: boolean }> {
-    const userId = req["user"].id;
-    return this.messagingService.messagesForConversation(conversationId, userId, pagination);
+    return this.messagingService.messagesForConversationAdmin(conversationId, pagination);
   }
 
   @Post("conversations/:id/messages")
