@@ -130,6 +130,9 @@ interface Props {
   duckfootRibThicknessT2Mm?: number;
   duckfootGussetPointDDegrees?: number;
   duckfootGussetPointCDegrees?: number;
+  duckfootGussetCount?: number;
+  duckfootGussetPlacement?: "HEEL_ONLY" | "SYMMETRICAL" | "FULL_COVERAGE";
+  duckfootGussetThicknessMm?: number;
   sweepTeePipeALengthMm?: number;
 }
 
@@ -293,6 +296,9 @@ const Scene = (props: Props) => {
     duckfootRibThicknessT2Mm,
     duckfootGussetPointDDegrees,
     duckfootGussetPointCDegrees,
+    duckfootGussetCount,
+    duckfootGussetPlacement,
+    duckfootGussetThicknessMm,
     sweepTeePipeALengthMm,
     closureLengthMm = 0,
   } = props;
@@ -2656,6 +2662,96 @@ const Scene = (props: Props) => {
                         );
                       });
                     })()}
+                  </group>
+                );
+              })()}
+
+              {/* Additional gussets for count > 2 */}
+              {(() => {
+                const gussetCount = duckfootGussetCount || 2;
+                const gussetThickness = (duckfootGussetThicknessMm || 12) / SCALE;
+                const placement = duckfootGussetPlacement || "HEEL_ONLY";
+
+                if (gussetCount <= 2) return null;
+
+                const additionalGussets = [];
+                const gussetColors = ["#009933", "#990099", "#cc3300", "#006699"];
+
+                if (gussetCount >= 4) {
+                  additionalGussets.push(
+                    <mesh
+                      key="gusset-3"
+                      position={[basePlateXDim / 4, ribHeightH / 3, basePlateYDim / 4]}
+                      rotation={[0, Math.PI / 4, 0]}
+                    >
+                      <boxGeometry args={[gussetThickness, ribHeightH / 1.5, basePlateYDim / 3]} />
+                      <meshStandardMaterial
+                        color={gussetColors[0]}
+                        metalness={0.8}
+                        roughness={0.25}
+                        envMapIntensity={1.0}
+                      />
+                    </mesh>,
+                    <mesh
+                      key="gusset-4"
+                      position={[-basePlateXDim / 4, ribHeightH / 3, -basePlateYDim / 4]}
+                      rotation={[0, Math.PI / 4, 0]}
+                    >
+                      <boxGeometry args={[gussetThickness, ribHeightH / 1.5, basePlateYDim / 3]} />
+                      <meshStandardMaterial
+                        color={gussetColors[1]}
+                        metalness={0.8}
+                        roughness={0.25}
+                        envMapIntensity={1.0}
+                      />
+                    </mesh>,
+                  );
+                }
+
+                if (gussetCount >= 6) {
+                  additionalGussets.push(
+                    <mesh
+                      key="gusset-5"
+                      position={[-basePlateXDim / 4, ribHeightH / 3, basePlateYDim / 4]}
+                      rotation={[0, -Math.PI / 4, 0]}
+                    >
+                      <boxGeometry args={[gussetThickness, ribHeightH / 1.5, basePlateYDim / 3]} />
+                      <meshStandardMaterial
+                        color={gussetColors[2]}
+                        metalness={0.8}
+                        roughness={0.25}
+                        envMapIntensity={1.0}
+                      />
+                    </mesh>,
+                    <mesh
+                      key="gusset-6"
+                      position={[basePlateXDim / 4, ribHeightH / 3, -basePlateYDim / 4]}
+                      rotation={[0, -Math.PI / 4, 0]}
+                    >
+                      <boxGeometry args={[gussetThickness, ribHeightH / 1.5, basePlateYDim / 3]} />
+                      <meshStandardMaterial
+                        color={gussetColors[3]}
+                        metalness={0.8}
+                        roughness={0.25}
+                        envMapIntensity={1.0}
+                      />
+                    </mesh>,
+                  );
+                }
+
+                return (
+                  <group>
+                    {additionalGussets}
+                    <Text
+                      position={[0, -plateThickness - 0.3, 0]}
+                      fontSize={0.2}
+                      color="#333333"
+                      anchorX="center"
+                      anchorY="middle"
+                      rotation={[-Math.PI / 2, 0, 0]}
+                    >
+                      {`${gussetCount} Gussets (${placement.replace(/_/g, " ")})`}
+                    </Text>
                   </group>
                 );
               })()}

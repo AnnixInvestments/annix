@@ -54,6 +54,8 @@ import { log } from "@/app/lib/logger";
 import {
   calculateBendWeldVolume,
   calculateMinWallThickness,
+  recommendDuckfootGussetCount,
+  recommendDuckfootGussetThickness,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
 import {
@@ -346,6 +348,26 @@ function BendFormComponent({
             newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPointDDegrees : undefined,
           duckfootGussetPointCDegrees:
             newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPointCDegrees : undefined,
+          duckfootGussetCount:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetCount : undefined,
+          duckfootGussetPlacement:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPlacement : undefined,
+          duckfootGussetThicknessMm:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetThicknessMm : undefined,
+          duckfootGussetMaterialGrade:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetMaterialGrade : undefined,
+          duckfootGussetHeelOffsetMm:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetHeelOffsetMm : undefined,
+          duckfootGussetAngleDegrees:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetAngleDegrees : undefined,
+          duckfootGussetWeldType:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetWeldType : undefined,
+          duckfootGussetWeldElectrode:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetWeldElectrode : undefined,
+          duckfootGussetPreheatTempC:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPreheatTempC : undefined,
+          duckfootGussetPwhtRequired:
+            newItemType === "DUCKFOOT_BEND" ? entry.specs?.duckfootGussetPwhtRequired : undefined,
           sweepTeePipeALengthMm:
             newItemType === "SWEEP_TEE" ? entry.specs?.sweepTeePipeALengthMm : undefined,
         },
@@ -2801,6 +2823,248 @@ function BendFormComponent({
                     </div>
                   );
                 })()}
+
+                {/* Gusset Configuration Row */}
+                <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-600">
+                  <h5 className="text-[10px] font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Gusset Configuration
+                  </h5>
+                  {(() => {
+                    const nominalBore = entry.specs?.nominalBoreMm;
+                    const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
+                    const recommendedCount = nominalBore ? recommendDuckfootGussetCount(nominalBore) : 2;
+                    const recommendedThickness = nominalBore && workingPressure
+                      ? recommendDuckfootGussetThickness({
+                          nominalBoreMm: nominalBore,
+                          designPressureBar: workingPressure,
+                        })
+                      : null;
+
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                            Count
+                            <span
+                              className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help"
+                              title="Number of gussets (2=basic, 4=medium bore, 6=large bore)"
+                            >
+                              ?
+                            </span>
+                          </label>
+                          <select
+                            value={entry.specs?.duckfootGussetCount || recommendedCount}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value, 10);
+                              const updatedEntry = {
+                                ...entry,
+                                specs: { ...entry.specs, duckfootGussetCount: value },
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            className="w-full px-1 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                          >
+                            <option value={2}>2</option>
+                            <option value={4}>4</option>
+                            <option value={6}>6</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                            Placement
+                            <span
+                              className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help"
+                              title="Gusset placement pattern: HEEL_ONLY (at base), SYMMETRICAL (around pipe), FULL_COVERAGE (comprehensive)"
+                            >
+                              ?
+                            </span>
+                          </label>
+                          <select
+                            value={entry.specs?.duckfootGussetPlacement || "HEEL_ONLY"}
+                            onChange={(e) => {
+                              const updatedEntry = {
+                                ...entry,
+                                specs: { ...entry.specs, duckfootGussetPlacement: e.target.value },
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            className="w-full px-1 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                          >
+                            <option value="HEEL_ONLY">Heel Only</option>
+                            <option value="SYMMETRICAL">Symmetrical</option>
+                            <option value="FULL_COVERAGE">Full Coverage</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                            Thickness
+                            <span
+                              className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help"
+                              title={`Gusset plate thickness in mm${recommendedThickness ? ` (calculated: ${recommendedThickness.toFixed(1)}mm)` : ""}`}
+                            >
+                              ?
+                            </span>
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.duckfootGussetThicknessMm || recommendedThickness || ""}
+                            onChange={(e) => {
+                              const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                              const updatedEntry = {
+                                ...entry,
+                                specs: { ...entry.specs, duckfootGussetThicknessMm: value },
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            placeholder={recommendedThickness ? recommendedThickness.toFixed(1) : "mm"}
+                            className="w-full px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                            min="6"
+                            step="0.5"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                            Material
+                            <span
+                              className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help"
+                              title="Gusset plate material grade"
+                            >
+                              ?
+                            </span>
+                          </label>
+                          <select
+                            value={entry.specs?.duckfootGussetMaterialGrade || "A36"}
+                            onChange={(e) => {
+                              const updatedEntry = {
+                                ...entry,
+                                specs: { ...entry.specs, duckfootGussetMaterialGrade: e.target.value },
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            className="w-full px-1 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                          >
+                            <option value="A36">A36</option>
+                            <option value="Q235">Q235</option>
+                            <option value="A283_C">A283-C</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                            Weld Type
+                            <span
+                              className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help"
+                              title="Type of weld for gusset attachment"
+                            >
+                              ?
+                            </span>
+                          </label>
+                          <select
+                            value={entry.specs?.duckfootGussetWeldType || "FILLET"}
+                            onChange={(e) => {
+                              const updatedEntry = {
+                                ...entry,
+                                specs: { ...entry.specs, duckfootGussetWeldType: e.target.value },
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            className="w-full px-1 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                          >
+                            <option value="FILLET">Fillet</option>
+                            <option value="FULL_PENETRATION">Full Pen.</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                            Electrode
+                            <span
+                              className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help"
+                              title="Welding electrode specification"
+                            >
+                              ?
+                            </span>
+                          </label>
+                          <select
+                            value={entry.specs?.duckfootGussetWeldElectrode || "E7018"}
+                            onChange={(e) => {
+                              const updatedEntry = {
+                                ...entry,
+                                specs: { ...entry.specs, duckfootGussetWeldElectrode: e.target.value },
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            className="w-full px-1 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                          >
+                            <option value="E7018">E7018</option>
+                            <option value="E7024">E7024</option>
+                            <option value="E6013">E6013</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                            Preheat
+                            <span
+                              className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help"
+                              title="Preheat temperature in °C (optional, for thicker plates)"
+                            >
+                              ?
+                            </span>
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.specs?.duckfootGussetPreheatTempC || ""}
+                            onChange={(e) => {
+                              const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                              const updatedEntry = {
+                                ...entry,
+                                specs: { ...entry.specs, duckfootGussetPreheatTempC: value },
+                              };
+                              updatedEntry.description = generateItemDescription(updatedEntry);
+                              onUpdateEntry(entry.id, updatedEntry);
+                            }}
+                            placeholder="°C"
+                            className="w-full px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
+                            min="0"
+                            max="400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                            PWHT
+                            <span
+                              className="ml-0.5 text-gray-400 dark:text-gray-500 font-normal cursor-help"
+                              title="Post-Weld Heat Treatment required"
+                            >
+                              ?
+                            </span>
+                          </label>
+                          <div className="flex items-center h-[30px]">
+                            <input
+                              type="checkbox"
+                              checked={entry.specs?.duckfootGussetPwhtRequired || false}
+                              onChange={(e) => {
+                                const updatedEntry = {
+                                  ...entry,
+                                  specs: { ...entry.specs, duckfootGussetPwhtRequired: e.target.checked },
+                                };
+                                updatedEntry.description = generateItemDescription(updatedEntry);
+                                onUpdateEntry(entry.id, updatedEntry);
+                              }}
+                              className="w-4 h-4 text-orange-500 border-gray-300 dark:border-gray-600 rounded focus:ring-orange-500"
+                            />
+                            <span className="ml-1.5 text-[10px] text-gray-600 dark:text-gray-400">Required</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
                 {entry.specs?.nominalBoreMm && (
                   <div className="mt-2 text-xs text-orange-700 dark:text-orange-300">
                     <span className="font-medium">Note:</span> Default dimensions are based on MPS
@@ -4523,6 +4787,9 @@ function BendFormComponent({
                       duckfootRibThicknessT2Mm={entry.specs?.duckfootRibThicknessT2Mm}
                       duckfootGussetPointDDegrees={entry.specs?.duckfootGussetPointDDegrees}
                       duckfootGussetPointCDegrees={entry.specs?.duckfootGussetPointCDegrees}
+                      duckfootGussetCount={entry.specs?.duckfootGussetCount}
+                      duckfootGussetPlacement={entry.specs?.duckfootGussetPlacement}
+                      duckfootGussetThicknessMm={entry.specs?.duckfootGussetThicknessMm}
                       sweepTeePipeALengthMm={entry.specs?.sweepTeePipeALengthMm}
                     />
                   </div>

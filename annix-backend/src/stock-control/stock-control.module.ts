@@ -16,6 +16,7 @@ import { JobCardImportController } from "./controllers/job-card-import.controlle
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
 import { ReportsController } from "./controllers/reports.controller";
+import { QrCodeController } from "./controllers/qr-code.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
 import { JobCardCoatingAnalysis } from "./entities/coating-analysis.entity";
 import { DeliveryNote } from "./entities/delivery-note.entity";
@@ -46,6 +47,7 @@ import { JobCardImportService } from "./services/job-card-import.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
 import { ReportsService } from "./services/reports.service";
+import { QrCodeService } from "./services/qr-code.service";
 import { RequisitionService } from "./services/requisition.service";
 
 @Module({
@@ -94,6 +96,7 @@ import { RequisitionService } from "./services/requisition.service";
     DashboardController,
     ReportsController,
     InvitationController,
+    QrCodeController,
     RequisitionsController,
   ],
   providers: [
@@ -111,6 +114,7 @@ import { RequisitionService } from "./services/requisition.service";
     M2CalculationService,
     CoatingAnalysisService,
     DashboardService,
+    QrCodeService,
     ReportsService,
     RequisitionService,
   ],

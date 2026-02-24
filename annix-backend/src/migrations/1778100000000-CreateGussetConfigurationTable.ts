@@ -218,6 +218,6 @@ export class CreateGussetConfigurationTable1778100000000 implements MigrationInt
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS gusset_configurations`);
+    await queryRunner.query("DROP TABLE IF EXISTS gusset_configurations");
   }
 }
