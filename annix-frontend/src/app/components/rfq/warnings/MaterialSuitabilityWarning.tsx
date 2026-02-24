@@ -1,6 +1,10 @@
 "use client";
 
-import { checkMaterialSuitability, suitableMaterials } from "@/app/lib/config/rfq/materialLimits";
+import {
+  checkSuitabilityFromCache,
+  useAllMaterialLimits,
+  useSuitableMaterials,
+} from "@/app/lib/query/hooks";
 
 type ColorScheme = "blue" | "purple" | "green";
 
@@ -34,11 +38,22 @@ export function MaterialSuitabilityWarning({
   onSelectSpec,
   className = "",
 }: MaterialSuitabilityWarningProps) {
+  const { data: allLimits } = useAllMaterialLimits();
+  const { data: suitableSpecPatterns } = useSuitableMaterials(
+    effectiveTemperature,
+    effectivePressure,
+  );
+
   if (!steelSpecName || (!effectivePressure && !effectiveTemperature)) {
     return null;
   }
 
-  const suitability = checkMaterialSuitability(
+  if (!allLimits) {
+    return null;
+  }
+
+  const suitability = checkSuitabilityFromCache(
+    allLimits,
     steelSpecName,
     effectiveTemperature,
     effectivePressure,
@@ -48,10 +63,12 @@ export function MaterialSuitabilityWarning({
     return null;
   }
 
-  const suitableSpecPatterns = suitableMaterials(effectiveTemperature, effectivePressure);
-  const recommendedSpecs = allSteelSpecs.filter((s) =>
-    suitableSpecPatterns.some((pattern) => s.steelSpecName?.includes(pattern)),
-  );
+  const recommendedSpecs =
+    (suitableSpecPatterns ?? []).length > 0
+      ? allSteelSpecs.filter((s) =>
+          suitableSpecPatterns!.some((pattern) => s.steelSpecName?.includes(pattern)),
+        )
+      : [];
 
   const buttonColors = buttonColorClasses[color];
 

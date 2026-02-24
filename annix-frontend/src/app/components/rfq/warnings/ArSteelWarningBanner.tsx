@@ -1,7 +1,7 @@
 "use client";
 
-import { isWearResistantSteel } from "@/app/lib/config/rfq/materialLimits";
 import { AR_STEEL_GRADES, isArSteelSpec } from "@/app/lib/config/rfq/pipeSchedules";
+import { isWearResistant, useAllMaterialLimits } from "@/app/lib/query/hooks";
 
 interface ArSteelWarningBannerProps {
   steelSpecName: string | undefined;
@@ -9,9 +9,12 @@ interface ArSteelWarningBannerProps {
 }
 
 export function ArSteelWarningBanner({ steelSpecName, className = "" }: ArSteelWarningBannerProps) {
+  const { data: allLimits } = useAllMaterialLimits();
+
   if (!steelSpecName) return null;
 
-  const isArSteel = isWearResistantSteel(steelSpecName) || isArSteelSpec(steelSpecName);
+  const isArSteel =
+    (allLimits ? isWearResistant(allLimits, steelSpecName) : false) || isArSteelSpec(steelSpecName);
 
   if (!isArSteel) return null;
 

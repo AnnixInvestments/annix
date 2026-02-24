@@ -36,6 +36,10 @@ export type FittingType =
   | "CONCENTRIC_REDUCER"
   | "ECCENTRIC_REDUCER";
 
+export type GussetPlacementType = "HEEL_ONLY" | "SYMMETRICAL" | "FULL_COVERAGE";
+export type GussetMaterialGrade = "Q235" | "A36" | "A283_C";
+export type GussetWeldType = "FULL_PENETRATION" | "FILLET";
+
 export type FittingStandard = "SABS62" | "SABS719";
 
 export interface BasePipeSpecs {
@@ -76,6 +80,23 @@ export interface BendSpecs extends BasePipeSpecs {
   blankFlangePositions?: string[];
   addBlankFlange?: boolean;
   stubs?: StubSpec[];
+  duckfootBasePlateXMm?: number;
+  duckfootBasePlateYMm?: number;
+  duckfootInletCentreHeightMm?: number;
+  duckfootRibThicknessT2Mm?: number;
+  duckfootPlateThicknessT1Mm?: number;
+  duckfootGussetPointDDegrees?: number;
+  duckfootGussetPointCDegrees?: number;
+  duckfootGussetCount?: number;
+  duckfootGussetPlacement?: GussetPlacementType;
+  duckfootGussetThicknessMm?: number;
+  duckfootGussetMaterialGrade?: GussetMaterialGrade;
+  duckfootGussetHeelOffsetMm?: number;
+  duckfootGussetAngleDegrees?: number;
+  duckfootGussetWeldType?: GussetWeldType;
+  duckfootGussetWeldElectrode?: string;
+  duckfootGussetPreheatTempC?: number;
+  duckfootGussetPwhtRequired?: boolean;
 }
 
 export interface StubSpec {
@@ -126,6 +147,13 @@ export interface BendCalculation extends BaseCalculation {
   bendWeight?: number;
   totalWeldLengthMm?: number;
   flangeWeight?: number;
+  duckfootBasePlateWeight?: number;
+  duckfootRibWeight?: number;
+  duckfootGussetWeight?: number;
+  duckfootTotalSteelworkWeight?: number;
+  duckfootGussetWeldLengthMm?: number;
+  duckfootThrustForceKn?: number;
+  duckfootBendingMomentKnm?: number;
 }
 
 export interface FittingCalculation extends BaseCalculation {

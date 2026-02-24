@@ -7,6 +7,7 @@ export { customerKeys } from "./customerKeys";
 export type { DrawingQueryParams } from "./drawingKeys";
 export { drawingKeys } from "./drawingKeys";
 export { featureFlagKeys } from "./featureFlagKeys";
+export { materialValidationKeys } from "./materialValidationKeys";
 export { messagingKeys } from "./messagingKeys";
 export type { NixSessionQueryParams } from "./nixKeys";
 export { nixKeys } from "./nixKeys";

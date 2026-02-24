@@ -398,6 +398,19 @@ export {
   useReviews,
 } from "./review/useReviews";
 export type {
+  CachedSuitabilityResult,
+  MaterialLimit,
+  MaterialSuitabilityResult,
+} from "./rfq/useMaterialValidation";
+export {
+  checkSuitabilityFromCache,
+  findMaterialLimits,
+  isWearResistant,
+  useAllMaterialLimits,
+  useMaterialSuitability,
+  useSuitableMaterials,
+} from "./rfq/useMaterialValidation";
+export type {
   Rfq,
   RfqDetail,
   RfqDetailBoq,
