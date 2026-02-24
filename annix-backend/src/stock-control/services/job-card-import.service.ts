@@ -37,6 +37,7 @@ export interface JobCardImportRow {
 export interface JobCardImportResult {
   totalRows: number;
   created: number;
+  updated: number;
   skipped: number;
   errors: { row: number; message: string }[];
   createdJobCardIds: number[];
@@ -107,6 +108,7 @@ export class JobCardImportService {
     const result: JobCardImportResult = {
       totalRows: rows.length,
       created: 0,
+      updated: 0,
       skipped: 0,
       errors: [],
       createdJobCardIds: [],
@@ -124,8 +126,11 @@ export class JobCardImportService {
         const customFields =
           row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
 
-        const jobCard = this.jobCardRepo.create({
-          jobNumber: row.jobNumber,
+        const existing = await this.jobCardRepo.findOne({
+          where: { jobNumber: row.jobNumber, companyId },
+        });
+
+        const fieldValues = {
           jcNumber: row.jcNumber || null,
           pageNumber: row.pageNumber || null,
           jobName: row.jobName,
@@ -138,30 +143,62 @@ export class JobCardImportService {
           notes: row.notes || null,
           reference: row.reference || null,
           customFields,
-          status: JobCardStatus.DRAFT,
-          companyId,
-        });
-        const saved = await this.jobCardRepo.save(jobCard);
+        };
 
-        if (row.lineItems && row.lineItems.length > 0) {
-          const lineItemEntities = row.lineItems.map((li, idx) =>
-            this.lineItemRepo.create({
-              jobCardId: saved.id,
-              itemCode: li.itemCode || null,
-              itemDescription: li.itemDescription || null,
-              itemNo: li.itemNo || null,
-              quantity: li.quantity ? parseFloat(li.quantity) : null,
-              jtNo: li.jtNo || null,
-              m2: li.m2 ?? null,
-              sortOrder: idx,
-              companyId,
-            }),
-          );
-          await this.lineItemRepo.save(lineItemEntities);
+        if (existing) {
+          Object.assign(existing, fieldValues);
+          const saved = await this.jobCardRepo.save(existing);
+
+          await this.lineItemRepo.delete({ jobCardId: saved.id });
+
+          if (row.lineItems && row.lineItems.length > 0) {
+            const lineItemEntities = row.lineItems.map((li, idx) =>
+              this.lineItemRepo.create({
+                jobCardId: saved.id,
+                itemCode: li.itemCode || null,
+                itemDescription: li.itemDescription || null,
+                itemNo: li.itemNo || null,
+                quantity: li.quantity ? parseFloat(li.quantity) : null,
+                jtNo: li.jtNo || null,
+                m2: li.m2 ?? null,
+                sortOrder: idx,
+                companyId,
+              }),
+            );
+            await this.lineItemRepo.save(lineItemEntities);
+          }
+
+          result.updated++;
+          result.createdJobCardIds.push(saved.id);
+        } else {
+          const jobCard = this.jobCardRepo.create({
+            jobNumber: row.jobNumber,
+            ...fieldValues,
+            status: JobCardStatus.DRAFT,
+            companyId,
+          });
+          const saved = await this.jobCardRepo.save(jobCard);
+
+          if (row.lineItems && row.lineItems.length > 0) {
+            const lineItemEntities = row.lineItems.map((li, idx) =>
+              this.lineItemRepo.create({
+                jobCardId: saved.id,
+                itemCode: li.itemCode || null,
+                itemDescription: li.itemDescription || null,
+                itemNo: li.itemNo || null,
+                quantity: li.quantity ? parseFloat(li.quantity) : null,
+                jtNo: li.jtNo || null,
+                m2: li.m2 ?? null,
+                sortOrder: idx,
+                companyId,
+              }),
+            );
+            await this.lineItemRepo.save(lineItemEntities);
+          }
+
+          result.created++;
+          result.createdJobCardIds.push(saved.id);
         }
-
-        result.created++;
-        result.createdJobCardIds.push(saved.id);
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         result.errors.push({ row: i + 1, message });

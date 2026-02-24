@@ -1715,10 +1715,14 @@ export default function JobCardImportPage() {
               <h3 className="text-lg leading-6 font-medium text-gray-900">Import Results</h3>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
                 <div className="bg-green-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-green-700">{result.created}</div>
                   <div className="text-sm text-green-600">Created</div>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-700">{result.updated}</div>
+                  <div className="text-sm text-blue-600">Updated</div>
                 </div>
                 <div className="bg-yellow-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-yellow-700">{result.skipped}</div>

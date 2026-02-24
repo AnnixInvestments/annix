@@ -383,6 +383,7 @@ export interface JobCardImportRow {
 export interface JobCardImportResult {
   totalRows: number;
   created: number;
+  updated: number;
   skipped: number;
   errors: { row: number; message: string }[];
 }
