@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import * as QRCode from "qrcode";
 import PDFDocument from "pdfkit";
-import { StockItem } from "../entities/stock-item.entity";
+import * as QRCode from "qrcode";
+import { Repository } from "typeorm";
 import { JobCard } from "../entities/job-card.entity";
+import { StockItem } from "../entities/stock-item.entity";
 
 export interface QrCodeData {
   type: "stock" | "job";
@@ -158,7 +158,9 @@ export class QrCodeService {
 
       const addField = (label: string, value: string | null | undefined) => {
         if (value) {
-          doc.font("Helvetica-Bold").text(`${label}:`, leftMargin, doc.y, { continued: true, width: labelWidth });
+          doc
+            .font("Helvetica-Bold")
+            .text(`${label}:`, leftMargin, doc.y, { continued: true, width: labelWidth });
           doc.font("Helvetica").text(` ${value}`, { width: 300 });
           doc.moveDown(0.3);
         }
@@ -195,12 +197,17 @@ export class QrCodeService {
           xPos += colWidths[i];
         });
 
-        doc.moveTo(leftMargin, tableTop + 15).lineTo(leftMargin + 440, tableTop + 15).stroke();
+        doc
+          .moveTo(leftMargin, tableTop + 15)
+          .lineTo(leftMargin + 440, tableTop + 15)
+          .stroke();
 
         doc.font("Helvetica").fontSize(9);
         let rowY = tableTop + 20;
 
-        const sortedItems = [...job.lineItems].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+        const sortedItems = [...job.lineItems].sort(
+          (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+        );
 
         sortedItems.slice(0, 20).forEach((item) => {
           xPos = leftMargin;
@@ -232,8 +239,14 @@ export class QrCodeService {
       doc.moveDown(0.3);
 
       const allocTableTop = doc.y;
-      doc.moveTo(leftMargin, allocTableTop).lineTo(leftMargin + 440, allocTableTop).stroke();
-      doc.moveTo(leftMargin, allocTableTop + 20).lineTo(leftMargin + 440, allocTableTop + 20).stroke();
+      doc
+        .moveTo(leftMargin, allocTableTop)
+        .lineTo(leftMargin + 440, allocTableTop)
+        .stroke();
+      doc
+        .moveTo(leftMargin, allocTableTop + 20)
+        .lineTo(leftMargin + 440, allocTableTop + 20)
+        .stroke();
 
       doc.fontSize(9).font("Helvetica-Bold");
       doc.text("Stock Item", leftMargin + 5, allocTableTop + 5, { width: 150 });
@@ -245,17 +258,40 @@ export class QrCodeService {
       let allocY = allocTableTop + 20;
       Array.from({ length: emptyRows }).forEach(() => {
         allocY += 20;
-        doc.moveTo(leftMargin, allocY).lineTo(leftMargin + 440, allocY).stroke();
+        doc
+          .moveTo(leftMargin, allocY)
+          .lineTo(leftMargin + 440, allocY)
+          .stroke();
       });
 
       doc.moveTo(leftMargin, allocTableTop).lineTo(leftMargin, allocY).stroke();
-      doc.moveTo(leftMargin + 155, allocTableTop).lineTo(leftMargin + 155, allocY).stroke();
-      doc.moveTo(leftMargin + 225, allocTableTop).lineTo(leftMargin + 225, allocY).stroke();
-      doc.moveTo(leftMargin + 335, allocTableTop).lineTo(leftMargin + 335, allocY).stroke();
-      doc.moveTo(leftMargin + 440, allocTableTop).lineTo(leftMargin + 440, allocY).stroke();
+      doc
+        .moveTo(leftMargin + 155, allocTableTop)
+        .lineTo(leftMargin + 155, allocY)
+        .stroke();
+      doc
+        .moveTo(leftMargin + 225, allocTableTop)
+        .lineTo(leftMargin + 225, allocY)
+        .stroke();
+      doc
+        .moveTo(leftMargin + 335, allocTableTop)
+        .lineTo(leftMargin + 335, allocY)
+        .stroke();
+      doc
+        .moveTo(leftMargin + 440, allocTableTop)
+        .lineTo(leftMargin + 440, allocY)
+        .stroke();
 
       const footerY = doc.page.height - 50;
-      doc.fontSize(8).fillColor("#666666").text(`Job ID: ${job.id} | Generated: ${new Date().toLocaleDateString()}`, leftMargin, footerY, { align: "center", width: doc.page.width - 80 });
+      doc
+        .fontSize(8)
+        .fillColor("#666666")
+        .text(
+          `Job ID: ${job.id} | Generated: ${new Date().toLocaleDateString()}`,
+          leftMargin,
+          footerY,
+          { align: "center", width: doc.page.width - 80 },
+        );
 
       doc.end();
     });

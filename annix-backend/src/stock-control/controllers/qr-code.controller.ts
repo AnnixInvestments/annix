@@ -1,9 +1,9 @@
 import { Controller, Get, Param, Req, Res, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiParam, ApiProduces, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
-import { QrCodeService } from "../services/qr-code.service";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
+import { QrCodeService } from "../services/qr-code.service";
 
 @ApiTags("Stock Control - QR Codes")
 @Controller("stock-control")

@@ -2831,14 +2831,18 @@ function BendFormComponent({
                   </h5>
                   {(() => {
                     const nominalBore = entry.specs?.nominalBoreMm;
-                    const workingPressure = entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
-                    const recommendedCount = nominalBore ? recommendDuckfootGussetCount(nominalBore) : 2;
-                    const recommendedThickness = nominalBore && workingPressure
-                      ? recommendDuckfootGussetThickness({
-                          nominalBoreMm: nominalBore,
-                          designPressureBar: workingPressure,
-                        })
-                      : null;
+                    const workingPressure =
+                      entry.specs?.workingPressureBar || globalSpecs?.workingPressureBar;
+                    const recommendedCount = nominalBore
+                      ? recommendDuckfootGussetCount(nominalBore)
+                      : 2;
+                    const recommendedThickness =
+                      nominalBore && workingPressure
+                        ? recommendDuckfootGussetThickness({
+                            nominalBoreMm: nominalBore,
+                            designPressureBar: workingPressure,
+                          })
+                        : null;
 
                     return (
                       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
@@ -2909,7 +2913,9 @@ function BendFormComponent({
                           </label>
                           <input
                             type="number"
-                            value={entry.specs?.duckfootGussetThicknessMm || recommendedThickness || ""}
+                            value={
+                              entry.specs?.duckfootGussetThicknessMm || recommendedThickness || ""
+                            }
                             onChange={(e) => {
                               const value = e.target.value ? parseFloat(e.target.value) : undefined;
                               const updatedEntry = {
@@ -2919,7 +2925,9 @@ function BendFormComponent({
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
                             }}
-                            placeholder={recommendedThickness ? recommendedThickness.toFixed(1) : "mm"}
+                            placeholder={
+                              recommendedThickness ? recommendedThickness.toFixed(1) : "mm"
+                            }
                             className="w-full px-1.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-orange-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                             min="6"
                             step="0.5"
@@ -2940,7 +2948,10 @@ function BendFormComponent({
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
-                                specs: { ...entry.specs, duckfootGussetMaterialGrade: e.target.value },
+                                specs: {
+                                  ...entry.specs,
+                                  duckfootGussetMaterialGrade: e.target.value,
+                                },
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
@@ -2993,7 +3004,10 @@ function BendFormComponent({
                             onChange={(e) => {
                               const updatedEntry = {
                                 ...entry,
-                                specs: { ...entry.specs, duckfootGussetWeldElectrode: e.target.value },
+                                specs: {
+                                  ...entry.specs,
+                                  duckfootGussetWeldElectrode: e.target.value,
+                                },
                               };
                               updatedEntry.description = generateItemDescription(updatedEntry);
                               onUpdateEntry(entry.id, updatedEntry);
@@ -3019,7 +3033,9 @@ function BendFormComponent({
                             type="number"
                             value={entry.specs?.duckfootGussetPreheatTempC || ""}
                             onChange={(e) => {
-                              const value = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                              const value = e.target.value
+                                ? parseInt(e.target.value, 10)
+                                : undefined;
                               const updatedEntry = {
                                 ...entry,
                                 specs: { ...entry.specs, duckfootGussetPreheatTempC: value },
@@ -3050,14 +3066,19 @@ function BendFormComponent({
                               onChange={(e) => {
                                 const updatedEntry = {
                                   ...entry,
-                                  specs: { ...entry.specs, duckfootGussetPwhtRequired: e.target.checked },
+                                  specs: {
+                                    ...entry.specs,
+                                    duckfootGussetPwhtRequired: e.target.checked,
+                                  },
                                 };
                                 updatedEntry.description = generateItemDescription(updatedEntry);
                                 onUpdateEntry(entry.id, updatedEntry);
                               }}
                               className="w-4 h-4 text-orange-500 border-gray-300 dark:border-gray-600 rounded focus:ring-orange-500"
                             />
-                            <span className="ml-1.5 text-[10px] text-gray-600 dark:text-gray-400">Required</span>
+                            <span className="ml-1.5 text-[10px] text-gray-600 dark:text-gray-400">
+                              Required
+                            </span>
                           </div>
                         </div>
                       </div>

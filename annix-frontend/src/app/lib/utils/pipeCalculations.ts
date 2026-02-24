@@ -2406,7 +2406,7 @@ export function calculateDuckfootThrustForce(params: {
 }): { thrustForceN: number; thrustForceKn: number } {
   const insideDiameterM = params.nominalBoreMm / 1000;
   const pressurePa = params.designPressureBar * 100000;
-  const areaM2 = (Math.PI * Math.pow(insideDiameterM, 2)) / 4;
+  const areaM2 = (Math.PI * insideDiameterM ** 2) / 4;
   const thrustForceN = areaM2 * pressurePa;
   const thrustForceKn = thrustForceN / 1000;
 
@@ -2436,7 +2436,7 @@ export function calculateDuckfootGussetThickness(params: {
   const baseWidthM = params.gussetBaseWidthMm / 1000;
 
   const thicknessM = Math.sqrt(
-    (6 * params.bendingMomentNm) / (allowableStressPa * heightM * baseWidthM)
+    (6 * params.bendingMomentNm) / (allowableStressPa * heightM * baseWidthM),
   );
   const thicknessMm = thicknessM * 1000;
 
@@ -2479,14 +2479,10 @@ export function recommendDuckfootGussetThickness(params: {
   }
 }
 
-export function calculateDuckfootSteelworkWeight(params: DuckfootGussetConfig): DuckfootGussetResult {
-  const {
-    nominalBoreMm,
-    designPressureBar,
-    basePlateXMm,
-    basePlateYMm,
-    ribHeightMm,
-  } = params;
+export function calculateDuckfootSteelworkWeight(
+  params: DuckfootGussetConfig,
+): DuckfootGussetResult {
+  const { nominalBoreMm, designPressureBar, basePlateXMm, basePlateYMm, ribHeightMm } = params;
 
   const { count: recommendedCount, placementType } = recommendDuckfootGussetCount(nominalBoreMm);
   const gussetCount = params.gussetCount ?? recommendedCount;
@@ -2529,7 +2525,7 @@ export function calculateDuckfootSteelworkWeight(params: DuckfootGussetConfig): 
 
   const totalSteelworkWeightKg = basePlateWeightKg + ribWeightKg + gussetWeightKg;
 
-  const gussetHypotenuseMm = Math.sqrt(Math.pow(gussetBaseMm, 2) + Math.pow(gussetHeightMm, 2));
+  const gussetHypotenuseMm = Math.sqrt(gussetBaseMm ** 2 + gussetHeightMm ** 2);
   const singleGussetWeldLengthMm = gussetBaseMm + gussetHeightMm + gussetHypotenuseMm;
   const gussetWeldLengthMm = singleGussetWeldLengthMm * gussetCount;
 
