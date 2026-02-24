@@ -36,7 +36,7 @@ export class AppRolePermission {
   @JoinColumn({ name: "app_permission_id" })
   permission: AppPermission;
 
-  @CreateDateColumn({ type: "timestamptz" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   @ApiProperty({ description: "Creation timestamp" })
   createdAt: Date;
 }

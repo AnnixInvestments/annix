@@ -59,18 +59,18 @@ export class AppPermission {
   })
   category: string | null;
 
-  @Column({ type: "int", default: 0 })
+  @Column({ name: "display_order", type: "int", default: 0 })
   @ApiProperty({
     description: "Display order within category",
     example: 1,
   })
   displayOrder: number;
 
-  @CreateDateColumn({ type: "timestamptz" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   @ApiProperty({ description: "Creation timestamp" })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: "timestamptz" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   @ApiProperty({ description: "Last update timestamp" })
   updatedAt: Date;
 

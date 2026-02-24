@@ -51,25 +51,25 @@ export class AppRole {
   })
   description: string | null;
 
-  @Column({ type: "boolean", default: false })
+  @Column({ name: "is_default", type: "boolean", default: false })
   @ApiProperty({
     description: "Whether this is the default role for new users",
     example: false,
   })
   isDefault: boolean;
 
-  @Column({ type: "int", default: 0 })
+  @Column({ name: "display_order", type: "int", default: 0 })
   @ApiProperty({
     description: "Display order for sorting",
     example: 1,
   })
   displayOrder: number;
 
-  @CreateDateColumn({ type: "timestamptz" })
+  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   @ApiProperty({ description: "Creation timestamp" })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: "timestamptz" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   @ApiProperty({ description: "Last update timestamp" })
   updatedAt: Date;
 

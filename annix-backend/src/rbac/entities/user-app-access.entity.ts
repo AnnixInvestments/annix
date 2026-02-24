@@ -72,7 +72,7 @@ export class UserAppAccess {
   @ApiProperty({ description: "When access was granted" })
   grantedAt: Date;
 
-  @UpdateDateColumn({ type: "timestamptz" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   @ApiProperty({ description: "Last update timestamp" })
   updatedAt: Date;
 
