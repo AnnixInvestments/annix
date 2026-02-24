@@ -38,7 +38,9 @@ export default function InventoryPage() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [importStep, setImportStep] = useState<"idle" | "parsing" | "preview" | "importing" | "result">("idle");
+  const [importStep, setImportStep] = useState<
+    "idle" | "parsing" | "preview" | "importing" | "result"
+  >("idle");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<Record<string, unknown>[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
