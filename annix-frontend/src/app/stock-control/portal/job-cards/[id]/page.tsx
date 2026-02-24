@@ -416,6 +416,17 @@ export default function JobCardDetailPage() {
     }
   };
 
+  const handlePrintQr = async () => {
+    try {
+      setIsDownloadingQr(true);
+      await stockControlApiClient.downloadJobCardQrPdf(jobId);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to download job card PDF"));
+    } finally {
+      setIsDownloadingQr(false);
+    }
+  };
+
   const handleStatusUpdate = async (newStatus: string) => {
     try {
       setIsUpdatingStatus(true);
