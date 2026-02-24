@@ -6,6 +6,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
+import { QrCodeController } from "./controllers/qr-code.controller";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
@@ -44,6 +45,7 @@ import { StockControlInvitationService } from "./services/invitation.service";
 import { JobCardService } from "./services/job-card.service";
 import { JobCardImportService } from "./services/job-card-import.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
+import { QrCodeService } from "./services/qr-code.service";
 import { MovementService } from "./services/movement.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
@@ -95,6 +97,7 @@ import { RequisitionService } from "./services/requisition.service";
     ReportsController,
     InvitationController,
     RequisitionsController,
+    QrCodeController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -113,6 +116,7 @@ import { RequisitionService } from "./services/requisition.service";
     DashboardService,
     ReportsService,
     RequisitionService,
+    QrCodeService,
   ],
 })
 export class StockControlModule {}
