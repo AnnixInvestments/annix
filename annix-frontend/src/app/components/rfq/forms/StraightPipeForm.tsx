@@ -41,16 +41,18 @@ import {
   WORKING_TEMPERATURE_CELSIUS,
 } from "@/app/lib/config/rfq";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
-import {
-  BS_4504_FLANGE_TYPES,
-  blankFlangeWeightSync as getBlankFlangeWeight,
-  flangeWeightSync as getFlangeWeight,
-  NB_TO_OD_LOOKUP,
-  retainingRingWeightSync as retainingRingWeight,
-  SABS_1123_FLANGE_TYPES,
-  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
-} from "@/app/lib/hooks/useFlangeWeights";
 import { log } from "@/app/lib/logger";
+import {
+  blankFlangeWeight,
+  flangeTypesForStandardCode,
+  flangeWeight,
+  retainingRingWeightLookup,
+  sansBlankFlangeWeight,
+  useAllFlangeTypes,
+  useAllFlangeTypeWeights,
+  useAllRetainingRingWeights,
+  useNbToOdMap,
+} from "@/app/lib/query/hooks";
 import {
   calculateFlangeWeldVolume,
   calculateInsideDiameter,
@@ -198,6 +200,11 @@ function StraightPipeFormComponent({
 }: StraightPipeFormProps) {
   log.info(`🔄 StraightPipeForm RENDER - entry.id: ${entry.id}, index: ${index}`);
 
+  const { data: nbToOdMap = {} } = useNbToOdMap();
+  const { data: allWeights = [] } = useAllFlangeTypeWeights();
+  const { data: allRetainingRings = [] } = useAllRetainingRingWeights();
+  const { data: allFlangeTypes = [] } = useAllFlangeTypes();
+
   // Authentication status for quantity restrictions
   // Don't apply restrictions while auth is still loading
   const { isAuthenticated, isLoading: isAuthLoading } = useOptionalCustomerAuth();
@@ -312,7 +319,7 @@ function StraightPipeFormComponent({
 
       if (schedules.length > 0) {
         if (pressure > 0) {
-          const od = NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05;
+          const od = nbToOdMap[nominalBore] || nominalBore * 1.05;
           const materialCode = steelSpecId === 1 ? "ASTM_A53_Grade_B" : "ASTM_A106_Grade_B";
           minWT = calculateMinWallThickness(
             od,
@@ -768,7 +775,7 @@ function StraightPipeFormComponent({
                             let matchedWT: number | undefined;
 
                             if (pressure > 0 && schedules.length > 0) {
-                              const od = NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05;
+                              const od = nbToOdMap[nominalBore] || nominalBore * 1.05;
                               const minWT = calculateMinWallThickness(od, pressure, temperature);
 
                               const eligibleSchedules = schedules
@@ -1293,7 +1300,7 @@ function StraightPipeFormComponent({
                             globalSpecs?.workingTemperatureC ||
                             20;
                           const nominalBore = entry.specs?.nominalBoreMm;
-                          const od = NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05;
+                          const od = nbToOdMap[nominalBore] || nominalBore * 1.05;
                           const materialCode =
                             fallbackEffectiveSpecId === 1
                               ? "ASTM_A53_Grade_B"
@@ -2007,13 +2014,14 @@ function StraightPipeFormComponent({
                                 }
                               >
                                 <option value="">Select...</option>
-                                {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map(
-                                  (ft) => (
-                                    <option key={ft.code} value={ft.code} title={ft.description}>
-                                      {ft.name} ({ft.code})
-                                    </option>
-                                  ),
-                                )}
+                                {(isSabs1123
+                                  ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
+                                  : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || []
+                                ).map((ft) => (
+                                  <option key={ft.code} value={ft.code} title={ft.description}>
+                                    {ft.name} ({ft.code})
+                                  </option>
+                                ))}
                               </select>
                             ) : (
                               <div className="px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs text-gray-500 dark:text-gray-700">
@@ -2409,8 +2417,10 @@ function StraightPipeFormComponent({
                                     >
                                       <option value="">Select...</option>
                                       {(isSabs1123
-                                        ? SABS_1123_FLANGE_TYPES
-                                        : BS_4504_FLANGE_TYPES
+                                        ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") ||
+                                          []
+                                        : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") ||
+                                          []
                                       ).map((ft) => (
                                         <option key={ft.code} value={ft.code}>
                                           {ft.name} ({ft.code})
@@ -3013,9 +3023,11 @@ function StraightPipeFormComponent({
                       const totalBackingRings =
                         backingRingCountPerPipe * (entry.calculation?.calculatedPipeCount || 0);
                       const nb = entry.specs.nominalBoreMm || 100;
-                      const ringWeightEach = retainingRingWeight(
+                      const ringWeightEach = retainingRingWeightLookup(
+                        allRetainingRings,
                         nb,
                         entry.calculation?.outsideDiameterMm,
+                        nbToOdMap,
                       );
                       backingRingTotalWeight = ringWeightEach * totalBackingRings;
                     }
@@ -3045,7 +3057,8 @@ function StraightPipeFormComponent({
 
                     const flangeWeightPerUnit =
                       nominalBore && pressureClassDesignation
-                        ? getFlangeWeight(
+                        ? flangeWeight(
+                            allWeights,
                             nominalBore,
                             pressureClassDesignation,
                             flangeStandardCode,
@@ -3063,8 +3076,8 @@ function StraightPipeFormComponent({
                     const blankWeightPerUnit =
                       nominalBore && pressureClassDesignation
                         ? isSans1123
-                          ? sansBlankFlangeWeight(nominalBore, pressureClassDesignation)
-                          : getBlankFlangeWeight(nominalBore, pressureClassDesignation)
+                          ? sansBlankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
+                          : blankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
                         : 0;
                     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
@@ -3082,7 +3095,7 @@ function StraightPipeFormComponent({
                       entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 0;
                     const closureTotalWeight =
                       nominalBore && closureLengthMm > 0 && wallThickness > 0
-                        ? getClosureWeight(nominalBore, closureLengthMm, wallThickness) *
+                        ? getClosureWeight(nominalBore, closureLengthMm, wallThickness, nbToOdMap) *
                           (entry.calculation?.calculatedPipeCount || 0)
                         : 0;
 
@@ -3157,7 +3170,8 @@ function StraightPipeFormComponent({
 
                     const singleSpigotFlangeWeight =
                       hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
-                        ? getFlangeWeight(
+                        ? flangeWeight(
+                            allWeights,
                             spigotNb,
                             spigotPressureClassDesignation,
                             spigotFlangeStdCode,
@@ -3172,7 +3186,14 @@ function StraightPipeFormComponent({
 
                     // Spigot R/F ring weight
                     const singleSpigotRingWeight =
-                      isSpigotRF && spigotNb ? retainingRingWeight(spigotNb) || 0 : 0;
+                      isSpigotRF && spigotNb
+                        ? retainingRingWeightLookup(
+                            allRetainingRings,
+                            spigotNb,
+                            undefined,
+                            nbToOdMap,
+                          ) || 0
+                        : 0;
                     const totalSpigotRingWeight = singleSpigotRingWeight * totalSpigotFlangeCount;
 
                     // Spigot blank flange weight
@@ -3185,8 +3206,16 @@ function StraightPipeFormComponent({
                     const singleSpigotBlankWeight =
                       hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
                         ? (isSans1123Spigot
-                            ? sansBlankFlangeWeight(spigotNb, spigotPressureClassDesignation)
-                            : getBlankFlangeWeight(spigotNb, spigotPressureClassDesignation)) || 0
+                            ? sansBlankFlangeWeight(
+                                allWeights,
+                                spigotNb,
+                                spigotPressureClassDesignation,
+                              )
+                            : blankFlangeWeight(
+                                allWeights,
+                                spigotNb,
+                                spigotPressureClassDesignation,
+                              )) || 0
                         : 0;
                     const totalSpigotBlankWeight = singleSpigotBlankWeight * spigotBlankCount;
 
@@ -3304,7 +3333,8 @@ function StraightPipeFormComponent({
 
                     const flangeWeightPerUnit =
                       nominalBore && pressureClassDesignation
-                        ? getFlangeWeight(
+                        ? flangeWeight(
+                            allWeights,
                             nominalBore,
                             pressureClassDesignation,
                             flangeStandardCode,
@@ -3322,8 +3352,8 @@ function StraightPipeFormComponent({
                     const blankWeightPerUnit =
                       nominalBore && pressureClassDesignation
                         ? isSans1123
-                          ? sansBlankFlangeWeight(nominalBore, pressureClassDesignation)
-                          : getBlankFlangeWeight(nominalBore, pressureClassDesignation)
+                          ? sansBlankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
+                          : blankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
                         : 0;
                     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
@@ -3380,7 +3410,8 @@ function StraightPipeFormComponent({
                       globalSpecs?.flangeTypeCode;
                     const spigotFlangeWeightPerUnit =
                       hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
-                        ? getFlangeWeight(
+                        ? flangeWeight(
+                            allWeights,
                             spigotNb,
                             spigotPressureClassDesignation,
                             spigotFlangeStdCode,
@@ -3401,8 +3432,16 @@ function StraightPipeFormComponent({
                     const spigotBlankWeightPerUnit =
                       hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
                         ? (isSans1123Spigot
-                            ? sansBlankFlangeWeight(spigotNb, spigotPressureClassDesignation)
-                            : getBlankFlangeWeight(spigotNb, spigotPressureClassDesignation)) || 0
+                            ? sansBlankFlangeWeight(
+                                allWeights,
+                                spigotNb,
+                                spigotPressureClassDesignation,
+                              )
+                            : blankFlangeWeight(
+                                allWeights,
+                                spigotNb,
+                                spigotPressureClassDesignation,
+                              )) || 0
                         : 0;
                     const totalSpigotBlankWeight = spigotBlankWeightPerUnit * spigotBlankCount;
 
@@ -3509,9 +3548,11 @@ function StraightPipeFormComponent({
                       backingRingCountPerPipe * (entry.calculation?.calculatedPipeCount || 0);
 
                     const nb = entry.specs.nominalBoreMm || 100;
-                    const ringWeightEach = retainingRingWeight(
+                    const ringWeightEach = retainingRingWeightLookup(
+                      allRetainingRings,
                       nb,
                       entry.calculation?.outsideDiameterMm,
+                      nbToOdMap,
                     );
                     const totalWeight = ringWeightEach * totalBackingRings;
 

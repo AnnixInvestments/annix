@@ -15,19 +15,13 @@ import {
 } from "@/app/lib/api/client";
 import { WORKING_PRESSURE_BAR, WORKING_TEMPERATURE_CELSIUS } from "@/app/lib/config/rfq";
 import { nowISO } from "@/app/lib/datetime";
-import {
-  ASME_B16_5_FLANGE_TYPES,
-  ASME_B16_47_SERIES_A_FLANGE_TYPES,
-  ASME_B16_47_SERIES_B_FLANGE_TYPES,
-  BS_10_FLANGE_TYPES,
-  BS_4504_FLANGE_TYPES,
-  SABS_1123_FLANGE_TYPES,
-} from "@/app/lib/hooks/useFlangeWeights";
 import { usePtRecommendations } from "@/app/lib/hooks/usePtRecommendations";
 import { log } from "@/app/lib/logger";
 import {
   checkSuitabilityFromCache,
   findMaterialLimits,
+  flangeTypesForStandardCode,
+  useAllFlangeTypes,
   useAllMaterialLimits,
 } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
@@ -820,6 +814,7 @@ export default function SpecificationsStep({
 
   // Material suitability warning modal state
   const { data: allLimits } = useAllMaterialLimits();
+  const { data: allFlangeTypes = [] } = useAllFlangeTypes();
 
   const [materialWarning, setMaterialWarning] = useState<{
     show: boolean;
@@ -2123,27 +2118,10 @@ export default function SpecificationsStep({
                       );
                       const standardCode = selectedStandard?.code || "";
 
-                      const flangeTypesForStandard = (() => {
-                        if (standardCode === "SABS 1123") return SABS_1123_FLANGE_TYPES;
-                        if (standardCode === "BS 4504") return BS_4504_FLANGE_TYPES;
-                        if (
-                          standardCode.includes("ASME B16.5") ||
-                          standardCode.includes("ANSI B16.5")
-                        )
-                          return ASME_B16_5_FLANGE_TYPES;
-                        if (
-                          standardCode.includes("ASME B16.47") &&
-                          (standardCode.includes("Series A") || standardCode.endsWith("A"))
-                        )
-                          return ASME_B16_47_SERIES_A_FLANGE_TYPES;
-                        if (
-                          standardCode.includes("ASME B16.47") &&
-                          (standardCode.includes("Series B") || standardCode.endsWith("B"))
-                        )
-                          return ASME_B16_47_SERIES_B_FLANGE_TYPES;
-                        if (standardCode === "BS 10") return BS_10_FLANGE_TYPES;
-                        return null;
-                      })();
+                      const flangeTypesForStandard = flangeTypesForStandardCode(
+                        allFlangeTypes,
+                        standardCode,
+                      );
 
                       return flangeTypesForStandard ? (
                         <div>

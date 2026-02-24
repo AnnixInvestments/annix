@@ -3,7 +3,6 @@ export * from "./bendSpecifications";
 export * from "./complianceValidation";
 export * from "./constants";
 export * from "./expansionJointOptions";
-export * from "./flangeWeights";
 export * from "./materialGroupMapping";
 export * from "./pipeEndOptions";
 export * from "./pipeSchedules";

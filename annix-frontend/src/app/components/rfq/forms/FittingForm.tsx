@@ -33,16 +33,18 @@ import {
   validSmallNbForLargeNb,
 } from "@/app/lib/config/rfq";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
-import {
-  BS_4504_FLANGE_TYPES,
-  blankFlangeWeightSync as getBlankFlangeWeight,
-  flangeWeightSync as getFlangeWeight,
-  NB_TO_OD_LOOKUP,
-  retainingRingWeightSync as retainingRingWeight,
-  SABS_1123_FLANGE_TYPES,
-  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
-} from "@/app/lib/hooks/useFlangeWeights";
 import { log } from "@/app/lib/logger";
+import {
+  blankFlangeWeight,
+  flangeTypesForStandardCode,
+  flangeWeight,
+  retainingRingWeightLookup,
+  sansBlankFlangeWeight,
+  useAllFlangeTypes,
+  useAllFlangeTypeWeights,
+  useAllRetainingRingWeights,
+  useNbToOdMap,
+} from "@/app/lib/query/hooks";
 import {
   calculateComprehensiveSurfaceArea,
   calculateFittingWeldVolume,
@@ -113,6 +115,11 @@ function FittingFormComponent({
   onShowRestrictionPopup,
 }: FittingFormProps) {
   log.info(`🔄 FittingForm RENDER - entry.id: ${entry.id}, index: ${index}`);
+
+  const { data: nbToOdMap = {} } = useNbToOdMap();
+  const { data: allWeights = [] } = useAllFlangeTypeWeights();
+  const { data: allRetainingRings = [] } = useAllRetainingRingWeights();
+  const { data: allFlangeTypes = [] } = useAllFlangeTypes();
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
   const [dimensionsUnavailable, setDimensionsUnavailable] = useState(false);
@@ -1955,13 +1962,14 @@ function FittingFormComponent({
                           }
                         >
                           <option value="">Select Type...</option>
-                          {(isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES).map(
-                            (ft) => (
-                              <option key={ft.code} value={ft.code} title={ft.description}>
-                                {ft.name} ({ft.code})
-                              </option>
-                            ),
-                          )}
+                          {(isSabs1123
+                            ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
+                            : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || []
+                          ).map((ft) => (
+                            <option key={ft.code} value={ft.code} title={ft.description}>
+                              {ft.name} ({ft.code})
+                            </option>
+                          ))}
                         </select>
                       ) : (
                         <select
@@ -3461,8 +3469,8 @@ function FittingFormComponent({
                                 stubStandard?.code?.includes("4504");
                               const stubHasFlangeTypes = stubIsSabs1123 || stubIsBs4504;
                               const stubFlangeTypes = stubIsSabs1123
-                                ? SABS_1123_FLANGE_TYPES
-                                : BS_4504_FLANGE_TYPES;
+                                ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
+                                : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || [];
 
                               return stubHasFlangeTypes ? (
                                 <div>
@@ -3689,8 +3697,8 @@ function FittingFormComponent({
                         endConfig === "FOE_LF" ||
                         endConfig === "RF_LF";
 
-                      const largeOD = NB_TO_OD_LOOKUP[largeNB] || largeNB * 1.05;
-                      const smallOD = NB_TO_OD_LOOKUP[smallNB] || smallNB * 1.05;
+                      const largeOD = nbToOdMap[largeNB] || largeNB * 1.05;
+                      const smallOD = nbToOdMap[smallNB] || smallNB * 1.05;
                       const wallThickness = entry.calculation?.wallThicknessMm || 6;
 
                       const avgOD = (largeOD + smallOD) / 2;
@@ -3700,7 +3708,8 @@ function FittingFormComponent({
 
                       const largeFlangeWeight =
                         hasLargeFlange && pressureClassDesignation
-                          ? getFlangeWeight(
+                          ? flangeWeight(
+                              allWeights,
                               largeNB,
                               pressureClassDesignation,
                               flangeStandardCode,
@@ -3709,7 +3718,8 @@ function FittingFormComponent({
                           : 0;
                       const smallFlangeWeight =
                         hasSmallFlange && pressureClassDesignation
-                          ? getFlangeWeight(
+                          ? flangeWeight(
+                              allWeights,
                               smallNB,
                               pressureClassDesignation,
                               flangeStandardCode,
@@ -3718,7 +3728,7 @@ function FittingFormComponent({
                           : 0;
                       const numFlanges = (hasLargeFlange ? 1 : 0) + (hasSmallFlange ? 1 : 0);
 
-                      const stubOD = hasStub ? NB_TO_OD_LOOKUP[stubNB] || stubNB * 1.05 : 0;
+                      const stubOD = hasStub ? nbToOdMap[stubNB] || stubNB * 1.05 : 0;
                       const stubWT = hasStub
                         ? FITTING_CLASS_WALL_THICKNESS["STD"][stubNB] || wallThickness
                         : 0;
@@ -3727,7 +3737,8 @@ function FittingFormComponent({
                         ? calculatePipeWeightPerMeter(stubOD, stubWT) * (stubLengthMm / 1000)
                         : 0;
                       const stubFlangeWeight = hasStub
-                        ? getFlangeWeight(
+                        ? flangeWeight(
+                            allWeights,
                             stubNB,
                             pressureClassDesignation,
                             flangeStandardCode,
@@ -3899,7 +3910,7 @@ function FittingFormComponent({
                       const hasEndFlange =
                         endConfig === "FBE" || endConfig === "2X_RF" || endConfig === "2X_LF";
 
-                      const pipeOD = NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05;
+                      const pipeOD = nbToOdMap[nominalBore] || nominalBore * 1.05;
                       const wallThickness = entry.calculation?.wallThicknessMm || 6;
 
                       const totalPipeLengthMm = lengthA + lengthB + lengthC;
@@ -3907,8 +3918,9 @@ function FittingFormComponent({
                       const pipeWeight =
                         calculatePipeWeightPerMeter(pipeOD, wallThickness) * totalPipeLengthM;
 
-                      const flangeWeight = pressureClassDesignation
-                        ? getFlangeWeight(
+                      const flangeWeightKg = pressureClassDesignation
+                        ? flangeWeight(
+                            allWeights,
                             nominalBore,
                             pressureClassDesignation,
                             flangeStandardCode,
@@ -3916,7 +3928,7 @@ function FittingFormComponent({
                           )
                         : 0;
                       const numFlanges = (hasStartFlange ? 1 : 0) + (hasEndFlange ? 1 : 0);
-                      const totalFlangeWeight = flangeWeight * numFlanges;
+                      const totalFlangeWeight = flangeWeightKg * numFlanges;
 
                       const totalWeight = (pipeWeight + totalFlangeWeight) * quantity;
 
@@ -4082,8 +4094,8 @@ function FittingFormComponent({
 
                     const mainOdMm =
                       entry.calculation?.outsideDiameterMm ||
-                      (nominalBore ? NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05 : 0);
-                    const branchOdMm = branchNB ? NB_TO_OD_LOOKUP[branchNB] || branchNB * 1.05 : 0;
+                      (nominalBore ? nbToOdMap[nominalBore] || nominalBore * 1.05 : 0);
+                    const branchOdMm = branchNB ? nbToOdMap[branchNB] || branchNB * 1.05 : 0;
                     const flangeConfigCalc = getFittingFlangeConfig(
                       entry.specs?.pipeEndConfiguration || "PE",
                       entry.specs?.foePosition,
@@ -4131,10 +4143,22 @@ function FittingFormComponent({
                     const mainRingWeight =
                       flangeConfig.inletType === "rotating" ||
                       flangeConfig.outletType === "rotating"
-                        ? retainingRingWeight(nominalBore, entry.calculation?.outsideDiameterMm)
+                        ? retainingRingWeightLookup(
+                            allRetainingRings,
+                            nominalBore,
+                            entry.calculation?.outsideDiameterMm,
+                            nbToOdMap,
+                          )
                         : 0;
                     const branchRingWeight =
-                      flangeConfig.branchType === "rotating" ? retainingRingWeight(branchNB) : 0;
+                      flangeConfig.branchType === "rotating"
+                        ? retainingRingWeightLookup(
+                            allRetainingRings,
+                            branchNB,
+                            undefined,
+                            nbToOdMap,
+                          )
+                        : 0;
 
                     const mainRingsCount =
                       (flangeConfig.inletType === "rotating" ? 1 : 0) +
@@ -4160,7 +4184,8 @@ function FittingFormComponent({
 
                     const mainFlangeWeightPerUnit =
                       nominalBore && pressureClassDesignation
-                        ? getFlangeWeight(
+                        ? flangeWeight(
+                            allWeights,
                             nominalBore,
                             pressureClassDesignation,
                             flangeStandardCode,
@@ -4169,7 +4194,8 @@ function FittingFormComponent({
                         : 0;
                     const branchFlangeWeightPerUnit =
                       branchNB && pressureClassDesignation
-                        ? getFlangeWeight(
+                        ? flangeWeight(
+                            allWeights,
                             branchNB,
                             pressureClassDesignation,
                             flangeStandardCode,
@@ -4192,8 +4218,8 @@ function FittingFormComponent({
                     const blankWeightPerUnit =
                       nominalBore && pressureClassDesignation
                         ? isSans1123
-                          ? sansBlankFlangeWeight(nominalBore, pressureClassDesignation)
-                          : getBlankFlangeWeight(nominalBore, pressureClassDesignation)
+                          ? sansBlankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
+                          : blankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
                         : 0;
                     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
@@ -4217,12 +4243,17 @@ function FittingFormComponent({
                       5;
                     const closureTotalWeight =
                       nominalBore && closureLengthMm > 0 && closureWallThickness > 0
-                        ? getClosureWeight(nominalBore, closureLengthMm, closureWallThickness)
+                        ? getClosureWeight(
+                            nominalBore,
+                            closureLengthMm,
+                            closureWallThickness,
+                            nbToOdMap,
+                          )
                         : 0;
 
                     const stubsData = (entry.specs?.stubs || []).map((stub: any) => {
                       const stubNB = stub.nominalBoreMm || 50;
-                      const stubOdMm = NB_TO_OD_LOOKUP[stubNB] || stubNB * 1.05;
+                      const stubOdMm = nbToOdMap[stubNB] || stubNB * 1.05;
                       const stubWallThickness =
                         FITTING_CLASS_WALL_THICKNESS["STD"][stubNB] || pipeWallThickness || 5;
                       const stubLengthMm = stub.stubLengthMm || 150;
@@ -4232,7 +4263,8 @@ function FittingFormComponent({
                       const stubHasFlange =
                         stub.endConfiguration === "flanged" || stub.endConfiguration === "rf";
                       const stubFlangeWeight = stubHasFlange
-                        ? getFlangeWeight(
+                        ? flangeWeight(
+                            allWeights,
                             stubNB,
                             pressureClassDesignation,
                             flangeStandardCode,
@@ -4242,8 +4274,8 @@ function FittingFormComponent({
                       const stubBlankWeight =
                         stubHasFlange && stub.hasBlankFlange
                           ? isSans1123
-                            ? sansBlankFlangeWeight(stubNB, pressureClassDesignation)
-                            : getBlankFlangeWeight(stubNB, pressureClassDesignation)
+                            ? sansBlankFlangeWeight(allWeights, stubNB, pressureClassDesignation)
+                            : blankFlangeWeight(allWeights, stubNB, pressureClassDesignation)
                           : 0;
                       const stubCircMm = Math.PI * stubOdMm;
                       const STEINMETZ_FACTOR = 2.7;

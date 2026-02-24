@@ -14,7 +14,7 @@ import {
   flangeConfigForEndOption,
   STEEL_DENSITY_KG_M3,
 } from "@/app/lib/config/rfq";
-import { NB_TO_OD_LOOKUP } from "@/app/lib/hooks/useFlangeWeights";
+import { useNbToOdMap } from "@/app/lib/query/hooks";
 
 export interface ExpansionJointFormProps {
   entry: any;
@@ -49,6 +49,7 @@ export default function ExpansionJointForm({
   generateItemDescription,
   requiredProducts: _requiredProducts = [],
 }: ExpansionJointFormProps) {
+  const { data: nbToOdMap = {} } = useNbToOdMap();
   const [calculationResults, setCalculationResults] = useState<any>(null);
 
   const expansionJointType = entry.specs?.expansionJointType || "bought_in_bellows";
@@ -73,7 +74,7 @@ export default function ExpansionJointForm({
   const endConfiguration = entry.specs?.endConfiguration || "FBE";
 
   const outsideDiameterMm = nominalDiameterMm
-    ? NB_TO_OD_LOOKUP[nominalDiameterMm as keyof typeof NB_TO_OD_LOOKUP] || nominalDiameterMm * 1.05
+    ? nbToOdMap[nominalDiameterMm] || nominalDiameterMm * 1.05
     : null;
 
   useEffect(() => {

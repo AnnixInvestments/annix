@@ -142,3 +142,130 @@ export const BUTT_WELD_CONFIG: ButtWeldConfig = {
   grooveAngleDeg: 60,
   reinforcementMm: 2,
 };
+
+export const FLANGE_OD: Record<number, number> = {
+  15: 95,
+  20: 105,
+  25: 115,
+  32: 140,
+  40: 150,
+  50: 165,
+  65: 185,
+  80: 200,
+  100: 220,
+  125: 250,
+  150: 285,
+  200: 340,
+  250: 395,
+  300: 445,
+  350: 505,
+  400: 565,
+  450: 615,
+  500: 670,
+  600: 780,
+  700: 885,
+  750: 940,
+  800: 1015,
+  900: 1115,
+  1000: 1230,
+  1050: 1290,
+  1200: 1455,
+  1400: 1675,
+  1500: 1785,
+  1600: 1915,
+  1800: 2115,
+  2000: 2325,
+  2200: 2550,
+  2400: 2760,
+  2500: 2880,
+};
+
+export const tackWeldWeight = (
+  nominalBoreMm: number,
+  tackWeldEnds: number = 0,
+  configOverrides?: Partial<TackWeldConfig>,
+): number => {
+  if (tackWeldEnds <= 0) return 0;
+
+  const config = tackWeldConfig(configOverrides);
+  const legSizeMm = Math.max(
+    config.minLegSizeMm,
+    Math.min(config.maxLegSizeMm, nominalBoreMm * config.legSizeFactor),
+  );
+
+  const totalTacks = config.tacksPerEnd * tackWeldEnds;
+  const totalTackLengthMm = totalTacks * config.tackLengthMm;
+
+  const volumePerMmMm3 = (legSizeMm * legSizeMm) / 2;
+  const totalVolumeMm3 = volumePerMmMm3 * totalTackLengthMm;
+
+  const weightKg = totalVolumeMm3 * STEEL_DENSITY_KG_MM3;
+
+  return Math.round(weightKg * 1000) / 1000;
+};
+
+export const closureLengthLimits = (
+  nominalBoreMm: number,
+): { min: number; max: number; recommended: number } => {
+  const {
+    absoluteMinMm,
+    absoluteMaxMm,
+    minLengthFactor,
+    maxLengthFactor,
+    recommendedFactor,
+    recommendedMinMm,
+    recommendedMaxMm,
+  } = CLOSURE_LENGTH_CONFIG;
+  const minLength = Math.max(absoluteMinMm, nominalBoreMm * minLengthFactor);
+  const maxLength = Math.min(absoluteMaxMm, nominalBoreMm * maxLengthFactor);
+  const recommended = Math.max(
+    recommendedMinMm,
+    Math.min(recommendedMaxMm, nominalBoreMm * recommendedFactor),
+  );
+
+  return {
+    min: Math.round(minLength),
+    max: Math.round(maxLength),
+    recommended: Math.round(recommended),
+  };
+};
+
+export const closureWeight = (
+  nominalBoreMm: number,
+  closureLengthMm: number,
+  wallThicknessMm: number,
+  nbToOdMap: Record<number, number>,
+): number => {
+  if (!closureLengthMm || closureLengthMm <= 0) return 0;
+
+  const pipeOd = nbToOdMap[nominalBoreMm] || nominalBoreMm * 1.1;
+  const pipeId = pipeOd - 2 * wallThicknessMm;
+
+  const closureLengthM = closureLengthMm / 1000;
+  const odM = pipeOd / 1000;
+  const idM = pipeId / 1000;
+
+  const volumeM3 = Math.PI * ((odM ** 2 - idM ** 2) / 4) * closureLengthM;
+  const weightKg = volumeM3 * STEEL_DENSITY_KG_M3;
+
+  return Math.round(weightKg * 100) / 100;
+};
+
+export const SABS_1123_PRESSURE_CLASSES = [
+  { value: 600, label: "600 kPa" },
+  { value: 1000, label: "1000 kPa" },
+  { value: 1600, label: "1600 kPa" },
+  { value: 2500, label: "2500 kPa" },
+  { value: 4000, label: "4000 kPa" },
+];
+
+export const BS_4504_PRESSURE_CLASSES = [
+  { value: 6, label: "PN6" },
+  { value: 10, label: "PN10" },
+  { value: 16, label: "PN16" },
+  { value: 25, label: "PN25" },
+  { value: 40, label: "PN40" },
+  { value: 64, label: "PN64" },
+  { value: 100, label: "PN100" },
+  { value: 160, label: "PN160" },
+];

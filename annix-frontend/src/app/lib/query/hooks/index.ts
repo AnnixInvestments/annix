@@ -398,6 +398,32 @@ export {
   useReviews,
 } from "./review/useReviews";
 export type {
+  BnwSetResult,
+  FlangeLookupContext,
+  FlangeTypeInfo,
+  FlangeTypeWeightRecord,
+} from "./rfq/useFlangeData";
+export {
+  blankFlangeSurfaceArea,
+  blankFlangeWeight,
+  bnwSetInfo,
+  boltHolesPerFlange,
+  buildFlangeLookups,
+  flangeTypesForStandard,
+  flangeTypesForStandardCode,
+  flangeWeight,
+  gasketWeightLookup,
+  nbToOd,
+  retainingRingWeightLookup,
+  sansBlankFlangeWeight,
+  useAllBnwSetWeights,
+  useAllFlangeTypes,
+  useAllFlangeTypeWeights,
+  useAllGasketWeights,
+  useAllRetainingRingWeights,
+  useNbToOdMap,
+} from "./rfq/useFlangeData";
+export type {
   CachedSuitabilityResult,
   MaterialLimit,
   MaterialSuitabilityResult,

@@ -3,8 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { ErrorDisplay, LoadingSpinner, StatusBadge } from "@/app/admin/components";
 import { formatDateZA } from "@/app/lib/datetime";
-import { NB_TO_OD_LOOKUP } from "@/app/lib/hooks/useFlangeWeights";
-import { useAdminRfqDetail } from "@/app/lib/query/hooks";
+import { useAdminRfqDetail, useNbToOdMap } from "@/app/lib/query/hooks";
 
 export default function AdminRfqDetailPage() {
   const router = useRouter();
@@ -334,8 +333,9 @@ function ItemCard({ entry, index, globalSpecs }: { entry: any; index: number; gl
 }
 
 function BendSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
+  const { data: nbToOdMap = {} } = useNbToOdMap();
   const nb = specs.nominalBoreMm || 0;
-  const od = calculation.outsideDiameterMm || NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+  const od = calculation.outsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
   const wt = specs.wallThicknessMm || calculation.wallThicknessMm || 0;
 
   return (
@@ -413,9 +413,10 @@ function BendSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
 }
 
 function FittingSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
+  const { data: nbToOdMap = {} } = useNbToOdMap();
   const nb = specs.nominalDiameterMm || 0;
   const branchNb = specs.branchNominalDiameterMm || nb;
-  const od = calculation.outsideDiameterMm || NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+  const od = calculation.outsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
   const wt = specs.wallThicknessMm || calculation.wallThicknessMm || 0;
 
   return (
@@ -486,8 +487,9 @@ function FittingSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
 }
 
 function PipeSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
+  const { data: nbToOdMap = {} } = useNbToOdMap();
   const nb = specs.nominalBoreMm || 0;
-  const od = calculation.outsideDiameterMm || NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+  const od = calculation.outsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
   const wt = specs.wallThicknessMm || 0;
   const qty = specs.quantityType === "total_length" ? 1 : specs.quantityValue || 1;
   const lengthPerPipe =

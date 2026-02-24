@@ -525,6 +525,49 @@ export interface PipeWallThicknessResult {
   temperatureC: number;
 }
 
+export interface FlangeTypeWeightRecord {
+  id: number;
+  flange_standard_id: number | null;
+  pressure_class: string;
+  flange_type_code: string;
+  nominal_bore_mm: number;
+  weight_kg: number;
+}
+
+export interface BnwSetWeightRecord {
+  id: number;
+  pressure_class: string;
+  nominal_bore_mm: number;
+  bolt_size: string;
+  weight_per_hole_kg: number;
+  num_holes: number;
+}
+
+export interface NbOdLookupRecord {
+  id: number;
+  nominal_bore_mm: number;
+  outside_diameter_mm: number;
+}
+
+export interface RetainingRingWeightRecord {
+  id: number;
+  nominal_bore_mm: number;
+  weight_kg: number;
+}
+
+export interface GasketWeightRecord {
+  id: number;
+  gasket_type: string;
+  nominal_bore_mm: number;
+  weight_kg: number;
+  inner_diameter_mm: number | null;
+  outer_diameter_mm: number | null;
+  thickness_mm: number | null;
+  flange_standard: string | null;
+  pressure_class: string | null;
+  material: string | null;
+}
+
 class ApiClient {
   private baseURL: string;
 
@@ -1511,6 +1554,26 @@ class ApiClient {
   async nbToOd(nominalBoreMm: number): Promise<NbOdLookupResult> {
     return this.request(`/nb-od-lookup/${nominalBoreMm}`);
   }
+
+  async allFlangeTypeWeights(): Promise<FlangeTypeWeightRecord[]> {
+    return this.request<FlangeTypeWeightRecord[]>("/flange-type-weight");
+  }
+
+  async allBnwSetWeights(): Promise<BnwSetWeightRecord[]> {
+    return this.request<BnwSetWeightRecord[]>("/bnw-set-weight");
+  }
+
+  async allNbToOd(): Promise<NbOdLookupRecord[]> {
+    return this.request<NbOdLookupRecord[]>("/nb-od-lookup");
+  }
+
+  async allRetainingRingWeights(): Promise<RetainingRingWeightRecord[]> {
+    return this.request<RetainingRingWeightRecord[]>("/retaining-ring-weight");
+  }
+
+  async allGasketWeights(): Promise<GasketWeightRecord[]> {
+    return this.request<GasketWeightRecord[]>("/gasket-weight");
+  }
 }
 
 // Create and export the API client instance
@@ -1667,6 +1730,11 @@ export const flangeWeightApi = {
     apiClient.bnwSetInfo(nominalBoreMm, pressureClass),
   retainingRingWeight: (nominalBoreMm: number) => apiClient.retainingRingWeight(nominalBoreMm),
   nbToOd: (nominalBoreMm: number) => apiClient.nbToOd(nominalBoreMm),
+  allFlangeTypeWeights: () => apiClient.allFlangeTypeWeights(),
+  allBnwSetWeights: () => apiClient.allBnwSetWeights(),
+  allNbToOd: () => apiClient.allNbToOd(),
+  allRetainingRingWeights: () => apiClient.allRetainingRingWeights(),
+  allGasketWeights: () => apiClient.allGasketWeights(),
 };
 
 // ISO 12944-5 Coating Specification Types

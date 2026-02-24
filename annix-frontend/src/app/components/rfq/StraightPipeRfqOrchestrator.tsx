@@ -24,12 +24,9 @@ import {
   getScheduleListForSpec,
   STEEL_DENSITY_KG_M3,
 } from "@/app/lib/config/rfq";
+import { FLANGE_OD } from "@/app/lib/config/rfq/constants";
 import { nowISO } from "@/app/lib/datetime";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
-import {
-  flangeWeightSync as getFlangeWeight,
-  NB_TO_OD_LOOKUP,
-} from "@/app/lib/hooks/useFlangeWeights";
 import { formatLastSaved, useRfqDraftStorage } from "@/app/lib/hooks/useRfqDraftStorage";
 import type {
   BendEntry,
@@ -45,6 +42,15 @@ import {
   NixProcessingPopup,
   nixApi,
 } from "@/app/lib/nix";
+import {
+  buildFlangeLookups,
+  type FlangeTypeWeightRecord,
+  flangeWeight as flangeWeightLookup,
+  useAllBnwSetWeights,
+  useAllFlangeTypeWeights,
+  useAllGasketWeights,
+  useNbToOdMap,
+} from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { consolidateBoqData } from "@/app/lib/utils/boqConsolidation";
 import { generateClientItemNumber } from "@/app/lib/utils/systemUtils";
@@ -126,6 +132,8 @@ interface Props {
  * @param flangeTypeCode - Optional flange type code (e.g., '/3', '/5') for SABS 1123 / BS 4504
  */
 const calculateLocalPipeResult = (
+  odMap: Record<number, number>,
+  weights: FlangeTypeWeightRecord[],
   nominalBoreMm: number,
   wallThicknessMm: number,
   individualPipeLength: number,
@@ -136,7 +144,7 @@ const calculateLocalPipeResult = (
   flangeStandard?: string,
   flangeTypeCode?: string,
 ): any => {
-  const outsideDiameterMm = NB_TO_OD_LOOKUP[nominalBoreMm] || nominalBoreMm * 1.05;
+  const outsideDiameterMm = odMap[nominalBoreMm] || nominalBoreMm * 1.05;
 
   // Weight per meter formula: ((OD - WT) * WT) * 0.02466
   const pipeWeightPerMeter = (outsideDiameterMm - wallThicknessMm) * wallThicknessMm * 0.02466;
@@ -173,12 +181,12 @@ const calculateLocalPipeResult = (
   const circumference = (Math.PI * outsideDiameterMm) / 1000; // in meters
   const totalFlangeWeldLength = numberOfFlangeWelds * circumference * 2; // x2 for inside + outside welds per flange
 
-  // Get flange weight based on pressure class (includes flange + bolts + gasket)
-  const flangeWeightPerUnit = getFlangeWeight(
+  const flangeWeightPerUnit = flangeWeightLookup(
+    weights,
     nominalBoreMm,
-    pressureClassDesignation,
-    flangeStandard,
-    flangeTypeCode,
+    pressureClassDesignation || "PN16",
+    flangeStandard || null,
+    flangeTypeCode || "",
   );
   const totalFlangeWeight = numberOfFlanges * flangeWeightPerUnit;
 
@@ -324,6 +332,11 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
     lastSaved: localDraftLastSaved,
     draftEmail: localDraftEmail,
   } = useRfqDraftStorage();
+
+  const { data: nbToOdMap = {} } = useNbToOdMap();
+  const { data: allWeights = [] } = useAllFlangeTypeWeights();
+  const { data: allBnw = [] } = useAllBnwSetWeights();
+  const { data: allGaskets = [] } = useAllGasketWeights();
 
   const handleRestoreLocalDraft = useCallback(() => {
     if (!pendingLocalDraft) return;
@@ -1634,12 +1647,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           result?.numberOfFlanges || physicalFlangesPerPipe * calculatedPipeCount;
 
         if (result && numberOfFlanges > 0) {
-          // Try to fetch dynamic flange specs from database
-          let flangeWeightPerUnit = getFlangeWeight(
+          let flangeWeightPerUnit = flangeWeightLookup(
+            allWeights,
             entry.specs.nominalBoreMm!,
             pressureClassDesignation,
-            flangeStandardCode,
-            flangeTypeCode,
+            flangeStandardCode || null,
+            flangeTypeCode || "",
           );
           let flangeSpecData: FlangeSpecData | null = null;
 
@@ -1717,6 +1730,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           );
 
           const localResult = calculateLocalPipeResult(
+            nbToOdMap,
+            allWeights,
             entry.specs.nominalBoreMm!,
             wallThickness,
             entry.specs.individualPipeLength!,
@@ -1751,6 +1766,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         );
 
         const localResult = calculateLocalPipeResult(
+          nbToOdMap,
+          allWeights,
           entry.specs.nominalBoreMm!,
           wallThickness,
           entry.specs.individualPipeLength!,
@@ -2083,12 +2100,12 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             result?.numberOfFlanges || physicalFlangesPerPipe * calculatedPipeCount;
 
           if (result && numberOfFlanges > 0) {
-            // Try to fetch dynamic flange specs from database
-            let flangeWeightPerUnit = getFlangeWeight(
+            let flangeWeightPerUnit = flangeWeightLookup(
+              allWeights,
               entry.specs.nominalBoreMm!,
               pressureClassDesignation,
-              flangeStandardCode,
-              flangeTypeCode,
+              flangeStandardCode || null,
+              flangeTypeCode || "",
             );
             let flangeSpecData: FlangeSpecData | null = null;
 
@@ -2172,6 +2189,8 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
             );
 
             const localResult = calculateLocalPipeResult(
+              nbToOdMap,
+              allWeights,
               entry.specs.nominalBoreMm!,
               wallThickness,
               entry.specs.individualPipeLength!,
@@ -2247,7 +2266,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           const wallThickness = scheduleData?.wallThicknessMm || 6.35;
 
           // Calculate OD from NB
-          const od = NB_TO_OD_LOOKUP[nominalBoreMm] || nominalBoreMm * 1.05;
+          const od = nbToOdMap[nominalBoreMm] || nominalBoreMm * 1.05;
           const id = od - 2 * wallThickness;
 
           // Estimate bend arc length based on angle and C/F
@@ -3030,6 +3049,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
           log.debug(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
 
           const consolidatedData = consolidateBoqData({
+            lookups: buildFlangeLookups(allWeights, allBnw, allGaskets, FLANGE_OD),
             entries: allItems,
             globalSpecs: {
               gasketType: rfqData.globalSpecs?.gasketType,
@@ -3265,6 +3285,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         log.debug(`📦 Updating BOQ ${existingBoq.boqNumber} for RFQ ${editRfqId}...`);
 
         const consolidatedData = consolidateBoqData({
+          lookups: buildFlangeLookups(allWeights, allBnw, allGaskets, FLANGE_OD),
           entries: allItems,
           globalSpecs: {
             gasketType: rfqData.globalSpecs?.gasketType,
@@ -3310,6 +3331,7 @@ export default function StraightPipeRfqOrchestrator({ onSuccess, onCancel, editR
         log.debug(`✅ BOQ ${boq.boqNumber} created with ID ${boq.id}`);
 
         const consolidatedData = consolidateBoqData({
+          lookups: buildFlangeLookups(allWeights, allBnw, allGaskets, FLANGE_OD),
           entries: allItems,
           globalSpecs: {
             gasketType: rfqData.globalSpecs?.gasketType,

@@ -11,14 +11,18 @@ import {
   boltSetCountPerPipe as getBoltSetCountPerPipe,
   flangesPerPipe as getFlangesPerPipe,
 } from "@/app/lib/config/rfq";
-import {
-  blankFlangeSurfaceAreaSync as getBlankFlangeSurfaceArea,
-  blankFlangeWeightSync as getBlankFlangeWeight,
-  bnwSetInfoSync as getBnwSetInfo,
-  gasketWeightSync as getGasketWeight,
-  NB_TO_OD_LOOKUP,
-} from "@/app/lib/hooks/useFlangeWeights";
+import { FLANGE_OD } from "@/app/lib/config/rfq/constants";
 import { log } from "@/app/lib/logger";
+import {
+  blankFlangeSurfaceArea,
+  blankFlangeWeight,
+  bnwSetInfo,
+  gasketWeightLookup,
+  useAllBnwSetWeights,
+  useAllFlangeTypeWeights,
+  useAllGasketWeights,
+  useNbToOdMap,
+} from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import {
   calculateInsideDiameter,
@@ -379,6 +383,10 @@ export default function ItemUploadStep({
 }) {
   const rfqData = useRfqWizardStore((s) => s.rfqData);
   const masterData = useRfqWizardStore((s) => s.masterData);
+  const { data: nbToOdMap = {} } = useNbToOdMap();
+  const { data: allWeights = [] } = useAllFlangeTypeWeights();
+  const { data: allBnwSets = [] } = useAllBnwSetWeights();
+  const { data: allGaskets = [] } = useAllGasketWeights();
   const availableSchedulesMap = useRfqWizardStore((s) => s.availableSchedulesMap);
   const setAvailableSchedulesMap = useRfqWizardStore((s) => s.setAvailableSchedulesMap);
   const pressureClassesByStandard = useRfqWizardStore((s) => s.pressureClassesByStandard);
@@ -755,13 +763,13 @@ export default function ItemUploadStep({
         }
 
         if (hasFlanges && qty > 0) {
-          const bnwInfo = getBnwSetInfo(nbMm, pressureClass || "PN16");
+          const bnwInfo = bnwSetInfo(allBnwSets, nbMm, pressureClass || "PN16");
           const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
           bnwWeight = bnwWeightPerSet * qty;
 
           // Add gasket weight
           if (globalSpecs?.gasketType) {
-            const singleGasketWeight = getGasketWeight(globalSpecs.gasketType, nbMm);
+            const singleGasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, nbMm);
             gasketWeight = singleGasketWeight * qty;
           }
         }
@@ -771,12 +779,16 @@ export default function ItemUploadStep({
           entry.specs.stubs.forEach((stub: any) => {
             if (stub?.nominalBoreMm) {
               const stubNb = stub.nominalBoreMm;
-              const stubBnwInfo = getBnwSetInfo(stubNb, pressureClass || "PN16");
+              const stubBnwInfo = bnwSetInfo(allBnwSets, stubNb, pressureClass || "PN16");
               const stubBnwWeightPerSet = stubBnwInfo.weightPerHole * stubBnwInfo.holesPerFlange;
               stubBnwWeight += stubBnwWeightPerSet * qty;
 
               if (globalSpecs?.gasketType) {
-                const stubSingleGasketWeight = getGasketWeight(globalSpecs.gasketType, stubNb);
+                const stubSingleGasketWeight = gasketWeightLookup(
+                  allGaskets,
+                  globalSpecs.gasketType,
+                  stubNb,
+                );
                 stubGasketWeight += stubSingleGasketWeight * qty;
               }
             }
@@ -2322,7 +2334,7 @@ export default function ItemUploadStep({
                     const nbMm = entry.specs?.nominalBoreMm || 100;
 
                     // Get BNW set info
-                    const bnwInfo = getBnwSetInfo(nbMm, pressureClass || "PN16");
+                    const bnwInfo = bnwSetInfo(allBnwSets, nbMm, pressureClass || "PN16");
                     const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
 
                     // Calculate weld thickness for flange welds
@@ -2533,8 +2545,8 @@ export default function ItemUploadStep({
                           return { external: null, internal: null };
 
                         // Get OD from NB using lookup
-                        const mainOd = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
-                        const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.05;
+                        const mainOd = nbToOdMap[nb] || nb * 1.05;
+                        const branchOd = nbToOdMap[branchNb] || branchNb * 1.05;
                         const mainId = mainOd - 2 * wt;
                         const branchId = branchOd - 2 * wt;
 
@@ -2676,7 +2688,8 @@ export default function ItemUploadStep({
                           globalSpecs?.gasketType &&
                           entry.itemType !== "fitting" &&
                           (() => {
-                            const gasketWeight = getGasketWeight(
+                            const gasketWeight = gasketWeightLookup(
+                              allGaskets,
                               globalSpecs.gasketType,
                               entry.specs?.nominalBoreMm || 100,
                             );
@@ -2733,23 +2746,27 @@ export default function ItemUploadStep({
 
                             if (mainBoltSetCount === 0 && branchBoltSetCount === 0) return null;
 
-                            const mainBnwInfo = getBnwSetInfo(mainNb, pressureClass || "PN16");
+                            const mainBnwInfo = bnwSetInfo(
+                              allBnwSets,
+                              mainNb,
+                              pressureClass || "PN16",
+                            );
                             const mainBnwWeightPerSet =
                               mainBnwInfo.weightPerHole * mainBnwInfo.holesPerFlange;
                             const mainGasketWeight = globalSpecs?.gasketType
-                              ? getGasketWeight(globalSpecs.gasketType, mainNb)
+                              ? gasketWeightLookup(allGaskets, globalSpecs.gasketType, mainNb)
                               : 0;
 
                             const branchBnwInfo =
                               branchBoltSetCount > 0
-                                ? getBnwSetInfo(branchNb, pressureClass || "PN16")
+                                ? bnwSetInfo(allBnwSets, branchNb, pressureClass || "PN16")
                                 : null;
                             const branchBnwWeightPerSet = branchBnwInfo
                               ? branchBnwInfo.weightPerHole * branchBnwInfo.holesPerFlange
                               : 0;
                             const branchGasketWeight =
                               branchBoltSetCount > 0 && globalSpecs?.gasketType
-                                ? getGasketWeight(globalSpecs.gasketType, branchNb)
+                                ? gasketWeightLookup(allGaskets, globalSpecs.gasketType, branchNb)
                                 : 0;
 
                             return (
@@ -2883,7 +2900,11 @@ export default function ItemUploadStep({
                           entry.specs?.stubs?.map((stub: any, stubIndex: number) => {
                             if (!stub?.nominalBoreMm) return null;
                             const stubNb = stub.nominalBoreMm;
-                            const stubBnwInfo = getBnwSetInfo(stubNb, pressureClass || "PN16");
+                            const stubBnwInfo = bnwSetInfo(
+                              allBnwSets,
+                              stubNb,
+                              pressureClass || "PN16",
+                            );
                             const stubBnwWeightPerSet =
                               stubBnwInfo.weightPerHole * stubBnwInfo.holesPerFlange;
                             const stubBnwTotalWeight = stubBnwWeightPerSet * qty;
@@ -2926,7 +2947,8 @@ export default function ItemUploadStep({
                           entry.specs?.stubs?.map((stub: any, stubIndex: number) => {
                             if (!stub?.nominalBoreMm) return null;
                             const stubNb = stub.nominalBoreMm;
-                            const stubGasketWeight = getGasketWeight(
+                            const stubGasketWeight = gasketWeightLookup(
+                              allGaskets,
                               globalSpecs.gasketType!,
                               stubNb,
                             );
@@ -2973,13 +2995,14 @@ export default function ItemUploadStep({
                                   100
                                 : entry.specs?.nominalBoreMm || 100;
                             const blankFlangeCount = entry.specs?.blankFlangeCount || 1;
-                            const blankFlangeWeight = getBlankFlangeWeight(
+                            const blankFlangeWeightKg = blankFlangeWeight(
+                              allWeights,
                               blankNb,
                               pressureClass || "PN16",
                             );
-                            const blankFlangeSurfaceArea = getBlankFlangeSurfaceArea(blankNb);
+                            const blankFlangeArea = blankFlangeSurfaceArea(FLANGE_OD, blankNb);
                             const totalBlankFlanges = blankFlangeCount * qty;
-                            const totalBlankWeight = blankFlangeWeight * totalBlankFlanges;
+                            const totalBlankWeight = blankFlangeWeightKg * totalBlankFlanges;
 
                             return (
                               <tr className="border-b border-red-100 bg-red-50/50 hover:bg-red-100/50">
@@ -2993,19 +3016,19 @@ export default function ItemUploadStep({
                                 <td className="py-2 px-2 text-center text-red-600">-</td>
                                 {requiredProducts.includes("surface_protection") && (
                                   <td className="py-2 px-2 text-center text-red-700 text-xs">
-                                    {blankFlangeSurfaceArea.external.toFixed(3)}
+                                    {blankFlangeArea.external.toFixed(3)}
                                   </td>
                                 )}
                                 {requiredProducts.includes("surface_protection") && (
                                   <td className="py-2 px-2 text-center text-red-700 text-xs">
-                                    {blankFlangeSurfaceArea.internal.toFixed(3)}
+                                    {blankFlangeArea.internal.toFixed(3)}
                                   </td>
                                 )}
                                 <td className="py-2 px-2 text-center font-medium text-red-800">
                                   {totalBlankFlanges}
                                 </td>
                                 <td className="py-2 px-2 text-right text-red-700">
-                                  {formatWeight(blankFlangeWeight)}
+                                  {formatWeight(blankFlangeWeightKg)}
                                 </td>
                                 <td className="py-2 px-2 text-right font-semibold text-red-800">
                                   {formatWeight(totalBlankWeight)}

@@ -5,6 +5,7 @@ import * as XLSX from "xlsx";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { DEFAULT_PIPE_LENGTH_M } from "@/app/lib/config/rfq";
+import { FLANGE_OD } from "@/app/lib/config/rfq/constants";
 import {
   boltSetCountPerBend,
   boltSetCountPerFitting,
@@ -12,11 +13,14 @@ import {
 } from "@/app/lib/config/rfq/pipeEndOptions";
 import { formatDateLongZA, fromJSDate, nowISO } from "@/app/lib/datetime";
 import {
-  blankFlangeSurfaceAreaSync as blankFlangeSurfaceArea,
-  bnwSetInfoSync as getBnwSetInfo,
-  flangeWeightSync as getFlangeWeight,
-  gasketWeightSync as getGasketWeight,
-} from "@/app/lib/hooks/useFlangeWeights";
+  blankFlangeSurfaceArea,
+  bnwSetInfo,
+  flangeWeight,
+  gasketWeightLookup,
+  useAllBnwSetWeights,
+  useAllFlangeTypeWeights,
+  useAllGasketWeights,
+} from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 
 export default function BOQStep({
@@ -33,6 +37,9 @@ export default function BOQStep({
   const rfqData = useRfqWizardStore((s) => s.rfqData);
   const masterData = useRfqWizardStore((s) => s.masterData);
   const loading = useRfqWizardStore((s) => s.isSubmitting);
+  const { data: allWeights = [] } = useAllFlangeTypeWeights();
+  const { data: allBnwSets = [] } = useAllBnwSetWeights();
+  const { data: allGaskets = [] } = useAllGasketWeights();
   const entries: any[] = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
   const globalSpecs = rfqData.globalSpecs;
   const requiredProducts = rfqData.requiredProducts || [];
@@ -306,29 +313,30 @@ export default function BOQStep({
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${flangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
-        const flangeWeight = getFlangeWeight(
+        const flangeWeightKg = flangeWeight(
+          allWeights,
           nb,
           flangeSpec.split(" ").pop() || "PN16",
-          bendFlangeStandardCode,
+          bendFlangeStandardCode ?? null,
           bendFlangeTypeCode,
         );
 
         if (existingFlange) {
           existingFlange.qty += flangeQty;
-          existingFlange.weight += flangeWeight * flangeQty;
+          existingFlange.weight += flangeWeightKg * flangeQty;
           existingFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${flangeTypeName} Flange ${flangeSpec}`,
             qty: flangeQty,
             unit: "Each",
-            weight: flangeWeight * flangeQty,
+            weight: flangeWeightKg * flangeQty,
             entries: [itemNumber],
           });
         }
 
         // BNW for bend flanges - use bolt set count (2 same-sized ends = 1 bolt set)
-        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(" ").pop() || "PN16");
+        const bnwInfo = bnwSetInfo(allBnwSets, nb, flangeSpec.split(" ").pop() || "PN16");
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
@@ -352,7 +360,7 @@ export default function BOQStep({
         if (globalSpecs?.gasketType) {
           const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpec}`;
           const existingGasket = consolidatedGaskets.get(gasketKey);
-          const gasketWeight = getGasketWeight(globalSpecs.gasketType, nb);
+          const gasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, nb);
 
           if (existingGasket) {
             existingGasket.qty += flangeQty;
@@ -381,10 +389,11 @@ export default function BOQStep({
           // Stub flange - stubs are typically Slip On flanges
           const stubFlangeKey = `FLANGE_${stubNb}_${flangeSpec}_${flangeTypeName}`;
           const existingStubFlange = consolidatedFlanges.get(stubFlangeKey);
-          const stubFlangeWeight = getFlangeWeight(
+          const stubFlangeWeight = flangeWeight(
+            allWeights,
             stubNb,
             flangeSpec.split(" ").pop() || "PN16",
-            bendFlangeStandardCode,
+            bendFlangeStandardCode ?? null,
             bendFlangeTypeCode,
           );
 
@@ -405,7 +414,7 @@ export default function BOQStep({
           }
 
           // Stub BNW set - each stub flange needs its own bolt set
-          const stubBnwInfo = getBnwSetInfo(stubNb, flangeSpec.split(" ").pop() || "PN16");
+          const stubBnwInfo = bnwSetInfo(allBnwSets, stubNb, flangeSpec.split(" ").pop() || "PN16");
           const stubBnwKey = `BNW_${stubBnwInfo.boltSize}_x${stubBnwInfo.holesPerFlange}_${stubNb}NB_${flangeSpec}`;
           const existingStubBnw = consolidatedBnwSets.get(stubBnwKey);
           const stubBnwWeight = stubBnwInfo.weightPerHole * stubBnwInfo.holesPerFlange;
@@ -430,7 +439,7 @@ export default function BOQStep({
           if (globalSpecs?.gasketType) {
             const stubGasketKey = `GASKET_${globalSpecs.gasketType}_${stubNb}NB_${flangeSpec}`;
             const existingStubGasket = consolidatedGaskets.get(stubGasketKey);
-            const stubGasketWeight = getGasketWeight(globalSpecs.gasketType, stubNb);
+            const stubGasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, stubNb);
 
             if (existingStubGasket) {
               existingStubGasket.qty += qty;
@@ -458,13 +467,14 @@ export default function BOQStep({
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
         const blankWeight =
-          getFlangeWeight(
+          flangeWeight(
+            allWeights,
             blankNb,
             flangeSpec.split(" ").pop() || "PN16",
-            bendFlangeStandardCode,
+            bendFlangeStandardCode ?? null,
             bendFlangeTypeCode,
           ) * 0.6;
-        const blankSurfaceArea = blankFlangeSurfaceArea(blankNb);
+        const blankSurfaceArea = blankFlangeSurfaceArea(FLANGE_OD, blankNb);
         const blankExtArea = blankSurfaceArea.external * blankQty;
         const blankIntArea = blankSurfaceArea.internal * blankQty;
 
@@ -631,29 +641,30 @@ export default function BOQStep({
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${fittingFlangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * qty;
-        const flangeWeight = getFlangeWeight(
+        const flangeWeightKg = flangeWeight(
+          allWeights,
           nb,
           flangeSpec.split(" ").pop() || "PN16",
-          fittingFlangeStandardCode,
+          fittingFlangeStandardCode ?? null,
           fittingFlangeTypeCode,
         );
 
         if (existingFlange) {
           existingFlange.qty += flangeQty;
-          existingFlange.weight += flangeWeight * flangeQty;
+          existingFlange.weight += flangeWeightKg * flangeQty;
           existingFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${fittingFlangeTypeName} Flange ${flangeSpec}`,
             qty: flangeQty,
             unit: "Each",
-            weight: flangeWeight * flangeQty,
+            weight: flangeWeightKg * flangeQty,
             entries: [itemNumber],
           });
         }
 
         // BNW for main flanges - use bolt set count (3 same-sized ends = 2 bolt sets)
-        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(" ").pop() || "PN16");
+        const bnwInfo = bnwSetInfo(allBnwSets, nb, flangeSpec.split(" ").pop() || "PN16");
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
@@ -679,7 +690,7 @@ export default function BOQStep({
         if (globalSpecs?.gasketType) {
           const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpec}`;
           const existingGasket = consolidatedGaskets.get(gasketKey);
-          const gasketWeight = getGasketWeight(globalSpecs.gasketType, nb);
+          const gasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, nb);
 
           if (existingGasket) {
             existingGasket.qty += flangeQty;
@@ -702,10 +713,11 @@ export default function BOQStep({
         const branchFlangeKey = `FLANGE_${branchNb}_${flangeSpec}_${fittingFlangeTypeName}`;
         const existingBranchFlange = consolidatedFlanges.get(branchFlangeKey);
         const branchFlangeQty = flangeCount.branch * qty;
-        const branchFlangeWeight = getFlangeWeight(
+        const branchFlangeWeight = flangeWeight(
+          allWeights,
           branchNb,
           flangeSpec.split(" ").pop() || "PN16",
-          fittingFlangeStandardCode,
+          fittingFlangeStandardCode ?? null,
           fittingFlangeTypeCode,
         );
 
@@ -724,7 +736,11 @@ export default function BOQStep({
         }
 
         // BNW for branch flanges - use bolt set count for branch (only counts when different size)
-        const branchBnwInfo = getBnwSetInfo(branchNb, flangeSpec.split(" ").pop() || "PN16");
+        const branchBnwInfo = bnwSetInfo(
+          allBnwSets,
+          branchNb,
+          flangeSpec.split(" ").pop() || "PN16",
+        );
         const branchBnwKey = `BNW_${branchBnwInfo.boltSize}_x${branchBnwInfo.holesPerFlange}_${branchNb}NB_${flangeSpec}`;
         const existingBranchBnw = consolidatedBnwSets.get(branchBnwKey);
         const branchBnwWeight = branchBnwInfo.weightPerHole * branchBnwInfo.holesPerFlange;
@@ -750,7 +766,11 @@ export default function BOQStep({
         if (globalSpecs?.gasketType) {
           const branchGasketKey = `GASKET_${globalSpecs.gasketType}_${branchNb}NB_${flangeSpec}`;
           const existingBranchGasket = consolidatedGaskets.get(branchGasketKey);
-          const branchGasketWeight = getGasketWeight(globalSpecs.gasketType, branchNb);
+          const branchGasketWeight = gasketWeightLookup(
+            allGaskets,
+            globalSpecs.gasketType,
+            branchNb,
+          );
 
           if (existingBranchGasket) {
             existingBranchGasket.qty += branchFlangeQty;
@@ -775,13 +795,14 @@ export default function BOQStep({
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * qty;
         const blankWeight =
-          getFlangeWeight(
+          flangeWeight(
+            allWeights,
             blankNb,
             flangeSpec.split(" ").pop() || "PN16",
-            fittingFlangeStandardCode,
+            fittingFlangeStandardCode ?? null,
             fittingFlangeTypeCode,
           ) * 0.6;
-        const blankSurfaceArea = blankFlangeSurfaceArea(blankNb);
+        const blankSurfaceArea = blankFlangeSurfaceArea(FLANGE_OD, blankNb);
         const blankExtArea = blankSurfaceArea.external * blankQty;
         const blankIntArea = blankSurfaceArea.internal * blankQty;
 
@@ -880,29 +901,30 @@ export default function BOQStep({
         const flangeKey = `FLANGE_${nb}_${flangeSpec}_${pipeFlangeTypeName}`;
         const existingFlange = consolidatedFlanges.get(flangeKey);
         const flangeQty = flangeCount.main * pipeQty;
-        const flangeWeight = getFlangeWeight(
+        const flangeWeightKg = flangeWeight(
+          allWeights,
           nb,
           flangeSpec.split(" ").pop() || "PN16",
-          pipeFlangeStandardCode,
+          pipeFlangeStandardCode ?? null,
           pipeFlangeTypeCode,
         );
 
         if (existingFlange) {
           existingFlange.qty += flangeQty;
-          existingFlange.weight += flangeWeight * flangeQty;
+          existingFlange.weight += flangeWeightKg * flangeQty;
           existingFlange.entries.push(itemNumber);
         } else {
           consolidatedFlanges.set(flangeKey, {
             description: `${nb}NB ${pipeFlangeTypeName} Flange ${flangeSpec}`,
             qty: flangeQty,
             unit: "Each",
-            weight: flangeWeight * flangeQty,
+            weight: flangeWeightKg * flangeQty,
             entries: [itemNumber],
           });
         }
 
         // BNW for pipe flanges - use bolt set count (2 same-sized ends = 1 bolt set)
-        const bnwInfo = getBnwSetInfo(nb, flangeSpec.split(" ").pop() || "PN16");
+        const bnwInfo = bnwSetInfo(allBnwSets, nb, flangeSpec.split(" ").pop() || "PN16");
         const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
         const existingBnw = consolidatedBnwSets.get(bnwKey);
         const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
@@ -928,7 +950,7 @@ export default function BOQStep({
         if (globalSpecs?.gasketType) {
           const gasketKey = `GASKET_${globalSpecs.gasketType}_${nb}NB_${flangeSpec}`;
           const existingGasket = consolidatedGaskets.get(gasketKey);
-          const gasketWeight = getGasketWeight(globalSpecs.gasketType, nb);
+          const gasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, nb);
 
           if (existingGasket) {
             existingGasket.qty += flangeQty;
@@ -953,13 +975,14 @@ export default function BOQStep({
         const existingBlank = consolidatedBlankFlanges.get(blankFlangeKey);
         const blankQty = entry.specs.blankFlangeCount * pipeQty;
         const blankWeight =
-          getFlangeWeight(
+          flangeWeight(
+            allWeights,
             blankNb,
             flangeSpec.split(" ").pop() || "PN16",
-            pipeFlangeStandardCode,
+            pipeFlangeStandardCode ?? null,
             pipeFlangeTypeCode,
           ) * 0.6;
-        const blankSurfaceArea = blankFlangeSurfaceArea(blankNb);
+        const blankSurfaceArea = blankFlangeSurfaceArea(FLANGE_OD, blankNb);
         const blankExtArea = blankSurfaceArea.external * blankQty;
         const blankIntArea = blankSurfaceArea.internal * blankQty;
 

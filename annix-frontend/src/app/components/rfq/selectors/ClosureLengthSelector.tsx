@@ -2,6 +2,7 @@
 
 import React from "react";
 import { CLOSURE_LENGTH_OPTIONS, closureLengthLimits, closureWeight } from "@/app/lib/config/rfq";
+import { useNbToOdMap } from "@/app/lib/query/hooks";
 
 interface ClosureLengthSelectorProps {
   nominalBore: number;
@@ -22,9 +23,12 @@ export function ClosureLengthSelector({
   showTackWeldInfo = true,
   variant = "default",
 }: ClosureLengthSelectorProps) {
+  const { data: nbToOdMap = {} } = useNbToOdMap();
   const limits = closureLengthLimits(nominalBore);
   const closureWeightKg =
-    currentValue && currentValue > 0 ? closureWeight(nominalBore, currentValue, wallThickness) : 0;
+    currentValue && currentValue > 0
+      ? closureWeight(nominalBore, currentValue, wallThickness, nbToOdMap)
+      : 0;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value ? Number(e.target.value) : null;

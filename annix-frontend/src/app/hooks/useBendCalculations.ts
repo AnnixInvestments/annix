@@ -13,11 +13,12 @@ import {
   tackWeldWeight as getTackWeldWeight,
 } from "@/app/lib/config/rfq";
 import {
-  blankFlangeWeightSync as getBlankFlangeWeight,
-  flangeWeightSync as getFlangeWeight,
-  NB_TO_OD_LOOKUP,
-  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
-} from "@/app/lib/hooks/useFlangeWeights";
+  blankFlangeWeight as blankFlangeWeightLookup,
+  flangeWeight as flangeWeightLookup,
+  sansBlankFlangeWeight as sansBlankFlangeWeightLookup,
+  useAllFlangeTypeWeights,
+  useNbToOdMap,
+} from "@/app/lib/query/hooks";
 import { calculateBendWeldVolume } from "@/app/lib/utils/pipeCalculations";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 
@@ -160,6 +161,9 @@ export function useBendCalculations(
   globalSpecs: GlobalSpecs,
   masterData: MasterData,
 ): UseBendCalculationsResult {
+  const { data: nbToOdMap = {} } = useNbToOdMap();
+  const { data: allWeights = [] } = useAllFlangeTypeWeights();
+
   return useMemo(() => {
     const specs = entry.specs;
     const calculation = entry.calculation;
@@ -191,7 +195,7 @@ export function useBendCalculations(
     const rawEffectiveWt = fittingWt || pipeWallThickness;
     const effectiveWt = rawEffectiveWt ? roundToWeldIncrement(rawEffectiveWt) : null;
 
-    const mainOdMm = dn ? NB_TO_OD_LOOKUP[dn] || dn * 1.05 : 0;
+    const mainOdMm = dn ? nbToOdMap[dn] || dn * 1.05 : 0;
     const mainIdMm = mainOdMm - 2 * (pipeWallThickness || 0);
     const mainCircumference = mainOdMm > 0 ? Math.PI * mainOdMm : 0;
     const mainCrossSection =
@@ -239,19 +243,37 @@ export function useBendCalculations(
 
     const mainFlangeWeightPerUnit =
       dn && pressureClassDesignation
-        ? getFlangeWeight(dn, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
+        ? flangeWeightLookup(
+            allWeights,
+            dn,
+            pressureClassDesignation,
+            flangeStandardCode || null,
+            flangeTypeCode || "",
+          )
         : calculation?.flangeWeightPerUnit || 0;
     const mainFlangesWeight = bendFlangeCount * mainFlangeWeightPerUnit;
 
     const stub1FlangeWeightPerUnit =
       stub1NB && pressureClassDesignation
-        ? getFlangeWeight(stub1NB, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
+        ? flangeWeightLookup(
+            allWeights,
+            stub1NB,
+            pressureClassDesignation,
+            flangeStandardCode || null,
+            flangeTypeCode || "",
+          )
         : 0;
     const stub1FlangesWeight = stub1FlangeCount * stub1FlangeWeightPerUnit;
 
     const stub2FlangeWeightPerUnit =
       stub2NB && pressureClassDesignation
-        ? getFlangeWeight(stub2NB, pressureClassDesignation, flangeStandardCode, flangeTypeCode)
+        ? flangeWeightLookup(
+            allWeights,
+            stub2NB,
+            pressureClassDesignation,
+            flangeStandardCode || null,
+            flangeTypeCode || "",
+          )
         : 0;
     const stub2FlangesWeight = stub2FlangeCount * stub2FlangeWeightPerUnit;
 
@@ -265,8 +287,8 @@ export function useBendCalculations(
     const blankWeightPerUnit =
       dn && pressureClassDesignation
         ? isSans1123
-          ? sansBlankFlangeWeight(dn, pressureClassDesignation)
-          : getBlankFlangeWeight(dn, pressureClassDesignation)
+          ? sansBlankFlangeWeightLookup(allWeights, dn, pressureClassDesignation)
+          : blankFlangeWeightLookup(allWeights, dn, pressureClassDesignation)
         : 0;
     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
@@ -279,10 +301,10 @@ export function useBendCalculations(
     const closureWallThickness = pipeWallThickness || 5;
     const closureTotalWeight =
       dn && closureLengthMm > 0 && closureWallThickness > 0
-        ? getClosureWeight(dn, closureLengthMm, closureWallThickness) * bendQuantity
+        ? getClosureWeight(dn, closureLengthMm, closureWallThickness, nbToOdMap) * bendQuantity
         : 0;
 
-    const stub1OD = stub1NB ? NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05 : 0;
+    const stub1OD = stub1NB ? nbToOdMap[stub1NB] || stub1NB * 1.05 : 0;
     const stub1ID = stub1OD - 2 * (pipeWallThickness || 0);
     const stub1CrossSection =
       stub1OD > 0 ? (Math.PI * (stub1OD * stub1OD - stub1ID * stub1ID)) / 4 : 0;
@@ -291,7 +313,7 @@ export function useBendCalculations(
         ? (stub1CrossSection / 1000000) * (stub1Length / 1000) * STEEL_DENSITY_KG_M3
         : 0;
 
-    const stub2OD = stub2NB ? NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05 : 0;
+    const stub2OD = stub2NB ? nbToOdMap[stub2NB] || stub2NB * 1.05 : 0;
     const stub2ID = stub2OD - 2 * (pipeWallThickness || 0);
     const stub2CrossSection =
       stub2OD > 0 ? (Math.PI * (stub2OD * stub2OD - stub2ID * stub2ID)) / 4 : 0;
@@ -503,5 +525,5 @@ export function useBendCalculations(
       isPulledBend,
       isSABS719,
     };
-  }, [entry, globalSpecs, masterData]);
+  }, [entry, globalSpecs, masterData, nbToOdMap, allWeights]);
 }

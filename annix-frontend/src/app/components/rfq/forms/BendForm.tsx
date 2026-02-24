@@ -42,15 +42,16 @@ import {
   tackWeldEndsPerBend,
 } from "@/app/lib/config/rfq";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
-import {
-  BS_4504_FLANGE_TYPES,
-  blankFlangeWeightSync as getBlankFlangeWeight,
-  flangeWeightSync as getFlangeWeight,
-  NB_TO_OD_LOOKUP,
-  SABS_1123_FLANGE_TYPES,
-  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
-} from "@/app/lib/hooks/useFlangeWeights";
 import { log } from "@/app/lib/logger";
+import {
+  blankFlangeWeight,
+  flangeTypesForStandardCode,
+  flangeWeight,
+  sansBlankFlangeWeight,
+  useAllFlangeTypes,
+  useAllFlangeTypeWeights,
+  useNbToOdMap,
+} from "@/app/lib/query/hooks";
 import {
   calculateBendWeldVolume,
   calculateMinWallThickness,
@@ -115,6 +116,10 @@ function BendFormComponent({
   onShowRestrictionPopup,
 }: BendFormProps) {
   log.info(`🔄 BendForm RENDER - entry.id: ${entry.id}, index: ${index}`);
+
+  const { data: nbToOdMap = {} } = useNbToOdMap();
+  const { data: allWeights = [] } = useAllFlangeTypeWeights();
+  const { data: allFlangeTypes = [] } = useAllFlangeTypes();
 
   // Authentication status for quantity restrictions
   // Don't apply restrictions while auth is still loading
@@ -1073,7 +1078,7 @@ function BendFormComponent({
                               const pressure = globalSpecs?.workingPressureBar || 0;
 
                               if (pressure > 0 && schedules.length > 0) {
-                                const od = NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05;
+                                const od = nbToOdMap[nominalBore] || nominalBore * 1.05;
                                 const temperature = globalSpecs?.workingTemperatureC || 20;
                                 const minWT = calculateMinWallThickness(
                                   od,
@@ -1239,7 +1244,7 @@ function BendFormComponent({
                             let matchedWT = 0;
 
                             if (pressure > 0 && schedules.length > 0) {
-                              const od = NB_TO_OD_LOOKUP[nominalBore] || nominalBore * 1.05;
+                              const od = nbToOdMap[nominalBore] || nominalBore * 1.05;
                               const temperature = globalSpecs?.workingTemperatureC || 20;
                               const minWT = calculateMinWallThickness(
                                 od,
@@ -2190,7 +2195,9 @@ function BendFormComponent({
                   (standardCode.includes("EN") &&
                     (standardCode.includes("1092") || standardCode.includes("10921")));
                 const showFlangeType = isSabs1123 || isBs4504;
-                const flangeTypes = isSabs1123 ? SABS_1123_FLANGE_TYPES : BS_4504_FLANGE_TYPES;
+                const flangeTypes = isSabs1123
+                  ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
+                  : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || [];
                 const pressureClasses = isSabs1123
                   ? SABS_1123_PRESSURE_CLASSES
                   : BS_4504_PRESSURE_CLASSES;
@@ -3520,8 +3527,8 @@ function BendFormComponent({
                           selectedStandard?.code?.includes("4504");
                         const showFlangeType = isSabs1123 || isBs4504;
                         const flangeTypes = isSabs1123
-                          ? SABS_1123_FLANGE_TYPES
-                          : BS_4504_FLANGE_TYPES;
+                          ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
+                          : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || [];
                         const pressureClasses = isSabs1123
                           ? SABS_1123_PRESSURE_CLASSES
                           : BS_4504_PRESSURE_CLASSES;
@@ -4226,8 +4233,8 @@ function BendFormComponent({
                               selectedStandard?.code?.includes("4504");
                             const showFlangeType = isSabs1123 || isBs4504;
                             const flangeTypes = isSabs1123
-                              ? SABS_1123_FLANGE_TYPES
-                              : BS_4504_FLANGE_TYPES;
+                              ? flangeTypesForStandardCode(allFlangeTypes, "SABS 1123") || []
+                              : flangeTypesForStandardCode(allFlangeTypes, "BS 4504") || [];
                             const pressureClasses = isSabs1123
                               ? SABS_1123_PRESSURE_CLASSES
                               : BS_4504_PRESSURE_CLASSES;
@@ -4752,7 +4759,7 @@ function BendFormComponent({
                       nominalBore={entry.specs.nominalBoreMm}
                       outerDiameter={
                         entry.calculation?.outsideDiameterMm ||
-                        NB_TO_OD_LOOKUP[entry.specs.nominalBoreMm] ||
+                        nbToOdMap[entry.specs.nominalBoreMm] ||
                         entry.specs.nominalBoreMm * 1.05
                       }
                       wallThickness={
@@ -4943,7 +4950,7 @@ function BendFormComponent({
                   const stub2Wt = stub2NB && stub2RawWt ? roundToWeldIncrement(stub2RawWt) : 0;
                   const totalWeldLength = entry.calculation.totalWeldLengthMm || 0;
 
-                  const mainOdMm = dn ? NB_TO_OD_LOOKUP[dn] || dn * 1.05 : 0;
+                  const mainOdMm = dn ? nbToOdMap[dn] || dn * 1.05 : 0;
                   const mitreWeldCount = numSegments > 1 ? numSegments - 1 : 0;
                   // Steinmetz curve saddle weld for sweep tees (bicylindric intersection)
                   // AWS D1.1 Clause 9.5.4: Total weld length for 90° equal-diameter intersection ≈ 2.7 × OD
@@ -4969,14 +4976,14 @@ function BendFormComponent({
                           stubs: [
                             stub1NB && stub1HasFlange
                               ? {
-                                  odMm: NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05,
+                                  odMm: nbToOdMap[stub1NB] || stub1NB * 1.05,
                                   wallThicknessMm: pipeWallThickness,
                                   hasFlangeWeld: true,
                                 }
                               : null,
                             stub2NB && stub2HasFlange
                               ? {
-                                  odMm: NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05,
+                                  odMm: nbToOdMap[stub2NB] || stub2NB * 1.05,
                                   wallThicknessMm: pipeWallThickness,
                                   hasFlangeWeld: true,
                                 }
@@ -4988,8 +4995,8 @@ function BendFormComponent({
                           }>,
                         })
                       : null;
-                  const teeStub1OdForVol = stub1NB ? NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05 : 0;
-                  const teeStub2OdForVol = stub2NB ? NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05 : 0;
+                  const teeStub1OdForVol = stub1NB ? nbToOdMap[stub1NB] || stub1NB * 1.05 : 0;
+                  const teeStub2OdForVol = stub2NB ? nbToOdMap[stub2NB] || stub2NB * 1.05 : 0;
                   const FILLET_LEG_RATIO = 0.7;
                   const tee1LegSize = pipeWallThickness ? pipeWallThickness * FILLET_LEG_RATIO : 0;
                   const tee2LegSize = pipeWallThickness ? pipeWallThickness * FILLET_LEG_RATIO : 0;
@@ -5025,7 +5032,8 @@ function BendFormComponent({
 
                   const mainFlangeWeightPerUnit =
                     dn && pressureClassDesignation
-                      ? getFlangeWeight(
+                      ? flangeWeight(
+                          allWeights,
                           dn,
                           pressureClassDesignation,
                           flangeStandardCode,
@@ -5036,7 +5044,8 @@ function BendFormComponent({
 
                   const stub1FlangeWeightPerUnit =
                     stub1NB && pressureClassDesignation
-                      ? getFlangeWeight(
+                      ? flangeWeight(
+                          allWeights,
                           stub1NB,
                           pressureClassDesignation,
                           flangeStandardCode,
@@ -5047,7 +5056,8 @@ function BendFormComponent({
 
                   const stub2FlangeWeightPerUnit =
                     stub2NB && pressureClassDesignation
-                      ? getFlangeWeight(
+                      ? flangeWeight(
+                          allWeights,
                           stub2NB,
                           pressureClassDesignation,
                           flangeStandardCode,
@@ -5068,8 +5078,8 @@ function BendFormComponent({
                   const blankWeightPerUnit =
                     dn && pressureClassDesignation
                       ? isSans1123
-                        ? sansBlankFlangeWeight(dn, pressureClassDesignation)
-                        : getBlankFlangeWeight(dn, pressureClassDesignation)
+                        ? sansBlankFlangeWeight(allWeights, dn, pressureClassDesignation)
+                        : blankFlangeWeight(allWeights, dn, pressureClassDesignation)
                       : 0;
                   const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
@@ -5083,11 +5093,12 @@ function BendFormComponent({
                   const closureWallThickness = pipeWallThickness || 5;
                   const closureTotalWeight =
                     dn && closureLengthMm > 0 && closureWallThickness > 0
-                      ? getClosureWeight(dn, closureLengthMm, closureWallThickness) * bendQuantity
+                      ? getClosureWeight(dn, closureLengthMm, closureWallThickness, nbToOdMap) *
+                        bendQuantity
                       : 0;
 
                   const STEEL_DENSITY_KG_M3 = 7850;
-                  const stub1OD = stub1NB ? NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05 : 0;
+                  const stub1OD = stub1NB ? nbToOdMap[stub1NB] || stub1NB * 1.05 : 0;
                   const stub1ID = stub1OD - 2 * (pipeWallThickness || 0);
                   const stub1CrossSection =
                     stub1OD > 0 ? (Math.PI * (stub1OD * stub1OD - stub1ID * stub1ID)) / 4 : 0;
@@ -5096,7 +5107,7 @@ function BendFormComponent({
                       ? (stub1CrossSection / 1000000) * (stub1Length / 1000) * STEEL_DENSITY_KG_M3
                       : 0;
 
-                  const stub2OD = stub2NB ? NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05 : 0;
+                  const stub2OD = stub2NB ? nbToOdMap[stub2NB] || stub2NB * 1.05 : 0;
                   const stub2ID = stub2OD - 2 * (pipeWallThickness || 0);
                   const stub2CrossSection =
                     stub2OD > 0 ? (Math.PI * (stub2OD * stub2OD - stub2ID * stub2ID)) / 4 : 0;
@@ -5145,12 +5156,8 @@ function BendFormComponent({
                   const teeStubs = entry.specs?.stubs || [];
                   const teeStub1NB = teeStubs[0]?.nominalBoreMm;
                   const teeStub2NB = teeStubs[1]?.nominalBoreMm;
-                  const teeStub1OD = teeStub1NB
-                    ? NB_TO_OD_LOOKUP[teeStub1NB] || teeStub1NB * 1.05
-                    : 0;
-                  const teeStub2OD = teeStub2NB
-                    ? NB_TO_OD_LOOKUP[teeStub2NB] || teeStub2NB * 1.05
-                    : 0;
+                  const teeStub1OD = teeStub1NB ? nbToOdMap[teeStub1NB] || teeStub1NB * 1.05 : 0;
+                  const teeStub2OD = teeStub2NB ? nbToOdMap[teeStub2NB] || teeStub2NB * 1.05 : 0;
                   const teeStub1Circ = Math.PI * teeStub1OD;
                   const teeStub2Circ = Math.PI * teeStub2OD;
                   const teeStub1RawWt =
@@ -5364,10 +5371,10 @@ function BendFormComponent({
                         const mitreWeldLinear = mitreWeldCount * mainCirc;
                         const mainFlangeWeldLinear = bendFlangeWeldCount * 2 * mainCirc;
                         const stub1Circ = stub1NB
-                          ? Math.PI * (NB_TO_OD_LOOKUP[stub1NB] || stub1NB * 1.05)
+                          ? Math.PI * (nbToOdMap[stub1NB] || stub1NB * 1.05)
                           : 0;
                         const stub2Circ = stub2NB
-                          ? Math.PI * (NB_TO_OD_LOOKUP[stub2NB] || stub2NB * 1.05)
+                          ? Math.PI * (nbToOdMap[stub2NB] || stub2NB * 1.05)
                           : 0;
                         const stub1FlangeWeldLinear = stub1FlangeCount * 2 * stub1Circ;
                         const stub2FlangeWeldLinear = stub2FlangeCount * 2 * stub2Circ;
@@ -5678,11 +5685,11 @@ function BendFormComponent({
                               : 0;
 
                           const stub1FlangeOdM = stub1NB
-                            ? ((NB_TO_OD_LOOKUP[stub1NB] || stub1NB) * 1.8) / 1000
+                            ? ((nbToOdMap[stub1NB] || stub1NB) * 1.8) / 1000
                             : 0;
                           const stub1FlangeBoreM = stub1IdM;
                           const stub1RaisedFaceM = stub1NB
-                            ? ((NB_TO_OD_LOOKUP[stub1NB] || stub1NB) * 1.2) / 1000
+                            ? ((nbToOdMap[stub1NB] || stub1NB) * 1.2) / 1000
                             : 0;
                           const stub1FlangeExtFaceM2 =
                             stub1FlangeCount > 0
@@ -5699,11 +5706,11 @@ function BendFormComponent({
                               : 0;
 
                           const stub2FlangeOdM = stub2NB
-                            ? ((NB_TO_OD_LOOKUP[stub2NB] || stub2NB) * 1.8) / 1000
+                            ? ((nbToOdMap[stub2NB] || stub2NB) * 1.8) / 1000
                             : 0;
                           const stub2FlangeBoreM = stub2IdM;
                           const stub2RaisedFaceM = stub2NB
-                            ? ((NB_TO_OD_LOOKUP[stub2NB] || stub2NB) * 1.2) / 1000
+                            ? ((nbToOdMap[stub2NB] || stub2NB) * 1.2) / 1000
                             : 0;
                           const stub2FlangeExtFaceM2 =
                             stub2FlangeCount > 0

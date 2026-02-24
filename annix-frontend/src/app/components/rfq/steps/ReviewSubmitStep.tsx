@@ -8,7 +8,7 @@ import {
   weldCountPerFitting as getWeldCountPerFitting,
   weldCountPerPipe as getWeldCountPerPipe,
 } from "@/app/lib/config/rfq";
-import { bnwSetInfoSync as getBnwSetInfo, NB_TO_OD_LOOKUP } from "@/app/lib/hooks/useFlangeWeights";
+import { bnwSetInfo, useAllBnwSetWeights, useNbToOdMap } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 
 export default function ReviewSubmitStep({
@@ -21,6 +21,8 @@ export default function ReviewSubmitStep({
   const rfqData = useRfqWizardStore((s) => s.rfqData) as any;
   const errors = useRfqWizardStore((s) => s.validationErrors);
   const loading = useRfqWizardStore((s) => s.isSubmitting);
+  const { data: nbToOdMap = {} } = useNbToOdMap();
+  const { data: allBnwSets = [] } = useAllBnwSetWeights();
 
   const allItems = rfqData.items || rfqData.straightPipeEntries || [];
 
@@ -88,7 +90,7 @@ export default function ReviewSubmitStep({
         // Bend surface area calculation
         const nb = entry.specs?.nominalBoreMm;
         const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
-        const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+        const od = nbToOdMap[nb] || nb * 1.05;
         const id = od - 2 * wt;
         const odM = od / 1000;
         const idM = id / 1000;
@@ -141,8 +143,8 @@ export default function ReviewSubmitStep({
         }
 
         if (nb && (lengthA || lengthB || teeHeight)) {
-          const mainOd = entry.calculation?.outsideDiameterMm || NB_TO_OD_LOOKUP[nb] || nb * 1.1;
-          const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.1;
+          const mainOd = entry.calculation?.outsideDiameterMm || nbToOdMap[nb] || nb * 1.1;
+          const branchOd = nbToOdMap[branchNb] || branchNb * 1.1;
           const mainId = mainOd - 2 * wt;
           const branchId = branchOd - 2 * wt;
 
@@ -284,7 +286,7 @@ export default function ReviewSubmitStep({
                       const nb = entry.specs?.nominalBoreMm;
                       const wt = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm;
                       if (!nb || !wt) return null;
-                      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+                      const od = nbToOdMap[nb] || nb * 1.05;
                       const id = od - 2 * wt;
                       const bendRadiusType = entry.specs?.bendType || "1.5D";
                       const radiusFactor = parseFloat(bendRadiusType.replace("D", "")) || 1.5;
@@ -325,7 +327,7 @@ export default function ReviewSubmitStep({
                       const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
                       const flangeConnections = getWeldCountPerBend(bendEndConfig);
                       if (!nb || !wt || flangeConnections === 0) return null;
-                      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+                      const od = nbToOdMap[nb] || nb * 1.05;
                       const circumferenceMm = Math.PI * od;
                       // x2 because each flanged connection requires 2 welds (inside + outside)
                       const weldsPerConnection = 2;
@@ -397,8 +399,8 @@ export default function ReviewSubmitStep({
                       const lengthA = entry.specs?.pipeLengthAMm || 0;
                       const lengthB = entry.specs?.pipeLengthBMm || 0;
                       if (!nb || (!lengthA && !lengthB)) return null;
-                      const mainOd = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
-                      const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.05;
+                      const mainOd = nbToOdMap[nb] || nb * 1.05;
+                      const branchOd = nbToOdMap[branchNb] || branchNb * 1.05;
                       const mainId = mainOd - 2 * wt;
                       const branchId = branchOd - 2 * wt;
                       const runLengthM = (lengthA + lengthB) / 1000;
@@ -436,8 +438,8 @@ export default function ReviewSubmitStep({
                       const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
                       const weldCount = getWeldCountPerFitting(fittingEndConfig);
                       if (!nb || weldCount === 0) return null;
-                      const mainOd = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
-                      const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.05;
+                      const mainOd = nbToOdMap[nb] || nb * 1.05;
+                      const branchOd = nbToOdMap[branchNb] || branchNb * 1.05;
                       // For tees: 2 welds on main run + 1 weld on branch
                       // Total linear = 2 × main circ + 1 × branch circ
                       const mainCirc = Math.PI * mainOd;
@@ -556,7 +558,7 @@ export default function ReviewSubmitStep({
                       const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
                       const flangeConnections = getWeldCountPerPipe(pipeEndConfig); // Number of flanged connections
                       if (!nb || !wt || flangeConnections === 0) return null;
-                      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+                      const od = nbToOdMap[nb] || nb * 1.05;
                       const circumferenceMm = Math.PI * od;
                       // x2 because each flanged connection requires 2 welds (inside + outside)
                       const weldsPerConnection = 2;
@@ -647,9 +649,11 @@ export default function ReviewSubmitStep({
                     if (!hasFlanges && stubFlanges.length === 0) return null;
 
                     const pressureClass = rfqData.globalSpecs?.pressureClassDesignation || "PN16";
-                    const bnwInfo = getBnwSetInfo(nbMm, pressureClass);
+                    const bnwInfo = bnwSetInfo(allBnwSets, nbMm, pressureClass);
                     const branchBnwInfo =
-                      branchFlangeCount > 0 ? getBnwSetInfo(branchNbMm, pressureClass) : null;
+                      branchFlangeCount > 0
+                        ? bnwSetInfo(allBnwSets, branchNbMm, pressureClass)
+                        : null;
                     const gasketType = rfqData.globalSpecs?.gasketType;
                     const qty = entry.specs?.quantityValue || 1;
                     // Main bolt sets (not including stubs - stubs shown separately)
@@ -671,7 +675,7 @@ export default function ReviewSubmitStep({
                             )}
                             {stubFlanges.length > 0 &&
                               stubFlanges.map((stub, i) => {
-                                const stubBnwInfo = getBnwSetInfo(stub.nb, pressureClass);
+                                const stubBnwInfo = bnwSetInfo(allBnwSets, stub.nb, pressureClass);
                                 return (
                                   <span key={i} className="ml-2">
                                     + Stub {i + 1}: {stub.count * qty} × {stubBnwInfo.boltSize} ×{" "}
@@ -743,7 +747,7 @@ export default function ReviewSubmitStep({
                   const bendEndConfig = entry.specs?.bendEndConfiguration || "PE";
                   const flangeConnections = getWeldCountPerBend(bendEndConfig);
                   if (nb && flangeConnections > 0) {
-                    const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+                    const od = nbToOdMap[nb] || nb * 1.05;
                     // Each flange connection has 2 welds (inside + outside), so x2
                     const weldsPerFlange = 2;
                     totalWeldLengthM +=
@@ -756,8 +760,8 @@ export default function ReviewSubmitStep({
                   const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
                   const flangeConnections = getWeldCountPerFitting(fittingEndConfig);
                   if (nb && flangeConnections > 0) {
-                    const mainOd = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
-                    const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.05;
+                    const mainOd = nbToOdMap[nb] || nb * 1.05;
+                    const branchOd = nbToOdMap[branchNb] || branchNb * 1.05;
                     // Each flange connection has 2 welds (inside + outside), so x2
                     const weldsPerFlange = 2;
                     let linearMm = 0;
@@ -774,7 +778,7 @@ export default function ReviewSubmitStep({
                   const pipeEndConfig = entry.specs?.pipeEndConfiguration || "PE";
                   const flangeConnections = getWeldCountPerPipe(pipeEndConfig);
                   if (nb && flangeConnections > 0) {
-                    const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+                    const od = nbToOdMap[nb] || nb * 1.05;
                     // Each flange connection has 2 welds (inside + outside), so x2
                     const weldsPerFlange = 2;
                     totalWeldLengthM +=

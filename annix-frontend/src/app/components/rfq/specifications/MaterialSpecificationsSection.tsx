@@ -4,19 +4,13 @@ import React, { useEffect, useRef, useState } from "react";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { ArSteelWarningBanner } from "@/app/components/rfq/warnings/ArSteelWarningBanner";
 import { materialValidationApi, type ValidPressureClassInfo } from "@/app/lib/api/client";
-import {
-  ASME_B16_5_FLANGE_TYPES,
-  ASME_B16_47_SERIES_A_FLANGE_TYPES,
-  ASME_B16_47_SERIES_B_FLANGE_TYPES,
-  BS_10_FLANGE_TYPES,
-  BS_4504_FLANGE_TYPES,
-  SABS_1123_FLANGE_TYPES,
-} from "@/app/lib/hooks/useFlangeWeights";
 import { log } from "@/app/lib/logger";
 import {
   checkSuitabilityFromCache,
   findMaterialLimits,
+  flangeTypesForStandardCode,
   isWearResistant,
+  useAllFlangeTypes,
   useAllMaterialLimits,
 } from "@/app/lib/query/hooks";
 
@@ -115,6 +109,7 @@ export function MaterialSpecificationsSection({
   onMaterialWarning,
 }: MaterialSpecificationsSectionProps) {
   const { data: allLimits } = useAllMaterialLimits();
+  const { data: allFlangeTypes = [] } = useAllFlangeTypes();
   const [steelSpecDropdownOpen, setSteelSpecDropdownOpen] = useState(false);
   const steelSpecDropdownRef = useRef<HTMLDivElement>(null);
   const [flangeStandardDropdownOpen, setFlangeStandardDropdownOpen] = useState(false);
@@ -355,24 +350,7 @@ export function MaterialSpecificationsSection({
     (s) => s.id === globalSpecs?.flangeStandardId,
   );
   const standardCode = selectedStandard?.code || "";
-  const flangeTypesForStandard = (() => {
-    if (standardCode === "SABS 1123") return SABS_1123_FLANGE_TYPES;
-    if (standardCode === "BS 4504") return BS_4504_FLANGE_TYPES;
-    if (standardCode.includes("ASME B16.5") || standardCode.includes("ANSI B16.5"))
-      return ASME_B16_5_FLANGE_TYPES;
-    if (
-      standardCode.includes("ASME B16.47") &&
-      (standardCode.includes("Series A") || standardCode.endsWith("A"))
-    )
-      return ASME_B16_47_SERIES_A_FLANGE_TYPES;
-    if (
-      standardCode.includes("ASME B16.47") &&
-      (standardCode.includes("Series B") || standardCode.endsWith("B"))
-    )
-      return ASME_B16_47_SERIES_B_FLANGE_TYPES;
-    if (standardCode === "BS 10") return BS_10_FLANGE_TYPES;
-    return null;
-  })();
+  const flangeTypesForSelected = flangeTypesForStandardCode(allFlangeTypes, standardCode);
 
   const selectedSteelSpec = masterData.steelSpecs?.find(
     (s) => s.id === globalSpecs?.steelSpecificationId,
@@ -873,7 +851,7 @@ export function MaterialSpecificationsSection({
           )}
         </div>
 
-        {flangeTypesForStandard && (
+        {flangeTypesForSelected && (
           <div>
             <label className="block text-xs font-semibold text-gray-900 mb-1">Flange Type *</label>
             <select
@@ -912,7 +890,7 @@ export function MaterialSpecificationsSection({
               required
             >
               <option value="">Select type...</option>
-              {flangeTypesForStandard.map((ft) => (
+              {flangeTypesForSelected.map((ft) => (
                 <option key={ft.code} value={ft.code}>
                   {ft.code} - {ft.name}
                 </option>

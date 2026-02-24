@@ -20,13 +20,15 @@ import {
 } from "@/app/lib/config/rfq/pipeEndOptions";
 import { currencyByCode, DEFAULT_CURRENCY, vatRateForCurrency } from "@/app/lib/currencies";
 import { formatDateTimeZA, nowISO } from "@/app/lib/datetime";
-import {
-  blankFlangeWeightSync as blankFlangeWeight,
-  flangeWeightSync as flangeWeight,
-  NB_TO_OD_LOOKUP,
-  sansBlankFlangeWeightSync as sansBlankFlangeWeight,
-} from "@/app/lib/hooks/useFlangeWeights";
 import { log } from "@/app/lib/logger";
+import {
+  blankFlangeWeight as blankFlangeWeightLookup,
+  type FlangeTypeWeightRecord,
+  flangeWeight as flangeWeightLookup,
+  sansBlankFlangeWeight as sansBlankFlangeWeightLookup,
+  useAllFlangeTypeWeights,
+  useNbToOdMap,
+} from "@/app/lib/query/hooks";
 
 interface PricingInputs {
   steelSpecs: Record<string, number>;
@@ -122,6 +124,7 @@ const flangeCountFromConfig = (config: string | undefined, itemType: string): nu
 };
 
 const recalculateFlangeWeight = (
+  allWeights: FlangeTypeWeightRecord[],
   description: string,
   qty: number,
   isBlankFlange: boolean,
@@ -141,12 +144,12 @@ const recalculateFlangeWeight = (
 
   if (isBlankFlange || description.toUpperCase().includes("BLANK")) {
     if (isSans) {
-      return sansBlankFlangeWeight(nb, pressureClass) * qty;
+      return sansBlankFlangeWeightLookup(allWeights, nb, pressureClass) * qty;
     }
-    return blankFlangeWeight(nb, pressureClass) * qty;
+    return blankFlangeWeightLookup(allWeights, nb, pressureClass) * qty;
   }
 
-  return flangeWeight(nb, pressureClass, flangeStandard) * qty;
+  return flangeWeightLookup(allWeights, nb, pressureClass, flangeStandard, "3") * qty;
 };
 
 const extractUniqueSpecs = (items: RfqItemDetail[]): ExtractedSpecs => {
@@ -2702,6 +2705,8 @@ function SectionTable({
   pricingInputs,
   rfqItems,
 }: SectionTableProps) {
+  const { data: allWeights = [] } = useAllFlangeTypeWeights();
+
   const hasWelds = section.items.some(
     (item) =>
       item.welds?.flangeWeld ||
@@ -2726,7 +2731,7 @@ function SectionTable({
 
   const effectiveItemWeight = (item: ConsolidatedItem): number => {
     if (isFlangesSection) {
-      return recalculateFlangeWeight(item.description, item.qty, isBlankFlangesSection);
+      return recalculateFlangeWeight(allWeights, item.description, item.qty, isBlankFlangesSection);
     }
     return Number(item.weightKg || 0);
   };
@@ -3480,6 +3485,9 @@ function RfqItemsDetailedView({
   pricingInputs,
   unitPrices,
 }: RfqItemsDetailedViewProps) {
+  const { data: nbToOdMap = {} } = useNbToOdMap();
+  const { data: allWeights = [] } = useAllFlangeTypeWeights();
+
   const currency = currencyByCode(currencyCode);
   const currencySymbol = currency?.symbol || currencyCode;
   const totalWeight = items.reduce((sum, item) => sum + Number(item.totalWeightKg || 0), 0);
@@ -3558,7 +3566,7 @@ function RfqItemsDetailedView({
       const endConfig = details.pipeEndConfiguration || "PE";
       const wt = Number(details.wallThicknessMm) || 6;
       const nb = Number(details.nominalBoreMm) || 0;
-      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+      const od = nbToOdMap[nb] || nb * 1.05;
       const circumferenceMm = Math.PI * od;
 
       let flangeWeldMeters = 0;
@@ -3601,7 +3609,7 @@ function RfqItemsDetailedView({
       const endConfig = details.bendEndConfiguration || "PE";
       const wt = Number(details.wallThicknessMm) || 6;
       const nb = Number(details.nominalBoreMm) || 0;
-      const od = NB_TO_OD_LOOKUP[nb] || nb * 1.05;
+      const od = nbToOdMap[nb] || nb * 1.05;
       const circumferenceMm = Math.PI * od;
       const calcData = details.calculationData;
 
@@ -3642,13 +3650,13 @@ function RfqItemsDetailedView({
       if (Array.isArray(stubs) && stubs.length > 0) {
         stubs.forEach((stub: { nominalBoreMm?: number }) => {
           const stubNb = Number(stub.nominalBoreMm) || nb;
-          const stubOd = NB_TO_OD_LOOKUP[stubNb] || stubNb * 1.05;
+          const stubOd = nbToOdMap[stubNb] || stubNb * 1.05;
           const stubCirc = Math.PI * stubOd;
           teeWeldMeters += stubCirc / 1000;
         });
       } else if (calcData?.numberOfStubs && Number(calcData.numberOfStubs) > 0) {
         const stubNb = Number(calcData.stubNominalBoreMm) || nb;
-        const stubOd = NB_TO_OD_LOOKUP[stubNb] || stubNb * 1.05;
+        const stubOd = nbToOdMap[stubNb] || stubNb * 1.05;
         const stubCirc = Math.PI * stubOd;
         teeWeldMeters = (Number(calcData.numberOfStubs) * stubCirc) / 1000;
       }
@@ -3657,7 +3665,7 @@ function RfqItemsDetailedView({
         stubs.forEach((stub: { flangeSpec?: string; nominalBoreMm?: number }) => {
           if (stub.flangeSpec && stub.flangeSpec !== "PE" && stub.flangeSpec !== "") {
             const stubNb = Number(stub.nominalBoreMm) || nb;
-            const stubOd = NB_TO_OD_LOOKUP[stubNb] || stubNb * 1.05;
+            const stubOd = nbToOdMap[stubNb] || stubNb * 1.05;
             const stubCirc = Math.PI * stubOd;
             flangeWeldMeters += (2 * stubCirc) / 1000;
           }
@@ -3689,8 +3697,8 @@ function RfqItemsDetailedView({
       const wt = Number(details.wallThicknessMm) || 6;
       const mainNb = Number(details.nominalDiameterMm) || 0;
       const branchNb = Number(details.branchNominalDiameterMm) || mainNb;
-      const mainOd = NB_TO_OD_LOOKUP[mainNb] || mainNb * 1.05;
-      const branchOd = NB_TO_OD_LOOKUP[branchNb] || branchNb * 1.05;
+      const mainOd = nbToOdMap[mainNb] || mainNb * 1.05;
+      const branchOd = nbToOdMap[branchNb] || branchNb * 1.05;
       const mainCirc = Math.PI * mainOd;
       const branchCirc = Math.PI * branchOd;
 
@@ -3747,7 +3755,13 @@ function RfqItemsDetailedView({
   ): number => {
     const flangeCount = flangeCountFromConfig(config, itemType);
     if (flangeCount === 0) return 0;
-    const singleFlangeWt = flangeWeight(nb, pressureClass || "PN16", flangeStandard);
+    const singleFlangeWt = flangeWeightLookup(
+      allWeights,
+      nb,
+      pressureClass || "PN16",
+      flangeStandard ?? null,
+      "3",
+    );
     return flangeCount * singleFlangeWt * qty;
   };
 
@@ -3783,7 +3797,8 @@ function RfqItemsDetailedView({
         const flangeCount = flangeCountFromConfig(endConfig, item.itemType);
         const flangeStandard = item.flangeStandardCode || "SANS 1123";
         const pressureClass = item.flangePressureClassDesignation || "1000/3";
-        const flangeWeightPerUnit = flangeCount * flangeWeight(nb, pressureClass, flangeStandard);
+        const flangeWeightPerUnit =
+          flangeCount * flangeWeightLookup(allWeights, nb, pressureClass, flangeStandard, "3");
 
         if (isRotatingFlange(endConfig)) {
           flangePrice = flangeWeightPerUnit * (pricingInputs.flangeTypes["rotating"] || 0);
@@ -3798,8 +3813,8 @@ function RfqItemsDetailedView({
         const pressureClass = item.flangePressureClassDesignation || "1000/3";
         const isSans = flangeStandard.toUpperCase().includes("SANS");
         const singleBlankWt = isSans
-          ? sansBlankFlangeWeight(blankNb, pressureClass)
-          : blankFlangeWeight(blankNb, pressureClass);
+          ? sansBlankFlangeWeightLookup(allWeights, blankNb, pressureClass)
+          : blankFlangeWeightLookup(allWeights, blankNb, pressureClass);
         const blankWt = singleBlankWt * item.fittingDetails.blankFlangeCount;
         flangePrice += blankWt * (pricingInputs.flangeTypes["blank"] || 0);
       }
@@ -3925,7 +3940,13 @@ function RfqItemsDetailedView({
                         const totalFlanges = flangeCount * qty;
                         const flangeStandard = item.flangeStandardCode || "SANS 1123";
                         const pressureClass = item.flangePressureClassDesignation || "1000/3";
-                        const singleFlangeWt = flangeWeight(nb, pressureClass, flangeStandard);
+                        const singleFlangeWt = flangeWeightLookup(
+                          allWeights,
+                          nb,
+                          pressureClass,
+                          flangeStandard,
+                          "3",
+                        );
                         const totalFlangeWt = singleFlangeWt * totalFlanges;
                         return totalFlanges > 0 ? (
                           <div className="col-span-2">
@@ -4107,7 +4128,13 @@ function RfqItemsDetailedView({
                       const actualMainFlanges = Math.max(0, mainFlangeCount - stubFlangeCount);
 
                       if (actualMainFlanges > 0) {
-                        const singleFlangeWt = flangeWeight(nb, pressureClass, flangeStandard);
+                        const singleFlangeWt = flangeWeightLookup(
+                          allWeights,
+                          nb,
+                          pressureClass,
+                          flangeStandard,
+                          "3",
+                        );
                         flangeItems.push({
                           nb,
                           count: actualMainFlanges * qty,
@@ -4119,10 +4146,12 @@ function RfqItemsDetailedView({
                       stubsWithFlanges.forEach((stub: { nominalBoreMm?: number }) => {
                         if (stub.nominalBoreMm && stub.nominalBoreMm > 0) {
                           const stubNb = Math.round(Number(stub.nominalBoreMm));
-                          const singleFlangeWt = flangeWeight(
+                          const singleFlangeWt = flangeWeightLookup(
+                            allWeights,
                             stubNb,
                             pressureClass,
                             flangeStandard,
+                            "3",
                           );
                           flangeItems.push({
                             nb: stubNb,
@@ -4267,10 +4296,12 @@ function RfqItemsDetailedView({
 
                         const mainFlangeCount = calcData?.mainFlangeCount || 2;
                         if (mainFlangeCount > 0) {
-                          const singleFlangeWt = flangeWeight(
+                          const singleFlangeWt = flangeWeightLookup(
+                            allWeights,
                             mainNb,
                             pressureClass,
                             flangeStandard,
+                            "3",
                           );
                           flangeItems.push({
                             nb: mainNb,
@@ -4283,10 +4314,12 @@ function RfqItemsDetailedView({
                         const branchFlangeCount =
                           calcData?.branchFlangeCount || (branchNb !== mainNb ? 1 : 0);
                         if (branchFlangeCount > 0 && branchNb !== mainNb) {
-                          const singleFlangeWt = flangeWeight(
+                          const singleFlangeWt = flangeWeightLookup(
+                            allWeights,
                             branchNb,
                             pressureClass,
                             flangeStandard,
+                            "3",
                           );
                           flangeItems.push({
                             nb: branchNb,
@@ -4325,8 +4358,8 @@ function RfqItemsDetailedView({
                         const pressureClass = item.flangePressureClassDesignation || "1000/3";
                         const isSans = flangeStandard.toUpperCase().includes("SANS");
                         const singleBlankWt = isSans
-                          ? sansBlankFlangeWeight(blankFlangeNB, pressureClass)
-                          : blankFlangeWeight(blankFlangeNB, pressureClass);
+                          ? sansBlankFlangeWeightLookup(allWeights, blankFlangeNB, pressureClass)
+                          : blankFlangeWeightLookup(allWeights, blankFlangeNB, pressureClass);
                         const totalBlankWt = singleBlankWt * item.fittingDetails.blankFlangeCount;
                         return (
                           <div className="col-span-2">
@@ -4534,12 +4567,19 @@ function RfqItemsDetailedView({
 
                     if (mainFlangeCount > 0) {
                       flangeWeightKg +=
-                        mainFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
+                        mainFlangeCount *
+                        flangeWeightLookup(allWeights, mainNb, pressureClass, flangeStandard, "3");
                     }
                     stubs.forEach((stub: { nominalBoreMm?: number }) => {
                       if (stub.nominalBoreMm && stub.nominalBoreMm > 0) {
                         const stubNb = Math.round(Number(stub.nominalBoreMm));
-                        flangeWeightKg += flangeWeight(stubNb, pressureClass, flangeStandard);
+                        flangeWeightKg += flangeWeightLookup(
+                          allWeights,
+                          stubNb,
+                          pressureClass,
+                          flangeStandard,
+                          "3",
+                        );
                       }
                     });
                   } else if (item.fittingDetails) {
@@ -4566,19 +4606,30 @@ function RfqItemsDetailedView({
 
                     if (mainFlangeCount > 0) {
                       flangeWeightKg +=
-                        mainFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
+                        mainFlangeCount *
+                        flangeWeightLookup(allWeights, mainNb, pressureClass, flangeStandard, "3");
                     }
                     if (branchFlangeCount > 0 && branchNb !== mainNb) {
                       flangeWeightKg +=
-                        branchFlangeCount * flangeWeight(branchNb, pressureClass, flangeStandard);
+                        branchFlangeCount *
+                        flangeWeightLookup(
+                          allWeights,
+                          branchNb,
+                          pressureClass,
+                          flangeStandard,
+                          "3",
+                        );
                     } else if (branchFlangeCount > 0) {
                       flangeWeightKg +=
-                        branchFlangeCount * flangeWeight(mainNb, pressureClass, flangeStandard);
+                        branchFlangeCount *
+                        flangeWeightLookup(allWeights, mainNb, pressureClass, flangeStandard, "3");
                     }
                   } else if (item.straightPipeDetails) {
                     const nb = Math.round(Number(item.straightPipeDetails.nominalBoreMm));
                     const flangeCount = flangeCountFromConfig(endConfig, "straight_pipe");
-                    flangeWeightKg = flangeCount * flangeWeight(nb, pressureClass, flangeStandard);
+                    flangeWeightKg =
+                      flangeCount *
+                      flangeWeightLookup(allWeights, nb, pressureClass, flangeStandard, "3");
                   }
 
                   flangeCost = flangeWeightKg * flangePricePerKg;
@@ -4592,8 +4643,8 @@ function RfqItemsDetailedView({
                   const pressureClass = item.flangePressureClassDesignation || "1000/3";
                   const isSans = flangeStandard.toUpperCase().includes("SANS");
                   const singleBlankWt = isSans
-                    ? sansBlankFlangeWeight(blankNb, pressureClass)
-                    : blankFlangeWeight(blankNb, pressureClass);
+                    ? sansBlankFlangeWeightLookup(allWeights, blankNb, pressureClass)
+                    : blankFlangeWeightLookup(allWeights, blankNb, pressureClass);
                   blankFlangeWeightKg = singleBlankWt * item.fittingDetails.blankFlangeCount;
                   blankFlangeCost = blankFlangeWeightKg * (pricingInputs.flangeTypes["blank"] || 0);
                 }
