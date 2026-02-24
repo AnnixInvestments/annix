@@ -1,5 +1,40 @@
 export type B16PressureClass = "150" | "300" | "400" | "600" | "900" | "1500" | "2500";
-export type MaterialGroup = "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.7" | "1.9" | "1.10" | "1.13" | "1.14" | "2.1" | "2.2" | "2.3" | "2.4" | "2.5" | "2.6" | "2.7" | "2.8" | "2.9" | "2.10" | "2.11" | "3.1" | "3.2" | "3.3" | "3.4" | "3.5" | "3.6" | "3.7" | "3.8" | "3.10" | "3.12" | "3.14" | "3.16" | "3.17" | "3.18";
+export type MaterialGroup =
+  | "1.1"
+  | "1.2"
+  | "1.3"
+  | "1.4"
+  | "1.5"
+  | "1.7"
+  | "1.9"
+  | "1.10"
+  | "1.13"
+  | "1.14"
+  | "2.1"
+  | "2.2"
+  | "2.3"
+  | "2.4"
+  | "2.5"
+  | "2.6"
+  | "2.7"
+  | "2.8"
+  | "2.9"
+  | "2.10"
+  | "2.11"
+  | "3.1"
+  | "3.2"
+  | "3.3"
+  | "3.4"
+  | "3.5"
+  | "3.6"
+  | "3.7"
+  | "3.8"
+  | "3.10"
+  | "3.12"
+  | "3.14"
+  | "3.16"
+  | "3.17"
+  | "3.18";
 
 export interface PtRatingPoint {
   temperatureC: number;
@@ -12,7 +47,15 @@ export interface PtRatingTable {
   ratings: PtRatingPoint[];
 }
 
-export const B16_PRESSURE_CLASSES: B16PressureClass[] = ["150", "300", "400", "600", "900", "1500", "2500"];
+export const B16_PRESSURE_CLASSES: B16PressureClass[] = [
+  "150",
+  "300",
+  "400",
+  "600",
+  "900",
+  "1500",
+  "2500",
+];
 
 const GROUP_1_1_RATINGS: Record<B16PressureClass, PtRatingPoint[]> = {
   "150": [
@@ -631,7 +674,10 @@ export const selectRequiredClass = (
   };
 };
 
-export const temperatureRange = (materialGroup: string, pressureClass: B16PressureClass): { minC: number; maxC: number } | null => {
+export const temperatureRange = (
+  materialGroup: string,
+  pressureClass: B16PressureClass,
+): { minC: number; maxC: number } | null => {
   const groupRatings = PT_RATINGS[materialGroup];
   if (!groupRatings) {
     return null;

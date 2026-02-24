@@ -53,7 +53,9 @@ export const validatePSL2Compliance = (data: Psl2ComplianceData): Psl2Validation
 
   if (data.ndtCoveragePct !== null && data.ndtCoveragePct !== undefined) {
     if (data.ndtCoveragePct < 100) {
-      warnings.push(`PSL2 typically requires 100% NDT coverage, but ${data.ndtCoveragePct}% specified`);
+      warnings.push(
+        `PSL2 typically requires 100% NDT coverage, but ${data.ndtCoveragePct}% specified`,
+      );
     }
   } else {
     warnings.push("PSL2 requires 100% NDT coverage - consider specifying ndtCoveragePct");
@@ -104,7 +106,9 @@ export const validateNACECompliance = (data: NaceComplianceData): NaceValidation
   }
 
   if (data.h2sZone === null || data.h2sZone === undefined) {
-    warnings.push("NACE compliance specified but H2S zone not defined - consider specifying zone 1, 2, or 3");
+    warnings.push(
+      "NACE compliance specified but H2S zone not defined - consider specifying zone 1, 2, or 3",
+    );
   } else if (data.h2sZone < 1 || data.h2sZone > 3) {
     errors.push("H2S zone must be 1, 2, or 3 per NACE MR0175/ISO 15156");
   }
