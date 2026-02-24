@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  adminApiClient,
   type AssignUserAccessDto,
+  adminApiClient,
   type InviteUserDto,
   type InviteUserResponse,
   type RbacApp,

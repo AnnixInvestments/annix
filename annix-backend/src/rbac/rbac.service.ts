@@ -1,10 +1,13 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
+import { User } from "../user/entities/user.entity";
+import {
+  AssignUserAccessDto,
+  UpdateUserAccessDto,
+  UserAccessResponseDto,
+} from "./dto/assign-user-access.dto";
+import { InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
 import {
   App,
   AppPermission,
@@ -13,13 +16,6 @@ import {
   UserAppAccess,
   UserAppPermission,
 } from "./entities";
-import { User } from "../user/entities/user.entity";
-import {
-  AssignUserAccessDto,
-  UpdateUserAccessDto,
-  UserAccessResponseDto,
-} from "./dto/assign-user-access.dto";
-import { InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
 
 @Injectable()
 export class RbacService {
@@ -47,10 +43,17 @@ export class RbacService {
     });
   }
 
-  async appWithDetails(code: string): Promise<App & { permissions: AppPermission[]; roles: AppRole[] }> {
+  async appWithDetails(
+    code: string,
+  ): Promise<App & { permissions: AppPermission[]; roles: AppRole[] }> {
     const app = await this.appRepo.findOne({
       where: { code, isActive: true },
-      relations: ["permissions", "roles", "roles.rolePermissions", "roles.rolePermissions.permission"],
+      relations: [
+        "permissions",
+        "roles",
+        "roles.rolePermissions",
+        "roles.rolePermissions.permission",
+      ],
     });
 
     if (!app) {
@@ -88,16 +91,16 @@ export class RbacService {
       permissionCodes: access.useCustomPermissions
         ? access.customPermissions.map((p) => p.permission.code)
         : null,
-      permissionCount: access.useCustomPermissions
-        ? access.customPermissions.length
-        : null,
+      permissionCount: access.useCustomPermissions ? access.customPermissions.length : null,
       grantedAt: access.grantedAt,
       expiresAt: access.expiresAt,
       grantedById: access.grantedById,
     }));
   }
 
-  async searchUsers(query: string): Promise<{ id: number; email: string; firstName: string | null; lastName: string | null }[]> {
+  async searchUsers(
+    query: string,
+  ): Promise<{ id: number; email: string; firstName: string | null; lastName: string | null }[]> {
     const normalizedQuery = `%${query.toLowerCase()}%`;
 
     const users = await this.userRepo
@@ -147,9 +150,7 @@ export class RbacService {
         where: { appId: app.id, code: dto.roleCode },
       });
       if (!role) {
-        throw new NotFoundException(
-          `Role '${dto.roleCode}' not found for app '${dto.appCode}'`,
-        );
+        throw new NotFoundException(`Role '${dto.roleCode}' not found for app '${dto.appCode}'`);
       }
     }
 
@@ -171,10 +172,7 @@ export class RbacService {
     return this.accessResponseDto(savedAccess.id);
   }
 
-  async updateAccess(
-    accessId: number,
-    dto: UpdateUserAccessDto,
-  ): Promise<UserAccessResponseDto> {
+  async updateAccess(accessId: number, dto: UpdateUserAccessDto): Promise<UserAccessResponseDto> {
     const access = await this.accessRepo.findOne({
       where: { id: accessId },
       relations: ["app", "user"],
@@ -228,10 +226,7 @@ export class RbacService {
     await this.accessRepo.remove(access);
   }
 
-  async inviteUser(
-    dto: InviteUserDto,
-    grantedById: number,
-  ): Promise<InviteUserResponseDto> {
+  async inviteUser(dto: InviteUserDto, grantedById: number): Promise<InviteUserResponseDto> {
     const app = await this.appRepo.findOne({ where: { code: dto.appCode } });
     if (!app) {
       throw new NotFoundException(`App '${dto.appCode}' not found`);
@@ -254,9 +249,7 @@ export class RbacService {
       where: { userId: user.id, appId: app.id },
     });
     if (existingAccess) {
-      throw new ConflictException(
-        `User '${dto.email}' already has access to '${dto.appCode}'`,
-      );
+      throw new ConflictException(`User '${dto.email}' already has access to '${dto.appCode}'`);
     }
 
     const accessDto: AssignUserAccessDto = {
@@ -292,7 +285,13 @@ export class RbacService {
 
     const access = await this.accessRepo.findOne({
       where: { userId, appId: app.id },
-      relations: ["role", "role.rolePermissions", "role.rolePermissions.permission", "customPermissions", "customPermissions.permission"],
+      relations: [
+        "role",
+        "role.rolePermissions",
+        "role.rolePermissions.permission",
+        "customPermissions",
+        "customPermissions.permission",
+      ],
     });
 
     if (!access) {
@@ -304,15 +303,11 @@ export class RbacService {
     }
 
     if (access.useCustomPermissions) {
-      return access.customPermissions.some(
-        (cp) => cp.permission.code === permissionCode,
-      );
+      return access.customPermissions.some((cp) => cp.permission.code === permissionCode);
     }
 
     if (access.role) {
-      return access.role.rolePermissions.some(
-        (rp) => rp.permission.code === permissionCode,
-      );
+      return access.role.rolePermissions.some((rp) => rp.permission.code === permissionCode);
     }
 
     return false;
@@ -326,7 +321,13 @@ export class RbacService {
 
     const access = await this.accessRepo.findOne({
       where: { userId, appId: app.id },
-      relations: ["role", "role.rolePermissions", "role.rolePermissions.permission", "customPermissions", "customPermissions.permission"],
+      relations: [
+        "role",
+        "role.rolePermissions",
+        "role.rolePermissions.permission",
+        "customPermissions",
+        "customPermissions.permission",
+      ],
     });
 
     if (!access) {
@@ -366,9 +367,7 @@ export class RbacService {
     const foundCodes = permissions.map((p) => p.code);
     const missingCodes = permissionCodes.filter((c) => !foundCodes.includes(c));
     if (missingCodes.length > 0) {
-      throw new NotFoundException(
-        `Permissions not found: ${missingCodes.join(", ")}`,
-      );
+      throw new NotFoundException(`Permissions not found: ${missingCodes.join(", ")}`);
     }
 
     const userPermissions = permissions.map((p) =>
@@ -404,9 +403,7 @@ export class RbacService {
       permissionCodes: access.useCustomPermissions
         ? access.customPermissions.map((p) => p.permission.code)
         : null,
-      permissionCount: access.useCustomPermissions
-        ? access.customPermissions.length
-        : null,
+      permissionCount: access.useCustomPermissions ? access.customPermissions.length : null,
       grantedAt: access.grantedAt,
       expiresAt: access.expiresAt,
       grantedById: access.grantedById,

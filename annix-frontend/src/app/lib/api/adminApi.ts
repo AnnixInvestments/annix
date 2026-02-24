@@ -1218,9 +1218,7 @@ class AdminApiClient {
   }
 
   async rbacUsersWithAccess(appCode: string): Promise<RbacUserAccess[]> {
-    return this.request<RbacUserAccess[]>(
-      `/admin/rbac/apps/${encodeURIComponent(appCode)}/users`,
-    );
+    return this.request<RbacUserAccess[]>(`/admin/rbac/apps/${encodeURIComponent(appCode)}/users`);
   }
 
   async rbacSearchUsers(query: string): Promise<RbacSearchUser[]> {

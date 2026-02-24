@@ -1,3 +1,4 @@
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Column,
   CreateDateColumn,
@@ -7,7 +8,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { ApiProperty } from "@nestjs/swagger";
 import { AppPermission } from "./app-permission.entity";
 import { AppRole } from "./app-role.entity";
 import { UserAppAccess } from "./user-app-access.entity";
@@ -71,12 +71,21 @@ export class App {
   @ApiProperty({ description: "Last update timestamp" })
   updatedAt: Date;
 
-  @OneToMany(() => AppPermission, (permission) => permission.app)
+  @OneToMany(
+    () => AppPermission,
+    (permission) => permission.app,
+  )
   permissions: AppPermission[];
 
-  @OneToMany(() => AppRole, (role) => role.app)
+  @OneToMany(
+    () => AppRole,
+    (role) => role.app,
+  )
   roles: AppRole[];
 
-  @OneToMany(() => UserAppAccess, (access) => access.app)
+  @OneToMany(
+    () => UserAppAccess,
+    (access) => access.app,
+  )
   userAccess: UserAppAccess[];
 }

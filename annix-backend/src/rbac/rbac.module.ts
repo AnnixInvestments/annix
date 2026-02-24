@@ -1,5 +1,7 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AdminModule } from "../admin/admin.module";
+import { User } from "../user/entities/user.entity";
 import {
   App,
   AppPermission,
@@ -8,11 +10,9 @@ import {
   UserAppAccess,
   UserAppPermission,
 } from "./entities";
-import { User } from "../user/entities/user.entity";
-import { RbacService } from "./rbac.service";
-import { RbacController } from "./rbac.controller";
 import { AppPermissionGuard } from "./guards/app-permission.guard";
-import { AdminModule } from "../admin/admin.module";
+import { RbacController } from "./rbac.controller";
+import { RbacService } from "./rbac.service";
 
 @Module({
   imports: [

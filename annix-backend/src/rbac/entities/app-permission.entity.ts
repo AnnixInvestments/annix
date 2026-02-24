@@ -1,3 +1,4 @@
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Column,
   CreateDateColumn,
@@ -9,7 +10,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { ApiProperty } from "@nestjs/swagger";
 import { App } from "./app.entity";
 import { AppRolePermission } from "./app-role-permission.entity";
 import { UserAppPermission } from "./user-app-permission.entity";
@@ -24,7 +24,11 @@ export class AppPermission {
   @Column({ type: "int", name: "app_id" })
   appId: number;
 
-  @ManyToOne(() => App, (app) => app.permissions, { onDelete: "CASCADE" })
+  @ManyToOne(
+    () => App,
+    (app) => app.permissions,
+    { onDelete: "CASCADE" },
+  )
   @JoinColumn({ name: "app_id" })
   app: App;
 

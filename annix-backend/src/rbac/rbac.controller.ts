@@ -19,18 +19,18 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { ApiMessageResponse, messageResponse } from "../shared/dto";
-import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
-import { RbacService } from "./rbac.service";
-import { App, AppPermission, AppRole } from "./entities";
 import {
   AssignUserAccessDto,
   UpdateUserAccessDto,
   UserAccessResponseDto,
 } from "./dto/assign-user-access.dto";
 import { InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
+import { App, AppPermission, AppRole } from "./entities";
+import { RbacService } from "./rbac.service";
 
 interface AppDetailResponse extends App {
   permissions: AppPermission[];
@@ -77,9 +77,7 @@ export class RbacController {
     type: [UserAccessResponseDto],
   })
   @ApiResponse({ status: 404, description: "App not found" })
-  async usersWithAccess(
-    @Param("code") code: string,
-  ): Promise<UserAccessResponseDto[]> {
+  async usersWithAccess(@Param("code") code: string): Promise<UserAccessResponseDto[]> {
     return this.rbacService.usersWithAccess(code);
   }
 
@@ -156,10 +154,7 @@ export class RbacController {
   })
   @ApiResponse({ status: 404, description: "App not found" })
   @ApiResponse({ status: 409, description: "User already has access to app" })
-  async inviteUser(
-    @Body() dto: InviteUserDto,
-    @Request() req,
-  ): Promise<InviteUserResponseDto> {
+  async inviteUser(@Body() dto: InviteUserDto, @Request() req): Promise<InviteUserResponseDto> {
     const grantedById = req.user.sub || req.user.userId;
     return this.rbacService.inviteUser(dto, grantedById);
   }

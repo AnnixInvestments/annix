@@ -17,9 +17,7 @@ export class CreateRbacTables1795000000000 implements MigrationInterface {
         "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(
-      `CREATE INDEX "IDX_apps_code" ON "apps" ("code")`,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_apps_code" ON "apps" ("code")`);
 
     await queryRunner.query(`
       CREATE TABLE "app_permissions" (
@@ -56,12 +54,8 @@ export class CreateRbacTables1795000000000 implements MigrationInterface {
         UNIQUE ("app_id", "code")
       )
     `);
-    await queryRunner.query(
-      `CREATE INDEX "IDX_app_roles_code" ON "app_roles" ("code")`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_app_roles_app_id" ON "app_roles" ("app_id")`,
-    );
+    await queryRunner.query(`CREATE INDEX "IDX_app_roles_code" ON "app_roles" ("code")`);
+    await queryRunner.query(`CREATE INDEX "IDX_app_roles_app_id" ON "app_roles" ("app_id")`);
 
     await queryRunner.query(`
       CREATE TABLE "app_role_permissions" (

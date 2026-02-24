@@ -57,7 +57,10 @@ export class SeedRbacData1795100000000 implements MigrationInterface {
       );
     }
 
-    const permissionsByApp: Record<string, { code: string; name: string; category: string; order: number }[]> = {
+    const permissionsByApp: Record<
+      string,
+      { code: string; name: string; category: string; order: number }[]
+    > = {
       "rfq-platform": [
         { code: "rfq:view", name: "View RFQs", category: "RFQ Management", order: 1 },
         { code: "rfq:create", name: "Create RFQs", category: "RFQ Management", order: 2 },
@@ -87,9 +90,19 @@ export class SeedRbacData1795100000000 implements MigrationInterface {
       ],
       "voice-filter": [
         { code: "transcripts:view", name: "View Transcripts", category: "Transcripts", order: 1 },
-        { code: "transcripts:create", name: "Create Transcripts", category: "Transcripts", order: 2 },
+        {
+          code: "transcripts:create",
+          name: "Create Transcripts",
+          category: "Transcripts",
+          order: 2,
+        },
         { code: "transcripts:edit", name: "Edit Transcripts", category: "Transcripts", order: 3 },
-        { code: "transcripts:delete", name: "Delete Transcripts", category: "Transcripts", order: 4 },
+        {
+          code: "transcripts:delete",
+          name: "Delete Transcripts",
+          category: "Transcripts",
+          order: 4,
+        },
         { code: "filters:manage", name: "Manage Filters", category: "Filters", order: 5 },
         { code: "settings:manage", name: "Manage Settings", category: "Administration", order: 6 },
       ],
@@ -115,8 +128,18 @@ export class SeedRbacData1795100000000 implements MigrationInterface {
         { code: "jobs:view", name: "View Job Cards", category: "Job Cards", order: 5 },
         { code: "jobs:create", name: "Create Job Cards", category: "Job Cards", order: 6 },
         { code: "jobs:manage", name: "Manage Job Cards", category: "Job Cards", order: 7 },
-        { code: "requisitions:view", name: "View Requisitions", category: "Requisitions", order: 8 },
-        { code: "requisitions:manage", name: "Manage Requisitions", category: "Requisitions", order: 9 },
+        {
+          code: "requisitions:view",
+          name: "View Requisitions",
+          category: "Requisitions",
+          order: 8,
+        },
+        {
+          code: "requisitions:manage",
+          name: "Manage Requisitions",
+          category: "Requisitions",
+          order: 9,
+        },
         { code: "reports:view", name: "View Reports", category: "Reports", order: 10 },
         { code: "reports:export", name: "Export Reports", category: "Reports", order: 11 },
         { code: "settings:manage", name: "Manage Settings", category: "Administration", order: 12 },
@@ -137,10 +160,7 @@ export class SeedRbacData1795100000000 implements MigrationInterface {
     };
 
     for (const [appCode, permissions] of Object.entries(permissionsByApp)) {
-      const appResult = await queryRunner.query(
-        `SELECT id FROM "apps" WHERE code = $1`,
-        [appCode],
-      );
+      const appResult = await queryRunner.query(`SELECT id FROM "apps" WHERE code = $1`, [appCode]);
       const appId = appResult[0].id;
 
       for (const perm of permissions) {
@@ -156,12 +176,19 @@ export class SeedRbacData1795100000000 implements MigrationInterface {
       { code: "viewer", name: "Viewer", description: "Read-only access", order: 1 },
       { code: "editor", name: "Editor", description: "Can view and edit content", order: 2 },
       { code: "manager", name: "Manager", description: "Full access except settings", order: 3 },
-      { code: "administrator", name: "Administrator", description: "Full access including settings", order: 4, isDefault: false },
+      {
+        code: "administrator",
+        name: "Administrator",
+        description: "Full access including settings",
+        order: 4,
+        isDefault: false,
+      },
     ];
 
     const rolePermissionPatterns: Record<string, (code: string) => boolean> = {
       viewer: (code) => code.endsWith(":view"),
-      editor: (code) => code.endsWith(":view") || code.endsWith(":create") || code.endsWith(":edit"),
+      editor: (code) =>
+        code.endsWith(":view") || code.endsWith(":create") || code.endsWith(":edit"),
       manager: (code) => !code.startsWith("settings:"),
       administrator: () => true,
     };

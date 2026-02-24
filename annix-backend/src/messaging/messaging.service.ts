@@ -254,7 +254,9 @@ export class MessagingService {
 
     const [conversations, total] = await queryBuilder.getManyAndCount();
 
-    const summaries = await Promise.all(conversations.map((c) => this.conversationToSummaryAdmin(c)));
+    const summaries = await Promise.all(
+      conversations.map((c) => this.conversationToSummaryAdmin(c)),
+    );
 
     return { conversations: summaries, total };
   }

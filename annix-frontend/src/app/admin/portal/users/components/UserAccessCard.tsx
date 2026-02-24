@@ -79,9 +79,7 @@ export function UserAccessCard({ access, onEdit, onRevoke }: UserAccessCardProps
         ) : null}
       </div>
 
-      <div className="mt-2 text-xs text-gray-400">
-        Granted {formatDateZA(access.grantedAt)}
-      </div>
+      <div className="mt-2 text-xs text-gray-400">Granted {formatDateZA(access.grantedAt)}</div>
     </div>
   );
 }

@@ -11,18 +11,18 @@ import type {
   UpdateUserAccessDto,
 } from "@/app/lib/api/adminApi";
 import {
-  useRbacApps,
   useRbacAppDetails,
-  useRbacUsersWithAccess,
+  useRbacApps,
   useRbacAssignAccess,
-  useRbacUpdateAccess,
-  useRbacRevokeAccess,
   useRbacInviteUser,
+  useRbacRevokeAccess,
+  useRbacUpdateAccess,
+  useRbacUsersWithAccess,
 } from "@/app/lib/query/hooks";
 import { AppTabs } from "./components/AppTabs";
-import { UserAccessCard } from "./components/UserAccessCard";
 import { EditAccessModal } from "./components/EditAccessModal";
 import { InviteUserModal } from "./components/InviteUserModal";
+import { UserAccessCard } from "./components/UserAccessCard";
 import { UserSearchDropdown } from "./components/UserSearchDropdown";
 
 export default function AdminUsersPage() {
@@ -133,7 +133,10 @@ export default function AdminUsersPage() {
       );
     } else if (selectedUser) {
       assignMutation.mutate(
-        { userId: selectedUser.id, dto: { ...dto, appCode: selectedAppCode } as AssignUserAccessDto },
+        {
+          userId: selectedUser.id,
+          dto: { ...dto, appCode: selectedAppCode } as AssignUserAccessDto,
+        },
         {
           onSuccess: () => {
             showToast(`Access granted to ${selectedUser.email}`, "success");
@@ -197,98 +200,88 @@ export default function AdminUsersPage() {
           <p className="text-sm text-yellow-700">No apps configured. Please run migrations.</p>
         </div>
       ) : (
-        <>
-          <div className="bg-white shadow rounded-lg">
-            <AppTabs
-              apps={apps}
-              selectedAppCode={selectedAppCode}
-              onSelectApp={setSelectedAppCode}
-            />
+        <div className="bg-white shadow rounded-lg">
+          <AppTabs apps={apps} selectedAppCode={selectedAppCode} onSelectApp={setSelectedAppCode} />
 
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-medium text-gray-900">
-                      Users with Access ({usersWithAccess.length})
-                    </h2>
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-medium text-gray-900">
+                    Users with Access ({usersWithAccess.length})
+                  </h2>
+                </div>
+
+                {usersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
                   </div>
+                ) : usersWithAccess.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    <p className="mt-2">No users have access to this app yet.</p>
+                    <p className="text-sm">Search for a user or invite a new one.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {usersWithAccess.map((access) => (
+                      <UserAccessCard
+                        key={access.id}
+                        access={access}
+                        onEdit={() => handleEditAccess(access)}
+                        onRevoke={() => handleRevokeAccess(access)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
 
-                  {usersLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-                    </div>
-                  ) : usersWithAccess.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      <p className="mt-2">No users have access to this app yet.</p>
-                      <p className="text-sm">Search for a user or invite a new one.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {usersWithAccess.map((access) => (
-                        <UserAccessCard
-                          key={access.id}
-                          access={access}
-                          onEdit={() => handleEditAccess(access)}
-                          onRevoke={() => handleRevokeAccess(access)}
-                        />
+              <div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">Add Existing User</h3>
+                  <UserSearchDropdown
+                    onSelectUser={handleGrantAccess}
+                    excludeUserIds={existingUserIds}
+                  />
+                  <p className="text-xs text-gray-500 mt-2">
+                    Search for users already in the system to grant them access.
+                  </p>
+                </div>
+
+                {appDetails && (
+                  <div className="mt-4 bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-900 mb-3">Available Roles</h3>
+                    <div className="space-y-2">
+                      {appDetails.roles.map((role) => (
+                        <div key={role.code} className="text-sm">
+                          <span className="font-medium text-gray-700">{role.name}</span>
+                          {role.isDefault && (
+                            <span className="ml-1 text-xs text-blue-600">(Default)</span>
+                          )}
+                          {role.description && (
+                            <p className="text-xs text-gray-500">{role.description}</p>
+                          )}
+                        </div>
                       ))}
                     </div>
-                  )}
-                </div>
-
-                <div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">
-                      Add Existing User
-                    </h3>
-                    <UserSearchDropdown
-                      onSelectUser={handleGrantAccess}
-                      excludeUserIds={existingUserIds}
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      Search for users already in the system to grant them access.
-                    </p>
                   </div>
-
-                  {appDetails && (
-                    <div className="mt-4 bg-gray-50 rounded-lg p-4">
-                      <h3 className="text-sm font-medium text-gray-900 mb-3">
-                        Available Roles
-                      </h3>
-                      <div className="space-y-2">
-                        {appDetails.roles.map((role) => (
-                          <div key={role.code} className="text-sm">
-                            <span className="font-medium text-gray-700">{role.name}</span>
-                            {role.isDefault && (
-                              <span className="ml-1 text-xs text-blue-600">(Default)</span>
-                            )}
-                            {role.description && (
-                              <p className="text-xs text-gray-500">{role.description}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       <EditAccessModal

@@ -1,3 +1,4 @@
+import { ApiProperty } from "@nestjs/swagger";
 import {
   Column,
   CreateDateColumn,
@@ -9,11 +10,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { ApiProperty } from "@nestjs/swagger";
+import { User } from "../../user/entities/user.entity";
 import { App } from "./app.entity";
 import { AppRole } from "./app-role.entity";
 import { UserAppPermission } from "./user-app-permission.entity";
-import { User } from "../../user/entities/user.entity";
 
 @Entity("user_app_access")
 @Index(["userId", "appId"], { unique: true })
@@ -32,24 +32,31 @@ export class UserAppAccess {
   @Column({ type: "int", name: "app_id" })
   appId: number;
 
-  @ManyToOne(() => App, (app) => app.userAccess, { onDelete: "CASCADE" })
+  @ManyToOne(
+    () => App,
+    (app) => app.userAccess,
+    { onDelete: "CASCADE" },
+  )
   @JoinColumn({ name: "app_id" })
   app: App;
 
   @Column({ type: "int", name: "app_role_id", nullable: true })
   roleId: number | null;
 
-  @ManyToOne(() => AppRole, (role) => role.userAccess, {
-    onDelete: "SET NULL",
-    nullable: true,
-  })
+  @ManyToOne(
+    () => AppRole,
+    (role) => role.userAccess,
+    {
+      onDelete: "SET NULL",
+      nullable: true,
+    },
+  )
   @JoinColumn({ name: "app_role_id" })
   role: AppRole | null;
 
   @Column({ type: "boolean", default: false, name: "use_custom_permissions" })
   @ApiProperty({
-    description:
-      "When true, user has custom permissions instead of role-based",
+    description: "When true, user has custom permissions instead of role-based",
     example: false,
   })
   useCustomPermissions: boolean;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { RbacSearchUser } from "@/app/lib/api/adminApi";
 import { useRbacSearchUsers } from "@/app/lib/query/hooks";
 
@@ -70,9 +70,7 @@ export function UserSearchDropdown({ onSelectUser, excludeUserIds = [] }: UserSe
           {isLoading ? (
             <div className="px-4 py-3 text-sm text-gray-500">Searching...</div>
           ) : filteredUsers.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-gray-500">
-              No users found matching "{query}"
-            </div>
+            <div className="px-4 py-3 text-sm text-gray-500">No users found matching "{query}"</div>
           ) : (
             <ul>
               {filteredUsers.map((user) => {

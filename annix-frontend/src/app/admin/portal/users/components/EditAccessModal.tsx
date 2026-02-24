@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import type {
-  RbacAppDetail,
-  RbacUserAccess,
   AssignUserAccessDto,
-  UpdateUserAccessDto,
+  RbacAppDetail,
   RbacSearchUser,
+  RbacUserAccess,
+  UpdateUserAccessDto,
 } from "@/app/lib/api/adminApi";
 
 interface EditAccessModalProps {
@@ -99,9 +99,7 @@ export function EditAccessModal({
 
           <div className="px-6 py-4 space-y-6 overflow-y-auto max-h-[60vh]">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Access Type
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Access Type</label>
               <div className="flex gap-4">
                 <label className="flex items-center">
                   <input
@@ -190,14 +188,10 @@ export function EditAccessModal({
               <input
                 type="date"
                 value={expiresAt ? expiresAt.split("T")[0] : ""}
-                onChange={(e) =>
-                  setExpiresAt(e.target.value ? `${e.target.value}T23:59:59Z` : "")
-                }
+                onChange={(e) => setExpiresAt(e.target.value ? `${e.target.value}T23:59:59Z` : "")}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               />
-              <p className="mt-1 text-xs text-gray-500">
-                Leave empty for permanent access
-              </p>
+              <p className="mt-1 text-xs text-gray-500">Leave empty for permanent access</p>
             </div>
           </div>
 
