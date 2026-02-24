@@ -73,6 +73,7 @@ export default function JobCardDetailPage() {
   const [isAllocating, setIsAllocating] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isAnalysing, setIsAnalysing] = useState(false);
+  const [isDownloadingQr, setIsDownloadingQr] = useState(false);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [versions, setVersions] = useState<JobCardVersion[]>([]);
   const [attachments, setAttachments] = useState<JobCardAttachment[]>([]);
@@ -196,6 +197,17 @@ export default function JobCardDetailPage() {
       setError(err instanceof Error ? err : new Error("Coating analysis failed"));
     } finally {
       setIsAnalysing(false);
+    }
+  };
+
+  const handlePrintQr = async () => {
+    try {
+      setIsDownloadingQr(true);
+      await stockControlApiClient.downloadJobCardQrPdf(jobId);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to download job card PDF"));
+    } finally {
+      setIsDownloadingQr(false);
     }
   };
 
@@ -432,36 +444,19 @@ export default function JobCardDetailPage() {
         </div>
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => setShowAmendmentModal(true)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            onClick={handlePrintQr}
+            disabled={isDownloadingQr}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
               />
             </svg>
-            Upload Amendment
-          </button>
-          <button
-            onClick={() => {
-              stockControlApiClient.downloadJobCardQrPdf(jobId).catch((err) => {
-                setError(err instanceof Error ? err : new Error("Failed to download job card PDF"));
-              });
-            }}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-              />
-            </svg>
-            Print Job Card
+            {isDownloadingQr ? "Generating..." : "Print QR"}
           </button>
           {transitions.map((transition) => (
             <button

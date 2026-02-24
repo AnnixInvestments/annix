@@ -1339,6 +1339,47 @@ class StockControlApiClient {
     });
   }
 
+  async downloadBlob(endpoint: string, filename: string): Promise<void> {
+    const url = `${this.baseURL}${endpoint}`;
+    const response = await fetch(url, {
+      headers: { ...this.headers() },
+    });
+
+    if (response.status === 401 && this.refreshToken) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        const retryResponse = await fetch(url, {
+          headers: { ...this.headers() },
+        });
+        if (!retryResponse.ok) {
+          throw new Error(`Download failed (${retryResponse.status})`);
+        }
+        const blob = await retryResponse.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        return;
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error(`Download failed (${response.status})`);
+    }
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, "_blank");
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+  }
+
+  async downloadStockItemQrPdf(id: number): Promise<void> {
+    return this.downloadBlob(`/stock-control/inventory/${id}/qr/pdf`, `stock-${id}-label.pdf`);
+  }
+
+  async downloadJobCardQrPdf(id: number): Promise<void> {
+    return this.downloadBlob(`/stock-control/job-cards/${id}/qr/pdf`, `job-card-${id}.pdf`);
+  }
+
   async confirmJobCardImport(rows: JobCardImportRow[]): Promise<JobCardImportResult> {
     return this.request("/stock-control/job-card-import/confirm", {
       method: "POST",

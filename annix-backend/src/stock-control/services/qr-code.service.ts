@@ -1,613 +1,238 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
-import { In, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { JobCard } from "../entities/job-card.entity";
-import { StaffMember } from "../entities/staff-member.entity";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
-
-export interface QrCodeData {
-  type: "stock" | "job" | "staff";
-  id: number;
-  name: string;
-  token?: string;
-}
 
 @Injectable()
 export class QrCodeService {
+  private readonly logger = new Logger(QrCodeService.name);
+
   constructor(
     @InjectRepository(StockItem)
-    private readonly stockItemRepository: Repository<StockItem>,
+    private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(JobCard)
-    private readonly jobCardRepository: Repository<JobCard>,
-    @InjectRepository(StaffMember)
-    private readonly staffMemberRepository: Repository<StaffMember>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepository: Repository<StockControlCompany>,
+    private readonly jobCardRepo: Repository<JobCard>,
   ) {}
 
-  async stockItemQrCode(companyId: number, itemId: number): Promise<Buffer> {
-    const item = await this.stockItemRepository.findOne({
+  async stockItemQrPng(itemId: number, companyId: number): Promise<Buffer> {
+    await this.findStockItem(itemId, companyId);
+    return QRCode.toBuffer(`stock:${itemId}`, { width: 300, margin: 2 });
+  }
+
+  async jobCardQrPng(jobId: number, companyId: number): Promise<Buffer> {
+    await this.findJobCard(jobId, companyId);
+    return QRCode.toBuffer(`job:${jobId}`, { width: 300, margin: 2 });
+  }
+
+  async stockItemLabelPdf(itemId: number, companyId: number): Promise<Buffer> {
+    const item = await this.findStockItem(itemId, companyId);
+    const qrDataUrl = await QRCode.toDataURL(`stock:${itemId}`, { width: 300, margin: 2 });
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    @page { size: 210mm 148mm landscape; margin: 0; }
+    body { margin: 0; padding: 20mm; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 108mm; box-sizing: border-box; }
+    .company { font-size: 10pt; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4mm; }
+    .name { font-size: 22pt; font-weight: bold; color: #111827; text-align: center; margin-bottom: 3mm; }
+    .sku { font-size: 14pt; font-family: monospace; color: #374151; margin-bottom: 6mm; }
+    .qr { margin-bottom: 4mm; }
+    .qr img { width: 40mm; height: 40mm; }
+    .code { font-size: 9pt; font-family: monospace; color: #9ca3af; margin-bottom: 3mm; }
+    .location { font-size: 11pt; color: #4b5563; }
+  </style>
+</head>
+<body>
+  <div class="company">Stock Control</div>
+  <div class="name">${escapeHtml(item.name)}</div>
+  <div class="sku">${escapeHtml(item.sku)}</div>
+  <div class="qr"><img src="${qrDataUrl}" /></div>
+  <div class="code">stock:${item.id}</div>
+  ${item.location ? `<div class="location">${escapeHtml(item.location)}</div>` : ""}
+</body>
+</html>`;
+
+    return this.htmlToPdf(html, { width: "210mm", height: "148mm" });
+  }
+
+  async jobCardPdf(jobId: number, companyId: number): Promise<Buffer> {
+    const jobCard = await this.findJobCard(jobId, companyId);
+    const qrDataUrl = await QRCode.toDataURL(`job:${jobId}`, { width: 200, margin: 2 });
+
+    const lineItemsHtml = (jobCard.lineItems ?? [])
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(
+        (li, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(li.itemCode ?? "-")}</td>
+          <td>${escapeHtml(li.itemDescription ?? "-")}</td>
+          <td>${escapeHtml(li.itemNo ?? "-")}</td>
+          <td class="right">${li.quantity ?? "-"}</td>
+          <td>${escapeHtml(li.jtNo ?? "-")}</td>
+        </tr>`,
+      )
+      .join("");
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { margin: 0; padding: 15mm 12mm; font-family: Arial, sans-serif; font-size: 10pt; color: #111827; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8mm; border-bottom: 2px solid #0d9488; padding-bottom: 6mm; }
+    .header-left h1 { font-size: 18pt; margin: 0 0 2mm 0; color: #0d9488; }
+    .header-left .subtitle { font-size: 10pt; color: #6b7280; }
+    .header-right { text-align: right; }
+    .header-right img { width: 25mm; height: 25mm; }
+    .header-right .code { font-size: 7pt; font-family: monospace; color: #9ca3af; margin-top: 1mm; }
+    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 8mm; margin-bottom: 8mm; }
+    .details .label { font-size: 8pt; font-weight: bold; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
+    .details .value { font-size: 10pt; color: #111827; margin-bottom: 2mm; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4mm; }
+    th { background-color: #f3f4f6; font-weight: 600; text-align: left; padding: 2mm 3mm; border: 1px solid #d1d5db; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; color: #374151; }
+    td { padding: 2mm 3mm; border: 1px solid #d1d5db; font-size: 9pt; }
+    td.right { text-align: right; }
+    .section-title { font-size: 12pt; font-weight: bold; color: #111827; margin-bottom: 3mm; }
+    .notes-area { margin-top: 8mm; border: 1px solid #d1d5db; border-radius: 2mm; padding: 4mm; min-height: 25mm; }
+    .notes-area .label { font-size: 8pt; font-weight: bold; color: #6b7280; text-transform: uppercase; margin-bottom: 2mm; }
+    .footer { margin-top: 10mm; text-align: center; font-size: 8pt; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 4mm; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <h1>Job Card</h1>
+      <div class="subtitle">${escapeHtml(jobCard.jobNumber)}${jobCard.jcNumber ? ` | JC ${escapeHtml(jobCard.jcNumber)}` : ""}${jobCard.pageNumber ? ` | Page ${escapeHtml(jobCard.pageNumber)}` : ""}</div>
+    </div>
+    <div class="header-right">
+      <img src="${qrDataUrl}" />
+      <div class="code">job:${jobCard.id}</div>
+    </div>
+  </div>
+
+  <div class="details">
+    <div><div class="label">Job Name</div><div class="value">${escapeHtml(jobCard.jobName)}</div></div>
+    <div><div class="label">Customer</div><div class="value">${escapeHtml(jobCard.customerName ?? "-")}</div></div>
+    ${jobCard.poNumber ? `<div><div class="label">PO Number</div><div class="value">${escapeHtml(jobCard.poNumber)}</div></div>` : ""}
+    ${jobCard.siteLocation ? `<div><div class="label">Site / Location</div><div class="value">${escapeHtml(jobCard.siteLocation)}</div></div>` : ""}
+    ${jobCard.contactPerson ? `<div><div class="label">Contact Person</div><div class="value">${escapeHtml(jobCard.contactPerson)}</div></div>` : ""}
+    ${jobCard.dueDate ? `<div><div class="label">Due Date</div><div class="value">${escapeHtml(jobCard.dueDate)}</div></div>` : ""}
+    ${jobCard.reference ? `<div><div class="label">Reference</div><div class="value">${escapeHtml(jobCard.reference)}</div></div>` : ""}
+    <div><div class="label">Status</div><div class="value" style="text-transform: capitalize;">${escapeHtml(jobCard.status)}</div></div>
+  </div>
+
+  ${
+    lineItemsHtml
+      ? `
+  <div class="section-title">Line Items</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 6%;">#</th>
+        <th style="width: 14%;">Item Code</th>
+        <th>Description</th>
+        <th style="width: 12%;">Item No</th>
+        <th style="width: 10%; text-align: right;">Qty</th>
+        <th style="width: 10%;">JT No</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${lineItemsHtml}
+    </tbody>
+  </table>`
+      : ""
+  }
+
+  <div class="notes-area">
+    <div class="label">Notes</div>
+    ${jobCard.notes ? `<div style="font-size: 9pt; white-space: pre-wrap;">${escapeHtml(jobCard.notes)}</div>` : ""}
+  </div>
+
+  <div class="footer">
+    Generated from Stock Control System
+  </div>
+</body>
+</html>`;
+
+    return this.htmlToPdf(html, { format: "A4" });
+  }
+
+  private async findStockItem(itemId: number, companyId: number): Promise<StockItem> {
+    const item = await this.stockItemRepo.findOne({
       where: { id: itemId, companyId },
     });
-
     if (!item) {
-      throw new NotFoundException(`Stock item ${itemId} not found`);
+      throw new NotFoundException("Stock item not found");
     }
-
-    const data: QrCodeData = {
-      type: "stock",
-      id: item.id,
-      name: item.name,
-    };
-
-    return QRCode.toBuffer(JSON.stringify(data), {
-      errorCorrectionLevel: "M",
-      type: "png",
-      width: 300,
-      margin: 2,
-    });
+    return item;
   }
 
-  async stockItemPdf(companyId: number, itemId: number): Promise<Buffer> {
-    const item = await this.stockItemRepository.findOne({
-      where: { id: itemId, companyId },
-    });
-
-    if (!item) {
-      throw new NotFoundException(`Stock item ${itemId} not found`);
-    }
-
-    const qrBuffer = await this.stockItemQrCode(companyId, itemId);
-
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A6", margin: 20 });
-      const chunks: Buffer[] = [];
-
-      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-
-      doc.fontSize(16).font("Helvetica-Bold").text("STOCK ITEM", { align: "center" });
-      doc.moveDown(0.5);
-
-      doc.fontSize(12).font("Helvetica").text(item.name, { align: "center" });
-      doc.moveDown(0.3);
-
-      if (item.sku) {
-        doc.fontSize(10).text(`SKU: ${item.sku}`, { align: "center" });
-        doc.moveDown(0.3);
-      }
-
-      if (item.location) {
-        doc.fontSize(10).text(`Location: ${item.location}`, { align: "center" });
-        doc.moveDown(0.3);
-      }
-
-      doc.moveDown(0.5);
-      const qrSize = 150;
-      const xPos = (doc.page.width - qrSize) / 2;
-      doc.image(qrBuffer, xPos, doc.y, { width: qrSize, height: qrSize });
-
-      doc.y += qrSize + 10;
-
-      doc.fontSize(8).fillColor("#666666").text(`ID: ${item.id}`, { align: "center" });
-      doc.moveDown(0.3);
-      doc.fontSize(7).text("Scan to view or allocate stock", { align: "center" });
-
-      doc.end();
-    });
-  }
-
-  async shelfLabelsPdf(items: StockItem[]): Promise<Buffer> {
-    const COLS = 3;
-    const ROWS = 8;
-    const LABELS_PER_PAGE = COLS * ROWS;
-    const PAGE_WIDTH = 595.28;
-    const PAGE_HEIGHT = 841.89;
-    const MARGIN_X = 14;
-    const MARGIN_Y = 14;
-    const LABEL_W = (PAGE_WIDTH - MARGIN_X * 2) / COLS;
-    const LABEL_H = (PAGE_HEIGHT - MARGIN_Y * 2) / ROWS;
-    const QR_SIZE = 70;
-    const LABEL_PAD = 6;
-
-    const qrBuffers = await Promise.all(
-      items.map((item) => {
-        const data: QrCodeData = { type: "stock", id: item.id, name: item.name };
-        return QRCode.toBuffer(JSON.stringify(data), {
-          errorCorrectionLevel: "M",
-          type: "png",
-          width: 200,
-          margin: 1,
-        });
-      }),
-    );
-
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A4", margin: 0 });
-      const chunks: Buffer[] = [];
-
-      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-
-      items.forEach((item, idx) => {
-        if (idx > 0 && idx % LABELS_PER_PAGE === 0) {
-          doc.addPage();
-        }
-
-        const posOnPage = idx % LABELS_PER_PAGE;
-        const col = posOnPage % COLS;
-        const row = Math.floor(posOnPage / COLS);
-        const x = MARGIN_X + col * LABEL_W;
-        const y = MARGIN_Y + row * LABEL_H;
-
-        doc
-          .save()
-          .rect(x, y, LABEL_W, LABEL_H)
-          .strokeColor("#e5e7eb")
-          .lineWidth(0.5)
-          .stroke()
-          .restore();
-
-        doc.image(qrBuffers[idx], x + LABEL_PAD, y + (LABEL_H - QR_SIZE) / 2, {
-          width: QR_SIZE,
-          height: QR_SIZE,
-        });
-
-        const textX = x + LABEL_PAD + QR_SIZE + 6;
-        const textW = LABEL_W - LABEL_PAD * 2 - QR_SIZE - 6;
-        const textY = y + LABEL_PAD + 8;
-
-        doc
-          .font("Helvetica-Bold")
-          .fontSize(8)
-          .fillColor("#000000")
-          .text(item.sku || `#${item.id}`, textX, textY, { width: textW, lineBreak: false });
-
-        doc
-          .font("Helvetica")
-          .fontSize(7)
-          .fillColor("#374151")
-          .text(item.name, textX, textY + 12, { width: textW, height: 22, ellipsis: true });
-
-        if (item.location) {
-          doc
-            .font("Helvetica")
-            .fontSize(6)
-            .fillColor("#6b7280")
-            .text(item.location, textX, textY + 36, { width: textW, lineBreak: false });
-        }
-      });
-
-      doc.end();
-    });
-  }
-
-  async jobCardQrCode(companyId: number, jobId: number): Promise<Buffer> {
-    const job = await this.jobCardRepository.findOne({
-      where: { id: jobId, companyId },
-    });
-
-    if (!job) {
-      throw new NotFoundException(`Job card ${jobId} not found`);
-    }
-
-    const data: QrCodeData = {
-      type: "job",
-      id: job.id,
-      name: job.jobNumber,
-    };
-
-    return QRCode.toBuffer(JSON.stringify(data), {
-      errorCorrectionLevel: "M",
-      type: "png",
-      width: 300,
-      margin: 2,
-    });
-  }
-
-  async jobCardPdf(companyId: number, jobId: number): Promise<Buffer> {
-    const job = await this.jobCardRepository.findOne({
+  private async findJobCard(jobId: number, companyId: number): Promise<JobCard> {
+    const jobCard = await this.jobCardRepo.findOne({
       where: { id: jobId, companyId },
       relations: ["lineItems"],
     });
-
-    if (!job) {
-      throw new NotFoundException(`Job card ${jobId} not found`);
+    if (!jobCard) {
+      throw new NotFoundException("Job card not found");
     }
-
-    const qrBuffer = await this.jobCardQrCode(companyId, jobId);
-
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A4", margin: 40 });
-      const chunks: Buffer[] = [];
-
-      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-
-      doc.fontSize(20).font("Helvetica-Bold").text("JOB CARD", { align: "center" });
-      doc.moveDown(0.5);
-
-      doc.fontSize(16).text(job.jobNumber, { align: "center" });
-      doc.moveDown(1);
-
-      const qrSize = 120;
-      const qrX = doc.page.width - doc.page.margins.right - qrSize;
-      const qrY = doc.page.margins.top + 60;
-      doc.image(qrBuffer, qrX, qrY, { width: qrSize, height: qrSize });
-
-      doc.fontSize(11).font("Helvetica");
-
-      const detailsY = 130;
-      doc.y = detailsY;
-
-      const labelWidth = 100;
-      const leftMargin = doc.page.margins.left;
-
-      const addField = (label: string, value: string | null | undefined) => {
-        if (value) {
-          doc
-            .font("Helvetica-Bold")
-            .text(`${label}:`, leftMargin, doc.y, { continued: true, width: labelWidth });
-          doc.font("Helvetica").text(` ${value}`, { width: 300 });
-          doc.moveDown(0.3);
-        }
-      };
-
-      addField("Job Name", job.jobName);
-      addField("Customer", job.customerName);
-      addField("PO Number", job.poNumber);
-      addField("Site", job.siteLocation);
-      addField("Contact", job.contactPerson);
-      addField("Due Date", job.dueDate);
-      addField("Reference", job.reference);
-      addField("Status", job.status?.toUpperCase());
-
-      if (job.description) {
-        doc.moveDown(0.5);
-        doc.font("Helvetica-Bold").text("Description:", leftMargin);
-        doc.font("Helvetica").text(job.description, { width: 400 });
-      }
-
-      if (job.lineItems && job.lineItems.length > 0) {
-        doc.moveDown(1);
-        doc.font("Helvetica-Bold").fontSize(12).text("Line Items", leftMargin);
-        doc.moveDown(0.5);
-
-        const tableTop = doc.y;
-        const colWidths = [60, 200, 60, 60, 60];
-        const headers = ["Item No", "Description", "Qty", "m²", "JT No"];
-
-        doc.fontSize(9).font("Helvetica-Bold");
-        let xPos = leftMargin;
-        headers.forEach((header, i) => {
-          doc.text(header, xPos, tableTop, { width: colWidths[i] });
-          xPos += colWidths[i];
-        });
-
-        doc
-          .moveTo(leftMargin, tableTop + 15)
-          .lineTo(leftMargin + 440, tableTop + 15)
-          .stroke();
-
-        doc.font("Helvetica").fontSize(9);
-        let rowY = tableTop + 20;
-
-        const sortedItems = [...job.lineItems].sort(
-          (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
-        );
-
-        sortedItems.slice(0, 20).forEach((item) => {
-          xPos = leftMargin;
-          doc.text(item.itemNo || "-", xPos, rowY, { width: colWidths[0] });
-          xPos += colWidths[0];
-          doc.text(item.itemDescription || "-", xPos, rowY, { width: colWidths[1] });
-          xPos += colWidths[1];
-          doc.text(item.quantity?.toString() || "-", xPos, rowY, { width: colWidths[2] });
-          xPos += colWidths[2];
-          doc.text(item.m2?.toFixed(2) || "-", xPos, rowY, { width: colWidths[3] });
-          xPos += colWidths[3];
-          doc.text(item.jtNo || "-", xPos, rowY, { width: colWidths[4] });
-          rowY += 15;
-        });
-
-        if (job.lineItems.length > 20) {
-          doc.text(`... and ${job.lineItems.length - 20} more items`, leftMargin, rowY + 5);
-        }
-      }
-
-      if (job.notes) {
-        doc.moveDown(1.5);
-        doc.font("Helvetica-Bold").fontSize(11).text("Notes:", leftMargin);
-        doc.font("Helvetica").fontSize(10).text(job.notes, { width: 400 });
-      }
-
-      doc.moveDown(2);
-      doc.fontSize(10).font("Helvetica-Bold").text("Stock Allocation", leftMargin);
-      doc.moveDown(0.3);
-
-      const allocTableTop = doc.y;
-      doc
-        .moveTo(leftMargin, allocTableTop)
-        .lineTo(leftMargin + 440, allocTableTop)
-        .stroke();
-      doc
-        .moveTo(leftMargin, allocTableTop + 20)
-        .lineTo(leftMargin + 440, allocTableTop + 20)
-        .stroke();
-
-      doc.fontSize(9).font("Helvetica-Bold");
-      doc.text("Stock Item", leftMargin + 5, allocTableTop + 5, { width: 150 });
-      doc.text("Qty Used", leftMargin + 160, allocTableTop + 5, { width: 60 });
-      doc.text("Allocated By", leftMargin + 230, allocTableTop + 5, { width: 100 });
-      doc.text("Date", leftMargin + 340, allocTableTop + 5, { width: 100 });
-
-      const emptyRows = 5;
-      let allocY = allocTableTop + 20;
-      Array.from({ length: emptyRows }).forEach(() => {
-        allocY += 20;
-        doc
-          .moveTo(leftMargin, allocY)
-          .lineTo(leftMargin + 440, allocY)
-          .stroke();
-      });
-
-      doc.moveTo(leftMargin, allocTableTop).lineTo(leftMargin, allocY).stroke();
-      doc
-        .moveTo(leftMargin + 155, allocTableTop)
-        .lineTo(leftMargin + 155, allocY)
-        .stroke();
-      doc
-        .moveTo(leftMargin + 225, allocTableTop)
-        .lineTo(leftMargin + 225, allocY)
-        .stroke();
-      doc
-        .moveTo(leftMargin + 335, allocTableTop)
-        .lineTo(leftMargin + 335, allocY)
-        .stroke();
-      doc
-        .moveTo(leftMargin + 440, allocTableTop)
-        .lineTo(leftMargin + 440, allocY)
-        .stroke();
-
-      const footerY = doc.page.height - 50;
-      doc
-        .fontSize(8)
-        .fillColor("#666666")
-        .text(
-          `Job ID: ${job.id} | Generated: ${new Date().toLocaleDateString()}`,
-          leftMargin,
-          footerY,
-          { align: "center", width: doc.page.width - 80 },
-        );
-
-      doc.end();
-    });
+    return jobCard;
   }
 
-  async staffQrCode(companyId: number, staffId: number): Promise<Buffer> {
-    const member = await this.staffMemberRepository.findOne({
-      where: { id: staffId, companyId },
-    });
-
-    if (!member) {
-      throw new NotFoundException(`Staff member ${staffId} not found`);
+  private async htmlToPdf(
+    html: string,
+    pageOptions: { format?: string; width?: string; height?: string },
+  ): Promise<Buffer> {
+    let puppeteer: typeof import("puppeteer");
+    try {
+      puppeteer = await import("puppeteer");
+    } catch (importError) {
+      this.logger.error("Failed to import puppeteer", importError);
+      throw new Error("PDF generation is not available");
     }
 
-    const data: QrCodeData = {
-      type: "staff",
-      id: member.id,
-      name: member.name,
-      token: member.qrToken,
-    };
-
-    return QRCode.toBuffer(JSON.stringify(data), {
-      errorCorrectionLevel: "M",
-      type: "png",
-      width: 300,
-      margin: 2,
-    });
-  }
-
-  async staffIdCardPdf(companyId: number, staffId: number): Promise<Buffer> {
-    const member = await this.staffMemberRepository.findOne({
-      where: { id: staffId, companyId },
-    });
-
-    if (!member) {
-      throw new NotFoundException(`Staff member ${staffId} not found`);
-    }
-
-    const company = await this.companyRepository.findOne({
-      where: { id: companyId },
-    });
-
-    const qrBuffer = await this.staffQrCode(companyId, staffId);
-
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A6", margin: 20 });
-      const chunks: Buffer[] = [];
-
-      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-
-      if (company?.name) {
-        doc
-          .fontSize(10)
-          .font("Helvetica")
-          .fillColor("#666666")
-          .text(company.name, { align: "center" });
-        doc.moveDown(0.3);
-      }
-
-      doc
-        .fontSize(16)
-        .font("Helvetica-Bold")
-        .fillColor("#000000")
-        .text("STAFF ID", { align: "center" });
-      doc.moveDown(0.5);
-
-      doc.fontSize(14).font("Helvetica-Bold").text(member.name, { align: "center" });
-      doc.moveDown(0.3);
-
-      if (member.employeeNumber) {
-        doc
-          .fontSize(10)
-          .font("Helvetica")
-          .text(`Emp #: ${member.employeeNumber}`, { align: "center" });
-        doc.moveDown(0.3);
-      }
-
-      if (member.department) {
-        doc.fontSize(10).font("Helvetica").text(member.department, { align: "center" });
-        doc.moveDown(0.3);
-      }
-
-      doc.moveDown(0.5);
-      const qrSize = 120;
-      const xPos = (doc.page.width - qrSize) / 2;
-      doc.image(qrBuffer, xPos, doc.y, { width: qrSize, height: qrSize });
-
-      doc.y += qrSize + 10;
-
-      doc.fontSize(7).fillColor("#666666").text("Scan to verify identity", { align: "center" });
-
-      doc.end();
-    });
-  }
-
-  async staffIdCardsBatchPdf(companyId: number, staffIds?: number[]): Promise<Buffer> {
-    let members: StaffMember[];
-
-    if (staffIds && staffIds.length > 0) {
-      members = await this.staffMemberRepository.find({
-        where: { id: In(staffIds), companyId },
-        order: { name: "ASC" },
-      });
-    } else {
-      members = await this.staffMemberRepository.find({
-        where: { companyId, active: true },
-        order: { name: "ASC" },
-      });
-    }
-
-    if (members.length === 0) {
-      throw new NotFoundException("No staff members found");
-    }
-
-    const company = await this.companyRepository.findOne({
-      where: { id: companyId },
-    });
-
-    const qrBuffers = await Promise.all(
-      members.map((member) => {
-        const data: QrCodeData = {
-          type: "staff",
-          id: member.id,
-          name: member.name,
-          token: member.qrToken,
-        };
-        return QRCode.toBuffer(JSON.stringify(data), {
-          errorCorrectionLevel: "M",
-          type: "png",
-          width: 200,
-          margin: 1,
-        });
-      }),
-    );
-
-    const COLS = 2;
-    const ROWS = 4;
-    const CARDS_PER_PAGE = COLS * ROWS;
-    const PAGE_WIDTH = 595.28;
-    const PAGE_HEIGHT = 841.89;
-    const CARD_W_MM = 85.6;
-    const CARD_H_MM = 54;
-    const MM_TO_PT = 2.8346;
-    const CARD_W = CARD_W_MM * MM_TO_PT;
-    const CARD_H = CARD_H_MM * MM_TO_PT;
-    const MARGIN_X = (PAGE_WIDTH - COLS * CARD_W) / 2;
-    const MARGIN_Y = (PAGE_HEIGHT - ROWS * CARD_H) / 2;
-    const QR_SIZE = 55;
-    const CARD_PAD = 8;
-
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A4", margin: 0 });
-      const chunks: Buffer[] = [];
-
-      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-
-      members.forEach((member, idx) => {
-        if (idx > 0 && idx % CARDS_PER_PAGE === 0) {
-          doc.addPage();
-        }
-
-        const posOnPage = idx % CARDS_PER_PAGE;
-        const col = posOnPage % COLS;
-        const row = Math.floor(posOnPage / COLS);
-        const x = MARGIN_X + col * CARD_W;
-        const y = MARGIN_Y + row * CARD_H;
-
-        doc
-          .save()
-          .rect(x, y, CARD_W, CARD_H)
-          .strokeColor("#d1d5db")
-          .lineWidth(0.5)
-          .stroke()
-          .restore();
-
-        doc.image(qrBuffers[idx], x + CARD_PAD, y + (CARD_H - QR_SIZE) / 2, {
-          width: QR_SIZE,
-          height: QR_SIZE,
-        });
-
-        const textX = x + CARD_PAD + QR_SIZE + 8;
-        const textW = CARD_W - CARD_PAD * 2 - QR_SIZE - 8;
-        const textY = y + CARD_PAD;
-
-        if (company?.name) {
-          doc
-            .font("Helvetica")
-            .fontSize(6)
-            .fillColor("#6b7280")
-            .text(company.name, textX, textY, { width: textW, lineBreak: false });
-        }
-
-        doc
-          .font("Helvetica-Bold")
-          .fontSize(9)
-          .fillColor("#000000")
-          .text(member.name, textX, textY + 10, { width: textW, lineBreak: false });
-
-        if (member.employeeNumber) {
-          doc
-            .font("Helvetica")
-            .fontSize(7)
-            .fillColor("#374151")
-            .text(`Emp #: ${member.employeeNumber}`, textX, textY + 22, {
-              width: textW,
-              lineBreak: false,
-            });
-        }
-
-        if (member.department) {
-          doc
-            .font("Helvetica")
-            .fontSize(7)
-            .fillColor("#6b7280")
-            .text(member.department, textX, textY + 32, { width: textW, lineBreak: false });
-        }
+    let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+        ],
       });
 
-      doc.end();
-    });
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: "networkidle0" });
+
+      const pdfBuffer = await page.pdf({
+        ...(pageOptions.format ? { format: pageOptions.format as "A4" } : {}),
+        ...(pageOptions.width ? { width: pageOptions.width, height: pageOptions.height } : {}),
+        printBackground: true,
+        margin: { top: "0", bottom: "0", left: "0", right: "0" },
+      });
+
+      return Buffer.from(pdfBuffer);
+    } catch (error) {
+      this.logger.error("Failed to generate PDF", error);
+      throw new Error("Failed to generate PDF");
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
+    }
   }
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

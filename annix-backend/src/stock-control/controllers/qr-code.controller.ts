@@ -1,192 +1,57 @@
-import { Body, Controller, Get, Param, Post, Req, Res, UseGuards } from "@nestjs/common";
-import { ApiBody, ApiOperation, ApiParam, ApiProduces, ApiTags } from "@nestjs/swagger";
-import { Response } from "express";
+import { Controller, Get, Param, Req, Res, UseGuards } from "@nestjs/common";
+import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
-import { InventoryService } from "../services/inventory.service";
 import { QrCodeService } from "../services/qr-code.service";
 
 @ApiTags("Stock Control - QR Codes")
 @Controller("stock-control")
 @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
 export class QrCodeController {
-  constructor(
-    private readonly qrCodeService: QrCodeService,
-    private readonly inventoryService: InventoryService,
-  ) {}
+  constructor(private readonly qrCodeService: QrCodeService) {}
 
   @Get("inventory/:id/qr")
-  @ApiOperation({ summary: "Download stock item QR code as PNG" })
-  @ApiParam({ name: "id", description: "Stock item ID" })
-  @ApiProduces("image/png")
-  async stockItemQr(@Req() req: any, @Param("id") id: string, @Res() res: Response) {
-    const companyId = req.user.companyId;
-    const buffer = await this.qrCodeService.stockItemQrCode(companyId, parseInt(id, 10));
-
+  @ApiOperation({ summary: "QR code PNG for a stock item" })
+  async stockItemQr(@Param("id") id: string, @Req() req: any, @Res() res: Response) {
+    const buffer = await this.qrCodeService.stockItemQrPng(Number(id), req.user.companyId);
     res.set({
       "Content-Type": "image/png",
-      "Content-Disposition": `attachment; filename="stock-item-${id}-qr.png"`,
-      "Content-Length": buffer.length,
+      "Content-Disposition": `inline; filename="stock-${id}-qr.png"`,
     });
-
     res.send(buffer);
   }
 
   @Get("inventory/:id/qr/pdf")
-  @ApiOperation({ summary: "Download printable stock item PDF with QR code" })
-  @ApiParam({ name: "id", description: "Stock item ID" })
-  @ApiProduces("application/pdf")
-  async stockItemPdf(@Req() req: any, @Param("id") id: string, @Res() res: Response) {
-    const companyId = req.user.companyId;
-    const buffer = await this.qrCodeService.stockItemPdf(companyId, parseInt(id, 10));
-
+  @ApiOperation({ summary: "Printable label PDF with QR code for a stock item" })
+  async stockItemQrPdf(@Param("id") id: string, @Req() req: any, @Res() res: Response) {
+    const buffer = await this.qrCodeService.stockItemLabelPdf(Number(id), req.user.companyId);
     res.set({
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="stock-item-${id}-label.pdf"`,
-      "Content-Length": buffer.length,
+      "Content-Disposition": `inline; filename="stock-${id}-label.pdf"`,
     });
-
-    res.send(buffer);
-  }
-
-  @Post("inventory/labels/pdf")
-  @ApiOperation({ summary: "Download batch shelf labels PDF with QR codes" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        ids: { type: "array", items: { type: "number" } },
-        search: { type: "string" },
-        category: { type: "string" },
-      },
-    },
-  })
-  @ApiProduces("application/pdf")
-  async batchLabelsPdf(
-    @Req() req: any,
-    @Body() body: { ids?: number[]; search?: string; category?: string },
-    @Res() res: Response,
-  ) {
-    const companyId = req.user.companyId;
-
-    let items: { id: number; sku: string; name: string; location: string | null }[];
-
-    if (body.ids && body.ids.length > 0) {
-      const result = await this.inventoryService.findByIds(companyId, body.ids);
-      items = result;
-    } else {
-      const result = await this.inventoryService.findAll(companyId, {
-        search: body.search,
-        category: body.category,
-        limit: "500",
-      });
-      items = result.items;
-    }
-
-    const buffer = await this.qrCodeService.shelfLabelsPdf(items as any);
-
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": 'attachment; filename="shelf-labels.pdf"',
-      "Content-Length": buffer.length,
-    });
-
     res.send(buffer);
   }
 
   @Get("job-cards/:id/qr")
-  @ApiOperation({ summary: "Download job card QR code as PNG" })
-  @ApiParam({ name: "id", description: "Job card ID" })
-  @ApiProduces("image/png")
-  async jobCardQr(@Req() req: any, @Param("id") id: string, @Res() res: Response) {
-    const companyId = req.user.companyId;
-    const buffer = await this.qrCodeService.jobCardQrCode(companyId, parseInt(id, 10));
-
+  @ApiOperation({ summary: "QR code PNG for a job card" })
+  async jobCardQr(@Param("id") id: string, @Req() req: any, @Res() res: Response) {
+    const buffer = await this.qrCodeService.jobCardQrPng(Number(id), req.user.companyId);
     res.set({
       "Content-Type": "image/png",
-      "Content-Disposition": `attachment; filename="job-card-${id}-qr.png"`,
-      "Content-Length": buffer.length,
+      "Content-Disposition": `inline; filename="job-${id}-qr.png"`,
     });
-
     res.send(buffer);
   }
 
   @Get("job-cards/:id/qr/pdf")
-  @ApiOperation({ summary: "Download printable job card PDF with QR code" })
-  @ApiParam({ name: "id", description: "Job card ID" })
-  @ApiProduces("application/pdf")
-  async jobCardPdf(@Req() req: any, @Param("id") id: string, @Res() res: Response) {
-    const companyId = req.user.companyId;
-    const buffer = await this.qrCodeService.jobCardPdf(companyId, parseInt(id, 10));
-
+  @ApiOperation({ summary: "Printable job card PDF with QR code" })
+  async jobCardQrPdf(@Param("id") id: string, @Req() req: any, @Res() res: Response) {
+    const buffer = await this.qrCodeService.jobCardPdf(Number(id), req.user.companyId);
     res.set({
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="job-card-${id}.pdf"`,
-      "Content-Length": buffer.length,
+      "Content-Disposition": `inline; filename="job-card-${id}.pdf"`,
     });
-
-    res.send(buffer);
-  }
-
-  @Get("staff/:id/qr")
-  @ApiOperation({ summary: "Download staff member QR code as PNG" })
-  @ApiParam({ name: "id", description: "Staff member ID" })
-  @ApiProduces("image/png")
-  async staffQr(@Req() req: any, @Param("id") id: string, @Res() res: Response) {
-    const companyId = req.user.companyId;
-    const buffer = await this.qrCodeService.staffQrCode(companyId, parseInt(id, 10));
-
-    res.set({
-      "Content-Type": "image/png",
-      "Content-Disposition": `attachment; filename="staff-${id}-qr.png"`,
-      "Content-Length": buffer.length,
-    });
-
-    res.send(buffer);
-  }
-
-  @Get("staff/:id/qr/pdf")
-  @ApiOperation({ summary: "Download single staff ID card PDF" })
-  @ApiParam({ name: "id", description: "Staff member ID" })
-  @ApiProduces("application/pdf")
-  async staffIdCardPdf(@Req() req: any, @Param("id") id: string, @Res() res: Response) {
-    const companyId = req.user.companyId;
-    const buffer = await this.qrCodeService.staffIdCardPdf(companyId, parseInt(id, 10));
-
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="staff-id-${id}.pdf"`,
-      "Content-Length": buffer.length,
-    });
-
-    res.send(buffer);
-  }
-
-  @Post("staff/id-cards/pdf")
-  @ApiOperation({ summary: "Download batch staff ID cards PDF" })
-  @ApiBody({
-    schema: {
-      type: "object",
-      properties: {
-        ids: { type: "array", items: { type: "number" } },
-      },
-    },
-  })
-  @ApiProduces("application/pdf")
-  async batchStaffIdCardsPdf(
-    @Req() req: any,
-    @Body() body: { ids?: number[] },
-    @Res() res: Response,
-  ) {
-    const companyId = req.user.companyId;
-    const buffer = await this.qrCodeService.staffIdCardsBatchPdf(companyId, body.ids);
-
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": 'attachment; filename="staff-id-cards.pdf"',
-      "Content-Length": buffer.length,
-    });
-
     res.send(buffer);
   }
 }
