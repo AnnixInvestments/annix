@@ -1,8 +1,24 @@
 import { Injectable, Logger } from "@nestjs/common";
 
+export interface ImageContent {
+  type: "image";
+  source: {
+    type: "base64";
+    media_type: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+    data: string;
+  };
+}
+
+export interface TextContent {
+  type: "text";
+  text: string;
+}
+
+export type MessageContent = string | (TextContent | ImageContent)[];
+
 export interface ChatMessage {
   role: "user" | "assistant" | "system";
-  content: string;
+  content: MessageContent;
 }
 
 export interface ChatProviderConfig {
@@ -58,6 +74,11 @@ export class ClaudeChatProvider {
         content: m.content,
       }));
 
+    const hasVision = messages.some(
+      (m) => Array.isArray(m.content) && m.content.some((c) => c.type === "image"),
+    );
+    const model = hasVision ? "claude-sonnet-4-20250514" : this.model;
+
     try {
       const response = await fetch(`${this.baseUrl}/messages`, {
         method: "POST",
@@ -67,7 +88,7 @@ export class ClaudeChatProvider {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: this.model,
+          model,
           max_tokens: this.maxTokens,
           temperature: this.temperature,
           system: systemPrompt,
@@ -176,5 +197,32 @@ export class ClaudeChatProvider {
     }
 
     return chunks.join("");
+  }
+
+  async chatWithImage(
+    imageBase64: string,
+    mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+    prompt: string,
+    systemPrompt?: string,
+  ): Promise<string> {
+    const message: ChatMessage = {
+      role: "user",
+      content: [
+        {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: mediaType,
+            data: imageBase64,
+          },
+        },
+        {
+          type: "text",
+          text: prompt,
+        },
+      ],
+    };
+
+    return this.chat([message], systemPrompt);
   }
 }

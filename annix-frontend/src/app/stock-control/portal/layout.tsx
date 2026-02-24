@@ -1,14 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { MobileNav } from "../components/MobileNav";
 import { StockControlHeader } from "../components/StockControlHeader";
 import { StockControlSidebar } from "../components/StockControlSidebar";
 import {
   StockControlBrandingProvider,
   useStockControlBranding,
 } from "../context/StockControlBrandingContext";
+import { useIsMobile } from "../hooks/useMediaQuery";
 
 function MainContent({ children }: { children: React.ReactNode }) {
   const { heroImageUrl } = useStockControlBranding();
@@ -33,12 +35,24 @@ function MainContent({ children }: { children: React.ReactNode }) {
 }
 
 function PortalContent({ children }: { children: React.ReactNode }) {
+  const isMobile = useIsMobile();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const handleMenuToggle = useCallback(() => {
+    setMobileNavOpen((prev) => !prev);
+  }, []);
+
+  const handleMobileNavClose = useCallback(() => {
+    setMobileNavOpen(false);
+  }, []);
+
   return (
     <StockControlBrandingProvider>
       <div className="flex h-screen bg-gray-50">
-        <StockControlSidebar />
+        {!isMobile && <StockControlSidebar />}
+        {isMobile && <MobileNav isOpen={mobileNavOpen} onClose={handleMobileNavClose} />}
         <div className="flex-1 flex flex-col overflow-hidden">
-          <StockControlHeader />
+          <StockControlHeader showMenuButton={isMobile} onMenuToggle={handleMenuToggle} />
           <MainContent>{children}</MainContent>
         </div>
       </div>

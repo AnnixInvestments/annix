@@ -5,13 +5,22 @@ import { useRef, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { useStockControlBranding } from "../context/StockControlBrandingContext";
+import { OfflineIndicator } from "./OfflineIndicator";
+import { SyncStatus } from "./SyncStatus";
 
 interface StockControlHeaderProps {
   onSearch?: (query: string) => void;
   lowStockCount?: number;
+  onMenuToggle?: () => void;
+  showMenuButton?: boolean;
 }
 
-export function StockControlHeader({ onSearch, lowStockCount = 0 }: StockControlHeaderProps) {
+export function StockControlHeader({
+  onSearch,
+  lowStockCount = 0,
+  onMenuToggle,
+  showMenuButton = false,
+}: StockControlHeaderProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -46,6 +55,22 @@ export function StockControlHeader({ onSearch, lowStockCount = 0 }: StockControl
       style={{ backgroundColor: colors.background }}
     >
       <div className="flex items-center">
+        {showMenuButton && (
+          <button
+            onClick={onMenuToggle}
+            className="mr-3 p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
+            aria-label="Open menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
+          </button>
+        )}
         {logoUrl ? (
           <div className="h-10 px-2 flex items-center bg-white rounded-md">
             <img src={logoUrl} alt="Company logo" className="h-8 w-auto object-contain" />
@@ -55,7 +80,7 @@ export function StockControlHeader({ onSearch, lowStockCount = 0 }: StockControl
             ASCA
           </div>
         )}
-        <span className="ml-2 text-white text-lg font-medium">Stock Control</span>
+        <span className="ml-2 text-white text-lg font-medium hidden sm:inline">Stock Control</span>
       </div>
 
       <div className="flex-1 max-w-xl mx-8">
@@ -84,6 +109,8 @@ export function StockControlHeader({ onSearch, lowStockCount = 0 }: StockControl
       </div>
 
       <div className="flex items-center space-x-3">
+        <SyncStatus />
+        <OfflineIndicator />
         <ThemeToggle
           className="p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
           iconClassName="w-5 h-5 text-white"

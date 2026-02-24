@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, Repository } from "typeorm";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StockItem } from "../entities/stock-item.entity";
 
 @Injectable()
@@ -8,6 +9,8 @@ export class InventoryService {
   constructor(
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   async create(companyId: number, data: Partial<StockItem>): Promise<StockItem> {
@@ -128,5 +131,12 @@ export class InventoryService {
   async bulkCreate(companyId: number, items: Partial<StockItem>[]): Promise<StockItem[]> {
     const entities = items.map((data) => this.stockItemRepo.create({ ...data, companyId }));
     return this.stockItemRepo.save(entities);
+  }
+
+  async uploadPhoto(companyId: number, id: number, file: Express.Multer.File): Promise<StockItem> {
+    const item = await this.findById(companyId, id);
+    const result = await this.storageService.upload(file, "stock-control/inventory");
+    item.photoUrl = result.url;
+    return this.stockItemRepo.save(item);
   }
 }

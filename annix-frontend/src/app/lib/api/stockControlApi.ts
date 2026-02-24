@@ -788,6 +788,70 @@ class StockControlApiClient {
     return this.request(`/stock-control/inventory/${id}`, { method: "DELETE" });
   }
 
+  async uploadStockItemPhoto(id: number, file: File): Promise<StockItem> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/inventory/${id}/photo`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async identifyFromPhoto(
+    file: File,
+    context?: string,
+  ): Promise<{
+    identifiedItems: {
+      name: string;
+      category: string;
+      description: string;
+      confidence: number;
+      suggestedSku: string;
+    }[];
+    matchingStockItems: {
+      id: number;
+      sku: string;
+      name: string;
+      category: string | null;
+      similarity: number;
+    }[];
+    rawAnalysis: string;
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (context) {
+      formData.append("context", context);
+    }
+
+    const url = `${this.baseURL}/stock-control/inventory/identify-photo`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Identification failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
   async lowStockAlerts(): Promise<StockItem[]> {
     return this.request("/stock-control/inventory/low-stock");
   }

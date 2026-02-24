@@ -42,6 +42,7 @@ import { DeliveryService } from "./services/delivery.service";
 import { ImportService } from "./services/import.service";
 import { InventoryService } from "./services/inventory.service";
 import { StockControlInvitationService } from "./services/invitation.service";
+import { ItemIdentificationService } from "./services/item-identification.service";
 import { JobCardService } from "./services/job-card.service";
 import { JobCardImportService } from "./services/job-card-import.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
@@ -117,6 +118,7 @@ import { RequisitionService } from "./services/requisition.service";
     QrCodeService,
     ReportsService,
     RequisitionService,
+    ItemIdentificationService,
   ],
 })
 export class StockControlModule {}

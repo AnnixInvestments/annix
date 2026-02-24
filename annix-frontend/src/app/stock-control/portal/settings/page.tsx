@@ -9,6 +9,7 @@ import {
   StockControlTeamMember,
   stockControlApiClient,
 } from "@/app/lib/api/stockControlApi";
+import { syncStatus } from "../../lib/offline/syncManager";
 
 type BrandingSelection = "annix" | "custom";
 
@@ -1104,6 +1105,116 @@ export default function StockControlSettingsPage() {
             )}
           </>
         )}
+      </div>
+
+      <AppInfoSection />
+    </div>
+  );
+}
+
+function AppInfoSection() {
+  const [version, setVersion] = useState<string | null>(null);
+  const [swStatus, setSwStatus] = useState<"active" | "waiting" | "none">("none");
+  const [lastSync, setLastSync] = useState<string | null>(null);
+
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistration("/stock-control").then((registration) => {
+        if (registration?.active) {
+          setSwStatus("active");
+          registration.active.postMessage({ type: "GET_VERSION" });
+        }
+        if (registration?.waiting) {
+          setSwStatus("waiting");
+        }
+      });
+
+      navigator.serviceWorker.addEventListener("message", (event) => {
+        if (event.data.type === "VERSION") {
+          setVersion(event.data.version);
+        }
+      });
+    }
+
+    const status = syncStatus();
+    setLastSync(status.lastSyncAt);
+  }, []);
+
+  const handleUpdate = async () => {
+    const registration = await navigator.serviceWorker.getRegistration("/stock-control");
+    if (registration?.waiting) {
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
+  };
+
+  const handleClearCache = async () => {
+    if (confirm("Clear all cached data? You will need to re-download data when online.")) {
+      const registration = await navigator.serviceWorker.getRegistration("/stock-control");
+      if (registration?.active) {
+        registration.active.postMessage({ type: "CLEAR_CACHE" });
+      }
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">App Info</h2>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between py-2 border-b border-gray-100">
+          <span className="text-sm text-gray-600">App Version</span>
+          <span className="text-sm font-medium text-gray-900">{version ?? "1.0.0"}</span>
+        </div>
+
+        <div className="flex items-center justify-between py-2 border-b border-gray-100">
+          <span className="text-sm text-gray-600">Service Worker</span>
+          <span
+            className={`text-sm font-medium ${
+              swStatus === "active"
+                ? "text-green-600"
+                : swStatus === "waiting"
+                  ? "text-amber-600"
+                  : "text-gray-500"
+            }`}
+          >
+            {swStatus === "active"
+              ? "Active"
+              : swStatus === "waiting"
+                ? "Update Available"
+                : "Not Registered"}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between py-2 border-b border-gray-100">
+          <span className="text-sm text-gray-600">Offline Support</span>
+          <span className="text-sm font-medium text-green-600">Enabled</span>
+        </div>
+
+        {lastSync && (
+          <div className="flex items-center justify-between py-2 border-b border-gray-100">
+            <span className="text-sm text-gray-600">Last Sync</span>
+            <span className="text-sm font-medium text-gray-900">
+              {new Date(lastSync).toLocaleString("en-ZA")}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex gap-2">
+        {swStatus === "waiting" && (
+          <button
+            onClick={handleUpdate}
+            className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+          >
+            Update Now
+          </button>
+        )}
+        <button
+          onClick={handleClearCache}
+          className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+        >
+          Clear Cache
+        </button>
       </div>
     </div>
   );

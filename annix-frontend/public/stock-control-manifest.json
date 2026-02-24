@@ -1,0 +1,44 @@
+{
+  "name": "Annix Stock Control",
+  "short_name": "Stock Control",
+  "description": "Mobile-first stock control and inventory management",
+  "start_url": "/stock-control/portal/dashboard",
+  "scope": "/stock-control",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0d9488",
+  "background_color": "#f9fafb",
+  "icons": [
+    {
+      "src": "/images/annix-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/images/annix-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/stock-control/portal/dashboard"
+    },
+    {
+      "name": "Inventory",
+      "url": "/stock-control/portal/inventory"
+    },
+    {
+      "name": "Job Cards",
+      "url": "/stock-control/portal/job-cards"
+    },
+    {
+      "name": "Deliveries",
+      "url": "/stock-control/portal/deliveries"
+    }
+  ],
+  "categories": ["business", "productivity"]
+}
