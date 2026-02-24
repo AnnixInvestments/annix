@@ -1094,6 +1094,48 @@ class StockControlApiClient {
       body: JSON.stringify(data),
     });
   }
+
+  async downloadStockItemQrPdf(itemId: number): Promise<void> {
+    const headers = this.headers();
+    const response = await fetch(`${API_BASE_URL}/stock-control/inventory/${itemId}/qr/pdf`, {
+      headers: { Authorization: headers.Authorization ?? "" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download QR PDF: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `stock-item-${itemId}-label.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  async downloadJobCardQrPdf(jobId: number): Promise<void> {
+    const headers = this.headers();
+    const response = await fetch(`${API_BASE_URL}/stock-control/job-cards/${jobId}/qr/pdf`, {
+      headers: { Authorization: headers.Authorization ?? "" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download job card PDF: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `job-card-${jobId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
 }
 
 export const stockControlApiClient = new StockControlApiClient();
