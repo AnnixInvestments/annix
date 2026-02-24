@@ -2,7 +2,6 @@ packages:
   - annix-backend
   - annix-frontend
   - packages/*
-  - voice-filter
 
 onlyBuiltDependencies:
   - '@annix/claude-swarm'
@@ -14,8 +13,6 @@ ignoredBuiltDependencies:
   - '@scarf/scarf'
   - bcrypt
   - esbuild
-  - naudiodon
-  - segfault-handler
   - sharp
   - tesseract.js
   - unrs-resolver

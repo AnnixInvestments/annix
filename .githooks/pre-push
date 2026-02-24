@@ -11,11 +11,11 @@ echo "Running pre-push checks..."
 # Note: We check ALL files with biome to catch issues from any source
 
 biome_check() {
-  # Auto-fix any biome issues first
-  pnpm biome check --write . 2>/dev/null || true
-
-  # Check if there are any unfixed issues
-  pnpm biome check .
+  if ! pnpm biome check .; then
+    echo ""
+    echo "Biome check failed. Run 'pnpm biome check --write .' to auto-fix, then re-commit."
+    return 1
+  fi
 }
 
 run_tests() {
