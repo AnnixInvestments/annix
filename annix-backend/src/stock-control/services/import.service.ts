@@ -53,23 +53,42 @@ export class ImportService {
     const workbook = xlsx.read(buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
+
+    this.logger.log(
+      `parseExcelRaw: sheet="${sheetName}", sheetCount=${workbook.SheetNames.length}, ref=${worksheet["!ref"] ?? "none"}`,
+    );
+
     const allRows = xlsx.utils.sheet_to_json<string[]>(worksheet, {
       header: 1,
       defval: "",
     });
+
+    this.logger.log(`parseExcelRaw: totalRows=${allRows.length}`);
+
+    if (allRows.length > 0) {
+      this.logger.log(`parseExcelRaw: firstRow=${JSON.stringify(allRows[0]).substring(0, 200)}`);
+    }
+
+    if (allRows.length > 1) {
+      this.logger.log(`parseExcelRaw: secondRow=${JSON.stringify(allRows[1]).substring(0, 200)}`);
+    }
 
     if (allRows.length === 0) {
       return { headers: [], rawRows: [] };
     }
 
     const headers = allRows[0].map((h) => String(h).trim());
-    const rawRows = allRows
+    const nonEmptyRows = allRows
       .slice(1)
       .filter((row) => row.some((cell) => String(cell).trim() !== ""));
 
+    this.logger.log(
+      `parseExcelRaw: headers=${headers.length}, nonEmptyRows=${nonEmptyRows.length}`,
+    );
+
     return {
       headers,
-      rawRows: rawRows.map((row) => row.map((cell) => String(cell))),
+      rawRows: nonEmptyRows.map((row) => row.map((cell) => String(cell))),
     };
   }
 
