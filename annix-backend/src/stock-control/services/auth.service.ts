@@ -6,12 +6,14 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { ILike, MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
+import { S3StorageService } from "../../storage/s3-storage.service";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
 import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
 import {
@@ -24,6 +26,8 @@ const VERIFICATION_EXPIRY_HOURS = 24;
 
 @Injectable()
 export class StockControlAuthService {
+  private readonly storageType: string;
+
   constructor(
     @InjectRepository(StockControlUser)
     private readonly userRepo: Repository<StockControlUser>,
@@ -33,7 +37,22 @@ export class StockControlAuthService {
     private readonly invitationRepo: Repository<StockControlInvitation>,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-  ) {}
+    private readonly s3StorageService: S3StorageService,
+    private readonly configService: ConfigService,
+  ) {
+    this.storageType = this.configService.get<string>("STORAGE_TYPE") || "local";
+  }
+
+  private async resolveStorageUrl(path: string | null): Promise<string | null> {
+    if (!path) return null;
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    if (this.storageType === "s3") {
+      return this.s3StorageService.getPresignedUrl(path, 86400);
+    }
+    return path;
+  }
 
   async register(
     email: string,
@@ -260,6 +279,11 @@ export class StockControlAuthService {
       }
     }
 
+    const [logoUrl, heroImageUrl] = await Promise.all([
+      this.resolveStorageUrl(user.company?.logoUrl ?? null),
+      this.resolveStorageUrl(user.company?.heroImageUrl ?? null),
+    ]);
+
     return {
       id: user.id,
       email: user.email,
@@ -270,8 +294,8 @@ export class StockControlAuthService {
       brandingType: user.company?.brandingType ?? BrandingType.ANNIX,
       primaryColor: user.company?.primaryColor ?? null,
       accentColor: user.company?.accentColor ?? null,
-      logoUrl: user.company?.logoUrl ?? null,
-      heroImageUrl: user.company?.heroImageUrl ?? null,
+      logoUrl,
+      heroImageUrl,
       registrationNumber: user.company?.registrationNumber ?? null,
       vatNumber: user.company?.vatNumber ?? null,
       streetAddress: user.company?.streetAddress ?? null,

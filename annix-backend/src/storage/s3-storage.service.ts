@@ -124,6 +124,7 @@ export class S3StorageService implements IStorageService, OnModuleInit {
                   "http://localhost:3000",
                   "http://localhost:3001",
                   "https://*.annix.co.za",
+                  "https://*.fly.dev",
                 ],
                 ExposeHeaders: ["ETag", "x-amz-meta-custom-header"],
                 MaxAgeSeconds: 3600,

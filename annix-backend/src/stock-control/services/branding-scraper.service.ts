@@ -499,8 +499,8 @@ export class BrandingScraperService {
       } as Express.Multer.File;
 
       const result = await this.storageService.upload(file, `stock-control/branding/${companyId}`);
-      this.logger.log(`Logo uploaded: ${result.url}`);
-      return result.url;
+      this.logger.log(`Logo uploaded: ${result.path}`);
+      return result.path;
     } catch (error) {
       this.logger.error(
         `Logo processing failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -538,8 +538,8 @@ export class BrandingScraperService {
       } as Express.Multer.File;
 
       const result = await this.storageService.upload(file, `stock-control/branding/${companyId}`);
-      this.logger.log(`Hero image uploaded: ${result.url}`);
-      return result.url;
+      this.logger.log(`Hero image uploaded: ${result.path}`);
+      return result.path;
     } catch (error) {
       this.logger.warn(
         `Hero image processing failed: ${error instanceof Error ? error.message : String(error)}`,
