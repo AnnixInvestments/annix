@@ -44,9 +44,7 @@ export class BrandingScraperService {
     }
   }
 
-  private async scrapeCandidatesWithFetch(
-    websiteUrl: string,
-  ): Promise<ScrapedBrandingCandidates> {
+  private async scrapeCandidatesWithFetch(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
@@ -171,10 +169,8 @@ export class BrandingScraperService {
       }
 
       let primaryColor: string | null = null;
-      const themeColorPattern =
-        /<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']/i;
-      const themeColorAlt =
-        /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']theme-color["']/i;
+      const themeColorPattern = /<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']/i;
+      const themeColorAlt = /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']theme-color["']/i;
       const themeMatch = html.match(themeColorPattern) ?? html.match(themeColorAlt);
       if (themeMatch?.[1]) {
         primaryColor = themeMatch[1];
