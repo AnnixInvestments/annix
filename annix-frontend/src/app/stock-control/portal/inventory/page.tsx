@@ -17,6 +17,32 @@ function formatZAR(value: number): string {
   }).format(value);
 }
 
+function isRandColumn(header: string): boolean {
+  return /value|price|cost|r\/p|amount|rand|zar/i.test(header);
+}
+
+function isImportRowBlank(row: string[]): boolean {
+  return row.every((cell) => cell.trim() === "" || cell.trim() === "0");
+}
+
+function isImportSectionTitle(row: string[]): boolean {
+  const firstCell = row[0]?.trim() ?? "";
+  if (firstCell === "" || firstCell === "0") {
+    return false;
+  } else {
+    return row.slice(1).every((cell) => cell.trim() === "" || cell.trim() === "0");
+  }
+}
+
+function formatRandCell(value: string): string {
+  const num = parseFloat(value);
+  if (Number.isNaN(num)) {
+    return value;
+  } else {
+    return `R ${num.toFixed(2)}`;
+  }
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export default function InventoryPage() {
@@ -54,7 +80,65 @@ export default function InventoryPage() {
   const [importFormat, setImportFormat] = useState<string | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isPrintingLabels, setIsPrintingLabels] = useState(false);
   const dragCounterRef = useRef(0);
+
+  const toggleSelectItem = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const pageIds = items.map((item) => item.id);
+    const allSelected = pageIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        pageIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        pageIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  };
+
+  const handlePrintSelected = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setIsPrintingLabels(true);
+      await stockControlApiClient.downloadBatchLabelsPdf({ ids: [...selectedIds] });
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to download labels"));
+    } finally {
+      setIsPrintingLabels(false);
+    }
+  };
+
+  const handlePrintAll = async () => {
+    try {
+      setIsPrintingLabels(true);
+      await stockControlApiClient.downloadBatchLabelsPdf({
+        search: search || undefined,
+        category: categoryFilter || undefined,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to download labels"));
+    } finally {
+      setIsPrintingLabels(false);
+    }
+  };
 
   const fetchItems = useCallback(async () => {
     try {
@@ -224,36 +308,95 @@ export default function InventoryPage() {
       setImportStep("importing");
       setImportError(null);
 
+      const buildFallbackMapping = (headers: string[]): InventoryColumnMapping => {
+        const mapping: InventoryColumnMapping = {
+          sku: null,
+          name: null,
+          description: null,
+          category: null,
+          unitOfMeasure: null,
+          costPerUnit: null,
+          quantity: null,
+          minStockLevel: null,
+          location: null,
+        };
+        headers.forEach((header, idx) => {
+          const h = header.toLowerCase().trim();
+          if (/product.?code|sku|code|item.?code|part.?no/.test(h)) {
+            mapping.sku = idx;
+          } else if (/stock.?count|qty|quantity|soh|on.?hand|count/.test(h)) {
+            mapping.quantity = idx;
+          } else if (/r\/p|unit.?price|cost|price.?per/.test(h)) {
+            mapping.costPerUnit = idx;
+          } else if (/min|minimum|reorder/.test(h)) {
+            mapping.minStockLevel = idx;
+          } else if (/location|loc|warehouse/.test(h)) {
+            mapping.location = idx;
+          } else if (/category|cat|group/.test(h)) {
+            mapping.category = idx;
+          } else if (/unit.?of|uom|measure/.test(h)) {
+            mapping.unitOfMeasure = idx;
+          }
+        });
+        if (mapping.name === null) {
+          const mappedIndices = new Set(
+            Object.values(mapping).filter((v): v is number => v !== null),
+          );
+          if (!mappedIndices.has(0)) {
+            mapping.name = 0;
+          }
+        }
+        return mapping;
+      };
+
+      let effectiveMapping = importMapping;
+      let dataRows = importRawRows;
+
+      if (importFormat === "excel") {
+        const headersEmpty = importHeaders.every((h) => h.trim() === "");
+        if (headersEmpty && importRawRows.length > 0) {
+          effectiveMapping = buildFallbackMapping(importRawRows[0]);
+          dataRows = importRawRows.slice(1);
+        } else if (
+          effectiveMapping &&
+          Object.values(effectiveMapping).every((v) => v === null)
+        ) {
+          effectiveMapping = buildFallbackMapping(importHeaders);
+        }
+      }
+
       const rowsToImport =
-        importFormat === "excel" && importMapping
-          ? importRawRows.map((row) => {
-              const cellAt = (idx: number | null): string | undefined => {
-                if (idx === null || idx < 0 || idx >= row.length) {
-                  return undefined;
-                }
-                const val = row[idx].trim();
-                return val === "" ? undefined : val;
-              };
-              const numAt = (idx: number | null): number | undefined => {
-                const val = cellAt(idx);
-                if (val === undefined) {
-                  return undefined;
-                }
-                const num = Number(val);
-                return Number.isNaN(num) ? undefined : num;
-              };
-              return {
-                sku: cellAt(importMapping.sku),
-                name: cellAt(importMapping.name),
-                description: cellAt(importMapping.description),
-                category: cellAt(importMapping.category),
-                unitOfMeasure: cellAt(importMapping.unitOfMeasure),
-                costPerUnit: numAt(importMapping.costPerUnit),
-                quantity: numAt(importMapping.quantity),
-                minStockLevel: numAt(importMapping.minStockLevel),
-                location: cellAt(importMapping.location),
-              };
-            })
+        importFormat === "excel" && effectiveMapping
+          ? dataRows
+              .filter((row) => !isImportRowBlank(row) && !isImportSectionTitle(row))
+              .map((row) => {
+                const cellAt = (idx: number | null): string | undefined => {
+                  if (idx === null || idx < 0 || idx >= row.length) {
+                    return undefined;
+                  }
+                  const val = row[idx].trim();
+                  return val === "" ? undefined : val;
+                };
+                const numAt = (idx: number | null): number | undefined => {
+                  const val = cellAt(idx);
+                  if (val === undefined) {
+                    return undefined;
+                  }
+                  const num = Number(val);
+                  return Number.isNaN(num) ? undefined : num;
+                };
+                return {
+                  sku: cellAt(effectiveMapping.sku),
+                  name: cellAt(effectiveMapping.name),
+                  description: cellAt(effectiveMapping.description),
+                  category: cellAt(effectiveMapping.category),
+                  unitOfMeasure: cellAt(effectiveMapping.unitOfMeasure),
+                  costPerUnit: numAt(effectiveMapping.costPerUnit),
+                  quantity: numAt(effectiveMapping.quantity),
+                  minStockLevel: numAt(effectiveMapping.minStockLevel),
+                  location: cellAt(effectiveMapping.location),
+                };
+              })
           : parsedRows;
 
       const result = await stockControlApiClient.confirmImport(rowsToImport);
@@ -349,8 +492,10 @@ export default function InventoryPage() {
                   <h3 className="text-lg font-medium text-gray-900">Import Preview</h3>
                   <p className="text-sm text-gray-500">
                     {importFile?.name} -{" "}
-                    {importFormat === "excel" ? importRawRows.length : parsedRows.length} rows
-                    parsed
+                    {importFormat === "excel"
+                      ? importRawRows.filter((r) => !isImportRowBlank(r)).length
+                      : parsedRows.length}{" "}
+                    rows parsed
                   </p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -370,7 +515,10 @@ export default function InventoryPage() {
                     className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
                   >
                     Confirm Import (
-                    {importFormat === "excel" ? importRawRows.length : parsedRows.length} rows)
+                    {importFormat === "excel"
+                      ? importRawRows.filter((r) => !isImportRowBlank(r)).length
+                      : parsedRows.length}{" "}
+                    rows)
                   </button>
                 </div>
               </div>
@@ -392,38 +540,70 @@ export default function InventoryPage() {
               )}
               <div className="overflow-x-auto max-h-96">
                 {importFormat === "excel" ? (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                          Row
-                        </th>
-                        {importHeaders.map((header, idx) => (
-                          <th
-                            key={idx}
-                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                          >
-                            {header}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {importRawRows.map((row, rowIdx) => (
-                        <tr key={rowIdx} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-500">{rowIdx + 1}</td>
-                          {importHeaders.map((_, colIdx) => (
-                            <td key={colIdx} className="px-4 py-3 text-sm text-gray-900">
-                              {row[colIdx] ?? ""}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  (() => {
+                    const headersEmpty = importHeaders.every((h) => h.trim() === "");
+                    const effectiveHeaders = headersEmpty
+                      ? (importRawRows[0] ?? [])
+                      : importHeaders;
+                    const effectiveDataRows = headersEmpty
+                      ? importRawRows.slice(1)
+                      : importRawRows;
+                    return (
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                              Row
+                            </th>
+                            {effectiveHeaders.map((header, idx) => (
+                              <th
+                                key={idx}
+                                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                              >
+                                {header}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {effectiveDataRows
+                            .filter((row) => !isImportRowBlank(row))
+                            .map((row, rowIdx) => {
+                              const sectionTitle = isImportSectionTitle(row);
+                              return (
+                                <tr
+                                  key={rowIdx}
+                                  className={sectionTitle ? "bg-gray-100" : "hover:bg-gray-50"}
+                                >
+                                  <td className="px-4 py-3 text-sm text-gray-500">
+                                    {rowIdx + 1}
+                                  </td>
+                                  {effectiveHeaders.map((header, colIdx) => {
+                                    const cell = row[colIdx] ?? "";
+                                    const displayValue = sectionTitle && (cell.trim() === "0" || cell.trim() === "")
+                                      ? ""
+                                      : isRandColumn(header) && !sectionTitle
+                                        ? formatRandCell(cell)
+                                        : cell;
+                                    return (
+                                      <td
+                                        key={colIdx}
+                                        className={`px-4 py-3 text-sm text-gray-900 ${sectionTitle ? "font-bold" : ""}`}
+                                      >
+                                        {displayValue}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    );
+                  })()
                 ) : (
                   <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                           Row
@@ -547,6 +727,21 @@ export default function InventoryPage() {
           <p className="mt-1 text-sm text-gray-600">Manage stock items and quantities</p>
         </div>
         <div className="flex items-center space-x-3">
+          <button
+            onClick={handlePrintAll}
+            disabled={isPrintingLabels}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+              />
+            </svg>
+            {isPrintingLabels ? "Printing..." : "Print All Labels"}
+          </button>
           <Link
             href="/stock-control/portal/inventory/import"
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -602,6 +797,42 @@ export default function InventoryPage() {
         </select>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-teal-800">
+            {selectedIds.size} item{selectedIds.size !== 1 ? "s" : ""} selected
+          </span>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-sm text-teal-700 hover:text-teal-900"
+            >
+              Clear
+            </button>
+            <button
+              onClick={handlePrintSelected}
+              disabled={isPrintingLabels}
+              className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50"
+            >
+              <svg
+                className="w-4 h-4 mr-1.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                />
+              </svg>
+              {isPrintingLabels ? "Printing..." : "Print Labels"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {items.length === 0 ? (
           <div className="text-center py-12">
@@ -625,6 +856,16 @@ export default function InventoryPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th scope="col" className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={
+                      items.length > 0 && items.every((item) => selectedIds.has(item.id))
+                    }
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                  />
+                </th>
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -685,6 +926,14 @@ export default function InventoryPage() {
                       : "hover:bg-gray-50"
                   }
                 >
+                  <td className="px-4 py-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleSelectItem(item.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                    />
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
                     {item.sku}
                   </td>

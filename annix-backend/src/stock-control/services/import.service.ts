@@ -189,9 +189,26 @@ export class ImportService {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
 
-      if (!row.sku || !row.name) {
-        result.errors.push({ row: i + 1, message: "SKU and Name are required" });
-        continue;
+      if (!row.name) {
+        if (!row.sku) {
+          continue;
+        }
+        row.name = row.sku;
+      }
+
+      if (!row.sku) {
+        row.sku = row.name
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 20);
+      }
+
+      if (row.quantity !== undefined) {
+        row.quantity = Math.round(row.quantity);
+      }
+      if (row.minStockLevel !== undefined) {
+        row.minStockLevel = Math.round(row.minStockLevel);
       }
 
       try {

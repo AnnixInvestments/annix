@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, Repository } from "typeorm";
+import { ILike, In, Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StockItem } from "../entities/stock-item.entity";
 
@@ -86,6 +86,13 @@ export class InventoryService {
       throw new NotFoundException("Stock item not found");
     }
     return item;
+  }
+
+  async findByIds(companyId: number, ids: number[]): Promise<StockItem[]> {
+    return this.stockItemRepo.find({
+      where: { companyId, id: In(ids) },
+      order: { name: "ASC" },
+    });
   }
 
   async update(companyId: number, id: number, data: Partial<StockItem>): Promise<StockItem> {

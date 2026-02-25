@@ -1207,6 +1207,36 @@ class StockControlApiClient {
     window.URL.revokeObjectURL(url);
   }
 
+  async downloadBatchLabelsPdf(body: {
+    ids?: number[];
+    search?: string;
+    category?: string;
+  }): Promise<void> {
+    const headers = this.headers();
+    const response = await fetch(`${API_BASE_URL}/stock-control/inventory/labels/pdf`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: headers.Authorization ?? "",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download labels PDF: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "shelf-labels.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
   async downloadJobCardQrPdf(jobId: number): Promise<void> {
     const headers = this.headers();
     const response = await fetch(`${API_BASE_URL}/stock-control/job-cards/${jobId}/qr/pdf`, {

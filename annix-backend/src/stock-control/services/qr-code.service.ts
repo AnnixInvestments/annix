@@ -94,6 +94,92 @@ export class QrCodeService {
     });
   }
 
+  async shelfLabelsPdf(items: StockItem[]): Promise<Buffer> {
+    const COLS = 3;
+    const ROWS = 8;
+    const LABELS_PER_PAGE = COLS * ROWS;
+    const PAGE_WIDTH = 595.28;
+    const PAGE_HEIGHT = 841.89;
+    const MARGIN_X = 14;
+    const MARGIN_Y = 14;
+    const LABEL_W = (PAGE_WIDTH - MARGIN_X * 2) / COLS;
+    const LABEL_H = (PAGE_HEIGHT - MARGIN_Y * 2) / ROWS;
+    const QR_SIZE = 70;
+    const LABEL_PAD = 6;
+
+    const qrBuffers = await Promise.all(
+      items.map((item) => {
+        const data: QrCodeData = { type: "stock", id: item.id, name: item.name };
+        return QRCode.toBuffer(JSON.stringify(data), {
+          errorCorrectionLevel: "M",
+          type: "png",
+          width: 200,
+          margin: 1,
+        });
+      }),
+    );
+
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ size: "A4", margin: 0 });
+      const chunks: Buffer[] = [];
+
+      doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      items.forEach((item, idx) => {
+        if (idx > 0 && idx % LABELS_PER_PAGE === 0) {
+          doc.addPage();
+        }
+
+        const posOnPage = idx % LABELS_PER_PAGE;
+        const col = posOnPage % COLS;
+        const row = Math.floor(posOnPage / COLS);
+        const x = MARGIN_X + col * LABEL_W;
+        const y = MARGIN_Y + row * LABEL_H;
+
+        doc
+          .save()
+          .rect(x, y, LABEL_W, LABEL_H)
+          .strokeColor("#e5e7eb")
+          .lineWidth(0.5)
+          .stroke()
+          .restore();
+
+        doc.image(qrBuffers[idx], x + LABEL_PAD, y + (LABEL_H - QR_SIZE) / 2, {
+          width: QR_SIZE,
+          height: QR_SIZE,
+        });
+
+        const textX = x + LABEL_PAD + QR_SIZE + 6;
+        const textW = LABEL_W - LABEL_PAD * 2 - QR_SIZE - 6;
+        const textY = y + LABEL_PAD + 8;
+
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(8)
+          .fillColor("#000000")
+          .text(item.sku || `#${item.id}`, textX, textY, { width: textW, lineBreak: false });
+
+        doc
+          .font("Helvetica")
+          .fontSize(7)
+          .fillColor("#374151")
+          .text(item.name, textX, textY + 12, { width: textW, height: 22, ellipsis: true });
+
+        if (item.location) {
+          doc
+            .font("Helvetica")
+            .fontSize(6)
+            .fillColor("#6b7280")
+            .text(item.location, textX, textY + 36, { width: textW, lineBreak: false });
+        }
+      });
+
+      doc.end();
+    });
+  }
+
   async jobCardQrCode(companyId: number, jobId: number): Promise<Buffer> {
     const job = await this.jobCardRepository.findOne({
       where: { id: jobId, companyId },
