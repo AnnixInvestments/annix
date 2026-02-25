@@ -357,10 +357,7 @@ export default function InventoryPage() {
         if (headersEmpty && importRawRows.length > 0) {
           effectiveMapping = buildFallbackMapping(importRawRows[0]);
           dataRows = importRawRows.slice(1);
-        } else if (
-          effectiveMapping &&
-          Object.values(effectiveMapping).every((v) => v === null)
-        ) {
+        } else if (effectiveMapping && Object.values(effectiveMapping).every((v) => v === null)) {
           effectiveMapping = buildFallbackMapping(importHeaders);
         }
       }
@@ -545,9 +542,7 @@ export default function InventoryPage() {
                     const effectiveHeaders = headersEmpty
                       ? (importRawRows[0] ?? [])
                       : importHeaders;
-                    const effectiveDataRows = headersEmpty
-                      ? importRawRows.slice(1)
-                      : importRawRows;
+                    const effectiveDataRows = headersEmpty ? importRawRows.slice(1) : importRawRows;
                     return (
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 sticky top-0 z-10">
@@ -575,16 +570,15 @@ export default function InventoryPage() {
                                   key={rowIdx}
                                   className={sectionTitle ? "bg-gray-100" : "hover:bg-gray-50"}
                                 >
-                                  <td className="px-4 py-3 text-sm text-gray-500">
-                                    {rowIdx + 1}
-                                  </td>
+                                  <td className="px-4 py-3 text-sm text-gray-500">{rowIdx + 1}</td>
                                   {effectiveHeaders.map((header, colIdx) => {
                                     const cell = row[colIdx] ?? "";
-                                    const displayValue = sectionTitle && (cell.trim() === "0" || cell.trim() === "")
-                                      ? ""
-                                      : isRandColumn(header) && !sectionTitle
-                                        ? formatRandCell(cell)
-                                        : cell;
+                                    const displayValue =
+                                      sectionTitle && (cell.trim() === "0" || cell.trim() === "")
+                                        ? ""
+                                        : isRandColumn(header) && !sectionTitle
+                                          ? formatRandCell(cell)
+                                          : cell;
                                     return (
                                       <td
                                         key={colIdx}
@@ -814,12 +808,7 @@ export default function InventoryPage() {
               disabled={isPrintingLabels}
               className="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50"
             >
-              <svg
-                className="w-4 h-4 mr-1.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -859,9 +848,7 @@ export default function InventoryPage() {
                 <th scope="col" className="px-4 py-3 w-10">
                   <input
                     type="checkbox"
-                    checked={
-                      items.length > 0 && items.every((item) => selectedIds.has(item.id))
-                    }
+                    checked={items.length > 0 && items.every((item) => selectedIds.has(item.id))}
                     onChange={toggleSelectAll}
                     className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                   />
