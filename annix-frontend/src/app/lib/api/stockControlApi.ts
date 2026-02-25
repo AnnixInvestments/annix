@@ -136,12 +136,27 @@ export interface JobCard {
   lineItems?: JobCardLineItem[];
 }
 
+export interface StaffMember {
+  id: number;
+  name: string;
+  employeeNumber: string | null;
+  department: string | null;
+  photoUrl: string | null;
+  qrToken: string;
+  active: boolean;
+  companyId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StockAllocation {
   id: number;
   quantityUsed: number;
   photoUrl: string | null;
   notes: string | null;
   allocatedBy: string | null;
+  staffMemberId: number | null;
+  staffMember?: StaffMember | null;
   createdAt: string;
   stockItem?: StockItem;
   jobCard?: JobCard;
@@ -225,6 +240,7 @@ export interface RequisitionItem {
   litresRequired: number;
   packSizeLitres: number;
   packsToOrder: number;
+  quantityRequired: number | null;
   companyId: number;
   stockItem: StockItem | null;
 }
@@ -232,14 +248,15 @@ export interface RequisitionItem {
 export interface Requisition {
   id: number;
   requisitionNumber: string;
-  jobCardId: number;
+  jobCardId: number | null;
+  source: "job_card" | "reorder";
   status: string;
   notes: string | null;
   createdBy: string | null;
   companyId: number;
   createdAt: string;
   updatedAt: string;
-  jobCard?: JobCard;
+  jobCard?: JobCard | null;
   items: RequisitionItem[];
 }
 
@@ -915,6 +932,7 @@ class StockControlApiClient {
       quantityUsed: number;
       photoUrl?: string;
       notes?: string;
+      staffMemberId?: number;
     },
   ): Promise<StockAllocation> {
     return this.request(`/stock-control/job-cards/${jobCardId}/allocate`, {
@@ -1125,6 +1143,107 @@ class StockControlApiClient {
       method: "POST",
       body: JSON.stringify({ rows }),
     });
+  }
+
+  async staffMembers(params?: { search?: string; active?: string }): Promise<StaffMember[]> {
+    const query = params
+      ? "?" +
+        Object.entries(params)
+          .filter(([, v]) => v !== undefined)
+          .map(([k, v]) => `${k}=${encodeURIComponent(v!)}`)
+          .join("&")
+      : "";
+    return this.request(`/stock-control/staff${query}`);
+  }
+
+  async staffMemberById(id: number): Promise<StaffMember> {
+    return this.request(`/stock-control/staff/${id}`);
+  }
+
+  async createStaffMember(data: Partial<StaffMember>): Promise<StaffMember> {
+    return this.request("/stock-control/staff", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateStaffMember(id: number, data: Partial<StaffMember>): Promise<StaffMember> {
+    return this.request(`/stock-control/staff/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteStaffMember(id: number): Promise<StaffMember> {
+    return this.request(`/stock-control/staff/${id}`, { method: "DELETE" });
+  }
+
+  async uploadStaffPhoto(id: number, file: File): Promise<StaffMember> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const url = `${this.baseURL}/stock-control/staff/${id}/photo`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async downloadStaffIdCardPdf(staffId: number): Promise<void> {
+    const headers = this.headers();
+    const response = await fetch(`${API_BASE_URL}/stock-control/staff/${staffId}/qr/pdf`, {
+      headers: { Authorization: headers.Authorization ?? "" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download staff ID card PDF: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `staff-id-${staffId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  async downloadBatchStaffIdCards(ids?: number[]): Promise<void> {
+    const headers = this.headers();
+    const response = await fetch(`${API_BASE_URL}/stock-control/staff/id-cards/pdf`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: headers.Authorization ?? "",
+      },
+      body: JSON.stringify({ ids }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download batch ID cards: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "staff-id-cards.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 
   async dashboardStats(): Promise<DashboardStats> {

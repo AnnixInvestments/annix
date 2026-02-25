@@ -84,27 +84,49 @@ export default function RequisitionDetailPage() {
     setEditingItemId(null);
   };
 
-  const exportColumns = [
-    { header: "Product Name", accessorKey: "productName" },
-    { header: "Area", accessorKey: "area" },
-    { header: "Litres Req.", accessorKey: "litresRequired" },
-    { header: "Pack Size (L)", accessorKey: "packSizeLitres" },
-    { header: "Packs to Order", accessorKey: "packsToOrder" },
-    { header: "Stock Match", accessorKey: "stockMatch" },
-  ];
+  const isReorder = requisition?.source === "reorder";
+
+  const exportColumns = isReorder
+    ? [
+        { header: "Product Name", accessorKey: "productName" },
+        { header: "Qty Required", accessorKey: "quantityRequired" },
+        { header: "Stock Match", accessorKey: "stockMatch" },
+      ]
+    : [
+        { header: "Product Name", accessorKey: "productName" },
+        { header: "Area", accessorKey: "area" },
+        { header: "Litres Req.", accessorKey: "litresRequired" },
+        { header: "Pack Size (L)", accessorKey: "packSizeLitres" },
+        { header: "Packs to Order", accessorKey: "packsToOrder" },
+        { header: "Stock Match", accessorKey: "stockMatch" },
+      ];
 
   const exportData = () =>
-    (requisition?.items ?? []).map((item) => ({
-      productName: item.productName,
-      area: item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : item.area || "-",
-      litresRequired: Number(item.litresRequired).toFixed(1),
-      packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
-      packsToOrder: item.packsToOrder,
-      stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
-    }));
+    (requisition?.items ?? []).map((item) =>
+      isReorder
+        ? {
+            productName: item.productName,
+            quantityRequired: item.quantityRequired ?? "-",
+            stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
+          }
+        : {
+            productName: item.productName,
+            area:
+              item.area === "external"
+                ? "Ext"
+                : item.area === "internal"
+                  ? "Int"
+                  : item.area || "-",
+            litresRequired: Number(item.litresRequired).toFixed(1),
+            packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
+            packsToOrder: item.packsToOrder,
+            stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
+          },
+    );
 
   const exportMetadata = () => ({
     Requisition: requisition?.requisitionNumber ?? "",
+    Type: isReorder ? "Low Stock Reorder" : "Job Card",
     Status: requisition?.status ?? "",
     "Created By": requisition?.createdBy ?? "-",
     Created: requisition ? formatDateZA(requisition.createdAt) : "",
@@ -184,7 +206,13 @@ export default function RequisitionDetailPage() {
                 {requisition.status}
               </span>
             </div>
-            {requisition.jobCard && (
+            {requisition.source === "reorder" ? (
+              <p className="mt-1">
+                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                  Low Stock Reorder
+                </span>
+              </p>
+            ) : requisition.jobCard ? (
               <p className="mt-1 text-sm text-gray-500">
                 Job Card:{" "}
                 <Link
@@ -194,7 +222,7 @@ export default function RequisitionDetailPage() {
                   {requisition.jobCard.jobNumber} - {requisition.jobCard.jobName}
                 </Link>
               </p>
-            )}
+            ) : null}
           </div>
         </div>
         <div className="relative" ref={exportMenuRef}>
@@ -313,30 +341,41 @@ export default function RequisitionDetailPage() {
                 >
                   Product Name
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Area
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Litres Req.
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Pack Size (L)
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Packs to Order
-                </th>
+                {requisition.source === "reorder" ? (
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Qty Required
+                  </th>
+                ) : (
+                  <>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Area
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Litres Req.
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Pack Size (L)
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Packs to Order
+                    </th>
+                  </>
+                )}
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -351,82 +390,90 @@ export default function RequisitionDetailPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {item.productName}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 capitalize">
-                    {item.area === "external"
-                      ? "Ext"
-                      : item.area === "internal"
-                        ? "Int"
-                        : item.area || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                    {Number(item.litresRequired).toFixed(1)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                    {editingItemId === item.id ? (
-                      <div className="flex items-center justify-end space-x-2">
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={editPackSize}
-                          onChange={(e) => setEditPackSize(parseFloat(e.target.value) || 1)}
-                          className="w-20 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSavePackSize(item.id);
-                            if (e.key === "Escape") handleCancelEdit();
-                          }}
-                        />
-                        <button
-                          onClick={() => handleSavePackSize(item.id)}
-                          disabled={isSaving}
-                          className="text-teal-600 hover:text-teal-800 disabled:text-gray-400"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
+                  {requisition.source === "reorder" ? (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                      {item.quantityRequired ?? "-"}
+                    </td>
+                  ) : (
+                    <>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 capitalize">
+                        {item.area === "external"
+                          ? "Ext"
+                          : item.area === "internal"
+                            ? "Int"
+                            : item.area || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                        {Number(item.litresRequired).toFixed(1)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                        {editingItemId === item.id ? (
+                          <div className="flex items-center justify-end space-x-2">
+                            <input
+                              type="number"
+                              min={1}
+                              step={1}
+                              value={editPackSize}
+                              onChange={(e) => setEditPackSize(parseFloat(e.target.value) || 1)}
+                              className="w-20 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSavePackSize(item.id);
+                                if (e.key === "Escape") handleCancelEdit();
+                              }}
                             />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="text-gray-400 hover:text-gray-600"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                            <button
+                              onClick={() => handleSavePackSize(item.id)}
+                              disabled={isSaving}
+                              className="text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleEditPackSize(item.id, item.packSizeLitres)}
+                            className="text-gray-900 hover:text-teal-700 cursor-pointer"
+                            title="Click to edit pack size"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleEditPackSize(item.id, item.packSizeLitres)}
-                        className="text-gray-900 hover:text-teal-700 cursor-pointer"
-                        title="Click to edit pack size"
-                      >
-                        {Number(item.packSizeLitres).toFixed(0)}L
-                      </button>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                    {item.packsToOrder}
-                  </td>
+                            {Number(item.packSizeLitres).toFixed(0)}L
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                        {item.packsToOrder}
+                      </td>
+                    </>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {item.stockItem ? (
                       <span className="text-gray-700">{item.stockItem.name}</span>

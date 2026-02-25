@@ -66,7 +66,7 @@ export default function RequisitionsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Requisitions</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Paint and coating requisitions generated from job card activation
+          Paint and coating requisitions from job cards and automatic low-stock reorders
         </p>
       </div>
 
@@ -145,7 +145,11 @@ export default function RequisitionsPage() {
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {req.jobCard ? (
+                    {req.source === "reorder" ? (
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                        Low Stock Reorder
+                      </span>
+                    ) : req.jobCard ? (
                       <Link
                         href={`/stock-control/portal/job-cards/${req.jobCardId}`}
                         className="text-teal-700 hover:text-teal-900"

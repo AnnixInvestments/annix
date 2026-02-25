@@ -20,6 +20,11 @@ export enum RequisitionStatus {
   CANCELLED = "cancelled",
 }
 
+export enum RequisitionSource {
+  JOB_CARD = "job_card",
+  REORDER = "reorder",
+}
+
 @Entity("requisitions")
 export class Requisition {
   @PrimaryGeneratedColumn()
@@ -28,12 +33,15 @@ export class Requisition {
   @Column({ name: "requisition_number", type: "varchar", length: 100 })
   requisitionNumber: string;
 
-  @Column({ name: "job_card_id" })
-  jobCardId: number;
+  @Column({ name: "job_card_id", nullable: true })
+  jobCardId: number | null;
 
-  @ManyToOne(() => JobCard, { onDelete: "CASCADE" })
+  @ManyToOne(() => JobCard, { onDelete: "CASCADE", nullable: true })
   @JoinColumn({ name: "job_card_id" })
-  jobCard: JobCard;
+  jobCard: JobCard | null;
+
+  @Column({ type: "varchar", length: 20, default: RequisitionSource.JOB_CARD })
+  source: RequisitionSource;
 
   @Column({ type: "varchar", length: 50, default: RequisitionStatus.PENDING })
   status: RequisitionStatus;

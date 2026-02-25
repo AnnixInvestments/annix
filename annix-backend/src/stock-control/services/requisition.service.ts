@@ -3,7 +3,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Equal, Not, Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
-import { Requisition, RequisitionStatus } from "../entities/requisition.entity";
+import {
+  Requisition,
+  RequisitionSource,
+  RequisitionStatus,
+} from "../entities/requisition.entity";
+import { StockItem } from "../entities/stock-item.entity";
 import { RequisitionItem } from "../entities/requisition-item.entity";
 
 const DEFAULT_PACK_SIZE = 20;
@@ -21,6 +26,8 @@ export class RequisitionService {
     private readonly jobCardRepo: Repository<JobCard>,
     @InjectRepository(JobCardCoatingAnalysis)
     private readonly analysisRepo: Repository<JobCardCoatingAnalysis>,
+    @InjectRepository(StockItem)
+    private readonly stockItemRepo: Repository<StockItem>,
   ) {}
 
   async createFromJobCard(
@@ -94,6 +101,71 @@ export class RequisitionService {
 
     this.logger.log(
       `Requisition ${saved.requisitionNumber} created with ${items.length} item(s) for job card ${jobCardId}`,
+    );
+
+    return this.findById(companyId, saved.id);
+  }
+
+  async createReorderRequisition(
+    companyId: number,
+    stockItemId: number,
+  ): Promise<Requisition | null> {
+    const stockItem = await this.stockItemRepo.findOne({
+      where: { id: stockItemId, companyId },
+    });
+
+    if (!stockItem || stockItem.minStockLevel <= 0) {
+      return null;
+    }
+
+    if (stockItem.quantity >= stockItem.minStockLevel) {
+      return null;
+    }
+
+    const existing = await this.requisitionRepo.findOne({
+      where: {
+        requisitionNumber: `REORDER-${stockItem.sku}`,
+        companyId,
+        source: RequisitionSource.REORDER,
+        status: Not(Equal(RequisitionStatus.CANCELLED)),
+      },
+    });
+
+    if (existing) {
+      this.logger.log(
+        `Active reorder requisition already exists for ${stockItem.sku}, skipping`,
+      );
+      return existing;
+    }
+
+    const deficit = stockItem.minStockLevel - stockItem.quantity;
+
+    const requisition = this.requisitionRepo.create({
+      requisitionNumber: `REORDER-${stockItem.sku}`,
+      jobCardId: null,
+      source: RequisitionSource.REORDER,
+      companyId,
+      status: RequisitionStatus.PENDING,
+      createdBy: "System",
+      notes: `Auto-generated: ${stockItem.name} (${stockItem.sku}) stock is ${stockItem.quantity}, below minimum level of ${stockItem.minStockLevel}. Deficit: ${deficit}.`,
+    });
+    const saved = await this.requisitionRepo.save(requisition);
+
+    const item = this.itemRepo.create({
+      requisitionId: saved.id,
+      stockItemId: stockItem.id,
+      productName: stockItem.name,
+      area: null,
+      litresRequired: 0,
+      packSizeLitres: 0,
+      packsToOrder: 0,
+      quantityRequired: deficit,
+      companyId,
+    });
+    await this.itemRepo.save(item);
+
+    this.logger.log(
+      `Reorder requisition REORDER-${stockItem.sku} created for ${stockItem.name} (deficit: ${deficit})`,
     );
 
     return this.findById(companyId, saved.id);

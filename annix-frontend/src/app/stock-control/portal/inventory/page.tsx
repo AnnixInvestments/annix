@@ -82,6 +82,8 @@ export default function InventoryPage() {
   const [importError, setImportError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isPrintingLabels, setIsPrintingLabels] = useState(false);
+  const [editingMinLevelId, setEditingMinLevelId] = useState<number | null>(null);
+  const [editingMinLevelValue, setEditingMinLevelValue] = useState<number>(0);
   const dragCounterRef = useRef(0);
 
   const toggleSelectItem = (id: number) => {
@@ -227,6 +229,25 @@ export default function InventoryPage() {
       setError(err instanceof Error ? err : new Error("Failed to save item"));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const startEditingMinLevel = (item: StockItem) => {
+    setEditingMinLevelId(item.id);
+    setEditingMinLevelValue(item.minStockLevel);
+  };
+
+  const cancelEditingMinLevel = () => {
+    setEditingMinLevelId(null);
+  };
+
+  const saveMinLevel = async (id: number) => {
+    try {
+      await stockControlApiClient.updateStockItem(id, { minStockLevel: editingMinLevelValue });
+      setEditingMinLevelId(null);
+      fetchItems();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to update min stock level"));
     }
   };
 
@@ -951,8 +972,32 @@ export default function InventoryPage() {
                       </svg>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
-                    {item.minStockLevel}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                    {editingMinLevelId === item.id ? (
+                      <input
+                        type="number"
+                        min={0}
+                        value={editingMinLevelValue}
+                        onChange={(e) =>
+                          setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveMinLevel(item.id);
+                          if (e.key === "Escape") cancelEditingMinLevel();
+                        }}
+                        onBlur={() => saveMinLevel(item.id)}
+                        autoFocus
+                        className="w-16 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
+                      />
+                    ) : (
+                      <button
+                        onClick={() => startEditingMinLevel(item)}
+                        className="text-gray-500 hover:text-teal-700 cursor-pointer"
+                        title="Click to edit min stock level"
+                      >
+                        {item.minStockLevel}
+                      </button>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                     {formatZAR(item.costPerUnit)}

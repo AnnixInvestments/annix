@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  forwardRef,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -6,9 +13,12 @@ import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { RequisitionService } from "./requisition.service";
 
 @Injectable()
 export class JobCardService {
+  private readonly logger = new Logger(JobCardService.name);
+
   constructor(
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
@@ -20,6 +30,8 @@ export class JobCardService {
     private readonly movementRepo: Repository<StockMovement>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    @Inject(forwardRef(() => RequisitionService))
+    private readonly requisitionService: RequisitionService,
   ) {}
 
   async create(companyId: number, data: Partial<JobCard>): Promise<JobCard> {
@@ -41,7 +53,7 @@ export class JobCardService {
   async findById(companyId: number, id: number): Promise<JobCard> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id, companyId },
-      relations: ["allocations", "allocations.stockItem", "lineItems"],
+      relations: ["allocations", "allocations.stockItem", "allocations.staffMember", "lineItems"],
     });
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
@@ -69,6 +81,7 @@ export class JobCardService {
       photoUrl?: string;
       notes?: string;
       allocatedBy?: string;
+      staffMemberId?: number;
     },
   ): Promise<StockAllocation> {
     const stockItem = await this.stockItemRepo.findOne({
@@ -99,6 +112,7 @@ export class JobCardService {
       photoUrl: data.photoUrl || null,
       notes: data.notes || null,
       allocatedBy: data.allocatedBy || null,
+      staffMemberId: data.staffMemberId || null,
       companyId,
     });
     const saved = await this.allocationRepo.save(allocation);
@@ -115,13 +129,19 @@ export class JobCardService {
     });
     await this.movementRepo.save(movement);
 
+    if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
+      this.requisitionService
+        .createReorderRequisition(companyId, stockItem.id)
+        .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
+    }
+
     return saved;
   }
 
   async allocationsByJobCard(companyId: number, jobCardId: number): Promise<StockAllocation[]> {
     return this.allocationRepo.find({
       where: { jobCard: { id: jobCardId }, companyId },
-      relations: ["stockItem"],
+      relations: ["stockItem", "staffMember"],
       order: { createdAt: "DESC" },
     });
   }

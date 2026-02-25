@@ -41,6 +41,9 @@ export class RequisitionItem {
   @Column({ name: "packs_to_order", type: "integer" })
   packsToOrder: number;
 
+  @Column({ name: "quantity_required", type: "integer", nullable: true })
+  quantityRequired: number | null;
+
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
