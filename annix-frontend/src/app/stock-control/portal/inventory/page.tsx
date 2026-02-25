@@ -978,9 +978,7 @@ export default function InventoryPage() {
                         type="number"
                         min={0}
                         value={editingMinLevelValue}
-                        onChange={(e) =>
-                          setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)
-                        }
+                        onChange={(e) => setEditingMinLevelValue(parseInt(e.target.value, 10) || 0)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") saveMinLevel(item.id);
                           if (e.key === "Escape") cancelEditingMinLevel();

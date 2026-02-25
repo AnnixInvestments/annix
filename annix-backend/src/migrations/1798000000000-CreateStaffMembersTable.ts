@@ -41,10 +41,10 @@ export class CreateStaffMembersTable1798000000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE stock_allocations DROP COLUMN IF EXISTS staff_member_id`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_staff_members_employee_number_company`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_staff_members_qr_token`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_staff_members_company_id`);
-    await queryRunner.query(`DROP TABLE IF EXISTS stock_control_staff_members`);
+    await queryRunner.query("ALTER TABLE stock_allocations DROP COLUMN IF EXISTS staff_member_id");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_staff_members_employee_number_company");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_staff_members_qr_token");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_staff_members_company_id");
+    await queryRunner.query("DROP TABLE IF EXISTS stock_control_staff_members");
   }
 }

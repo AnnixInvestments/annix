@@ -3,13 +3,9 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Equal, Not, Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
-import {
-  Requisition,
-  RequisitionSource,
-  RequisitionStatus,
-} from "../entities/requisition.entity";
-import { StockItem } from "../entities/stock-item.entity";
+import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
 import { RequisitionItem } from "../entities/requisition-item.entity";
+import { StockItem } from "../entities/stock-item.entity";
 
 const DEFAULT_PACK_SIZE = 20;
 
@@ -132,9 +128,7 @@ export class RequisitionService {
     });
 
     if (existing) {
-      this.logger.log(
-        `Active reorder requisition already exists for ${stockItem.sku}, skipping`,
-      );
+      this.logger.log(`Active reorder requisition already exists for ${stockItem.sku}, skipping`);
       return existing;
     }
 

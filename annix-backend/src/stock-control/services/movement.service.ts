@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, NotFoundException, forwardRef } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Between, Repository } from "typeorm";
 import { StockItem } from "../entities/stock-item.entity";
