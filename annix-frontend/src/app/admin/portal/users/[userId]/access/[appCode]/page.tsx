@@ -5,12 +5,35 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { AssignUserAccessDto, UpdateUserAccessDto } from "@/app/lib/api/adminApi";
+import { PRODUCTS_AND_SERVICES, PROJECT_TYPES } from "@/app/lib/config/productsServices";
 import {
+  useFeatureFlags,
   useRbacAllUsers,
   useRbacAppDetails,
   useRbacAssignAccess,
   useRbacUpdateAccess,
+  useToggleFeatureFlag,
 } from "@/app/lib/query/hooks";
+
+const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<
+  Record<
+    string,
+    { label: string; icon: React.ReactNode; description: string; comingSoon?: boolean }
+  >
+>((acc, product) => {
+  acc[product.flagKey] = {
+    label: product.label,
+    icon: product.icon,
+    description: product.description,
+    comingSoon: product.comingSoon,
+  };
+  return acc;
+}, {});
+
+const RFQ_TYPE_FLAG_MAP = PROJECT_TYPES.reduce<Record<string, { label: string }>>((acc, type) => {
+  acc[type.flagKey] = { label: type.label };
+  return acc;
+}, {});
 
 export default function EditUserAccessPage() {
   const params = useParams();
@@ -28,6 +51,8 @@ export default function EditUserAccessPage() {
 
   const { data: allUsers = [] } = useRbacAllUsers();
   const { data: appDetails, isLoading: appLoading } = useRbacAppDetails(appCode);
+  const flagsQuery = useFeatureFlags();
+  const toggleMutation = useToggleFeatureFlag();
 
   const assignMutation = useRbacAssignAccess();
   const updateMutation = useRbacUpdateAccess();
@@ -54,6 +79,17 @@ export default function EditUserAccessPage() {
 
   const categories = useMemo(() => Object.keys(permissionsByCategory), [permissionsByCategory]);
 
+  const isRfqPlatform = appCode === "rfq-platform";
+
+  const rfqFlags = useMemo(() => {
+    if (!isRfqPlatform || !flagsQuery.data) return { typeFlags: [], productFlags: [] };
+    const allFlags = flagsQuery.data.flags ?? [];
+    return {
+      typeFlags: allFlags.filter((f) => f.flagKey.startsWith("RFQ_TYPE_")),
+      productFlags: allFlags.filter((f) => f.flagKey.startsWith("RFQ_PRODUCT_")),
+    };
+  }, [isRfqPlatform, flagsQuery.data]);
+
   useEffect(() => {
     if (existingAccess) {
       setUseCustomPermissions(existingAccess.useCustomPermissions);
@@ -77,6 +113,18 @@ export default function EditUserAccessPage() {
   const togglePermission = (code: string) => {
     setSelectedPermissions((prev) =>
       prev.includes(code) ? prev.filter((p) => p !== code) : [...prev, code],
+    );
+  };
+
+  const handleToggleFlag = (flagKey: string, currentEnabled: boolean) => {
+    toggleMutation.mutate(
+      { flagKey, enabled: !currentEnabled },
+      {
+        onError: (err) => {
+          const message = err instanceof Error ? err.message : "Failed to update flag";
+          showToast(message, "error");
+        },
+      },
     );
   };
 
@@ -161,6 +209,9 @@ export default function EditUserAccessPage() {
       </div>
     );
   }
+
+  const enabledTypes = rfqFlags.typeFlags.filter((f) => f.enabled).length;
+  const enabledProducts = rfqFlags.productFlags.filter((f) => f.enabled).length;
 
   return (
     <div className="space-y-6">
@@ -330,6 +381,168 @@ export default function EditUserAccessPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {isRfqPlatform && (
+        <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              RFQ Configuration
+            </h3>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Control which project types and products/services are available when creating RFQs
+            </p>
+          </div>
+
+          <div className="p-6 space-y-6">
+            {rfqFlags.typeFlags.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                    Project Types
+                  </label>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {enabledTypes} of {rfqFlags.typeFlags.length} enabled
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Select which project types users can choose when creating an RFQ
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  {rfqFlags.typeFlags.map((flag) => {
+                    const meta = RFQ_TYPE_FLAG_MAP[flag.flagKey];
+                    const isUpdating =
+                      toggleMutation.isPending &&
+                      toggleMutation.variables?.flagKey === flag.flagKey;
+
+                    return (
+                      <button
+                        key={flag.flagKey}
+                        type="button"
+                        onClick={() => handleToggleFlag(flag.flagKey, flag.enabled)}
+                        disabled={isUpdating}
+                        className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-colors text-sm h-10 ${
+                          flag.enabled
+                            ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 cursor-pointer"
+                            : "border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 cursor-pointer opacity-60"
+                        } ${isUpdating ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <div
+                          className={`w-3 h-3 border-2 rounded-full flex items-center justify-center ${
+                            flag.enabled
+                              ? "border-blue-600 bg-blue-600"
+                              : "border-gray-300 dark:border-slate-500"
+                          }`}
+                        >
+                          {flag.enabled && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                        </div>
+                        <span
+                          className={`font-medium ${
+                            flag.enabled
+                              ? "text-gray-900 dark:text-white"
+                              : "text-gray-400 dark:text-gray-500"
+                          }`}
+                        >
+                          {meta?.label || flag.flagKey}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {rfqFlags.productFlags.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                    Products & Services
+                  </label>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {enabledProducts} of {rfqFlags.productFlags.length} enabled
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Select which products and services users can request quotes for
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {rfqFlags.productFlags.map((flag) => {
+                    const meta = RFQ_PRODUCT_FLAG_MAP[flag.flagKey];
+                    const isUpdating =
+                      toggleMutation.isPending &&
+                      toggleMutation.variables?.flagKey === flag.flagKey;
+
+                    return (
+                      <button
+                        key={flag.flagKey}
+                        type="button"
+                        onClick={() => handleToggleFlag(flag.flagKey, flag.enabled)}
+                        disabled={isUpdating}
+                        className={`flex items-start gap-3 px-4 py-3 border-2 rounded-lg transition-all text-left ${
+                          flag.enabled
+                            ? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 cursor-pointer"
+                            : "border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700 cursor-pointer opacity-60"
+                        } ${isUpdating ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <div
+                          className={`w-5 h-5 border-2 rounded flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                            flag.enabled
+                              ? "border-blue-600 bg-blue-600"
+                              : "border-gray-300 dark:border-slate-500"
+                          }`}
+                        >
+                          {flag.enabled && (
+                            <svg
+                              className="w-3 h-3 text-white"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={flag.enabled ? "" : "grayscale"}>{meta?.icon}</span>
+                            <span
+                              className={`font-medium text-sm ${
+                                flag.enabled
+                                  ? "text-gray-900 dark:text-white"
+                                  : "text-gray-400 dark:text-gray-500"
+                              }`}
+                            >
+                              {meta?.label || flag.flagKey}
+                            </span>
+                            {meta?.comingSoon && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
+                                Coming Soon
+                              </span>
+                            )}
+                          </div>
+                          {meta?.description && (
+                            <p
+                              className={`text-xs mt-1 ${
+                                flag.enabled
+                                  ? "text-gray-500 dark:text-gray-400"
+                                  : "text-gray-400 dark:text-gray-500"
+                              }`}
+                            >
+                              {meta.description}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
