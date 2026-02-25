@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { StaffMember } from "@/app/lib/api/stockControlApi";
+import type { StaffMember, StockControlDepartment } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
@@ -16,10 +16,11 @@ export default function StaffPage() {
   const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  const [departments, setDepartments] = useState<StockControlDepartment[]>([]);
   const [form, setForm] = useState({
     name: "",
     employeeNumber: "",
-    department: "",
+    departmentId: null as number | null,
   });
 
   const fetchStaff = useCallback(async () => {
@@ -32,8 +33,12 @@ export default function StaffPage() {
       if (showActiveOnly) {
         params.active = "true";
       }
-      const data = await stockControlApiClient.staffMembers(params);
+      const [data, depts] = await Promise.all([
+        stockControlApiClient.staffMembers(params),
+        stockControlApiClient.departments(),
+      ]);
       setStaffMembers(Array.isArray(data) ? data : []);
+      setDepartments(depts);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load staff members");
@@ -48,7 +53,7 @@ export default function StaffPage() {
 
   const openCreateModal = () => {
     setEditingMember(null);
-    setForm({ name: "", employeeNumber: "", department: "" });
+    setForm({ name: "", employeeNumber: "", departmentId: null });
     setCapturedFile(null);
     setShowModal(true);
   };
@@ -58,7 +63,7 @@ export default function StaffPage() {
     setForm({
       name: member.name,
       employeeNumber: member.employeeNumber ?? "",
-      department: member.department ?? "",
+      departmentId: member.departmentId,
     });
     setCapturedFile(null);
     setShowModal(true);
@@ -71,7 +76,7 @@ export default function StaffPage() {
       const payload = {
         name: form.name.trim(),
         employeeNumber: form.employeeNumber.trim() || null,
-        department: form.department.trim() || null,
+        departmentId: form.departmentId,
       };
 
       if (editingMember) {
@@ -311,7 +316,9 @@ export default function StaffPage() {
                       {member.employeeNumber || "-"}
                     </td>
                     <td className="hidden px-3 py-4 whitespace-nowrap text-sm text-gray-500 md:table-cell sm:px-6">
-                      {member.department || "-"}
+                      {member.departmentId
+                        ? (departments.find((d) => d.id === member.departmentId)?.name ?? "-")
+                        : "-"}
                     </td>
                     <td className="px-3 py-4 whitespace-nowrap sm:px-6">
                       <span
@@ -397,13 +404,23 @@ export default function StaffPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Department</label>
-                  <input
-                    type="text"
-                    value={form.department}
-                    onChange={(e) => setForm({ ...form, department: e.target.value })}
+                  <select
+                    value={form.departmentId ?? ""}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        departmentId: e.target.value ? parseInt(e.target.value, 10) : null,
+                      })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                    placeholder="Optional"
-                  />
+                  >
+                    <option value="">No department</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>

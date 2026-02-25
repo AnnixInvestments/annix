@@ -6,6 +6,7 @@ import type {
   ImportResult,
   ImportUploadResponse,
   InventoryColumnMapping,
+  StockControlLocation,
   StockItem,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -57,6 +58,7 @@ export default function InventoryPage() {
   const [items, setItems] = useState<StockItem[]>([]);
   const [total, setTotal] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
+  const [locations, setLocations] = useState<StockControlLocation[]>([]);
   const [groupedData, setGroupedData] = useState<CategoryGroup[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grouped");
   const [isLoading, setIsLoading] = useState(true);
@@ -75,7 +77,7 @@ export default function InventoryPage() {
     costPerUnit: 0,
     quantity: 0,
     minStockLevel: 0,
-    location: "",
+    locationId: null as number | null,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -94,7 +96,42 @@ export default function InventoryPage() {
   const [isPrintingLabels, setIsPrintingLabels] = useState(false);
   const [editingMinLevelId, setEditingMinLevelId] = useState<number | null>(null);
   const [editingMinLevelValue, setEditingMinLevelValue] = useState<number>(0);
+  const [showPrintDropdown, setShowPrintDropdown] = useState(false);
+  const [printPreviewItems, setPrintPreviewItems] = useState<StockItem[] | null>(null);
+  const printDropdownRef = useRef<HTMLDivElement>(null);
   const dragCounterRef = useRef(0);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (printDropdownRef.current && !printDropdownRef.current.contains(event.target as Node)) {
+        setShowPrintDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const allItems = (): StockItem[] => {
+    if (viewMode === "grouped") {
+      return groupedData.flatMap((g) => g.items);
+    }
+    return items;
+  };
+
+  const handlePrintStockList = (mode: "all" | "selected") => {
+    setShowPrintDropdown(false);
+    const itemsToPrint =
+      mode === "selected" ? allItems().filter((item) => selectedIds.has(item.id)) : allItems();
+    setPrintPreviewItems(itemsToPrint);
+  };
+
+  const handlePrintPreviewPrint = () => {
+    window.print();
+  };
+
+  const closePrintPreview = () => {
+    setPrintPreviewItems(null);
+  };
 
   const toggleSelectItem = (id: number) => {
     setSelectedIds((prev) => {
@@ -157,13 +194,15 @@ export default function InventoryPage() {
       setIsLoading(true);
 
       if (viewMode === "grouped") {
-        const [grouped, cats] = await Promise.all([
+        const [grouped, cats, locs] = await Promise.all([
           stockControlApiClient.stockItemsGrouped(search || undefined),
           stockControlApiClient.categories(),
+          stockControlApiClient.locations(),
         ]);
         const withExpanded = grouped.map((g) => ({ ...g, expanded: true }));
         setGroupedData(withExpanded);
         setCategories(Array.isArray(cats) ? cats : []);
+        setLocations(locs);
         const totalItems = grouped.reduce((sum, g) => sum + g.items.length, 0);
         setTotal(totalItems);
         setItems([]);
@@ -175,13 +214,15 @@ export default function InventoryPage() {
         if (search) params.search = search;
         if (categoryFilter) params.category = categoryFilter;
 
-        const [result, cats] = await Promise.all([
+        const [result, cats, locs] = await Promise.all([
           stockControlApiClient.stockItems(params),
           stockControlApiClient.categories(),
+          stockControlApiClient.locations(),
         ]);
         setItems(Array.isArray(result.items) ? result.items : []);
         setTotal(result.total ?? 0);
         setCategories(Array.isArray(cats) ? cats : []);
+        setLocations(locs);
         setGroupedData([]);
       }
       setError(null);
@@ -233,7 +274,7 @@ export default function InventoryPage() {
       costPerUnit: 0,
       quantity: 0,
       minStockLevel: 0,
-      location: "",
+      locationId: null,
     });
     setShowModal(true);
   };
@@ -249,7 +290,7 @@ export default function InventoryPage() {
       costPerUnit: item.costPerUnit,
       quantity: item.quantity,
       minStockLevel: item.minStockLevel,
-      location: item.location || "",
+      locationId: item.locationId,
     });
     setShowModal(true);
   };
@@ -796,6 +837,49 @@ export default function InventoryPage() {
             </svg>
             {isPrintingLabels ? "Printing..." : "Print All Labels"}
           </button>
+          <div className="relative" ref={printDropdownRef}>
+            <button
+              onClick={() => setShowPrintDropdown(!showPrintDropdown)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Print Stock List
+              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {showPrintDropdown && (
+              <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                <div className="py-1">
+                  <button
+                    onClick={() => handlePrintStockList("all")}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Print Full List
+                  </button>
+                  <button
+                    onClick={() => handlePrintStockList("selected")}
+                    disabled={selectedIds.size === 0}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    Print Selected ({selectedIds.size})
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <Link
             href="/stock-control/portal/inventory/import"
             className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -1123,7 +1207,9 @@ export default function InventoryPage() {
                             {formatZAR(item.costPerUnit)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.location || "-"}
+                            {item.locationId
+                              ? (locations.find((l) => l.id === item.locationId)?.name ?? "-")
+                              : "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                             <button
@@ -1309,7 +1395,9 @@ export default function InventoryPage() {
                       {formatZAR(item.costPerUnit)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.location || "-"}
+                      {item.locationId
+                        ? (locations.find((l) => l.id === item.locationId)?.name ?? "-")
+                        : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <button
@@ -1469,12 +1557,23 @@ export default function InventoryPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Location</label>
-                  <input
-                    type="text"
-                    value={modalForm.location}
-                    onChange={(e) => setModalForm({ ...modalForm, location: e.target.value })}
+                  <select
+                    value={modalForm.locationId ?? ""}
+                    onChange={(e) =>
+                      setModalForm({
+                        ...modalForm,
+                        locationId: e.target.value ? parseInt(e.target.value, 10) : null,
+                      })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                  />
+                  >
+                    <option value="">No location</option>
+                    {locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="mt-6 flex justify-end space-x-3">
@@ -1491,6 +1590,145 @@ export default function InventoryPage() {
                 >
                   {isSaving ? "Saving..." : editingItem ? "Update" : "Create"}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {printPreviewItems !== null && (
+        <div className="fixed inset-0 z-50 overflow-y-auto print:relative print:overflow-visible">
+          <div className="flex items-start justify-center min-h-screen px-4 py-8 print:p-0 print:m-0">
+            <div
+              className="fixed inset-0 bg-gray-500/75 print:hidden"
+              onClick={closePrintPreview}
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full print:shadow-none print:max-w-none print:rounded-none">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between print:hidden">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900">Print Stock List</h3>
+                  <p className="text-sm text-gray-500">{printPreviewItems.length} items</p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={closePrintPreview}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handlePrintPreviewPrint}
+                    className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+                  >
+                    Print
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 print:p-0">
+                <div className="print:block">
+                  <div className="text-center mb-6 print:mb-4">
+                    <h1 className="text-2xl font-bold text-gray-900 print:text-xl">Stock List</h1>
+                    <p className="text-sm text-gray-500">
+                      Generated on{" "}
+                      {new Date().toLocaleDateString("en-ZA", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                  <table className="min-w-full divide-y divide-gray-200 print:text-sm">
+                    <thead className="bg-gray-50 print:bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
+                          SKU
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
+                          Name
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
+                          Category
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
+                          SOH
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
+                          Min Level
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
+                          Cost
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
+                          Value
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
+                          Location
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {printPreviewItems.map((item) => (
+                        <tr
+                          key={item.id}
+                          className={item.quantity <= item.minStockLevel ? "bg-amber-50" : ""}
+                        >
+                          <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-900 print:px-2 print:py-1">
+                            {item.sku}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 print:px-2 print:py-1">
+                            {item.name}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 print:px-2 print:py-1">
+                            {item.category || "-"}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900 print:px-2 print:py-1">
+                            {item.quantity}
+                            {item.quantity <= item.minStockLevel && " *"}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-500 print:px-2 print:py-1">
+                            {item.minStockLevel}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 print:px-2 print:py-1">
+                            {formatZAR(item.costPerUnit)}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 print:px-2 print:py-1">
+                            {formatZAR(item.costPerUnit * item.quantity)}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 print:px-2 print:py-1">
+                            {item.location || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-gray-50 print:bg-gray-100">
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className="px-4 py-3 text-sm font-medium text-gray-900 print:px-2 print:py-1"
+                        >
+                          Total
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 print:px-2 print:py-1">
+                          {printPreviewItems.reduce((sum, i) => sum + i.quantity, 0)}
+                        </td>
+                        <td className="px-4 py-3 print:px-2 print:py-1" />
+                        <td className="px-4 py-3 print:px-2 print:py-1" />
+                        <td className="px-4 py-3 text-right text-sm font-bold text-gray-900 print:px-2 print:py-1">
+                          {formatZAR(
+                            printPreviewItems.reduce(
+                              (sum, i) => sum + i.costPerUnit * i.quantity,
+                              0,
+                            ),
+                          )}
+                        </td>
+                        <td className="px-4 py-3 print:px-2 print:py-1" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                  <p className="mt-4 text-xs text-gray-500 print:mt-2">
+                    * Items marked with asterisk are at or below minimum stock level
+                  </p>
+                </div>
               </div>
             </div>
           </div>

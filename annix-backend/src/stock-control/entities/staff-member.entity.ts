@@ -10,6 +10,7 @@ import {
 } from "typeorm";
 import { StockAllocation } from "./stock-allocation.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
+import { StockControlDepartment } from "./stock-control-department.entity";
 
 @Entity("stock_control_staff_members")
 export class StaffMember {
@@ -24,6 +25,13 @@ export class StaffMember {
 
   @Column({ type: "varchar", length: 255, nullable: true })
   department: string | null;
+
+  @ManyToOne(() => StockControlDepartment, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "department_id" })
+  departmentEntity: StockControlDepartment | null;
+
+  @Column({ name: "department_id", nullable: true })
+  departmentId: number | null;
 
   @Column({ name: "photo_url", type: "text", nullable: true })
   photoUrl: string | null;

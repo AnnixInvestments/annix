@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpStatus,
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   Res,
@@ -20,6 +22,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { StockControlAuthService } from "../services/auth.service";
 import { BrandingScraperService } from "../services/branding-scraper.service";
+import { LookupService } from "../services/lookup.service";
 
 @ApiTags("Stock Control - Auth")
 @Controller("stock-control/auth")
@@ -27,6 +30,7 @@ export class StockControlAuthController {
   constructor(
     private readonly authService: StockControlAuthService,
     private readonly brandingScraperService: BrandingScraperService,
+    private readonly lookupService: LookupService,
   ) {}
 
   @Post("register")
@@ -190,5 +194,86 @@ export class StockControlAuthController {
   @ApiOperation({ summary: "Logout" })
   async logout() {
     return { message: "Logged out" };
+  }
+
+  @UseGuards(StockControlAuthGuard)
+  @Get("departments")
+  @ApiOperation({ summary: "List departments for company" })
+  async departments(@Req() req: any) {
+    return this.lookupService.departmentsByCompany(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Post("departments")
+  @ApiOperation({ summary: "Create a department" })
+  async createDepartment(
+    @Req() req: any,
+    @Body() body: { name: string; displayOrder?: number },
+  ) {
+    return this.lookupService.createDepartment(req.user.companyId, body.name, body.displayOrder);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Put("departments/:id")
+  @ApiOperation({ summary: "Update a department" })
+  async updateDepartment(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: { name?: string; displayOrder?: number | null; active?: boolean },
+  ) {
+    return this.lookupService.updateDepartment(req.user.companyId, id, body);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Delete("departments/:id")
+  @ApiOperation({ summary: "Soft delete a department" })
+  async deleteDepartment(@Req() req: any, @Param("id") id: number) {
+    return this.lookupService.deleteDepartment(req.user.companyId, id);
+  }
+
+  @UseGuards(StockControlAuthGuard)
+  @Get("locations")
+  @ApiOperation({ summary: "List locations for company" })
+  async locations(@Req() req: any) {
+    return this.lookupService.locationsByCompany(req.user.companyId);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Post("locations")
+  @ApiOperation({ summary: "Create a location" })
+  async createLocation(
+    @Req() req: any,
+    @Body() body: { name: string; description?: string; displayOrder?: number },
+  ) {
+    return this.lookupService.createLocation(
+      req.user.companyId,
+      body.name,
+      body.description,
+      body.displayOrder,
+    );
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Put("locations/:id")
+  @ApiOperation({ summary: "Update a location" })
+  async updateLocation(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: { name?: string; description?: string | null; displayOrder?: number | null; active?: boolean },
+  ) {
+    return this.lookupService.updateLocation(req.user.companyId, id, body);
+  }
+
+  @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
+  @StockControlRoles("admin")
+  @Delete("locations/:id")
+  @ApiOperation({ summary: "Soft delete a location" })
+  async deleteLocation(@Req() req: any, @Param("id") id: number) {
+    return this.lookupService.deleteLocation(req.user.companyId, id);
   }
 }

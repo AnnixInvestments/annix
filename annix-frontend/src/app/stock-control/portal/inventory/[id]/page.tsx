@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import type { StockItem, StockMovement } from "@/app/lib/api/stockControlApi";
+import type { StockControlLocation, StockItem, StockMovement } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
@@ -32,6 +32,7 @@ export default function InventoryDetailPage() {
 
   const [item, setItem] = useState<StockItem | null>(null);
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [locations, setLocations] = useState<StockControlLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -51,19 +52,21 @@ export default function InventoryDetailPage() {
     costPerUnit: 0,
     quantity: 0,
     minStockLevel: 0,
-    location: "",
+    locationId: null as number | null,
   });
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [itemData, movementsData] = await Promise.all([
+      const [itemData, movementsData, locs] = await Promise.all([
         stockControlApiClient.stockItemById(itemId),
         stockControlApiClient.stockMovements({ stockItemId: itemId }),
+        stockControlApiClient.locations(),
       ]);
       setItem(itemData);
       setMovements(Array.isArray(movementsData) ? movementsData : []);
+      setLocations(locs);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load item details"));
@@ -87,7 +90,7 @@ export default function InventoryDetailPage() {
       costPerUnit: item.costPerUnit,
       quantity: item.quantity,
       minStockLevel: item.minStockLevel,
-      location: item.location || "",
+      locationId: item.locationId,
     });
     setShowModal(true);
   };
@@ -283,7 +286,11 @@ export default function InventoryDetailPage() {
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Location</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{item.location || "-"}</dd>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {item.locationId
+                      ? (locations.find((l) => l.id === item.locationId)?.name ?? "-")
+                      : "-"}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
@@ -630,12 +637,23 @@ export default function InventoryDetailPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Location</label>
-                  <input
-                    type="text"
-                    value={modalForm.location}
-                    onChange={(e) => setModalForm({ ...modalForm, location: e.target.value })}
+                  <select
+                    value={modalForm.locationId ?? ""}
+                    onChange={(e) =>
+                      setModalForm({
+                        ...modalForm,
+                        locationId: e.target.value ? parseInt(e.target.value, 10) : null,
+                      })
+                    }
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                  />
+                  >
+                    <option value="">No location</option>
+                    {locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="mt-6 flex justify-end space-x-3">

@@ -11,6 +11,7 @@ import {
 import { DeliveryNoteItem } from "./delivery-note-item.entity";
 import { StockAllocation } from "./stock-allocation.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
+import { StockControlLocation } from "./stock-control-location.entity";
 import { StockMovement } from "./stock-movement.entity";
 
 @Entity("stock_items")
@@ -44,6 +45,13 @@ export class StockItem {
 
   @Column({ type: "varchar", length: 255, nullable: true })
   location: string | null;
+
+  @ManyToOne(() => StockControlLocation, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "location_id" })
+  locationEntity: StockControlLocation | null;
+
+  @Column({ name: "location_id", nullable: true })
+  locationId: number | null;
 
   @Column({ name: "photo_url", type: "text", nullable: true })
   photoUrl: string | null;

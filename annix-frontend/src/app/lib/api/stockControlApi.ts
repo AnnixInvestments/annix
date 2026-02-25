@@ -85,6 +85,27 @@ export interface StockControlTeamMember {
   createdAt: string;
 }
 
+export interface StockControlDepartment {
+  id: number;
+  name: string;
+  displayOrder: number | null;
+  active: boolean;
+  companyId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StockControlLocation {
+  id: number;
+  name: string;
+  description: string | null;
+  displayOrder: number | null;
+  active: boolean;
+  companyId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StockItem {
   id: number;
   sku: string;
@@ -96,6 +117,7 @@ export interface StockItem {
   quantity: number;
   minStockLevel: number;
   location: string | null;
+  locationId: number | null;
   photoUrl: string | null;
   createdAt: string;
   updatedAt: string;
@@ -130,10 +152,48 @@ export interface JobCard {
   reference: string | null;
   customFields: Record<string, string> | null;
   status: string;
+  versionNumber?: number;
+  sourceFilePath?: string | null;
+  sourceFileName?: string | null;
   createdAt: string;
   updatedAt: string;
   allocations?: StockAllocation[];
   lineItems?: JobCardLineItem[];
+}
+
+export interface JobCardVersion {
+  id: number;
+  jobCardId: number;
+  companyId: number;
+  versionNumber: number;
+  filePath: string | null;
+  originalFilename: string | null;
+  jobName: string;
+  customerName: string | null;
+  notes: string | null;
+  lineItemsSnapshot: Record<string, unknown>[] | null;
+  amendmentNotes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface JobCardAttachment {
+  id: number;
+  jobCardId: number;
+  companyId: number;
+  attachmentType: string;
+  filePath: string;
+  originalFilename: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  extractionStatus: "pending" | "processing" | "analysed" | "failed";
+  extractedData: Record<string, unknown>;
+  extractionError: string | null;
+  extractedAt: string | null;
+  uploadedBy: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StaffMember {
@@ -141,6 +201,7 @@ export interface StaffMember {
   name: string;
   employeeNumber: string | null;
   department: string | null;
+  departmentId: number | null;
   photoUrl: string | null;
   qrToken: string;
   active: boolean;
@@ -291,6 +352,82 @@ export interface CostByJob {
   customerName: string | null;
   totalCost: number;
   totalItemsAllocated: number;
+}
+
+export interface JobCardDocument {
+  id: number;
+  jobCardId: number;
+  documentType: string;
+  fileUrl: string;
+  originalFilename: string | null;
+  mimeType: string | null;
+  fileSizeBytes: number | null;
+  uploadedByName: string | null;
+  createdAt: string;
+}
+
+export interface JobCardApproval {
+  id: number;
+  jobCardId: number;
+  step: string;
+  status: string;
+  approvedByName: string | null;
+  signatureUrl: string | null;
+  comments: string | null;
+  rejectedReason: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+}
+
+export interface WorkflowNotification {
+  id: number;
+  userId: number;
+  jobCardId: number | null;
+  title: string;
+  message: string | null;
+  actionType: string;
+  actionUrl: string | null;
+  readAt: string | null;
+  createdAt: string;
+  jobCard?: JobCard;
+}
+
+export interface WorkflowStatus {
+  currentStatus: string;
+  currentStep: string | null;
+  canApprove: boolean;
+  requiredRole: string | null;
+}
+
+export interface DispatchScan {
+  id: number;
+  jobCardId: number;
+  stockItemId: number;
+  allocationId: number | null;
+  quantityDispatched: number;
+  scannedByName: string | null;
+  dispatchNotes: string | null;
+  scannedAt: string;
+  stockItem?: StockItem;
+}
+
+export interface AllocationSummary {
+  stockItemId: number;
+  stockItem: StockItem;
+  allocatedQuantity: number;
+  dispatchedQuantity: number;
+  remainingQuantity: number;
+}
+
+export interface DispatchProgress {
+  totalAllocated: number;
+  totalDispatched: number;
+  isComplete: boolean;
+  items: AllocationSummary[];
+}
+
+export interface StaffSignature {
+  signatureUrl: string | null;
 }
 
 export interface StockValuation {
@@ -762,6 +899,60 @@ class StockControlApiClient {
       method: "PATCH",
       body: JSON.stringify({ role }),
     });
+  }
+
+  async departments(): Promise<StockControlDepartment[]> {
+    return this.request("/stock-control/auth/departments");
+  }
+
+  async createDepartment(name: string, displayOrder?: number): Promise<StockControlDepartment> {
+    return this.request("/stock-control/auth/departments", {
+      method: "POST",
+      body: JSON.stringify({ name, displayOrder }),
+    });
+  }
+
+  async updateDepartment(
+    id: number,
+    data: { name?: string; displayOrder?: number | null; active?: boolean },
+  ): Promise<StockControlDepartment> {
+    return this.request(`/stock-control/auth/departments/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDepartment(id: number): Promise<void> {
+    return this.request(`/stock-control/auth/departments/${id}`, { method: "DELETE" });
+  }
+
+  async locations(): Promise<StockControlLocation[]> {
+    return this.request("/stock-control/auth/locations");
+  }
+
+  async createLocation(
+    name: string,
+    description?: string,
+    displayOrder?: number,
+  ): Promise<StockControlLocation> {
+    return this.request("/stock-control/auth/locations", {
+      method: "POST",
+      body: JSON.stringify({ name, description, displayOrder }),
+    });
+  }
+
+  async updateLocation(
+    id: number,
+    data: { name?: string; description?: string | null; displayOrder?: number | null; active?: boolean },
+  ): Promise<StockControlLocation> {
+    return this.request(`/stock-control/auth/locations/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteLocation(id: number): Promise<void> {
+    return this.request(`/stock-control/auth/locations/${id}`, { method: "DELETE" });
   }
 
   async companyInvitations(): Promise<StockControlInvitation[]> {
@@ -1380,6 +1571,256 @@ class StockControlApiClient {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(url);
+  }
+
+  async uploadWorkflowDocument(
+    jobCardId: number,
+    file: File,
+    documentType: string,
+  ): Promise<JobCardDocument> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("documentType", documentType);
+
+    const url = `${this.baseURL}/stock-control/workflow/job-cards/${jobCardId}/documents`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async workflowDocuments(jobCardId: number): Promise<JobCardDocument[]> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/documents`);
+  }
+
+  async workflowStatus(jobCardId: number): Promise<WorkflowStatus> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/status`);
+  }
+
+  async approvalHistory(jobCardId: number): Promise<JobCardApproval[]> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/history`);
+  }
+
+  async approveWorkflowStep(
+    jobCardId: number,
+    data: { signatureDataUrl?: string; comments?: string },
+  ): Promise<JobCard> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/approve`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async rejectWorkflowStep(
+    jobCardId: number,
+    reason: string,
+  ): Promise<JobCard> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
+  }
+
+  async pendingApprovals(): Promise<JobCard[]> {
+    return this.request("/stock-control/workflow/pending");
+  }
+
+  async canApproveJobCard(jobCardId: number): Promise<{ canApprove: boolean }> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/can-approve`);
+  }
+
+  async workflowNotifications(limit?: number): Promise<WorkflowNotification[]> {
+    const query = limit ? `?limit=${limit}` : "";
+    return this.request(`/stock-control/workflow/notifications${query}`);
+  }
+
+  async unreadNotifications(): Promise<WorkflowNotification[]> {
+    return this.request("/stock-control/workflow/notifications/unread");
+  }
+
+  async notificationCount(): Promise<{ count: number }> {
+    return this.request("/stock-control/workflow/notifications/count");
+  }
+
+  async markNotificationAsRead(notificationId: number): Promise<{ success: boolean }> {
+    return this.request(`/stock-control/workflow/notifications/${notificationId}/read`, {
+      method: "PUT",
+    });
+  }
+
+  async markAllNotificationsAsRead(): Promise<{ success: boolean }> {
+    return this.request("/stock-control/workflow/notifications/read-all", {
+      method: "PUT",
+    });
+  }
+
+  async startDispatchSession(
+    jobCardId: number,
+  ): Promise<{ jobCard: JobCard; progress: DispatchProgress }> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/start`);
+  }
+
+  async dispatchProgress(jobCardId: number): Promise<DispatchProgress> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/progress`);
+  }
+
+  async dispatchHistory(jobCardId: number): Promise<DispatchScan[]> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/history`);
+  }
+
+  async scanDispatchItem(
+    jobCardId: number,
+    stockItemId: number,
+    quantity: number,
+    notes?: string,
+  ): Promise<DispatchScan> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/scan`, {
+      method: "POST",
+      body: JSON.stringify({ stockItemId, quantity, notes }),
+    });
+  }
+
+  async completeDispatch(jobCardId: number): Promise<JobCard> {
+    return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/complete`, {
+      method: "POST",
+    });
+  }
+
+  async scanQrCode(qrToken: string): Promise<{ type: "job_card" | "stock_item"; id: number }> {
+    return this.request("/stock-control/workflow/dispatch/scan-qr", {
+      method: "POST",
+      body: JSON.stringify({ qrToken }),
+    });
+  }
+
+  async downloadSignedJobCardPdf(jobCardId: number): Promise<void> {
+    const headers = this.headers();
+    const response = await fetch(
+      `${API_BASE_URL}/stock-control/workflow/job-cards/${jobCardId}/print`,
+      { headers: { Authorization: headers.Authorization ?? "" } },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to download signed job card PDF: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `job-card-signed-${jobCardId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  async mySignature(): Promise<StaffSignature> {
+    return this.request("/stock-control/signatures");
+  }
+
+  async uploadSignature(signatureDataUrl: string): Promise<StaffSignature> {
+    return this.request("/stock-control/signatures", {
+      method: "POST",
+      body: JSON.stringify({ signatureDataUrl }),
+    });
+  }
+
+  async deleteSignature(): Promise<{ success: boolean }> {
+    return this.request("/stock-control/signatures", { method: "DELETE" });
+  }
+
+  async uploadJobCardAmendment(
+    jobCardId: number,
+    file: File,
+    notes?: string,
+  ): Promise<JobCard> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (notes) {
+      formData.append("notes", notes);
+    }
+
+    const url = `${this.baseURL}/stock-control/job-cards/${jobCardId}/amendment`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Amendment upload failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async jobCardVersionHistory(jobCardId: number): Promise<JobCardVersion[]> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/versions`);
+  }
+
+  async jobCardVersionById(jobCardId: number, versionId: number): Promise<JobCardVersion> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/versions/${versionId}`);
+  }
+
+  async jobCardAttachments(jobCardId: number): Promise<JobCardAttachment[]> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/attachments`);
+  }
+
+  async uploadJobCardAttachment(
+    jobCardId: number,
+    file: File,
+    notes?: string,
+  ): Promise<JobCardAttachment> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (notes) {
+      formData.append("notes", notes);
+    }
+
+    const url = `${this.baseURL}/stock-control/job-cards/${jobCardId}/attachments`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Attachment upload failed: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  async triggerDrawingExtraction(
+    jobCardId: number,
+    attachmentId: number,
+  ): Promise<JobCardAttachment> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/attachments/${attachmentId}/extract`, {
+      method: "POST",
+    });
+  }
+
+  async deleteJobCardAttachment(jobCardId: number, attachmentId: number): Promise<void> {
+    return this.request(`/stock-control/job-cards/${jobCardId}/attachments/${attachmentId}`, {
+      method: "DELETE",
+    });
   }
 }
 
