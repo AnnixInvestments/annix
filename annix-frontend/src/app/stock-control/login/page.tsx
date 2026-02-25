@@ -39,7 +39,7 @@ export default function StockControlLoginPage() {
     setError(null);
 
     try {
-      await login(email, password, rememberMe);
+      await login(email.trim(), password, rememberMe);
 
       if (rememberMe) {
         localStorage.setItem("stockControlRememberedEmail", email);

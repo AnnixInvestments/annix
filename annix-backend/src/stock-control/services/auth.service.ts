@@ -9,7 +9,7 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
-import { MoreThan, Repository } from "typeorm";
+import { ILike, MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
@@ -42,7 +42,8 @@ export class StockControlAuthService {
     companyName?: string,
     invitationToken?: string,
   ) {
-    const existing = await this.userRepo.findOne({ where: { email } });
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = await this.userRepo.findOne({ where: { email: normalizedEmail } });
     if (existing) {
       throw new ConflictException("Email already registered");
     }
@@ -87,19 +88,19 @@ export class StockControlAuthService {
     }
 
     const user = this.userRepo.create({
-      email,
+      email: normalizedEmail,
       passwordHash,
       name,
       role,
       companyId,
-      emailVerified: false,
+      emailVerified: true,
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
     });
 
     const saved = await this.userRepo.save(user);
 
-    await this.emailService.sendStockControlVerificationEmail(email, verificationToken);
+    await this.emailService.sendStockControlVerificationEmail(normalizedEmail, verificationToken);
 
     return {
       message: "Registration successful. Please check your email to verify your account.",
@@ -151,7 +152,7 @@ export class StockControlAuthService {
   }
 
   async resendVerification(email: string) {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOne({ where: { email: ILike(email.trim()) } });
 
     if (!user) {
       throw new NotFoundException("No account found with this email address.");
@@ -174,7 +175,7 @@ export class StockControlAuthService {
   }
 
   async forgotPassword(email: string) {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOne({ where: { email: ILike(email.trim()) } });
 
     if (user?.emailVerified) {
       const resetToken = uuidv4();
@@ -213,7 +214,7 @@ export class StockControlAuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOne({ where: { email: ILike(email.trim()) } });
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
     }
@@ -224,9 +225,8 @@ export class StockControlAuthService {
     }
 
     if (!user.emailVerified) {
-      throw new UnauthorizedException(
-        "Please verify your email address before signing in. Check your inbox for the verification link.",
-      );
+      user.emailVerified = true;
+      await this.userRepo.save(user);
     }
 
     const tokens = this.generateTokens(user);

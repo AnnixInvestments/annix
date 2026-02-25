@@ -33,11 +33,172 @@ export class BrandingScraperService {
   ) {}
 
   async scrapeCandidates(websiteUrl: string): Promise<ScrapedBrandingCandidates> {
+    try {
+      this.logger.log(`Starting candidate scrape for ${websiteUrl}`);
+      return await this.scrapeCandidatesWithPuppeteer(websiteUrl);
+    } catch (error) {
+      this.logger.warn(
+        `Puppeteer scraping failed, falling back to fetch-based extraction: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return this.scrapeCandidatesWithFetch(websiteUrl);
+    }
+  }
+
+  private async scrapeCandidatesWithFetch(
+    websiteUrl: string,
+  ): Promise<ScrapedBrandingCandidates> {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(websiteUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml",
+        },
+      });
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        this.logger.warn(`Fetch scraping failed: HTTP ${response.status}`);
+        return { logoCandidates: [], heroCandidates: [], primaryColor: null };
+      }
+
+      const html = await response.text();
+      const baseUrl = new URL(websiteUrl);
+
+      const resolveUrl = (raw: string): string | null => {
+        if (!raw || raw.startsWith("data:")) {
+          return null;
+        }
+        try {
+          return new URL(raw, baseUrl.origin).href;
+        } catch {
+          return null;
+        }
+      };
+
+      const logoCandidates: CandidateImage[] = [];
+      const heroCandidates: CandidateImage[] = [];
+      const seenLogos = new Set<string>();
+      const seenHeroes = new Set<string>();
+
+      const addLogo = (url: string | null, source: string) => {
+        if (!url || seenLogos.has(url) || logoCandidates.length >= 20) return;
+        seenLogos.add(url);
+        logoCandidates.push({ url, source, width: null, height: null });
+      };
+
+      const addHero = (url: string | null, source: string) => {
+        if (!url || seenHeroes.has(url) || heroCandidates.length >= 20) return;
+        seenHeroes.add(url);
+        heroCandidates.push({ url, source, width: null, height: null });
+      };
+
+      const imgTagPattern = /<img\s[^>]*?>/gi;
+      const srcPattern = /src=["']([^"']+)["']/i;
+      const altPattern = /alt=["']([^"']+)["']/i;
+      const classPattern = /class=["']([^"']+)["']/i;
+      const idPattern = /id=["']([^"']+)["']/i;
+
+      const imgTags = html.match(imgTagPattern) ?? [];
+      imgTags.forEach((tag) => {
+        const srcMatch = tag.match(srcPattern);
+        const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
+        if (!src) return;
+
+        const alt = tag.match(altPattern)?.[1] ?? "";
+        const cls = tag.match(classPattern)?.[1] ?? "";
+        const id = tag.match(idPattern)?.[1] ?? "";
+        const combined = `${src} ${alt} ${cls} ${id}`.toLowerCase();
+
+        if (combined.includes("logo")) {
+          addLogo(src, "logo-attr");
+        }
+
+        if (
+          combined.includes("hero") ||
+          combined.includes("banner") ||
+          combined.includes("slider") ||
+          combined.includes("carousel")
+        ) {
+          addHero(src, "hero-selector");
+        }
+      });
+
+      const headerPattern = /<(?:header|nav)[^>]*>[\s\S]*?<\/(?:header|nav)>/gi;
+      const headerBlocks = html.match(headerPattern) ?? [];
+      headerBlocks.forEach((block) => {
+        const headerImgs = block.match(imgTagPattern) ?? [];
+        headerImgs.forEach((tag) => {
+          const srcMatch = tag.match(srcPattern);
+          const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
+          if (src) addLogo(src, "header-img");
+        });
+      });
+
+      const ogImagePattern = /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i;
+      const ogImageAlt = /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i;
+      const ogMatch = html.match(ogImagePattern) ?? html.match(ogImageAlt);
+      if (ogMatch?.[1]) {
+        const ogUrl = resolveUrl(ogMatch[1]);
+        addLogo(ogUrl, "og-image");
+        addHero(ogUrl, "og-image");
+      }
+
+      const faviconPattern =
+        /<link[^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)["'][^>]*href=["']([^"']+)["']/gi;
+      const faviconAltPattern =
+        /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)["']/gi;
+      [faviconPattern, faviconAltPattern].forEach((pattern) => {
+        let match: RegExpExecArray | null = null;
+        while ((match = pattern.exec(html)) !== null) {
+          const url = resolveUrl(match[1]);
+          if (url) addLogo(url, "favicon");
+        }
+      });
+
+      addLogo(resolveUrl("/favicon.ico"), "favicon");
+
+      const bgUrlPattern = /background(?:-image)?\s*:[^;]*url\(["']?([^"')]+)["']?\)/gi;
+      let bgMatch: RegExpExecArray | null = null;
+      while ((bgMatch = bgUrlPattern.exec(html)) !== null) {
+        const url = resolveUrl(bgMatch[1]);
+        if (url) addHero(url, "bg-image");
+      }
+
+      let primaryColor: string | null = null;
+      const themeColorPattern =
+        /<meta[^>]*name=["']theme-color["'][^>]*content=["']([^"']+)["']/i;
+      const themeColorAlt =
+        /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']theme-color["']/i;
+      const themeMatch = html.match(themeColorPattern) ?? html.match(themeColorAlt);
+      if (themeMatch?.[1]) {
+        primaryColor = themeMatch[1];
+      }
+
+      this.logger.log(
+        `Fetch-based scrape found ${logoCandidates.length} logo candidates, ${heroCandidates.length} hero candidates`,
+      );
+
+      return { logoCandidates, heroCandidates, primaryColor };
+    } catch (error) {
+      this.logger.error(
+        `Fetch-based scraping also failed for ${websiteUrl}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return { logoCandidates: [], heroCandidates: [], primaryColor: null };
+    }
+  }
+
+  private async scrapeCandidatesWithPuppeteer(
+    websiteUrl: string,
+  ): Promise<ScrapedBrandingCandidates> {
     let browser: puppeteer.Browser | null = null;
 
     try {
-      this.logger.log(`Starting candidate scrape for ${websiteUrl}`);
-
       browser = await puppeteer.launch({
         headless: true,
         args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
@@ -206,11 +367,6 @@ export class BrandingScraperService {
         heroCandidates: extracted.heroCandidates,
         primaryColor: extracted.primaryColor,
       };
-    } catch (error) {
-      this.logger.error(
-        `Candidate scraping failed for ${websiteUrl}: ${error instanceof Error ? error.stack : String(error)}`,
-      );
-      return { logoCandidates: [], heroCandidates: [], primaryColor: null };
     } finally {
       if (browser) {
         try {
