@@ -29,10 +29,15 @@ export {
   useRbacAppDetails,
   useRbacApps,
   useRbacAssignAccess,
+  useRbacCreateRole,
+  useRbacDeleteRole,
   useRbacInviteUser,
   useRbacRevokeAccess,
+  useRbacRoleProducts,
   useRbacSearchUsers,
+  useRbacSetRoleProducts,
   useRbacUpdateAccess,
+  useRbacUpdateRole,
   useRbacUsersWithAccess,
 } from "./admin/useRbac";
 export {

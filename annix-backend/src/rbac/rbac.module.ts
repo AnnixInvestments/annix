@@ -7,6 +7,7 @@ import {
   AppPermission,
   AppRole,
   AppRolePermission,
+  AppRoleProduct,
   UserAppAccess,
   UserAppPermission,
 } from "./entities";
@@ -21,6 +22,7 @@ import { RbacService } from "./rbac.service";
       AppPermission,
       AppRole,
       AppRolePermission,
+      AppRoleProduct,
       UserAppAccess,
       UserAppPermission,
       User,

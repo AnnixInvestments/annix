@@ -8,12 +8,19 @@ import {
   UserAccessResponseDto,
 } from "./dto/assign-user-access.dto";
 import { InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
+import {
+  CreateRoleDto,
+  RoleProductsResponseDto,
+  RoleResponseDto,
+  UpdateRoleDto,
+} from "./dto/role-management.dto";
 import { UserWithAccessSummaryDto } from "./dto/user-with-access-summary.dto";
 import {
   App,
   AppPermission,
   AppRole,
   AppRolePermission,
+  AppRoleProduct,
   UserAppAccess,
   UserAppPermission,
 } from "./entities";
@@ -29,6 +36,8 @@ export class RbacService {
     private readonly roleRepo: Repository<AppRole>,
     @InjectRepository(AppRolePermission)
     private readonly rolePermissionRepo: Repository<AppRolePermission>,
+    @InjectRepository(AppRoleProduct)
+    private readonly roleProductRepo: Repository<AppRoleProduct>,
     @InjectRepository(UserAppAccess)
     private readonly accessRepo: Repository<UserAppAccess>,
     @InjectRepository(UserAppPermission)
@@ -468,6 +477,165 @@ export class RbacService {
       grantedAt: access.grantedAt,
       expiresAt: access.expiresAt,
       grantedById: access.grantedById,
+    };
+  }
+
+  async createRole(appCode: string, dto: CreateRoleDto): Promise<RoleResponseDto> {
+    const app = await this.appRepo.findOne({ where: { code: appCode } });
+    if (!app) {
+      throw new NotFoundException(`App '${appCode}' not found`);
+    }
+
+    const existingRole = await this.roleRepo.findOne({
+      where: { appId: app.id, code: dto.code },
+    });
+    if (existingRole) {
+      throw new ConflictException(`Role with code '${dto.code}' already exists for this app`);
+    }
+
+    const maxDisplayOrder = await this.roleRepo
+      .createQueryBuilder("role")
+      .select("MAX(role.displayOrder)", "max")
+      .where("role.appId = :appId", { appId: app.id })
+      .getRawOne();
+
+    const displayOrder = (maxDisplayOrder?.max ?? 0) + 1;
+
+    if (dto.isDefault) {
+      await this.roleRepo.update({ appId: app.id, isDefault: true }, { isDefault: false });
+    }
+
+    const role = this.roleRepo.create({
+      appId: app.id,
+      code: dto.code,
+      name: dto.name,
+      description: dto.description ?? null,
+      isDefault: dto.isDefault ?? false,
+      displayOrder,
+    });
+
+    const savedRole = await this.roleRepo.save(role);
+    return this.roleToResponseDto(savedRole);
+  }
+
+  async updateRole(roleId: number, dto: UpdateRoleDto): Promise<RoleResponseDto> {
+    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${roleId} not found`);
+    }
+
+    if (dto.name !== undefined) {
+      role.name = dto.name;
+    }
+    if (dto.description !== undefined) {
+      role.description = dto.description;
+    }
+    if (dto.displayOrder !== undefined) {
+      role.displayOrder = dto.displayOrder;
+    }
+    if (dto.isDefault !== undefined) {
+      if (dto.isDefault) {
+        await this.roleRepo.update({ appId: role.appId, isDefault: true }, { isDefault: false });
+      }
+      role.isDefault = dto.isDefault;
+    }
+
+    const updatedRole = await this.roleRepo.save(role);
+    return this.roleToResponseDto(updatedRole);
+  }
+
+  async deleteRole(roleId: number): Promise<{ message: string; reassignedUsers: number }> {
+    const role = await this.roleRepo.findOne({
+      where: { id: roleId },
+      relations: ["app"],
+    });
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${roleId} not found`);
+    }
+
+    const defaultRole = await this.roleRepo.findOne({
+      where: { appId: role.appId, isDefault: true },
+    });
+
+    const usersWithRole = await this.accessRepo.count({ where: { roleId } });
+    let reassignedUsers = 0;
+
+    if (usersWithRole > 0) {
+      if (defaultRole && defaultRole.id !== roleId) {
+        await this.accessRepo.update({ roleId }, { roleId: defaultRole.id });
+        reassignedUsers = usersWithRole;
+      } else {
+        await this.accessRepo.update({ roleId }, { roleId: null, useCustomPermissions: true });
+        reassignedUsers = usersWithRole;
+      }
+    }
+
+    await this.roleRepo.remove(role);
+
+    return {
+      message: `Role '${role.name}' deleted successfully`,
+      reassignedUsers,
+    };
+  }
+
+  async roleProducts(roleId: number): Promise<RoleProductsResponseDto> {
+    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${roleId} not found`);
+    }
+
+    const products = await this.roleProductRepo.find({
+      where: { roleId },
+      order: { productKey: "ASC" },
+    });
+
+    return {
+      roleId,
+      productKeys: products.map((p) => p.productKey),
+    };
+  }
+
+  async setRoleProducts(roleId: number, productKeys: string[]): Promise<RoleProductsResponseDto> {
+    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${roleId} not found`);
+    }
+
+    await this.roleProductRepo.delete({ roleId });
+
+    if (productKeys.length > 0) {
+      const uniqueKeys = [...new Set(productKeys)];
+      const newProducts = uniqueKeys.map((productKey) =>
+        this.roleProductRepo.create({ roleId, productKey }),
+      );
+      await this.roleProductRepo.save(newProducts);
+    }
+
+    return {
+      roleId,
+      productKeys: productKeys.sort(),
+    };
+  }
+
+  async roleById(roleId: number): Promise<RoleResponseDto> {
+    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    if (!role) {
+      throw new NotFoundException(`Role with ID ${roleId} not found`);
+    }
+    return this.roleToResponseDto(role);
+  }
+
+  private roleToResponseDto(role: AppRole): RoleResponseDto {
+    return {
+      id: role.id,
+      appId: role.appId,
+      code: role.code,
+      name: role.name,
+      description: role.description,
+      isDefault: role.isDefault,
+      displayOrder: role.displayOrder,
+      createdAt: role.createdAt,
+      updatedAt: role.updatedAt,
     };
   }
 }

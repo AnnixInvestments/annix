@@ -2,13 +2,18 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type AssignUserAccessDto,
   adminApiClient,
+  type CreateRoleDto,
   type InviteUserDto,
   type InviteUserResponse,
   type RbacApp,
   type RbacAppDetail,
+  type RbacDeleteRoleResponse,
+  type RbacRoleProductsResponse,
+  type RbacRoleResponse,
   type RbacSearchUser,
   type RbacUserAccess,
   type RbacUserWithAccessSummary,
+  type UpdateRoleDto,
   type UpdateUserAccessDto,
 } from "@/app/lib/api/adminApi";
 import { rbacKeys } from "../../keys";
@@ -99,6 +104,60 @@ export function useRbacInviteUser() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: rbacKeys.apps.users(variables.appCode) });
       queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
+    },
+  });
+}
+
+export function useRbacRoleProducts(roleId: number) {
+  return useQuery<RbacRoleProductsResponse>({
+    queryKey: rbacKeys.roles.products(roleId),
+    queryFn: () => adminApiClient.rbacRoleProducts(roleId),
+    enabled: roleId > 0,
+  });
+}
+
+export function useRbacCreateRole() {
+  const queryClient = useQueryClient();
+
+  return useMutation<RbacRoleResponse, Error, { appCode: string; dto: CreateRoleDto }>({
+    mutationFn: ({ appCode, dto }) => adminApiClient.rbacCreateRole(appCode, dto),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: rbacKeys.apps.detail(variables.appCode) });
+    },
+  });
+}
+
+export function useRbacUpdateRole() {
+  const queryClient = useQueryClient();
+
+  return useMutation<RbacRoleResponse, Error, { roleId: number; dto: UpdateRoleDto; appCode: string }>({
+    mutationFn: ({ roleId, dto }) => adminApiClient.rbacUpdateRole(roleId, dto),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: rbacKeys.apps.detail(variables.appCode) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.roles.detail(variables.roleId) });
+    },
+  });
+}
+
+export function useRbacDeleteRole() {
+  const queryClient = useQueryClient();
+
+  return useMutation<RbacDeleteRoleResponse, Error, { roleId: number; appCode: string }>({
+    mutationFn: ({ roleId }) => adminApiClient.rbacDeleteRole(roleId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: rbacKeys.apps.detail(variables.appCode) });
+      queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
+    },
+  });
+}
+
+export function useRbacSetRoleProducts() {
+  const queryClient = useQueryClient();
+
+  return useMutation<RbacRoleProductsResponse, Error, { roleId: number; productKeys: string[] }>({
+    mutationFn: ({ roleId, productKeys }) => adminApiClient.rbacSetRoleProducts(roleId, productKeys),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: rbacKeys.roles.products(variables.roleId) });
     },
   });
 }

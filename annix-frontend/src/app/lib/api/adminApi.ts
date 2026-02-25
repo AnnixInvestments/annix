@@ -1257,6 +1257,41 @@ class AdminApiClient {
       body: JSON.stringify(dto),
     });
   }
+
+  async rbacCreateRole(appCode: string, dto: CreateRoleDto): Promise<RbacRoleResponse> {
+    return this.request<RbacRoleResponse>(`/admin/rbac/apps/${encodeURIComponent(appCode)}/roles`, {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async rbacRoleById(roleId: number): Promise<RbacRoleResponse> {
+    return this.request<RbacRoleResponse>(`/admin/rbac/roles/${roleId}`);
+  }
+
+  async rbacUpdateRole(roleId: number, dto: UpdateRoleDto): Promise<RbacRoleResponse> {
+    return this.request<RbacRoleResponse>(`/admin/rbac/roles/${roleId}`, {
+      method: "PATCH",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async rbacDeleteRole(roleId: number): Promise<RbacDeleteRoleResponse> {
+    return this.request<RbacDeleteRoleResponse>(`/admin/rbac/roles/${roleId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async rbacRoleProducts(roleId: number): Promise<RbacRoleProductsResponse> {
+    return this.request<RbacRoleProductsResponse>(`/admin/rbac/roles/${roleId}/products`);
+  }
+
+  async rbacSetRoleProducts(roleId: number, productKeys: string[]): Promise<RbacRoleProductsResponse> {
+    return this.request<RbacRoleProductsResponse>(`/admin/rbac/roles/${roleId}/products`, {
+      method: "PUT",
+      body: JSON.stringify({ productKeys }),
+    });
+  }
 }
 
 export interface NixUploadResponse {
@@ -1622,6 +1657,42 @@ export interface InviteUserResponse {
   accessId: number;
   isNewUser: boolean;
   message: string;
+}
+
+export interface CreateRoleDto {
+  code: string;
+  name: string;
+  description?: string;
+  isDefault?: boolean;
+}
+
+export interface UpdateRoleDto {
+  name?: string;
+  description?: string;
+  isDefault?: boolean;
+  displayOrder?: number;
+}
+
+export interface RbacRoleResponse {
+  id: number;
+  appId: number;
+  code: string;
+  name: string;
+  description: string | null;
+  isDefault: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RbacDeleteRoleResponse {
+  message: string;
+  reassignedUsers: number;
+}
+
+export interface RbacRoleProductsResponse {
+  roleId: number;
+  productKeys: string[];
 }
 
 export const adminApiClient = new AdminApiClient();

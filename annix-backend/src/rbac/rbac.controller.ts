@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Query,
   Request,
   UseGuards,
@@ -29,6 +30,13 @@ import {
   UserAccessResponseDto,
 } from "./dto/assign-user-access.dto";
 import { InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
+import {
+  CreateRoleDto,
+  RoleProductsResponseDto,
+  RoleResponseDto,
+  SetRoleProductsDto,
+  UpdateRoleDto,
+} from "./dto/role-management.dto";
 import { UserWithAccessSummaryDto } from "./dto/user-with-access-summary.dto";
 import { App, AppPermission, AppRole } from "./entities";
 import { RbacService } from "./rbac.service";
@@ -169,5 +177,96 @@ export class RbacController {
   async inviteUser(@Body() dto: InviteUserDto, @Request() req): Promise<InviteUserResponseDto> {
     const grantedById = req.user.sub || req.user.userId;
     return this.rbacService.inviteUser(dto, grantedById);
+  }
+
+  @Post("apps/:code/roles")
+  @ApiOperation({ summary: "Create a new role for an app" })
+  @ApiParam({ name: "code", description: "App code", example: "rfq-platform" })
+  @ApiResponse({
+    status: 201,
+    description: "Role created successfully",
+    type: RoleResponseDto,
+  })
+  @ApiResponse({ status: 404, description: "App not found" })
+  @ApiResponse({ status: 409, description: "Role code already exists" })
+  async createRole(
+    @Param("code") code: string,
+    @Body() dto: CreateRoleDto,
+  ): Promise<RoleResponseDto> {
+    return this.rbacService.createRole(code, dto);
+  }
+
+  @Get("roles/:roleId")
+  @ApiOperation({ summary: "Get role by ID" })
+  @ApiParam({ name: "roleId", description: "Role ID", example: 1 })
+  @ApiResponse({
+    status: 200,
+    description: "Role details",
+    type: RoleResponseDto,
+  })
+  @ApiResponse({ status: 404, description: "Role not found" })
+  async roleById(@Param("roleId", ParseIntPipe) roleId: number): Promise<RoleResponseDto> {
+    return this.rbacService.roleById(roleId);
+  }
+
+  @Patch("roles/:roleId")
+  @ApiOperation({ summary: "Update a role" })
+  @ApiParam({ name: "roleId", description: "Role ID", example: 1 })
+  @ApiResponse({
+    status: 200,
+    description: "Role updated successfully",
+    type: RoleResponseDto,
+  })
+  @ApiResponse({ status: 404, description: "Role not found" })
+  async updateRole(
+    @Param("roleId", ParseIntPipe) roleId: number,
+    @Body() dto: UpdateRoleDto,
+  ): Promise<RoleResponseDto> {
+    return this.rbacService.updateRole(roleId, dto);
+  }
+
+  @Delete("roles/:roleId")
+  @ApiOperation({ summary: "Delete a role" })
+  @ApiParam({ name: "roleId", description: "Role ID", example: 1 })
+  @ApiResponse({
+    status: 200,
+    description: "Role deleted successfully",
+  })
+  @ApiResponse({ status: 404, description: "Role not found" })
+  async deleteRole(
+    @Param("roleId", ParseIntPipe) roleId: number,
+  ): Promise<{ message: string; reassignedUsers: number }> {
+    return this.rbacService.deleteRole(roleId);
+  }
+
+  @Get("roles/:roleId/products")
+  @ApiOperation({ summary: "Get products accessible by a role" })
+  @ApiParam({ name: "roleId", description: "Role ID", example: 1 })
+  @ApiResponse({
+    status: 200,
+    description: "Role product access",
+    type: RoleProductsResponseDto,
+  })
+  @ApiResponse({ status: 404, description: "Role not found" })
+  async roleProducts(
+    @Param("roleId", ParseIntPipe) roleId: number,
+  ): Promise<RoleProductsResponseDto> {
+    return this.rbacService.roleProducts(roleId);
+  }
+
+  @Put("roles/:roleId/products")
+  @ApiOperation({ summary: "Set products accessible by a role" })
+  @ApiParam({ name: "roleId", description: "Role ID", example: 1 })
+  @ApiResponse({
+    status: 200,
+    description: "Role product access updated",
+    type: RoleProductsResponseDto,
+  })
+  @ApiResponse({ status: 404, description: "Role not found" })
+  async setRoleProducts(
+    @Param("roleId", ParseIntPipe) roleId: number,
+    @Body() dto: SetRoleProductsDto,
+  ): Promise<RoleProductsResponseDto> {
+    return this.rbacService.setRoleProducts(roleId, dto.productKeys);
   }
 }

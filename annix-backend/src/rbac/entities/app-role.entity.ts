@@ -12,6 +12,7 @@ import {
 } from "typeorm";
 import { App } from "./app.entity";
 import { AppRolePermission } from "./app-role-permission.entity";
+import { AppRoleProduct } from "./app-role-product.entity";
 import { UserAppAccess } from "./user-app-access.entity";
 
 @Entity("app_roles")
@@ -88,4 +89,10 @@ export class AppRole {
     (userAccess) => userAccess.role,
   )
   userAccess: UserAppAccess[];
+
+  @OneToMany(
+    () => AppRoleProduct,
+    (roleProduct) => roleProduct.role,
+  )
+  roleProducts: AppRoleProduct[];
 }

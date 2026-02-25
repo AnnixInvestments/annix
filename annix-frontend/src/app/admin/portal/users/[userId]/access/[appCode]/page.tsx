@@ -14,6 +14,7 @@ import {
   useRbacUpdateAccess,
   useToggleFeatureFlag,
 } from "@/app/lib/query/hooks";
+import { RoleManagementPanel } from "../../../components/RoleManagementPanel";
 
 const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<
   Record<
@@ -48,6 +49,7 @@ export default function EditUserAccessPage() {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [expiresAt, setExpiresAt] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>("");
+  const [isRoleManagementOpen, setIsRoleManagementOpen] = useState(false);
 
   const { data: allUsers = [] } = useRbacAllUsers();
   const { data: appDetails, isLoading: appLoading } = useRbacAppDetails(appCode);
@@ -267,8 +269,15 @@ export default function EditUserAccessPage() {
 
       {!useCustomPermissions && (
         <div className="bg-white dark:bg-slate-800 shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">Role</h3>
+            <button
+              type="button"
+              onClick={() => setIsRoleManagementOpen(true)}
+              className="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              Manage Roles
+            </button>
           </div>
           <div className="px-6 py-4">
             <select
@@ -580,6 +589,14 @@ export default function EditUserAccessPage() {
           {isSaving ? "Saving..." : existingAccess ? "Update Access" : "Grant Access"}
         </button>
       </div>
+
+      {appDetails && (
+        <RoleManagementPanel
+          isOpen={isRoleManagementOpen}
+          onClose={() => setIsRoleManagementOpen(false)}
+          appDetails={appDetails}
+        />
+      )}
     </div>
   );
 }

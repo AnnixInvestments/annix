@@ -11,4 +11,9 @@ export const rbacKeys = {
     list: () => [...rbacKeys.users.all, "list"] as const,
     search: (query: string) => [...rbacKeys.users.all, "search", query] as const,
   },
+  roles: {
+    all: ["rbac", "roles"] as const,
+    detail: (roleId: number) => [...rbacKeys.roles.all, "detail", roleId] as const,
+    products: (roleId: number) => [...rbacKeys.roles.all, "products", roleId] as const,
+  },
 } as const;
