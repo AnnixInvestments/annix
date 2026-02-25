@@ -271,9 +271,8 @@ export default function ImportPage() {
                   AI mapped columns:{" "}
                   {Object.entries(importMapping)
                     .filter(([, v]) => v !== null)
-                    .map(
-                      ([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`,
-                    )
+                    .map(([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`)
+
                     .join(", ") || "No columns mapped"}
                 </p>
               </div>
