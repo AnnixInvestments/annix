@@ -1,6 +1,7 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
+import { StockControlUser } from "../stock-control/entities/stock-control-user.entity";
 import { User } from "../user/entities/user.entity";
 import {
   App,
@@ -26,6 +27,7 @@ import { RbacService } from "./rbac.service";
       UserAppAccess,
       UserAppPermission,
       User,
+      StockControlUser,
     ]),
     forwardRef(() => AdminModule),
   ],

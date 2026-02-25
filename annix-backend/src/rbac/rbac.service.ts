@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
+import { StockControlUser } from "../stock-control/entities/stock-control-user.entity";
 import { User } from "../user/entities/user.entity";
 import {
   AssignUserAccessDto,
@@ -44,6 +45,8 @@ export class RbacService {
     private readonly userPermissionRepo: Repository<UserAppPermission>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(StockControlUser)
+    private readonly stockControlUserRepo: Repository<StockControlUser>,
   ) {}
 
   async allApps(): Promise<App[]> {
@@ -133,7 +136,7 @@ export class RbacService {
       {} as Record<number, typeof allAccessRecords>,
     );
 
-    return users.map((user) => {
+    const mainUsers: UserWithAccessSummaryDto[] = users.map((user) => {
       const userAccessRecords = accessByUserId[user.id] ?? [];
 
       const appAccess = userAccessRecords
@@ -166,6 +169,52 @@ export class RbacService {
         appAccess,
       };
     });
+
+    const stockControlUsers = await this.stockControlUserRepo.find({
+      relations: ["company"],
+      order: { email: "ASC" },
+    });
+
+    const stockControlApp = allApps.find((a) => a.code === "stock-control");
+
+    const stockControlUserDtos: UserWithAccessSummaryDto[] = stockControlUsers.map((scUser) => {
+      const nameParts = scUser.name.split(" ");
+      const firstName = nameParts[0] ?? null;
+      const lastName = nameParts.slice(1).join(" ") || null;
+
+      const roleNameMap: Record<string, string> = {
+        storeman: "Storeman",
+        accounts: "Accounts",
+        manager: "Manager",
+        admin: "Administrator",
+      };
+
+      return {
+        id: -scUser.id,
+        email: scUser.email,
+        firstName,
+        lastName,
+        status: scUser.emailVerified ? "active" : "pending",
+        lastLoginAt: null,
+        createdAt: scUser.createdAt,
+        appAccess: stockControlApp
+          ? [
+              {
+                appCode: "stock-control",
+                appName: `Stock Control (${scUser.company?.name ?? "Unknown"})`,
+                roleCode: scUser.role,
+                roleName: roleNameMap[scUser.role] ?? scUser.role,
+                useCustomPermissions: false,
+                permissionCount: null,
+                expiresAt: null,
+                accessId: -scUser.id,
+              },
+            ]
+          : [],
+      };
+    });
+
+    return [...mainUsers, ...stockControlUserDtos].sort((a, b) => a.email.localeCompare(b.email));
   }
 
   async searchUsers(
